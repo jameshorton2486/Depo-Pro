@@ -1,0 +1,124 @@
+// ═══════════════════════════════════════════════════════════════
+// USER VALIDATION SCHEMAS
+// ═══════════════════════════════════════════════════════════════
+// Zod schemas for user-related forms and API endpoints
+
+import { z } from 'zod';
+import { Role } from '@/lib/constants';
+
+/**
+ * Login schema
+ * Used for: Login form validation
+ */
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(8, 'Password must be at least 8 characters'),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+
+/**
+ * Registration schema
+ * Used for: Registration form validation
+ */
+export const registerSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters'),
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address')
+    .toLowerCase(),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password must be less than 100 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+  role: z.enum([Role.ADMIN, Role.COURT_REPORTER, Role.SCOPIST] as const, {
+    message: 'Please select a role',
+  }),
+  // Optional: Firm name for new independent reporters/scopists
+  firmName: z.string().optional(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+/**
+ * Update profile schema
+ * Used for: Profile update form
+ */
+export const updateProfileSchema = z.object({
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .optional(),
+  email: z
+    .string()
+    .email('Please enter a valid email address')
+    .toLowerCase()
+    .optional(),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/**
+ * Change password schema
+ * Used for: Password change form
+ */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password must be less than 100 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
+  confirmPassword: z.string().min(1, 'Please confirm your new password'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+}).refine((data) => data.currentPassword !== data.newPassword, {
+  message: 'New password must be different from current password',
+  path: ['newPassword'],
+});
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/**
+ * User invite schema (for admins)
+ * Used for: Inviting users to a firm
+ */
+export const inviteUserSchema = z.object({
+  email: z
+    .string()
+    .email('Please enter a valid email address')
+    .toLowerCase(),
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters'),
+  role: z.enum([Role.COURT_REPORTER, Role.SCOPIST] as const, {
+    message: 'Please select a role',
+  }),
+});
+
+export type InviteUserInput = z.infer<typeof inviteUserSchema>;
