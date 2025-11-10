@@ -183,6 +183,18 @@ npm install
 # Run development server
 npm run dev
 
+# Full health check (lint + typecheck + build)
+npm run check
+
+# Run linter
+npm run lint
+
+# Run type checker
+npm run typecheck
+
+# Build for production
+npm run build
+
 # Run Prisma Studio (database GUI)
 npx prisma studio
 
@@ -194,13 +206,19 @@ npx prisma migrate reset
 
 # Generate Prisma Client after schema changes
 npx prisma generate
-
-# Format code
-npm run format
-
-# Lint code
-npm run lint
 ```
+
+## 🧯 Error Handling & Logging
+
+Depo-Pro includes structured logging and error handling so that problems are traceable and easy to debug.
+
+- All logs are written to the `logs/` directory at the project root.
+- Log files are separated by level (info, warn, error) and by date.
+- Server-side code uses the shared logger in `lib/logger.ts`.
+
+For full details and examples of how to use the logger inside routes, API handlers, and background tasks, see:
+
+👉 [`docs/ERROR_HANDLING.md`](docs/ERROR_HANDLING.md)
 
 ## 🔒 Multi-Tenant Security Reminders
 

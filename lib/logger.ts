@@ -2,9 +2,7 @@
 // LOGGER UTILITY
 // ═══════════════════════════════════════════════════════════════
 // Centralized logging with file output and console formatting
-
-import fs from 'fs';
-import path from 'path';
+// Note: Only works in Node.js runtime (not Edge Runtime)
 
 export enum LogLevel {
   DEBUG = 'DEBUG',
@@ -22,31 +20,52 @@ interface LogEntry {
   stack?: string;
 }
 
+// Check if we're in a Node.js environment (not Edge Runtime)
+const isNodeRuntime = typeof process !== 'undefined' && typeof process.cwd === 'function';
+
 class Logger {
-  private logsDir: string;
+  private logsDir?: string;
+  private fs?: typeof import('fs');
+  private path?: typeof import('path');
 
   constructor() {
-    // Logs will be stored in the logs/ directory at the project root
-    this.logsDir = path.join(process.cwd(), 'logs');
-    this.ensureLogsDirectory();
-  }
-
-  private ensureLogsDirectory() {
-    if (!fs.existsSync(this.logsDir)) {
-      fs.mkdirSync(this.logsDir, { recursive: true });
+    // Only initialize file logging in Node.js runtime
+    if (isNodeRuntime) {
+      this.initializeNodeLogger();
     }
   }
 
-  private getLogFileName(level: LogLevel): string {
+  private async initializeNodeLogger() {
+    try {
+      // Dynamic imports only work in Node.js runtime
+      this.fs = await import('fs');
+      this.path = await import('path');
+      this.logsDir = this.path.join(process.cwd(), 'logs');
+      this.ensureLogsDirectory();
+    } catch {
+      // Silently fail if not in Node.js runtime
+      console.warn('Logger: File logging not available in Edge Runtime');
+    }
+  }
+
+  private ensureLogsDirectory() {
+    if (this.fs && this.logsDir && !this.fs.existsSync(this.logsDir)) {
+      this.fs.mkdirSync(this.logsDir, { recursive: true });
+    }
+  }
+
+  private getLogFileName(level: LogLevel): string | undefined {
+    if (!this.path || !this.logsDir) return undefined;
+    
     const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     
     switch (level) {
       case LogLevel.ERROR:
-        return path.join(this.logsDir, `error-${date}.log`);
+        return this.path.join(this.logsDir, `error-${date}.log`);
       case LogLevel.WARN:
-        return path.join(this.logsDir, `warn-${date}.log`);
+        return this.path.join(this.logsDir, `warn-${date}.log`);
       default:
-        return path.join(this.logsDir, `app-${date}.log`);
+        return this.path.join(this.logsDir, `app-${date}.log`);
     }
   }
 
@@ -72,10 +91,15 @@ class Logger {
   }
 
   private writeToFile(level: LogLevel, entry: LogEntry) {
+    // Only write to file in Node.js runtime
+    if (!this.fs || !isNodeRuntime) return;
+    
     try {
       const fileName = this.getLogFileName(level);
+      if (!fileName) return;
+      
       const formatted = this.formatLogEntry(entry) + '\n';
-      fs.appendFileSync(fileName, formatted, 'utf-8');
+      this.fs.appendFileSync(fileName, formatted, 'utf-8');
     } catch (error) {
       // Fallback to console if file write fails
       console.error('Failed to write to log file:', error);
@@ -92,20 +116,20 @@ class Logger {
       stack: error?.stack,
     };
 
-    // Write to file
+    // Write to file (only in Node.js runtime)
     this.writeToFile(level, entry);
 
-    // Also log to console in development
-    if (process.env.NODE_ENV !== 'production') {
-      const consoleMethod = level === LogLevel.ERROR ? console.error : 
-                           level === LogLevel.WARN ? console.warn : 
-                           console.log;
-      
-      consoleMethod(this.formatLogEntry(entry));
-    }
+    // Always log to console
+    const consoleMethod = level === LogLevel.ERROR ? console.error : 
+                         level === LogLevel.WARN ? console.warn : 
+                         console.log;
+    
+    consoleMethod(this.formatLogEntry(entry));
   }
 
   debug(message: string, context?: string, data?: Record<string, unknown>) {
+    // Skip debug logs in production
+    if (process.env.NODE_ENV === 'production') return;
     this.log(LogLevel.DEBUG, message, context, data);
   }
 

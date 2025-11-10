@@ -1,0 +1,21 @@
+{
+  // Ask VS Code to run ESLint fixes when you save
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // Make sure ESLint knows what to check
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  // Don't fight with other formatters yet (we can add Prettier later if you want)
+  "editor.formatOnSave": false,
+
+  // TypeScript settings
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

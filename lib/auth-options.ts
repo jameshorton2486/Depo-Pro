@@ -9,7 +9,6 @@ import { compare } from 'bcryptjs';
 import { db } from '@/lib/db';
 import { loginSchema } from '@/lib/validations/user';
 import { Role } from '@/lib/constants';
-import { logger } from '@/lib/logger';
 
 /**
  * NextAuth configuration object
@@ -48,7 +47,7 @@ export const authConfig: NextAuthConfig = {
           const validatedFields = loginSchema.safeParse(credentials);
 
           if (!validatedFields.success) {
-            logger.warn('Login attempt with invalid credentials format', 'Authentication');
+            console.warn('[Auth] Login attempt with invalid credentials format');
             return null;
           }
 
@@ -70,16 +69,13 @@ export const authConfig: NextAuthConfig = {
 
           // Check if user exists
           if (!user || !user.passwordHash) {
-            logger.warn('Login attempt for non-existent user', 'Authentication', { email });
+            console.warn(`[Auth] Login attempt for non-existent user: ${email}`);
             return null;
           }
 
           // Check if user is active
           if (!user.isActive) {
-            logger.warn('Login attempt for deactivated account', 'Authentication', {
-              email,
-              userId: user.id,
-            });
+            console.warn(`[Auth] Login attempt for deactivated account: ${email}`);
             throw new Error('Account is deactivated. Please contact support.');
           }
 
@@ -87,18 +83,11 @@ export const authConfig: NextAuthConfig = {
           const isPasswordValid = await compare(password, user.passwordHash);
 
           if (!isPasswordValid) {
-            logger.warn('Login attempt with invalid password', 'Authentication', {
-              email,
-              userId: user.id,
-            });
+            console.warn(`[Auth] Login attempt with invalid password: ${email}`);
             return null;
           }
 
-          logger.info('User logged in successfully', 'Authentication', {
-            userId: user.id,
-            email: user.email,
-            role: user.role,
-          });
+          console.log(`[Auth] User logged in successfully: ${user.email} (${user.role})`);
 
           // Return user object (excluding passwordHash)
           return {
@@ -110,7 +99,7 @@ export const authConfig: NextAuthConfig = {
             isActive: user.isActive,
           };
         } catch (error) {
-          logger.authError('Authorization failed', error as Error);
+          console.error('[Auth] Authorization failed:', error);
           return null;
         }
       },
