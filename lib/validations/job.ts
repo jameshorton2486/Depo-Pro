@@ -44,6 +44,14 @@ export const createJobSchema = z.object({
     .or(z.literal('')),
   
   // Job metadata
+  status: z.enum([
+    JobStatus.DRAFT,
+    JobStatus.ASSIGNED,
+    JobStatus.IN_PROGRESS,
+    JobStatus.COMPLETED,
+    JobStatus.BILLED,
+    JobStatus.PAID,
+  ] as const).default(JobStatus.DRAFT),
   totalPages: z
     .number()
     .int('Total pages must be a whole number')
@@ -81,25 +89,6 @@ export const createJobSchema = z.object({
 });
 
 export type CreateJobInput = z.infer<typeof createJobSchema>;
-
-/**
- * Update job schema
- * Used for: Job editing form
- * Allows updating status and other fields
- */
-export const updateJobSchema = createJobSchema.extend({
-  status: z.enum([
-    JobStatus.DRAFT,
-    JobStatus.ASSIGNED,
-    JobStatus.IN_PROGRESS,
-    JobStatus.COMPLETED,
-    JobStatus.BILLED,
-    JobStatus.PAID,
-  ] as const).optional(),
-  completedAt: z.string().datetime().optional().nullable(),
-});
-
-export type UpdateJobInput = z.infer<typeof updateJobSchema>;
 
 /**
  * Job filter schema
