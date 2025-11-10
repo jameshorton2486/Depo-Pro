@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
+import { AssignmentManagement } from '@/components/jobs/assignment-management';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -105,6 +106,26 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const canEdit = 
     session.user.role === 'ADMIN' || 
     job.reporterId === session.user.id;
+
+  const canAssign = canEdit;
+
+  // Fetch available scopists for assignment
+  const availableScopists = canAssign
+    ? await db.user.findMany({
+        where: {
+          role: 'SCOPIST',
+          firmId: job.firmId,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      })
+    : [];
 
   return (
     <div className="container max-w-6xl py-8">
@@ -266,28 +287,13 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       </div>
 
       {/* Assignments */}
-      {job.assignments.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Assignments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {job.assignments.map((assignment) => (
-                <div key={assignment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{assignment.scopist.name}</p>
-                    <p className="text-sm text-muted-foreground">{assignment.scopist.email}</p>
-                  </div>
-                  <div className="text-sm">
-                    <span className="font-medium">{assignment.status}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <AssignmentManagement
+        jobId={job.id}
+        assignments={job.assignments}
+        availableScopists={availableScopists}
+        canAssign={canAssign}
+        currentUserId={session.user.id}
+      />
 
       {/* Notes */}
       {job.notes && (
