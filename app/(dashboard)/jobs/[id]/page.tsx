@@ -9,6 +9,7 @@ import { db } from '@/lib/db';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { AssignmentManagement } from '@/components/jobs/assignment-management';
 import { FileUpload } from '@/components/jobs/file-upload';
+import { DictionaryManagement } from '@/components/jobs/dictionary-management';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -90,6 +91,15 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         },
       },
       dictionaryTerms: {
+        include: {
+          addedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
         orderBy: {
           term: 'asc',
         },
@@ -297,6 +307,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         availableScopists={availableScopists}
         canAssign={canAssign}
         currentUserId={session.user.id}
+      />
+
+      {/* Dictionary */}
+      <DictionaryManagement
+        jobId={job.id}
+        terms={job.dictionaryTerms}
+        canAdd={canEdit || job.assignments.some((a) => a.scopistId === session.user.id)}
+        canEdit={canEdit || job.assignments.some((a) => a.scopistId === session.user.id)}
       />
 
       {/* Notes */}
