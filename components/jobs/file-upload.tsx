@@ -6,6 +6,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, X, FileText, Download, Trash2 } from 'lucide-react';
@@ -64,9 +65,10 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
       }
 
       router.refresh();
+      toast.success('File uploaded successfully');
     } catch (error) {
       console.error('Upload error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to upload file');
+      toast.error(error instanceof Error ? error.message : 'Failed to upload file');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -92,9 +94,10 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
       }
 
       router.refresh();
+      toast.success('File deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete file');
+      toast.error('Failed to delete file');
     } finally {
       setDeleting(null);
     }

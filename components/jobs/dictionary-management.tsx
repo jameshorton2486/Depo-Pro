@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -95,9 +96,10 @@ export function DictionaryManagement({
 
       router.refresh();
       resetForm();
+      toast.success('Term added successfully');
     } catch (error) {
       console.error('Add term error:', error);
-      alert('Failed to add term');
+      toast.error('Failed to add term');
     } finally {
       setLoading(false);
     }
@@ -124,9 +126,10 @@ export function DictionaryManagement({
 
       router.refresh();
       resetForm();
+      toast.success('Term updated successfully');
     } catch (error) {
       console.error('Update term error:', error);
-      alert('Failed to update term');
+      toast.error('Failed to update term');
     } finally {
       setLoading(false);
     }
@@ -147,9 +150,10 @@ export function DictionaryManagement({
       }
 
       router.refresh();
+      toast.success('Term deleted successfully');
     } catch (error) {
       console.error('Delete term error:', error);
-      alert('Failed to delete term');
+      toast.error('Failed to delete term');
     }
   };
 

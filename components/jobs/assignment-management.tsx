@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AssignmentStatusBadge } from './assignment-status-badge';
@@ -53,9 +54,10 @@ export function AssignmentManagement({
       }
 
       router.refresh();
+      toast.success('Assignment status updated');
     } catch (error) {
       console.error('Error updating assignment:', error);
-      alert('Failed to update assignment status');
+      toast.error('Failed to update assignment status');
     } finally {
       setUpdatingAssignment(null);
     }
@@ -76,9 +78,10 @@ export function AssignmentManagement({
       }
 
       router.refresh();
+      toast.success('Assignment deleted');
     } catch (error) {
       console.error('Error deleting assignment:', error);
-      alert('Failed to delete assignment');
+      toast.error('Failed to delete assignment');
     }
   };
 
