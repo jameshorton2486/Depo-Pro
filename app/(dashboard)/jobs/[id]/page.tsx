@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { AssignmentManagement } from '@/components/jobs/assignment-management';
+import { FileUpload } from '@/components/jobs/file-upload';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -15,7 +16,6 @@ import {
   Calendar, 
   MapPin, 
   Building2, 
-  FileText, 
   User, 
   AlertCircle,
   Edit,
@@ -68,6 +68,15 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         },
       },
       files: {
+        include: {
+          uploadedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
         orderBy: {
           createdAt: 'desc',
         },
@@ -258,33 +267,28 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             </CardContent>
           </Card>
         )}
-
-        {/* Files */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Files ({job.files.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {job.files.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No files uploaded yet</p>
-            ) : (
-              <ul className="space-y-2">
-                {job.files.map((file) => (
-                  <li key={file.id} className="text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{file.originalName}</span>
-                      <span className="text-muted-foreground">{file.fileType}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      {/* File Upload */}
+      <FileUpload
+        jobId={job.id}
+        files={job.files.map(file => ({
+          id: file.id,
+          filename: file.filename,
+          originalName: file.originalName,
+          mimeType: file.mimeType,
+          size: file.size,
+          fileType: file.fileType,
+          createdAt: file.createdAt,
+          uploadedBy: {
+            id: file.uploadedBy.id,
+            name: file.uploadedBy.name,
+            email: file.uploadedBy.email,
+          },
+        }))}
+        canUpload={canEdit}
+        canDelete={canEdit}
+      />
 
       {/* Assignments */}
       <AssignmentManagement
