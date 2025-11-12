@@ -14,14 +14,14 @@ import { Job } from '@prisma/client';
 export default async function ScopistDashboard() {
   const session = await requireRole([Role.SCOPIST]);
 
-  // 🔒 Security: Filter all queries by firmId
+  // 🔒 Security: Support both firm-associated and independent scopists
   const firmId = session.user.firmId;
+  const isIndependent = !firmId;
   
-  if (!firmId) {
-    logger.error('Scopist without firmId attempted dashboard access', 'ScopistDashboard', undefined, {
+  if (isIndependent) {
+    logger.info('Independent scopist accessing dashboard', 'ScopistDashboard', {
       userId: session.user.id,
     });
-    throw new Error('Scopist must be associated with a firm');
   }
 
   // Get current month date range
@@ -35,6 +35,16 @@ export default async function ScopistDashboard() {
   let recentJobs: Job[] = [];
 
   try {
+    // Build base where clause for scopist
+    const scopistWhere = {
+      scopistId: session.user.id,
+    };
+
+    // Add firm filter only if user has a firm
+    const scopistWithFirmWhere = firmId
+      ? { ...scopistWhere, job: { firmId } }
+      : scopistWhere;
+
     const [
       assignedCount,
       inProgressCount,
@@ -43,31 +53,22 @@ export default async function ScopistDashboard() {
     ] = await Promise.all([
       // Total assigned jobs
       db.jobAssignment.count({
-        where: {
-          scopistId: session.user.id,
-          job: {
-            firmId,
-          },
-        },
+        where: scopistWithFirmWhere,
       }),
       // Jobs currently in progress
       db.jobAssignment.count({
         where: {
-          scopistId: session.user.id,
+          ...scopistWhere,
           status: 'IN_PROGRESS',
-          job: {
-            firmId,
-          },
+          ...(firmId && { job: { firmId } }),
         },
       }),
       // Jobs completed this month
       db.jobAssignment.count({
         where: {
-          scopistId: session.user.id,
+          ...scopistWhere,
           status: 'COMPLETED',
-          job: {
-            firmId,
-          },
+          ...(firmId && { job: { firmId } }),
           completedAt: {
             gte: startOfMonth,
           },
@@ -75,12 +76,7 @@ export default async function ScopistDashboard() {
       }),
       // Recent job assignments with job details
       db.jobAssignment.findMany({
-        where: {
-          scopistId: session.user.id,
-          job: {
-            firmId,
-          },
-        },
+        where: scopistWithFirmWhere,
         include: {
           job: true,
         },

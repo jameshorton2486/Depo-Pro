@@ -16,14 +16,14 @@ import { Job } from '@prisma/client';
 export default async function ReporterDashboard() {
   const session = await requireRole([Role.COURT_REPORTER]);
 
-  // 🔒 Security: Filter all queries by firmId
+  // 🔒 Security: Support both firm-associated and independent reporters
   const firmId = session.user.firmId;
+  const isIndependent = !firmId;
   
-  if (!firmId) {
-    logger.error('Court reporter without firmId attempted dashboard access', 'ReporterDashboard', undefined, {
+  if (isIndependent) {
+    logger.info('Independent court reporter accessing dashboard', 'ReporterDashboard', {
       userId: session.user.id,
     });
-    throw new Error('Court reporter must be associated with a firm');
   }
 
   // Get current month date range
@@ -37,12 +37,21 @@ export default async function ReporterDashboard() {
   let recentJobs: Job[] = [];
 
   try {
+    // Build base where clause for reporter
+    const reporterWhere = {
+      reporterId: session.user.id,
+    };
+
+    // Add firm filter only if user has a firm
+    const reporterWithFirmWhere = firmId
+      ? { ...reporterWhere, firmId }
+      : reporterWhere;
+
     [activeJobs, pendingAssignments, completedThisMonth, recentJobs] = await Promise.all([
       // Active jobs (not completed)
       db.job.count({
         where: {
-          firmId,
-          reporterId: session.user.id,
+          ...reporterWithFirmWhere,
           status: {
             not: JobStatus.COMPLETED,
           },
@@ -51,18 +60,14 @@ export default async function ReporterDashboard() {
       // Pending assignments (jobs assigned but not accepted)
       db.jobAssignment.count({
         where: {
-          job: {
-            firmId,
-            reporterId: session.user.id,
-          },
+          job: reporterWithFirmWhere,
           status: 'PENDING',
         },
       }),
       // Jobs completed this month
       db.job.count({
         where: {
-          firmId,
-          reporterId: session.user.id,
+          ...reporterWithFirmWhere,
           status: JobStatus.COMPLETED,
           completedAt: {
             gte: startOfMonth,
@@ -71,10 +76,7 @@ export default async function ReporterDashboard() {
       }),
       // Recent jobs
       db.job.findMany({
-        where: {
-          firmId,
-          reporterId: session.user.id,
-        },
+        where: reporterWithFirmWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
       }),
