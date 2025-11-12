@@ -53,6 +53,8 @@ export const authConfig: NextAuthConfig = {
 
           const { email, password } = validatedFields.data;
 
+          console.log(`[Auth] Login attempt for: ${email}`);
+
           // Find user by email
           const user = await db.user.findUnique({
             where: { email: email.toLowerCase() },
@@ -73,6 +75,8 @@ export const authConfig: NextAuthConfig = {
             return null;
           }
 
+          console.log(`[Auth] Found user: ${user.email}, Active: ${user.isActive}, Has password: ${!!user.passwordHash}`);
+
           // Check if user is active
           if (!user.isActive) {
             console.warn(`[Auth] Login attempt for deactivated account: ${email}`);
@@ -80,7 +84,15 @@ export const authConfig: NextAuthConfig = {
           }
 
           // Verify password
-          const isPasswordValid = await compare(password, user.passwordHash);
+          let isPasswordValid = false;
+          try {
+            isPasswordValid = await compare(password, user.passwordHash);
+          } catch (error) {
+            console.error('[Auth] Password comparison error:', error);
+            // Fallback: try synchronous comparison
+            const bcrypt = require('bcryptjs');
+            isPasswordValid = bcrypt.compareSync(password, user.passwordHash);
+          }
 
           if (!isPasswordValid) {
             console.warn(`[Auth] Login attempt with invalid password: ${email}`);
