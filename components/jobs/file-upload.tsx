@@ -182,8 +182,8 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      // TODO: Implement download in Phase 2
-                      alert('Download functionality coming in Phase 2');
+                      // Download file
+                      window.open(`/api/files/${file.id}/download`, '_blank');
                     }}
                   >
                     <Download className="h-4 w-4" />

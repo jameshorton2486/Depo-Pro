@@ -6,10 +6,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { FileType } from '@prisma/client';
-import { writeFile, mkdir } from 'fs/promises';
+import { uploadFile } from '@/lib/storage';
+import { mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
-import crypto from 'crypto';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -106,26 +106,27 @@ export async function POST(
       await mkdir(UPLOAD_DIR, { recursive: true });
     }
 
-    // 🔐 Generate unique filename
-    const fileExtension = file.name.split('.').pop() || '';
-    const uniqueFilename = `${crypto.randomUUID()}.${fileExtension}`;
-    const filePath = join(UPLOAD_DIR, uniqueFilename);
-
-    // 💾 Write file to disk
+    // � Upload file to storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
+    
+    const { storageKey, storageUrl, size } = await uploadFile(
+      buffer,
+      file.name,
+      file.type
+    );
 
     // 💿 Save file metadata to database
     const uploadedFile = await db.jobFile.create({
       data: {
         jobId,
-        filename: uniqueFilename,
+        filename: storageKey,
         originalName: file.name,
         mimeType: file.type,
-        size: file.size,
+        size,
         fileType: getFileType(file.type),
-        storageKey: uniqueFilename, // For now, same as filename
+        storageKey,
+        storageUrl,
         uploadedById: session.user.id,
       },
       include: {

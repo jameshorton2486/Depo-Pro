@@ -3,13 +3,14 @@
 // ═══════════════════════════════════════════════════════════════
 // Phase 1: Full schema with multi-tenant security
 // 🔒 = Multi-tenant security critical field
+// Database: PostgreSQL (Supabase)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
