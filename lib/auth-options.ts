@@ -5,7 +5,7 @@
 
 import { NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { compare } from 'bcryptjs';
+import { compare, compareSync } from 'bcryptjs';
 import { db } from '@/lib/db';
 import { loginSchema } from '@/lib/validations/user';
 import { Role } from '@/lib/constants';
@@ -90,8 +90,7 @@ export const authConfig: NextAuthConfig = {
           } catch (error) {
             console.error('[Auth] Password comparison error:', error);
             // Fallback: try synchronous comparison
-            const bcrypt = require('bcryptjs');
-            isPasswordValid = bcrypt.compareSync(password, user.passwordHash);
+            isPasswordValid = compareSync(password, user.passwordHash);
           }
 
           if (!isPasswordValid) {

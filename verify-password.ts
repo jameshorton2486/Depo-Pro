@@ -20,6 +20,11 @@ async function verifyPasswords() {
   });
 
   for (const user of users) {
+    if (!user.passwordHash) {
+      console.log(`${user.email}: No password hash`);
+      continue;
+    }
+    
     const isValid = await compare('password123', user.passwordHash);
     console.log(`${user.email}:`);
     console.log(`  Hash: ${user.passwordHash.substring(0, 20)}...`);
