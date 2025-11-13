@@ -1,275 +1,209 @@
-# DEPO-PRO DEPLOYMENT CHECKLIST
+# ✅ Depo-Pro Deployment Quick Checklist
 
-## 🎯 Current Status: Ready for Supabase Migration
-
-### ✅ Completed
-- Phase 1: Complete (all 13 steps)
-- Phase 2: Complete (all 8 sub-phases with mock implementations)
-- Database schema: Updated to PostgreSQL
-- Environment: Configured with Supabase credentials
-
-### 🔧 Next Steps
-
-#### 1. Activate Supabase Database (URGENT - Connection Issue)
-
-**Problem**: Can't connect to database server at `db.okthcpumncidcihdhgea.supabase.co:5432`
-
-**Possible Causes**:
-- ❓ Supabase project might be paused (free tier auto-pauses after inactivity)
-- ❓ Need to use Supabase pooler instead of direct connection
-- ❓ IPv6 connection issue (Supabase prefers IPv6)
-
-**Solutions to Try**:
-
-**Option A: Resume Paused Project**
-1. Go to https://supabase.com/dashboard/project/okthcpumncidcihdhgea
-2. Check if project shows "Paused" status
-3. Click "Resume" or "Restore" if paused
-4. Wait 2-3 minutes for database to start
-5. Then run: `npx prisma migrate deploy`
-
-**Option B: Use Connection Pooler** (Recommended for Serverless)
-```bash
-# Get pooler connection string from Supabase dashboard:
-# Settings > Database > Connection String > Connection Pooling
-# Format: postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-
-# Update .env:
-DATABASE_URL="postgresql://postgres.okthcpumncidcihdhgea:[PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-```
-
-**Option C: Check Supabase Dashboard**
-1. Visit: https://supabase.com/dashboard/project/okthcpumncidcihdhgea/settings/database
-2. Copy the exact "Connection String" (URI format)
-3. Select "Session mode" or "Transaction mode" pooling
-4. Paste into `.env` file
-5. Run: `npx prisma migrate deploy`
-
-#### 2. Deploy Database Schema
-
-Once connection works:
-```bash
-# Deploy all migrations to Supabase
-npx prisma migrate deploy
-
-# Or create a new migration
-npx prisma migrate dev --name init_supabase
-
-# Generate Prisma Client
-npx prisma generate
-
-# Seed initial data (optional)
-npm run db:seed
-```
-
-#### 3. Fix Next.js 16 Route Parameter Issues
-
-**Current Status**: 5 TypeScript errors remaining in Phase 2 routes
-
-**Affected Files**:
-- `/app/api/transcripts/[id]/route.ts` (2 errors in PATCH handler)
-- `/app/api/transcripts/[id]/status/route.ts` (1 error)
-- `/app/api/jobs/[id]/invoice/route.ts` (1 error)  
-- `/app/api/jobs/[id]/transcribe/route.ts` (1 error)
-
-**Issue**: Next.js 16 changed `params` from `{ id: string }` to `Promise<{ id: string }>`
-
-**Fix Required**: Update remaining error handlers to await params:
-```typescript
-} catch (error) {
-  const { id } = await params;  // ← Add this line
-  logger.error(`Error - id: ${id}, error: ${error}`);
-  // ...
-}
-```
-
-**Command to Find Remaining Errors**:
-```bash
-npm run typecheck 2>&1 | Select-String "params.id"
-```
-
-#### 4. Test Application Locally
-
-```bash
-# Full health check
-npm run check
-
-# Start dev server
-npm run dev
-
-# Visit: http://localhost:3000
-# Test login, create jobs, upload files
-```
-
-#### 5. Activate Phase 2 Production Services (Optional)
-
-See `INTEGRATION_GUIDE.md` for detailed instructions.
-
-**Quick Start**:
-- ✅ File Storage: Already using local storage (works immediately)
-- 🔄 Supabase Storage: Optional upgrade (see guide line 48)
-- 🔄 Deepgram Transcription: Requires API key ($0.0125/min)
-- 🔄 Stripe Payments: Requires account setup
-- 🔄 Resend Emails: Requires API key (100 emails/day free)
-- 🔄 BullMQ Jobs: Requires Redis ($free via Upstash)
-
-#### 6. Deploy to Vercel
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Login
-vercel login
-
-# Deploy
-vercel
-
-# Add environment variables in Vercel dashboard:
-# - DATABASE_URL (from Supabase)
-# - NEXTAUTH_URL (your-app.vercel.app)
-# - NEXTAUTH_SECRET (same as local)
-```
-
-**Vercel Environment Variables**:
-```bash
-DATABASE_URL=postgresql://postgres:OTWKEmQXqu6yvopi@db.okthcpumncidcihdhgea.supabase.co:5432/postgres?schema=public&sslmode=require
-NEXTAUTH_URL=https://your-app-name.vercel.app
-NEXTAUTH_SECRET=LGGcUsI+HOVKc8L4lP4vrHvyTi4vcomnhGQ2ugZnZZ0=
-```
+**Print this page and check off items as you complete them!**
 
 ---
 
-## 📊 Project Statistics
+## 🎯 Pre-Deployment (5 minutes)
 
-### Code Metrics
-- **Total Files**: 90+ TypeScript/TSX files
-- **Lines of Code**: ~10,000+ lines
-- **Components**: 15+ React components
-- **API Routes**: 25+ endpoints
-- **Database Models**: 12 Prisma models
-
-### Phase 1 (100% Complete)
-- ✅ Authentication system (NextAuth + JWT)
-- ✅ Multi-tenant architecture (Firm isolation)
-- ✅ Job management (CRUD operations)
-- ✅ Assignment system (Reporter → Scopist workflow)
-- ✅ File management APIs
-- ✅ Dictionary/terminology system
-- ✅ Role-based access control (Admin/Reporter/Scopist)
-- ✅ Dashboard with statistics
-
-### Phase 2 (100% Complete - Mock Implementations)
-- ✅ File storage abstraction (Local/S3/Supabase ready)
-- ✅ Audio transcription service (Mock + Deepgram ready)
-- ✅ Transcript editor (Rich text with formatting)
-- ✅ Multi-format export (TXT/ASCII/DOCX/PDF)
-- ✅ Invoice generation (Mock + Stripe ready)
-- ✅ Email notifications (Mock + Resend ready)
-- ✅ Background job queue (Mock + BullMQ ready)
-- ✅ Complete integration documentation
+- [ ] GitHub repo is up to date (`git push origin main`)
+- [ ] Code builds locally without errors (`npm run build`)
+- [ ] All tests pass (`npm run check`)
+- [ ] `.env.local` file has all required variables
 
 ---
 
-## 🚨 Immediate Action Required
+## 📦 Supabase Setup (15 minutes)
 
-### Priority 1: Fix Database Connection
-**Time Estimate**: 5-10 minutes
+### Project Creation
+- [ ] Supabase account created
+- [ ] New project created: `depo-pro`
+- [ ] Database password saved somewhere safe
+- [ ] Project fully initialized (green checkmark)
 
-1. Visit Supabase dashboard: https://supabase.com/dashboard
-2. Navigate to project: okthcpumncidcihdhgea
-3. Check project status (Resume if paused)
-4. Copy exact connection string from Settings > Database
-5. Update `.env` file with correct connection string
-6. Run: `npx prisma migrate deploy`
-7. Run: `npm run db:seed` (optional - adds test data)
+### Database Configuration
+- [ ] DATABASE_URL copied and password replaced
+- [ ] Connection string tested (optional)
 
-### Priority 2: Fix TypeScript Errors
-**Time Estimate**: 10 minutes
+### API Keys
+- [ ] NEXT_PUBLIC_SUPABASE_URL copied
+- [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY copied
+- [ ] SUPABASE_SERVICE_ROLE_KEY copied
 
-1. Run: `npm run typecheck` to see errors
-2. Update 5 remaining error handlers in Phase 2 routes
-3. Add `const { id } = await params;` before each logger.error
-4. Run: `npm run check` to verify all passing
-
-### Priority 3: Test Locally
-**Time Estimate**: 15 minutes
-
-1. Run: `npm run dev`
-2. Login at http://localhost:3000/login
-3. Create test job
-4. Test file upload
-5. Test assignment creation
-6. Verify all features work
-
-### Priority 4: Deploy to Production
-**Time Estimate**: 20 minutes
-
-1. Push code to GitHub (if not already done)
-2. Deploy to Vercel
-3. Add environment variables
-4. Run database migrations on production
-5. Test production deployment
+### Storage Setup
+- [ ] Bucket `depo-files` created
+- [ ] Bucket is PRIVATE (not public)
+- [ ] 3 storage policies added and enabled:
+  - [ ] Allow authenticated uploads
+  - [ ] Allow authenticated reads  
+  - [ ] Allow authenticated deletes
 
 ---
 
-## 📚 Documentation Reference
+## 🔑 External Services (15 minutes)
 
-- **Setup Guide**: `SETUP_COMPLETE.md` - Phase 1 completion report
-- **Integration Guide**: `INTEGRATION_GUIDE.md` - Production API setup (400+ lines)
-- **Progress Tracker**: `PHASE2_PROGRESS.md` - Phase 2 detailed changelog
-- **Project README**: `README.md` - Project overview and features
-- **Error Handling**: `docs/ERROR_HANDLING.md` - Error patterns and logging
+### Gmail/Email
+- [ ] Gmail 2FA enabled
+- [ ] App password generated (16 characters)
+- [ ] SMTP_USER saved
+- [ ] SMTP_PASSWORD saved
+- [ ] FROM_EMAIL saved
 
----
+### Deepgram
+- [ ] Deepgram account created
+- [ ] Project created
+- [ ] API key generated
+- [ ] DEEPGRAM_API_KEY saved
+- [ ] Free credits visible in dashboard
 
-## 🎉 What's Working Right Now
-
-All Phase 1 features are production-ready:
-- ✅ User registration and login
-- ✅ Firm management (multi-tenant isolation)
-- ✅ Job creation and editing
-- ✅ Assignment workflow (Reporter → Scopist)
-- ✅ File upload/download (local storage)
-- ✅ Dictionary management
-- ✅ Dashboard statistics
-- ✅ Role-based permissions
-
-All Phase 2 features work with **mock implementations**:
-- ✅ File storage (local filesystem)
-- ✅ Transcription (generates mock transcript)
-- ✅ Transcript editor (full featured)
-- ✅ Export (TXT/ASCII working, DOCX/PDF mocked)
-- ✅ Invoicing (calculations work, Stripe mocked)
-- ✅ Emails (logs to console, templates ready)
-- ✅ Background jobs (in-memory queue)
+### NextAuth
+- [ ] NEXTAUTH_SECRET generated (32+ characters)
+- [ ] NEXTAUTH_SECRET saved
 
 ---
 
-## 💡 Pro Tips
+## 🚀 Vercel Deployment (20 minutes)
 
-1. **Database Connection Issues?**
-   - Check Supabase project isn't paused
-   - Try pooler connection instead of direct
-   - Verify password has no special characters needing URL encoding
+### Project Import
+- [ ] Vercel account connected to GitHub
+- [ ] `depo-pro` repository imported
+- [ ] Framework detected as Next.js
 
-2. **TypeScript Errors?**
-   - Run `npm run typecheck` to see all errors at once
-   - Use VS Code "Problems" panel for better navigation
-   - Most errors are in error handlers (easy to fix)
+### Environment Variables Added
+Core Variables:
+- [ ] DATABASE_URL
+- [ ] NEXT_PUBLIC_SUPABASE_URL
+- [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY
+- [ ] SUPABASE_SERVICE_ROLE_KEY
+- [ ] USE_CLOUD_STORAGE=true
+- [ ] SUPABASE_STORAGE_BUCKET=depo-files
+- [ ] NEXTAUTH_SECRET
+- [ ] NEXTAUTH_URL (update after first deploy)
 
-3. **Deployment Issues?**
-   - Make sure DATABASE_URL uses pooler for serverless (Vercel)
-   - Add all env vars BEFORE deploying
-   - Run migrations in production console after first deploy
+Email Variables:
+- [ ] SMTP_HOST=smtp.gmail.com
+- [ ] SMTP_PORT=587
+- [ ] SMTP_USER
+- [ ] SMTP_PASSWORD
+- [ ] FROM_EMAIL
+- [ ] FROM_NAME=Depo-Pro
 
-4. **Testing Locally?**
-   - Use `npm run db:seed` to add test data
-   - Check `uploads/` folder for uploaded files
-   - Watch terminal for mock service console logs
+Feature Variables:
+- [ ] USE_DEEPGRAM=true
+- [ ] DEEPGRAM_API_KEY
+- [ ] USE_REAL_EXPORT=true
+- [ ] NODE_ENV=production
+
+### Deployment
+- [ ] First deployment started
+- [ ] Build completed successfully (2-4 mins)
+- [ ] Deployment URL received
+- [ ] NEXTAUTH_URL updated with real URL
+- [ ] Application redeployed
 
 ---
 
-**Last Updated**: November 10, 2025  
-**Status**: Ready for deployment once database connection is resolved  
-**Next Milestone**: Production deployment to Vercel
+## ✅ Verification Testing (10 minutes)
+
+### Basic Functionality
+- [ ] App loads at Vercel URL
+- [ ] No console errors (F12 to check)
+- [ ] Login page displays correctly
+
+### User Registration
+- [ ] Can register new test user
+- [ ] No registration errors
+- [ ] Redirects to dashboard
+- [ ] User name displays in dashboard
+
+### Database Connection
+- [ ] User appears in Supabase `User` table
+- [ ] Password is hashed (not plain text)
+- [ ] All database tables visible in Supabase
+
+### File Storage
+- [ ] Can create new job
+- [ ] Can upload file to job
+- [ ] File appears in Supabase Storage
+- [ ] No upload errors
+
+### Optional Features
+- [ ] Email notification received (if configured)
+- [ ] Can view uploaded files
+- [ ] Transcription works (if audio uploaded)
+
+---
+
+## 📋 Post-Deployment Tasks
+
+### Documentation
+- [ ] Save all credentials securely (password manager)
+- [ ] Deployment URL documented
+- [ ] Share access with team members (if applicable)
+
+### Monitoring Setup (Optional)
+- [ ] Vercel Analytics enabled
+- [ ] Error tracking configured (Sentry)
+- [ ] Uptime monitoring set up
+
+### Local Development
+- [ ] `.env.local` created with production variables
+- [ ] Can run `npm run dev` locally with production DB
+- [ ] Git ignores `.env.local`
+
+---
+
+## 🎊 Success Criteria
+
+**Your deployment is successful when:**
+
+✅ App loads at `https://__________.vercel.app`  
+✅ Can register and login  
+✅ Can create jobs  
+✅ Can upload files  
+✅ Files save to Supabase Storage  
+✅ No critical errors in console  
+
+**Deployment URL:** `https://______________________.vercel.app`
+
+**Completed:** ____ / ____ / ____
+
+**Deployed by:** _______________________
+
+---
+
+## 📞 Quick Help
+
+**App won't load?**
+→ Check Vercel deployment logs for errors
+
+**Can't login?**
+→ Verify NEXTAUTH_URL matches your Vercel URL exactly
+
+**File upload fails?**
+→ Check storage policies in Supabase
+
+**Database error?**
+→ Verify DATABASE_URL password is correct
+
+**Email not sending?**
+→ Regenerate Gmail app password
+
+---
+
+## 🔗 Quick Links
+
+- Vercel Dashboard: https://vercel.com/dashboard
+- Supabase Dashboard: https://supabase.com/dashboard  
+- Deepgram Console: https://console.deepgram.com
+- GitHub Repo: https://github.com/jameshorton2486/depo-pro
+
+---
+
+**Time Spent:** _____ minutes
+
+**Notes:**
+_______________________________________
+_______________________________________
+_______________________________________
+

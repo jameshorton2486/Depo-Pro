@@ -1,0 +1,175 @@
+# ═══════════════════════════════════════════════════════════════
+# DEPO-PRO ENVIRONMENT VARIABLES TEMPLATE
+# ═══════════════════════════════════════════════════════════════
+# Copy this file to .env and fill in your actual values
+# NEVER commit .env to Git - it's already in .gitignore
+
+# ───────────────────────────────────────────────────────────────
+# DATABASE (Supabase PostgreSQL)
+# ───────────────────────────────────────────────────────────────
+# Get from: Supabase → Settings → Database → Connection string (URI)
+# Format: postgresql://postgres:PASSWORD@db.xxxxx.supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT.supabase.co:5432/postgres
+
+# ───────────────────────────────────────────────────────────────
+# SUPABASE API KEYS
+# ───────────────────────────────────────────────────────────────
+# Get from: Supabase → Settings → API
+
+# Project URL (public - safe to expose in frontend)
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+
+# Anon/Public Key (public - safe to expose in frontend)
+# Used for client-side operations with RLS protection
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.YOUR_ANON_KEY
+
+# Service Role Key (⚠️ KEEP SECRET! Never expose in frontend)
+# Used for server-side admin operations, bypasses RLS
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.YOUR_SERVICE_ROLE_KEY
+
+# ───────────────────────────────────────────────────────────────
+# FILE STORAGE (Supabase Storage)
+# ───────────────────────────────────────────────────────────────
+# Enable cloud storage for file uploads
+USE_CLOUD_STORAGE=true
+
+# Bucket name (must match bucket created in Supabase Storage)
+# Create at: Supabase → Storage → Create bucket
+SUPABASE_STORAGE_BUCKET=depo-files
+
+# ───────────────────────────────────────────────────────────────
+# AUTHENTICATION (NextAuth.js v5)
+# ───────────────────────────────────────────────────────────────
+# Generate with: openssl rand -base64 32
+# Or visit: https://generate-secret.vercel.app/32
+NEXTAUTH_SECRET=YOUR_RANDOM_32_CHAR_SECRET_HERE
+
+# Your application URL (update after Vercel deployment)
+# Local: http://localhost:3000
+# Production: https://your-app-name.vercel.app
+NEXTAUTH_URL=http://localhost:3000
+
+# ───────────────────────────────────────────────────────────────
+# EMAIL (Gmail SMTP)
+# ───────────────────────────────────────────────────────────────
+# Get App Password from: https://myaccount.google.com/apppasswords
+# (Requires 2-Step Verification enabled)
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-16-char-app-password
+FROM_EMAIL=your-email@gmail.com
+FROM_NAME=Depo-Pro
+
+# ───────────────────────────────────────────────────────────────
+# TRANSCRIPTION (Deepgram AI)
+# ───────────────────────────────────────────────────────────────
+# Get API Key from: https://console.deepgram.com
+# Create project → API Keys → Create New API Key
+
+# Enable Deepgram transcription
+USE_DEEPGRAM=true
+
+# Your Deepgram API key
+DEEPGRAM_API_KEY=your_deepgram_api_key_here
+
+# ───────────────────────────────────────────────────────────────
+# EXPORT FEATURES
+# ───────────────────────────────────────────────────────────────
+# Enable real document exports (PDF, DOCX)
+USE_REAL_EXPORT=true
+
+# ───────────────────────────────────────────────────────────────
+# NODE ENVIRONMENT
+# ───────────────────────────────────────────────────────────────
+# Options: development | production | test
+NODE_ENV=development
+
+# ───────────────────────────────────────────────────────────────
+# OPTIONAL: ADVANCED FEATURES (Phase 3)
+# ───────────────────────────────────────────────────────────────
+# These are not required for initial deployment
+# Uncomment and fill in when you're ready to use these features
+
+# ─────────────────────────────────────────
+# Payments (Stripe)
+# ─────────────────────────────────────────
+# Get from: https://dashboard.stripe.com/apikeys
+# USE_STRIPE=false
+# STRIPE_SECRET_KEY=sk_test_YOUR_KEY_HERE
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_YOUR_KEY_HERE
+
+# ─────────────────────────────────────────
+# Alternative Email (Resend)
+# ─────────────────────────────────────────
+# Get from: https://resend.com/api-keys
+# USE_RESEND=false
+# RESEND_API_KEY=re_YOUR_KEY_HERE
+
+# ─────────────────────────────────────────
+# Background Jobs (Redis/Upstash)
+# ─────────────────────────────────────────
+# Get from: https://upstash.com
+# USE_QUEUE=false
+# REDIS_URL=redis://YOUR_REDIS_URL
+
+# ─────────────────────────────────────────
+# OAuth Providers (Phase 2)
+# ─────────────────────────────────────────
+# Google OAuth
+# Get from: https://console.cloud.google.com/apis/credentials
+# GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+# GOOGLE_CLIENT_SECRET=YOUR_GOOGLE_CLIENT_SECRET
+
+# Microsoft OAuth  
+# Get from: https://portal.azure.com
+# MICROSOFT_CLIENT_ID=YOUR_MICROSOFT_CLIENT_ID
+# MICROSOFT_CLIENT_SECRET=YOUR_MICROSOFT_CLIENT_SECRET
+
+# ─────────────────────────────────────────
+# Alternative Storage (AWS S3)
+# ─────────────────────────────────────────
+# If you want to use AWS S3 instead of Supabase Storage
+# AWS_ACCESS_KEY_ID=YOUR_AWS_KEY
+# AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET
+# AWS_REGION=us-east-1
+# S3_BUCKET_NAME=your-bucket-name
+
+# ═══════════════════════════════════════════════════════════════
+# NOTES
+# ═══════════════════════════════════════════════════════════════
+
+# ⚠️ SECURITY REMINDERS:
+# 1. NEVER commit this file to Git
+# 2. NEVER share these values publicly
+# 3. Use different values for development vs production
+# 4. Rotate secrets regularly (every 90 days)
+
+# 📝 VARIABLE TYPES:
+# - NEXT_PUBLIC_* = Safe to expose in browser (client-side)
+# - All others = Server-side only, keep secret
+
+# 🔗 USEFUL LINKS:
+# - Supabase Dashboard: https://supabase.com/dashboard
+# - Vercel Dashboard: https://vercel.com/dashboard
+# - Deepgram Console: https://console.deepgram.com
+# - Gmail App Passwords: https://myaccount.google.com/apppasswords
+
+# 💾 BACKUP:
+# Save a copy of this file in a secure password manager
+# Examples: 1Password, Bitwarden, LastPass
+
+# ═══════════════════════════════════════════════════════════════
+# HOW TO USE THIS FILE
+# ═══════════════════════════════════════════════════════════════
+
+# 1. Copy this file and rename it to: .env
+# 2. Fill in all the YOUR_* placeholders with your actual values
+# 3. Save the file in your project root: C:\Users\james\depo-pro\.env
+# 4. Test locally: npm run dev
+# 5. Add all variables to Vercel when deploying
+
+# ═══════════════════════════════════════════════════════════════
+# END OF TEMPLATE
+# ═══════════════════════════════════════════════════════════════

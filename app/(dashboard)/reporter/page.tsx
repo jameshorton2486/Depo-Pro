@@ -37,21 +37,24 @@ export default async function ReporterDashboard() {
   let recentJobs: Job[] = [];
 
   try {
-    // Build base where clause for reporter
-    const reporterWhere = {
+    // Build where clauses for reporter
+    const baseWhere = {
       reporterId: session.user.id,
     };
 
-    // Add firm filter only if user has a firm
-    const reporterWithFirmWhere = firmId
-      ? { ...reporterWhere, firmId }
-      : reporterWhere;
+    // For firm filtering, only add if firmId exists
+    const firmFilter = firmId ? { firmId: { equals: firmId } } : {};
+    
+    const jobWhere = {
+      ...baseWhere,
+      ...firmFilter,
+    };
 
     [activeJobs, pendingAssignments, completedThisMonth, recentJobs] = await Promise.all([
       // Active jobs (not completed)
       db.job.count({
         where: {
-          ...reporterWithFirmWhere,
+          ...jobWhere,
           status: {
             not: JobStatus.COMPLETED,
           },
@@ -60,14 +63,14 @@ export default async function ReporterDashboard() {
       // Pending assignments (jobs assigned but not accepted)
       db.jobAssignment.count({
         where: {
-          job: reporterWithFirmWhere,
+          job: jobWhere,
           status: 'PENDING',
         },
       }),
       // Jobs completed this month
       db.job.count({
         where: {
-          ...reporterWithFirmWhere,
+          ...jobWhere,
           status: JobStatus.COMPLETED,
           completedAt: {
             gte: startOfMonth,
@@ -76,7 +79,7 @@ export default async function ReporterDashboard() {
       }),
       // Recent jobs
       db.job.findMany({
-        where: reporterWithFirmWhere,
+        where: jobWhere,
         take: 5,
         orderBy: { createdAt: 'desc' },
       }),

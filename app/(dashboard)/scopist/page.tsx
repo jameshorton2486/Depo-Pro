@@ -35,15 +35,13 @@ export default async function ScopistDashboard() {
   let recentJobs: Job[] = [];
 
   try {
-    // Build base where clause for scopist
-    const scopistWhere = {
+    // Build where clauses for scopist - use proper Prisma nested syntax
+    const baseWhere = {
       scopistId: session.user.id,
     };
 
-    // Add firm filter only if user has a firm
-    const scopistWithFirmWhere = firmId
-      ? { ...scopistWhere, job: { firmId } }
-      : scopistWhere;
+    // For firm filtering, use nested relation syntax
+    const firmFilter = firmId ? { job: { firmId: { equals: firmId } } } : {};
 
     const [
       assignedCount,
@@ -53,22 +51,25 @@ export default async function ScopistDashboard() {
     ] = await Promise.all([
       // Total assigned jobs
       db.jobAssignment.count({
-        where: scopistWithFirmWhere,
+        where: {
+          ...baseWhere,
+          ...firmFilter,
+        },
       }),
       // Jobs currently in progress
       db.jobAssignment.count({
         where: {
-          ...scopistWhere,
+          ...baseWhere,
           status: 'IN_PROGRESS',
-          ...(firmId && { job: { firmId } }),
+          ...firmFilter,
         },
       }),
       // Jobs completed this month
       db.jobAssignment.count({
         where: {
-          ...scopistWhere,
+          ...baseWhere,
           status: 'COMPLETED',
-          ...(firmId && { job: { firmId } }),
+          ...firmFilter,
           completedAt: {
             gte: startOfMonth,
           },
@@ -76,7 +77,10 @@ export default async function ScopistDashboard() {
       }),
       // Recent job assignments with job details
       db.jobAssignment.findMany({
-        where: scopistWithFirmWhere,
+        where: {
+          ...baseWhere,
+          ...firmFilter,
+        },
         include: {
           job: true,
         },
