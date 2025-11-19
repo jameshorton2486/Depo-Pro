@@ -30,7 +30,7 @@ export function JobCard({ job }: JobCardProps) {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h3 className="font-semibold text-lg mb-1 line-clamp-1">
-                {job.title}
+                {job.caseName || job.caseNumber || 'Untitled Job'}
               </h3>
               <p className="text-sm text-muted-foreground line-clamp-1">
                 {job.caseName}
@@ -38,7 +38,7 @@ export function JobCard({ job }: JobCardProps) {
             </div>
             <JobStatusBadge status={job.status} />
           </div>
-          {job.rushOrder && (
+          {job.needsReview && (
             <div className="flex items-center gap-1 text-red-600 text-sm mt-2">
               <AlertCircle className="h-4 w-4" />
               <span className="font-medium">Rush Order</span>
@@ -50,13 +50,13 @@ export function JobCard({ job }: JobCardProps) {
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              <span>{formatDate(job.depoDate)}</span>
+              <span>{formatDate(job.depositionDate)}</span>
             </div>
             
-            {job.location && (
+            {job.courtName && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span className="truncate">{job.location.split(',')[0]}</span>
+                <span className="truncate">{job.courtName.split(',')[0]}</span>
               </div>
             )}
           </div>
@@ -79,9 +79,9 @@ export function JobCard({ job }: JobCardProps) {
                 <FileText className="h-4 w-4" />
                 <span>{job._count.files} files</span>
               </div>
-              {job.totalPages && (
+              {job._count?.files && (
                 <div>
-                  <span>{job.totalPages} pages</span>
+                  <span>{job._count.files} files</span>
                 </div>
               )}
             </div>

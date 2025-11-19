@@ -104,7 +104,7 @@ export const authConfig: NextAuthConfig = {
           return {
             id: user.id,
             email: user.email,
-            name: user.name,
+            name: user.name || user.email, // Ensure name is always a string
             role: user.role,
             firmId: user.firmId,
             isActive: user.isActive,

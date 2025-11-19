@@ -25,7 +25,7 @@ export async function GET(
     const includeHeader = searchParams.get('header') !== 'false'; // Default true
 
     // Get transcript with access check
-    const transcript = await db.transcript.findFirst({
+    const transcript = await db.transcription.findFirst({
       where: {
         id: transcriptId,
         job: {

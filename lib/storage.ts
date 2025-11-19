@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-// FILE STORAGE SERVICE (Mock Implementation - Ready for S3/Supabase)
+// FILE STORAGE SERVICE (Supabase + Local Fallback)
+// ═══════════════════════════════════════════════════════════════
+// Provides unified file upload/download with cloud storage options
 // ═══════════════════════════════════════════════════════════════
 
 import { writeFile, readFile, unlink } from 'fs/promises';
@@ -9,7 +11,6 @@ import crypto from 'crypto';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 const USE_CLOUD_STORAGE = process.env.USE_CLOUD_STORAGE === 'true';
-const S3_BUCKET = process.env.S3_BUCKET_NAME;
 const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET;
 
 // ═══════════════════════════════════════════════════════════════
@@ -79,58 +80,7 @@ async function deleteFromLocal(storageKey: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// AWS S3 STORAGE (Mock - Ready for Integration)
-// ═══════════════════════════════════════════════════════════════
-
-async function uploadToS3(
-  buffer: Buffer,
-  filename: string,
-  contentType: string
-): Promise<UploadResult> {
-  // TODO: Implement AWS S3 upload
-  // const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
-  // const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-  
-  // const s3Client = new S3Client({
-  //   region: process.env.AWS_REGION,
-  //   credentials: {
-  //     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-  //     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  //   },
-  // });
-
-  // const key = `uploads/${crypto.randomUUID()}-${filename}`;
-  
-  // await s3Client.send(new PutObjectCommand({
-  //   Bucket: S3_BUCKET,
-  //   Key: key,
-  //   Body: buffer,
-  //   ContentType: contentType,
-  // }));
-
-  // const url = await getSignedUrl(s3Client, new GetObjectCommand({
-  //   Bucket: S3_BUCKET,
-  //   Key: key,
-  // }), { expiresIn: 3600 });
-
-  console.log('S3 upload requested but not configured - using local storage');
-  return uploadToLocal(buffer, filename, contentType);
-}
-
-async function downloadFromS3(storageKey: string): Promise<DownloadResult> {
-  // TODO: Implement AWS S3 download
-  console.log('S3 download requested but not configured - using local storage');
-  return downloadFromLocal(storageKey);
-}
-
-async function deleteFromS3(storageKey: string): Promise<void> {
-  // TODO: Implement AWS S3 delete
-  console.log('S3 delete requested but not configured - using local storage');
-  return deleteFromLocal(storageKey);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SUPABASE STORAGE (Mock - Ready for Integration)
+// SUPABASE STORAGE (Active Implementation)
 // ═══════════════════════════════════════════════════════════════
 
 async function uploadToSupabase(
@@ -186,39 +136,24 @@ export async function uploadFile(
   filename: string,
   contentType: string
 ): Promise<UploadResult> {
-  if (USE_CLOUD_STORAGE) {
-    if (S3_BUCKET) {
-      return uploadToS3(buffer, filename, contentType);
-    }
-    if (SUPABASE_BUCKET) {
-      return uploadToSupabase(buffer, filename, contentType);
-    }
+  if (USE_CLOUD_STORAGE && SUPABASE_BUCKET) {
+    return uploadToSupabase(buffer, filename, contentType);
   }
   
   return uploadToLocal(buffer, filename, contentType);
 }
 
 export async function downloadFile(storageKey: string): Promise<DownloadResult> {
-  if (USE_CLOUD_STORAGE) {
-    if (S3_BUCKET) {
-      return downloadFromS3(storageKey);
-    }
-    if (SUPABASE_BUCKET) {
-      return downloadFromSupabase(storageKey);
-    }
+  if (USE_CLOUD_STORAGE && SUPABASE_BUCKET) {
+    return downloadFromSupabase(storageKey);
   }
   
   return downloadFromLocal(storageKey);
 }
 
 export async function deleteFile(storageKey: string): Promise<void> {
-  if (USE_CLOUD_STORAGE) {
-    if (S3_BUCKET) {
-      return deleteFromS3(storageKey);
-    }
-    if (SUPABASE_BUCKET) {
-      return deleteFromSupabase(storageKey);
-    }
+  if (USE_CLOUD_STORAGE && SUPABASE_BUCKET) {
+    return deleteFromSupabase(storageKey);
   }
   
   return deleteFromLocal(storageKey);

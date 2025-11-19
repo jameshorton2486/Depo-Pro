@@ -65,7 +65,7 @@ export async function POST(
     const result = await transcribeAudio(downloadResult.buffer, options);
 
     // Create or update transcript record
-    let transcript = await db.transcript.findFirst({
+    let transcript = await db.transcription.findFirst({
       where: { 
         jobId,
         isCurrent: true,
@@ -74,13 +74,13 @@ export async function POST(
 
     if (transcript) {
       // Mark old version as not current
-      await db.transcript.update({
+      await db.transcription.update({
         where: { id: transcript.id },
         data: { isCurrent: false },
       });
       
       // Create new version
-      transcript = await db.transcript.create({
+      transcript = await db.transcription.create({
         data: {
           jobId,
           rawText: result.text,
@@ -95,7 +95,7 @@ export async function POST(
       logger.info(`Transcript updated - transcriptId: ${transcript.id}, version: ${transcript.version}`);
     } else {
       // Create new transcript
-      transcript = await db.transcript.create({
+      transcript = await db.transcription.create({
         data: {
           jobId,
           rawText: result.text,
@@ -110,14 +110,14 @@ export async function POST(
       logger.info(`Transcript created - transcriptId: ${transcript.id}`);
     }
 
-    // Update job status to IN_PROGRESS if it was DRAFT
+    // Update job status to PROCESSING if it was PENDING
     await db.job.updateMany({
       where: {
         id: jobId,
-        status: 'DRAFT',
+        status: 'PENDING',
       },
       data: {
-        status: 'IN_PROGRESS',
+        status: 'PROCESSING',
       },
     });
 

@@ -57,12 +57,12 @@ export function RecentJobs({
                   {job.caseName}
                 </p>
                 <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
-                  {job.depoDate && (
-                    <span>📅 {formatDate(job.depoDate)}</span>
+                  {job.depositionDate && (
+                    <span>📅 {formatDate(job.depositionDate)}</span>
                   )}
-                  <span>📍 {job.location || 'TBD'}</span>
-                  {job.totalPages && (
-                    <span>� {job.totalPages} pages</span>
+                  <span>🏛 {job.courtName || 'TBD'}</span>
+                  {job.estimatedDuration && (
+                    <span>⏱ {Math.round(job.estimatedDuration / 60)} min</span>
                   )}
                 </div>
               </div>

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// EMAIL SERVICE (Mock Implementation - Ready for Resend)
+// EMAIL SERVICE (Resend Implementation)
 // ═══════════════════════════════════════════════════════════════
 
 const USE_RESEND = process.env.USE_RESEND === 'true';
@@ -30,36 +30,38 @@ export interface EmailResult {
 
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
   if (USE_RESEND && RESEND_API_KEY) {
-    // TODO: Implement Resend integration
-    // const { Resend } = await import('resend');
-    // const resend = new Resend(RESEND_API_KEY);
-    //
-    // try {
-    //   const { data, error } = await resend.emails.send({
-    //     from: FROM_EMAIL,
-    //     to: Array.isArray(options.to) ? options.to : [options.to],
-    //     subject: options.subject,
-    //     html: options.html,
-    //     text: options.text,
-    //     reply_to: options.replyTo,
-    //   });
-    //
-    //   if (error) {
-    //     return { id: '', success: false, error: error.message };
-    //   }
-    //
-    //   return { id: data.id, success: true };
-    // } catch (error) {
-    //   return {
-    //     id: '',
-    //     success: false,
-    //     error: error instanceof Error ? error.message : 'Unknown error',
-    //   };
-    // }
+    try {
+      const { Resend } = await import('resend');
+      const resend = new Resend(RESEND_API_KEY);
+
+      const { data, error } = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: Array.isArray(options.to) ? options.to : [options.to],
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        reply_to: options.replyTo,
+      });
+
+      if (error) {
+        console.error('Resend email error:', error);
+        return { id: '', success: false, error: error.message };
+      }
+
+      console.log('✅ Email sent via Resend:', data?.id);
+      return { id: data?.id || '', success: true };
+    } catch (error) {
+      console.error('Failed to send email via Resend:', error);
+      return {
+        id: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   }
 
-  // Mock implementation - simulate success
-  console.log('📧 [MOCK EMAIL]');
+  // Mock implementation - simulate success for development
+  console.log('📧 [MOCK EMAIL] Resend not configured');
   console.log('From:', FROM_EMAIL);
   console.log('To:', options.to);
   console.log('Subject:', options.subject);

@@ -21,7 +21,7 @@ export async function GET(
     const { id: transcriptId } = await params;
 
     // Verify transcript exists and user has access
-    const transcript = await db.transcript.findFirst({
+    const transcript = await db.transcription.findFirst({
       where: {
         id: transcriptId,
         job: {

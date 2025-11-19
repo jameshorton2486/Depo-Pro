@@ -30,10 +30,10 @@ export async function DELETE(
           select: {
             id: true,
             firmId: true,
-            reporterId: true,
+            createdById: true,
             assignments: {
               select: {
-                scopistId: true,
+                userId: true,
               },
             },
           },
@@ -48,8 +48,8 @@ export async function DELETE(
     // 🔒 Security: Only uploader, reporter, or admin can delete
     const canDelete =
       session.user.role === 'ADMIN' ||
-      file.uploadedById === session.user.id ||
-      file.job.reporterId === session.user.id;
+      file.createdById === session.user.id ||
+      file.job.createdById === session.user.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -57,7 +57,7 @@ export async function DELETE(
 
     // 🗑️ Delete file from filesystem
     try {
-      const filePath = join(UPLOAD_DIR, file.filename);
+      const filePath = join(UPLOAD_DIR, file.originalFileName);
       await unlink(filePath);
     } catch (error) {
       console.error('Failed to delete file from filesystem:', error);

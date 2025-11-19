@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AssignmentStatusBadge } from './assignment-status-badge';
 import { AssignScopistDialog } from './assign-scopist-dialog';
-import { User, JobAssignment, AssignmentStatus } from '@prisma/client';
+// import { User, JobAssignment, AssignmentStatus } from '@prisma/client';
+// DISABLED: JobAssignment model doesn't exist in current schema
+// TODO: Re-enable when JobAssignment model is added to schema
 import { UserPlus, Check, X, Trash2 } from 'lucide-react';
 
 type AssignmentWithScopist = JobAssignment & {

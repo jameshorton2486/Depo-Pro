@@ -37,3 +37,6 @@ if (process.env.NODE_ENV !== 'production') {
 export async function disconnect() {
   await db.$disconnect();
 }
+
+// Export prisma as an alias for lib/queue/jobs.ts compatibility
+export const prisma = db;

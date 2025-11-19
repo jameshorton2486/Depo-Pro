@@ -1,3 +1,12 @@
+⚠️ IMPORTANT: After creating your .env file, verify it's in .gitignore!
+
+This template shows all required environment variables for Depo-Pro.
+
+QUICK START:
+1. Copy .env.example to .env
+2. Fill in your actual values
+3. Never commit .env to git (it's already in .gitignore)
+
 # ═══════════════════════════════════════════════════════════════
 # DEPO-PRO ENVIRONMENT VARIABLES TEMPLATE
 # ═══════════════════════════════════════════════════════════════

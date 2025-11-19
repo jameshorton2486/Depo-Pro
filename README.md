@@ -1,461 +1,301 @@
-# 📦 Depo-Pro Deployment Documentation Package
-
-**Complete deployment guide and tools for deploying Depo-Pro to Vercel**
-
----
-
-## 📄 What's Included
-
-### 📖 Main Documentation
-
-1. **[QUICK_START.md](QUICK_START.md)** ⭐ **START HERE!**
-   - Overview of all documents
-   - Three deployment paths (quick, prepared, or fix-first)
-   - Step-by-step getting started guide
-   - Success checklist
-
-2. **[COMPLETE_DEPLOYMENT_GUIDE.md](COMPLETE_DEPLOYMENT_GUIDE.md)** 📘 **Main Reference**
-   - Full 6-part deployment guide (45-60 minutes)
-   - Detailed instructions for:
-     - Supabase setup
-     - External services (Gmail, Deepgram)
-     - Vercel deployment
-     - Environment variables
-     - Database migrations
-     - Testing procedures
-   - Cost estimates
-   - Post-deployment configuration
-
-3. **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** ✅ **Print This!**
-   - Printable checklist format
-   - Check off items as you complete them
-   - Track your progress
-   - Verify nothing is missed
-
-4. **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** 🔧 **When Things Go Wrong**
-   - Common errors and solutions
-   - Authentication issues
-   - Database problems
-   - File upload errors
-   - Email issues
-   - Transcription problems
-   - Debug commands
-   - Support resources
-
-### 🛠️ Tools & Templates
-
-5. **[pre-deployment-check.ps1](pre-deployment-check.ps1)** 🤖 **Automated Verification**
-   - PowerShell script
-   - Checks your local setup
-   - Verifies environment variables
-   - Tests dependencies
-   - Identifies issues before deployment
-   - Usage:
-     ```powershell
-     .\pre-deployment-check.ps1 -Verbose
-     ```
-
-6. **[.env.template](.env.template)** 📝 **Environment Variables Reference**
-   - Complete list of all environment variables
-   - Descriptions for each variable
-   - Instructions on where to get values
-   - Copy this to create your `.env` file
-
----
-
-## 🚀 How to Use This Package
-
-### For First-Time Deployment
-
-**Follow this order:**
-
-1. **Read:** `QUICK_START.md` (5 min)
-   - Understand what you're about to do
-   - Choose your deployment path
-   - Prepare mentally (it's not hard, just detailed!)
-
-2. **Run:** `pre-deployment-check.ps1` (2 min)
-   ```powershell
-   .\pre-deployment-check.ps1 -Verbose
-   ```
-   - Fix any critical issues found
-   - Don't worry about warnings yet
-
-3. **Follow:** `COMPLETE_DEPLOYMENT_GUIDE.md` (45-60 min)
-   - Work through Parts 1-6
-   - Use `DEPLOYMENT_CHECKLIST.md` alongside it
-   - Keep `TROUBLESHOOTING.md` open in another tab
-
-4. **Reference:** `.env.template` (as needed)
-   - Look up what each variable does
-   - Understand where to get values
-   - Use as reference while setting up
-
-### For Troubleshooting
-
-**When something goes wrong:**
-
-1. **Check:** `TROUBLESHOOTING.md` first
-   - Search for your error message
-   - Follow suggested solutions
-   - Try debug commands
-
-2. **Verify:** Run pre-deployment check
-   ```powershell
-   .\pre-deployment-check.ps1 -Verbose
-   ```
-
-3. **Review:** Relevant section in `COMPLETE_DEPLOYMENT_GUIDE.md`
-   - Re-read instructions carefully
-   - Verify you didn't miss a step
-
-### For Future Reference
-
-**Keep these handy:**
-
-- `TROUBLESHOOTING.md` - Bookmark for quick access
-- `.env.template` - Reference when adding new services
-- `DEPLOYMENT_CHECKLIST.md` - Use for redeployments or updates
-
----
-
-## 📊 Document Overview
-
-### Detailed Breakdown
-
-| Document | Type | Length | Time to Complete | When to Use |
-|----------|------|--------|------------------|-------------|
-| QUICK_START.md | Guide | 5 pages | 5 min read | Before starting |
-| COMPLETE_DEPLOYMENT_GUIDE.md | Guide | 25 pages | 45-60 min | During deployment |
-| DEPLOYMENT_CHECKLIST.md | Checklist | 4 pages | 45-60 min | During deployment |
-| TROUBLESHOOTING.md | Reference | 12 pages | As needed | When issues arise |
-| pre-deployment-check.ps1 | Script | - | 2 min | Before deployment |
-| .env.template | Template | 2 pages | As needed | Setting up env vars |
-
-### Features by Document
-
-**QUICK_START.md:**
-- ✅ Overview of deployment process
-- ✅ Three different approaches
-- ✅ Time estimates
-- ✅ Success criteria
-- ✅ Next steps guidance
-
-**COMPLETE_DEPLOYMENT_GUIDE.md:**
-- ✅ Supabase project setup
-- ✅ Database configuration
-- ✅ Storage bucket creation
-- ✅ Gmail SMTP setup
-- ✅ Deepgram API setup
-- ✅ Vercel project import
-- ✅ Environment variables (18+)
-- ✅ Database migrations
-- ✅ Testing procedures
-- ✅ Cost estimates
-
-**DEPLOYMENT_CHECKLIST.md:**
-- ✅ Printable format
-- ✅ Step-by-step checkbox list
-- ✅ Quick reference links
-- ✅ Completion tracking
-
-**TROUBLESHOOTING.md:**
-- ✅ Database connection issues
-- ✅ Authentication errors
-- ✅ File upload problems
-- ✅ Email configuration
-- ✅ Transcription issues
-- ✅ Build errors
-- ✅ Performance problems
-- ✅ Debug commands
-
-**pre-deployment-check.ps1:**
-- ✅ Automated verification
-- ✅ Project structure check
-- ✅ Dependencies check
-- ✅ Environment variables validation
-- ✅ Git status check
-- ✅ Build test
-- ✅ Prisma check
-
-**.env.template:**
-- ✅ All required variables
-- ✅ Optional variables
-- ✅ Detailed descriptions
-- ✅ Source URLs
-- ✅ Security notes
-
----
-
-## ⏱️ Time Estimates
-
-### Full Deployment (First Time)
-- **Preparation:** 5-10 minutes
-- **Service Setup:** 35 minutes
-- **Deployment:** 20 minutes
-- **Testing:** 5-10 minutes
-- **Total:** 60-75 minutes
-
-### Troubleshooting Issues
-- **Minor issue:** 5-10 minutes
-- **Major issue:** 15-30 minutes
-- **Complete restart:** 30-45 minutes
-
-### Re-deployment (Updates)
-- **Code changes only:** 2-5 minutes
-- **With new env vars:** 10-15 minutes
-- **With schema changes:** 15-20 minutes
-
----
-
-## 💡 Pro Tips
-
-### Before You Start
-
-1. **Set aside uninterrupted time**
-   - 60-90 minutes recommended
-   - Close other applications
-   - Grab coffee/water
-
-2. **Prepare your workspace**
-   - Open all documents in separate tabs
-   - Have password manager ready
-   - Keep notepad for tracking credentials
-
-3. **Print the checklist**
-   - Physical checkboxes are satisfying!
-   - Helps track progress
-   - Good backup if browser crashes
-
-### During Deployment
-
-1. **Follow instructions exactly**
-   - Don't skip steps
-   - Don't assume similar services work the same
-   - Copy/paste values to avoid typos
-
-2. **Save credentials immediately**
-   - Don't wait to "save them later"
-   - Use password manager
-   - Include notes about where each came from
-
-3. **Test as you go**
-   - Verify each service setup before moving on
-   - Don't wait until the end to test
-   - Easier to debug issues immediately
-
-### After Deployment
-
-1. **Document your setup**
-   - Fill in deployment summary
-   - Note any issues encountered
-   - Write down lessons learned
-
-2. **Back up credentials**
-   - Save .env file securely (but not in Git!)
-   - Export password manager
-   - Keep deployment notes
-
-3. **Monitor for 24 hours**
-   - Check error logs
-   - Watch resource usage
-   - Verify emails sending
-
----
-
-## 🔧 Tools Required
-
-### On Your Computer
-
-- [x] VS Code (already have)
-- [x] Node.js & npm (already have)
-- [x] Git (already have)
-- [x] PowerShell (already have)
-- [x] Web browser (already have)
-
-### Accounts to Create
-
-- [ ] Vercel account (free)
-- [ ] Supabase account (free)
-- [ ] Deepgram account (free with $200 credits)
-- [ ] Gmail with 2FA (or Google Workspace)
-
-### Optional Tools
-
-- [ ] Password manager (recommended)
-- [ ] Postman or similar (for API testing)
-- [ ] Database GUI (DBeaver, pgAdmin)
-
----
-
-## 📈 Deployment Phases
-
-### Phase 1: Preparation (10 min)
-- Run pre-deployment check
-- Create accounts
-- Gather materials
-
-### Phase 2: Service Setup (35 min)
-- Supabase configuration
-- External services
-- Generate secrets
-
-### Phase 3: Deployment (20 min)
-- Import to Vercel
-- Add environment variables
-- Deploy application
-
-### Phase 4: Verification (10 min)
-- Test core features
-- Verify integrations
-- Check for errors
-
-### Phase 5: Optimization (Optional)
-- Add custom domain
-- Configure monitoring
-- Performance tuning
-
----
-
-## ✅ Success Criteria
-
-### Your deployment is successful when:
-
-**Basic Functionality:**
-- ✅ App loads at Vercel URL
-- ✅ No console errors
-- ✅ Can register new user
-- ✅ Can login/logout
-- ✅ Dashboard displays correctly
-
-**Database:**
-- ✅ Users saved to database
-- ✅ Can create jobs
-- ✅ Can query data
-- ✅ Migrations completed
-
-**File Storage:**
-- ✅ Can upload files
-- ✅ Files saved to Supabase
-- ✅ Can view/download files
-
-**Optional Features:**
-- ✅ Emails sending
-- ✅ Transcription working
-- ✅ All integrations functional
-
----
-
-## 🆘 When You Need Help
-
-### Self-Help Resources
-
-1. **Search the docs**
-   - Use Ctrl+F to search in documents
-   - Check troubleshooting first
-   - Review relevant section in main guide
-
-2. **Run diagnostics**
-   ```powershell
-   .\pre-deployment-check.ps1 -Verbose
-   npm run check
-   ```
-
-3. **Check logs**
-   - Vercel → Deployments → Function Logs
-   - Supabase → Logs → Postgres Logs
-   - Browser console (F12)
-
-### External Resources
-
-1. **Official Documentation**
-   - Vercel: https://vercel.com/docs
-   - Supabase: https://supabase.com/docs
-   - Next.js: https://nextjs.org/docs
-   - Prisma: https://prisma.io/docs
-
-2. **Community Support**
-   - Vercel Discord: https://vercel.com/discord
-   - Supabase Discord: https://discord.supabase.com
-   - Stack Overflow: Tag `next.js` + `vercel`
-
-3. **Status Pages**
-   - Vercel: https://www.vercel-status.com
-   - Supabase: https://status.supabase.com
-
----
-
-## 📝 Document Updates
-
-**Version:** 1.0  
-**Created:** November 13, 2025  
-**Last Updated:** November 13, 2025
-
-### Change Log
-
-- **v1.0** (Nov 13, 2025)
-  - Initial release
-  - Complete deployment guide
-  - Troubleshooting guide
-  - Pre-deployment check script
-  - Environment template
-  - Quick start guide
-
----
-
-## 📞 Feedback
-
-**Found an issue with these docs?**
-
-Common improvements:
-- Steps unclear?
-- Missing information?
-- Outdated instructions?
-- Errors in scripts?
-
-Note them down for future updates!
-
----
-
-## 🎯 Your Deployment Roadmap
-
-```
-START HERE → QUICK_START.md
-    ↓
-    ├─→ Run pre-deployment-check.ps1
-    ↓
-    ├─→ Follow COMPLETE_DEPLOYMENT_GUIDE.md
-    │   └─→ Use DEPLOYMENT_CHECKLIST.md alongside
-    ↓
-    ├─→ Reference .env.template as needed
-    ↓
-    ├─→ If issues arise → TROUBLESHOOTING.md
-    ↓
-SUCCESS! 🎉
-    ↓
-Monitor & iterate
+# Depo-Pro - Legal Transcription Platform
+
+**AI-powered legal transcription system for court reporters, scopists, and law firms.**
+
+## What This Project Does (Plain English)
+
+Depo-Pro automates the transcription of legal depositions:
+
+1. **Court reporter sends an email** with audio/video files and a deposition notice (PDF)
+2. **Audio is enhanced** using FFmpeg to improve poor quality recordings
+3. **AI reads the notice** and extracts important terms (names, case numbers, legal terminology)
+4. **Deepgram transcribes** the audio with 90-95% accuracy, identifying speakers and marking uncertain words
+5. **Scopist reviews** the transcript, fixing errors highlighted by the AI
+6. **Court reporter approves** the final transcript
+7. **Lawyer receives** a court-ready transcript with 98-99.5% accuracy
+
+**Result:** 80% faster than manual transcription, 70% lower cost, with professional accuracy.
+
+## Technology Stack
+
+- **Backend:** Node.js + TypeScript + Express
+- **Database:** PostgreSQL with Prisma ORM
+- **Job Queue:** BullMQ + Redis (for background transcription)
+- **AI Transcription:** Deepgram Nova-2 API
+- **Audio Processing:** FFmpeg
+- **AI Notice Parsing:** Claude API (Anthropic)
+- **File Storage:** Vercel Blob Storage
+- **Email Processing:** SendGrid Inbound Parse webhooks
+
+## Quick Start in VS Code with AI Agent
+
+### Prerequisites
+
+**Software Required:**
+- Node.js 18+ ([download](https://nodejs.org/))
+- PostgreSQL database ([download](https://www.postgresql.org/download/))
+- Redis ([Windows](https://github.com/tporadowski/redis/releases), [Mac](https://redis.io/docs/getting-started/installation/install-redis-on-mac-os/))
+- FFmpeg ([download](https://ffmpeg.org/download.html))
+
+**API Keys Needed:**
+- Deepgram API key ([get free key](https://console.deepgram.com/signup))
+- Anthropic API key ([get key](https://console.anthropic.com/))
+- Vercel Blob token ([create account](https://vercel.com/))
+
+### Step 1: Copy Files
+
+Copy all these project files into an empty folder on your computer.
+
+### Step 2: Open in VS Code
+
+1. Open Visual Studio Code
+2. File → Open Folder → Select the project folder
+3. VS Code will ask to install recommended extensions - click "Install"
+
+### Step 3: Configure Environment
+
+1. In VS Code, open `.env.example`
+2. Save it as `.env` (remove the `.example` part)
+3. Fill in your actual values:
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/depo_pro"
+REDIS_HOST="localhost"
+DEEPGRAM_API_KEY="your_actual_deepgram_key_here"
+ANTHROPIC_API_KEY="your_actual_anthropic_key_here"
+BLOB_READ_WRITE_TOKEN="your_vercel_blob_token_here"
 ```
 
----
+### Step 4: Run Setup (Automated)
 
-## 🎊 Ready to Deploy?
+**Windows (PowerShell):**
+```powershell
+.\scripts\setup.ps1
+```
 
-**You have everything you need!**
+**Mac/Linux (Bash):**
+```bash
+chmod +x scripts/setup.sh
+./scripts/setup.sh
+```
 
-1. Open `QUICK_START.md`
-2. Choose your deployment path
-3. Follow the guide
-4. Deploy your app!
+This automatically:
+- ✅ Installs all dependencies
+- ✅ Sets up the database
+- ✅ Creates demo data
+- ✅ Verifies everything works
 
-**Time to launch:** 60 minutes  
-**Difficulty level:** Moderate (detailed but straightforward)  
-**Success rate:** High (if you follow instructions carefully)
+### Step 5: Start Everything
 
----
+**Windows:**
+```powershell
+.\run-all.ps1
+```
 
-**Good luck with your deployment! You've got this! 🚀**
+**Mac/Linux:**
+```bash
+npm run dev &
+npm run worker &
+```
 
----
+Your API server runs at: `http://localhost:3000`
 
-*Created by Claude (Anthropic) for Depo-Pro deployment*  
-*Last Updated: November 13, 2025*
+### Step 6: Use VS Code AI Agent (Optional - Recommended)
+
+Open `AI_AGENT_TASKS.md` in VS Code, then tell your AI assistant:
+```
+You are my project implementation assistant.
+
+1. Read README.md and AI_AGENT_TASKS.md
+2. Follow the steps in AI_AGENT_TASKS.md one by one
+3. Use the integrated terminal to run commands
+4. If commands fail, fix the issue in code/config and retry without asking me
+5. Keep me updated only at major checkpoints
+
+Start with PHASE 0.
+```
+
+The AI agent will:
+- Verify your setup
+- Fill in any missing implementation details
+- Run tests
+- Fix errors automatically
+- Report when complete
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ Yes | PostgreSQL connection string |
+| `REDIS_HOST` | ✅ Yes | Redis server address |
+| `REDIS_PORT` | No | Redis port (default: 6379) |
+| `DEEPGRAM_API_KEY` | ✅ Yes | Deepgram transcription API key |
+| `ANTHROPIC_API_KEY` | ✅ Yes | Claude API for notice parsing |
+| `BLOB_READ_WRITE_TOKEN` | ✅ Yes | Vercel Blob storage token |
+| `SENDGRID_WEBHOOK_SECRET` | No | Email webhook verification |
+| `RESEND_API_KEY` | No | Email notifications (optional) |
+| `APP_URL` | No | Public URL (for production) |
+
+## Project Structure
+```
+src/
+├── server.ts              # Main API server
+├── config/env.ts          # Environment validation
+├── lib/                   # Core libraries
+│   ├── audio/             # FFmpeg audio processing
+│   ├── deepgram/          # Transcription config
+│   ├── ai/                # Notice parsing (Claude)
+│   └── transcription/     # Export & formatting
+├── queue/                 # Job queue setup
+├── workers/               # Background job workers
+└── routes/                # API endpoints
+```
+
+## Key Features
+
+### ✅ Implemented
+- Email webhook handler for receiving jobs
+- FFmpeg audio enhancement pipeline
+- Deepgram transcription with optimal config
+- AI notice parsing (Claude)
+- Word-level timestamps
+- Low-confidence word flagging
+- Multi-file deposition handling
+- Background job processing
+- Multi-tenant isolation (by firmId)
+
+### 🚧 To Be Implemented by AI Agent
+- Web UI for scopists
+- Transcript editor with audio sync
+- Export to DOCX/PDF
+- User authentication
+- Email notifications
+- Progress tracking
+
+## Development Commands
+```bash
+# Start API server
+npm run dev
+
+# Start background worker
+npm run worker
+
+# Start both (Windows)
+.\run-all.ps1
+
+# Database
+npm run db:migrate      # Run migrations
+npm run db:seed         # Seed demo data
+npm run db:studio       # Open Prisma Studio
+
+# Testing
+npm run test:smoke      # Quick integration test
+npm run lint            # Check code quality
+npm run type-check      # TypeScript validation
+
+# Build
+npm run build           # Compile TypeScript
+```
+
+## How It Works (Technical)
+
+### Email → Transcription Pipeline
+```
+1. Court reporter sends email to: {firmId}@depo-pro.com
+   ↓
+2. SendGrid webhook forwards to: /api/webhooks/inbound-email
+   ↓
+3. System creates Job + JobFile records
+   ↓
+4. If notice PDF attached: Claude extracts case info & custom terms
+   ↓
+5. Job queued in BullMQ (Redis)
+   ↓
+6. Worker picks up job:
+   a) Downloads audio files
+   b) FFmpeg enhances audio quality
+   c) Deepgram transcribes with custom keywords
+   d) Stores word-level data + confidence scores
+   e) Flags low-confidence words (<85% confidence)
+   ↓
+7. Job status → AI_COMPLETE
+   ↓
+8. Scopist reviews and corrects flagged words
+   ↓
+9. Court reporter approves
+   ↓
+10. Export to lawyer (DOCX/PDF)
+```
+
+### Database Schema
+
+**Core Tables:**
+- `Firm` - Law firms (multi-tenant)
+- `User` - Court reporters, scopists, admins
+- `Job` - Individual depositions
+- `JobFile` - Audio/video/notice files per job
+- `Transcription` - AI-generated transcripts
+- `CustomDictionaryEntry` - Firm-specific terminology
+- `BackgroundJob` - Job queue tracking
+
+See `prisma/schema.prisma` for complete schema.
+
+## Known Limitations
+
+### Current State
+- **Email ingestion:** Webhook endpoint ready, needs SendGrid configuration
+- **UI:** No web interface yet (API-only)
+- **Authentication:** Basic JWT placeholder (needs full implementation)
+- **Exports:** Format functions exist, need PDF/DOCX generation libraries
+- **Monitoring:** No dashboard for job progress (coming soon)
+
+### Future Enhancements
+- Real-time progress tracking via WebSocket
+- Scopist editing interface with foot pedal support
+- Automatic speaker identification (beyond generic labels)
+- Advanced quality metrics and reporting
+- Integration with case management systems
+
+## Troubleshooting
+
+### "Cannot connect to database"
+**Solution:**
+1. Check PostgreSQL is running
+2. Verify `DATABASE_URL` in `.env`
+3. Try: `npx prisma migrate reset` (WARNING: deletes data)
+
+### "FFmpeg not found"
+**Solution:**
+- Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html), add to PATH
+- Mac: `brew install ffmpeg`
+- Linux: `sudo apt-get install ffmpeg`
+- Verify: `ffmpeg -version`
+
+### "Redis connection failed"
+**Solution:**
+1. Start Redis server:
+   - Windows: `redis-server.exe`
+   - Mac: `brew services start redis`
+   - Linux: `sudo systemctl start redis`
+2. Check `REDIS_HOST` in `.env` (should be `localhost`)
+
+### "Deepgram API error"
+**Solution:**
+1. Verify API key at [Deepgram Console](https://console.deepgram.com/)
+2. Check you have credits remaining
+3. Ensure key in `.env` has no extra spaces
+
+### Worker not processing jobs
+**Solution:**
+1. Ensure worker is running: `npm run worker`
+2. Check Redis connection
+3. View BullMQ jobs: `npm run queue:ui` (if installed)
+
+## Support
+
+- **Documentation:** See `AI_AGENT_TASKS.md` for detailed implementation steps
+- **Issues:** Check worker logs in console
+- **Database:** Use `npm run db:studio` to inspect data
+
+## License
+
+Proprietary - All rights reserved

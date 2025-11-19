@@ -20,7 +20,7 @@ export async function GET(
     const { id: transcriptId } = await params;
 
     // Get full transcript with content
-    const transcript = await db.transcript.findFirst({
+    const transcript = await db.transcription.findFirst({
       where: {
         id: transcriptId,
         job: {
@@ -89,7 +89,7 @@ export async function PATCH(
     }
 
     // Verify transcript exists and user has access
-    const existingTranscript = await db.transcript.findFirst({
+    const existingTranscript = await db.transcription.findFirst({
       where: {
         id: transcriptId,
         job: {
@@ -108,13 +108,13 @@ export async function PATCH(
     }
 
     // Mark current version as not current
-    await db.transcript.update({
+    await db.transcription.update({
       where: { id: transcriptId },
       data: { isCurrent: false },
     });
 
     // Create new version
-    const newTranscript = await db.transcript.create({
+    const newTranscript = await db.transcription.create({
       data: {
         jobId: existingTranscript.jobId,
         rawText: content,

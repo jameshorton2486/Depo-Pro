@@ -25,15 +25,19 @@ export const FirmType = {
 export type FirmType = (typeof FirmType)[keyof typeof FirmType];
 
 /**
- * Job status lifecycle
+ * Job status lifecycle - matches Prisma JobStatus enum
  */
 export const JobStatus = {
-  DRAFT: 'DRAFT',
-  ASSIGNED: 'ASSIGNED',
-  IN_PROGRESS: 'IN_PROGRESS',
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  AI_COMPLETE: 'AI_COMPLETE',
+  WITH_SCOPIST: 'WITH_SCOPIST',
+  SCOPIST_COMPLETE: 'SCOPIST_COMPLETE',
+  WITH_COURT_REPORTER: 'WITH_COURT_REPORTER',
   COMPLETED: 'COMPLETED',
-  BILLED: 'BILLED',
-  PAID: 'PAID',
+  DELIVERED: 'DELIVERED',
+  FAILED: 'FAILED',
+  ARCHIVED: 'ARCHIVED',
 } as const;
 
 export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
@@ -106,15 +110,19 @@ export type TermCategory = (typeof TermCategory)[keyof typeof TermCategory];
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Status colors for badges (Tailwind CSS classes)
+ * Status colors for badges (Tailwind CSS classes) - matches Prisma JobStatus enum
  */
 export const JOB_STATUS_COLORS: Record<JobStatus, string> = {
-  DRAFT: 'bg-gray-100 text-gray-800 border-gray-300',
-  ASSIGNED: 'bg-blue-100 text-blue-800 border-blue-300',
-  IN_PROGRESS: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  PENDING: 'bg-gray-100 text-gray-800 border-gray-300',
+  PROCESSING: 'bg-blue-100 text-blue-800 border-blue-300',
+  AI_COMPLETE: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  WITH_SCOPIST: 'bg-purple-100 text-purple-800 border-purple-300',
+  SCOPIST_COMPLETE: 'bg-pink-100 text-pink-800 border-pink-300',
+  WITH_COURT_REPORTER: 'bg-orange-100 text-orange-800 border-orange-300',
   COMPLETED: 'bg-green-100 text-green-800 border-green-300',
-  BILLED: 'bg-purple-100 text-purple-800 border-purple-300',
-  PAID: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  DELIVERED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  FAILED: 'bg-red-100 text-red-800 border-red-300',
+  ARCHIVED: 'bg-slate-100 text-slate-800 border-slate-300',
 };
 
 /**
@@ -159,15 +167,19 @@ export const FILE_TYPE_ICONS: Record<FileType, string> = {
 };
 
 /**
- * Readable labels for job status
+ * Readable labels for job status - matches Prisma JobStatus enum
  */
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
-  DRAFT: 'Draft',
-  ASSIGNED: 'Assigned',
-  IN_PROGRESS: 'In Progress',
+  PENDING: 'Pending',
+  PROCESSING: 'Processing',
+  AI_COMPLETE: 'AI Complete',
+  WITH_SCOPIST: 'With Scopist',
+  SCOPIST_COMPLETE: 'Scopist Complete',
+  WITH_COURT_REPORTER: 'With Court Reporter',
   COMPLETED: 'Completed',
-  BILLED: 'Billed',
-  PAID: 'Paid',
+  DELIVERED: 'Delivered',
+  FAILED: 'Failed',
+  ARCHIVED: 'Archived',
 };
 
 /**

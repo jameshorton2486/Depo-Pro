@@ -41,7 +41,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const job = await db.job.findUnique({
     where: { id },
     include: {
-      reporter: {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      assignedTo: {
         select: {
           id: true,
           name: true,
@@ -54,23 +61,9 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           name: true,
         },
       },
-      assignments: {
-        include: {
-          scopist: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      },
       files: {
         include: {
-          uploadedBy: {
+          createdBy: {
             select: {
               id: true,
               name: true,
@@ -82,17 +75,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           createdAt: 'desc',
         },
       },
-      transcripts: {
-        where: {
-          isCurrent: true,
-        },
-        orderBy: {
-          version: 'desc',
-        },
-      },
-      dictionaryTerms: {
+      transcription: true,
+      assignments: {
         include: {
-          addedBy: {
+          user: {
             select: {
               id: true,
               name: true,
@@ -100,10 +86,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             },
           },
         },
-        orderBy: {
-          term: 'asc',
-        },
       },
+      dictionaryTerms: true,
     },
   });
 
@@ -114,9 +98,9 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   // 🔒 Security: Verify access rights
   const hasAccess =
     session.user.role === 'ADMIN' ||
-    job.reporterId === session.user.id ||
+    job.createdById === session.user.id ||
     (session.user.firmId && job.firmId === session.user.firmId) ||
-    job.assignments.some((a) => a.scopistId === session.user.id);
+    job.assignments.some((a) => a.userId === session.user.id);
 
   if (!hasAccess) {
     redirect('/dashboard');
@@ -152,12 +136,12 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       <div className="flex items-start justify-between mb-8">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">{job.title}</h1>
+            <h1 className="text-3xl font-bold">{job.caseName || job.caseNumber || 'Untitled Job'}</h1>
             <JobStatusBadge status={job.status} />
-            {job.rushOrder && (
+            {job.needsReview && (
               <div className="flex items-center gap-1 text-red-600 text-sm">
                 <AlertCircle className="h-4 w-4" />
-                <span className="font-medium">Rush</span>
+                <span className="font-medium">Needs Review</span>
               </div>
             )}
           </div>
@@ -203,15 +187,15 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
               <p className="text-sm text-muted-foreground">Deposition Date</p>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{formatDate(job.depoDate, true)}</p>
+                <p className="font-medium">{job.depositionDate ? formatDate(job.depositionDate, true) : 'TBD'}</p>
               </div>
             </div>
-            {job.location && (
+            {job.courtName && (
               <div>
-                <p className="text-sm text-muted-foreground">Location</p>
+                <p className="text-sm text-muted-foreground">Court</p>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <p className="font-medium">{job.location}</p>
+                  <p className="font-medium">{job.courtName}</p>
                 </div>
               </div>
             )}
@@ -225,10 +209,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <p className="text-sm text-muted-foreground">Reporter</p>
+              <p className="text-sm text-muted-foreground">Created By</p>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{job.reporter.name}</p>
+                <p className="font-medium">{job.createdBy.name}</p>
               </div>
             </div>
             {job.firm && (
@@ -240,26 +224,26 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 </div>
               </div>
             )}
-            {job.totalPages && (
+            {job.estimatedDuration && (
               <div>
-                <p className="text-sm text-muted-foreground">Total Pages</p>
-                <p className="font-medium">{job.totalPages} pages</p>
+                <p className="text-sm text-muted-foreground">Estimated Duration</p>
+                <p className="font-medium">{Math.round(job.estimatedDuration / 60)} minutes</p>
               </div>
             )}
-            {job.difficulty && (
+            {job.overallConfidence && (
               <div>
-                <p className="text-sm text-muted-foreground">Difficulty</p>
-                <p className="font-medium">{job.difficulty} / 5</p>
+                <p className="text-sm text-muted-foreground">AI Confidence</p>
+                <p className="font-medium">{Math.round(job.overallConfidence * 100)}%</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Client Information */}
-        {(job.clientName || job.clientContact) && (
+        {/* Case Information */}
+        {(job.caseNumber || job.caseName) && (
           <Card>
             <CardHeader>
-              <CardTitle>Client Information</CardTitle>
+              <CardTitle>Case Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {job.clientName && (
@@ -282,18 +266,18 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       {/* File Upload */}
       <FileUpload
         jobId={job.id}
-        files={job.files.map(file => ({
+        files={job.files.map((file: any) => ({
           id: file.id,
-          filename: file.filename,
-          originalName: file.originalName,
+          filename: file.originalFileName,
+          originalName: file.originalFileName,
           mimeType: file.mimeType,
-          size: file.size,
+          size: file.originalFileSize,
           fileType: file.fileType,
           createdAt: file.createdAt,
           uploadedBy: {
-            id: file.uploadedBy.id,
-            name: file.uploadedBy.name,
-            email: file.uploadedBy.email,
+            id: file.createdBy.id,
+            name: file.createdBy.name,
+            email: file.createdBy.email,
           },
         }))}
         canUpload={canEdit}
@@ -312,9 +296,9 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       {/* Dictionary */}
       <DictionaryManagement
         jobId={job.id}
-        terms={job.dictionaryTerms}
-        canAdd={canEdit || job.assignments.some((a) => a.scopistId === session.user.id)}
-        canEdit={canEdit || job.assignments.some((a) => a.scopistId === session.user.id)}
+        terms={job.dictionaryTerms as any[]}
+        canAdd={canEdit || job.assignments.some((a: any) => a.userId === session.user.id)}
+        canEdit={canEdit || job.assignments.some((a: any) => a.userId === session.user.id)}
       />
 
       {/* Notes */}

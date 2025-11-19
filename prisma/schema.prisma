@@ -1,9 +1,5 @@
-// ═══════════════════════════════════════════════════════════════
-// DEPO-PRO DATABASE SCHEMA (Prisma ORM)
-// ═══════════════════════════════════════════════════════════════
-// Phase 1: Full schema with multi-tenant security
-// 🔒 = Multi-tenant security critical field
-// Database: PostgreSQL (Supabase)
+// Depo-Pro Database Schema
+// Legal Transcription Platform
 
 generator client {
   provider = "prisma-client-js"
@@ -14,28 +10,241 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ───────────────────────────────────────────────────────────────
-// ENUMS
-// ───────────────────────────────────────────────────────────────
+// ===========================================
+// MULTI-TENANT & USERS
+// ===========================================
 
-enum Role {
+model Firm {
+  id           String @id @default(cuid())
+  name         String
+  emailAddress String @unique // e.g., "acme-law@depo-pro.com"
+  type         String @default("law_firm") // e.g., "law_firm", "court_reporting"
+
+  // Relationships
+  customDictionary CustomDictionaryEntry[]
+  users            User[]
+  jobs             Job[]
+  transcriptions   Transcription[] // Add transcription relationship
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([emailAddress])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String? // For credentials auth
+  role         UserRole
+
+  // Multi-tenant (nullable for independent contractors)
+  firmId String?
+  firm   Firm?   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // Account status
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+
+  // Relationships
+  jobsCreated  Job[] @relation("JobCreator")
+  jobsAssigned Job[] @relation("JobAssignee")
+  
+  // File uploads
+  filesUploaded JobFile[]
+  
+  // Assignments
+  assignmentsReceived JobAssignment[] @relation("AssignmentUser")
+  assignmentsCreated  JobAssignment[] @relation("AssignmentCreator")
+  
+  // Dictionary terms
+  dictionaryTermsCreated JobDictionaryTerm[] @relation("DictionaryTermCreator")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([firmId])
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
   ADMIN
   COURT_REPORTER
   SCOPIST
 }
 
-enum FirmType {
-  AGENCY
-  INDEPENDENT
+// ===========================================
+// JOBS & FILES
+// ===========================================
+
+model Job {
+  id String @id @default(cuid())
+
+  // Multi-tenant (nullable for independent contractors)
+  firmId String?
+  firm   Firm?   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // Ownership
+  createdById String
+  createdBy   User   @relation("JobCreator", fields: [createdById], references: [id])
+
+  assignedToId String?
+  assignedTo   User?   @relation("JobAssignee", fields: [assignedToId], references: [id])
+
+  // Status
+  status JobStatus @default(PENDING)
+  stage  JobStage  @default(AI_TRANSCRIPTION)
+
+  // Case information (from notice)
+  caseNumber     String?
+  caseName       String?
+  courtName      String?
+  judgeName      String?
+  depositionDate DateTime?
+
+  // Parties (JSON arrays)
+  attorneys Json? // [{ name, email, role }]
+  witnesses Json? // [{ name, title }]
+
+  // Assignments & Terms
+  assignments      JobAssignment[]
+  dictionaryTerms  JobDictionaryTerm[]
+
+  // Additional fields
+  reporterId      String?
+  court           String?
+  clientName      String?
+  clientContact   String?
+  notes           String? @db.Text
+
+  // Files & Transcription
+  files         JobFile[]
+  transcription Transcription?
+
+  // Quality metrics
+  overallConfidence Float?
+  needsReview       Boolean @default(false)
+  flaggedIssues     Json? // Array of issues
+
+  // Timing
+  estimatedDuration Float? // seconds
+  deliveryDeadline  DateTime?
+  deliveredAt       DateTime?
+
+  // Error tracking
+  errorMessage    String? @db.Text
+  processingNotes String? @db.Text
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@index([firmId])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([stage])
 }
 
 enum JobStatus {
-  DRAFT
-  ASSIGNED
-  IN_PROGRESS
+  PENDING
+  PROCESSING
+  AI_COMPLETE
+  WITH_SCOPIST
+  SCOPIST_COMPLETE
+  WITH_COURT_REPORTER
   COMPLETED
-  BILLED
-  PAID
+  DELIVERED
+  FAILED
+  ARCHIVED
+}
+
+enum JobStage {
+  AI_TRANSCRIPTION
+  SCOPIST_REVIEW
+  COURT_REPORTER_REVIEW
+  LAWYER_DELIVERY
+}
+
+model JobFile {
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Creator
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  fileType FileType
+
+  // Original file
+  originalFileName String
+  originalFileUrl  String
+  originalFileSize Int // bytes
+  mimeType         String
+
+  // Enhanced audio (if preprocessed)
+  enhancedFileUrl String?
+
+  // Audio metadata
+  duration   Float? // seconds
+  sampleRate Int?
+  channels   Int?
+
+  // Multi-part deposition support
+  sequenceNumber Int @default(1)
+
+  // Processing tracking
+  preprocessed          Boolean @default(false)
+  preprocessingMetadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([fileType])
+}
+
+enum FileType {
+  AUDIO
+  VIDEO
+  NOTICE
+  DOCUMENT
+}
+
+// ===========================================
+// JOB ASSIGNMENTS
+// ===========================================
+
+model JobAssignment {
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("AssignmentUser", fields: [userId], references: [id])
+
+  assignedById String
+  assignedBy   User   @relation("AssignmentCreator", fields: [assignedById], references: [id])
+
+  role   AssignmentRole
+  status AssignmentStatus @default(PENDING)
+
+  assignedAt  DateTime  @default(now())
+  acceptedAt  DateTime?
+  completedAt DateTime?
+  notes       String?   @db.Text
+
+  @@index([jobId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum AssignmentRole {
+  SCOPIST
+  PROOFREADER
+  REVIEWER
 }
 
 enum AssignmentStatus {
@@ -46,293 +255,237 @@ enum AssignmentStatus {
   REJECTED
 }
 
-enum FileType {
-  AUDIO
-  VIDEO
-  TRANSCRIPT
-  EXHIBIT
-  WORDLIST
+// ===========================================
+// DICTIONARY TERMS
+// ===========================================
+
+model JobDictionaryTerm {
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  term        String
+  replacement String?
+  category    String? // e.g., "Medical", "Legal", "Technical"
+  notes       String? @db.Text
+
+  createdById String
+  createdBy   User   @relation("DictionaryTermCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobId])
+  @@index([term])
+}
+
+// ===========================================
+// TRANSCRIPTION
+// ===========================================
+
+model Transcription {
+  id    String @id @default(cuid())
+  jobId String @unique
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Status tracking for Deepgram integration
+  status        TranscriptionStatus @default(PENDING)
+  deepgramJobId String?             @unique
+  progress      Int                 @default(0) // 0-100
+  error         String?             @db.Text
+  queuedAt      DateTime            @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  // Complete Deepgram response
+  deepgramRawJson Json?
+
+  // Primary transcript
+  fullTranscript String? @db.Text
+  confidence     Float?
+
+  // Word-level data with timestamps
+  words Json // [{ word, start, end, confidence, speaker, flagged }]
+
+  // Speaker/Utterance data
+  utterances   Json? // [{ speaker, start, end, transcript, confidence, words }]
+  speakerCount Int   @default(0)
+
+  // Speaker labels (assigned by scopist)
+  speakerMapping Json? // { "0": "Attorney Smith", "1": "Witness Doe" }
+
+  // Paragraph structure
+  paragraphs Json?
+
+  // Alternative transcripts (for uncertain words)
+  alternativeTranscripts Json?
+
+  // Quality metrics
+  qualityScore       Float?
+  lowConfidenceCount Int    @default(0)
+  inaudibleCount     Int    @default(0)
+
+  // Flagged segments for scopist review
+  flaggedSegments Json? // [{ start, end, text, confidence, alternatives }]
+
+  // Metadata
+  modelUsed     String // e.g., "nova-2-general"
+  modelVersion  String
+  audioDuration Float // seconds
+
+  // File storage
+  jsonFileUrl String? // Backup JSON in blob storage
+
+  // Editing & Exports
+  edits   TranscriptionEdit[]
+  exports TranscriptionExport[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  firm      Firm?    @relation(fields: [firmId], references: [id])
+  firmId    String?
+
+  @@index([jobId])
+}
+
+model TranscriptionEdit {
+  id              String        @id @default(cuid())
+  transcriptionId String
+  transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+
+  editedById    String
+  editedByEmail String
+  editedByRole  UserRole
+
+  editType  EditType
+  wordIndex Int?
+
+  originalText String?
+  newText      String?
+
+  timestamp Float? // Audio timestamp
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([transcriptionId])
+}
+
+enum EditType {
+  WORD_CORRECTION
+  SPEAKER_ASSIGNMENT
+  PUNCTUATION
+  INAUDIBLE_MARKED
+  FORMATTING
+}
+
+model TranscriptionExport {
+  id              String        @id @default(cuid())
+  transcriptionId String
+  transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+
+  format   ExportFormat
+  fileUrl  String
+  fileSize Int
+
+  exportedById    String
+  exportedByEmail String
+
+  createdAt DateTime @default(now())
+
+  @@index([transcriptionId])
+}
+
+enum ExportFormat {
+  PDF
+  DOCX
+  TXT
+}
+
+// ===========================================
+// CUSTOM DICTIONARY
+// ===========================================
+
+model CustomDictionaryEntry {
+  id     String @id @default(cuid())
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  word     String
+  phonetic String?
+  category DictionaryCategory
+
+  // Source tracking
+  source      DictionarySource
+  sourceJobId String?
+
+  // Usage tracking
+  timesUsed Int       @default(0)
+  lastUsed  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([firmId, word])
+  @@index([firmId])
+  @@index([category])
+}
+
+enum DictionaryCategory {
+  LEGAL_TERM
+  MEDICAL_TERM
+  PERSON_NAME
+  PLACE_NAME
+  CASE_SPECIFIC
   OTHER
 }
 
-enum TranscriptStatus {
-  DRAFT
-  REVIEW
-  FINAL
-}
-
-enum TranscriptSource {
+enum DictionarySource {
   MANUAL
-  DEEPGRAM
-  IMPORTED
+  AI_EXTRACTED
+  AUTO_LEARNED
 }
 
-enum TermCategory {
-  NAME
-  PLACE
-  TECHNICAL
-  MEDICAL
-  LEGAL
-  OTHER
-}
+// ===========================================
+// BACKGROUND JOBS
+// ===========================================
 
-// ───────────────────────────────────────────────────────────────
-// USER MODEL
-// ───────────────────────────────────────────────────────────────
+model BackgroundJob {
+  id          String @id @default(cuid())
+  bullmqJobId String @unique
 
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  passwordHash  String?   // Nullable for OAuth-only users
-  role          Role      @default(SCOPIST)
-  
-  // 🔒 Multi-tenant relationship
-  firmId        String?   // Nullable for now, required later in Phase 2
-  firm          Firm?     @relation(fields: [firmId], references: [id])
-  
-  // OAuth fields (Phase 2)
-  oauthProvider String?   // "google" | "microsoft"
-  oauthId       String?   // Provider's user ID
-  
-  // Account status
-  isActive      Boolean   @default(true)
-  emailVerified DateTime?
-  
-  // Timestamps
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  jobsCreated     Job[]               @relation("ReporterJobs")
-  jobAssignments  JobAssignment[]
-  filesUploaded   JobFile[]
-  transcriptsCreated Transcript[]
-  dictionaryTermsAdded JobDictionaryTerm[]
+  jobId String?
 
-  // Indexes for performance and security
-  @@index([email])
-  @@index([firmId])  // 🔒 Critical for multi-tenant queries
-  @@index([role])
-}
+  type   String // 'transcription', 'preprocessing', 'export'
+  status String // 'pending', 'processing', 'completed', 'failed'
 
-// ───────────────────────────────────────────────────────────────
-// FIRM MODEL (Multi-tenant parent)
-// ───────────────────────────────────────────────────────────────
+  progress Int @default(0) // 0-100
 
-model Firm {
-  id           String    @id @default(cuid())
-  name         String
-  type         FirmType  @default(INDEPENDENT)
-  
-  // Contact information
-  contactEmail String
-  contactPhone String?
-  address      String?
-  
-  // Settings stored as JSON (can be promoted to separate table later)
-  settings     String?   @default("{}")
-  
-  // Timestamps
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  
-  // Relations
-  users        User[]
-  jobs         Job[]
+  data   Json?
+  result Json?
+  error  String? @db.Text
 
-  @@index([name])
-}
+  attempts    Int @default(0)
+  maxAttempts Int @default(3)
 
-// ───────────────────────────────────────────────────────────────
-// JOB MODEL (Core entity)
-// ───────────────────────────────────────────────────────────────
-
-model Job {
-  id          String    @id @default(cuid())
-  
-  // Case details
-  title       String
-  caseName    String?
-  caseNumber  String?
-  court       String?
-  depoDate    DateTime?
-  location    String?
-  
-  // 🔒 Ownership and multi-tenant security
-  reporterId  String
-  reporter    User      @relation("ReporterJobs", fields: [reporterId], references: [id])
-  firmId      String    // 🔒 CRITICAL: Every query MUST filter by this
-  firm        Firm      @relation(fields: [firmId], references: [id])
-  
-  // Job metadata
-  status      JobStatus @default(DRAFT)
-  totalPages  Int?
-  rushOrder   Boolean   @default(false)
-  difficulty  Int?      // 1-5 scale for complexity
-  
-  // Client information (for invoicing in Phase 3)
-  clientName    String?
-  clientContact String?
-  
-  // Additional notes
-  notes       String?
-  
-  // Timestamps
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?
-  
-  // Relations
-  assignments     JobAssignment[]
-  files           JobFile[]
-  transcripts     Transcript[]
-  dictionaryTerms JobDictionaryTerm[]
 
-  // Indexes for performance and security
-  @@index([firmId])      // 🔒 CRITICAL: Multi-tenant isolation
-  @@index([reporterId])  // Find jobs by reporter
-  @@index([status])      // Filter by status
-  @@index([depoDate])    // Sort by deposition date
-  @@index([caseNumber])  // Search by case number
+  @@index([bullmqJobId])
+  @@index([jobId])
+  @@index([status])
 }
 
-// ───────────────────────────────────────────────────────────────
-// JOB ASSIGNMENT MODEL (Reporter assigns job to Scopist)
-// ───────────────────────────────────────────────────────────────
+// ===========================================
+// TRANSCRIPTION ENUMS
+// ===========================================
 
-model JobAssignment {
-  id        String           @id @default(cuid())
-  
-  // Relationships
-  jobId     String
-  job       Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  scopistId String
-  scopist   User             @relation(fields: [scopistId], references: [id])
-  
-  // Assignment status
-  status    AssignmentStatus @default(PENDING)
-  notes     String?
-  
-  // Timestamps
-  assignedAt  DateTime       @default(now())
-  acceptedAt  DateTime?
-  completedAt DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  // Indexes and constraints
-  @@index([jobId])
-  @@index([scopistId])
-  @@unique([jobId, scopistId])  // Prevent duplicate assignments
-}
-
-// ───────────────────────────────────────────────────────────────
-// JOB FILE MODEL (File metadata - Phase 1, actual storage Phase 2)
-// ───────────────────────────────────────────────────────────────
-
-model JobFile {
-  id           String   @id @default(cuid())
-  
-  // Relationships
-  jobId        String
-  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  uploadedById String
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
-  
-  // File metadata
-  filename     String   // Sanitized filename for storage
-  originalName String   // Original upload name
-  mimeType     String
-  size         Int      // File size in bytes
-  
-  // Storage (Phase 2 - placeholder for now)
-  storageKey   String   // TODO: S3 key or Supabase path
-  storageUrl   String?  // TODO: Signed URL for download
-  
-  fileType     FileType @default(OTHER)
-  
-  // Additional metadata (JSON for flexibility)
-  metadata     String?  @default("{}")
-  
-  // Timestamps
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  // Indexes
-  @@index([jobId])
-  @@index([uploadedById])
-  @@index([fileType])
-}
-
-// ───────────────────────────────────────────────────────────────
-// TRANSCRIPT MODEL (Phase 1: basic, Phase 2: Deepgram integration)
-// ───────────────────────────────────────────────────────────────
-
-model Transcript {
-  id            String           @id @default(cuid())
-  
-  // Relationship
-  jobId         String
-  job           Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  // Version tracking
-  version       Int              @default(1)
-  isCurrent     Boolean          @default(true)
-  status        TranscriptStatus @default(DRAFT)
-  
-  // Transcript content (Phase 1: minimal)
-  rawText       String?   // Plain text transcript
-  formattedText String?   // TODO: Template-applied version
-  
-  // Deepgram integration (Phase 2)
-  deepgramJson  String?  // TODO: Full Deepgram API response
-  source        TranscriptSource @default(MANUAL)
-  engineVersion String?          // TODO: Deepgram model version
-  
-  // Template (Phase 2)
-  templateUsed  String?          // TODO: Template name/ID
-  
-  // Creator
-  createdById   String
-  createdBy     User             @relation(fields: [createdById], references: [id])
-  
-  // Timestamps
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  // Indexes
-  @@index([jobId])
-  @@index([isCurrent])  // Quickly find current version
-}
-
-// ───────────────────────────────────────────────────────────────
-// JOB DICTIONARY TERM MODEL (Case-specific terminology)
-// ───────────────────────────────────────────────────────────────
-
-model JobDictionaryTerm {
-  id        String        @id @default(cuid())
-  
-  // Relationship
-  jobId     String
-  job       Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  // Term details
-  term      String
-  phonetic  String?       // Phonetic spelling
-  notes     String?
-  category  TermCategory?
-  
-  // Creator
-  addedById String
-  addedBy   User          @relation(fields: [addedById], references: [id])
-  
-  // Timestamps
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-
-  // Indexes
-  @@index([jobId])
-  @@index([category])
-  @@index([term])  // For search functionality
+enum TranscriptionStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

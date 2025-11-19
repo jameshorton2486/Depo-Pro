@@ -45,13 +45,17 @@ export const createJobSchema = z.object({
   
   // Job metadata
   status: z.enum([
-    JobStatus.DRAFT,
-    JobStatus.ASSIGNED,
-    JobStatus.IN_PROGRESS,
+    JobStatus.PENDING,
+    JobStatus.PROCESSING,
+    JobStatus.AI_COMPLETE,
+    JobStatus.WITH_SCOPIST,
+    JobStatus.SCOPIST_COMPLETE,
+    JobStatus.WITH_COURT_REPORTER,
     JobStatus.COMPLETED,
-    JobStatus.BILLED,
-    JobStatus.PAID,
-  ] as const).default(JobStatus.DRAFT),
+    JobStatus.DELIVERED,
+    JobStatus.FAILED,
+    JobStatus.ARCHIVED,
+  ] as const).default(JobStatus.PENDING),
   totalPages: z
     .number()
     .int('Total pages must be a whole number')
@@ -96,12 +100,16 @@ export type CreateJobInput = z.infer<typeof createJobSchema>;
  */
 export const jobFilterSchema = z.object({
   status: z.enum([
-    JobStatus.DRAFT,
-    JobStatus.ASSIGNED,
-    JobStatus.IN_PROGRESS,
+    JobStatus.PENDING,
+    JobStatus.PROCESSING,
+    JobStatus.AI_COMPLETE,
+    JobStatus.WITH_SCOPIST,
+    JobStatus.SCOPIST_COMPLETE,
+    JobStatus.WITH_COURT_REPORTER,
     JobStatus.COMPLETED,
-    JobStatus.BILLED,
-    JobStatus.PAID,
+    JobStatus.DELIVERED,
+    JobStatus.FAILED,
+    JobStatus.ARCHIVED,
   ] as const).optional(),
   reporterId: z.string().cuid().optional(),
   search: z.string().max(200).optional(),

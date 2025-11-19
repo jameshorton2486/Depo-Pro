@@ -1,0 +1,374 @@
+// Depo-Pro Database Schema
+// Legal Transcription Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================
+// MULTI-TENANT & USERS
+// ===========================================
+
+model Firm {
+  id                String   @id @default(cuid())
+  name              String
+  emailAddress      String   @unique  // e.g., "acme-law@depo-pro.com"
+  
+  // Relationships
+  customDictionary  CustomDictionaryEntry[]
+  users             User[]
+  jobs              Job[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([emailAddress])
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  passwordHash      String?   // For credentials auth
+  role              UserRole
+  
+  // Multi-tenant (nullable for independent contractors)
+  firmId            String?
+  firm              Firm?     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  
+  // Account status
+  isActive          Boolean   @default(true)
+  emailVerified     DateTime?
+  
+  // Relationships
+  jobsCreated       Job[]    @relation("JobCreator")
+  jobsAssigned      Job[]    @relation("JobAssignee")
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([firmId])
+  @@index([email])
+  @@index([role])
+}
+
+enum UserRole {
+  ADMIN
+  COURT_REPORTER
+  SCOPIST
+}
+
+// ===========================================
+// JOBS & FILES
+// ===========================================
+
+model Job {
+  id                String      @id @default(cuid())
+  
+  // Multi-tenant (nullable for independent contractors)
+  firmId            String?
+  firm              Firm?       @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  
+  // Ownership
+  createdById       String
+  createdBy         User        @relation("JobCreator", fields: [createdById], references: [id])
+  
+  assignedToId      String?
+  assignedTo        User?       @relation("JobAssignee", fields: [assignedToId], references: [id])
+  
+  // Status
+  status            JobStatus   @default(PENDING)
+  stage             JobStage    @default(AI_TRANSCRIPTION)
+  
+  // Case information (from notice)
+  caseNumber        String?
+  caseName          String?
+  courtName         String?
+  judgeName         String?
+  depositionDate    DateTime?
+  
+  // Parties (JSON arrays)
+  attorneys         Json?       // [{ name, email, role }]
+  witnesses         Json?       // [{ name, title }]
+  
+  // Files & Transcription
+  files             JobFile[]
+  transcription     Transcription?
+  
+  // Quality metrics
+  overallConfidence Float?
+  needsReview       Boolean     @default(false)
+  flaggedIssues     Json?       // Array of issues
+  
+  // Timing
+  estimatedDuration Float?      // seconds
+  deliveryDeadline  DateTime?
+  deliveredAt       DateTime?
+  
+  // Error tracking
+  errorMessage      String?     @db.Text
+  processingNotes   String?     @db.Text
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  completedAt       DateTime?
+  
+  @@index([firmId])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([stage])
+}
+
+enum JobStatus {
+  PENDING              
+  PROCESSING           
+  AI_COMPLETE          
+  WITH_SCOPIST         
+  SCOPIST_COMPLETE     
+  WITH_COURT_REPORTER  
+  COMPLETED            
+  DELIVERED            
+  FAILED               
+  ARCHIVED             
+}
+
+enum JobStage {
+  AI_TRANSCRIPTION     
+  SCOPIST_REVIEW       
+  COURT_REPORTER_REVIEW
+  LAWYER_DELIVERY      
+}
+
+model JobFile {
+  id                String      @id @default(cuid())
+  jobId             String
+  job               Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  fileType          FileType
+  
+  // Original file
+  originalFileName  String
+  originalFileUrl   String
+  originalFileSize  Int         // bytes
+  mimeType          String
+  
+  // Enhanced audio (if preprocessed)
+  enhancedFileUrl   String?
+  
+  // Audio metadata
+  duration          Float?      // seconds
+  sampleRate        Int?
+  channels          Int?
+  
+  // Multi-part deposition support
+  sequenceNumber    Int         @default(1)
+  
+  // Processing tracking
+  preprocessed      Boolean     @default(false)
+  preprocessingMetadata Json?
+  
+  createdAt         DateTime    @default(now())
+  
+  @@index([jobId])
+  @@index([fileType])
+}
+
+enum FileType {
+  AUDIO
+  VIDEO
+  NOTICE
+  DOCUMENT
+}
+
+// ===========================================
+// TRANSCRIPTION
+// ===========================================
+
+model Transcription {
+  id                String   @id @default(cuid())
+  jobId             String   @unique
+  job               Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // Complete Deepgram response
+  deepgramRawJson   Json
+  
+  // Primary transcript
+  fullTranscript    String   @db.Text
+  confidence        Float
+  
+  // Word-level data with timestamps
+  words             Json     // [{ word, start, end, confidence, speaker, flagged }]
+  
+  // Speaker/Utterance data
+  utterances        Json?    // [{ speaker, start, end, transcript, confidence, words }]
+  speakerCount      Int      @default(0)
+  
+  // Speaker labels (assigned by scopist)
+  speakerMapping    Json?    // { "0": "Attorney Smith", "1": "Witness Doe" }
+  
+  // Paragraph structure
+  paragraphs        Json?
+  
+  // Alternative transcripts (for uncertain words)
+  alternativeTranscripts Json?
+  
+  // Quality metrics
+  qualityScore      Float?
+  lowConfidenceCount Int     @default(0)
+  inaudibleCount    Int      @default(0)
+  
+  // Flagged segments for scopist review
+  flaggedSegments   Json?    // [{ start, end, text, confidence, alternatives }]
+  
+  // Metadata
+  modelUsed         String   // e.g., "nova-2-general"
+  modelVersion      String
+  audioDuration     Float    // seconds
+  
+  // File storage
+  jsonFileUrl       String?  // Backup JSON in blob storage
+  
+  // Editing & Exports
+  edits             TranscriptionEdit[]
+  exports           TranscriptionExport[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([jobId])
+}
+
+model TranscriptionEdit {
+  id                String        @id @default(cuid())
+  transcriptionId   String
+  transcription     Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+  
+  editedById        String
+  editedByEmail     String
+  editedByRole      UserRole
+  
+  editType          EditType
+  wordIndex         Int?
+  
+  originalText      String?
+  newText           String?
+  
+  timestamp         Float?        // Audio timestamp
+  
+  notes             String?       @db.Text
+  
+  createdAt         DateTime      @default(now())
+  
+  @@index([transcriptionId])
+}
+
+enum EditType {
+  WORD_CORRECTION
+  SPEAKER_ASSIGNMENT
+  PUNCTUATION
+  INAUDIBLE_MARKED
+  FORMATTING
+}
+
+model TranscriptionExport {
+  id                String        @id @default(cuid())
+  transcriptionId   String
+  transcription     Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+  
+  format            ExportFormat
+  fileUrl           String
+  fileSize          Int
+  
+  exportedById      String
+  exportedByEmail   String
+  
+  createdAt         DateTime      @default(now())
+  
+  @@index([transcriptionId])
+}
+
+enum ExportFormat {
+  PDF
+  DOCX
+  TXT
+}
+
+// ===========================================
+// CUSTOM DICTIONARY
+// ===========================================
+
+model CustomDictionaryEntry {
+  id                String   @id @default(cuid())
+  firmId            String
+  firm              Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  
+  word              String
+  phonetic          String?
+  category          DictionaryCategory
+  
+  // Source tracking
+  source            DictionarySource
+  sourceJobId       String?
+  
+  // Usage tracking
+  timesUsed         Int      @default(0)
+  lastUsed          DateTime?
+  
+  createdAt         DateTime @default(now())
+  
+  @@unique([firmId, word])
+  @@index([firmId])
+  @@index([category])
+}
+
+enum DictionaryCategory {
+  LEGAL_TERM
+  MEDICAL_TERM
+  PERSON_NAME
+  PLACE_NAME
+  CASE_SPECIFIC
+  OTHER
+}
+
+enum DictionarySource {
+  MANUAL
+  AI_EXTRACTED
+  AUTO_LEARNED
+}
+
+// ===========================================
+// BACKGROUND JOBS
+// ===========================================
+
+model BackgroundJob {
+  id                String   @id @default(cuid())
+  bullmqJobId       String   @unique
+  
+  jobId             String?
+  
+  type              String   // 'transcription', 'preprocessing', 'export'
+  status            String   // 'pending', 'processing', 'completed', 'failed'
+  
+  progress          Int      @default(0)  // 0-100
+  
+  data              Json?
+  result            Json?
+  error             String?  @db.Text
+  
+  attempts          Int      @default(0)
+  maxAttempts       Int      @default(3)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  completedAt       DateTime?
+  
+  @@index([bullmqJobId])
+  @@index([jobId])
+  @@index([status])
+}

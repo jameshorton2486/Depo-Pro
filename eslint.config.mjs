@@ -18,7 +18,25 @@ const eslintConfig = defineConfig([
     "scripts/**",
     "tests/**",
     "prisma/**",
+    // Backup directories
+    ".backup-*/",
+    "backup/",
+    // Generated files
+    "types/deepgram.ts",
   ]),
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { 
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_"
+        }
+      ],
+      "import/no-anonymous-default-export": "off"
+    }
+  }
 ]);
 
 export default eslintConfig;

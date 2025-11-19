@@ -27,10 +27,10 @@ export async function GET(
           select: {
             id: true,
             firmId: true,
-            reporterId: true,
+            createdById: true,
             assignments: {
               select: {
-                scopistId: true,
+                userId: true,
               },
             },
           },
@@ -45,23 +45,23 @@ export async function GET(
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      file.job.reporterId === session.user.id ||
+      file.job.createdById === session.user.id ||
       (session.user.firmId && file.job.firmId === session.user.firmId) ||
-      file.job.assignments.some((a) => a.scopistId === session.user.id);
+      file.job.assignments.some((a) => a.userId === session.user.id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // 📥 Download file from storage
-    const { buffer, contentType } = await downloadFile(file.filename);
+    const { buffer, contentType } = await downloadFile(file.originalFileName);
 
     // 📤 Return file with proper headers
     return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${file.originalName}"`,
+        'Content-Disposition': `attachment; filename="${file.originalFileName}"`,
         'Content-Length': buffer.length.toString(),
         'Cache-Control': 'private, max-age=3600',
       },
