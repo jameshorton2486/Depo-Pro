@@ -13,8 +13,18 @@ import type { QualityReport, TranscriptWord } from '@/types/deepgram';
 export async function calculateQualityMetrics(
   _words: any[],
   _utterances?: any[]
-): Promise<QualityMetrics> {
+): Promise<any> {
   // TODO: Implement quality analysis
   const _threshold = 0.8;
+  
+  return {
+    overallConfidence: 0,
+    lowConfidenceCount: 0,
+    inaudibleCount: 0,
+    flaggedSegments: [],
+    needsReview: false,
+    qualityScore: 0,
+  };
+}
 
-export default { analyzeTranscriptQuality };
+export default { calculateQualityMetrics };
