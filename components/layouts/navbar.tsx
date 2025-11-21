@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Role } from '@/lib/constants';
+// import { Role } from '@/lib/constants';
 import { Session } from 'next-auth';
 import {
   DropdownMenu,
@@ -59,6 +59,7 @@ export function Navbar({ user }: NavbarProps) {
             >
               Jobs
             </Link>
+            {/* Admin link removed for MVP
             {user.role === Role.ADMIN && (
               <Link
                 href="/admin"
@@ -69,6 +70,7 @@ export function Navbar({ user }: NavbarProps) {
                 Admin
               </Link>
             )}
+            */}
           </div>
         </div>
 
@@ -92,11 +94,13 @@ export function Navbar({ user }: NavbarProps) {
             <DropdownMenuItem asChild>
               <Link href="/settings/profile">Profile Settings</Link>
             </DropdownMenuItem>
+            {/* Firm Settings removed for MVP
             {user.role === Role.ADMIN && (
               <DropdownMenuItem asChild>
                 <Link href="/settings/firm">Firm Settings</Link>
               </DropdownMenuItem>
             )}
+            */}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-600 cursor-pointer"
