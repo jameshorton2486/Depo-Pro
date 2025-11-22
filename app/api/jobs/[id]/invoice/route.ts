@@ -32,14 +32,7 @@ export async function POST(
     const job = await db.job.findFirst({
       where: {
         id: jobId,
-        reporterId: session.user.id,
-      },
-      include: {
-        firm: {
-          select: {
-            name: true,
-          },
-        },
+        createdById: session.user.id,
       },
     });
 
@@ -48,9 +41,9 @@ export async function POST(
     }
 
     // Calculate pricing
-    const pageCount = job.totalPages || 0;
+    const pageCount = 0; // Mock - would come from transcript
     const durationMinutes = 60; // Mock - would come from audio file metadata
-    const items = calculateJobPrice(pageCount, durationMinutes, job.rushOrder);
+    const items = calculateJobPrice(pageCount, durationMinutes, false);
     const totals = calculateInvoiceTotal(items);
 
     // Generate invoice number
@@ -61,8 +54,8 @@ export async function POST(
       invoiceNumber,
       jobId,
       caseNumber: job.caseNumber || undefined,
-      clientName: job.clientName || undefined,
-      clientContact: job.clientContact || undefined,
+      clientName: undefined,
+      clientContact: undefined,
       items,
       subtotal: totals.subtotal,
       tax: totals.tax,

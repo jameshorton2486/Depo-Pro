@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   switch (session.user.role) {
     case Role.ADMIN:
       redirect('/admin');
-    case Role.COURT_REPORTER:
+    case Role.REPORTER:
       redirect('/reporter');
     case Role.SCOPIST:
       redirect('/scopist');

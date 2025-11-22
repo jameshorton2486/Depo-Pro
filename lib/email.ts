@@ -40,7 +40,7 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
         subject: options.subject,
         html: options.html,
         text: options.text,
-        reply_to: options.replyTo,
+        replyTo: options.replyTo,
       });
 
       if (error) {

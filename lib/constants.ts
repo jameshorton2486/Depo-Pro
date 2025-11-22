@@ -8,36 +8,28 @@
  */
 export const Role = {
   ADMIN: 'ADMIN',
-  COURT_REPORTER: 'COURT_REPORTER',
+  REPORTER: 'REPORTER',
   SCOPIST: 'SCOPIST',
 } as const;
 
 export type Role = (typeof Role)[keyof typeof Role];
 
 /**
- * Firm types
- */
-export const FirmType = {
-  AGENCY: 'AGENCY',
-  INDEPENDENT: 'INDEPENDENT',
-} as const;
-
-export type FirmType = (typeof FirmType)[keyof typeof FirmType];
-
-/**
  * Job status lifecycle - matches Prisma JobStatus enum
  */
 export const JobStatus = {
-  PENDING: 'PENDING',
-  PROCESSING: 'PROCESSING',
-  AI_COMPLETE: 'AI_COMPLETE',
-  WITH_SCOPIST: 'WITH_SCOPIST',
-  SCOPIST_COMPLETE: 'SCOPIST_COMPLETE',
-  WITH_COURT_REPORTER: 'WITH_COURT_REPORTER',
+  CREATED: 'CREATED',
+  FILES_UPLOADED: 'FILES_UPLOADED',
+  ENHANCING_AUDIO: 'ENHANCING_AUDIO',
+  TRANSCRIBING: 'TRANSCRIBING',
+  AI_REVIEWING: 'AI_REVIEWING',
+  READY_FOR_EDIT: 'READY_FOR_EDIT',
+  ASSIGNED: 'ASSIGNED',
+  IN_EDIT: 'IN_EDIT',
+  SUBMITTED_FOR_REVIEW: 'SUBMITTED_FOR_REVIEW',
+  IN_REVIEW: 'IN_REVIEW',
   COMPLETED: 'COMPLETED',
-  DELIVERED: 'DELIVERED',
-  FAILED: 'FAILED',
-  ARCHIVED: 'ARCHIVED',
+  CANCELLED: 'CANCELLED',
 } as const;
 
 export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
@@ -113,16 +105,18 @@ export type TermCategory = (typeof TermCategory)[keyof typeof TermCategory];
  * Status colors for badges (Tailwind CSS classes) - matches Prisma JobStatus enum
  */
 export const JOB_STATUS_COLORS: Record<JobStatus, string> = {
-  PENDING: 'bg-gray-100 text-gray-800 border-gray-300',
-  PROCESSING: 'bg-blue-100 text-blue-800 border-blue-300',
-  AI_COMPLETE: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-  WITH_SCOPIST: 'bg-purple-100 text-purple-800 border-purple-300',
-  SCOPIST_COMPLETE: 'bg-pink-100 text-pink-800 border-pink-300',
-  WITH_COURT_REPORTER: 'bg-orange-100 text-orange-800 border-orange-300',
-  COMPLETED: 'bg-green-100 text-green-800 border-green-300',
-  DELIVERED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  FAILED: 'bg-red-100 text-red-800 border-red-300',
-  ARCHIVED: 'bg-slate-100 text-slate-800 border-slate-300',
+  CREATED: 'bg-gray-100 text-gray-800 border-gray-300',
+  FILES_UPLOADED: 'bg-blue-100 text-blue-800 border-blue-300',
+  ENHANCING_AUDIO: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  TRANSCRIBING: 'bg-purple-100 text-purple-800 border-purple-300',
+  AI_REVIEWING: 'bg-pink-100 text-pink-800 border-pink-300',
+  READY_FOR_EDIT: 'bg-green-100 text-green-800 border-green-300',
+  ASSIGNED: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  IN_EDIT: 'bg-orange-100 text-orange-800 border-orange-300',
+  SUBMITTED_FOR_REVIEW: 'bg-teal-100 text-teal-800 border-teal-300',
+  IN_REVIEW: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  COMPLETED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  CANCELLED: 'bg-red-100 text-red-800 border-red-300',
 };
 
 /**
@@ -141,7 +135,7 @@ export const ASSIGNMENT_STATUS_COLORS: Record<AssignmentStatus, string> = {
  */
 export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Admin',
-  COURT_REPORTER: 'Court Reporter',
+  REPORTER: 'Court Reporter',
   SCOPIST: 'Scopist',
 };
 
@@ -150,7 +144,7 @@ export const ROLE_LABELS: Record<Role, string> = {
  */
 export const ROLE_COLORS: Record<Role, string> = {
   ADMIN: 'bg-red-100 text-red-800 border-red-300',
-  COURT_REPORTER: 'bg-blue-100 text-blue-800 border-blue-300',
+  REPORTER: 'bg-blue-100 text-blue-800 border-blue-300',
   SCOPIST: 'bg-green-100 text-green-800 border-green-300',
 };
 
@@ -170,16 +164,18 @@ export const FILE_TYPE_ICONS: Record<FileType, string> = {
  * Readable labels for job status - matches Prisma JobStatus enum
  */
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
-  PENDING: 'Pending',
-  PROCESSING: 'Processing',
-  AI_COMPLETE: 'AI Complete',
-  WITH_SCOPIST: 'With Scopist',
-  SCOPIST_COMPLETE: 'Scopist Complete',
-  WITH_COURT_REPORTER: 'With Court Reporter',
+  CREATED: 'Created',
+  FILES_UPLOADED: 'Files Uploaded',
+  ENHANCING_AUDIO: 'Enhancing Audio',
+  TRANSCRIBING: 'Transcribing',
+  AI_REVIEWING: 'AI Reviewing',
+  READY_FOR_EDIT: 'Ready for Edit',
+  ASSIGNED: 'Assigned',
+  IN_EDIT: 'In Edit',
+  SUBMITTED_FOR_REVIEW: 'Submitted for Review',
+  IN_REVIEW: 'In Review',
   COMPLETED: 'Completed',
-  DELIVERED: 'Delivered',
-  FAILED: 'Failed',
-  ARCHIVED: 'Archived',
+  CANCELLED: 'Cancelled',
 };
 
 /**

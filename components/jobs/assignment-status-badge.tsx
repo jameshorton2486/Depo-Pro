@@ -2,8 +2,7 @@
 // ASSIGNMENT STATUS BADGE COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-// import { AssignmentStatus } from '@prisma/client';
-// DISABLED: AssignmentStatus doesn't exist in current schema
+import { AssignmentStatus } from '@prisma/client';
 import { cn } from '@/lib/utils';
 
 interface AssignmentStatusBadgeProps {
@@ -12,8 +11,8 @@ interface AssignmentStatusBadgeProps {
 }
 
 const statusConfig: Record<AssignmentStatus, { label: string; className: string }> = {
-  PENDING: {
-    label: 'Pending',
+  INVITED: {
+    label: 'Invited',
     className: 'bg-yellow-100 text-yellow-700 border-yellow-300',
   },
   ACCEPTED: {
@@ -24,13 +23,21 @@ const statusConfig: Record<AssignmentStatus, { label: string; className: string 
     label: 'In Progress',
     className: 'bg-purple-100 text-purple-700 border-purple-300',
   },
-  COMPLETED: {
-    label: 'Completed',
+  SUBMITTED: {
+    label: 'Submitted',
     className: 'bg-green-100 text-green-700 border-green-300',
   },
-  REJECTED: {
-    label: 'Rejected',
+  DECLINED: {
+    label: 'Declined',
     className: 'bg-red-100 text-red-700 border-red-300',
+  },
+  EXPIRED: {
+    label: 'Expired',
+    className: 'bg-gray-100 text-gray-700 border-gray-300',
+  },
+  RELEASED: {
+    label: 'Released',
+    className: 'bg-gray-100 text-gray-700 border-gray-300',
   },
 };
 

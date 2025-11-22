@@ -19,7 +19,7 @@ import { User } from '@prisma/client';
 
 interface AssignScopistDialogProps {
   jobId: string;
-  scopists: Pick<User, 'id' | 'name' | 'email'>[];
+  scopists: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>[];
   onClose: () => void;
 }
 
@@ -88,7 +88,7 @@ export function AssignScopistDialog({ jobId, scopists, onClose }: AssignScopistD
               <SelectContent>
                 {scopists.map((scopist) => (
                   <SelectItem key={scopist.id} value={scopist.id}>
-                    {scopist.name} ({scopist.email})
+                    {scopist.firstName} {scopist.lastName} ({scopist.email})
                   </SelectItem>
                 ))}
               </SelectContent>

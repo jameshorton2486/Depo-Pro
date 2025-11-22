@@ -49,11 +49,12 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: data.name,
+          firstName: data.firstName,
+          lastName: data.lastName,
           email: data.email,
           passwordHash,
           role: data.role,
-          firmName: data.firmName,
+          agencyName: data.agencyName,
         }),
       });
 
@@ -94,19 +95,35 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Name field */}
+            {/* First Name field */}
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="firstName">First Name</Label>
               <Input
-                id="name"
+                id="firstName"
                 type="text"
-                placeholder="John Doe"
-                autoComplete="name"
+                placeholder="John"
+                autoComplete="given-name"
                 disabled={isLoading}
-                {...register('name')}
+                {...register('firstName')}
               />
-              {errors.name && (
-                <p className="text-sm text-red-600">{errors.name.message}</p>
+              {errors.firstName && (
+                <p className="text-sm text-red-600">{errors.firstName.message}</p>
+              )}
+            </div>
+
+            {/* Last Name field */}
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                type="text"
+                placeholder="Doe"
+                autoComplete="family-name"
+                disabled={isLoading}
+                {...register('lastName')}
+              />
+              {errors.lastName && (
+                <p className="text-sm text-red-600">{errors.lastName.message}</p>
               )}
             </div>
 
@@ -140,8 +157,8 @@ export default function RegisterPage() {
                   <SelectItem value={Role.ADMIN}>
                     {ROLE_LABELS[Role.ADMIN]}
                   </SelectItem>
-                  <SelectItem value={Role.COURT_REPORTER}>
-                    {ROLE_LABELS[Role.COURT_REPORTER]}
+                  <SelectItem value={Role.REPORTER}>
+                    {ROLE_LABELS[Role.REPORTER]}
                   </SelectItem>
                   <SelectItem value={Role.SCOPIST}>
                     {ROLE_LABELS[Role.SCOPIST]}
@@ -153,22 +170,19 @@ export default function RegisterPage() {
               )}
             </div>
 
-            {/* Optional firm name for independent users */}
-            {(selectedRole === Role.COURT_REPORTER || selectedRole === Role.SCOPIST) && (
+            {/* Optional Agency name for Reporters */}
+            {selectedRole === Role.REPORTER && (
               <div className="space-y-2">
-                <Label htmlFor="firmName">
-                  Firm Name <span className="text-gray-500 text-xs">(Optional)</span>
+                <Label htmlFor="agencyName">
+                  Agency Name <span className="text-gray-500 text-xs">(Optional)</span>
                 </Label>
                 <Input
-                  id="firmName"
+                  id="agencyName"
                   type="text"
-                  placeholder="Your firm name"
+                  placeholder="Your agency name"
                   disabled={isLoading}
-                  {...register('firmName')}
+                  {...register('agencyName')}
                 />
-                <p className="text-xs text-gray-500">
-                  Leave blank if you&apos;ll be invited to an existing firm
-                </p>
               </div>
             )}
 

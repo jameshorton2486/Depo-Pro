@@ -62,7 +62,7 @@ export async function requireAuth() {
  * @example
  * ```ts
  * // Only allow admins and court reporters
- * const session = await requireRole([Role.ADMIN, Role.COURT_REPORTER]);
+ * const session = await requireRole([Role.ADMIN, Role.REPORTER]);
  * ```
  */
 export async function requireRole(roles: Role[]) {
@@ -122,35 +122,32 @@ export async function hasAnyRole(roles: Role[]): Promise<boolean> {
   return roles.includes(session.user.role as Role);
 }
 
-/**
- * Get current user's firm ID
- * Returns null if not authenticated or no firm assigned
- * 
- * @returns Firm ID or null
- */
-export async function getCurrentFirmId(): Promise<string | null> {
-  const session = await getCurrentUser();
+// /**
+//  * Get current user's firm ID
+//  * Returns null if not authenticated or no firm assigned
+//  * 
+//  * @returns Firm ID or null
+//  */
+// export async function getCurrentFirmId(): Promise<string | null> {
+//   const session = await getCurrentUser();
   
-  if (!session || !session.user) {
-    return null;
-  }
+//   if (!session || !session.user) {
+//     return null;
+//   }
   
-  return session.user.firmId;
-}
+//   return null; // Firm concept removed
+// }
 
-/**
- * Require user to have a firm assigned
- * Useful for multi-tenant features
- * 
- * @throws Error if user doesn't have a firm
- * @returns Firm ID
- */
-export async function requireFirm(): Promise<string> {
-  const session = await requireAuth();
+// /**
+//  * Require user to have a firm assigned
+//  * Useful for multi-tenant features
+//  * 
+//  * @throws Error if user doesn't have a firm
+//  * @returns Firm ID
+//  */
+// export async function requireFirm(): Promise<string> {
+//   const session = await requireAuth();
   
-  if (!session.user.firmId) {
-    throw new Error('User must be assigned to a firm');
-  }
-  
-  return session.user.firmId;
-}
+//   // Firm concept removed
+//   throw new Error('Firm concept removed');
+// }

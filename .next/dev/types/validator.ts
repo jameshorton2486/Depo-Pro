@@ -65,15 +65,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../../app/(dashboard)/admin/page.tsx
-{
-  type __IsExpected<Specific extends AppPageConfig<"/admin">> = Specific
-  const handler = {} as typeof import("../../../app/(dashboard)/admin/page.js")
-  type __Check = __IsExpected<typeof handler>
-  // @ts-ignore
-  type __Unused = __Check
-}
-
 // Validate ../../../app/(dashboard)/dashboard/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/dashboard">> = Specific
@@ -281,6 +272,24 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../app/api/transcribe/start/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/transcribe/start">> = Specific
+  const handler = {} as typeof import("../../../app/api/transcribe/start/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/transcribe/status/[jobId]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/transcribe/status/[jobId]">> = Specific
+  const handler = {} as typeof import("../../../app/api/transcribe/status/[jobId]/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../app/api/transcripts/[id]/export/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/transcripts/[id]/export">> = Specific
@@ -303,6 +312,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/transcripts/[id]/status">> = Specific
   const handler = {} as typeof import("../../../app/api/transcripts/[id]/status/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../app/api/webhooks/deepgram/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/webhooks/deepgram">> = Specific
+  const handler = {} as typeof import("../../../app/api/webhooks/deepgram/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check

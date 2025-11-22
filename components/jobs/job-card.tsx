@@ -3,15 +3,14 @@
 // ═══════════════════════════════════════════════════════════════
 
 import Link from 'next/link';
-import { Job, User, Firm } from '@prisma/client';
+import { Job, User } from '@prisma/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { JobStatusBadge } from './job-status-badge';
-import { Calendar, MapPin, User as UserIcon, Building2, FileText, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, User as UserIcon, FileText, AlertCircle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
 type JobWithRelations = Job & {
-  reporter: Pick<User, 'id' | 'name' | 'email'>;
-  firm: Pick<Firm, 'id' | 'name'> | null;
+  createdBy: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>;
   _count?: {
     files: number;
     transcripts: number;
@@ -33,17 +32,11 @@ export function JobCard({ job }: JobCardProps) {
                 {job.caseName || job.caseNumber || 'Untitled Job'}
               </h3>
               <p className="text-sm text-muted-foreground line-clamp-1">
-                {job.caseName}
+                {job.title}
               </p>
             </div>
             <JobStatusBadge status={job.status} />
           </div>
-          {job.needsReview && (
-            <div className="flex items-center gap-1 text-red-600 text-sm mt-2">
-              <AlertCircle className="h-4 w-4" />
-              <span className="font-medium">Rush Order</span>
-            </div>
-          )}
         </CardHeader>
 
         <CardContent className="space-y-2">
@@ -53,25 +46,18 @@ export function JobCard({ job }: JobCardProps) {
               <span>{formatDate(job.depositionDate)}</span>
             </div>
             
-            {job.courtName && (
+            {job.location && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span className="truncate">{job.courtName.split(',')[0]}</span>
+                <span className="truncate">{job.location.split(',')[0]}</span>
               </div>
             )}
           </div>
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <UserIcon className="h-4 w-4" />
-            <span>{job.reporter.name}</span>
+            <span>{job.createdBy.firstName} {job.createdBy.lastName}</span>
           </div>
-
-          {job.firm && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Building2 className="h-4 w-4" />
-              <span>{job.firm.name}</span>
-            </div>
-          )}
 
           {job._count && (
             <div className="flex items-center gap-4 pt-2 text-sm text-muted-foreground border-t">
@@ -79,11 +65,6 @@ export function JobCard({ job }: JobCardProps) {
                 <FileText className="h-4 w-4" />
                 <span>{job._count.files} files</span>
               </div>
-              {job._count?.files && (
-                <div>
-                  <span>{job._count.files} files</span>
-                </div>
-              )}
             </div>
           )}
 

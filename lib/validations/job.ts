@@ -19,75 +19,52 @@ export const createJobSchema = z.object({
     .max(200, 'Title must be less than 200 characters'),
   caseName: z
     .string()
-    .max(200, 'Case name must be less than 200 characters')
-    .optional()
-    .or(z.literal('')),
+    .min(1, 'Case name is required')
+    .max(200, 'Case name must be less than 200 characters'),
   caseNumber: z
     .string()
     .max(100, 'Case number must be less than 100 characters')
     .optional()
     .or(z.literal('')),
-  court: z
+  depositionDate: z
     .string()
-    .max(200, 'Court name must be less than 200 characters')
-    .optional()
-    .or(z.literal('')),
-  depoDate: z
-    .string()
-    .datetime()
-    .optional()
-    .or(z.literal('')),
+    .datetime({ message: 'Invalid date format' }),
   location: z
     .string()
     .max(300, 'Location must be less than 300 characters')
     .optional()
     .or(z.literal('')),
+  zoomLink: z
+    .string()
+    .url('Please enter a valid URL')
+    .optional()
+    .or(z.literal('')),
   
   // Job metadata
   status: z.enum([
-    JobStatus.PENDING,
-    JobStatus.PROCESSING,
-    JobStatus.AI_COMPLETE,
-    JobStatus.WITH_SCOPIST,
-    JobStatus.SCOPIST_COMPLETE,
-    JobStatus.WITH_COURT_REPORTER,
+    JobStatus.CREATED,
+    JobStatus.FILES_UPLOADED,
+    JobStatus.ENHANCING_AUDIO,
+    JobStatus.TRANSCRIBING,
+    JobStatus.AI_REVIEWING,
+    JobStatus.READY_FOR_EDIT,
+    JobStatus.ASSIGNED,
+    JobStatus.IN_EDIT,
+    JobStatus.SUBMITTED_FOR_REVIEW,
+    JobStatus.IN_REVIEW,
     JobStatus.COMPLETED,
-    JobStatus.DELIVERED,
-    JobStatus.FAILED,
-    JobStatus.ARCHIVED,
-  ] as const).default(JobStatus.PENDING),
-  totalPages: z
-    .number()
-    .int('Total pages must be a whole number')
-    .positive('Total pages must be positive')
-    .max(10000, 'Total pages must be less than 10,000')
-    .optional()
-    .nullable(),
-  rushOrder: z.boolean().default(false),
-  difficulty: z
-    .number()
-    .int('Difficulty must be a whole number')
-    .min(1, 'Difficulty must be between 1 and 5')
-    .max(5, 'Difficulty must be between 1 and 5')
-    .optional()
-    .nullable(),
-  
-  // Client information
-  clientName: z
-    .string()
-    .max(200, 'Client name must be less than 200 characters')
-    .optional()
-    .or(z.literal('')),
-  clientContact: z
-    .string()
-    .max(200, 'Client contact must be less than 200 characters')
-    .optional()
-    .or(z.literal('')),
+    JobStatus.CANCELLED,
+  ] as const),
   
   // Notes
   notes: z
     .string()
     .max(5000, 'Notes must be less than 5,000 characters')
+    .optional()
+    .or(z.literal('')),
+  internalNotes: z
+    .string()
+    .max(5000, 'Internal notes must be less than 5,000 characters')
     .optional()
     .or(z.literal('')),
 });
@@ -100,16 +77,18 @@ export type CreateJobInput = z.infer<typeof createJobSchema>;
  */
 export const jobFilterSchema = z.object({
   status: z.enum([
-    JobStatus.PENDING,
-    JobStatus.PROCESSING,
-    JobStatus.AI_COMPLETE,
-    JobStatus.WITH_SCOPIST,
-    JobStatus.SCOPIST_COMPLETE,
-    JobStatus.WITH_COURT_REPORTER,
+    JobStatus.CREATED,
+    JobStatus.FILES_UPLOADED,
+    JobStatus.ENHANCING_AUDIO,
+    JobStatus.TRANSCRIBING,
+    JobStatus.AI_REVIEWING,
+    JobStatus.READY_FOR_EDIT,
+    JobStatus.ASSIGNED,
+    JobStatus.IN_EDIT,
+    JobStatus.SUBMITTED_FOR_REVIEW,
+    JobStatus.IN_REVIEW,
     JobStatus.COMPLETED,
-    JobStatus.DELIVERED,
-    JobStatus.FAILED,
-    JobStatus.ARCHIVED,
+    JobStatus.CANCELLED,
   ] as const).optional(),
   reporterId: z.string().cuid().optional(),
   search: z.string().max(200).optional(),
@@ -142,7 +121,7 @@ export type AssignScopistInput = z.infer<typeof assignScopistSchema>;
  * Used for: Scopist accepting/rejecting assignments
  */
 export const updateAssignmentSchema = z.object({
-  status: z.enum(['ACCEPTED', 'REJECTED', 'IN_PROGRESS', 'COMPLETED'] as const),
+  status: z.enum(['ACCEPTED', 'DECLINED', 'IN_PROGRESS', 'SUBMITTED'] as const),
   notes: z
     .string()
     .max(1000, 'Notes must be less than 1,000 characters')

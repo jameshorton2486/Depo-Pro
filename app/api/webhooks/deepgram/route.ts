@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { _auth } from '@/lib/auth';
-import { _authConfig } from '@/lib/auth-options';
-import { _db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {

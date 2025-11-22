@@ -59,7 +59,9 @@ __turbopack_context__.s([
     "db",
     ()=>db,
     "disconnect",
-    ()=>disconnect
+    ()=>disconnect,
+    "prisma",
+    ()=>prisma
 ]);
 var __TURBOPACK__imported__module__$5b$externals$5d2f40$prisma$2f$client__$5b$external$5d$__$2840$prisma$2f$client$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/@prisma/client [external] (@prisma/client, cjs)");
 ;
@@ -82,6 +84,7 @@ if ("TURBOPACK compile-time truthy", 1) {
 async function disconnect() {
     await db.$disconnect();
 }
+const prisma = db;
 }),
 "[project]/lib/logger.ts [app-route] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
@@ -262,11 +265,12 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$logger$2e$ts__$5b$app
 async function POST(request) {
     try {
         const body = await request.json();
-        const { name, email, passwordHash, role, firmName } = body;
+        const { firstName, lastName, email, passwordHash, role, agencyName } = body;
         // Validate required fields
-        if (!name || !email || !passwordHash || !role) {
+        if (!firstName || !lastName || !email || !passwordHash || !role) {
             __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn('Registration attempt with missing fields', 'Registration', {
-                hasName: !!name,
+                hasFirstName: !!firstName,
+                hasLastName: !!lastName,
                 hasEmail: !!email,
                 hasPassword: !!passwordHash,
                 hasRole: !!role
@@ -293,47 +297,21 @@ async function POST(request) {
                 status: 409
             });
         }
-        // Create firm if firmName is provided
-        let firmId = null;
-        if (firmName && firmName.trim()) {
-            try {
-                const firm = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].firm.create({
-                    data: {
-                        name: firmName.trim(),
-                        type: 'INDEPENDENT',
-                        contactEmail: email.toLowerCase()
-                    }
-                });
-                firmId = firm.id;
-                __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info('Firm created during registration', 'Registration', {
-                    firmId,
-                    firmName: firmName.trim()
-                });
-            } catch (error) {
-                __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].dbError('Firm creation', error, {
-                    firmName
-                });
-                return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                    error: 'Failed to create firm'
-                }, {
-                    status: 500
-                });
-            }
-        }
         // Create user
         try {
             const user = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$db$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["db"].user.create({
                 data: {
-                    name,
+                    firstName,
+                    lastName,
                     email: email.toLowerCase(),
                     passwordHash,
                     role: role,
-                    firmId,
-                    isActive: true
+                    agencyName: role === 'REPORTER' ? agencyName : undefined
                 },
                 select: {
                     id: true,
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true,
                     role: true,
                     createdAt: true
@@ -342,8 +320,7 @@ async function POST(request) {
             __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info('User registered successfully', 'Registration', {
                 userId: user.id,
                 email: user.email,
-                role: user.role,
-                firmId
+                role: user.role
             });
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 message: 'User registered successfully',

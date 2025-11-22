@@ -16,14 +16,13 @@ export default async function AdminDashboard() {
 
   // Fetch statistics with error handling
   let totalUsers = 0;
-  let totalFirms = 0;
+  const totalFirms = 0;
   let totalJobs = 0;
   let recentJobs: Job[] = [];
 
   try {
-    [totalUsers, totalFirms, totalJobs, recentJobs] = await Promise.all([
+    [totalUsers, totalJobs, recentJobs] = await Promise.all([
       db.user.count(),
-      db.firm.count(),
       db.job.count(),
       db.job.findMany({
         take: 5,

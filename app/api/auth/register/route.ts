@@ -11,12 +11,13 @@ import { logger } from '@/lib/logger';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, passwordHash, role, firmName } = body;
+    const { firstName, lastName, email, passwordHash, role, agencyName } = body;
 
     // Validate required fields
-    if (!name || !email || !passwordHash || !role) {
+    if (!firstName || !lastName || !email || !passwordHash || !role) {
       logger.warn('Registration attempt with missing fields', 'Registration', {
-        hasName: !!name,
+        hasFirstName: !!firstName,
+        hasLastName: !!lastName,
         hasEmail: !!email,
         hasPassword: !!passwordHash,
         hasRole: !!role,
@@ -40,46 +41,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create firm if firmName is provided
-    let firmId: string | null = null;
-    
-    if (firmName && firmName.trim()) {
-      try {
-        const firm = await db.firm.create({
-          data: {
-            name: firmName.trim(),
-            type: 'INDEPENDENT',
-            contactEmail: email.toLowerCase(),
-          },
-        });
-        firmId = firm.id;
-        logger.info('Firm created during registration', 'Registration', {
-          firmId,
-          firmName: firmName.trim(),
-        });
-      } catch (error) {
-        logger.dbError('Firm creation', error as Error, { firmName });
-        return NextResponse.json(
-          { error: 'Failed to create firm' },
-          { status: 500 }
-        );
-      }
-    }
-
     // Create user
     try {
       const user = await db.user.create({
         data: {
-          name,
+          firstName,
+          lastName,
           email: email.toLowerCase(),
           passwordHash,
           role: role as Role,
-          firmId,
-          isActive: true,
+          agencyName: role === 'REPORTER' ? agencyName : undefined,
         },
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           role: true,
           createdAt: true,
@@ -90,7 +66,6 @@ export async function POST(request: Request) {
         userId: user.id,
         email: user.email,
         role: user.role,
-        firmId,
       });
 
       return NextResponse.json(

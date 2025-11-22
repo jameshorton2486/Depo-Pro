@@ -33,8 +33,7 @@ export async function PATCH(
       include: {
         job: {
           select: {
-            reporterId: true,
-            firmId: true,
+            createdById: true,
           },
         },
       },
@@ -48,8 +47,7 @@ export async function PATCH(
     const canUpdate =
       session.user.role === 'ADMIN' ||
       assignment.scopistId === session.user.id ||
-      assignment.job.reporterId === session.user.id ||
-      (session.user.firmId && assignment.job.firmId === session.user.firmId);
+      assignment.job.createdById === session.user.id;
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -64,12 +62,12 @@ export async function PATCH(
       notes: validatedData.notes,
     };
 
-    if (validatedData.status === 'ACCEPTED' && !assignment.acceptedAt) {
-      updateData.acceptedAt = new Date();
+    if (validatedData.status === 'ACCEPTED' && !assignment.respondedAt) {
+      updateData.respondedAt = new Date();
     }
 
-    if (validatedData.status === 'COMPLETED' && !assignment.completedAt) {
-      updateData.completedAt = new Date();
+    if (validatedData.status === 'SUBMITTED' && !assignment.submittedAt) {
+      updateData.submittedAt = new Date();
     }
 
     const updatedAssignment = await db.jobAssignment.update({
@@ -79,7 +77,8 @@ export async function PATCH(
         scopist: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -135,8 +134,7 @@ export async function DELETE(
       include: {
         job: {
           select: {
-            reporterId: true,
-            firmId: true,
+            createdById: true,
           },
         },
       },
@@ -149,7 +147,7 @@ export async function DELETE(
     // 🔒 Security: Only reporter or admin can delete assignments
     const canDelete =
       session.user.role === 'ADMIN' ||
-      assignment.job.reporterId === session.user.id;
+      assignment.job.createdById === session.user.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

@@ -30,9 +30,9 @@ function getFileType(mimeType: string): FileType {
   if (mimeType.startsWith('audio/')) return 'AUDIO';
   if (mimeType.startsWith('video/')) return 'VIDEO';
   if (mimeType.includes('pdf') || mimeType.includes('word') || mimeType.includes('text')) {
-    return 'TRANSCRIPT';
+    return 'ROUGH_TRANSCRIPT'; // Default to rough transcript for docs
   }
-  return 'OTHER';
+  return 'EXHIBIT'; // Default fallback
 }
 
 export async function POST(
@@ -52,8 +52,7 @@ export async function POST(
       where: { id: jobId },
       select: {
         id: true,
-        firmId: true,
-        reporterId: true,
+        createdById: true,
         assignments: {
           select: {
             scopistId: true,
@@ -69,8 +68,7 @@ export async function POST(
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      job.reporterId === session.user.id ||
-      (session.user.firmId && job.firmId === session.user.firmId) ||
+      job.createdById === session.user.id ||
       job.assignments.some((a) => a.scopistId === session.user.id);
 
     if (!hasAccess) {
@@ -120,23 +118,12 @@ export async function POST(
     const uploadedFile = await db.jobFile.create({
       data: {
         jobId,
-        filename: storageKey,
-        originalName: file.name,
+        fileName: file.name,
         mimeType: file.type,
-        size,
-        fileType: getFileType(file.type),
-        storageKey,
-        storageUrl,
-        uploadedById: session.user.id,
-      },
-      include: {
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        fileSize: size,
+        type: getFileType(file.type),
+        storagePath: storageKey,
+        storageUrl: storageUrl || '',
       },
     });
 
@@ -167,8 +154,7 @@ export async function GET(
       where: { id: jobId },
       select: {
         id: true,
-        firmId: true,
-        reporterId: true,
+        createdById: true,
         assignments: {
           select: {
             scopistId: true,
@@ -184,8 +170,7 @@ export async function GET(
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      job.reporterId === session.user.id ||
-      (session.user.firmId && job.firmId === session.user.firmId) ||
+      job.createdById === session.user.id ||
       job.assignments.some((a) => a.scopistId === session.user.id);
 
     if (!hasAccess) {
@@ -195,15 +180,6 @@ export async function GET(
     // 📋 Fetch all files for this job
     const files = await db.jobFile.findMany({
       where: { jobId },
-      include: {
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
       orderBy: {
         createdAt: 'desc',
       },

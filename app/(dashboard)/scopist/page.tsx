@@ -14,15 +14,9 @@ import { Job } from '@prisma/client';
 export default async function ScopistDashboard() {
   const session = await requireRole([Role.SCOPIST]);
 
-  // 🔒 Security: Support both firm-associated and independent scopists
-  const firmId = session.user.firmId;
-  const isIndependent = !firmId;
-  
-  if (isIndependent) {
-    logger.info('Independent scopist accessing dashboard', 'ScopistDashboard', {
-      userId: session.user.id,
-    });
-  }
+  logger.info('Scopist accessing dashboard', 'ScopistDashboard', {
+    userId: session.user.id,
+  });
 
   // Get current month date range
   const now = new Date();
@@ -40,9 +34,6 @@ export default async function ScopistDashboard() {
       scopistId: session.user.id,
     };
 
-    // For firm filtering, use nested relation syntax
-    const firmFilter = firmId ? { job: { firmId: { equals: firmId } } } : {};
-
     const [
       assignedCount,
       inProgressCount,
@@ -53,7 +44,6 @@ export default async function ScopistDashboard() {
       db.jobAssignment.count({
         where: {
           ...baseWhere,
-          ...firmFilter,
         },
       }),
       // Jobs currently in progress
@@ -61,16 +51,14 @@ export default async function ScopistDashboard() {
         where: {
           ...baseWhere,
           status: 'IN_PROGRESS',
-          ...firmFilter,
         },
       }),
       // Jobs completed this month
       db.jobAssignment.count({
         where: {
           ...baseWhere,
-          status: 'COMPLETED',
-          ...firmFilter,
-          completedAt: {
+          status: 'SUBMITTED',
+          submittedAt: {
             gte: startOfMonth,
           },
         },
@@ -79,13 +67,12 @@ export default async function ScopistDashboard() {
       db.jobAssignment.findMany({
         where: {
           ...baseWhere,
-          ...firmFilter,
         },
         include: {
           job: true,
         },
         take: 5,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { invitedAt: 'desc' },
       }),
     ]);
 
@@ -96,7 +83,6 @@ export default async function ScopistDashboard() {
   } catch (error) {
     logger.dbError('Fetching scopist dashboard data', error as Error, {
       userId: session.user.id,
-      firmId,
     });
     // Data will remain at default empty values
   }

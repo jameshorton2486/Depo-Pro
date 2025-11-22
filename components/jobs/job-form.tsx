@@ -5,8 +5,8 @@
 'use client';
 
 import { useForm, SubmitHandler } from 'react-hook-form';
-// import { zodResolver } from '@hookform/resolvers/zod';
-// import { createJobSchema } from '@/lib/validations/job';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createJobSchema } from '@/lib/validations/job';
 import { type CreateJobInput } from '@/lib/validations/job';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,10 +38,12 @@ export function JobForm({ initialData, mode }: JobFormProps) {
     setValue,
     watch,
     formState: { errors },
-  } = useForm({
-    // resolver: zodResolver(createJobSchema), // TODO: Fix Zod/RHF type mismatch
-    defaultValues: initialData || {},
-  }) as ReturnType<typeof useForm<CreateJobInput>>;
+  } = useForm<CreateJobInput>({
+    resolver: zodResolver(createJobSchema),
+    defaultValues: initialData || {
+      status: JobStatus.CREATED,
+    },
+  });
 
   const onSubmit: SubmitHandler<CreateJobInput> = async (data) => {
     setIsSubmitting(true);
@@ -80,7 +82,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
   const statusValue = watch('status');
 
   return (
-    <form onSubmit={handleSubmit(onSubmit as SubmitHandler<typeof initialData>)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
@@ -128,18 +130,6 @@ export function JobForm({ initialData, mode }: JobFormProps) {
             )}
           </div>
         </div>
-
-        <div>
-          <Label htmlFor="court">Court</Label>
-          <Input
-            id="court"
-            {...register('court')}
-            placeholder="Superior Court of California"
-          />
-          {errors.court && (
-            <p className="text-sm text-red-600 mt-1">{errors.court.message}</p>
-          )}
-        </div>
       </div>
 
       {/* Deposition Details */}
@@ -148,14 +138,14 @@ export function JobForm({ initialData, mode }: JobFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="depoDate">Deposition Date *</Label>
+            <Label htmlFor="depositionDate">Deposition Date *</Label>
             <Input
-              id="depoDate"
+              id="depositionDate"
               type="datetime-local"
-              {...register('depoDate')}
+              {...register('depositionDate')}
             />
-            {errors.depoDate && (
-              <p className="text-sm text-red-600 mt-1">{errors.depoDate.message}</p>
+            {errors.depositionDate && (
+              <p className="text-sm text-red-600 mt-1">{errors.depositionDate.message}</p>
             )}
           </div>
 
@@ -169,12 +159,18 @@ export function JobForm({ initialData, mode }: JobFormProps) {
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="ASSIGNED">Assigned</SelectItem>
-                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                <SelectItem value="COMPLETED">Completed</SelectItem>
-                <SelectItem value="BILLED">Billed</SelectItem>
-                <SelectItem value="PAID">Paid</SelectItem>
+                <SelectItem value={JobStatus.CREATED}>Created</SelectItem>
+                <SelectItem value={JobStatus.FILES_UPLOADED}>Files Uploaded</SelectItem>
+                <SelectItem value={JobStatus.ENHANCING_AUDIO}>Enhancing Audio</SelectItem>
+                <SelectItem value={JobStatus.TRANSCRIBING}>Transcribing</SelectItem>
+                <SelectItem value={JobStatus.AI_REVIEWING}>AI Reviewing</SelectItem>
+                <SelectItem value={JobStatus.READY_FOR_EDIT}>Ready for Edit</SelectItem>
+                <SelectItem value={JobStatus.ASSIGNED}>Assigned</SelectItem>
+                <SelectItem value={JobStatus.IN_EDIT}>In Edit</SelectItem>
+                <SelectItem value={JobStatus.SUBMITTED_FOR_REVIEW}>Submitted for Review</SelectItem>
+                <SelectItem value={JobStatus.IN_REVIEW}>In Review</SelectItem>
+                <SelectItem value={JobStatus.COMPLETED}>Completed</SelectItem>
+                <SelectItem value={JobStatus.CANCELLED}>Cancelled</SelectItem>
               </SelectContent>
             </Select>
             {errors.status && (
@@ -195,76 +191,16 @@ export function JobForm({ initialData, mode }: JobFormProps) {
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="totalPages">Total Pages</Label>
-            <Input
-              id="totalPages"
-              type="number"
-              {...register('totalPages', { valueAsNumber: true })}
-              placeholder="150"
-            />
-            {errors.totalPages && (
-              <p className="text-sm text-red-600 mt-1">{errors.totalPages.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="difficulty">Difficulty (1-5)</Label>
-            <Input
-              id="difficulty"
-              type="number"
-              min="1"
-              max="5"
-              {...register('difficulty', { valueAsNumber: true })}
-            />
-            {errors.difficulty && (
-              <p className="text-sm text-red-600 mt-1">{errors.difficulty.message}</p>
-            )}
-          </div>
-
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                {...register('rushOrder')}
-                className="w-4 h-4 rounded border-gray-300"
-              />
-              <span className="text-sm font-medium">Rush Order</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* Client Information */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Client Information</h3>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="clientName">Client Name</Label>
-            <Input
-              id="clientName"
-              {...register('clientName')}
-              placeholder="Smith Law Firm"
-            />
-            {errors.clientName && (
-              <p className="text-sm text-red-600 mt-1">{errors.clientName.message}</p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="clientContact">Client Contact</Label>
-            <Input
-              id="clientContact"
-              type="email"
-              {...register('clientContact')}
-              placeholder="contact@smithlaw.com"
-            />
-            {errors.clientContact && (
-              <p className="text-sm text-red-600 mt-1">{errors.clientContact.message}</p>
-            )}
-          </div>
+        <div>
+          <Label htmlFor="zoomLink">Zoom Link</Label>
+          <Input
+            id="zoomLink"
+            {...register('zoomLink')}
+            placeholder="https://zoom.us/j/..."
+          />
+          {errors.zoomLink && (
+            <p className="text-sm text-red-600 mt-1">{errors.zoomLink.message}</p>
+          )}
         </div>
       </div>
 

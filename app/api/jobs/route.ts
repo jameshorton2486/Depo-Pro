@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
     // 🔒 Multi-tenant security: Build where clause based on role
     const where: Record<string, unknown> = {};
     
-    if (session.user.role === 'COURT_REPORTER') {
+    if (session.user.role === 'REPORTER') {
       // Reporter sees only their jobs
-      where.reporterId = session.user.id;
+      where.createdById = session.user.id;
     } else if (session.user.role === 'SCOPIST') {
       // Scopist sees jobs assigned to them
       where.assignments = {
@@ -43,9 +43,6 @@ export async function GET(request: NextRequest) {
           scopistId: session.user.id,
         },
       };
-    } else if (session.user.firmId) {
-      // Admin/firm users see all jobs in their firm
-      where.firmId = session.user.firmId;
     }
 
     // Add filters
@@ -66,17 +63,12 @@ export async function GET(request: NextRequest) {
       db.job.findMany({
         where,
         include: {
-          reporter: {
+          createdBy: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
-            },
-          },
-          firm: {
-            select: {
-              id: true,
-              name: true,
             },
           },
           assignments: {
@@ -84,7 +76,8 @@ export async function GET(request: NextRequest) {
               scopist: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                 },
               },
@@ -98,7 +91,7 @@ export async function GET(request: NextRequest) {
           },
         },
         orderBy: {
-          depoDate: 'desc',
+          depositionDate: 'desc',
         },
         skip,
         take: limit,
@@ -148,26 +141,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createJobSchema.parse(body);
 
-    // 🔒 Security: Inject firmId and reporterId
-    type JobCreateData = Parameters<typeof db.job.create>[0]['data'];
+    // 🔒 Security: Inject createdById
     const job = await db.job.create({
       data: {
         ...validatedData,
-        reporterId: session.user.id,
-        firmId: session.user.firmId || '', // TODO: Make firmId required in Phase 2
-      } as JobCreateData,
+        createdById: session.user.id,
+      },
       include: {
-        reporter: {
+        createdBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
-          },
-        },
-        firm: {
-          select: {
-            id: true,
-            name: true,
           },
         },
       },

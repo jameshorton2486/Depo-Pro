@@ -26,8 +26,7 @@ export async function POST(
     const job = await db.job.findUnique({
       where: { id: jobId },
       select: {
-        reporterId: true,
-        firmId: true,
+        createdById: true,
       },
     });
 
@@ -38,8 +37,7 @@ export async function POST(
     // 🔒 Security: Only reporter or admin can assign scopists
     const canAssign =
       session.user.role === 'ADMIN' ||
-      job.reporterId === session.user.id ||
-      (session.user.firmId && job.firmId === session.user.firmId);
+      job.createdById === session.user.id;
 
     if (!canAssign) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -48,12 +46,11 @@ export async function POST(
     const body = await request.json();
     const validatedData = assignScopistSchema.parse(body);
 
-    // Check if scopist exists and has access to this firm
+    // Check if scopist exists
     const scopist = await db.user.findUnique({
       where: { id: validatedData.scopistId },
       select: {
         role: true,
-        firmId: true,
       },
     });
 
@@ -65,12 +62,10 @@ export async function POST(
     }
 
     // Check if assignment already exists
-    const existingAssignment = await db.jobAssignment.findUnique({
+    const existingAssignment = await db.jobAssignment.findFirst({
       where: {
-        jobId_scopistId: {
-          jobId,
-          scopistId: validatedData.scopistId,
-        },
+        jobId,
+        scopistId: validatedData.scopistId,
       },
     });
 
@@ -86,14 +81,15 @@ export async function POST(
       data: {
         jobId,
         scopistId: validatedData.scopistId,
-        status: 'PENDING',
-        notes: validatedData.notes,
+        status: 'INVITED',
+        scopistNotes: validatedData.notes,
       },
       include: {
         scopist: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },

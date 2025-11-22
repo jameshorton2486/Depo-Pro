@@ -6,7 +6,6 @@
 import type { DeepgramConfig } from '@/types/deepgram';
 
 interface ConfigOptions {
-  firmId: string;
   customDictionary?: string[];
   modelPreference?: 'general' | 'medical';
 }
@@ -18,20 +17,8 @@ interface ConfigOptions {
 export function getOptimalDeepgramConfig(options: ConfigOptions): DeepgramConfig {
   const { customDictionary = [], modelPreference = 'general' } = options;
   
-  // TODO: Return proper Deepgram configuration with:
-  // - diarize: true (speaker identification)
-  // - utterances: true (segment by speaker)
-  // - punctuate: true
-  // - smart_format: true
-  // - filler_words: true (capture "um", "uh", etc.)
-  // - profanity_filter: false (legal accuracy)
-  // - alternatives: 3 (for uncertain words)
-  // - keywords: customDictionary (boost legal terms)
-  
-  console.log('TODO: Implement getOptimalDeepgramConfig()');
-  
   return {
-    model: 'nova-2-general',
+    model: modelPreference === 'medical' ? 'nova-2-medical' : 'nova-2',
     diarize: true,
     utterances: true,
     punctuate: true,

@@ -25,11 +25,11 @@ export async function GET(
     const includeHeader = searchParams.get('header') !== 'false'; // Default true
 
     // Get transcript with access check
-    const transcript = await db.transcription.findFirst({
+    const transcript = await db.transcript.findFirst({
       where: {
         id: transcriptId,
         job: {
-          reporterId: session.user.id,
+          createdById: session.user.id,
         },
       },
       include: {
@@ -37,8 +37,7 @@ export async function GET(
           select: {
             caseNumber: true,
             caseName: true,
-            depoDate: true,
-            court: true,
+            depositionDate: true,
           },
         },
       },
@@ -48,7 +47,7 @@ export async function GET(
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    const content = transcript.formattedText || transcript.rawText || '';
+    const content = transcript.content || '';
 
     // Export with selected format
     const result = await exportTranscript(content, {
@@ -58,8 +57,7 @@ export async function GET(
       caseInfo: {
         caseNumber: transcript.job.caseNumber || undefined,
         caseName: transcript.job.caseName || undefined,
-        depoDate: transcript.job.depoDate || undefined,
-        court: transcript.job.court || undefined,
+        depoDate: transcript.job.depositionDate || undefined,
       },
     });
 

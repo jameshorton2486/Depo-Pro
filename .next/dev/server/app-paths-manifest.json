@@ -1,8 +1,9 @@
 {
   "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(auth)/register/page": "app/(auth)/register/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
-  "/(dashboard)/jobs/page": "app/(dashboard)/jobs/page.js",
-  "/(dashboard)/scopist/page": "app/(dashboard)/scopist/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/auth/register/route": "app/api/auth/register/route.js",
   "/page": "app/page.js"
 }

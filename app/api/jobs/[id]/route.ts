@@ -31,17 +31,12 @@ export async function GET(
     const job = await db.job.findUnique({
       where: { id },
       include: {
-        reporter: {
+        createdBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
-          },
-        },
-        firm: {
-          select: {
-            id: true,
-            name: true,
           },
         },
         assignments: {
@@ -49,7 +44,8 @@ export async function GET(
             scopist: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
               },
             },
@@ -61,16 +57,8 @@ export async function GET(
           },
         },
         transcripts: {
-          where: {
-            isCurrent: true,
-          },
           orderBy: {
-            version: 'desc',
-          },
-        },
-        dictionaryTerms: {
-          orderBy: {
-            term: 'asc',
+            versionNumber: 'desc',
           },
         },
       },
@@ -83,8 +71,7 @@ export async function GET(
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      job.reporterId === session.user.id ||
-      (session.user.firmId && job.firmId === session.user.firmId) ||
+      job.createdById === session.user.id ||
       job.assignments.some((a) => a.scopistId === session.user.id);
 
     if (!hasAccess) {
@@ -123,8 +110,7 @@ export async function PUT(
     const existingJob = await db.job.findUnique({
       where: { id },
       select: {
-        reporterId: true,
-        firmId: true,
+        createdById: true,
       },
     });
 
@@ -135,8 +121,7 @@ export async function PUT(
     // 🔒 Security: Only reporter or admin can update
     const canUpdate =
       session.user.role === 'ADMIN' ||
-      existingJob.reporterId === session.user.id ||
-      (session.user.firmId && existingJob.firmId === session.user.firmId);
+      existingJob.createdById === session.user.id;
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -149,17 +134,12 @@ export async function PUT(
       where: { id },
       data: validatedData,
       include: {
-        reporter: {
+        createdBy: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
-          },
-        },
-        firm: {
-          select: {
-            id: true,
-            name: true,
           },
         },
       },
@@ -206,8 +186,7 @@ export async function DELETE(
     const existingJob = await db.job.findUnique({
       where: { id },
       select: {
-        reporterId: true,
-        firmId: true,
+        createdById: true,
       },
     });
 
@@ -218,7 +197,7 @@ export async function DELETE(
     // 🔒 Security: Only reporter or admin can delete
     const canDelete =
       session.user.role === 'ADMIN' ||
-      existingJob.reporterId === session.user.id;
+      existingJob.createdById === session.user.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

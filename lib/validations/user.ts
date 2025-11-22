@@ -28,11 +28,16 @@ export type LoginInput = z.infer<typeof loginSchema>;
  * Used for: Registration form validation
  */
 export const registerSchema = z.object({
-  name: z
+  firstName: z
     .string()
-    .min(1, 'Name is required')
-    .min(2, 'Name must be at least 2 characters')
-    .max(100, 'Name must be less than 100 characters'),
+    .min(1, 'First name is required')
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name must be less than 50 characters'),
+  lastName: z
+    .string()
+    .min(1, 'Last name is required')
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name must be less than 50 characters'),
   email: z
     .string()
     .min(1, 'Email is required')
@@ -47,11 +52,11 @@ export const registerSchema = z.object({
       'Password must contain at least one uppercase letter, one lowercase letter, and one number'
     ),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
-  role: z.enum([Role.ADMIN, Role.COURT_REPORTER, Role.SCOPIST] as const, {
+  role: z.enum([Role.ADMIN, Role.REPORTER, Role.SCOPIST] as const, {
     message: 'Please select a role',
   }),
-  // Optional: Firm name for new independent reporters/scopists
-  firmName: z.string().optional(),
+  // Optional: Agency name for reporters
+  agencyName: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -116,7 +121,7 @@ export const inviteUserSchema = z.object({
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be less than 100 characters'),
-  role: z.enum([Role.COURT_REPORTER, Role.SCOPIST] as const, {
+  role: z.enum([Role.REPORTER, Role.SCOPIST] as const, {
     message: 'Please select a role',
   }),
 });

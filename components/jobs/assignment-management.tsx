@@ -11,19 +11,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AssignmentStatusBadge } from './assignment-status-badge';
 import { AssignScopistDialog } from './assign-scopist-dialog';
-// import { User, JobAssignment, AssignmentStatus } from '@prisma/client';
-// DISABLED: JobAssignment model doesn't exist in current schema
-// TODO: Re-enable when JobAssignment model is added to schema
+import { User, JobAssignment, AssignmentStatus } from '@prisma/client';
 import { UserPlus, Check, X, Trash2 } from 'lucide-react';
 
 type AssignmentWithScopist = JobAssignment & {
-  scopist: Pick<User, 'id' | 'name' | 'email'>;
+  scopist: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>;
 };
 
 interface AssignmentManagementProps {
   jobId: string;
   assignments: AssignmentWithScopist[];
-  availableScopists: Pick<User, 'id' | 'name' | 'email'>[];
+  availableScopists: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>[];
   canAssign: boolean;
   currentUserId: string;
 }
@@ -120,18 +118,20 @@ export function AssignmentManagement({
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium">{assignment.scopist.name}</p>
+                        <p className="font-medium">
+                          {assignment.scopist.firstName} {assignment.scopist.lastName}
+                        </p>
                         <AssignmentStatusBadge status={assignment.status} />
                       </div>
                       <p className="text-sm text-muted-foreground">{assignment.scopist.email}</p>
-                      {assignment.notes && (
-                        <p className="text-sm text-muted-foreground mt-1 italic">{assignment.notes}</p>
+                      {assignment.scopistNotes && (
+                        <p className="text-sm text-muted-foreground mt-1 italic">{assignment.scopistNotes}</p>
                       )}
                     </div>
 
                     <div className="flex gap-2">
                       {/* Scopist can accept/reject pending assignments */}
-                      {isOwnAssignment && assignment.status === 'PENDING' && (
+                      {isOwnAssignment && assignment.status === 'INVITED' && (
                         <>
                           <Button
                             size="sm"
@@ -145,12 +145,12 @@ export function AssignmentManagement({
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => updateAssignmentStatus(assignment.id, 'REJECTED')}
+                            onClick={() => updateAssignmentStatus(assignment.id, 'DECLINED')}
                             disabled={updatingAssignment === assignment.id}
                             className="text-red-600"
                           >
                             <X className="h-4 w-4 mr-1" />
-                            Reject
+                            Decline
                           </Button>
                         </>
                       )}
@@ -171,10 +171,10 @@ export function AssignmentManagement({
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => updateAssignmentStatus(assignment.id, 'COMPLETED')}
+                          onClick={() => updateAssignmentStatus(assignment.id, 'SUBMITTED')}
                           disabled={updatingAssignment === assignment.id}
                         >
-                          Mark Complete
+                          Submit Work
                         </Button>
                       )}
 

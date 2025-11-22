@@ -24,12 +24,12 @@ export function TranscriptViewer({
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [metadata, setMetadata] = useState<{
-    version: number;
-    status: string;
-    source: string;
+    version: string;
+    versionNumber: number;
     wordCount: number;
     jobId: string;
     caseNumber: string | null;
+    createdAt: string;
   } | null>(null);
 
   useEffect(() => {
@@ -38,16 +38,16 @@ export function TranscriptViewer({
         const res = await fetch(`/api/transcripts/${transcriptId}`);
         if (res.ok) {
           const data = await res.json();
-          setContent(data.formattedText || data.rawText || '');
+          setContent(data.content || '');
           
-          const words = (data.formattedText || data.rawText || '').trim().split(/\s+/).filter(Boolean);
+          const words = (data.content || '').trim().split(/\s+/).filter(Boolean);
           setMetadata({
             version: data.version,
-            status: data.status,
-            source: data.source,
-            wordCount: words.length,
+            versionNumber: data.versionNumber,
+            wordCount: data.wordCount || words.length,
             jobId: data.job.id,
             caseNumber: data.job.caseNumber,
+            createdAt: data.createdAt,
           });
         } else {
           toast.error('Failed to load transcript');
@@ -109,7 +109,6 @@ export function TranscriptViewer({
                 <div className="flex items-center gap-4 text-sm font-normal text-muted-foreground">
                   <span>Version {metadata.version}</span>
                   <span>{metadata.wordCount.toLocaleString()} words</span>
-                  <span className="capitalize">{metadata.status.toLowerCase()}</span>
                 </div>
               )}
             </CardTitle>
@@ -175,7 +174,7 @@ export function TranscriptViewer({
         <Card>
           <CardContent className="py-2 px-4 text-sm text-muted-foreground flex justify-between">
             <span>Case: {metadata.caseNumber || 'N/A'}</span>
-            <span>Source: {metadata.source}</span>
+            <span>Created: {new Date(metadata.createdAt).toLocaleDateString()}</span>
             <span>Job ID: {metadata.jobId}</span>
           </CardContent>
         </Card>

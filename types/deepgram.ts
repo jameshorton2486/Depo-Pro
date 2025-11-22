@@ -1,7 +1,6 @@
 // Transcription job data structure
 export interface TranscriptionJobData {
   jobId: string;
-  firmId: string;
   audioFileUrl: string;
   audioFileName: string;
   requestedBy: string;

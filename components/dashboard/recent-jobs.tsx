@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
-import { JOB_STATUS_COLORS } from '@/lib/constants';
+import { JOB_STATUS_COLORS, JOB_STATUS_LABELS } from '@/lib/constants';
 import { Job } from '@prisma/client';
 
 interface RecentJobsProps {
@@ -24,7 +24,7 @@ export function RecentJobs({
   if (jobs.length === 0) {
     return (
       <Card className="p-8 text-center">
-        <p className="text-gray-500 mb-4">{emptyMessage}</p>
+        <p className="text-muted-foreground mb-4">{emptyMessage}</p>
         {showCreateButton && (
           <Button asChild>
             <Link href="/jobs/new">Create New Job</Link>
@@ -42,31 +42,28 @@ export function RecentJobs({
             <div className="flex items-start justify-between">
               <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900">
-                    {job.caseNumber}
+                  <h3 className="font-semibold text-foreground">
+                    {job.caseNumber || 'No Case #'}
                   </h3>
                   <span 
                     className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                       JOB_STATUS_COLORS[job.status]
                     }`}
                   >
-                    {job.status}
+                    {JOB_STATUS_LABELS[job.status]}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   {job.caseName}
                 </p>
-                <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
                   {job.depositionDate && (
                     <span>📅 {formatDate(job.depositionDate)}</span>
                   )}
-                  <span>🏛 {job.courtName || 'TBD'}</span>
-                  {job.estimatedDuration && (
-                    <span>⏱ {Math.round(job.estimatedDuration / 60)} min</span>
-                  )}
+                  <span>🏛 {job.location || 'TBD'}</span>
                 </div>
               </div>
-              <div className="text-sm text-gray-500 text-right">
+              <div className="text-sm text-muted-foreground text-right">
                 <p>Created {formatDate(job.createdAt)}</p>
               </div>
             </div>

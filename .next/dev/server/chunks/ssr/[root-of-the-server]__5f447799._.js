@@ -35,8 +35,6 @@ module.exports = mod;
     ()=>FILE_TYPE_ICONS,
     "FileType",
     ()=>FileType,
-    "FirmType",
-    ()=>FirmType,
     "JOB_STATUS_COLORS",
     ()=>JOB_STATUS_COLORS,
     "JOB_STATUS_LABELS",
@@ -60,20 +58,22 @@ module.exports = mod;
 ]);
 const Role = {
     ADMIN: 'ADMIN',
-    COURT_REPORTER: 'COURT_REPORTER',
+    REPORTER: 'REPORTER',
     SCOPIST: 'SCOPIST'
 };
-const FirmType = {
-    AGENCY: 'AGENCY',
-    INDEPENDENT: 'INDEPENDENT'
-};
 const JobStatus = {
-    DRAFT: 'DRAFT',
+    CREATED: 'CREATED',
+    FILES_UPLOADED: 'FILES_UPLOADED',
+    ENHANCING_AUDIO: 'ENHANCING_AUDIO',
+    TRANSCRIBING: 'TRANSCRIBING',
+    AI_REVIEWING: 'AI_REVIEWING',
+    READY_FOR_EDIT: 'READY_FOR_EDIT',
     ASSIGNED: 'ASSIGNED',
-    IN_PROGRESS: 'IN_PROGRESS',
+    IN_EDIT: 'IN_EDIT',
+    SUBMITTED_FOR_REVIEW: 'SUBMITTED_FOR_REVIEW',
+    IN_REVIEW: 'IN_REVIEW',
     COMPLETED: 'COMPLETED',
-    BILLED: 'BILLED',
-    PAID: 'PAID'
+    CANCELLED: 'CANCELLED'
 };
 const AssignmentStatus = {
     PENDING: 'PENDING',
@@ -109,12 +109,18 @@ const TermCategory = {
     OTHER: 'OTHER'
 };
 const JOB_STATUS_COLORS = {
-    DRAFT: 'bg-gray-100 text-gray-800 border-gray-300',
-    ASSIGNED: 'bg-blue-100 text-blue-800 border-blue-300',
-    IN_PROGRESS: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    COMPLETED: 'bg-green-100 text-green-800 border-green-300',
-    BILLED: 'bg-purple-100 text-purple-800 border-purple-300',
-    PAID: 'bg-emerald-100 text-emerald-800 border-emerald-300'
+    CREATED: 'bg-gray-100 text-gray-800 border-gray-300',
+    FILES_UPLOADED: 'bg-blue-100 text-blue-800 border-blue-300',
+    ENHANCING_AUDIO: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+    TRANSCRIBING: 'bg-purple-100 text-purple-800 border-purple-300',
+    AI_REVIEWING: 'bg-pink-100 text-pink-800 border-pink-300',
+    READY_FOR_EDIT: 'bg-green-100 text-green-800 border-green-300',
+    ASSIGNED: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    IN_EDIT: 'bg-orange-100 text-orange-800 border-orange-300',
+    SUBMITTED_FOR_REVIEW: 'bg-teal-100 text-teal-800 border-teal-300',
+    IN_REVIEW: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+    COMPLETED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    CANCELLED: 'bg-red-100 text-red-800 border-red-300'
 };
 const ASSIGNMENT_STATUS_COLORS = {
     PENDING: 'bg-gray-100 text-gray-800 border-gray-300',
@@ -125,12 +131,12 @@ const ASSIGNMENT_STATUS_COLORS = {
 };
 const ROLE_LABELS = {
     ADMIN: 'Admin',
-    COURT_REPORTER: 'Court Reporter',
+    REPORTER: 'Court Reporter',
     SCOPIST: 'Scopist'
 };
 const ROLE_COLORS = {
     ADMIN: 'bg-red-100 text-red-800 border-red-300',
-    COURT_REPORTER: 'bg-blue-100 text-blue-800 border-blue-300',
+    REPORTER: 'bg-blue-100 text-blue-800 border-blue-300',
     SCOPIST: 'bg-green-100 text-green-800 border-green-300'
 };
 const FILE_TYPE_ICONS = {
@@ -142,12 +148,18 @@ const FILE_TYPE_ICONS = {
     OTHER: '📁'
 };
 const JOB_STATUS_LABELS = {
-    DRAFT: 'Draft',
+    CREATED: 'Created',
+    FILES_UPLOADED: 'Files Uploaded',
+    ENHANCING_AUDIO: 'Enhancing Audio',
+    TRANSCRIBING: 'Transcribing',
+    AI_REVIEWING: 'AI Reviewing',
+    READY_FOR_EDIT: 'Ready for Edit',
     ASSIGNED: 'Assigned',
-    IN_PROGRESS: 'In Progress',
+    IN_EDIT: 'In Edit',
+    SUBMITTED_FOR_REVIEW: 'Submitted for Review',
+    IN_REVIEW: 'In Review',
     COMPLETED: 'Completed',
-    BILLED: 'Billed',
-    PAID: 'Paid'
+    CANCELLED: 'Cancelled'
 };
 const PAGINATION = {
     DEFAULT_PAGE_SIZE: 20,
@@ -182,19 +194,20 @@ const loginSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules
     password: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1, 'Password is required').min(8, 'Password must be at least 8 characters')
 });
 const registerSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].object({
-    name: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1, 'Name is required').min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters'),
+    firstName: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1, 'First name is required').min(2, 'First name must be at least 2 characters').max(50, 'First name must be less than 50 characters'),
+    lastName: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1, 'Last name is required').min(2, 'Last name must be at least 2 characters').max(50, 'Last name must be less than 50 characters'),
     email: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1, 'Email is required').email('Please enter a valid email address').toLowerCase(),
     password: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(8, 'Password must be at least 8 characters').max(100, 'Password must be less than 100 characters').regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number'),
     confirmPassword: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(1, 'Please confirm your password'),
     role: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].enum([
         __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Role"].ADMIN,
-        __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Role"].COURT_REPORTER,
+        __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Role"].REPORTER,
         __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Role"].SCOPIST
     ], {
         message: 'Please select a role'
     }),
-    // Optional: Firm name for new independent reporters/scopists
-    firmName: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional()
+    // Optional: Agency name for reporters
+    agencyName: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().optional()
 }).refine((data)=>data.password === data.confirmPassword, {
     message: 'Passwords do not match',
     path: [
@@ -224,7 +237,7 @@ const inviteUserSchema = __TURBOPACK__imported__module__$5b$project$5d2f$node_mo
     email: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().email('Please enter a valid email address').toLowerCase(),
     name: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].string().min(2, 'Name must be at least 2 characters').max(100, 'Name must be less than 100 characters'),
     role: __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$zod$2f$v4$2f$classic$2f$external$2e$js__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__$3c$export__$2a$__as__z$3e$__["z"].enum([
-        __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Role"].COURT_REPORTER,
+        __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Role"].REPORTER,
         __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$constants$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["Role"].SCOPIST
     ], {
         message: 'Please select a role'

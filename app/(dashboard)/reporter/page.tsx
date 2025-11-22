@@ -14,17 +14,11 @@ import { logger } from '@/lib/logger';
 import { Job } from '@prisma/client';
 
 export default async function ReporterDashboard() {
-  const session = await requireRole([Role.COURT_REPORTER]);
+  const session = await requireRole([Role.REPORTER]);
 
-  // 🔒 Security: Support both firm-associated and independent reporters
-  const firmId = session.user.firmId;
-  const isIndependent = !firmId;
-  
-  if (isIndependent) {
-    logger.info('Independent court reporter accessing dashboard', 'ReporterDashboard', {
-      userId: session.user.id,
-    });
-  }
+  logger.info('Reporter accessing dashboard', 'ReporterDashboard', {
+    userId: session.user.id,
+  });
 
   // Get current month date range
   const now = new Date();
@@ -38,16 +32,8 @@ export default async function ReporterDashboard() {
 
   try {
     // Build where clauses for reporter
-    const baseWhere = {
-      reporterId: session.user.id,
-    };
-
-    // For firm filtering, only add if firmId exists
-    const firmFilter = firmId ? { firmId: { equals: firmId } } : {};
-    
     const jobWhere = {
-      ...baseWhere,
-      ...firmFilter,
+      createdById: session.user.id,
     };
 
     [activeJobs, pendingAssignments, completedThisMonth, recentJobs] = await Promise.all([
@@ -64,7 +50,7 @@ export default async function ReporterDashboard() {
       db.jobAssignment.count({
         where: {
           job: jobWhere,
-          status: 'PENDING',
+          status: 'INVITED',
         },
       }),
       // Jobs completed this month
@@ -87,7 +73,6 @@ export default async function ReporterDashboard() {
   } catch (error) {
     logger.dbError('Fetching reporter dashboard data', error as Error, {
       userId: session.user.id,
-      firmId,
     });
     // Data will remain at default empty values
   }

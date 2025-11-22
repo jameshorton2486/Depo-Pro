@@ -29,11 +29,10 @@ export async function DELETE(
         job: {
           select: {
             id: true,
-            firmId: true,
             createdById: true,
             assignments: {
               select: {
-                userId: true,
+                scopistId: true,
               },
             },
           },
@@ -48,7 +47,6 @@ export async function DELETE(
     // 🔒 Security: Only uploader, reporter, or admin can delete
     const canDelete =
       session.user.role === 'ADMIN' ||
-      file.createdById === session.user.id ||
       file.job.createdById === session.user.id;
 
     if (!canDelete) {
@@ -57,7 +55,7 @@ export async function DELETE(
 
     // 🗑️ Delete file from filesystem
     try {
-      const filePath = join(UPLOAD_DIR, file.originalFileName);
+      const filePath = join(UPLOAD_DIR, file.fileName);
       await unlink(filePath);
     } catch (error) {
       console.error('Failed to delete file from filesystem:', error);
@@ -98,20 +96,12 @@ export async function GET(
         job: {
           select: {
             id: true,
-            firmId: true,
-            reporterId: true,
+            createdById: true,
             assignments: {
               select: {
                 scopistId: true,
               },
             },
-          },
-        },
-        uploadedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
           },
         },
       },
@@ -124,8 +114,7 @@ export async function GET(
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      file.job.reporterId === session.user.id ||
-      (session.user.firmId && file.job.firmId === session.user.firmId) ||
+      file.job.createdById === session.user.id ||
       file.job.assignments.some((a) => a.scopistId === session.user.id);
 
     if (!hasAccess) {

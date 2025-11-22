@@ -26,11 +26,10 @@ export async function GET(
         job: {
           select: {
             id: true,
-            firmId: true,
             createdById: true,
             assignments: {
               select: {
-                userId: true,
+                scopistId: true,
               },
             },
           },
@@ -46,22 +45,21 @@ export async function GET(
     const hasAccess =
       session.user.role === 'ADMIN' ||
       file.job.createdById === session.user.id ||
-      (session.user.firmId && file.job.firmId === session.user.firmId) ||
-      file.job.assignments.some((a) => a.userId === session.user.id);
+      file.job.assignments.some((a) => a.scopistId === session.user.id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // 📥 Download file from storage
-    const { buffer, contentType } = await downloadFile(file.originalFileName);
+    const { buffer, contentType } = await downloadFile(file.fileName);
 
     // 📤 Return file with proper headers
     return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${file.originalFileName}"`,
+        'Content-Disposition': `attachment; filename="${file.fileName}"`,
         'Content-Length': buffer.length.toString(),
         'Cache-Control': 'private, max-age=3600',
       },

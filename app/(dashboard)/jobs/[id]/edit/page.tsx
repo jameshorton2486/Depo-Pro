@@ -26,19 +26,16 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
     where: { id },
     select: {
       id: true,
+      title: true,
       caseName: true,
       caseNumber: true,
-      courtName: true,
       depositionDate: true,
+      location: true,
+      zoomLink: true,
       status: true,
-      totalPages: true,
-      rushOrder: true,
-      difficulty: true,
-      clientName: true,
-      clientContact: true,
       notes: true,
-      reporterId: true,
-      firmId: true,
+      internalNotes: true,
+      createdById: true,
     },
   });
 
@@ -49,8 +46,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
   // 🔒 Security: Only reporter or admin can edit
   const canEdit =
     session.user.role === 'ADMIN' ||
-    job.createdById === session.user.id ||
-    (session.user.firmId && job.firmId === session.user.firmId);
+    job.createdById === session.user.id;
 
   if (!canEdit) {
     redirect('/dashboard');
@@ -62,7 +58,10 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
     depositionDate: job.depositionDate ? new Date(job.depositionDate).toISOString().slice(0, 16) : '',
     caseName: job.caseName || '',
     caseNumber: job.caseNumber || '',
-    courtName: job.courtName || '',
+    location: job.location || '',
+    zoomLink: job.zoomLink || '',
+    notes: job.notes || '',
+    internalNotes: job.internalNotes || '',
   };
 
   return (

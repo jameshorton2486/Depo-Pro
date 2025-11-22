@@ -21,20 +21,18 @@ export async function GET(
     const { id: transcriptId } = await params;
 
     // Verify transcript exists and user has access
-    const transcript = await db.transcription.findFirst({
+    const transcript = await db.transcript.findFirst({
       where: {
         id: transcriptId,
         job: {
-          reporterId: session.user.id, // Multi-tenant security
+          createdById: session.user.id, // Multi-tenant security
         },
       },
       select: {
         id: true,
         version: true,
         createdAt: true,
-        updatedAt: true,
-        rawText: true,
-        status: true,
+        content: true,
         job: {
           select: {
             id: true,
@@ -54,7 +52,7 @@ export async function GET(
     const status = await getTranscriptionStatus(transcriptId);
 
     // Calculate word count
-    const wordCount = transcript.rawText?.split(/\s+/).length || 0;
+    const wordCount = transcript.content?.split(/\s+/).length || 0;
 
     // Return transcript metadata
     return NextResponse.json({
@@ -65,10 +63,8 @@ export async function GET(
       wordCount,
       status: status.status,
       progress: status.progress,
-      transcriptStatus: transcript.status,
       createdAt: transcript.createdAt,
-      updatedAt: transcript.updatedAt,
-      hasContent: !!transcript.rawText,
+      hasContent: !!transcript.content,
     },
       { status: 200 }
     );

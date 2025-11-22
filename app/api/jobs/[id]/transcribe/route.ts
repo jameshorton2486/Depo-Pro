@@ -29,7 +29,7 @@ export async function POST(
         id: fileId,
         jobId,
         job: {
-          reporterId: session.user.id, // Multi-tenant security
+          createdById: session.user.id, // Multi-tenant security
         },
       },
       include: {
@@ -37,7 +37,7 @@ export async function POST(
           select: {
             id: true,
             caseNumber: true,
-            depoDate: true,
+            depositionDate: true,
           },
         },
       },
@@ -56,68 +56,86 @@ export async function POST(
       );
     }
 
-    logger.info(`Starting transcription - fileId: ${fileId}, jobId: ${jobId}, fileName: ${file.filename}`);
+    logger.info(`Starting transcription - fileId: ${fileId}, jobId: ${jobId}, fileName: ${file.fileName}`);
 
     // Download file from storage
-    const downloadResult = await downloadFile(file.storageKey);
+    const downloadResult = await downloadFile(file.storagePath);
 
     // Transcribe audio (async process)
     const result = await transcribeAudio(downloadResult.buffer, options);
 
     // Create or update transcript record
-    let transcript = await db.transcription.findFirst({
+    let transcript = await db.transcript.findFirst({
       where: { 
         jobId,
-        isCurrent: true,
+      },
+      orderBy: {
+        versionNumber: 'desc',
       },
     });
 
     if (transcript) {
-      // Mark old version as not current
-      await db.transcription.update({
-        where: { id: transcript.id },
-        data: { isCurrent: false },
-      });
-      
       // Create new version
-      transcript = await db.transcription.create({
+      transcript = await db.transcript.create({
         data: {
           jobId,
-          rawText: result.text,
-          formattedText: result.text,
-          version: transcript.version + 1,
-          isCurrent: true,
-          status: 'DRAFT',
-          source: 'DEEPGRAM',
-          createdById: session.user.id,
+          version: `${transcript.versionNumber + 1}.0-raw`,
+          versionNumber: transcript.versionNumber + 1,
+          content: result.text,
+          contentJson: {
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [
+                  {
+                    type: 'text',
+                    text: result.text,
+                  },
+                ],
+              },
+            ],
+          },
+          createdBy: session.user.id,
         },
       });
-      logger.info(`Transcript updated - transcriptId: ${transcript.id}, version: ${transcript.version}`);
+      logger.info(`Transcript updated - transcriptId: ${transcript.id}, version: ${transcript.versionNumber}`);
     } else {
       // Create new transcript
-      transcript = await db.transcription.create({
+      transcript = await db.transcript.create({
         data: {
           jobId,
-          rawText: result.text,
-          formattedText: result.text,
-          version: 1,
-          isCurrent: true,
-          status: 'DRAFT',
-          source: 'DEEPGRAM',
-          createdById: session.user.id,
+          version: '1.0-raw',
+          versionNumber: 1,
+          content: result.text,
+          contentJson: {
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [
+                  {
+                    type: 'text',
+                    text: result.text,
+                  },
+                ],
+              },
+            ],
+          },
+          createdBy: session.user.id,
         },
       });
       logger.info(`Transcript created - transcriptId: ${transcript.id}`);
     }
 
-    // Update job status to PROCESSING if it was PENDING
+    // Update job status to TRANSCRIBING if it was FILES_UPLOADED
     await db.job.updateMany({
       where: {
         id: jobId,
-        status: 'PENDING',
+        status: 'FILES_UPLOADED',
       },
       data: {
-        status: 'PROCESSING',
+        status: 'TRANSCRIBING',
       },
     });
 

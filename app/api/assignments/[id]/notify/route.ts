@@ -25,23 +25,25 @@ export async function POST(
       where: {
         id: assignmentId,
         job: {
-          reporterId: session.user.id, // Only reporter can send notifications
+          createdById: session.user.id, // Only reporter can send notifications
         },
       },
       include: {
         scopist: {
           select: {
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
         job: {
           select: {
             caseNumber: true,
-            depoDate: true,
-            reporter: {
+            depositionDate: true,
+            createdBy: {
               select: {
-                name: true,
+                firstName: true,
+                lastName: true,
               },
             },
           },
@@ -55,12 +57,12 @@ export async function POST(
 
     // Send email notification
     const emailOptions = jobAssignedEmail({
-      scopistName: assignment.scopist.name,
+      scopistName: `${assignment.scopist.firstName} ${assignment.scopist.lastName}`,
       scopistEmail: assignment.scopist.email,
-      reporterName: assignment.job.reporter.name,
+      reporterName: `${assignment.job.createdBy.firstName} ${assignment.job.createdBy.lastName}`,
       caseNumber: assignment.job.caseNumber || 'N/A',
-      depoDate: assignment.job.depoDate || undefined,
-      notes: assignment.notes || undefined,
+      depoDate: assignment.job.depositionDate || undefined,
+      notes: assignment.scopistNotes || undefined,
     });
 
     const result = await sendEmail(emailOptions);

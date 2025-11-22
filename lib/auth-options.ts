@@ -61,11 +61,10 @@ export const authConfig: NextAuthConfig = {
             select: {
               id: true,
               email: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               passwordHash: true,
               role: true,
-              firmId: true,
-              isActive: true,
             },
           });
 
@@ -75,13 +74,7 @@ export const authConfig: NextAuthConfig = {
             return null;
           }
 
-          console.log(`[Auth] Found user: ${user.email}, Active: ${user.isActive}, Has password: ${!!user.passwordHash}`);
-
-          // Check if user is active
-          if (!user.isActive) {
-            console.warn(`[Auth] Login attempt for deactivated account: ${email}`);
-            throw new Error('Account is deactivated. Please contact support.');
-          }
+          console.log(`[Auth] Found user: ${user.email}, Has password: ${!!user.passwordHash}`);
 
           // Verify password
           let isPasswordValid = false;
@@ -104,10 +97,8 @@ export const authConfig: NextAuthConfig = {
           return {
             id: user.id,
             email: user.email,
-            name: user.name || user.email, // Ensure name is always a string
+            name: `${user.firstName} ${user.lastName}`,
             role: user.role,
-            firmId: user.firmId,
-            isActive: user.isActive,
           };
         } catch (error) {
           console.error('[Auth] Authorization failed:', error);
@@ -139,7 +130,6 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        token.firmId = user.firmId;
         token.email = user.email;
         token.name = user.name;
       }
@@ -155,7 +145,6 @@ export const authConfig: NextAuthConfig = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
-        session.user.firmId = token.firmId as string | null;
         session.user.email = token.email as string;
         session.user.name = token.name as string;
       }

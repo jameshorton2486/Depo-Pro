@@ -6,9 +6,15 @@
 // Rich text editor for legal transcripts with version control
 
 import { useState, useEffect } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Highlight from '@tiptap/extension-highlight';
+import Typography from '@tiptap/extension-typography';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { EditorToolbar } from './editor-toolbar';
+import { AudioPlayer } from './audio-player';
 
 interface TranscriptEditorProps {
   transcriptId: string;
@@ -23,12 +29,28 @@ export function TranscriptEditor({
   initialContent = '',
   onSave,
 }: TranscriptEditorProps) {
-  const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [version, setVersion] = useState(1);
-  const [wordCount, setWordCount] = useState(0);
+  const [version, setVersion] = useState<string>('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Highlight.configure({ multicolor: true }),
+      Typography,
+    ],
+    content: initialContent,
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[500px] p-6',
+      },
+    },
+    onUpdate: () => {
+      setHasUnsavedChanges(true);
+    },
+  });
 
   // Load transcript content
   useEffect(() => {
@@ -37,8 +59,20 @@ export function TranscriptEditor({
         const res = await fetch(`/api/transcripts/${transcriptId}`);
         if (res.ok) {
           const data = await res.json();
-          setContent(data.formattedText || data.rawText || '');
+          
+          // Prefer contentJson if available, otherwise fallback to content (HTML/Text)
+          const contentToLoad = data.contentJson || data.content || '';
+          
+          if (editor) {
+            editor.commands.setContent(contentToLoad);
+            // Reset history after loading
+            (editor.commands as any).clearHistory(); 
+          }
+          
           setVersion(data.version);
+          if (data.audioUrl) {
+            setAudioUrl(data.audioUrl);
+          }
         } else {
           toast.error('Failed to load transcript');
         }
@@ -50,41 +84,38 @@ export function TranscriptEditor({
       }
     }
 
-    if (transcriptId) {
+    if (transcriptId && editor) {
       loadTranscript();
-    } else {
+    } else if (!transcriptId) {
       setIsLoading(false);
     }
-  }, [transcriptId]);
-
-  // Update word count when content changes
-  useEffect(() => {
-    const words = content.trim().split(/\s+/).filter(Boolean);
-    setWordCount(words.length);
-  }, [content]);
-
-  // Handle content changes
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    setHasUnsavedChanges(true);
-  };
+  }, [transcriptId, editor]);
 
   // Save transcript
   const handleSave = async () => {
+    if (!editor) return;
+
     setIsSaving(true);
     try {
+      const contentJson = editor.getJSON();
+      const contentText = editor.getText();
+
       const res = await fetch(`/api/transcripts/${transcriptId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ 
+          content: contentText, // Store plain text for search/indexing
+          contentJson: contentJson, // Store rich text structure
+          // We could also store HTML if needed: contentHtml
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setVersion(data.version);
+        setVersion(data.transcript?.version || version);
         setHasUnsavedChanges(false);
         toast.success('Transcript saved successfully');
-        onSave?.(content);
+        onSave?.(contentText);
       } else {
         toast.error('Failed to save transcript');
       }
@@ -109,62 +140,6 @@ export function TranscriptEditor({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Formatting functions
-  const insertFormatting = (prefix: string, suffix: string = prefix) => {
-    const textarea = document.getElementById('transcript-textarea') as HTMLTextAreaElement;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end);
-    const before = content.substring(0, start);
-    const after = content.substring(end);
-
-    const newContent = before + prefix + selectedText + suffix + after;
-    setContent(newContent);
-    setHasUnsavedChanges(true);
-
-    // Restore cursor position
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
-  const insertLineNumbers = () => {
-    const lines = content.split('\n');
-    const numbered = lines.map((line, i) => {
-      const num = (i + 1).toString().padStart(3, ' ');
-      return `${num}  ${line.replace(/^\d+\s+/, '')}`;
-    });
-    setContent(numbered.join('\n'));
-    setHasUnsavedChanges(true);
-    toast.success('Line numbers added');
-  };
-
-  const removeLineNumbers = () => {
-    const lines = content.split('\n');
-    const unnumbered = lines.map(line => line.replace(/^\d+\s+/, ''));
-    setContent(unnumbered.join('\n'));
-    setHasUnsavedChanges(true);
-    toast.success('Line numbers removed');
-  };
-
-  const findAndReplace = () => {
-    const find = prompt('Find text:');
-    if (!find) return;
-    
-    const replace = prompt('Replace with:');
-    if (replace === null) return;
-
-    const newContent = content.split(find).join(replace);
-    const count = (content.match(new RegExp(find, 'g')) || []).length;
-    
-    setContent(newContent);
-    setHasUnsavedChanges(true);
-    toast.success(`Replaced ${count} occurrence(s)`);
-  };
-
   if (isLoading) {
     return (
       <Card>
@@ -177,105 +152,43 @@ export function TranscriptEditor({
 
   return (
     <div className="space-y-4">
+      {/* Audio Player */}
+      {audioUrl && (
+        <AudioPlayer url={audioUrl} />
+      )}
+
       {/* Toolbar */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
             <span>Transcript Editor</span>
             <div className="flex items-center gap-4 text-sm font-normal text-muted-foreground">
               <span>Version: {version}</span>
-              <span>Words: {wordCount.toLocaleString()}</span>
+              <span>Words: {editor?.storage.characterCount?.words() || 0}</span>
               {hasUnsavedChanges && (
                 <span className="text-amber-600 dark:text-amber-400">• Unsaved changes</span>
               )}
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {/* Formatting buttons */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => insertFormatting('**')}
-              title="Bold"
-            >
-              <strong>B</strong>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => insertFormatting('_')}
-              title="Italic"
-            >
-              <em>I</em>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => insertFormatting('~~')}
-              title="Strikethrough"
-            >
-              <s>S</s>
-            </Button>
-            
-            <div className="border-l mx-2" />
-            
-            {/* Line number controls */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={insertLineNumbers}
-              title="Add line numbers"
-            >
-              📝 Add Lines
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={removeLineNumbers}
-              title="Remove line numbers"
-            >
-              🗑️ Remove Lines
-            </Button>
-            
-            <div className="border-l mx-2" />
-            
-            {/* Utility functions */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={findAndReplace}
-              title="Find and replace"
-            >
-              🔍 Find & Replace
-            </Button>
-            
-            <div className="border-l mx-2" />
-            
-            {/* Save button */}
+        
+        <div className="px-6 pb-2">
+           <EditorToolbar editor={editor} />
+        </div>
+
+        <CardContent className="pt-2">
+          <div className="flex justify-end mb-2">
             <Button
               onClick={handleSave}
               disabled={isSaving || !hasUnsavedChanges}
-              className="ml-auto"
             >
               {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Editor */}
-      <Card>
-        <CardContent className="p-0">
-          <textarea
-            id="transcript-textarea"
-            value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            className="w-full min-h-[600px] p-6 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-lg"
-            placeholder="Transcript content will appear here..."
-            spellCheck
-          />
+          
+          <div className="border rounded-md min-h-[600px] bg-background">
+            <EditorContent editor={editor} />
+          </div>
         </CardContent>
       </Card>
 

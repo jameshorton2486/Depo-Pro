@@ -1,44 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { _authConfig } from '@/lib/auth-options';
-import { _db } from '@/lib/db';
+import { db } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
     const session = await auth();
-    if (!session) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // TODO: Query transcription status from database
-    // const transcription = await db.transcription.findUnique({
-    //   where: { jobId: params.jobId },
-    //   select: {
-    //     id: true,
-    //     jobId: true,
-    //     status: true,
-    //     progress: true,
-    //     error: true,
-    //     createdAt: true,
-    //     completedAt: true,
-    //   },
-    // });
+    const { jobId } = await params;
 
-    // if (!transcription) {
-    //   return NextResponse.json(
-    //     { error: 'Transcription not found' },
-    //     { status: 404 }
-    //   );
-    // }
+    // Check access to job
+    const job = await db.job.findUnique({
+      where: { id: jobId },
+      select: {
+        createdById: true,
+        assignments: {
+          where: { scopist: { id: session.user.id } },
+          select: { id: true },
+        },
+      },
+    });
 
-    return NextResponse.json({
-      jobId: params.jobId,
-      status: 'PENDING',
-      progress: 0
-    }, { status: 200 });
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    const hasAccess = 
+      session.user.role === 'ADMIN' ||
+      job.createdById === session.user.id ||
+      job.assignments.length > 0;
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Query transcription status
+    const transcription = await db.transcriptionJob.findFirst({
+      where: { jobId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        errorMessage: true,
+        createdAt: true,
+        completedAt: true,
+      },
+    });
+
+    if (!transcription) {
+      return NextResponse.json(
+        { error: 'Transcription not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(transcription);
   } catch (error) {
     console.error('Status check error:', error);
     return NextResponse.json(
