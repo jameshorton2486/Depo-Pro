@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Job, User } from '@prisma/client';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { JobStatusBadge } from './job-status-badge';
-import { Calendar, MapPin, User as UserIcon, FileText, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, User as UserIcon, FileText } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
 type JobWithRelations = Job & {

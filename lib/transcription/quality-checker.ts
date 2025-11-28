@@ -3,9 +3,6 @@
  * Analyzes confidence scores and flags segments for review
  */
 
-import { config } from '@/lib/deepgram/env';
-import type { QualityReport, TranscriptWord } from '@/types/deepgram';
-
 /**
  * Analyze transcript quality and flag low-confidence segments
  * TODO: Implement quality analysis logic

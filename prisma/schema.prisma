@@ -78,6 +78,10 @@ model Job {
   // Status
   status          JobStatus   @default(CREATED)
   
+  // Firm association (optional for now)
+  firmId          String?
+  firm            Firm?       @relation(fields: [firmId], references: [id])
+
   // Assignment
   createdById     String
   createdBy       User        @relation("CreatedBy", fields: [createdById], references: [id])
@@ -107,6 +111,7 @@ model Job {
   completedAt     DateTime?
   
   @@index([createdById])
+  @@index([firmId])
   @@index([status])
   @@index([depositionDate])
 }
@@ -502,4 +507,16 @@ model SystemConfig {
   description String?
   
   updatedAt   DateTime    @updatedAt
+}
+
+model Firm {
+  id        String   @id
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs      Job[]
 }

@@ -10,7 +10,7 @@ import { AudioMetadata, PreprocessingResult } from '@/types/deepgram';
  * Analyze audio file quality
  * TODO: Implement using ffprobe to get audio metadata
  */
-export async function analyzeAudioQuality(filePath: string): Promise<AudioMetadata> {
+export async function analyzeAudioQuality(_filePath: string): Promise<AudioMetadata> {
   // TODO: Use ffprobe to extract:
   // - duration
   // - sample rate
@@ -28,8 +28,8 @@ export async function analyzeAudioQuality(filePath: string): Promise<AudioMetada
  * TODO: Implement using fluent-ffmpeg
  */
 export async function enhanceAudioForLegal(
-  inputPath: string,
-  outputPath: string
+  _inputPath: string,
+  _outputPath: string
 ): Promise<PreprocessingResult> {
   // TODO: Implement FFmpeg enhancement pipeline:
   // 1. Noise reduction (highpass filter at 80Hz, lowpass at 8000Hz)
@@ -48,8 +48,8 @@ export async function enhanceAudioForLegal(
  * TODO: Implement using fluent-ffmpeg
  */
 export async function concatenateAudioFiles(
-  inputFiles: string[],
-  outputPath: string
+  _inputFiles: string[],
+  _outputPath: string
 ): Promise<void> {
   // TODO: Use FFmpeg concat filter to merge files
   // Ensure consistent audio format before concatenation

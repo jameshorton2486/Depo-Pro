@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, JobStatus, FileType } from '@prisma/client';
 import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -52,6 +52,88 @@ async function main() {
   });
 
   console.log('✅ Created scopist:', scopist.email);
+
+  // Create demo firm (optional association)
+  const firm = await prisma.firm.upsert({
+    where: { id: 'demo-firm-001' },
+    update: {},
+    create: {
+      id: 'demo-firm-001',
+      name: 'Demo Legal Services',
+      address: '123 Main Street, Austin, TX 78701',
+      phone: '512-555-0100',
+      email: 'contact@demolegal.com',
+    },
+  });
+  console.log('✅ Created firm:', firm.name);
+
+  // Sample jobs for reporter (different lifecycle stages)
+  const jobs = [
+    {
+      id: 'job-001',
+      title: 'Smith vs. Johnson Deposition',
+      caseName: 'Smith vs. Johnson Deposition',
+      caseNumber: 'CV-2024-001234',
+      depositionDate: new Date('2024-12-15T15:00:00Z'),
+      status: JobStatus.CREATED,
+      createdById: reporter.id,
+      location: 'Austin, TX',
+      notes: 'Awaiting witness confirmation.',
+    },
+    {
+      id: 'job-002',
+      title: 'Williams Estate Hearing',
+      caseName: 'Williams Estate Hearing',
+      caseNumber: 'PR-2024-005678',
+      depositionDate: new Date('2024-12-10T18:00:00Z'),
+      status: JobStatus.TRANSCRIBING,
+      createdById: reporter.id,
+      location: 'Virtual / Zoom',
+      zoomLink: 'https://zoom.us/j/8675309',
+      notes: 'Audio uploaded, transcription in progress.',
+    },
+    {
+      id: 'job-003',
+      title: 'Tech Corp Patent Dispute',
+      caseName: 'Tech Corp Patent Dispute',
+      caseNumber: 'IP-2024-009012',
+      depositionDate: new Date('2024-11-20T20:00:00Z'),
+      status: JobStatus.COMPLETED,
+      createdById: reporter.id,
+      location: 'San Francisco, CA',
+      notes: 'Transcript delivered to client.',
+      completedAt: new Date('2024-11-22T17:30:00Z'),
+    },
+  ];
+
+  for (const jobData of jobs) {
+    const job = await prisma.job.upsert({
+      where: { id: jobData.id },
+      update: {},
+      create: {
+        ...jobData,
+        firmId: firm.id,
+        files: {
+          create: [
+            {
+              id: `${jobData.id}-audio`,
+              type: FileType.AUDIO,
+              fileName: `${jobData.id}.wav`,
+              fileSize: 4_200_000,
+              mimeType: 'audio/wav',
+              storageUrl: `https://storage.depo-pro.com/${jobData.id}/audio.wav`,
+              storagePath: `${jobData.id}/audio.wav`,
+            },
+          ],
+        },
+      },
+      include: {
+        files: true,
+      },
+    });
+
+    console.log(`✅ Created job: ${job.caseName} (${job.status})`);
+  }
 
   console.log('\n🎉 Seeding complete!\n');
   console.log('Demo credentials (password: password123):');
