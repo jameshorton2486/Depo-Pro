@@ -180,3 +180,5 @@ export const authConfig: NextAuthConfig = {
   // Enable debug logging in development
   debug: process.env.NODE_ENV === 'development',
 };
+
+export const authOptions = authConfig;

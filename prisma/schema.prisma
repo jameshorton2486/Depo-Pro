@@ -91,8 +91,12 @@ model Job {
   files           JobFile[]
   
   // Transcription
-  transcriptionJobs TranscriptionJob[]
-  transcripts       Transcript[]
+  transcriptionJobs         TranscriptionJob[]
+  transcription             Transcription?
+  transcripts               Transcript[]
+  transcriptionModelType    String?  @default("MEDICAL")  // STANDARD, MEDICAL, BILINGUAL
+  transcriptionCompletedAt  DateTime?
+  errorMessage              String?
   
   // Communication
   messages        Message[]
@@ -331,6 +335,75 @@ model TranscriptToken {
   
   @@index([transcriptId, index])
   @@index([transcriptId, isFlagged])
+}
+
+model Transcription {
+  id                  String      @id @default(cuid())
+  jobId               String      @unique
+  job                 Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Core transcript data
+  fullTranscript      String      @db.Text
+  deepgramRawJson     String?     @db.Text  // Full Deepgram response
+  
+  // Structured data (JSON strings)
+  words               Json                  // Word-level data with timestamps
+  utterances          Json?                 // Speaker turns
+  flaggedSegments     Json?                 // Low-confidence words
+  speakerAnalysis     Json?                 // AI speaker identification
+  speakerAssignments  Json?                 // User-defined speaker mapping
+  
+  // Metadata
+  duration            Float?                // Audio duration in seconds
+  wordCount           Int?
+  flaggedWordCount    Int?
+  averageConfidence   Float?
+  speakerCount        Int         @default(0)
+  modelUsed           String?               // STANDARD, MEDICAL, BILINGUAL
+  
+  // Status
+  status              TranscriptionStatus @default(PENDING)
+  
+  // Versioning
+  version             Int         @default(1)
+  
+  // Relations
+  edits               TranscriptionEdit[]
+
+  // Timestamps
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([jobId])
+}
+
+model TranscriptionEdit {
+  id                String      @id @default(cuid())
+  transcriptionId   String
+  transcription     Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+
+  editorId          String
+  editorEmail       String?
+  editorRole        UserRole?
+
+  editType          EditType     @default(WORD_CORRECTION)
+  originalText      String?
+  editedText        String?
+  position          Float?       // audio timestamp
+
+  metadata          Json?
+
+  createdAt         DateTime     @default(now())
+
+  @@index([transcriptionId])
+}
+
+enum EditType {
+  WORD_CORRECTION
+  SPEAKER_ASSIGNMENT
+  PUNCTUATION
+  INAUDIBLE_MARK
+  FORMATTING
 }
 
 // ============================================

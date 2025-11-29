@@ -1,223 +1,303 @@
-// ═══════════════════════════════════════════════════════════════
-// TRANSCRIPTION SERVICE (Mock Implementation - Ready for Deepgram)
-// ═══════════════════════════════════════════════════════════════
+// lib/transcription.ts
+// Main Deepgram transcription service
 
-const USE_DEEPGRAM = process.env.USE_DEEPGRAM === 'true';
-const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
+import { createClient, DeepgramClient } from '@deepgram/sdk';
+import { 
+  getDeepgramConfig, 
+  LOW_CONFIDENCE_THRESHOLD,
+  CONTEXT_WINDOW_SIZE,
+  DeepgramModelType 
+} from './transcription/config';
+import { 
+  TranscriptWord, 
+  TranscriptUtterance, 
+  FlaggedWord, 
+  DeepgramResponse,
+  ProcessedTranscript,
+  SpeakerAssignment
+} from '@/types/transcript';
+import { v4 as uuidv4 } from 'uuid';
 
-// ═══════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════
+// Singleton Deepgram client
+let deepgramClient: DeepgramClient | null = null;
 
-export interface TranscriptionResult {
-  text: string;
-  confidence: number;
-  words?: TranscriptionWord[];
-  duration?: number;
-}
-
-export interface TranscriptionWord {
-  word: string;
-  start: number;
-  end: number;
-  confidence: number;
-  speaker?: number;
-}
-
-export interface TranscriptionOptions {
-  language?: string;
-  punctuate?: boolean;
-  diarize?: boolean; // Speaker identification
-  model?: 'general' | 'meeting' | 'phonecall' | 'voicemail';
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MOCK TRANSCRIPTION (Local Implementation)
-// ═══════════════════════════════════════════════════════════════
-
-async function transcribeLocal(
-  audioBuffer: Buffer,
-  _options: TranscriptionOptions = {}
-): Promise<TranscriptionResult> {
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
-  // Generate mock transcription based on audio duration
-  const duration = estimateAudioDuration(audioBuffer);
-  const text = generateMockTranscript(duration);
-  
-  console.log('[LOCAL] Transcribed audio:', { 
-    size: audioBuffer.length, 
-    duration, 
-    options: _options 
-  });
-
-  return {
-    text,
-    confidence: 0.95,
-    duration,
-    words: generateMockWords(text, duration),
-  };
-}
-
-function estimateAudioDuration(buffer: Buffer): number {
-  // Mock estimation: assume 1 second per 16KB for simplicity
-  return Math.round(buffer.length / 16000);
-}
-
-function generateMockTranscript(duration: number): string {
-  const templates = [
-    "This is a mock transcription of the deposition audio. ",
-    "The witness stated their full name and occupation for the record. ",
-    "When asked about the events of that day, the witness provided detailed testimony. ",
-    "The attorney presented several exhibits which were marked and entered into evidence. ",
-    "The witness confirmed their understanding of the oath and proceeded to answer questions. ",
-    "Discussion regarding the timeline of events took place during this portion of the deposition. ",
-    "The witness was asked to clarify their previous statement regarding the matter. ",
-    "At this time, counsel requested a brief recess which was granted by the court reporter. ",
-  ];
-
-  let transcript = "";
-  const sentences = Math.floor(duration / 10); // ~1 sentence per 10 seconds
-
-  for (let i = 0; i < sentences; i++) {
-    transcript += templates[i % templates.length];
+function getDeepgramClient(): DeepgramClient {
+  if (!deepgramClient) {
+    const apiKey = process.env.DEEPGRAM_API_KEY;
+    if (!apiKey) {
+      throw new Error('DEEPGRAM_API_KEY environment variable is not set');
+    }
+    deepgramClient = createClient(apiKey);
   }
-
-  return transcript.trim();
+  return deepgramClient;
 }
 
-function generateMockWords(text: string, duration: number): TranscriptionWord[] {
-  const words = text.split(/\s+/);
-  const timePerWord = duration / words.length;
-
-  return words.map((word, index) => ({
-    word: word.replace(/[.,!?;:]/, ''),
-    start: index * timePerWord,
-    end: (index + 1) * timePerWord,
-    confidence: 0.9 + Math.random() * 0.1,
-    speaker: Math.random() > 0.7 ? 1 : 0, // Mock speaker diarization
-  }));
-}
-
-// ═══════════════════════════════════════════════════════════════
-// DEEPGRAM API (Mock - Ready for Integration)
-// ═══════════════════════════════════════════════════════════════
-
-async function transcribeWithDeepgram(
-  audioBuffer: Buffer,
-  options: TranscriptionOptions = {}
-): Promise<TranscriptionResult> {
-  // TODO: Implement Deepgram API integration
-  // const { createClient } = await import('@deepgram/sdk');
-  
-  // const deepgram = createClient(DEEPGRAM_API_KEY!);
-  
-  // const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
-  //   audioBuffer,
-  //   {
-  //     model: options.model || 'nova-2',
-  //     language: options.language || 'en-US',
-  //     punctuate: options.punctuate !== false,
-  //     diarize: options.diarize === true,
-  //     smart_format: true,
-  //     utterances: true,
-  //   }
-  // );
-
-  // if (error) {
-  //   throw new Error(`Deepgram API error: ${error.message}`);
-  // }
-
-  // const channel = result.results.channels[0];
-  // const alternative = channel.alternatives[0];
-
-  // return {
-  //   text: alternative.transcript,
-  //   confidence: alternative.confidence,
-  //   words: alternative.words?.map(w => ({
-  //     word: w.word,
-  //     start: w.start,
-  //     end: w.end,
-  //     confidence: w.confidence,
-  //     speaker: w.speaker,
-  //   })),
-  //   duration: result.metadata.duration,
-  // };
-
-  console.log('Deepgram requested but not configured - using mock transcription');
-  return transcribeLocal(audioBuffer, options);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// PUBLIC API (Auto-selects provider)
-// ═══════════════════════════════════════════════════════════════
-
+// Transcribe audio buffer
 export async function transcribeAudio(
   audioBuffer: Buffer,
-  options: TranscriptionOptions = {}
-): Promise<TranscriptionResult> {
-  if (USE_DEEPGRAM && DEEPGRAM_API_KEY) {
-    return transcribeWithDeepgram(audioBuffer, options);
-  }
+  modelType: DeepgramModelType = 'MEDICAL',
+  mimetype: string = 'audio/wav'
+): Promise<DeepgramResponse> {
+  const client = getDeepgramClient();
+  const config = getDeepgramConfig(modelType);
   
-  return transcribeLocal(audioBuffer, options);
+  try {
+    const { result, error } = await client.listen.prerecorded.transcribeFile(
+      audioBuffer,
+      {
+        ...config,
+        mimetype,
+      }
+    );
+
+    if (error) {
+      throw new Error(`Deepgram transcription failed: ${error.message}`);
+    }
+
+    return result as DeepgramResponse;
+  } catch (err) {
+    console.error('Deepgram API error:', err);
+    throw err;
+  }
 }
 
-export async function getTranscriptionStatus(_jobId: string): Promise<{
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
-  result?: TranscriptionResult;
-  error?: string;
-}> {
-  // TODO: Implement job status tracking (use Redis or database)
-  // For now, mock immediate completion
-  console.log('[MOCK] Checking transcription status for job:', _jobId);
+// Transcribe from URL
+export async function transcribeFromUrl(
+  audioUrl: string,
+  modelType: DeepgramModelType = 'MEDICAL'
+): Promise<DeepgramResponse> {
+  const client = getDeepgramClient();
+  const config = getDeepgramConfig(modelType);
   
+  try {
+    const { result, error } = await client.listen.prerecorded.transcribeUrl(
+      { url: audioUrl },
+      config
+    );
+
+    if (error) {
+      throw new Error(`Deepgram transcription failed: ${error.message}`);
+    }
+
+    return result as DeepgramResponse;
+  } catch (err) {
+    console.error('Deepgram API error:', err);
+    throw err;
+  }
+}
+
+// Extract flagged (low-confidence) words
+export function extractFlaggedWords(
+  words: TranscriptWord[],
+  threshold: number = LOW_CONFIDENCE_THRESHOLD
+): FlaggedWord[] {
+  const flaggedWords: FlaggedWord[] = [];
+
+  words.forEach((word, index) => {
+    if (word.confidence < threshold) {
+      // Get context words
+      const contextBefore: string[] = [];
+      const contextAfter: string[] = [];
+
+      // Words before
+      for (let i = Math.max(0, index - CONTEXT_WINDOW_SIZE); i < index; i++) {
+        contextBefore.push(words[i].punctuated_word || words[i].word);
+      }
+
+      // Words after
+      for (let i = index + 1; i < Math.min(words.length, index + 1 + CONTEXT_WINDOW_SIZE); i++) {
+        contextAfter.push(words[i].punctuated_word || words[i].word);
+      }
+
+      flaggedWords.push({
+        id: uuidv4(),
+        wordIndex: index,
+        word: word.punctuated_word || word.word,
+        confidence: word.confidence,
+        startTime: word.start,
+        endTime: word.end,
+        speaker: word.speaker,
+        contextBefore,
+        contextAfter,
+        alternatives: [],
+        correctedWord: undefined,
+        isReviewed: false,
+      });
+    }
+  });
+
+  return flaggedWords;
+}
+
+// Process Deepgram response into structured data
+export function processTranscriptResponse(
+  response: DeepgramResponse
+): ProcessedTranscript {
+  const channel = response.results.channels[0];
+  const alternative = channel.alternatives[0];
+  
+  const words = alternative.words || [];
+  const utterances = response.results.utterances || [];
+  const flaggedWords = extractFlaggedWords(words);
+  
+  // Calculate average confidence
+  const totalConfidence = words.reduce((sum, w) => sum + w.confidence, 0);
+  const averageConfidence = words.length > 0 ? totalConfidence / words.length : 0;
+
   return {
-    status: 'completed',
-    progress: 100,
+    fullText: alternative.transcript,
+    words,
+    utterances,
+    flaggedWords,
+    speakerAssignments: [],  // To be set by user
+    duration: response.metadata.duration,
+    wordCount: words.length,
+    flaggedWordCount: flaggedWords.length,
+    averageConfidence,
   };
 }
 
-// ═══════════════════════════════════════════════════════════════
-// UTILITY FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
-
-export function isAudioFile(mimeType: string): boolean {
-  return mimeType.startsWith('audio/') || mimeType.startsWith('video/');
-}
-
-export function formatTranscriptText(result: TranscriptionResult): string {
-  // Add proper formatting for legal transcripts
-  const lines = result.text.split(/\.\s+/);
-  let formatted = '';
-  let lineNumber = 1;
-
-  for (const line of lines) {
-    if (line.trim()) {
-      formatted += `${lineNumber.toString().padStart(3, ' ')}  ${line.trim()}.\n`;
-      lineNumber++;
+// Get unique speakers from transcript
+export function getUniqueSpeakers(words: TranscriptWord[]): number[] {
+  const speakers = new Set<number>();
+  words.forEach(word => {
+    if (word.speaker !== undefined) {
+      speakers.add(word.speaker);
     }
-  }
-
-  return formatted;
+  });
+  return Array.from(speakers).sort((a, b) => a - b);
 }
 
-export function exportToASCII(result: TranscriptionResult): string {
-  // ASCII format for legal transcripts (standard format)
-  let output = '';
+// Format transcript with speaker labels
+export function formatTranscriptWithSpeakers(
+  utterances: TranscriptUtterance[],
+  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>
+): string {
+  let formatted = '';
   
-  output += '═══════════════════════════════════════\n';
-  output += '  DEPOSITION TRANSCRIPT\n';
-  output += '═══════════════════════════════════════\n\n';
+  for (const utterance of utterances) {
+    const assignment = speakerAssignments.get(utterance.speaker);
+    
+    // Skip excluded speakers (e.g., witness speaking through interpreter)
+    if (assignment?.exclude) {
+      continue;
+    }
+    
+    const speakerLabel = assignment 
+      ? `${assignment.name} (${assignment.type})` 
+      : `Speaker ${utterance.speaker}`;
+    
+    formatted += `${speakerLabel}: ${utterance.transcript}\n\n`;
+  }
   
-  output += formatTranscriptText(result);
+  return formatted.trim();
+}
+
+// Format as Q&A (legal deposition format)
+export function formatAsQA(
+  utterances: TranscriptUtterance[],
+  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>
+): string {
+  let formatted = '';
   
-  output += '\n═══════════════════════════════════════\n';
-  output += `  Confidence: ${(result.confidence * 100).toFixed(1)}%\n`;
-  output += `  Duration: ${result.duration || 0}s\n`;
-  output += '═══════════════════════════════════════\n';
+  for (const utterance of utterances) {
+    const assignment = speakerAssignments.get(utterance.speaker);
+    
+    // Skip excluded speakers
+    if (assignment?.exclude) {
+      continue;
+    }
+    
+    let prefix = '';
+    if (assignment) {
+      if (assignment.type === 'Attorney' || assignment.type === 'Opposing Counsel') {
+        prefix = 'Q';
+      } else if (assignment.type === 'Witness' || assignment.type === 'Translator') {
+        prefix = 'A';
+      } else {
+        prefix = assignment.type.toUpperCase();
+      }
+    } else {
+      prefix = `SPEAKER ${utterance.speaker}`;
+    }
+    
+    formatted += `${prefix}: ${utterance.transcript}\n\n`;
+  }
   
-  return output;
+  return formatted.trim();
+}
+
+// Convert SpeakerAssignment array to Map for formatting functions
+export function createSpeakerAssignmentMap(
+  assignments: SpeakerAssignment[]
+): Map<number, { name: string; type: string; exclude: boolean }> {
+  const map = new Map<number, { name: string; type: string; exclude: boolean }>();
+  
+  assignments.forEach(assignment => {
+    if (assignment.speakerId >= 0) {
+      map.set(assignment.speakerId, {
+        name: assignment.speakerName,
+        type: assignment.speakerType,
+        exclude: assignment.excludeFromTranscript,
+      });
+    }
+  });
+  
+  return map;
+}
+
+// Get mimetype from file extension
+export function getMimetypeFromExtension(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop();
+  const mimetypes: Record<string, string> = {
+    'mp3': 'audio/mpeg',
+    'mp4': 'audio/mp4',
+    'm4a': 'audio/mp4',
+    'wav': 'audio/wav',
+    'webm': 'audio/webm',
+    'ogg': 'audio/ogg',
+    'flac': 'audio/flac',
+  };
+  return mimetypes[ext || ''] || 'audio/wav';
+}
+
+// Legacy compatibility function
+export interface TranscriptionResult {
+  success: boolean;
+  transcript: string;
+  words: TranscriptWord[];
+  flaggedSegments: FlaggedWord[];
+  rawResponse: DeepgramResponse;
+  duration: number;
+  error?: string;
+}
+
+export async function transcribeAudioLegacy(
+  audioBuffer: Buffer,
+  mimetype: string = 'audio/wav'
+): Promise<TranscriptionResult> {
+  try {
+    const response = await transcribeAudio(audioBuffer, 'STANDARD', mimetype);
+    const processed = processTranscriptResponse(response);
+
+    return {
+      success: true,
+      transcript: processed.fullText,
+      words: processed.words,
+      flaggedSegments: processed.flaggedWords,
+      rawResponse: response,
+      duration: processed.duration,
+    };
+  } catch (error) {
+    console.error('Legacy transcription error:', error);
+    return {
+      success: false,
+      transcript: '',
+      words: [],
+      flaggedSegments: [],
+      rawResponse: {} as DeepgramResponse,
+      duration: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }

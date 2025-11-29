@@ -1,65 +1,84 @@
-// ═══════════════════════════════════════════════════════════════
-// MIDDLEWARE - ROUTE PROTECTION
-// ═══════════════════════════════════════════════════════════════
-// Protects dashboard, jobs, and API routes from unauthorized access
+// middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-import { auth } from '@/lib/auth';
+// Paths that don't require authentication
+const publicPaths = [
+  '/',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/api/auth',
+  '/api/health',
+];
 
-export default auth((req) => {
-  const { nextUrl } = req;
-  const isLoggedIn = !!req.auth;
+// Paths that require specific roles
+const roleRestrictedPaths: Record<string, string[]> = {
+  '/admin': ['ADMIN'],
+  '/reporter': ['ADMIN', 'REPORTER'],
+  '/scopist': ['ADMIN', 'SCOPIST'],
+};
 
-  // Define protected routes
-  const isApiRoute = nextUrl.pathname.startsWith('/api');
-  const isAuthRoute = nextUrl.pathname.startsWith('/login') || nextUrl.pathname.startsWith('/register');
-  const isProtectedRoute = 
-    nextUrl.pathname.startsWith('/dashboard') ||
-    nextUrl.pathname.startsWith('/jobs') ||
-    nextUrl.pathname.startsWith('/admin') ||
-    nextUrl.pathname.startsWith('/reporter') ||
-    nextUrl.pathname.startsWith('/scopist');
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  // Allow public API routes (auth endpoints)
-  if (isApiRoute) {
-    if (nextUrl.pathname.startsWith('/api/auth')) {
-      return; // Allow NextAuth routes
+  // Allow public paths
+  if (publicPaths.some(path => pathname.startsWith(path))) {
+    return NextResponse.next();
+  }
+
+  // Allow static files and assets
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
+  // Check authentication
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
+  if (!token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Check role-based access
+  for (const [path, roles] of Object.entries(roleRestrictedPaths)) {
+    if (pathname.startsWith(path)) {
+      const userRole = token.role as string;
+      if (!roles.includes(userRole)) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
     }
-    // Protect other API routes
-    if (!isLoggedIn) {
-      return Response.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    return;
   }
 
-  // Redirect logged-in users away from auth pages
-  if (isAuthRoute && isLoggedIn) {
-    return Response.redirect(new URL('/dashboard', nextUrl));
-  }
+  // Add security headers
+  const response = NextResponse.next();
+  
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
-  // Redirect non-logged-in users to login
-  if (isProtectedRoute && !isLoggedIn) {
-    const callbackUrl = nextUrl.pathname + nextUrl.search;
-    const loginUrl = new URL('/login', nextUrl);
-    loginUrl.searchParams.set('callbackUrl', callbackUrl);
-    return Response.redirect(loginUrl);
-  }
+  return response;
+}
 
-  return;
-});
-
-// Configure which routes to run middleware on
 export const config = {
   matcher: [
     /*
      * Match all request paths except:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-     * - public files (images, etc.)
+     * - favicon.ico (favicon file)
+     * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
 };

@@ -1,46 +1,48 @@
-// ═══════════════════════════════════════════════════════════════
-// STAT CARD COMPONENT
-// ═══════════════════════════════════════════════════════════════
-// Reusable statistics display card
-
-import { Card } from '@/components/ui/card';
-import { ReactNode } from 'react';
+// components/dashboard/stat-card.tsx
+import { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
   value: string | number;
-  icon?: ReactNode;
-  description?: string;
-  trend?: {
-    value: string;
-    isPositive: boolean;
-  };
+  subtitle?: string;
+  icon: LucideIcon;
+  iconColor?: string;
+  iconBgColor?: string;
+  className?: string;
 }
 
-export function StatCard({ title, value, icon, description, trend }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconColor = 'text-blue-600',
+  iconBgColor = 'bg-blue-100 dark:bg-blue-900/30',
+  className = '',
+}: StatCardProps) {
   return (
-    <Card className="p-6">
+    <div
+      className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 
+        dark:border-slate-700 p-6 ${className}`}
+    >
       <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-          {description && (
-            <p className="text-xs text-gray-500">{description}</p>
-          )}
-          {trend && (
-            <p className={`text-sm font-medium ${
-              trend.isPositive ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {trend.isPositive ? '↑' : '↓'} {trend.value}
+        <div>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            {title}
+          </p>
+          <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">
+            {value}
+          </p>
+          {subtitle && (
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {subtitle}
             </p>
           )}
         </div>
-        {icon && (
-          <div className="text-3xl opacity-80">
-            {icon}
-          </div>
-        )}
+        <div className={`p-3 rounded-lg ${iconBgColor}`}>
+          <Icon className={`w-6 h-6 ${iconColor}`} />
+        </div>
       </div>
-    </Card>
+    </div>
   );
 }

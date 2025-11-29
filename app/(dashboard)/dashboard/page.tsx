@@ -1,28 +1,23 @@
-// ═══════════════════════════════════════════════════════════════
-// DASHBOARD ROUTER
-// ═══════════════════════════════════════════════════════════════
-// Redirects users to their role-specific dashboard
-
-import { getCurrentUser } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { Role } from '@/lib/constants';
+
+import { authOptions } from '@/lib/auth-options';
 
 export default async function DashboardPage() {
-  const session = await getCurrentUser();
+  const session = await getServerSession(authOptions);
 
-  if (!session) {
+  if (!session?.user) {
     redirect('/login');
   }
 
-  // Redirect to role-specific dashboard
   switch (session.user.role) {
-    case Role.ADMIN:
+    case 'ADMIN':
       redirect('/admin');
-    case Role.REPORTER:
+    case 'REPORTER':
       redirect('/reporter');
-    case Role.SCOPIST:
+    case 'SCOPIST':
       redirect('/scopist');
     default:
-      redirect('/login');
+      redirect('/jobs');
   }
 }

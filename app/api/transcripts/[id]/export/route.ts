@@ -1,82 +1,110 @@
+// app/api/transcripts/[id]/export/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { exportTranscript, type ExportOptions } from '@/lib/export';
-import { logger } from '@/lib/logger';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
+import { prisma } from '@/lib/db';
+import { exportTranscript } from '@/lib/export';
+import { ExportOptions, ExportMetadata } from '@/types/transcript';
 
-// ═══════════════════════════════════════════════════════════════
-// GET /api/transcripts/[id]/export - Export transcript
-// ═══════════════════════════════════════════════════════════════
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext
 ) {
   try {
-    const session = await getCurrentUser();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: transcriptId } = await params;
-    const searchParams = request.nextUrl.searchParams;
-    const format = (searchParams.get('format') || 'txt') as ExportOptions['format'];
-    const includeLineNumbers = searchParams.get('lineNumbers') === 'true';
-    const includeHeader = searchParams.get('header') !== 'false'; // Default true
+    const user = session.user as { id: string; role: string; firmId?: string };
+    const { id: transcriptId } = await context.params;
 
-    // Get transcript with access check
-    const transcript = await db.transcript.findFirst({
-      where: {
-        id: transcriptId,
-        job: {
-          createdById: session.user.id,
-        },
-      },
+    // Get query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const format = (searchParams.get('format') || 'docx') as 'docx' | 'pdf' | 'txt';
+    const lineNumbering = searchParams.get('lineNumbers') !== 'false';
+
+    // Fetch transcript with job details
+    const transcription = await prisma.transcription.findUnique({
+      where: { id: transcriptId },
       include: {
         job: {
-          select: {
-            caseNumber: true,
-            caseName: true,
-            depositionDate: true,
+          include: {
+            createdBy: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+            firm: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
     });
 
-    if (!transcript) {
+    if (!transcription) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    const content = transcript.content || '';
+    // Check permissions
+    const isOwner = transcription.job.createdById === user.id;
+    const isAdmin = user.role === 'ADMIN';
+    const isSameFirm = transcription.job.firmId === user.firmId;
 
-    // Export with selected format
-    const result = await exportTranscript(content, {
+    if (!isOwner && !isAdmin && !isSameFirm) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (!transcription.fullTranscript) {
+      return NextResponse.json({ error: 'No transcript text available' }, { status: 400 });
+    }
+
+    // Build metadata
+    const metadata: ExportMetadata = {
+      caseName: transcription.job.title,
+      caseNumber: transcription.job.caseNumber || undefined,
+      depositionDate: transcription.job.depositionDate || new Date(),
+      deponentName: transcription.job.deponentName || 'Unknown',
+      courtReporterName: `${transcription.job.createdBy.firstName} ${transcription.job.createdBy.lastName}` || undefined,
+      firmName: transcription.job.firm?.name || undefined,
+      location: transcription.job.location || undefined,
+    };
+
+    // Build options
+    const options: ExportOptions = {
       format,
-      includeLineNumbers,
-      includeHeader,
-      caseInfo: {
-        caseNumber: transcript.job.caseNumber || undefined,
-        caseName: transcript.job.caseName || undefined,
-        depoDate: transcript.job.depositionDate || undefined,
-      },
-    });
+      includeTimestamps: false,
+      includeSpeakerLabels: true,
+      lineNumbering,
+      useQAFormat: true,
+    };
 
-    logger.info(`Transcript exported - transcriptId: ${transcriptId}, format: ${format}`);
-
-    return new NextResponse(result.buffer as unknown as BodyInit, {
-      headers: {
-        'Content-Type': result.mimeType,
-        'Content-Disposition': `attachment; filename="${result.filename}"`,
-        'Content-Length': result.buffer.length.toString(),
-      },
-    });
-
-  } catch (error) {
-    const { id: transcriptId } = await params;
-    logger.error(`Failed to export transcript - transcriptId: ${transcriptId}, error: ${error}`);
-    return NextResponse.json(
-      { error: 'Failed to export transcript' },
-      { status: 500 }
+    // Generate export
+    const { buffer, filename, contentType } = await exportTranscript(
+      transcription.fullTranscript,
+      metadata,
+      options
     );
+
+    // Return file
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': buffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('Export error:', error);
+    return NextResponse.json({ error: 'Failed to export transcript' }, { status: 500 });
   }
 }

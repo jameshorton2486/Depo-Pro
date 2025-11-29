@@ -1,143 +1,144 @@
-import { Worker, Job } from 'bullmq';
-import { redisConnection } from '@/lib/redis';
+// lib/workers/transcription-worker.ts
+// Background job processor for transcription
+
+import { Job } from 'bullmq';
 import { prisma } from '@/lib/db';
-import { JobStatus } from '@prisma/client';
-import config from '@/lib/deepgram/env';
-import type { TranscriptionJobData } from '@/types/deepgram';
-import { createClient, PrerecordedSchema } from '@deepgram/sdk';
-import { getOptimalDeepgramConfig } from '@/lib/transcription/config';
+import { 
+  transcribeAudio, 
+  processTranscriptResponse,
+  getMimetypeFromExtension 
+} from '@/lib/transcription';
+import { downloadFile } from '@/lib/storage';
+import { DeepgramModelType } from '@/lib/transcription/config';
+import { analyzeSpeakersEnhanced } from '@/lib/services/speaker-identification';
 
-// Transcription worker
-const worker = new Worker<TranscriptionJobData>(
-  'transcription',
-  async (job: Job<TranscriptionJobData>) => {
-    console.log(`📋 Processing transcription job: ${job.id}`);
+// ============================================
+// JOB DATA INTERFACE
+// ============================================
+
+export interface TranscriptionJobData {
+  jobId: string;
+  audioFileId: string;
+  audioFileUrl: string;
+  audioFileName: string;
+  firmId: string;
+  userId: string;
+  modelType: DeepgramModelType;
+}
+
+// ============================================
+// PROCESS TRANSCRIPTION JOB
+// ============================================
+
+export async function processTranscriptionJob(
+  job: Job<TranscriptionJobData> | TranscriptionJobData
+): Promise<void> {
+  // Handle both BullMQ Job and plain data object
+  const data = 'data' in job ? job.data : job;
+  
+  const { 
+    jobId, 
+    audioFileId, 
+    audioFileUrl, 
+    audioFileName,
+    firmId, 
+    userId,
+    modelType 
+  } = data;
+
+  console.log(`Processing transcription for job ${jobId}`);
+
+  try {
+    // Update job status to TRANSCRIBING
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { status: 'TRANSCRIBING' },
+    });
+
+    // Download audio file
+    console.log(`Downloading audio from: ${audioFileUrl}`);
+    const audioBuffer = await downloadFile(audioFileUrl);
     
-    const { jobId, audioFileUrl } = job.data;
-    console.log(`   Audio URL: ${audioFileUrl}`);
-    
-    try {
-      // Step 1: Update job status to TRANSCRIBING
-      await prisma.job.update({
-        where: { id: jobId },
-        data: { status: JobStatus.TRANSCRIBING },
-      });
-      
-      await job.updateProgress(10);
-      
-      // Step 2: Parse notice document if provided (AI extraction)
-      // TODO: Implement notice parsing
-      
-      await job.updateProgress(20);
-
-      // Step 3: Fetch audio file
-      console.log('  📥 Downloading audio file...');
-      const response = await fetch(audioFileUrl);
-      if (!response.ok) throw new Error(`Failed to fetch audio: ${response.statusText}`);
-      const audioBuffer = await response.arrayBuffer();
-      const audioData = Buffer.from(audioBuffer);
-      
-      await job.updateProgress(40);
-      
-      // Step 4: Download and enhance audio (FFmpeg preprocessing)
-      // TODO: Implement audio enhancement
-      console.log('  🎵 Enhancing audio quality...');
-      
-      // Step 5: Transcribe with Deepgram
-      console.log('  🤖 Transcribing with Deepgram...');
-      const deepgram = createClient(config.apis.deepgram);
-      const dgConfig = getOptimalDeepgramConfig({ customDictionary: [] });
-      
-      const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
-        audioData, 
-        dgConfig as unknown as PrerecordedSchema
-      );
-      
-      if (error) throw error;
-      if (!result) throw new Error('No transcription result returned');
-
-      await job.updateProgress(80);
-      
-      // Step 6: Store transcription in database
-      console.log('  💾 Storing transcription...');
-      
-      // Create a basic transcript record
-      await prisma.transcript.create({
-        data: {
-          jobId,
-          version: '1.0-raw',
-          versionNumber: 1,
-          content: result.results?.channels[0]?.alternatives[0]?.transcript || '',
-          contentJson: {}, // Empty JSON for now, will be populated by TipTap
-          createdBy: 'system',
-        }
-      });
-      
-      await job.updateProgress(90);
-      
-      // Step 7: Analyze quality and flag low-confidence segments
-      // TODO: Implement quality analysis
-      console.log('  📊 Analyzing quality...');
-      
-      // Step 8: Update job status to AI_REVIEWING
-      await prisma.job.update({
-        where: { id: jobId },
-        data: { 
-          status: JobStatus.AI_REVIEWING,
-        },
-      });
-      
-      await job.updateProgress(100);
-      
-      console.log(`✅ Transcription job ${job.id} completed`);
-      
-      return { success: true, jobId };
-      
-    } catch (error) {
-      console.error(`❌ Transcription job ${job.id} failed:`, error);
-      
-      // Update job status to CANCELLED (since FAILED doesn't exist)
-      await prisma.job.update({
-        where: { id: jobId },
-        data: {
-          status: JobStatus.CANCELLED,
-        },
-      });
-      
-      throw error;
+    if (!audioBuffer || audioBuffer.length === 0) {
+      throw new Error('Failed to download audio file or file is empty');
     }
-  },
-  {
-    connection: redisConnection,
-    concurrency: config.settings.workerConcurrency,
-    limiter: {
-      max: config.settings.workerRateLimitMax,
-      duration: config.settings.workerRateLimitDuration,
-    },
+
+    // Get mimetype from filename
+    const mimetype = getMimetypeFromExtension(audioFileName);
+    console.log(`Audio mimetype: ${mimetype}, size: ${audioBuffer.length} bytes`);
+
+    // Transcribe with Deepgram
+    console.log(`Starting Deepgram transcription with model: ${modelType}`);
+    const deepgramResponse = await transcribeAudio(audioBuffer, modelType, mimetype);
+    
+    // Process response
+    const processedTranscript = processTranscriptResponse(deepgramResponse);
+    console.log(`Transcription complete: ${processedTranscript.wordCount} words, ${processedTranscript.flaggedWordCount} flagged`);
+
+    // Analyze speakers
+    const speakerAnalysis = analyzeSpeakersEnhanced(processedTranscript.utterances);
+    console.log(`Speaker analysis: ${speakerAnalysis.guesses.length} speakers detected`);
+
+    // Check if transcript exists for this job
+    const existingTranscript = await prisma.transcription.findFirst({
+      where: { jobId },
+    });
+
+    const transcriptData = {
+      fullTranscript: processedTranscript.fullText,
+      deepgramRawJson: JSON.stringify(deepgramResponse),
+      words: JSON.stringify(processedTranscript.words),
+      utterances: JSON.stringify(processedTranscript.utterances),
+      flaggedSegments: JSON.stringify(processedTranscript.flaggedWords),
+      speakerAnalysis: JSON.stringify(speakerAnalysis),
+      duration: processedTranscript.duration,
+      wordCount: processedTranscript.wordCount,
+      flaggedWordCount: processedTranscript.flaggedWordCount,
+      averageConfidence: processedTranscript.averageConfidence,
+      modelUsed: modelType,
+      status: 'COMPLETED' as const,
+    };
+
+    if (existingTranscript) {
+      // Update existing transcript
+      await prisma.transcription.update({
+        where: { id: existingTranscript.id },
+        data: transcriptData,
+      });
+    } else {
+      // Create new transcript
+      await prisma.transcription.create({
+        data: {
+          ...transcriptData,
+          jobId,
+          version: 1,
+        },
+      });
+    }
+
+    // Update job status to AI_REVIEWING
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { 
+        status: 'AI_REVIEWING',
+        transcriptionCompletedAt: new Date(),
+      },
+    });
+
+    console.log(`Job ${jobId} transcription completed successfully`);
+
+  } catch (error) {
+    console.error(`Transcription failed for job ${jobId}:`, error);
+
+    // Update job status to CANCELLED
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { 
+        status: 'CANCELLED',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      },
+    });
+
+    throw error;
   }
-);
-
-// Worker event listeners
-worker.on('completed', (job) => {
-  console.log(`✅ Job ${job.id} completed successfully`);
-});
-
-worker.on('failed', (job, error) => {
-  console.error(`❌ Job ${job?.id} failed:`, error.message);
-});
-
-worker.on('error', (error) => {
-  console.error('❌ Worker error:', error);
-});
-
-console.log('🔄 Transcription worker started');
-console.log(`   Concurrency: ${config.settings.workerConcurrency}`);
-console.log(`   Rate limit: ${config.settings.workerRateLimitMax} jobs per ${config.settings.workerRateLimitDuration}ms`);
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, closing worker...');
-  await worker.close();
-});
-
-export default worker;
+}

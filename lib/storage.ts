@@ -1,197 +1,92 @@
-// ═══════════════════════════════════════════════════════════════
-// FILE STORAGE SERVICE (Supabase + Local Fallback)
-// ═══════════════════════════════════════════════════════════════
-// Provides unified file upload/download with cloud storage options
-// ═══════════════════════════════════════════════════════════════
+// lib/storage.ts
+// File storage operations
 
-import { writeFile, readFile, unlink } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
-import crypto from 'crypto';
+import fs from 'fs/promises';
+import path from 'path';
 
-const UPLOAD_DIR = join(process.cwd(), 'uploads');
-const USE_CLOUD_STORAGE = process.env.USE_CLOUD_STORAGE === 'true';
-const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET;
+// ============================================
+// DOWNLOAD FILE
+// ============================================
 
-// ═══════════════════════════════════════════════════════════════
-// STORAGE INTERFACE
-// ═══════════════════════════════════════════════════════════════
-
-export interface UploadResult {
-  storageKey: string;
-  storageUrl?: string;
-  size: number;
-}
-
-export interface DownloadResult {
-  buffer: Buffer;
-  contentType: string;
-  filename: string;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// LOCAL STORAGE (Current Implementation)
-// ═══════════════════════════════════════════════════════════════
-
-async function uploadToLocal(
-  buffer: Buffer,
-  filename: string,
-  _contentType: string
-): Promise<UploadResult> {
-  const uniqueFilename = `${crypto.randomUUID()}-${filename}`;
-  const filePath = join(UPLOAD_DIR, uniqueFilename);
-
-  await writeFile(filePath, buffer);
-  
-  console.log('[LOCAL] Uploaded file:', { filename, contentType: _contentType, size: buffer.length });
-
-  return {
-    storageKey: uniqueFilename,
-    size: buffer.length,
-  };
-}
-
-async function downloadFromLocal(storageKey: string): Promise<DownloadResult> {
-  const filePath = join(UPLOAD_DIR, storageKey);
-
-  if (!existsSync(filePath)) {
-    throw new Error('File not found');
+export async function downloadFile(fileUrl: string): Promise<Buffer> {
+  // Check if it's a local file path
+  if (fileUrl.startsWith('/') || fileUrl.startsWith('./') || fileUrl.startsWith('file://')) {
+    const localPath = fileUrl.replace('file://', '');
+    return await fs.readFile(localPath);
   }
 
-  const buffer = await readFile(filePath);
-  
-  // Determine content type from extension
-  const ext = storageKey.split('.').pop()?.toLowerCase();
-  const contentType = getContentType(ext || '');
+  // Handle HTTP/HTTPS URLs
+  if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+    const response = await fetch(fileUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
 
-  return {
-    buffer,
-    contentType,
-    filename: storageKey,
-  };
-}
-
-async function deleteFromLocal(storageKey: string): Promise<void> {
-  const filePath = join(UPLOAD_DIR, storageKey);
+  // Handle Supabase storage URLs or relative paths
+  // Adjust this based on your storage configuration
+  const uploadsDir = process.env.UPLOADS_DIR || './uploads';
+  const localPath = path.join(uploadsDir, fileUrl);
   
-  if (existsSync(filePath)) {
-    await unlink(filePath);
+  try {
+    return await fs.readFile(localPath);
+  } catch (error) {
+    throw new Error(`File not found: ${localPath}`);
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SUPABASE STORAGE (Active Implementation)
-// ═══════════════════════════════════════════════════════════════
-
-async function uploadToSupabase(
-  buffer: Buffer,
-  filename: string,
-  contentType: string
-): Promise<UploadResult> {
-  // TODO: Implement Supabase Storage upload
-  // const { createClient } = await import('@supabase/supabase-js');
-  
-  // const supabase = createClient(
-  //   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  //   process.env.SUPABASE_SERVICE_ROLE_KEY!
-  // );
-
-  // const key = `uploads/${crypto.randomUUID()}-${filename}`;
-  
-  // const { data, error } = await supabase.storage
-  //   .from(SUPABASE_BUCKET!)
-  //   .upload(key, buffer, {
-  //     contentType,
-  //     upsert: false,
-  //   });
-
-  // if (error) throw error;
-
-  // const { data: urlData } = supabase.storage
-  //   .from(SUPABASE_BUCKET!)
-  //   .getPublicUrl(key);
-
-  console.log('Supabase upload requested but not configured - using local storage');
-  return uploadToLocal(buffer, filename, contentType);
-}
-
-async function downloadFromSupabase(storageKey: string): Promise<DownloadResult> {
-  // TODO: Implement Supabase Storage download
-  console.log('Supabase download requested but not configured - using local storage');
-  return downloadFromLocal(storageKey);
-}
-
-async function deleteFromSupabase(storageKey: string): Promise<void> {
-  // TODO: Implement Supabase Storage delete
-  console.log('Supabase delete requested but not configured - using local storage');
-  return deleteFromLocal(storageKey);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// PUBLIC API (Auto-selects storage provider)
-// ═══════════════════════════════════════════════════════════════
+// ============================================
+// UPLOAD FILE
+// ============================================
 
 export async function uploadFile(
   buffer: Buffer,
   filename: string,
-  contentType: string
-): Promise<UploadResult> {
-  if (USE_CLOUD_STORAGE && SUPABASE_BUCKET) {
-    return uploadToSupabase(buffer, filename, contentType);
-  }
-  
-  return uploadToLocal(buffer, filename, contentType);
-}
-
-export async function downloadFile(storageKey: string): Promise<DownloadResult> {
-  if (USE_CLOUD_STORAGE && SUPABASE_BUCKET) {
-    return downloadFromSupabase(storageKey);
-  }
-  
-  return downloadFromLocal(storageKey);
-}
-
-export async function deleteFile(storageKey: string): Promise<void> {
-  if (USE_CLOUD_STORAGE && SUPABASE_BUCKET) {
-    return deleteFromSupabase(storageKey);
-  }
-  
-  return deleteFromLocal(storageKey);
-}
-
-export async function generateSignedUrl(
-  storageKey: string,
-  _expiresIn: number = 3600
+  directory: string = 'uploads'
 ): Promise<string> {
-  // TODO: Generate signed URLs for cloud storage
-  // For local storage, return a temporary download token
-  const token = crypto.randomBytes(32).toString('hex');
+  const uploadsDir = process.env.UPLOADS_DIR || './uploads';
+  const targetDir = path.join(uploadsDir, directory);
   
-  console.log('[LOCAL] Generating signed URL:', { storageKey, expiresIn: _expiresIn });
+  // Ensure directory exists
+  await fs.mkdir(targetDir, { recursive: true });
   
-  // Store token temporarily (in production, use Redis)
-  // For now, just return a URL that will be validated server-side
-  return `/api/files/download/${storageKey}?token=${token}`;
+  const filePath = path.join(targetDir, filename);
+  await fs.writeFile(filePath, buffer);
+  
+  return path.join(directory, filename);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
+// ============================================
+// DELETE FILE
+// ============================================
 
-function getContentType(extension: string): string {
-  const contentTypes: Record<string, string> = {
-    'pdf': 'application/pdf',
-    'doc': 'application/msword',
-    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'txt': 'text/plain',
-    'mp3': 'audio/mpeg',
-    'wav': 'audio/wav',
-    'mp4': 'video/mp4',
-    'mov': 'video/quicktime',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-  };
+export async function deleteFile(filePath: string): Promise<void> {
+  const uploadsDir = process.env.UPLOADS_DIR || './uploads';
+  const fullPath = path.join(uploadsDir, filePath);
+  
+  try {
+    await fs.unlink(fullPath);
+  } catch (error) {
+    console.warn(`Failed to delete file: ${fullPath}`, error);
+  }
+}
 
-  return contentTypes[extension] || 'application/octet-stream';
+// ============================================
+// CHECK FILE EXISTS
+// ============================================
+
+export async function fileExists(filePath: string): Promise<boolean> {
+  const uploadsDir = process.env.UPLOADS_DIR || './uploads';
+  const fullPath = filePath.startsWith('/') ? filePath : path.join(uploadsDir, filePath);
+  
+  try {
+    await fs.access(fullPath);
+    return true;
+  } catch {
+    return false;
+  }
 }

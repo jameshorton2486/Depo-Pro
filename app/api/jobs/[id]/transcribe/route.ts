@@ -1,157 +1,113 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { transcribeAudio, type TranscriptionOptions } from '@/lib/transcription';
-import { downloadFile } from '@/lib/storage';
-import { logger } from '@/lib/logger';
+// app/api/jobs/[id]/transcribe/route.ts
+// Trigger transcription for a job
 
-// ═══════════════════════════════════════════════════════════════
-// POST /api/jobs/[id]/transcribe - Start audio transcription
-// ═══════════════════════════════════════════════════════════════
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
+import { prisma } from '@/lib/db';
+import { processTranscriptionJob, TranscriptionJobData } from '@/lib/workers/transcription-worker';
+import { DeepgramModelType } from '@/lib/transcription/config';
+
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: RouteContext
 ) {
   try {
-    const session = await getCurrentUser();
+    const session = await getServerSession(authOptions);
+    
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId } = await params;
-    const body = await request.json();
-    const { fileId, options }: { fileId: string; options?: TranscriptionOptions } = body;
+    const user = session.user as { id: string; role: string; firmId?: string };
+    const { id: jobId } = await context.params;
 
-    // Validate file exists and belongs to this job
-    const file = await db.jobFile.findFirst({
-      where: {
-        id: fileId,
-        jobId,
-        job: {
-          createdById: session.user.id, // Multi-tenant security
-        },
-      },
+    // Get request body for model selection
+    const body = await request.json().catch(() => ({}));
+    const modelType: DeepgramModelType = body.modelType || 'MEDICAL';
+
+    // Fetch job with files
+    const job = await prisma.job.findUnique({
+      where: { id: jobId },
       include: {
-        job: {
-          select: {
-            id: true,
-            caseNumber: true,
-            depositionDate: true,
+        files: {
+          where: {
+            type: 'AUDIO',
           },
         },
       },
     });
 
-    if (!file) {
-      logger.warn(`File not found for transcription - fileId: ${fileId}, jobId: ${jobId}, userId: ${session.user.id}`);
-      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Only transcribe audio files
-    if (!file.mimeType.startsWith('audio/') && !file.mimeType.startsWith('video/')) {
+    // Check permissions
+    const isOwner = job.createdById === user.id;
+    const isAdmin = user.role === 'ADMIN';
+    const isSameFirm = job.firmId === user.firmId;
+
+    if (!isOwner && !isAdmin && !isSameFirm) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Check for audio file
+    const audioFile = job.files[0];
+    if (!audioFile) {
       return NextResponse.json(
-        { error: 'Only audio/video files can be transcribed' },
+        { error: 'No audio file found for this job' },
         { status: 400 }
       );
     }
 
-    logger.info(`Starting transcription - fileId: ${fileId}, jobId: ${jobId}, fileName: ${file.fileName}`);
+    // Check if already processing
+    if (job.status === 'TRANSCRIBING') {
+      return NextResponse.json(
+        { error: 'Transcription already in progress' },
+        { status: 409 }
+      );
+    }
 
-    // Download file from storage
-    const downloadResult = await downloadFile(file.storagePath);
-
-    // Transcribe audio (async process)
-    const result = await transcribeAudio(downloadResult.buffer, options);
-
-    // Create or update transcript record
-    let transcript = await db.transcript.findFirst({
-      where: { 
-        jobId,
-      },
-      orderBy: {
-        versionNumber: 'desc',
+    // Update job status to TRANSCRIBING
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { 
+        status: 'TRANSCRIBING',
+        transcriptionModelType: modelType,
       },
     });
 
-    if (transcript) {
-      // Create new version
-      transcript = await db.transcript.create({
-        data: {
-          jobId,
-          version: `${transcript.versionNumber + 1}.0-raw`,
-          versionNumber: transcript.versionNumber + 1,
-          content: result.text,
-          contentJson: {
-            type: 'doc',
-            content: [
-              {
-                type: 'paragraph',
-                content: [
-                  {
-                    type: 'text',
-                    text: result.text,
-                  },
-                ],
-              },
-            ],
-          },
-          createdBy: session.user.id,
-        },
-      });
-      logger.info(`Transcript updated - transcriptId: ${transcript.id}, version: ${transcript.versionNumber}`);
-    } else {
-      // Create new transcript
-      transcript = await db.transcript.create({
-        data: {
-          jobId,
-          version: '1.0-raw',
-          versionNumber: 1,
-          content: result.text,
-          contentJson: {
-            type: 'doc',
-            content: [
-              {
-                type: 'paragraph',
-                content: [
-                  {
-                    type: 'text',
-                    text: result.text,
-                  },
-                ],
-              },
-            ],
-          },
-          createdBy: session.user.id,
-        },
-      });
-      logger.info(`Transcript created - transcriptId: ${transcript.id}`);
-    }
+    // Prepare job data
+    const jobData: TranscriptionJobData = {
+      jobId,
+      audioFileId: audioFile.id,
+      audioFileUrl: audioFile.storageUrl || audioFile.storagePath,
+      audioFileName: audioFile.fileName,
+      firmId: job.firmId || '',
+      userId: user.id,
+      modelType,
+    };
 
-    // Update job status to TRANSCRIBING if it was FILES_UPLOADED
-    await db.job.updateMany({
-      where: {
-        id: jobId,
-        status: 'FILES_UPLOADED',
-      },
-      data: {
-        status: 'TRANSCRIBING',
-      },
+    // Start transcription in background
+    processTranscriptionJob(jobData).catch((error) => {
+      console.error('Background transcription failed:', error);
     });
 
     return NextResponse.json({
       success: true,
-      transcriptId: transcript.id,
-      confidence: result.confidence,
-      wordCount: result.text.split(/\s+/).length,
-      duration: result.duration,
+      message: 'Transcription queued successfully',
+      jobId,
+      modelType,
     });
 
   } catch (error) {
-    const { id } = await params;
-    logger.error(`Transcription failed - jobId: ${id}, error: ${error}`);
+    console.error('Error triggering transcription:', error);
     return NextResponse.json(
-      { error: 'Failed to transcribe audio' },
+      { error: 'Failed to trigger transcription' },
       { status: 500 }
     );
   }

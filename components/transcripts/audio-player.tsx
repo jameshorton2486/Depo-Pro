@@ -1,200 +1,239 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import WaveSurfer from 'wavesurfer.js';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
+import { Play, Pause, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  VolumeX,
-  Gauge,
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface AudioPlayerProps {
-  url: string;
+  src: string;
+  currentTime?: number;
   onTimeUpdate?: (time: number) => void;
-  onReady?: () => void;
+  className?: string;
 }
 
-export function AudioPlayer({ url, onTimeUpdate, onReady }: AudioPlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const wavesurfer = useRef<WaveSurfer | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
+export interface AudioPlayerRef {
+  seekTo: (time: number) => void;
+  play: () => void;
+  pause: () => void;
+}
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
+  ({ src, currentTime, onTimeUpdate, className }, ref) => {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const progressRef = useRef<HTMLDivElement>(null);
 
-    wavesurfer.current = WaveSurfer.create({
-      container: containerRef.current,
-      waveColor: '#4f46e5',
-      progressColor: '#818cf8',
-      cursorColor: '#312e81',
-      barWidth: 2,
-      barGap: 1,
-      barRadius: 2,
-      height: 64,
-      normalize: true,
-      minPxPerSec: 50,
-    });
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTimeState, setCurrentTimeState] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [volume, setVolume] = useState(1);
+    const [isMuted, setIsMuted] = useState(false);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const [isLoaded, setIsLoaded] = useState(false);
 
-    wavesurfer.current.load(url);
+    useImperativeHandle(
+      ref,
+      () => ({
+        seekTo: (time: number) => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = time;
+            setCurrentTimeState(time);
+          }
+        },
+        play: () => audioRef.current?.play(),
+        pause: () => audioRef.current?.pause(),
+      }),
+      []
+    );
 
-    wavesurfer.current.on('ready', () => {
-      setDuration(wavesurfer.current?.getDuration() || 0);
-      onReady?.();
-    });
+    useEffect(() => {
+      if (typeof currentTime === 'number' && audioRef.current) {
+        const delta = Math.abs(audioRef.current.currentTime - currentTime);
+        if (delta > 0.25) {
+          audioRef.current.currentTime = currentTime;
+        }
+        setCurrentTimeState(currentTime);
+      }
+    }, [currentTime]);
 
-    wavesurfer.current.on('audioprocess', (time) => {
-      setCurrentTime(time);
-      onTimeUpdate?.(time);
-    });
+    useEffect(() => {
+      const audio = audioRef.current;
+      if (!audio) {
+        return;
+      }
 
-    wavesurfer.current.on('play', () => setIsPlaying(true));
-    wavesurfer.current.on('pause', () => setIsPlaying(false));
-    wavesurfer.current.on('finish', () => setIsPlaying(false));
+      const handleTimeUpdate = () => {
+        setCurrentTimeState(audio.currentTime);
+        onTimeUpdate?.(audio.currentTime);
+      };
 
-    return () => {
-      wavesurfer.current?.destroy();
+      const handleLoadedMetadata = () => {
+        setDuration(audio.duration || 0);
+        setIsLoaded(true);
+      };
+
+      const handlePlay = () => setIsPlaying(true);
+      const handlePause = () => setIsPlaying(false);
+      const handleEnded = () => setIsPlaying(false);
+
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.addEventListener('play', handlePlay);
+      audio.addEventListener('pause', handlePause);
+      audio.addEventListener('ended', handleEnded);
+
+      return () => {
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.removeEventListener('play', handlePlay);
+        audio.removeEventListener('pause', handlePause);
+        audio.removeEventListener('ended', handleEnded);
+      };
+    }, [onTimeUpdate]);
+
+    useEffect(() => {
+      if (audioRef.current) {
+        audioRef.current.playbackRate = playbackRate;
+      }
+    }, [playbackRate]);
+
+    useEffect(() => {
+      if (audioRef.current) {
+        audioRef.current.volume = isMuted ? 0 : volume;
+      }
+    }, [volume, isMuted]);
+
+    const togglePlay = () => {
+      if (!audioRef.current) {
+        return;
+      }
+
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        void audioRef.current.play();
+      }
     };
-  }, [url, onReady, onTimeUpdate]);
 
-  const togglePlay = () => {
-    wavesurfer.current?.playPause();
-  };
+    const rewind = () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 5);
+      }
+    };
 
-  const skip = (seconds: number) => {
-    wavesurfer.current?.skip(seconds);
-  };
+    const handleProgressClick = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!progressRef.current || !audioRef.current || !duration) {
+        return;
+      }
+      const rect = progressRef.current.getBoundingClientRect();
+      const percent = (event.clientX - rect.left) / rect.width;
+      const newTime = Math.max(0, Math.min(percent * duration, duration));
+      audioRef.current.currentTime = newTime;
+      setCurrentTimeState(newTime);
+    };
 
-  const toggleMute = () => {
-    if (wavesurfer.current) {
-      const newMuted = !isMuted;
-      setIsMuted(newMuted);
-      wavesurfer.current.setMuted(newMuted);
-    }
-  };
+    const formatTime = (seconds: number): string => {
+      if (!Number.isFinite(seconds)) {
+        return '0:00';
+      }
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60)
+        .toString()
+        .padStart(2, '0');
+      return `${mins}:${secs}`;
+    };
 
-  const handleVolumeChange = (value: number[]) => {
-    const newVolume = value[0];
-    setVolume(newVolume);
-    wavesurfer.current?.setVolume(newVolume);
-    if (newVolume > 0 && isMuted) {
-      setIsMuted(false);
-      wavesurfer.current?.setMuted(false);
-    }
-  };
+    const speedOptions = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-  const handleSpeedChange = (speed: number) => {
-    setPlaybackRate(speed);
-    wavesurfer.current?.setPlaybackRate(speed);
-  };
+    return (
+      <div className={cn('rounded-lg bg-slate-900 p-4 text-white', className)}>
+        <audio ref={audioRef} src={src} preload="metadata" />
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <div className="bg-card border rounded-lg p-4 space-y-4 shadow-sm">
-      <div ref={containerRef} className="w-full" />
-
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4">
           <Button
             variant="ghost"
-            size="icon"
-            onClick={() => skip(-5)}
-            title="Back 5s"
+            size="sm"
+            onClick={rewind}
+            disabled={!isLoaded}
+            className="text-slate-400 hover:text-white"
           >
-            <SkipBack className="h-4 w-4" />
+            <RotateCcw className="h-4 w-4" />
           </Button>
 
           <Button
-            variant="default"
-            size="icon"
-            className="h-10 w-10 rounded-full"
+            variant="ghost"
+            size="sm"
             onClick={togglePlay}
+            disabled={!isLoaded}
+            className="text-white hover:bg-slate-800"
           >
-            {isPlaying ? (
-              <Pause className="h-5 w-5" />
-            ) : (
-              <Play className="h-5 w-5 ml-0.5" />
-            )}
+            {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
           </Button>
+
+          <span className="min-w-[90px] text-sm text-slate-400">
+            {formatTime(currentTimeState)} / {formatTime(duration)}
+          </span>
+
+          <div
+            ref={progressRef}
+            onClick={handleProgressClick}
+            className="group relative h-2 flex-1 cursor-pointer rounded-full bg-slate-700"
+          >
+            <div
+              className="h-full rounded-full bg-blue-500 transition-colors group-hover:bg-blue-400"
+              style={{ width: duration ? `${(currentTimeState / duration) * 100}%` : '0%' }}
+            >
+              <div className="absolute -right-1 top-1/2 hidden h-3 w-3 -translate-y-1/2 rounded-full bg-white group-hover:block" />
+            </div>
+          </div>
+
+          <select
+            value={playbackRate}
+            onChange={(event) => setPlaybackRate(parseFloat(event.target.value))}
+            className="rounded border-none bg-slate-800 px-2 py-1 text-sm text-slate-300"
+          >
+            {speedOptions.map((speed) => (
+              <option key={speed} value={speed}>
+                {speed}x
+              </option>
+            ))}
+          </select>
 
           <Button
             variant="ghost"
-            size="icon"
-            onClick={() => skip(5)}
-            title="Forward 5s"
+            size="sm"
+            onClick={() => setIsMuted((prev) => !prev)}
+            className="text-slate-400 hover:text-white"
           >
-            <SkipForward className="h-4 w-4" />
+            {isMuted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </Button>
 
-          <div className="text-sm font-mono text-muted-foreground ml-2">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-1">
-                <Gauge className="h-4 w-4" />
-                <span>{playbackRate}x</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {[0.5, 0.75, 1, 1.25, 1.5, 2].map((rate) => (
-                <DropdownMenuItem
-                  key={rate}
-                  onClick={() => handleSpeedChange(rate)}
-                >
-                  {rate}x
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <div className="flex items-center gap-2 w-32">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={toggleMute}
-            >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="h-4 w-4" />
-              ) : (
-                <Volume2 className="h-4 w-4" />
-              )}
-            </Button>
-            <Slider
-              value={[isMuted ? 0 : volume]}
-              max={1}
-              step={0.1}
-              onValueChange={handleVolumeChange}
-              className="w-20"
-            />
-          </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={isMuted ? 0 : volume}
+            onChange={(event) => {
+              const val = parseFloat(event.target.value);
+              setVolume(val);
+              if (val > 0) {
+                setIsMuted(false);
+              }
+            }}
+            className="w-20 accent-blue-500"
+          />
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
+
+AudioPlayer.displayName = 'AudioPlayer';

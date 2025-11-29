@@ -6,6 +6,8 @@
 // DELETE /api/jobs/[id] - Delete job (🔒 firmId filtered)
 
 import { NextRequest, NextResponse } from 'next/server';
+import { JobStatus } from '@prisma/client';
+
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createJobSchema } from '@/lib/validations/job';
@@ -160,6 +162,66 @@ export async function PUT(
     logger.apiError('PUT /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to update job' },
+      { status: 500 }
+    );
+  }
+}
+
+// ───────────────────────────────────────────────────────────────
+// PATCH /api/jobs/[id] - Update job status only
+// ───────────────────────────────────────────────────────────────
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { status } = body as { status?: JobStatus };
+
+    if (!status || !Object.values(JobStatus).includes(status)) {
+      return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
+    }
+
+    const job = await db.job.findUnique({
+      where: { id },
+      include: {
+        assignments: true,
+      },
+    });
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    const isOwner = job.createdById === session.user.id;
+    const isAdmin = session.user.role === 'ADMIN';
+    const isAssignedScopist =
+      session.user.role === 'SCOPIST' &&
+      job.assignments.some((assignment) => assignment.scopistId === session.user.id);
+
+    if (!isOwner && !isAdmin && !isAssignedScopist) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const updatedJob = await db.job.update({
+      where: { id },
+      data: { status },
+      select: { id: true, status: true },
+    });
+
+    return NextResponse.json(updatedJob);
+  } catch (error) {
+    logger.apiError('PATCH /api/jobs/[id]', error as Error);
+    return NextResponse.json(
+      { error: 'Failed to update job status' },
       { status: 500 }
     );
   }
