@@ -2,8 +2,7 @@
 // Scopist review page with split view: audio player + low-confidence word review
 
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { auth } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import { ReviewPageClient } from './review-client';
 
@@ -12,7 +11,7 @@ interface ReviewPageProps {
 }
 
 export default async function ReviewPage({ params }: ReviewPageProps) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   const { id: jobId } = await params;
 
   if (!session?.user) {

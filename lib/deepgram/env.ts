@@ -5,18 +5,21 @@ dotenv.config();
 
 // Environment variable schema
 const envSchema = z.object({
-  // Database
-  DATABASE_URL: z.string().url(),
-  
-  // Redis
-  REDIS_HOST: z.string().default('localhost'),
-  REDIS_PORT: z.string().default('6379'),
+  // Core Infrastructure
+  DATABASE_URL: z.string().min(1),
+  REDIS_HOST: z.string().min(1),
+  REDIS_PORT: z.string().min(1),
   REDIS_PASSWORD: z.string().optional(),
-  
-  // APIs
+  NEXTAUTH_URL: z.string().url(),
+  NEXTAUTH_SECRET: z.string().min(1),
+
+  // API Keys
   DEEPGRAM_API_KEY: z.string().min(1),
   ANTHROPIC_API_KEY: z.string().min(1),
-  BLOB_READ_WRITE_TOKEN: z.string().min(1),
+  BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
+
+  // Feature Flags
+  USE_CLOUD_STORAGE: z.string().transform(v => v === 'true').optional(),
   
   // Optional
   SENDGRID_WEBHOOK_SECRET: z.string().optional(),

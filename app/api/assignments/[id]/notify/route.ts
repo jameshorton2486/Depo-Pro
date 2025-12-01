@@ -61,7 +61,7 @@ export async function POST(
       scopistEmail: assignment.scopist.email,
       reporterName: `${assignment.job.createdBy.firstName} ${assignment.job.createdBy.lastName}`,
       caseNumber: assignment.job.caseNumber || 'N/A',
-      depoDate: assignment.job.depositionDate || undefined,
+      depositionDate: assignment.job.depositionDate || undefined,
       notes: assignment.scopistNotes || undefined,
     });
 

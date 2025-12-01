@@ -29,6 +29,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
   ({ src, currentTime, onTimeUpdate, className }, ref) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const progressRef = useRef<HTMLDivElement>(null);
+    const isSyncingRef = useRef(false);
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTimeState, setCurrentTimeState] = useState(0);
@@ -54,13 +55,18 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
     );
 
     useEffect(() => {
-      if (typeof currentTime === 'number' && audioRef.current) {
-        const delta = Math.abs(audioRef.current.currentTime - currentTime);
-        if (delta > 0.25) {
+      if (currentTime !== undefined && audioRef.current) {
+        // Only update audio element if externally controlled and difference is significant
+        if (Math.abs(audioRef.current.currentTime - currentTime) > 0.5) {
+          isSyncingRef.current = true;
           audioRef.current.currentTime = currentTime;
+          // Reset flag after a short delay
+          setTimeout(() => {
+            isSyncingRef.current = false;
+          }, 100);
         }
-        setCurrentTimeState(currentTime);
       }
+      // State will be updated by handleTimeUpdate callback
     }, [currentTime]);
 
     useEffect(() => {
@@ -70,8 +76,10 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
       }
 
       const handleTimeUpdate = () => {
-        setCurrentTimeState(audio.currentTime);
-        onTimeUpdate?.(audio.currentTime);
+        if (!isSyncingRef.current) {
+          setCurrentTimeState(audio.currentTime);
+          onTimeUpdate?.(audio.currentTime);
+        }
       };
 
       const handleLoadedMetadata = () => {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { getTranscriptionStatus } from '@/lib/transcription';
 import { logger } from '@/lib/logger';
 
 // ═══════════════════════════════════════════════════════════════
@@ -48,9 +47,6 @@ export async function GET(
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    // Get processing status (mock implementation for now)
-    const status = await getTranscriptionStatus(transcriptId);
-
     // Calculate word count
     const wordCount = transcript.content?.split(/\s+/).length || 0;
 
@@ -61,8 +57,8 @@ export async function GET(
       caseNumber: transcript.job.caseNumber,
       version: transcript.version,
       wordCount,
-      status: status.status,
-      progress: status.progress,
+      status: transcript.job.status,
+      progress: transcript.job.status === 'COMPLETED' ? 100 : 0,
       createdAt: transcript.createdAt,
       hasContent: !!transcript.content,
     },

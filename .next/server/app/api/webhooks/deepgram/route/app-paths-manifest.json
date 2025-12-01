@@ -1,0 +1,3 @@
+{
+  "/api/webhooks/deepgram/route": "app/api/webhooks/deepgram/route.js"
+}

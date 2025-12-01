@@ -1,12 +1,12 @@
-// Transcription job data structure
+// Transcription job data structure (used by BullMQ queue and worker)
 export interface TranscriptionJobData {
   jobId: string;
+  audioFileId: string;
   audioFileUrl: string;
   audioFileName: string;
-  requestedBy: string;
-  metadata?: Record<string, any>;
-  noticeFileUrl?: string;
-  customDictionary?: string[];
+  firmId: string;
+  userId: string;
+  modelType: 'STANDARD' | 'MEDICAL' | 'BILINGUAL';
 }
 
 // Deepgram configuration

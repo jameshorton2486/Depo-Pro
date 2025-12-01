@@ -1,209 +1,204 @@
-# ✅ Depo-Pro Deployment Quick Checklist
+# 🚀 Depo-Pro Deployment Checklist
 
-**Print this page and check off items as you complete them!**
-
----
-
-## 🎯 Pre-Deployment (5 minutes)
-
-- [ ] GitHub repo is up to date (`git push origin main`)
-- [ ] Code builds locally without errors (`npm run build`)
-- [ ] All tests pass (`npm run check`)
-- [ ] `.env.local` file has all required variables
+**Date:** December 1, 2025  
+**Target:** Production deployment to Vercel  
+**Timeline:** ~25 minutes
 
 ---
 
-## 📦 Supabase Setup (15 minutes)
+## ✅ Pre-Deployment Verification
 
-### Project Creation
-- [ ] Supabase account created
-- [ ] New project created: `depo-pro`
-- [ ] Database password saved somewhere safe
-- [ ] Project fully initialized (green checkmark)
-
-### Database Configuration
-- [ ] DATABASE_URL copied and password replaced
-- [ ] Connection string tested (optional)
-
-### API Keys
-- [ ] NEXT_PUBLIC_SUPABASE_URL copied
-- [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY copied
-- [ ] SUPABASE_SERVICE_ROLE_KEY copied
-
-### Storage Setup
-- [ ] Bucket `depo-files` created
-- [ ] Bucket is PRIVATE (not public)
-- [ ] 3 storage policies added and enabled:
-  - [ ] Allow authenticated uploads
-  - [ ] Allow authenticated reads  
-  - [ ] Allow authenticated deletes
+- [x] ✅ All linting errors fixed
+- [x] ✅ Git committed and pushed
+- [x] ✅ Environment variables documented
+- [x] ✅ Database migrations ready
+- [x] ✅ API keys secured
 
 ---
 
-## 🔑 External Services (15 minutes)
+## 🔐 Required Environment Variables
 
-### Gmail/Email
-- [ ] Gmail 2FA enabled
-- [ ] App password generated (16 characters)
-- [ ] SMTP_USER saved
-- [ ] SMTP_PASSWORD saved
-- [ ] FROM_EMAIL saved
+Copy these to Vercel dashboard during deployment:
 
-### Deepgram
-- [ ] Deepgram account created
-- [ ] Project created
-- [ ] API key generated
-- [ ] DEEPGRAM_API_KEY saved
-- [ ] Free credits visible in dashboard
+### **Authentication**
+```env
+NEXTAUTH_SECRET=<generate-with-openssl-rand-base64-32>
+NEXTAUTH_URL=https://your-domain.vercel.app
+```
 
-### NextAuth
-- [ ] NEXTAUTH_SECRET generated (32+ characters)
-- [ ] NEXTAUTH_SECRET saved
+### **Database (Supabase)**
+```env
+DATABASE_URL=postgresql://postgres:[password]@[host]:5432/[database]?schema=public
+DIRECT_URL=postgresql://postgres:[password]@[host]:5432/[database]?schema=public
+```
 
----
+### **Deepgram AI**
+```env
+DEEPGRAM_API_KEY=<your-deepgram-api-key>
+```
 
-## 🚀 Vercel Deployment (20 minutes)
+### **OpenAI (Optional)**
+```env
+OPENAI_API_KEY=<your-openai-api-key>
+```
 
-### Project Import
-- [ ] Vercel account connected to GitHub
-- [ ] `depo-pro` repository imported
-- [ ] Framework detected as Next.js
+### **Storage (Supabase)**
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://[project].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+```
 
-### Environment Variables Added
-Core Variables:
-- [ ] DATABASE_URL
-- [ ] NEXT_PUBLIC_SUPABASE_URL
-- [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY
-- [ ] SUPABASE_SERVICE_ROLE_KEY
-- [ ] USE_CLOUD_STORAGE=true
-- [ ] SUPABASE_STORAGE_BUCKET=depo-files
-- [ ] NEXTAUTH_SECRET
-- [ ] NEXTAUTH_URL (update after first deploy)
+### **Optional (Add Later)**
 
-Email Variables:
-- [ ] SMTP_HOST=smtp.gmail.com
-- [ ] SMTP_PORT=587
-- [ ] SMTP_USER
-- [ ] SMTP_PASSWORD
-- [ ] FROM_EMAIL
-- [ ] FROM_NAME=Depo-Pro
+**Email (if using)**
+```env
+RESEND_API_KEY=<resend-api-key>
+```
 
-Feature Variables:
-- [ ] USE_DEEPGRAM=true
-- [ ] DEEPGRAM_API_KEY
-- [ ] USE_REAL_EXPORT=true
-- [ ] NODE_ENV=production
-
-### Deployment
-- [ ] First deployment started
-- [ ] Build completed successfully (2-4 mins)
-- [ ] Deployment URL received
-- [ ] NEXTAUTH_URL updated with real URL
-- [ ] Application redeployed
+**Redis (BullMQ - for background jobs)**
+```env
+REDIS_URL=<upstash-redis-url>
+REDIS_HOST=<redis-host>
+REDIS_PORT=6379
+REDIS_PASSWORD=<redis-password>
+```
 
 ---
 
-## ✅ Verification Testing (10 minutes)
+## 📝 Deployment Steps
 
-### Basic Functionality
-- [ ] App loads at Vercel URL
-- [ ] No console errors (F12 to check)
-- [ ] Login page displays correctly
+### **1. Install Vercel CLI (if not installed)**
+```powershell
+npm install -g vercel
+```
 
-### User Registration
-- [ ] Can register new test user
-- [ ] No registration errors
-- [ ] Redirects to dashboard
-- [ ] User name displays in dashboard
+### **2. Login to Vercel**
+```powershell
+vercel login
+```
 
-### Database Connection
-- [ ] User appears in Supabase `User` table
-- [ ] Password is hashed (not plain text)
-- [ ] All database tables visible in Supabase
+### **3. Deploy to Production**
+```powershell
+# First deployment - follow prompts
+vercel
 
-### File Storage
-- [ ] Can create new job
-- [ ] Can upload file to job
-- [ ] File appears in Supabase Storage
-- [ ] No upload errors
+# Or deploy directly to production
+vercel --prod
+```
 
-### Optional Features
-- [ ] Email notification received (if configured)
-- [ ] Can view uploaded files
-- [ ] Transcription works (if audio uploaded)
+**Vercel will ask:**
+- Set up and deploy? → **Y**
+- Which scope? → Select your account
+- Link to existing project? → **N** (first time)
+- Project name? → **depo-pro**
+- Directory? → **./** (press Enter)
+- Override settings? → **N**
 
----
+### **4. Set Environment Variables**
 
-## 📋 Post-Deployment Tasks
+After initial deployment:
 
-### Documentation
-- [ ] Save all credentials securely (password manager)
-- [ ] Deployment URL documented
-- [ ] Share access with team members (if applicable)
+**Option A: Via Vercel Dashboard**
+1. Go to https://vercel.com/dashboard
+2. Select your project → Settings → Environment Variables
+3. Add each variable from list above
+4. Redeploy: `vercel --prod`
 
-### Monitoring Setup (Optional)
-- [ ] Vercel Analytics enabled
-- [ ] Error tracking configured (Sentry)
-- [ ] Uptime monitoring set up
+**Option B: Via CLI**
+```powershell
+vercel env add NEXTAUTH_SECRET production
+vercel env add DATABASE_URL production
+vercel env add DEEPGRAM_API_KEY production
+# ... add each variable
+```
 
-### Local Development
-- [ ] `.env.local` created with production variables
-- [ ] Can run `npm run dev` locally with production DB
-- [ ] Git ignores `.env.local`
+### **5. Run Database Migrations**
 
----
+In Vercel dashboard or via CLI:
+```powershell
+# Pull production env vars
+vercel env pull .env.production
 
-## 🎊 Success Criteria
+# Run migrations
+npx prisma migrate deploy
+```
 
-**Your deployment is successful when:**
+### **6. Verify Deployment**
 
-✅ App loads at `https://__________.vercel.app`  
-✅ Can register and login  
-✅ Can create jobs  
-✅ Can upload files  
-✅ Files save to Supabase Storage  
-✅ No critical errors in console  
-
-**Deployment URL:** `https://______________________.vercel.app`
-
-**Completed:** ____ / ____ / ____
-
-**Deployed by:** _______________________
-
----
-
-## 📞 Quick Help
-
-**App won't load?**
-→ Check Vercel deployment logs for errors
-
-**Can't login?**
-→ Verify NEXTAUTH_URL matches your Vercel URL exactly
-
-**File upload fails?**
-→ Check storage policies in Supabase
-
-**Database error?**
-→ Verify DATABASE_URL password is correct
-
-**Email not sending?**
-→ Regenerate Gmail app password
+Visit your production URL and check:
+- [ ] Homepage loads
+- [ ] Login page works
+- [ ] Can create account
+- [ ] Dashboard accessible
 
 ---
 
-## 🔗 Quick Links
+## 🎯 Post-Deployment
 
-- Vercel Dashboard: https://vercel.com/dashboard
-- Supabase Dashboard: https://supabase.com/dashboard  
-- Deepgram Console: https://console.deepgram.com
-- GitHub Repo: https://github.com/jameshorton2486/depo-pro
+### **Immediate (Today)**
+1. [ ] Test authentication
+2. [ ] Create test job
+3. [ ] Upload sample audio
+4. [ ] Verify transcription works
+5. [ ] Test export functionality
+
+### **Tomorrow**
+1. [ ] Fix any critical bugs found
+2. [ ] Create your real account
+3. [ ] Invite 2 beta testers
 
 ---
 
-**Time Spent:** _____ minutes
+## 🚨 Common Issues & Fixes
 
-**Notes:**
-_______________________________________
-_______________________________________
-_______________________________________
+### **Build Fails**
+- Check Node version (need v18+)
+- Verify all dependencies installed
+- Check TypeScript errors: `npm run typecheck`
 
+### **Database Connection Fails**
+- Verify DATABASE_URL is correct
+- Check IP whitelist in Supabase (allow all: 0.0.0.0/0)
+- Ensure SSL mode is correct
+
+### **Deepgram Errors**
+- Verify API key is valid
+- Check API key has credits
+- Test in Deepgram dashboard first
+
+### **Auth Not Working**
+- Verify NEXTAUTH_URL matches deployment URL
+- Regenerate NEXTAUTH_SECRET if needed
+- Check callback URLs in auth config
+
+### **Prisma Errors**
+- Ensure prisma is in dependencies (not devDependencies)
+- Check DATABASE_URL format
+- Run: `npx prisma generate` before build
+
+---
+
+## ✅ Success Criteria
+
+Deployment is successful when:
+- [ ] Application loads without errors
+- [ ] Users can register and login
+- [ ] Jobs can be created
+- [ ] Files can be uploaded
+- [ ] Transcription processes
+- [ ] Exports generate
+
+---
+
+## 📞 Support Resources
+
+- **Vercel Docs:** https://vercel.com/docs
+- **Next.js Docs:** https://nextjs.org/docs
+- **Prisma Docs:** https://www.prisma.io/docs
+- **Deepgram Docs:** https://developers.deepgram.com
+- **Supabase Docs:** https://supabase.com/docs
+
+---
+
+**Status:** Ready to deploy! 🚀

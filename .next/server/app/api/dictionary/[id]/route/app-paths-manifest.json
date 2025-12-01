@@ -1,0 +1,3 @@
+{
+  "/api/dictionary/[id]/route": "app/api/dictionary/[id]/route.js"
+}

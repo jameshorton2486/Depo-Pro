@@ -11,20 +11,11 @@ import {
 import { downloadFile } from '@/lib/storage';
 import { DeepgramModelType } from '@/lib/transcription/config';
 import { analyzeSpeakersEnhanced } from '@/lib/services/speaker-identification';
+import type { TranscriptionJobData } from '@/types/deepgram';
 
 // ============================================
-// JOB DATA INTERFACE
+// Now using shared TranscriptionJobData from @/types/deepgram
 // ============================================
-
-export interface TranscriptionJobData {
-  jobId: string;
-  audioFileId: string;
-  audioFileUrl: string;
-  audioFileName: string;
-  firmId: string;
-  userId: string;
-  modelType: DeepgramModelType;
-}
 
 // ============================================
 // PROCESS TRANSCRIPTION JOB
@@ -38,11 +29,8 @@ export async function processTranscriptionJob(
   
   const { 
     jobId, 
-    audioFileId, 
     audioFileUrl, 
     audioFileName,
-    firmId, 
-    userId,
     modelType 
   } = data;
 

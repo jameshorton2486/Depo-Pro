@@ -1,7 +1,6 @@
 // app/(dashboard)/scopist/page.tsx
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { auth } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { 
@@ -18,7 +17,7 @@ import { startOfMonth } from 'date-fns';
 import { FlaggedWord } from '@/types/transcript';
 
 export default async function ScopistDashboard() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session?.user) {
     redirect('/login');
@@ -94,7 +93,7 @@ export default async function ScopistDashboard() {
         const flagged: FlaggedWord[] = JSON.parse(job.transcription.flaggedSegments as string);
         flaggedCount = flagged.length;
         reviewedCount = flagged.filter((w) => w.isReviewed).length;
-      } catch (e) {
+      } catch (_error) {
         // Use defaults
       }
     }

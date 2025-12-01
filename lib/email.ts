@@ -84,7 +84,7 @@ export function jobAssignedEmail(data: {
   scopistEmail: string;
   reporterName: string;
   caseNumber: string;
-  depoDate?: Date;
+  depositionDate?: Date;
   notes?: string;
 }): EmailOptions {
   const html = `
@@ -111,7 +111,7 @@ export function jobAssignedEmail(data: {
       <h3>Job Details:</h3>
       <ul>
         <li><strong>Case Number:</strong> ${data.caseNumber}</li>
-        ${data.depoDate ? `<li><strong>Deposition Date:</strong> ${data.depoDate.toLocaleDateString()}</li>` : ''}
+        ${data.depositionDate ? `<li><strong>Deposition Date:</strong> ${data.depositionDate.toLocaleDateString()}</li>` : ''}
         ${data.notes ? `<li><strong>Notes:</strong> ${data.notes}</li>` : ''}
       </ul>
       <p style="margin-top: 30px;">
@@ -134,7 +134,7 @@ You have been assigned a new job by ${data.reporterName}.
 
 Job Details:
 - Case Number: ${data.caseNumber}
-${data.depoDate ? `- Deposition Date: ${data.depoDate.toLocaleDateString()}` : ''}
+${data.depositionDate ? `- Deposition Date: ${data.depositionDate.toLocaleDateString()}` : ''}
 ${data.notes ? `- Notes: ${data.notes}` : ''}
 
 View your assignment at: ${process.env.NEXTAUTH_URL}/dashboard

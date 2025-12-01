@@ -4,8 +4,7 @@
 import { TranscriptUtterance } from '@/types/transcript';
 import { 
   ATTORNEY_PHRASES, 
-  REPORTER_PHRASES,
-  SpeakerType 
+  REPORTER_PHRASES
 } from '@/lib/transcription/config';
 
 export interface SpeakerGuess {

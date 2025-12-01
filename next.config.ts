@@ -2,68 +2,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  reactCompiler: true,
-  
-  // Output standalone for Docker/serverless
-  output: 'standalone',
-  
-  // Image optimization
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-      },
-    ],
-  },
-  
-  // Webpack configuration
-  webpack: (config, { isServer }) => {
-    // Handle audio file imports
-    config.module.rules.push({
-      test: /\.(mp3|wav|ogg|flac|m4a)$/,
-      type: 'asset/resource',
+  serverExternalPackages: ["bcrypt"],
+
+  // This is the new line you needed to add
+  turbopack: {},
+
+  webpack: (config, { isServer: _isServer }) => {
+    config.externals.push({
+      "utf-8-validate": "commonjs utf-8-validate",
+      bufferutil: "commonjs bufferutil",
     });
-    
     return config;
-  },
-  
-  // Experimental features
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '50mb',
-    },
-  },
-  
-  // Headers for security
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-        ],
-      },
-    ];
-  },
-  
-  // Redirects
-  async redirects() {
-    return [
-      {
-        source: '/home',
-        destination: '/',
-        permanent: true,
-      },
-    ];
   },
 };
 

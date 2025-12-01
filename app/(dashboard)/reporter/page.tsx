@@ -1,7 +1,6 @@
 // app/(dashboard)/reporter/page.tsx
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-options';
+import { auth } from '@/lib/auth-options';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { 
@@ -19,7 +18,7 @@ import { RecentJobs } from '@/components/dashboard/recent-jobs';
 import { startOfMonth } from 'date-fns';
 
 export default async function ReporterDashboard() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session?.user) {
     redirect('/login');

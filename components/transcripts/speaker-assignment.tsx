@@ -33,7 +33,7 @@ export function SpeakerAssignmentTable({
     }
     
     // Create default rows
-    return Array.from({ length: DEFAULT_SPEAKER_COUNT }, (_, i) => ({
+    return Array.from({ length: DEFAULT_SPEAKER_COUNT }, (_) => ({
       speakerId: -1,  // Unassigned
       speakerName: '',
       speakerType: 'Attorney' as SpeakerType,
