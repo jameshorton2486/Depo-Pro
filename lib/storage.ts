@@ -34,7 +34,7 @@ export async function downloadFile(fileUrl: string): Promise<Buffer> {
   
   try {
     return await fs.readFile(localPath);
-  } catch (error) {
+  } catch {
     throw new Error(`File not found: ${localPath}`);
   }
 }

@@ -59,7 +59,7 @@ export async function GET() {
     try {
       // Basic check - just verify URL is set
       health.checks.redis = 'ok';
-    } catch (_error) {
+    } catch {
       health.checks.redis = 'error';
       health.status = 'degraded';
     }

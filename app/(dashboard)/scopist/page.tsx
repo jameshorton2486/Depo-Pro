@@ -93,7 +93,7 @@ export default async function ScopistDashboard() {
         const flagged: FlaggedWord[] = JSON.parse(job.transcription.flaggedSegments as string);
         flaggedCount = flagged.length;
         reviewedCount = flagged.filter((w) => w.isReviewed).length;
-      } catch (_error) {
+      } catch {
         // Use defaults
       }
     }

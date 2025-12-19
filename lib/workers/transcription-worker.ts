@@ -9,7 +9,6 @@ import {
   getMimetypeFromExtension 
 } from '@/lib/transcription';
 import { downloadFile } from '@/lib/storage';
-import { DeepgramModelType } from '@/lib/transcription/config';
 import { analyzeSpeakersEnhanced } from '@/lib/services/speaker-identification';
 import type { TranscriptionJobData } from '@/types/deepgram';
 
