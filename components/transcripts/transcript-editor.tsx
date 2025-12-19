@@ -154,7 +154,7 @@ export function TranscriptEditor({
     <div className="space-y-4">
       {/* Audio Player */}
       {audioUrl && (
-        <AudioPlayer url={audioUrl} />
+        <AudioPlayer src={audioUrl} />
       )}
 
       {/* Toolbar */}

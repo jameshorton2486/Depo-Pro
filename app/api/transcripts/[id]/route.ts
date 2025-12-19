@@ -243,7 +243,7 @@ export async function PUT(
       },
     });
 
-    logger.info('Transcript updated', 'API', {
+    logger.info('Transcript updated', {
       transcriptId,
       userId: session.user.id,
     });

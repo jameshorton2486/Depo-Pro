@@ -1,3 +1,0 @@
-{
-  "/api/transcribe/status/[jobId]/route": "app/api/transcribe/status/[jobId]/route.js"
-}

@@ -1,6 +1,6 @@
 // app/api/transcripts/[id]/export/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-options';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { exportTranscript } from '@/lib/export';
 import { ExportOptions, ExportMetadata } from '@/types/transcript';
@@ -72,7 +72,7 @@ export async function GET(
       caseName: transcription.job.title,
       caseNumber: transcription.job.caseNumber || undefined,
       depositionDate: transcription.job.depositionDate || new Date(),
-      deponentName: transcription.job.deponentName || 'Unknown',
+      deponentName: transcription.job.title || 'Unknown',
       courtReporterName: `${transcription.job.createdBy.firstName} ${transcription.job.createdBy.lastName}` || undefined,
       firmName: transcription.job.firm?.name || undefined,
       location: transcription.job.location || undefined,
@@ -95,7 +95,7 @@ export async function GET(
     );
 
     // Return file
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${filename}"`,

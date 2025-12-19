@@ -83,7 +83,7 @@ export async function GET(
     return NextResponse.json(job);
 
   } catch (error) {
-    logger.apiError('GET /api/jobs/[id]', error as Error);
+    logger.error('GET /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to fetch job' },
       { status: 500 }
@@ -159,7 +159,7 @@ export async function PUT(
       );
     }
 
-    logger.apiError('PUT /api/jobs/[id]', error as Error);
+    logger.error('PUT /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to update job' },
       { status: 500 }
@@ -219,7 +219,7 @@ export async function PATCH(
 
     return NextResponse.json(updatedJob);
   } catch (error) {
-    logger.apiError('PATCH /api/jobs/[id]', error as Error);
+    logger.error('PATCH /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to update job status' },
       { status: 500 }
@@ -274,7 +274,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    logger.apiError('DELETE /api/jobs/[id]', error as Error);
+    logger.error('DELETE /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to delete job' },
       { status: 500 }

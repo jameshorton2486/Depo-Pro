@@ -108,10 +108,10 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     
-    const { storageKey, storageUrl, size } = await uploadFile(
+    const storagePath = await uploadFile(
       buffer,
       file.name,
-      file.type
+      'jobs'
     );
 
     // 💿 Save file metadata to database
@@ -120,10 +120,10 @@ export async function POST(
         jobId,
         fileName: file.name,
         mimeType: file.type,
-        fileSize: size,
+        fileSize: buffer.length,
         type: getFileType(file.type),
-        storagePath: storageKey,
-        storageUrl: storageUrl || '',
+        storagePath: storagePath,
+        storageUrl: storagePath,
       },
     });
 

@@ -11,6 +11,10 @@ coverage/
 dist/
 build/
 
+# Next.js
+.next/
+out/
+
 # Environment variables
 .env
 .env.local
@@ -53,6 +57,9 @@ yarn-error.log*
 tmp/
 temp/
 *.tmp
+
+# TypeScript
+*.tsbuildinfo
 
 # Audio/video test files
 test-audio.*

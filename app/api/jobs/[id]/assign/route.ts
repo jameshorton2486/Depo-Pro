@@ -108,7 +108,7 @@ export async function POST(
       );
     }
 
-    logger.apiError('POST /api/jobs/[id]/assign', error as Error);
+    logger.error('POST /api/jobs/[id]/assign', error as Error);
     return NextResponse.json(
       { error: 'Failed to create assignment' },
       { status: 500 }

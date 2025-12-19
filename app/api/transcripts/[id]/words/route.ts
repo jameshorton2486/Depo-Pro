@@ -2,7 +2,7 @@
 // API route for updating flagged words during review
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-options';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { FlaggedWord } from '@/types/transcript';
 
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     // Create edit record
     await prisma.transcriptionEdit.create({
       data: {
-        transcriptionId,
+        transcriptionId: transcriptId,
         editorId: session.user.id,
         editorEmail: session.user.email || undefined,
         editorRole: session.user.role,
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         // Create edit record
         await prisma.transcriptionEdit.create({
           data: {
-            transcriptionId,
+            transcriptionId: transcriptId,
             editorId: session.user.id,
             editorEmail: session.user.email || undefined,
             editorRole: session.user.role,

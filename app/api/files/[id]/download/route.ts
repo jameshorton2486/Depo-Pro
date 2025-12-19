@@ -52,7 +52,8 @@ export async function GET(
     }
 
     // 📥 Download file from storage
-    const { buffer, contentType } = await downloadFile(file.fileName);
+    const buffer = await downloadFile(file.storagePath || file.fileName);
+    const contentType = file.mimeType || 'application/octet-stream';
 
     // 📤 Return file with proper headers
     return new NextResponse(buffer as unknown as BodyInit, {

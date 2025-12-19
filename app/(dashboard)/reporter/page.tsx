@@ -1,6 +1,6 @@
 // app/(dashboard)/reporter/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-options';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { 
@@ -40,14 +40,14 @@ export default async function ReporterDashboard() {
     prisma.job.count({
       where: {
         createdById: user.id,
-        status: { in: ['PENDING', 'PROCESSING', 'TRANSCRIBING'] },
+        status: { in: ['CREATED', 'FILES_UPLOADED', 'TRANSCRIBING'] },
       },
     }),
     // With scopist
     prisma.job.count({
       where: {
         createdById: user.id,
-        status: { in: ['SCOPIST_ASSIGNED', 'AI_COMPLETE', 'ASSIGNED', 'IN_EDIT'] },
+        status: { in: ['ASSIGNED', 'READY_FOR_EDIT', 'IN_EDIT'] },
       },
     }),
     // Completed this month
@@ -67,7 +67,6 @@ export default async function ReporterDashboard() {
         id: true,
         title: true,
         status: true,
-        deponentName: true,
         updatedAt: true,
       },
     }),

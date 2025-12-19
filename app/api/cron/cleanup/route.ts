@@ -27,11 +27,11 @@ export async function GET(request: NextRequest) {
     
     const stuckJobs = await prisma.job.updateMany({
       where: {
-        status: 'PROCESSING',
+        status: 'TRANSCRIBING',
         updatedAt: { lt: oneHourAgo },
       },
       data: {
-        status: 'FAILED',
+        status: 'CANCELLED',
         errorMessage: 'Job timed out during processing',
       },
     });

@@ -49,10 +49,12 @@ export async function POST(request: NextRequest) {
     // Add to queue
     await transcriptionQueue.add('transcribe', {
       jobId: validated.jobId,
+      audioFileId: validated.jobId, // Use jobId as fileId for now
       audioFileUrl: validated.audioFileUrl,
       audioFileName: 'audio', // We might want to get this from the file URL or metadata
-      requestedBy: session.user.id,
-      metadata: validated.options,
+      firmId: '', // Not used in MVP
+      userId: session.user.id,
+      modelType: (validated.options?.model as 'STANDARD' | 'MEDICAL' | 'BILINGUAL') || 'MEDICAL',
     });
 
     return NextResponse.json({ 

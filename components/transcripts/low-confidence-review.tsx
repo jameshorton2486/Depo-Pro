@@ -66,6 +66,18 @@ export function LowConfidenceReview({
     )?.id;
   }, [flaggedWords, currentAudioTime]);
 
+  const toggleReviewed = useCallback(
+    async (word: FlaggedWord) => {
+      setSavingId(word.id);
+      try {
+        await onMarkReviewed(word.id, !word.isReviewed);
+      } finally {
+        setSavingId(null);
+      }
+    },
+    [onMarkReviewed]
+  );
+
   useEffect(() => {
     if (playingWordId) {
       const element = itemRefs.current.get(playingWordId);
@@ -151,18 +163,6 @@ export function LowConfidenceReview({
     }
   };
 
-  const toggleReviewed = useCallback(
-    async (word: FlaggedWord) => {
-      setSavingId(word.id);
-      try {
-        await onMarkReviewed(word.id, !word.isReviewed);
-      } finally {
-        setSavingId(null);
-      }
-    },
-    [onMarkReviewed]
-  );
-
   const getConfidenceColor = (confidence: number) => {
     if (confidence < 0.5) return 'text-red-500';
     if (confidence < 0.7) return 'text-orange-500';
@@ -189,7 +189,7 @@ export function LowConfidenceReview({
         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
           <div
             className="h-full rounded-full bg-green-500 transition-all"
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${progressPercent}%` } as React.CSSProperties}
           />
         </div>
         <p className="mt-1 text-right text-xs text-slate-500">{progressPercent}%</p>
@@ -201,6 +201,8 @@ export function LowConfidenceReview({
           value={filter}
           onChange={(event) => setFilter(event.target.value as FilterType)}
           className="rounded border-none bg-slate-800 px-2 py-1 text-xs text-slate-200"
+          title="Filter flagged words"
+          aria-label="Filter flagged words"
         >
           <option value="all">All ({totalCount})</option>
           <option value="pending">Pending ({totalCount - reviewedCount})</option>
@@ -210,6 +212,8 @@ export function LowConfidenceReview({
           value={sortBy}
           onChange={(event) => setSortBy(event.target.value as SortType)}
           className="rounded border-none bg-slate-800 px-2 py-1 text-xs text-slate-200"
+          title="Sort flagged words"
+          aria-label="Sort flagged words"
         >
           <option value="confidence">By Confidence</option>
           <option value="timestamp">By Time</option>
@@ -294,9 +298,13 @@ export function LowConfidenceReview({
                   )}
 
                   <p className="mt-1 text-xs text-slate-400">
-                    ...{word.context.before}{' '}
-                    <span className="text-white">{word.word}</span>{' '}
-                    {word.context.after}...
+                    {word.contextBefore && word.contextBefore.length > 0 && (
+                      <>...{word.contextBefore.join(' ')} </>
+                    )}
+                    <span className="text-white">{word.word}</span>
+                    {word.contextAfter && word.contextAfter.length > 0 && (
+                      <> {word.contextAfter.join(' ')}...</>
+                    )}
                   </p>
 
                   {word.alternatives && word.alternatives.length > 0 && (

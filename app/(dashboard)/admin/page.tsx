@@ -1,6 +1,6 @@
 // app/(dashboard)/admin/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-options';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { 
   Users, 
@@ -31,7 +31,7 @@ export default async function AdminDashboard() {
     prisma.firm.count(),
     prisma.job.count({
       where: {
-        status: { in: ['PENDING', 'PROCESSING', 'TRANSCRIBING', 'AI_REVIEWING', 'AI_COMPLETE', 'SCOPIST_ASSIGNED', 'ASSIGNED', 'IN_EDIT'] },
+        status: { in: ['CREATED', 'FILES_UPLOADED', 'TRANSCRIBING', 'AI_REVIEWING', 'READY_FOR_EDIT', 'ASSIGNED', 'IN_EDIT'] },
       },
     }),
     prisma.job.findMany({
@@ -41,7 +41,6 @@ export default async function AdminDashboard() {
         id: true,
         title: true,
         status: true,
-        deponentName: true,
         updatedAt: true,
       },
     }),

@@ -2,9 +2,10 @@
 // Trigger transcription for a job
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-options';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { processTranscriptionJob, TranscriptionJobData } from '@/lib/workers/transcription-worker';
+import { processTranscriptionJob } from '@/lib/workers/transcription-worker';
+import type { TranscriptionJobData } from '@/types/deepgram';
 import { DeepgramModelType } from '@/lib/transcription/config';
 
 interface RouteContext {

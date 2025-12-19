@@ -72,7 +72,7 @@ export async function transcribeFromUrl(
   try {
     const { result, error } = await client.listen.prerecorded.transcribeUrl(
       { url: audioUrl },
-      config
+      config as any
     );
 
     if (error) {

@@ -1,6 +1,6 @@
 // app/(dashboard)/scopist/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-options';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { 
@@ -35,21 +35,21 @@ export default async function ScopistDashboard() {
     prisma.jobAssignment.count({
       where: {
         scopistId: user.id,
-        status: { not: 'COMPLETED' },
+        status: { not: 'SUBMITTED' },
       },
     }),
     // Pending review (AI complete, assigned to me)
     prisma.job.count({
       where: {
         assignments: { some: { scopistId: user.id } },
-        status: { in: ['AI_COMPLETE', 'SCOPIST_ASSIGNED', 'ASSIGNED'] },
+        status: { in: ['READY_FOR_EDIT', 'ASSIGNED'] },
       },
     }),
     // Completed this month
     prisma.jobAssignment.count({
       where: {
         scopistId: user.id,
-        status: 'COMPLETED',
+        status: 'SUBMITTED',
         submittedAt: { gte: startOfMonth(new Date()) },
       },
     }),
@@ -57,14 +57,14 @@ export default async function ScopistDashboard() {
     prisma.jobAssignment.count({
       where: {
         scopistId: user.id,
-        status: 'COMPLETED',
+        status: 'SUBMITTED',
       },
     }),
     // Assigned jobs with details
     prisma.job.findMany({
       where: {
         assignments: { some: { scopistId: user.id } },
-        status: { in: ['AI_COMPLETE', 'SCOPIST_ASSIGNED', 'ASSIGNED', 'IN_EDIT'] },
+        status: { in: ['READY_FOR_EDIT', 'ASSIGNED', 'IN_EDIT'] },
       },
       include: {
         transcription: {
@@ -180,7 +180,7 @@ export default async function ScopistDashboard() {
                           {job.title}
                         </h4>
                         <p className="text-sm text-slate-500">
-                          {job.deponentName || 'Unknown deponent'}
+                          {job.caseName || 'Unknown case'}
                         </p>
                       </div>
                       <div className="flex items-center gap-3">

@@ -2,7 +2,7 @@
 // Scopist review page with split view: audio player + low-confidence word review
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-options';
+import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ReviewPageClient } from './review-client';
 

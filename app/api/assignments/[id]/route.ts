@@ -103,7 +103,7 @@ export async function PATCH(
       );
     }
 
-    logger.apiError('PATCH /api/assignments/[id]', error as Error);
+    logger.error('PATCH /api/assignments/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to update assignment' },
       { status: 500 }
@@ -162,7 +162,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    logger.apiError('DELETE /api/assignments/[id]', error as Error);
+    logger.error('DELETE /api/assignments/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to delete assignment' },
       { status: 500 }

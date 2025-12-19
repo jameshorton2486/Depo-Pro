@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    logger.apiError('GET /api/jobs', error as Error);
+    logger.error('GET /api/jobs', error as Error);
     return NextResponse.json(
       { error: 'Failed to fetch jobs' },
       { status: 500 }
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.apiError('POST /api/jobs', error as Error);
+    logger.error('POST /api/jobs', error as Error);
     return NextResponse.json(
       { error: 'Failed to create job' },
       { status: 500 }

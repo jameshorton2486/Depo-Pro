@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
     // Validate required fields
     if (!firstName || !lastName || !email || !passwordHash || !role) {
-      logger.warn('Registration attempt with missing fields', 'Registration', {
+      logger.warn('Registration attempt with missing fields', {
         hasFirstName: !!firstName,
         hasLastName: !!lastName,
         hasEmail: !!email,
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      logger.warn('Registration attempt with existing email', 'Registration', { email });
+      logger.warn('Registration attempt with existing email', { email });
       return NextResponse.json(
         { error: 'A user with this email already exists' },
         { status: 409 }
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         },
       });
 
-      logger.info('User registered successfully', 'Registration', {
+      logger.info('User registered successfully', {
         userId: user.id,
         email: user.email,
         role: user.role,
@@ -76,14 +76,14 @@ export async function POST(request: Request) {
         { status: 201 }
       );
     } catch (error) {
-      logger.dbError('User creation', error as Error, { email, role });
+      logger.error('User creation', error as Error);
       return NextResponse.json(
         { error: 'Failed to create user account' },
         { status: 500 }
       );
     }
   } catch (error) {
-    logger.apiError('/api/auth/register', error as Error);
+    logger.error('/api/auth/register', error as Error);
     return NextResponse.json(
       { error: 'Failed to register user. Please try again.' },
       { status: 500 }
