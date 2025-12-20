@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
+    "@auth/core": "^0.34.3",
     "@deepgram/sdk": "^4.11.2",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.19.0",
@@ -58,6 +59,7 @@
     "lucide-react": "^0.553.0",
     "next": "^16.0.1",
     "next-auth": "^5.0.0-beta.30",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.17.2",
     "react": "19.2.0",
@@ -94,3 +96,5 @@
     "typescript": "^5"
   }
 }
+
+

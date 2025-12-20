@@ -9,6 +9,7 @@ import { db } from '@/lib/db';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { AssignmentManagement } from '@/components/jobs/assignment-management';
 import { FileUpload } from '@/components/jobs/file-upload';
+import { ExhibitsManager } from '@/components/jobs/exhibits-manager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -205,6 +206,9 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         canUpload={canEdit}
         canDelete={canEdit}
       />
+
+      {/* Exhibits */}
+      <ExhibitsManager jobId={job.id} canEdit={canEdit} />
 
       {/* Assignments */}
       <AssignmentManagement

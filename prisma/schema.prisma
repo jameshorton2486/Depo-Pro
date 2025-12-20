@@ -94,6 +94,7 @@ model Job {
   
   // Files
   files           JobFile[]
+  exhibits        Exhibit[]
   
   // Transcription
   transcriptionJobs         TranscriptionJob[]
@@ -161,6 +162,35 @@ model JobFile {
   createdAt   DateTime    @default(now())
   
   @@index([jobId, type])
+}
+
+// ============================================
+// EXHIBITS
+// ============================================
+
+model Exhibit {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  exhibitNumber   Int
+  description     String
+  
+  originalFileUrl String
+  stampedFileUrl  String?
+  
+  fileType        String   // PDF, IMAGE, DOCX
+  mimeType        String
+  fileName        String
+  fileSize        Int      // bytes
+  
+  stamped         Boolean  @default(false)
+  
+  createdById     String
+  createdAt       DateTime @default(now())
+  
+  @@unique([jobId, exhibitNumber])
+  @@index([jobId])
 }
 
 enum FileType {
