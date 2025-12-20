@@ -36,7 +36,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       >
         <Bold className="h-4 w-4" />
       </Button>
-      
+
       <Button
         variant={editor.isActive('italic') ? 'secondary' : 'ghost'}
         size="sm"

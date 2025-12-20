@@ -20,16 +20,16 @@ const envSchema = z.object({
 
   // Feature Flags
   USE_CLOUD_STORAGE: z.string().transform(v => v === 'true').optional(),
-  
+
   // Optional
   SENDGRID_WEBHOOK_SECRET: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
-  
+
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().default('3000'),
   APP_URL: z.string().url().default('http://localhost:3000'),
-  
+
   // Settings
   FILE_RETENTION_DAYS: z.string().default('90'),
   WORKER_CONCURRENCY: z.string().default('3'),

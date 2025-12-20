@@ -60,7 +60,7 @@ function getLineNumber(lineIndex: number): string {
 export async function exportToDocx(
   transcriptText: string,
   metadata: ExportMetadata,
-  options: ExportOptions
+  options: ExportOptions,
 ): Promise<Buffer> {
   const lines = splitIntoLines(transcriptText);
   const pages: string[][] = [];
@@ -215,7 +215,7 @@ export async function exportToDocx(
               font: 'Courier New',
             }),
           ],
-        })
+        }),
       );
     }
 
@@ -276,7 +276,7 @@ export async function exportToDocx(
 export async function exportToPdf(
   transcriptText: string,
   metadata: ExportMetadata,
-  options: ExportOptions
+  options: ExportOptions,
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
@@ -314,7 +314,7 @@ export async function exportToPdf(
             `${metadata.caseName || 'Deposition'} - ${metadata.deponentName || 'Deponent'}`,
             72,
             30,
-            { align: 'center', width: 468 }
+            { align: 'center', width: 468 },
           );
       };
 
@@ -375,22 +375,22 @@ export async function exportToPdf(
 export function exportToText(
   transcriptText: string,
   metadata: ExportMetadata,
-  options: ExportOptions
+  options: ExportOptions,
 ): Buffer {
   const lines = splitIntoLines(transcriptText);
   let output = '';
 
   // Header
-  output += '='.repeat(70) + '\n';
+  output += `${'='.repeat(70)}\n`;
   output += 'DEPOSITION TRANSCRIPT\n';
-  output += '='.repeat(70) + '\n\n';
+  output += `${'='.repeat(70)}\n\n`;
   output += `Case: ${metadata.caseName || 'N/A'}\n`;
   output += `Case Number: ${metadata.caseNumber || 'N/A'}\n`;
   output += `Deponent: ${metadata.deponentName || 'N/A'}\n`;
   output += `Date: ${formatDate(metadata.depositionDate || new Date())}\n`;
   output += `Reporter: ${metadata.courtReporterName || 'N/A'}\n`;
   output += `Firm: ${metadata.firmName || 'N/A'}\n`;
-  output += '\n' + '='.repeat(70) + '\n\n';
+  output += `\n${'='.repeat(70)}\n\n`;
 
   // Transcript with line numbers
   let pageNum = 1;
@@ -398,7 +398,7 @@ export function exportToText(
     // Page break indicator
     if (i > 0 && i % LINES_PER_PAGE === 0) {
       pageNum++;
-      output += '\n' + '-'.repeat(40) + ` Page ${pageNum} ` + '-'.repeat(40) + '\n\n';
+      output += `\n${'-'.repeat(40)} Page ${pageNum} ${'-'.repeat(40)}\n\n`;
     }
 
     // Line number
@@ -408,13 +408,13 @@ export function exportToText(
       output += `${displayNum} | `;
     }
 
-    output += lines[i] + '\n';
+    output += `${lines[i]}\n`;
   }
 
   // Footer
-  output += '\n' + '='.repeat(70) + '\n';
+  output += `\n${'='.repeat(70)}\n`;
   output += 'END OF TRANSCRIPT\n';
-  output += '='.repeat(70) + '\n';
+  output += `${'='.repeat(70)}\n`;
 
   return Buffer.from(output, 'utf-8');
 }
@@ -426,7 +426,7 @@ export function exportToText(
 export async function exportTranscript(
   transcriptText: string,
   metadata: ExportMetadata,
-  options: ExportOptions
+  options: ExportOptions,
 ): Promise<{ buffer: Buffer; filename: string; contentType: string }> {
   const dateStr = format(metadata.depositionDate || new Date(), 'yyyy-MM-dd');
   const baseName = `${metadata.caseName?.replace(/[^a-zA-Z0-9]/g, '_') || 'Transcript'}_${dateStr}`;

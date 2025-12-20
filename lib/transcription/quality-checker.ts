@@ -9,11 +9,11 @@
  */
 export async function calculateQualityMetrics(
   _words: any[],
-  _utterances?: any[]
+  _utterances?: any[],
 ): Promise<any> {
   // TODO: Implement quality analysis
   const _threshold = 0.8;
-  
+
   return {
     overallConfidence: 0,
     lowConfidenceCount: 0,

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (!body.type || !body.payload) {
       return NextResponse.json(
         { error: 'Invalid job data: type and payload required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     logger.error(`Failed to enqueue job - error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to enqueue job' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     if (!jobId) {
       return NextResponse.json(
         { error: 'jobId parameter required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     logger.error(`Failed to get job status - error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to get job status' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

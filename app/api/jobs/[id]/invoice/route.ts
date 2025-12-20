@@ -16,7 +16,7 @@ import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -99,7 +99,7 @@ export async function POST(
     logger.error(`Failed to generate invoice - jobId: ${id}, error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to generate invoice' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

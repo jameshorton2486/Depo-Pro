@@ -39,7 +39,7 @@ export function TranscriptViewer({
         if (res.ok) {
           const data = await res.json();
           setContent(data.content || '');
-          
+
           const words = (data.content || '').trim().split(/\s+/).filter(Boolean);
           setMetadata({
             version: data.version,
@@ -120,21 +120,21 @@ export function TranscriptViewer({
                   ✏️ Edit Transcript
                 </Button>
               )}
-              
+
               <Button
                 variant="outline"
                 onClick={() => handleExport('txt')}
               >
                 📄 Export TXT
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={() => handleExport('ascii')}
               >
                 📋 Export ASCII
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={() => handleExport('docx')}
@@ -142,7 +142,7 @@ export function TranscriptViewer({
               >
                 📘 Export DOCX
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={() => handleExport('pdf')}
@@ -150,7 +150,7 @@ export function TranscriptViewer({
               >
                 📕 Export PDF
               </Button>
-              
+
               <Button
                 variant="outline"
                 onClick={handlePrint}

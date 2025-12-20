@@ -81,7 +81,7 @@ export function FlaggedWordCard({
   // Highlight the flagged word in context
   const formattedContext = segment.context.replace(
     /\[([^\]]+)\]/,
-    '<mark class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded font-medium">$1</mark>'
+    '<mark class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded font-medium">$1</mark>',
   );
 
   return (
@@ -94,7 +94,7 @@ export function FlaggedWordCard({
           ? 'bg-slate-50 dark:bg-slate-900 border-l-green-500 opacity-75'
           : 'bg-white dark:bg-slate-800 border-l-amber-500 shadow-sm hover:shadow-md',
         isPlaying && 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20',
-        isSelected && !isPlaying && 'ring-2 ring-slate-400'
+        isSelected && !isPlaying && 'ring-2 ring-slate-400',
       )}
     >
       {/* Header: Word and Confidence */}
@@ -110,7 +110,7 @@ export function FlaggedWordCard({
           >
             <Volume2 className={cn('w-4 h-4', isPlaying ? 'text-blue-600' : 'text-slate-500')} />
           </button>
-          
+
           {isEditing ? (
             <input
               ref={inputRef}
@@ -128,7 +128,7 @@ export function FlaggedWordCard({
             </span>
           )}
         </div>
-        
+
         <span className={cn('px-2 py-0.5 text-xs font-medium rounded-full', getConfidenceColor(segment.confidence))}>
           {Math.round(segment.confidence * 100)}%
         </span>
@@ -199,7 +199,7 @@ export function FlaggedWordCard({
             <Edit2 className="w-3 h-3" /> Edit
           </button>
         )}
-        
+
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -209,7 +209,7 @@ export function FlaggedWordCard({
             'flex items-center gap-1 px-2 py-1 text-sm rounded transition-colors',
             isReviewed
               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
           )}
         >
           <Check className="w-3 h-3" />

@@ -9,11 +9,11 @@ import { deleteExhibitFiles } from '@/lib/exhibits/storage';
 // GET /api/jobs/[id]/exhibits/[exhibitId] - Get single exhibit
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; exhibitId: string }> }
+  { params }: { params: Promise<{ id: string; exhibitId: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -26,9 +26,9 @@ export async function GET(
       where: { id: exhibitId },
       include: {
         job: {
-          select: { 
-            id: true, 
-            createdById: true, 
+          select: {
+            id: true,
+            createdById: true,
             firmId: true,
             assignments: {
               select: { scopistId: true },
@@ -43,7 +43,7 @@ export async function GET(
     }
 
     // Check permissions
-    const hasAccess = 
+    const hasAccess =
       exhibit.job.createdById === user.id ||
       exhibit.job.assignments.some(a => a.scopistId === user.id) ||
       user.role === 'ADMIN';
@@ -53,14 +53,14 @@ export async function GET(
     }
 
     // Remove job relation from response
-    const { job, ...exhibitData } = exhibit;
+    const { job: _job, ...exhibitData } = exhibit;
 
     return NextResponse.json({ exhibit: exhibitData });
   } catch (error) {
     console.error('Error fetching exhibit:', error);
     return NextResponse.json(
       { error: 'Failed to fetch exhibit' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -68,11 +68,11 @@ export async function GET(
 // PATCH /api/jobs/[id]/exhibits/[exhibitId] - Update exhibit description
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; exhibitId: string }> }
+  { params }: { params: Promise<{ id: string; exhibitId: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -87,7 +87,7 @@ export async function PATCH(
     if (typeof description !== 'string') {
       return NextResponse.json(
         { error: 'Description must be a string' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -96,9 +96,9 @@ export async function PATCH(
       where: { id: exhibitId },
       include: {
         job: {
-          select: { 
-            id: true, 
-            createdById: true, 
+          select: {
+            id: true,
+            createdById: true,
             firmId: true,
           },
         },
@@ -110,7 +110,7 @@ export async function PATCH(
     }
 
     // Check permissions (only reporter who created job, or admin can edit)
-    const canEdit = 
+    const canEdit =
       exhibit.job.createdById === user.id ||
       user.role === 'ADMIN';
 
@@ -129,7 +129,7 @@ export async function PATCH(
     console.error('Error updating exhibit:', error);
     return NextResponse.json(
       { error: 'Failed to update exhibit' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -137,11 +137,11 @@ export async function PATCH(
 // DELETE /api/jobs/[id]/exhibits/[exhibitId] - Delete exhibit
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; exhibitId: string }> }
+  { params }: { params: Promise<{ id: string; exhibitId: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -154,9 +154,9 @@ export async function DELETE(
       where: { id: exhibitId },
       include: {
         job: {
-          select: { 
-            id: true, 
-            createdById: true, 
+          select: {
+            id: true,
+            createdById: true,
             firmId: true,
           },
         },
@@ -168,7 +168,7 @@ export async function DELETE(
     }
 
     // Check permissions (only reporter who created job, admin, or creator can delete)
-    const canDelete = 
+    const canDelete =
       exhibit.job.createdById === user.id ||
       exhibit.createdById === user.id ||
       user.role === 'ADMIN';
@@ -179,7 +179,7 @@ export async function DELETE(
 
     // Extract paths from URLs for deletion
     const pathsToDelete: string[] = [];
-    
+
     // Extract path from originalFileUrl (Supabase storage path)
     if (exhibit.originalFileUrl) {
       // Extract path from Supabase URL format: https://.../storage/v1/object/public/bucket/path
@@ -188,7 +188,7 @@ export async function DELETE(
         pathsToDelete.push(urlMatch[1]);
       }
     }
-    
+
     // Extract path from stampedFileUrl if exists
     if (exhibit.stampedFileUrl) {
       const urlMatch = exhibit.stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^\/]+\/(.+)$/);
@@ -212,7 +212,7 @@ export async function DELETE(
       where: { id: exhibitId },
     });
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: 'Exhibit deleted successfully',
     });
@@ -220,7 +220,7 @@ export async function DELETE(
     console.error('Error deleting exhibit:', error);
     return NextResponse.json(
       { error: 'Failed to delete exhibit' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

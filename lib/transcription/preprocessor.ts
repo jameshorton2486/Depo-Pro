@@ -16,9 +16,9 @@ export async function analyzeAudioQuality(_filePath: string): Promise<AudioMetad
   // - sample rate
   // - channels
   // - format
-  
+
   console.log('TODO: Implement analyzeAudioQuality()');
-  
+
   throw new Error('Not implemented');
 }
 
@@ -29,16 +29,16 @@ export async function analyzeAudioQuality(_filePath: string): Promise<AudioMetad
  */
 export async function enhanceAudioForLegal(
   _inputPath: string,
-  _outputPath: string
+  _outputPath: string,
 ): Promise<PreprocessingResult> {
   // TODO: Implement FFmpeg enhancement pipeline:
   // 1. Noise reduction (highpass filter at 80Hz, lowpass at 8000Hz)
   // 2. Normalize audio levels
   // 3. Compress dynamic range
   // 4. Convert to consistent format (16-bit, 16kHz, mono)
-  
+
   console.log('TODO: Implement enhanceAudioForLegal()');
-  
+
   throw new Error('Not implemented');
 }
 
@@ -49,13 +49,13 @@ export async function enhanceAudioForLegal(
  */
 export async function concatenateAudioFiles(
   _inputFiles: string[],
-  _outputPath: string
+  _outputPath: string,
 ): Promise<void> {
   // TODO: Use FFmpeg concat filter to merge files
   // Ensure consistent audio format before concatenation
-  
+
   console.log('TODO: Implement concatenateAudioFiles()');
-  
+
   throw new Error('Not implemented');
 }
 

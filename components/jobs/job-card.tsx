@@ -45,7 +45,7 @@ export function JobCard({ job }: JobCardProps) {
               <Calendar className="h-4 w-4" />
               <span>{formatDate(job.depositionDate)}</span>
             </div>
-            
+
             {job.location && (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />

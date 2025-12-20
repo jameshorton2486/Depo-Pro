@@ -2,9 +2,9 @@
 // AI-powered speaker identification from first 20 lines
 
 import { TranscriptUtterance } from '@/types/transcript';
-import { 
-  ATTORNEY_PHRASES, 
-  REPORTER_PHRASES
+import {
+  ATTORNEY_PHRASES,
+  REPORTER_PHRASES,
 } from '@/lib/transcription/config';
 
 export interface SpeakerGuess {
@@ -22,7 +22,7 @@ export interface SpeakerAnalysisResult {
 
 // Heuristic-based speaker identification (no LLM required)
 export function analyzeSpeakersHeuristic(
-  utterances: TranscriptUtterance[]
+  utterances: TranscriptUtterance[],
 ): SpeakerAnalysisResult {
   const first20 = utterances.slice(0, 20);
   const speakerStats: Map<number, {
@@ -49,8 +49,8 @@ export function analyzeSpeakersHeuristic(
 
     const text = utterance.transcript.trim();
     const textLower = text.toLowerCase();
-    
-    const isQuestion = text.endsWith('?') || 
+
+    const isQuestion = text.endsWith('?') ||
       /^(what|when|where|who|why|how|did|do|does|is|are|was|were|can|could|would|will|have|has|please state)/i.test(text);
 
     stats.questionCount += isQuestion ? 1 : 0;
@@ -60,13 +60,13 @@ export function analyzeSpeakersHeuristic(
     stats.firstSpeaker = index === 0;
 
     // Check for attorney phrases
-    stats.attorneyPhrases += ATTORNEY_PHRASES.filter(phrase => 
-      textLower.includes(phrase.toLowerCase())
+    stats.attorneyPhrases += ATTORNEY_PHRASES.filter(phrase =>
+      textLower.includes(phrase.toLowerCase()),
     ).length;
 
     // Check for reporter phrases
-    stats.reporterPhrases += REPORTER_PHRASES.filter(phrase => 
-      textLower.includes(phrase.toLowerCase())
+    stats.reporterPhrases += REPORTER_PHRASES.filter(phrase =>
+      textLower.includes(phrase.toLowerCase()),
     ).length;
 
     speakerStats.set(utterance.speaker, stats);
@@ -74,10 +74,10 @@ export function analyzeSpeakersHeuristic(
 
   // Generate guesses
   const guesses: SpeakerGuess[] = [];
-  
+
   speakerStats.forEach((stats, speakerId) => {
-    const questionRatio = stats.totalUtterances > 0 
-      ? stats.questionCount / stats.totalUtterances 
+    const questionRatio = stats.totalUtterances > 0
+      ? stats.questionCount / stats.totalUtterances
       : 0;
 
     let suggestedType: 'Attorney' | 'Witness' | 'Translator' | 'Court Reporter' | 'Unknown' = 'Unknown';
@@ -94,7 +94,7 @@ export function analyzeSpeakersHeuristic(
     else if (questionRatio > 0.6 || (stats.firstSpeaker && questionRatio > 0.3) || stats.attorneyPhrases > 0) {
       suggestedType = 'Attorney';
       confidence = Math.min(0.9, 0.5 + questionRatio * 0.4);
-      
+
       if (stats.attorneyPhrases > 0) {
         confidence = Math.min(0.95, confidence + stats.attorneyPhrases * 0.1);
         reasoning = `${Math.round(questionRatio * 100)}% questions, ${stats.attorneyPhrases} attorney phrase(s)`;
@@ -138,7 +138,7 @@ export function analyzeSpeakersHeuristic(
 
 // Enhanced speaker analysis with phrase detection
 export function analyzeSpeakersEnhanced(
-  utterances: TranscriptUtterance[]
+  utterances: TranscriptUtterance[],
 ): SpeakerAnalysisResult {
   // For now, use heuristic analysis
   // In the future, this could integrate with LLM for more sophisticated analysis
@@ -156,12 +156,12 @@ export function getDetectedSpeakers(utterances: TranscriptUtterance[]): number[]
 export function getSpeakerSample(
   utterances: TranscriptUtterance[],
   speakerId: number,
-  maxLength: number = 200
+  maxLength: number = 200,
 ): string {
   const speakerUtterances = utterances
     .filter(u => u.speaker === speakerId)
     .slice(0, 3);  // First 3 utterances
-  
+
   return speakerUtterances
     .map(u => u.transcript)
     .join(' ')

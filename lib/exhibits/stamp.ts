@@ -20,7 +20,7 @@ export interface ExhibitStampData {
  */
 export async function stampExhibitPDF(
   pdfBuffer: Buffer,
-  stampData: ExhibitStampData
+  stampData: ExhibitStampData,
 ): Promise<Buffer> {
   try {
     // Load the PDF
@@ -51,8 +51,8 @@ export async function stampExhibitPDF(
 
     // Add stamp to each page (bottom-right corner)
     for (const page of pages) {
-      const { width, height } = page.getSize();
-      
+      const { width } = page.getSize();
+
       // Calculate position (bottom-right with margin)
       const margin = 20;
       const fontSize = 10;

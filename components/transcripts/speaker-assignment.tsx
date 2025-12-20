@@ -31,7 +31,7 @@ export function SpeakerAssignmentTable({
     if (initialAssignments.length > 0) {
       return initialAssignments;
     }
-    
+
     // Create default rows
     return Array.from({ length: DEFAULT_SPEAKER_COUNT }, (_) => ({
       speakerId: -1,  // Unassigned
@@ -44,7 +44,7 @@ export function SpeakerAssignmentTable({
   const updateAssignment = (
     index: number,
     field: keyof SpeakerAssignment,
-    value: string | number | boolean
+    value: string | number | boolean,
   ) => {
     const updated = [...assignments];
     updated[index] = { ...updated[index], [field]: value };
@@ -123,12 +123,12 @@ export function SpeakerAssignmentTable({
           </thead>
           <tbody>
             {assignments.map((assignment, index) => {
-              const suggestion = assignment.speakerId >= 0 
-                ? getSuggestion(assignment.speakerId) 
+              const suggestion = assignment.speakerId >= 0
+                ? getSuggestion(assignment.speakerId)
                 : undefined;
-              
+
               return (
-                <tr 
+                <tr
                   key={index}
                   className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                 >
@@ -139,7 +139,7 @@ export function SpeakerAssignmentTable({
                       value={assignment.speakerName}
                       onChange={(e) => updateAssignment(index, 'speakerName', e.target.value)}
                       placeholder="Enter name..."
-                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md 
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-md
                         bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
                         focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -180,7 +180,7 @@ export function SpeakerAssignmentTable({
                         ))}
                       </select>
                       {suggestion && (
-                        <span 
+                        <span
                           className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded"
                           title={suggestion.reasoning}
                         >
@@ -212,7 +212,7 @@ export function SpeakerAssignmentTable({
                       {assignment.speakerId >= 0 && speakerTimestamps && (
                         <button
                           onClick={() => playSpeakerSample(assignment.speakerId)}
-                          className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 
+                          className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50
                             dark:hover:bg-blue-900/50 rounded-md transition-colors"
                           title="Play 5-second sample"
                         >
@@ -222,7 +222,7 @@ export function SpeakerAssignmentTable({
                       <button
                         onClick={() => removeSpeaker(index)}
                         disabled={assignments.length <= 2}
-                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 
+                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50
                           dark:hover:bg-red-900/50 rounded-md transition-colors
                           disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Remove speaker"
@@ -241,7 +241,7 @@ export function SpeakerAssignmentTable({
       {/* Add Speaker Button */}
       <button
         onClick={addSpeaker}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600
           hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-md transition-colors"
       >
         <Plus className="w-4 h-4" />
@@ -251,8 +251,8 @@ export function SpeakerAssignmentTable({
       {/* Help Text */}
       <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          <strong>ℹ️ Tip:</strong> Speaker numbers will be assigned automatically when voices are 
-          detected during transcription. Use the play button to hear a sample of each speaker 
+          <strong>ℹ️ Tip:</strong> Speaker numbers will be assigned automatically when voices are
+          detected during transcription. Use the play button to hear a sample of each speaker
           and match names to numbers. Check &quot;Exclude&quot; for witnesses speaking through an interpreter.
         </p>
       </div>

@@ -32,7 +32,7 @@ export function AssignScopistDialog({ jobId, scopists, onClose }: AssignScopistD
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedScopist) {
       setError('Please select a scopist');
       return;
@@ -71,7 +71,7 @@ export function AssignScopistDialog({ jobId, scopists, onClose }: AssignScopistD
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
         <h2 className="text-xl font-bold mb-4">Assign Scopist</h2>
-        
+
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
             {error}

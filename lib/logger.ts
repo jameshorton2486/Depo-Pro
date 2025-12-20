@@ -25,7 +25,7 @@ class Logger {
       const errorStr = entry.error ? `\n${entry.error.stack || entry.error.message}` : '';
       return `[${entry.level.toUpperCase()}] ${entry.message}${contextStr}${errorStr}`;
     }
-    
+
     // JSON format for production (easier to parse in log aggregators)
     return JSON.stringify(entry);
   }

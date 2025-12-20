@@ -54,7 +54,7 @@ export function ReviewPageClient({
 }: ReviewPageClientProps) {
   const router = useRouter();
   const audioPlayerRef = useRef<AudioPlayerRef>(null);
-  
+
   const [currentAudioTime, setCurrentAudioTime] = useState(0);
   const [flaggedWords, setFlaggedWords] = useState<FlaggedWord[]>(transcription.flaggedSegments);
   const [isSaving, setIsSaving] = useState(false);
@@ -144,8 +144,8 @@ export function ReviewPageClient({
     });
 
     // Update local state immediately for UI feedback
-    setFlaggedWords(prev => 
-      prev.map(w => w.id === wordId ? { ...w, correctedWord } : w)
+    setFlaggedWords(prev =>
+      prev.map(w => w.id === wordId ? { ...w, correctedWord } : w),
     );
   }, []);
 
@@ -159,15 +159,15 @@ export function ReviewPageClient({
     });
 
     // Update local state immediately for UI feedback
-    setFlaggedWords(prev => 
-      prev.map(w => w.id === wordId ? { ...w, isReviewed: reviewed } : w)
+    setFlaggedWords(prev =>
+      prev.map(w => w.id === wordId ? { ...w, isReviewed: reviewed } : w),
     );
 
     // Update progress
     setReviewProgress(prev => ({
       total: prev.total,
       reviewed: reviewed ? prev.reviewed + 1 : prev.reviewed - 1,
-      percentage: prev.total > 0 
+      percentage: prev.total > 0
         ? Math.round(((reviewed ? prev.reviewed + 1 : prev.reviewed - 1) / prev.total) * 100)
         : 0,
     }));
@@ -236,7 +236,7 @@ export function ReviewPageClient({
     if (reviewProgress.reviewed < reviewProgress.total) {
       const confirm = window.confirm(
         `You have reviewed ${reviewProgress.reviewed} out of ${reviewProgress.total} flagged words. ` +
-        `Are you sure you want to complete the review?`
+        'Are you sure you want to complete the review?',
       );
       if (!confirm) return;
     }
@@ -247,8 +247,8 @@ export function ReviewPageClient({
       const response = await fetch(`/api/jobs/${job.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status: user.isAssignedScopist ? 'SUBMITTED_FOR_REVIEW' : 'IN_REVIEW' 
+        body: JSON.stringify({
+          status: user.isAssignedScopist ? 'SUBMITTED_FOR_REVIEW' : 'IN_REVIEW',
         }),
       });
 
@@ -280,7 +280,7 @@ export function ReviewPageClient({
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Job
             </Button>
-            
+
             <div>
               <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                 Review Transcript

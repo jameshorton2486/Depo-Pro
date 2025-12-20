@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   forwardRef,
@@ -36,10 +36,10 @@ export interface AudioPlayerRef {
 }
 
 export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
-  ({ 
-    src, 
-    currentTime, 
-    onTimeUpdate, 
+  ({
+    src,
+    currentTime,
+    onTimeUpdate,
     onDurationChange,
     onEnded,
     onPlay,
@@ -89,7 +89,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
         },
         getAudioElement: () => audioRef.current,
       }),
-      [isPlaying, duration]
+      [isPlaying, duration],
     );
 
     useEffect(() => {
@@ -254,11 +254,11 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
       if (!Number.isFinite(seconds) || seconds < 0) {
         return '00:00';
       }
-      
+
       const hrs = Math.floor(seconds / 3600);
       const mins = Math.floor((seconds % 3600) / 60);
       const secs = Math.floor(seconds % 60);
-      
+
       if (hrs > 0) {
         return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
       }
@@ -277,10 +277,10 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
 
     return (
       <div className={cn('flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-800 rounded-lg', className)}>
-        <audio 
-          ref={audioRef} 
-          src={src} 
-          preload="metadata" 
+        <audio
+          ref={audioRef}
+          src={src}
+          preload="metadata"
           autoPlay={autoPlay}
         />
 
@@ -411,7 +411,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 AudioPlayer.displayName = 'AudioPlayer';

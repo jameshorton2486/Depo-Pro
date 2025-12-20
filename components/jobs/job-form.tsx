@@ -50,10 +50,10 @@ export function JobForm({ initialData, mode }: JobFormProps) {
     setError(null);
 
     try {
-      const url = mode === 'create' 
-        ? '/api/jobs' 
+      const url = mode === 'create'
+        ? '/api/jobs'
         : `/api/jobs/${initialData?.id}`;
-      
+
       const method = mode === 'create' ? 'POST' : 'PUT';
 
       const response = await fetch(url, {
@@ -92,7 +92,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
       {/* Basic Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Basic Information</h3>
-        
+
         <div>
           <Label htmlFor="title">Job Title *</Label>
           <Input

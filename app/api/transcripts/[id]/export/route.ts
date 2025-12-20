@@ -11,7 +11,7 @@ interface RouteContext {
 
 export async function GET(
   request: NextRequest,
-  context: RouteContext
+  context: RouteContext,
 ) {
   try {
     const session = await auth();
@@ -91,7 +91,7 @@ export async function GET(
     const { buffer, filename, contentType } = await exportTranscript(
       transcription.fullTranscript,
       metadata,
-      options
+      options,
     );
 
     // Return file

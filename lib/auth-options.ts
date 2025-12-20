@@ -35,7 +35,7 @@ export const authConfig: NextAuthConfig = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      
+
       /**
        * Authorize function - validates user credentials
        * @param credentials - Email and password from login form
@@ -133,7 +133,7 @@ export const authConfig: NextAuthConfig = {
         token.email = user.email;
         token.name = user.name;
       }
-      
+
       return token;
     },
 
@@ -148,7 +148,7 @@ export const authConfig: NextAuthConfig = {
         session.user.email = token.email as string;
         session.user.name = token.name as string;
       }
-      
+
       return session;
     },
 

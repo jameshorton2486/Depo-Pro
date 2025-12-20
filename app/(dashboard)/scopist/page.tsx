@@ -3,14 +3,14 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import { 
-  Briefcase, 
-  Clock, 
+import {
+  Briefcase,
+  Clock,
   CheckCircle,
   Play,
   Keyboard,
   MousePointer,
-  FileCheck
+  FileCheck,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { startOfMonth } from 'date-fns';
@@ -155,7 +155,7 @@ export default async function ScopistDashboard() {
       {/* Job Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200
             dark:border-slate-700 overflow-hidden">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -195,8 +195,8 @@ export default async function ScopistDashboard() {
                         </span>
                         <Link
                           href={`/jobs/${job.id}/review`}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 
-                            hover:bg-blue-700 text-white text-sm font-medium rounded-lg 
+                          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600
+                            hover:bg-blue-700 text-white text-sm font-medium rounded-lg
                             transition-colors"
                         >
                           <Play className="w-3 h-3" />
@@ -225,7 +225,7 @@ export default async function ScopistDashboard() {
         </div>
 
         {/* Quick Tips */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200
           dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
             Quick Tips

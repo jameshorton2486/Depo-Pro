@@ -14,11 +14,11 @@ interface RouteContext {
 
 export async function POST(
   request: NextRequest,
-  context: RouteContext
+  context: RouteContext,
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -60,7 +60,7 @@ export async function POST(
     if (!audioFile) {
       return NextResponse.json(
         { error: 'No audio file found for this job' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -68,14 +68,14 @@ export async function POST(
     if (job.status === 'TRANSCRIBING') {
       return NextResponse.json(
         { error: 'Transcription already in progress' },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     // Update job status to TRANSCRIBING
     await prisma.job.update({
       where: { id: jobId },
-      data: { 
+      data: {
         status: 'TRANSCRIBING',
         transcriptionModelType: modelType,
       },
@@ -108,7 +108,7 @@ export async function POST(
     console.error('Error triggering transcription:', error);
     return NextResponse.json(
       { error: 'Failed to trigger transcription' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

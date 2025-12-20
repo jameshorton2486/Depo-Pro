@@ -10,7 +10,7 @@ const CRON_SECRET = process.env.CRON_SECRET;
 export async function GET(request: NextRequest) {
   // Verify authorization
   const authHeader = request.headers.get('authorization');
-  
+
   if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     // Reset jobs stuck in PROCESSING for more than 1 hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    
+
     const stuckJobs = await prisma.job.updateMany({
       where: {
         status: 'TRANSCRIBING',
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         errorMessage: 'Job timed out during processing',
       },
     });
-    
+
     results.failedJobsReset = stuckJobs.count;
 
     // Log cleanup results
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     console.error('Cleanup job failed:', error);
     return NextResponse.json(
       { error: 'Cleanup job failed' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -27,15 +27,15 @@ export async function uploadExhibitOriginal(params: {
   filename: string;
 }): Promise<UploadResult> {
   const { jobId, file, filename } = params;
-  
+
   // Sanitize filename
   const safeFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
   const path = `${EXHIBITS_PREFIX}/${jobId}/original/${Date.now()}_${safeFilename}`;
-  
+
   // Convert File to ArrayBuffer
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  
+
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
     .upload(path, buffer, {
@@ -67,12 +67,12 @@ export async function uploadExhibitStamped(params: {
   filename: string;
 }): Promise<UploadResult> {
   const { jobId, buffer, filename } = params;
-  
+
   // Sanitize filename and add stamped prefix
   const safeFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
   const stampedFilename = `stamped_${safeFilename}`;
   const path = `${EXHIBITS_PREFIX}/${jobId}/stamped/${Date.now()}_${stampedFilename}`;
-  
+
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
     .upload(path, buffer, {

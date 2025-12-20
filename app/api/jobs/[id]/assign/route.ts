@@ -11,11 +11,11 @@ import { logger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -57,7 +57,7 @@ export async function POST(
     if (!scopist || scopist.role !== 'SCOPIST') {
       return NextResponse.json(
         { error: 'Invalid scopist' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -72,7 +72,7 @@ export async function POST(
     if (existingAssignment) {
       return NextResponse.json(
         { error: 'Scopist already assigned to this job' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -104,14 +104,14 @@ export async function POST(
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation failed', details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     logger.error('POST /api/jobs/[id]/assign', error as Error);
     return NextResponse.json(
       { error: 'Failed to create assignment' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

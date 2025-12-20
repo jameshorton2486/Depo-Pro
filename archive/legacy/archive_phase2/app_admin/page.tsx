@@ -71,7 +71,7 @@ export default async function AdminDashboard() {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Recent Jobs (All Firms)
         </h2>
-        <RecentJobs 
+        <RecentJobs
           jobs={recentJobs}
           emptyMessage="No jobs in the system yet"
         />

@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // CASE INTAKE API ROUTE (V2 - Comprehensive)
 // app/api/cases/intake/route.ts
-// 
+//
 // Handles document upload and comprehensive extraction
 // Tolerates partial extraction - never fails on missing fields
 // ═══════════════════════════════════════════════════════════════
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // ═══════════════════════════════════════════════════════════════
     // STEP 1: Extract text from all documents
     // ═══════════════════════════════════════════════════════════════
-    
+
     const documents: Array<{ text: string; fileName: string; type: string }> = [];
     const audioFiles: File[] = [];
     const warnings: string[] = [];
@@ -48,11 +48,11 @@ export async function POST(request: NextRequest) {
       if (mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')) {
         const buffer = Buffer.from(await file.arrayBuffer());
         const result = await extractTextFromPDFBuffer(buffer);
-        
+
         if (result.success && result.text.trim()) {
           const cleanedText = cleanExtractedText(result.text);
           const docType = detectDocumentType(fileName, cleanedText);
-          
+
           documents.push({
             text: cleanedText,
             fileName,
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       else if (mimeType.startsWith('text/') || fileName.endsWith('.txt')) {
         const text = await file.text();
         const docType = detectDocumentType(fileName, text);
-        
+
         documents.push({
           text,
           fileName,
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     // ═══════════════════════════════════════════════════════════════
     // STEP 2: Extract data using Claude AI
     // ═══════════════════════════════════════════════════════════════
-    
+
     if (!documents.length) {
       return NextResponse.json({
         success: false,
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     // ═══════════════════════════════════════════════════════════════
     // STEP 3: Optionally create Case and Job records
     // ═══════════════════════════════════════════════════════════════
-    
+
     let savedIds: { caseId?: string; jobId?: string } | null = null;
 
     if (autoCreateCase || autoCreateJob) {
@@ -119,37 +119,37 @@ export async function POST(request: NextRequest) {
         session.user.id,
         (session.user as any).firmId || undefined,
         autoCreateCase,
-        autoCreateJob
+        autoCreateJob,
       );
     }
 
     // ═══════════════════════════════════════════════════════════════
     // STEP 4: Return comprehensive response
     // ═══════════════════════════════════════════════════════════════
-    
+
     return NextResponse.json({
       success: true,
       extractedData,
-      
+
       // Confidence info
       confidenceByField: extractedData.confidenceByField,
       overallConfidence: extractedData.overallConfidence,
       needsReview: extractedData.needsReview,
       reviewReasons: extractedData.reviewReasons,
-      
+
       // Keywords ready for Deepgram
       deepgramKeywords: getDeepgramKeywords(extractedData),
       keywordCount: extractedData.extractedTerms?.length || 0,
-      
+
       // Document tracking
       documentsProcessed: documents.map(d => ({
         fileName: d.fileName,
         type: d.type,
       })),
-      
+
       // Saved records (if created)
       savedIds,
-      
+
       // Warnings
       warnings: warnings.length > 0 ? warnings : undefined,
       audioFilesDetected: audioFiles.length,
@@ -174,7 +174,7 @@ async function saveExtractedData(
   userId: string,
   firmId: string | undefined,
   createCase: boolean,
-  createJob: boolean
+  createJob: boolean,
 ): Promise<{ caseId?: string; jobId?: string }> {
   const result: { caseId?: string; jobId?: string } = {};
 
@@ -184,24 +184,24 @@ async function saveExtractedData(
       data: {
         firmId: firmId || null,
         createdById: userId,
-        
+
         // Use defaults for missing required fields
         caseNumber: data.caseNumber || `TEMP-${Date.now()}`,
         caseStyle: data.caseStyle || 'Unknown Case',
         shortTitle: data.shortTitle,
-        
+
         // Court info (all optional)
         courtName: data.court?.name,
         courtType: data.court?.type,
         county: data.court?.county,
         state: data.court?.state || 'Texas',
         judgeAssigned: data.court?.judge,
-        
+
         // Parties
         plaintiffs: data.plaintiffs || [],
         defendants: data.defendants || [],
         otherParties: data.otherParties || [],
-        
+
         // Status
         status: 'ACTIVE',
       },
@@ -257,26 +257,26 @@ async function saveExtractedData(
     const jobData: any = {
       firmId: firmId || null,
       createdById: userId,
-      
+
       // Link to case if created
       caseId: result.caseId || null,
-      
+
       // Case info (duplicated for jobs without cases)
       caseName: data.caseStyle,
       caseNumber: data.caseNumber,
       courtName: data.court?.name,
-      
+
       // Deponent
       deponentName: data.deponent?.name,
       deponentRole: data.deponent?.role,
       deponentCompany: data.deponent?.company,
       deponentCapacity: data.deponent?.capacity,
-      
+
       // Scheduling
       depositionDate: data.scheduling?.date ? new Date(data.scheduling.date) : null,
       scheduledStartTime: data.scheduling?.scheduledTime,
       timeZone: data.scheduling?.timeZone,
-      
+
       // Location
       locationName: data.location?.name,
       locationAddress: data.location?.address,
@@ -286,32 +286,32 @@ async function saveExtractedData(
       locationZip: data.location?.zip,
       zoomLink: data.location?.zoomLink,
       conferenceRoom: data.location?.conferenceRoom,
-      
+
       // Court reporting
       courtReportingFirm: data.courtReporting?.firmName,
       certifiedShorthand: data.courtReporting?.isCertifiedShorthand,
-      
+
       // Recording
       isVideotaped: data.recording?.isVideotaped || false,
       isStenographic: data.recording?.isStenographic ?? true,
       videographerName: data.recording?.videographerName,
       videographerCompany: data.recording?.videographerCompany,
-      
+
       // Interpreter
       hasInterpreter: data.interpreter?.hasInterpreter || false,
       interpreterName: data.interpreter?.name,
       interpreterLanguage: data.interpreter?.language,
-      
+
       // Transcript options
       readAndSign: data.transcriptOptions?.readAndSign,
       signatureWaived: data.transcriptOptions?.signatureWaived,
-      
+
       // Exhibits
       exhibits: data.exhibits || [],
       exhibitCount: data.exhibitStats?.totalCount,
       exhibitsBW: data.exhibitStats?.blackAndWhite,
       exhibitsColor: data.exhibitStats?.color,
-      
+
       // Insurance/EUO
       isEUO: data.insurance?.isEUO || false,
       insuredName: data.insurance?.insuredName,
@@ -319,18 +319,18 @@ async function saveExtractedData(
       claimNumber: data.insurance?.claimNumber,
       policyNumber: data.insurance?.policyNumber,
       dateOfLoss: data.insurance?.dateOfLoss ? new Date(data.insurance.dateOfLoss) : null,
-      
+
       // Billing
       orderedByName: data.billing?.orderedByName,
       orderedByFirm: data.billing?.orderedByFirm,
       travelMiles: data.billing?.travelMiles,
       parkingFee: data.billing?.parkingFee,
       rushOrder: data.billing?.isRush || false,
-      
+
       // Special instructions
       specialInstructions: data.specialInstructions,
       notes: data.notes,
-      
+
       // Status
       status: 'PENDING',
       needsReview: data.needsReview,

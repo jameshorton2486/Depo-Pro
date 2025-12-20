@@ -37,7 +37,7 @@ function getFileType(mimeType: string): FileType {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -87,7 +87,7 @@ export async function POST(
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: `File type ${file.type} not allowed` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -95,7 +95,7 @@ export async function POST(
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -107,11 +107,11 @@ export async function POST(
     // � Upload file to storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    
+
     const storagePath = await uploadFile(
       buffer,
       file.name,
-      'jobs'
+      'jobs',
     );
 
     // 💿 Save file metadata to database
@@ -122,7 +122,7 @@ export async function POST(
         mimeType: file.type,
         fileSize: buffer.length,
         type: getFileType(file.type),
-        storagePath: storagePath,
+        storagePath,
         storageUrl: storagePath,
       },
     });
@@ -132,14 +132,14 @@ export async function POST(
     console.error('File upload error:', error);
     return NextResponse.json(
       { error: 'Failed to upload file' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -190,7 +190,7 @@ export async function GET(
     console.error('Fetch files error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch files' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

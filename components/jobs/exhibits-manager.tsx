@@ -9,20 +9,16 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Upload, 
-  FileText, 
-  Image, 
-  File, 
-  Eye, 
-  Edit, 
+import {
+  Upload,
+  FileText,
+  Image,
+  File,
+  Eye,
   Loader2,
-  CheckCircle,
-  XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -87,7 +83,7 @@ export function ExhibitsManager({ jobId, canEdit }: ExhibitsManagerProps) {
 
     try {
       const formData = new FormData();
-      
+
       // Add files
       acceptedFiles.forEach((file) => {
         formData.append('files', file);
@@ -113,7 +109,7 @@ export function ExhibitsManager({ jobId, canEdit }: ExhibitsManagerProps) {
       }
 
       const result = await response.json();
-      
+
       if (result.failed > 0) {
         toast.warning(`Uploaded ${result.uploaded}, failed ${result.failed}`);
       } else {
@@ -147,7 +143,7 @@ export function ExhibitsManager({ jobId, canEdit }: ExhibitsManagerProps) {
       case 'PDF':
         return <FileText className="h-5 w-5 text-red-600" />;
       case 'IMAGE':
-        return <Image className="h-5 w-5 text-blue-600" />;
+        return <Image className="h-5 w-5 text-blue-600" aria-label="Image file" />;
       default:
         return <File className="h-5 w-5 text-gray-600" />;
     }

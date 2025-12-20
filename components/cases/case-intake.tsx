@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // COMPREHENSIVE CASE INTAKE COMPONENT (V2)
 // components/cases/case-intake.tsx
-// 
+//
 // Full document upload, AI extraction, review, and job creation
 // Confidence-aware field display
 // ═══════════════════════════════════════════════════════════════
@@ -18,10 +18,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
+import {
   Upload, FileText, Check, AlertCircle, Loader2, Trash2,
   Edit, Save, Music, AlertTriangle, User, Building, MapPin,
-  Calendar, Clock, Gavel, Users, FileQuestion, Tag
+  Calendar, Clock, Gavel, Users, FileQuestion, Tag,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
@@ -48,16 +48,16 @@ interface ConfidenceFieldProps {
 // CONFIDENCE-AWARE FIELD COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-function ConfidenceField({ 
-  label, 
-  value, 
-  confidence, 
-  isEditing, 
+function ConfidenceField({
+  label,
+  value,
+  confidence,
+  isEditing,
   onChange,
-  icon 
+  icon,
 }: ConfidenceFieldProps) {
   const needsReview = confidence !== undefined && confidence < 0.85;
-  
+
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ function ConfidenceField({
 
 export function CaseIntake() {
   const router = useRouter();
-  
+
   // State
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -119,8 +119,8 @@ export function CaseIntake() {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles = acceptedFiles.map(file => ({
       file,
-      type: file.type.startsWith('audio/') || file.type.startsWith('video/') 
-        ? 'audio' as const 
+      type: file.type.startsWith('audio/') || file.type.startsWith('video/')
+        ? 'audio' as const
         : 'document' as const,
       status: 'pending' as const,
     }));
@@ -173,14 +173,14 @@ export function CaseIntake() {
         setDeepgramKeywords(result.deepgramKeywords || []);
         setReviewReasons(result.reviewReasons || []);
         if (result.warnings) setWarnings(result.warnings);
-        
+
         // Update file statuses
         setFiles(prev => prev.map((f, i) => ({
           ...f,
           status: f.type === 'document' ? 'done' : f.status,
           documentType: result.documentsProcessed?.[i]?.type,
         })));
-        
+
         // Auto-enable editing if needs review
         if (result.needsReview) {
           setIsEditing(true);
@@ -199,17 +199,17 @@ export function CaseIntake() {
   // Update field in extracted data
   const updateField = (path: string, value: any) => {
     if (!extractedData) return;
-    
+
     const newData = JSON.parse(JSON.stringify(extractedData));
     const parts = path.split('.');
     let obj = newData;
-    
+
     for (let i = 0; i < parts.length - 1; i++) {
       if (!obj[parts[i]]) obj[parts[i]] = {};
       obj = obj[parts[i]];
     }
     obj[parts[parts.length - 1]] = value;
-    
+
     setExtractedData(newData);
   };
 
@@ -511,7 +511,7 @@ export function CaseIntake() {
                         extractedData.location?.address2,
                         extractedData.location?.city,
                         extractedData.location?.state,
-                        extractedData.location?.zip
+                        extractedData.location?.zip,
                       ].filter(Boolean).join(', ') || 'Address not found'}
                     </p>
                     {extractedData.location?.zoomLink && (
@@ -686,7 +686,7 @@ export function CaseIntake() {
               )}
             </Button>
             <p className="text-center text-sm text-gray-500 mt-2">
-              {files.some(f => f.type === 'audio') 
+              {files.some(f => f.type === 'audio')
                 ? `Audio file will be uploaded and ${deepgramKeywords.length} keywords sent to Deepgram`
                 : 'You can upload audio files later'}
             </p>

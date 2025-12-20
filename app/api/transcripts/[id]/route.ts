@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -82,14 +82,14 @@ export async function GET(
       job: transcript.job,
       createdAt: transcript.createdAt,
     },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     const { id } = await params;
     logger.error(`Failed to get transcript content - transcriptId: ${id}, error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to get transcript content' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -100,7 +100,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -139,7 +139,7 @@ export async function PATCH(
     const newTranscript = await db.transcript.create({
       data: {
         jobId: existingTranscript.jobId,
-        content: content,
+        content,
         contentJson: {
           type: 'doc',
           content: [
@@ -167,7 +167,7 @@ export async function PATCH(
       version: newTranscript.version,
       message: 'Transcript updated successfully',
     },
-      { status: 200 }
+      { status: 200 },
     );
 
   } catch (error) {
@@ -175,7 +175,7 @@ export async function PATCH(
     logger.error(`Failed to update transcript - transcriptId: ${id}, error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to update transcript' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -186,7 +186,7 @@ export async function PATCH(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -260,7 +260,7 @@ export async function PUT(
     logger.error(`Failed to update transcript - transcriptId: ${id}, error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to update transcript' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

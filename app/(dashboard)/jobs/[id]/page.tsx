@@ -13,12 +13,12 @@ import { ExhibitsManager } from '@/components/jobs/exhibits-manager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
-import { 
-  Calendar, 
-  MapPin, 
-  User, 
+import {
+  Calendar,
+  MapPin,
+  User,
   Edit,
-  Trash2
+  Trash2,
 } from 'lucide-react';
 
 interface JobDetailPageProps {
@@ -29,7 +29,7 @@ interface JobDetailPageProps {
 
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const session = await getCurrentUser();
-  
+
   if (!session || !session.user) {
     redirect('/login');
   }
@@ -95,8 +95,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     redirect('/dashboard');
   }
 
-  const canEdit = 
-    session.user.role === 'ADMIN' || 
+  const canEdit =
+    session.user.role === 'ADMIN' ||
     job.createdById === session.user.id;
 
   const canAssign = canEdit;

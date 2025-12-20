@@ -8,7 +8,7 @@ import { JobForm } from '@/components/jobs/job-form';
 
 export default async function NewJobPage() {
   const session = await getCurrentUser();
-  
+
   if (!session || !session.user) {
     redirect('/login');
   }

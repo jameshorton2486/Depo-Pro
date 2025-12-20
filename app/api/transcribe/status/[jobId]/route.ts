@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ jobId: string }> }
+  { params }: { params: Promise<{ jobId: string }> },
 ) {
   try {
     const session = await auth();
@@ -30,7 +30,7 @@ export async function GET(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const hasAccess = 
+    const hasAccess =
       session.user.role === 'ADMIN' ||
       job.createdById === session.user.id ||
       job.assignments.length > 0;
@@ -55,7 +55,7 @@ export async function GET(
     if (!transcription) {
       return NextResponse.json(
         { error: 'Transcription not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -64,7 +64,7 @@ export async function GET(
     console.error('Status check error:', error);
     return NextResponse.json(
       { error: 'Failed to check status' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

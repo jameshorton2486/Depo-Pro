@@ -10,7 +10,7 @@ import { logger } from '@/lib/logger';
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -69,7 +69,7 @@ export async function POST(
 
     if (result.success) {
       logger.info(`Assignment notification sent - assignmentId: ${assignmentId}, to: ${assignment.scopist.email}`);
-      
+
       return NextResponse.json({
         success: true,
         emailId: result.id,
@@ -79,7 +79,7 @@ export async function POST(
       logger.error(`Failed to send notification - assignmentId: ${assignmentId}, error: ${result.error}`);
       return NextResponse.json(
         { error: result.error || 'Failed to send notification' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -88,7 +88,7 @@ export async function POST(
     logger.error(`Failed to send assignment notification - assignmentId: ${assignmentId}, error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to send notification' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

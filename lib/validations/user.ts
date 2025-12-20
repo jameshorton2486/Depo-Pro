@@ -49,7 +49,7 @@ export const registerSchema = z.object({
     .max(100, 'Password must be less than 100 characters')
     .regex(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number',
     ),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
   role: z.enum([Role.ADMIN, Role.REPORTER, Role.SCOPIST] as const, {
@@ -95,7 +95,7 @@ export const changePasswordSchema = z.object({
     .max(100, 'Password must be less than 100 characters')
     .regex(
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number',
     ),
   confirmPassword: z.string().min(1, 'Please confirm your new password'),
 }).refine((data) => data.newPassword === data.confirmPassword, {

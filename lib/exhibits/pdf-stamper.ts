@@ -62,7 +62,7 @@ export async function stampExhibitPdf(params: StampParams): Promise<Buffer> {
     const stampWidth = 200;
 
     // Calculate stamp position (bottom-right)
-    const { width, height } = firstPage.getSize();
+    const { width } = firstPage.getSize();
     const startX = width - stampWidth - padding;
     const startY = padding + (stampLines.length * lineHeight);
 
@@ -89,26 +89,26 @@ export async function stampExhibitPdf(params: StampParams): Promise<Buffer> {
     // Draw each line of text
     stampLines.forEach((line, index) => {
       const y = startY - (index * lineHeight);
-      
+
       // Truncate long lines
       let displayText = line;
       const maxWidth = stampWidth - 10;
       while (font.widthOfTextAtSize(displayText, fontSize) > maxWidth && displayText.length > 3) {
-        displayText = displayText.slice(0, -4) + '...';
+        displayText = `${displayText.slice(0, -4)}...`;
       }
 
       firstPage.drawText(displayText, {
         x: startX,
-        y: y,
+        y,
         size: fontSize,
-        font: font,
+        font,
         color: rgb(0, 0, 0),
       });
     });
 
     // Serialize the PDF
     const stampedPdfBytes = await pdfDoc.save();
-    
+
     return Buffer.from(stampedPdfBytes);
   } catch (error) {
     if (error instanceof Error) {
@@ -129,12 +129,12 @@ export async function validatePdfForStamping(pdfBuffer: Buffer): Promise<{ valid
     const pdfDoc = await PDFDocument.load(pdfBuffer, {
       ignoreEncryption: false,
     });
-    
+
     const pages = pdfDoc.getPages();
     if (pages.length === 0) {
       return { valid: false, error: 'PDF has no pages' };
     }
-    
+
     return { valid: true };
   } catch (error) {
     if (error instanceof Error) {

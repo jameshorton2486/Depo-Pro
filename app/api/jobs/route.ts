@@ -18,7 +18,7 @@ import { JobStatus } from '@prisma/client';
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // 🔒 Multi-tenant security: Build where clause based on role
     const where: Record<string, unknown> = {};
-    
+
     if (session.user.role === 'REPORTER') {
       // Reporter sees only their jobs
       where.createdById = session.user.id;
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     logger.error('GET /api/jobs', error as Error);
     return NextResponse.json(
       { error: 'Failed to fetch jobs' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     if (session.user.role === 'SCOPIST') {
       return NextResponse.json(
         { error: 'Scopists cannot create jobs' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -167,14 +167,14 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation failed', details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     logger.error('POST /api/jobs', error as Error);
     return NextResponse.json(
       { error: 'Failed to create job' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

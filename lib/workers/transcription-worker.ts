@@ -3,10 +3,10 @@
 
 import { Job } from 'bullmq';
 import { prisma } from '@/lib/db';
-import { 
-  transcribeAudio, 
+import {
+  transcribeAudio,
   processTranscriptResponse,
-  getMimetypeFromExtension 
+  getMimetypeFromExtension,
 } from '@/lib/transcription';
 import { downloadFile } from '@/lib/storage';
 import { analyzeSpeakersEnhanced } from '@/lib/services/speaker-identification';
@@ -21,16 +21,16 @@ import type { TranscriptionJobData } from '@/types/deepgram';
 // ============================================
 
 export async function processTranscriptionJob(
-  job: Job<TranscriptionJobData> | TranscriptionJobData
+  job: Job<TranscriptionJobData> | TranscriptionJobData,
 ): Promise<void> {
   // Handle both BullMQ Job and plain data object
   const data = 'data' in job ? job.data : job;
-  
-  const { 
-    jobId, 
-    audioFileUrl, 
+
+  const {
+    jobId,
+    audioFileUrl,
     audioFileName,
-    modelType 
+    modelType,
   } = data;
 
   console.log(`Processing transcription for job ${jobId}`);
@@ -45,7 +45,7 @@ export async function processTranscriptionJob(
     // Download audio file
     console.log(`Downloading audio from: ${audioFileUrl}`);
     const audioBuffer = await downloadFile(audioFileUrl);
-    
+
     if (!audioBuffer || audioBuffer.length === 0) {
       throw new Error('Failed to download audio file or file is empty');
     }
@@ -57,7 +57,7 @@ export async function processTranscriptionJob(
     // Transcribe with Deepgram
     console.log(`Starting Deepgram transcription with model: ${modelType}`);
     const deepgramResponse = await transcribeAudio(audioBuffer, modelType, mimetype);
-    
+
     // Process response
     const processedTranscript = processTranscriptResponse(deepgramResponse);
     console.log(`Transcription complete: ${processedTranscript.wordCount} words, ${processedTranscript.flaggedWordCount} flagged`);
@@ -106,7 +106,7 @@ export async function processTranscriptionJob(
     // Update job status to AI_REVIEWING
     await prisma.job.update({
       where: { id: jobId },
-      data: { 
+      data: {
         status: 'AI_REVIEWING',
         transcriptionCompletedAt: new Date(),
       },
@@ -120,7 +120,7 @@ export async function processTranscriptionJob(
     // Update job status to CANCELLED
     await prisma.job.update({
       where: { id: jobId },
-      data: { 
+      data: {
         status: 'CANCELLED',
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
       },

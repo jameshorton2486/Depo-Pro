@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -62,7 +62,7 @@ export async function GET(
       createdAt: transcript.createdAt,
       hasContent: !!transcript.content,
     },
-      { status: 200 }
+      { status: 200 },
     );
 
   } catch (error) {
@@ -70,7 +70,7 @@ export async function GET(
     logger.error(`Failed to get transcript status - transcriptId: ${id}, error: ${error}`);
     return NextResponse.json(
       { error: 'Failed to get transcript status' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

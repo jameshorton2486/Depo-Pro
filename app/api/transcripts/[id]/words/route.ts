@@ -14,7 +14,7 @@ interface RouteContext {
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -37,12 +37,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               where: {
                 scopistId: session.user.id,
                 status: {
-                  in: ['ACCEPTED', 'IN_PROGRESS']
-                }
-              }
-            }
-          }
-        }
+                  in: ['ACCEPTED', 'IN_PROGRESS'],
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -60,27 +60,27 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // Parse words and flagged segments
-    const words: any[] = transcription.words 
+    const words: any[] = transcription.words
       ? JSON.parse(transcription.words as string)
       : [];
-    const flaggedSegments: FlaggedWord[] = transcription.flaggedSegments 
+    const flaggedSegments: FlaggedWord[] = transcription.flaggedSegments
       ? JSON.parse(transcription.flaggedSegments as string)
       : [];
 
     // Apply all updates
     const updatedWords: FlaggedWord[] = [];
     const now = new Date().toISOString();
-    
+
     for (const update of updates) {
       // Find in flagged segments
       const segmentIndex = flaggedSegments.findIndex(w => w.id === update.wordId || w.wordIndex === update.wordIndex);
-      
+
       if (segmentIndex !== -1) {
         // Update flagged segment
         if (update.correctedWord !== undefined) {
           flaggedSegments[segmentIndex].correctedWord = update.correctedWord;
         }
-        
+
         if (update.isReviewed !== undefined) {
           flaggedSegments[segmentIndex].isReviewed = update.isReviewed;
           if (update.isReviewed) {
@@ -145,7 +145,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     console.error('Error batch updating words:', error);
     return NextResponse.json(
       { error: 'Failed to batch update words' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -154,7 +154,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // Parse flagged segments
-    const flaggedSegments: FlaggedWord[] = transcription.flaggedSegments 
+    const flaggedSegments: FlaggedWord[] = transcription.flaggedSegments
       ? JSON.parse(transcription.flaggedSegments as string)
       : [];
 
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     console.error('Error getting review progress:', error);
     return NextResponse.json(
       { error: 'Failed to get review progress' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

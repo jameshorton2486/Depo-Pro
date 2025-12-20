@@ -2,17 +2,17 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  FileText, 
-  Image, 
-  File, 
-  Eye, 
-  Download, 
-  Trash2, 
+import {
+  FileText,
+  Image,
+  File,
+  Eye,
+  Download,
+  Trash2,
   Pencil,
   Check,
   X,
-  FileBox
+  FileBox,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,7 +49,7 @@ export function ExhibitList({ jobId, exhibits, onUpdate }: ExhibitListProps) {
       case 'PDF':
         return <FileText className="w-5 h-5 text-red-500" />;
       case 'IMAGE':
-        return <Image className="w-5 h-5 text-blue-500" />;
+        return <Image className="w-5 h-5 text-blue-500" aria-label="Image file" />;
       default:
         return <File className="w-5 h-5 text-gray-500" />;
     }
@@ -86,7 +86,7 @@ export function ExhibitList({ jobId, exhibits, onUpdate }: ExhibitListProps) {
       toast.success('Description updated');
       setEditingId(null);
       onUpdate();
-    } catch (error) {
+    } catch {
       toast.error('Failed to update description');
     }
   };
@@ -104,7 +104,7 @@ export function ExhibitList({ jobId, exhibits, onUpdate }: ExhibitListProps) {
       toast.success('Exhibit deleted');
       setDeletingId(null);
       onUpdate();
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete exhibit');
     }
   };
@@ -132,7 +132,7 @@ export function ExhibitList({ jobId, exhibits, onUpdate }: ExhibitListProps) {
           {/* Left: Icon, Number, Description */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
             {getFileIcon(exhibit.fileType)}
-            
+
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 font-semibold text-sm rounded-full">
                 {exhibit.exhibitNumber}

@@ -11,7 +11,7 @@ import { Plus } from 'lucide-react';
 
 export default async function JobsPage() {
   const session = await getCurrentUser();
-  
+
   if (!session || !session.user) {
     redirect('/login');
   }
@@ -49,7 +49,7 @@ export default async function JobsPage() {
 
 async function JobsList() {
   const session = await getCurrentUser();
-  
+
   if (!session || !session.user) {
     return null;
   }

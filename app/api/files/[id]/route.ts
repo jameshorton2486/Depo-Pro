@@ -12,7 +12,7 @@ const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -72,14 +72,14 @@ export async function DELETE(
     console.error('File deletion error:', error);
     return NextResponse.json(
       { error: 'Failed to delete file' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -127,7 +127,7 @@ export async function GET(
     console.error('Fetch file error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch file' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import { ChevronDown, Download, File, FileText, FileType } from 'lucide-react';

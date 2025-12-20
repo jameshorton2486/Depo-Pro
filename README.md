@@ -1,301 +1,183 @@
-# Depo-Pro - Legal Transcription Platform
+# Depo-Pro
 
-**AI-powered legal transcription system for court reporters, scopists, and law firms.**
+**AI-powered legal transcription SaaS for court reporters, scopists, and law firms.**
 
-## What This Project Does (Plain English)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748)](https://www.prisma.io/)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](LICENSE)
 
-Depo-Pro automates the transcription of legal depositions:
+## 🎯 What is Depo-Pro?
 
-1. **Court reporter sends an email** with audio/video files and a deposition notice (PDF)
-2. **Audio is enhanced** using FFmpeg to improve poor quality recordings
-3. **AI reads the notice** and extracts important terms (names, case numbers, legal terminology)
-4. **Deepgram transcribes** the audio with 90-95% accuracy, identifying speakers and marking uncertain words
-5. **Scopist reviews** the transcript, fixing errors highlighted by the AI
-6. **Court reporter approves** the final transcript
-7. **Lawyer receives** a court-ready transcript with 98-99.5% accuracy
+Depo-Pro is a modern SaaS platform that revolutionizes legal deposition transcription by combining AI-powered transcription with intelligent review workflows. It reduces transcription time by **80%** and costs by **70%** while maintaining professional accuracy standards.
 
-**Result:** 80% faster than manual transcription, 70% lower cost, with professional accuracy.
+### Key Features
 
-## Technology Stack
+- **🤖 AI Transcription** - Deepgram Nova-3 with 90-95% initial accuracy
+- **🎯 Low-Confidence Review** - Jump directly to uncertain words with audio sync
+- **👥 Role-Based Workflows** - Reporter → Scopist → Approval pipeline
+- **📄 Legal Formatting** - Automatic Q/A structure, capitalization, punctuation
+- **📊 Real-Time Tracking** - Job status, progress metrics, and analytics
+- **📦 Exhibit Management** - Upload, stamp, and manage deposition exhibits
+- **🔒 Enterprise Security** - Multi-tenant isolation, role-based access control
 
-- **Backend:** Node.js + TypeScript + Express
-- **Database:** PostgreSQL with Prisma ORM
-- **Job Queue:** BullMQ + Redis (for background transcription)
-- **AI Transcription:** Deepgram Nova-2 API
-- **Audio Processing:** FFmpeg
-- **AI Notice Parsing:** Claude API (Anthropic)
-- **File Storage:** Vercel Blob Storage
-- **Email Processing:** SendGrid Inbound Parse webhooks
-
-## Quick Start in VS Code with AI Agent
+## 🚀 Quick Start
 
 ### Prerequisites
 
-**Software Required:**
-- Node.js 18+ ([download](https://nodejs.org/))
-- PostgreSQL database ([download](https://www.postgresql.org/download/))
-- Redis ([Windows](https://github.com/tporadowski/redis/releases), [Mac](https://redis.io/docs/getting-started/installation/install-redis-on-mac-os/))
-- FFmpeg ([download](https://ffmpeg.org/download.html))
+- **Node.js** 18+ ([download](https://nodejs.org/))
+- **PostgreSQL** database ([Supabase](https://supabase.com) recommended)
+- **Redis** (for job queue) - Optional for development
+- **API Keys:**
+  - [Deepgram](https://console.deepgram.com/signup) - Transcription
+  - [Anthropic](https://console.anthropic.com/) - Document parsing
+  - [Supabase](https://supabase.com) - Database & Storage
 
-**API Keys Needed:**
-- Deepgram API key ([get free key](https://console.deepgram.com/signup))
-- Anthropic API key ([get key](https://console.anthropic.com/))
-- Vercel Blob token ([create account](https://vercel.com/))
+### Installation
 
-### Step 1: Copy Files
-
-Copy all these project files into an empty folder on your computer.
-
-### Step 2: Open in VS Code
-
-1. Open Visual Studio Code
-2. File → Open Folder → Select the project folder
-3. VS Code will ask to install recommended extensions - click "Install"
-
-### Step 3: Configure Environment
-
-1. In VS Code, open `.env.example`
-2. Save it as `.env` (remove the `.example` part)
-3. Fill in your actual values:
-```env
-DATABASE_URL="postgresql://username:password@localhost:5432/depo_pro"
-REDIS_HOST="localhost"
-DEEPGRAM_API_KEY="your_actual_deepgram_key_here"
-ANTHROPIC_API_KEY="your_actual_anthropic_key_here"
-BLOB_READ_WRITE_TOKEN="your_vercel_blob_token_here"
-```
-
-### Step 4: Run Setup (Automated)
-
-**Windows (PowerShell):**
-```powershell
-.\scripts\setup.ps1
-```
-
-**Mac/Linux (Bash):**
 ```bash
-chmod +x scripts/setup.sh
-./scripts/setup.sh
-```
+# Clone the repository
+git clone https://github.com/jameshorton2486/depo-pro.git
+cd depo-pro
 
-This automatically:
-- ✅ Installs all dependencies
-- ✅ Sets up the database
-- ✅ Creates demo data
-- ✅ Verifies everything works
+# Install dependencies
+npm install
 
-### Step 5: Start Everything
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your API keys and database URL
 
-**Windows:**
-```powershell
-.\run-all.ps1
-```
+# Set up database
+npx prisma generate
+npx prisma db push
 
-**Mac/Linux:**
-```bash
-npm run dev &
-npm run worker &
-```
-
-Your API server runs at: `http://localhost:3000`
-
-### Step 6: Use VS Code AI Agent (Optional - Recommended)
-
-Open `AI_AGENT_TASKS.md` in VS Code, then tell your AI assistant:
-```
-You are my project implementation assistant.
-
-1. Read README.md and AI_AGENT_TASKS.md
-2. Follow the steps in AI_AGENT_TASKS.md one by one
-3. Use the integrated terminal to run commands
-4. If commands fail, fix the issue in code/config and retry without asking me
-5. Keep me updated only at major checkpoints
-
-Start with PHASE 0.
-```
-
-The AI agent will:
-- Verify your setup
-- Fill in any missing implementation details
-- Run tests
-- Fix errors automatically
-- Report when complete
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | ✅ Yes | PostgreSQL connection string |
-| `REDIS_HOST` | ✅ Yes | Redis server address |
-| `REDIS_PORT` | No | Redis port (default: 6379) |
-| `DEEPGRAM_API_KEY` | ✅ Yes | Deepgram transcription API key |
-| `ANTHROPIC_API_KEY` | ✅ Yes | Claude API for notice parsing |
-| `BLOB_READ_WRITE_TOKEN` | ✅ Yes | Vercel Blob storage token |
-| `SENDGRID_WEBHOOK_SECRET` | No | Email webhook verification |
-| `RESEND_API_KEY` | No | Email notifications (optional) |
-| `APP_URL` | No | Public URL (for production) |
-
-## Project Structure
-```
-src/
-├── server.ts              # Main API server
-├── config/env.ts          # Environment validation
-├── lib/                   # Core libraries
-│   ├── audio/             # FFmpeg audio processing
-│   ├── deepgram/          # Transcription config
-│   ├── ai/                # Notice parsing (Claude)
-│   └── transcription/     # Export & formatting
-├── queue/                 # Job queue setup
-├── workers/               # Background job workers
-└── routes/                # API endpoints
-```
-
-## Key Features
-
-### ✅ Implemented
-- Email webhook handler for receiving jobs
-- FFmpeg audio enhancement pipeline
-- Deepgram transcription with optimal config
-- AI notice parsing (Claude)
-- Word-level timestamps
-- Low-confidence word flagging
-- Multi-file deposition handling
-- Background job processing
-- Multi-tenant isolation (by firmId)
-
-### 🚧 To Be Implemented by AI Agent
-- Web UI for scopists
-- Transcript editor with audio sync
-- Export to DOCX/PDF
-- User authentication
-- Email notifications
-- Progress tracking
-
-## Development Commands
-```bash
-# Start API server
+# Run development server
 npm run dev
-
-# Start background worker
-npm run worker
-
-# Start both (Windows)
-.\run-all.ps1
-
-# Database
-npm run db:migrate      # Run migrations
-npm run db:seed         # Seed demo data
-npm run db:studio       # Open Prisma Studio
-
-# Testing
-npm run test:smoke      # Quick integration test
-npm run lint            # Check code quality
-npm run type-check      # TypeScript validation
-
-# Build
-npm run build           # Compile TypeScript
 ```
 
-## How It Works (Technical)
+Visit `http://localhost:3000` to see the application.
 
-### Email → Transcription Pipeline
+## 🏗️ Architecture
+
+### Tech Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript
+- **Database:** PostgreSQL (via Supabase)
+- **ORM:** Prisma
+- **Authentication:** NextAuth.js v5
+- **AI Transcription:** Deepgram Nova-3
+- **Document AI:** Anthropic Claude
+- **Job Queue:** BullMQ + Redis
+- **Storage:** Supabase Storage
+- **Styling:** Tailwind CSS + shadcn/ui
+
+### Project Structure
+
 ```
-1. Court reporter sends email to: {firmId}@depo-pro.com
-   ↓
-2. SendGrid webhook forwards to: /api/webhooks/inbound-email
-   ↓
-3. System creates Job + JobFile records
-   ↓
-4. If notice PDF attached: Claude extracts case info & custom terms
-   ↓
-5. Job queued in BullMQ (Redis)
-   ↓
-6. Worker picks up job:
-   a) Downloads audio files
-   b) FFmpeg enhances audio quality
-   c) Deepgram transcribes with custom keywords
-   d) Stores word-level data + confidence scores
-   e) Flags low-confidence words (<85% confidence)
-   ↓
-7. Job status → AI_COMPLETE
-   ↓
-8. Scopist reviews and corrects flagged words
-   ↓
-9. Court reporter approves
-   ↓
-10. Export to lawyer (DOCX/PDF)
+depo-pro/
+├── app/                    # Next.js App Router
+│   ├── (auth)/            # Authentication pages
+│   ├── (dashboard)/       # Protected dashboard routes
+│   └── api/               # API routes
+├── components/            # React components
+│   ├── transcripts/       # Transcript UI components
+│   ├── jobs/              # Job management UI
+│   └── ui/                # shadcn/ui components
+├── lib/                   # Core libraries
+│   ├── auth.ts           # Authentication helpers
+│   ├── db.ts             # Prisma client
+│   ├── transcription/    # Deepgram integration
+│   └── workers/          # Background job processors
+├── prisma/               # Database schema
+└── types/                # TypeScript types
 ```
 
-### Database Schema
+## 📖 Documentation
 
-**Core Tables:**
-- `Firm` - Law firms (multi-tenant)
-- `User` - Court reporters, scopists, admins
-- `Job` - Individual depositions
-- `JobFile` - Audio/video/notice files per job
-- `Transcription` - AI-generated transcripts
-- `CustomDictionaryEntry` - Firm-specific terminology
-- `BackgroundJob` - Job queue tracking
+- **[MVP Manual Test Guide](docs/MVP_MANUAL_TEST.md)** - Testing checklist
+- **[API Route Inventory](docs/API_ROUTE_INVENTORY.md)** - Complete API reference
+- **[Component Inventory](docs/COMPONENT_INVENTORY.md)** - UI component catalog
+- **[Role Access Matrix](docs/ROLE_ACCESS_MATRIX.md)** - Permission system
+- **[Deployment Guide](DEPLOYMENT_GUIDE.md)** - Production deployment
 
-See `prisma/schema.prisma` for complete schema.
+## 🔐 Security
 
-## Known Limitations
+We take security seriously. See [SECURITY.md](SECURITY.md) for:
+- Vulnerability reporting process
+- Security best practices
+- Responsible disclosure policy
 
-### Current State
-- **Email ingestion:** Webhook endpoint ready, needs SendGrid configuration
-- **UI:** No web interface yet (API-only)
-- **Authentication:** Basic JWT placeholder (needs full implementation)
-- **Exports:** Format functions exist, need PDF/DOCX generation libraries
-- **Monitoring:** No dashboard for job progress (coming soon)
+## 🤝 Contributing
 
-### Future Enhancements
-- Real-time progress tracking via WebSocket
-- Scopist editing interface with foot pedal support
-- Automatic speaker identification (beyond generic labels)
-- Advanced quality metrics and reporting
-- Integration with case management systems
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Code of conduct
+- Development setup
+- Pull request process
+- Coding standards
 
-## Troubleshooting
+## 📊 Current Status
 
-### "Cannot connect to database"
-**Solution:**
-1. Check PostgreSQL is running
-2. Verify `DATABASE_URL` in `.env`
-3. Try: `npx prisma migrate reset` (WARNING: deletes data)
+### ✅ MVP Complete (v0.1.0)
 
-### "FFmpeg not found"
-**Solution:**
-- Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html), add to PATH
-- Mac: `brew install ffmpeg`
-- Linux: `sudo apt-get install ffmpeg`
-- Verify: `ffmpeg -version`
+**Core Features:**
+- ✅ User authentication & role-based access
+- ✅ Job creation & management
+- ✅ Audio/video file upload
+- ✅ Deepgram transcription integration
+- ✅ Low-confidence word review system
+- ✅ Audio-synced transcript editor
+- ✅ Document export (DOCX, PDF, TXT)
+- ✅ Exhibit management
+- ✅ Case intake system
+- ✅ Reporter & Scopist dashboards
 
-### "Redis connection failed"
-**Solution:**
-1. Start Redis server:
-   - Windows: `redis-server.exe`
-   - Mac: `brew services start redis`
-   - Linux: `sudo systemctl start redis`
-2. Check `REDIS_HOST` in `.env` (should be `localhost`)
+**Production Ready:**
+- ✅ TypeScript strict mode
+- ✅ Error handling & logging
+- ✅ Database migrations
+- ✅ Environment configuration
+- ✅ Security headers & middleware
 
-### "Deepgram API error"
-**Solution:**
-1. Verify API key at [Deepgram Console](https://console.deepgram.com/)
-2. Check you have credits remaining
-3. Ensure key in `.env` has no extra spaces
+## 🗺️ Roadmap
 
-### Worker not processing jobs
-**Solution:**
-1. Ensure worker is running: `npm run worker`
-2. Check Redis connection
-3. View BullMQ jobs: `npm run queue:ui` (if installed)
+### Phase 2 (Q2 2025)
+- [ ] Real-time transcription progress
+- [ ] WebSocket notifications
+- [ ] Advanced speaker identification
+- [ ] Batch job processing
+- [ ] API rate limiting
 
-## Support
+### Phase 3 (Q3 2025)
+- [ ] Mobile app (iOS/Android)
+- [ ] Offline mode support
+- [ ] Advanced analytics dashboard
+- [ ] Integration with case management systems
+- [ ] Multi-language support
 
-- **Documentation:** See `AI_AGENT_TASKS.md` for detailed implementation steps
-- **Issues:** Check worker logs in console
-- **Database:** Use `npm run db:studio` to inspect data
+## 💼 Business Model
 
-## License
+Depo-Pro is currently in **private beta**. For enterprise inquiries or partnership opportunities, please contact the maintainers.
 
-Proprietary - All rights reserved
+## 📝 License
+
+**Proprietary** - All rights reserved
+
+This software is proprietary and confidential. Unauthorized copying, modification, distribution, or use of this software, via any medium, is strictly prohibited.
+
+## 🙏 Acknowledgments
+
+- [Deepgram](https://deepgram.com) - AI transcription API
+- [Anthropic](https://anthropic.com) - Claude AI for document parsing
+- [Supabase](https://supabase.com) - Database & storage infrastructure
+- [Next.js](https://nextjs.org) - React framework
+- [shadcn/ui](https://ui.shadcn.com) - UI component library
+
+## 📧 Contact
+
+- **Issues:** [GitHub Issues](https://github.com/jameshorton2486/depo-pro/issues)
+- **Security:** See [SECURITY.md](SECURITY.md)
+
+---
+
+**Built with ❤️ for the legal transcription community**

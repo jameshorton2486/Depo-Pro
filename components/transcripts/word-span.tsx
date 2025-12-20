@@ -20,15 +20,15 @@ interface WordSpanProps {
   onClick: (index: number, start: number) => void;
 }
 
-export const WordSpan = memo(function WordSpan({
+export const WordSpan = memo(({
   word,
   index,
   isCurrentWord,
   isLowConfidence,
   onClick,
-}: WordSpanProps) {
+}: WordSpanProps) => {
   const displayText = word.punctuated_word || word.word;
-  
+
   const handleClick = () => {
     onClick(index, word.start);
   };
@@ -43,14 +43,19 @@ export const WordSpan = memo(function WordSpan({
         'cursor-pointer px-0.5 rounded transition-colors duration-150',
         'hover:bg-slate-200 dark:hover:bg-slate-700',
         isCurrentWord && 'bg-yellow-300 dark:bg-yellow-600 font-medium',
-        isLowConfidence && !isCurrentWord && 'underline decoration-red-500 decoration-wavy'
+        isLowConfidence && !isCurrentWord && 'underline decoration-red-500 decoration-wavy',
       )}
-      title={isLowConfidence ? `Confidence: ${Math.round(word.confidence * 100)}%` : undefined}
+      title={
+        isLowConfidence
+          ? `Confidence: ${Math.round(word.confidence * 100)}%`
+          : undefined
+      }
     >
       {displayText}
     </span>
   );
 });
 
-export default WordSpan;
+WordSpan.displayName = 'WordSpan';
 
+export default WordSpan;

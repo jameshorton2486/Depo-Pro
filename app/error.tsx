@@ -19,7 +19,7 @@ export default function Error({
   useEffect(() => {
     // Log the error to console in development
     console.error('Error caught by boundary:', error);
-    
+
     // In production, you could send this to an error tracking service
     // e.g., Sentry, LogRocket, etc.
     if (process.env.NODE_ENV === 'production') {

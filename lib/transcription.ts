@@ -2,19 +2,19 @@
 // Main Deepgram transcription service
 
 import { createClient, DeepgramClient } from '@deepgram/sdk';
-import { 
-  getDeepgramConfig, 
+import {
+  getDeepgramConfig,
   LOW_CONFIDENCE_THRESHOLD,
   CONTEXT_WINDOW_SIZE,
-  DeepgramModelType 
+  DeepgramModelType,
 } from './transcription/config';
-import { 
-  TranscriptWord, 
-  TranscriptUtterance, 
-  FlaggedWord, 
+import {
+  TranscriptWord,
+  TranscriptUtterance,
+  FlaggedWord,
   DeepgramResponse,
   ProcessedTranscript,
-  SpeakerAssignment
+  SpeakerAssignment,
 } from '@/types/transcript';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -36,18 +36,18 @@ function getDeepgramClient(): DeepgramClient {
 export async function transcribeAudio(
   audioBuffer: Buffer,
   modelType: DeepgramModelType = 'MEDICAL',
-  mimetype: string = 'audio/wav'
+  mimetype: string = 'audio/wav',
 ): Promise<DeepgramResponse> {
   const client = getDeepgramClient();
   const config = getDeepgramConfig(modelType);
-  
+
   try {
     const { result, error } = await client.listen.prerecorded.transcribeFile(
       audioBuffer,
       {
         ...config,
         mimetype,
-      }
+      },
     );
 
     if (error) {
@@ -64,15 +64,15 @@ export async function transcribeAudio(
 // Transcribe from URL
 export async function transcribeFromUrl(
   audioUrl: string,
-  modelType: DeepgramModelType = 'MEDICAL'
+  modelType: DeepgramModelType = 'MEDICAL',
 ): Promise<DeepgramResponse> {
   const client = getDeepgramClient();
   const config = getDeepgramConfig(modelType);
-  
+
   try {
     const { result, error } = await client.listen.prerecorded.transcribeUrl(
       { url: audioUrl },
-      config as any
+      config as any,
     );
 
     if (error) {
@@ -89,7 +89,7 @@ export async function transcribeFromUrl(
 // Extract flagged (low-confidence) words
 export function extractFlaggedWords(
   words: TranscriptWord[],
-  threshold: number = LOW_CONFIDENCE_THRESHOLD
+  threshold: number = LOW_CONFIDENCE_THRESHOLD,
 ): FlaggedWord[] {
   const flaggedWords: FlaggedWord[] = [];
 
@@ -131,15 +131,15 @@ export function extractFlaggedWords(
 
 // Process Deepgram response into structured data
 export function processTranscriptResponse(
-  response: DeepgramResponse
+  response: DeepgramResponse,
 ): ProcessedTranscript {
   const channel = response.results.channels[0];
   const alternative = channel.alternatives[0];
-  
+
   const words = alternative.words || [];
   const utterances = response.results.utterances || [];
   const flaggedWords = extractFlaggedWords(words);
-  
+
   // Calculate average confidence
   const totalConfidence = words.reduce((sum, w) => sum + w.confidence, 0);
   const averageConfidence = words.length > 0 ? totalConfidence / words.length : 0;
@@ -171,43 +171,43 @@ export function getUniqueSpeakers(words: TranscriptWord[]): number[] {
 // Format transcript with speaker labels
 export function formatTranscriptWithSpeakers(
   utterances: TranscriptUtterance[],
-  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>
+  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>,
 ): string {
   let formatted = '';
-  
+
   for (const utterance of utterances) {
     const assignment = speakerAssignments.get(utterance.speaker);
-    
+
     // Skip excluded speakers (e.g., witness speaking through interpreter)
     if (assignment?.exclude) {
       continue;
     }
-    
-    const speakerLabel = assignment 
-      ? `${assignment.name} (${assignment.type})` 
+
+    const speakerLabel = assignment
+      ? `${assignment.name} (${assignment.type})`
       : `Speaker ${utterance.speaker}`;
-    
+
     formatted += `${speakerLabel}: ${utterance.transcript}\n\n`;
   }
-  
+
   return formatted.trim();
 }
 
 // Format as Q&A (legal deposition format)
 export function formatAsQA(
   utterances: TranscriptUtterance[],
-  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>
+  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>,
 ): string {
   let formatted = '';
-  
+
   for (const utterance of utterances) {
     const assignment = speakerAssignments.get(utterance.speaker);
-    
+
     // Skip excluded speakers
     if (assignment?.exclude) {
       continue;
     }
-    
+
     let prefix = '';
     if (assignment) {
       if (assignment.type === 'Attorney' || assignment.type === 'Opposing Counsel') {
@@ -220,19 +220,19 @@ export function formatAsQA(
     } else {
       prefix = `SPEAKER ${utterance.speaker}`;
     }
-    
+
     formatted += `${prefix}: ${utterance.transcript}\n\n`;
   }
-  
+
   return formatted.trim();
 }
 
 // Convert SpeakerAssignment array to Map for formatting functions
 export function createSpeakerAssignmentMap(
-  assignments: SpeakerAssignment[]
+  assignments: SpeakerAssignment[],
 ): Map<number, { name: string; type: string; exclude: boolean }> {
   const map = new Map<number, { name: string; type: string; exclude: boolean }>();
-  
+
   assignments.forEach(assignment => {
     if (assignment.speakerId >= 0) {
       map.set(assignment.speakerId, {
@@ -242,7 +242,7 @@ export function createSpeakerAssignmentMap(
       });
     }
   });
-  
+
   return map;
 }
 
@@ -274,7 +274,7 @@ export interface TranscriptionResult {
 
 export async function transcribeAudioLegacy(
   audioBuffer: Buffer,
-  mimetype: string = 'audio/wav'
+  mimetype: string = 'audio/wav',
 ): Promise<TranscriptionResult> {
   try {
     const response = await transcribeAudio(audioBuffer, 'STANDARD', mimetype);

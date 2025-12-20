@@ -4,21 +4,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { 
-  uploadExhibitOriginal, 
+import {
+  uploadExhibitOriginal,
   uploadExhibitStamped,
-  getFileTypeFromMime 
+  getFileTypeFromMime,
 } from '@/lib/exhibits/storage';
 import { stampExhibitPdf } from '@/lib/exhibits/pdf-stamper';
 
 // GET /api/jobs/[id]/exhibits - List all exhibits for a job
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -29,9 +29,9 @@ export async function GET(
     // Verify job exists and user has access
     const job = await db.job.findUnique({
       where: { id: jobId },
-      select: { 
-        id: true, 
-        createdById: true, 
+      select: {
+        id: true,
+        createdById: true,
         firmId: true,
         assignments: {
           select: { scopistId: true },
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     // Check permissions
-    const hasAccess = 
+    const hasAccess =
       job.createdById === user.id ||
       job.assignments.some(a => a.scopistId === user.id) ||
       user.role === 'ADMIN' ||
@@ -65,7 +65,7 @@ export async function GET(
     console.error('Error fetching exhibits:', error);
     return NextResponse.json(
       { error: 'Failed to fetch exhibits' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -73,11 +73,11 @@ export async function GET(
 // POST /api/jobs/[id]/exhibits - Upload new exhibits
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -109,7 +109,7 @@ export async function POST(
     }
 
     // Check permissions (only reporter who created job, or admin can upload)
-    const canUpload = 
+    const canUpload =
       job.createdById === user.id ||
       user.role === 'ADMIN';
 
@@ -122,7 +122,7 @@ export async function POST(
     const files = formData.getAll('files') as File[];
     const applyStamp = formData.get('applyStamp') === 'true';
     const descriptionsRaw = formData.get('descriptions') as string | null;
-    
+
     let descriptions: string[] = [];
     if (descriptionsRaw) {
       try {
@@ -135,7 +135,7 @@ export async function POST(
     if (!files || files.length === 0) {
       return NextResponse.json(
         { error: 'No files provided' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -145,7 +145,7 @@ export async function POST(
       orderBy: { exhibitNumber: 'desc' },
       select: { exhibitNumber: true },
     });
-    
+
     const nextExhibitNumber = (maxExhibit?.exhibitNumber ?? 0) + 1;
 
     // Process each file
@@ -214,7 +214,7 @@ export async function POST(
       createdExhibits.push(exhibit);
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       exhibits: createdExhibits,
       message: `Successfully uploaded ${createdExhibits.length} exhibit(s)`,
     });
@@ -222,7 +222,7 @@ export async function POST(
     console.error('Error uploading exhibits:', error);
     return NextResponse.json(
       { error: 'Failed to upload exhibits' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

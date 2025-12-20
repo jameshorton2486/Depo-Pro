@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Play, Check, X, Filter } from 'lucide-react';
@@ -62,7 +62,7 @@ export function LowConfidenceReview({
 
   const playingWordId = useMemo(() => {
     return flaggedWords.find(
-      (word) => currentAudioTime >= word.startTime && currentAudioTime <= word.endTime
+      (word) => currentAudioTime >= word.startTime && currentAudioTime <= word.endTime,
     )?.id;
   }, [flaggedWords, currentAudioTime]);
 
@@ -75,7 +75,7 @@ export function LowConfidenceReview({
         setSavingId(null);
       }
     },
-    [onMarkReviewed]
+    [onMarkReviewed],
   );
 
   useEffect(() => {
@@ -239,7 +239,7 @@ export function LowConfidenceReview({
                 'border-b border-slate-800 p-4 text-sm transition-colors',
                 selectedIndex === index && 'bg-slate-800',
                 playingWordId === word.id && 'border-l-2 border-l-blue-500 bg-blue-900/30',
-                word.isReviewed && 'opacity-70'
+                word.isReviewed && 'opacity-70',
               )}
               onClick={() => setSelectedIndex(index)}
             >

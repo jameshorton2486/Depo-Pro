@@ -15,7 +15,7 @@ interface EditJobPageProps {
 
 export default async function EditJobPage({ params }: EditJobPageProps) {
   const session = await getCurrentUser();
-  
+
   if (!session || !session.user) {
     redirect('/login');
   }

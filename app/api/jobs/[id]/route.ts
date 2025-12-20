@@ -19,11 +19,11 @@ import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -86,7 +86,7 @@ export async function GET(
     logger.error('GET /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to fetch job' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -97,11 +97,11 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -155,14 +155,14 @@ export async function PUT(
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation failed', details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     logger.error('PUT /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to update job' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -173,7 +173,7 @@ export async function PUT(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
@@ -222,7 +222,7 @@ export async function PATCH(
     logger.error('PATCH /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to update job status' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -233,11 +233,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -277,7 +277,7 @@ export async function DELETE(
     logger.error('DELETE /api/jobs/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to delete job' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

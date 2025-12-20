@@ -224,7 +224,7 @@ export function invoiceEmail(data: {
   dueDate: Date;
 }): EmailOptions {
   const formattedAmount = `$${(data.amount / 100).toFixed(2)}`;
-  
+
   const html = `
 <!DOCTYPE html>
 <html>

@@ -39,10 +39,26 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check authentication
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-  });
+  let token;
+  try {
+    token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+  } catch (error) {
+    // Handle JWT decryption errors (e.g., after secret rotation)
+    // If token can't be decrypted, treat as not authenticated
+    if (
+      error instanceof Error &&
+      (error.message.includes('decryption') ||
+       error.message.includes('no matching decryption secret'))
+    ) {
+      token = null;
+    } else {
+      // Re-throw other errors
+      throw error;
+    }
+  }
 
   if (!token) {
     const loginUrl = new URL('/login', request.url);
@@ -62,7 +78,7 @@ export async function middleware(request: NextRequest) {
 
   // Add security headers
   const response = NextResponse.next();
-  
+
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

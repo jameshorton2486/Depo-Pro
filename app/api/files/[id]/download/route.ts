@@ -9,7 +9,7 @@ import { downloadFile } from '@/lib/storage';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -69,7 +69,7 @@ export async function GET(
     console.error('File download error:', error);
     return NextResponse.json(
       { error: 'Failed to download file' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

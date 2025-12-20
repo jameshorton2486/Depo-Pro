@@ -39,7 +39,7 @@ export const createJobSchema = z.object({
     .url('Please enter a valid URL')
     .optional()
     .or(z.literal('')),
-  
+
   // Job metadata
   status: z.enum([
     JobStatus.CREATED,
@@ -55,7 +55,7 @@ export const createJobSchema = z.object({
     JobStatus.COMPLETED,
     JobStatus.CANCELLED,
   ] as const),
-  
+
   // Notes
   notes: z
     .string()

@@ -3,15 +3,15 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import Link from 'next/link';
-import { 
-  Briefcase, 
-  Clock, 
-  Users, 
-  CheckCircle, 
+import {
+  Briefcase,
+  Clock,
+  Users,
+  CheckCircle,
   Plus,
   Upload,
   UserPlus,
-  Download
+  Download,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
@@ -86,7 +86,7 @@ export default async function ReporterDashboard() {
         </div>
         <Link
           href="/jobs/new"
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
             text-white font-medium rounded-lg transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -134,7 +134,7 @@ export default async function ReporterDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200
           dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
             Quick Actions
@@ -142,7 +142,7 @@ export default async function ReporterDashboard() {
           <div className="space-y-3">
             <Link
               href="/jobs/new"
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
                 dark:hover:bg-slate-700/50 transition-colors"
             >
               <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -158,7 +158,7 @@ export default async function ReporterDashboard() {
 
             <Link
               href="/jobs?filter=ai_complete"
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
                 dark:hover:bg-slate-700/50 transition-colors"
             >
               <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
@@ -174,7 +174,7 @@ export default async function ReporterDashboard() {
 
             <Link
               href="/jobs?filter=completed"
-              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
                 dark:hover:bg-slate-700/50 transition-colors"
             >
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">

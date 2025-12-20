@@ -112,8 +112,8 @@ export default function LoginPage() {
 
             {/* TODO: Phase 2 - Add "Forgot password?" link */}
             {/* <div className="flex justify-end">
-              <Link 
-                href="/forgot-password" 
+              <Link
+                href="/forgot-password"
                 className="text-sm text-blue-600 hover:text-blue-500"
               >
                 Forgot password?
@@ -132,8 +132,8 @@ export default function LoginPage() {
 
             <div className="text-sm text-center text-gray-600">
               Don&apos;t have an account?{' '}
-              <Link 
-                href="/register" 
+              <Link
+                href="/register"
                 className="font-medium text-blue-600 hover:text-blue-500"
               >
                 Create an account

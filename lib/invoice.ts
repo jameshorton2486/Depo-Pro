@@ -70,7 +70,7 @@ export function calculateInvoiceTotal(items: InvoiceItem[], taxRate = 0): {
 export async function createPaymentIntent(
   amount: number,
   currency = 'usd',
-  _metadata?: Record<string, string>
+  _metadata?: Record<string, string>,
 ): Promise<PaymentIntent> {
   if (USE_STRIPE && STRIPE_SECRET_KEY) {
     // TODO: Implement real Stripe integration
@@ -96,7 +96,7 @@ export async function createPaymentIntent(
 
   // Mock payment intent
   console.log('[MOCK] Creating Stripe PaymentIntent', { amount, currency, metadata: _metadata });
-  
+
   return {
     id: `pi_mock_${Date.now()}`,
     amount,
@@ -148,15 +148,15 @@ export async function generateInvoicePDF(invoice: InvoiceData): Promise<Buffer> 
 
 function formatInvoiceText(invoice: InvoiceData): string {
   let text = '';
-  
+
   text += '═══════════════════════════════════════════════════════════════\n';
   text += '                           INVOICE\n';
   text += '═══════════════════════════════════════════════════════════════\n\n';
-  
+
   text += `Invoice Number: ${invoice.invoiceNumber}\n`;
   text += `Date: ${new Date().toLocaleDateString()}\n`;
   text += `Due Date: ${invoice.dueDate.toLocaleDateString()}\n\n`;
-  
+
   if (invoice.clientName) {
     text += `Bill To:\n${invoice.clientName}\n`;
     if (invoice.clientEmail) {
@@ -164,15 +164,15 @@ function formatInvoiceText(invoice: InvoiceData): string {
     }
     text += '\n';
   }
-  
+
   if (invoice.caseNumber) {
     text += `Case Number: ${invoice.caseNumber}\n\n`;
   }
-  
+
   text += '───────────────────────────────────────────────────────────────\n';
   text += 'DESCRIPTION                           QTY    RATE      AMOUNT\n';
   text += '───────────────────────────────────────────────────────────────\n';
-  
+
   invoice.items.forEach(item => {
     const desc = item.description.padEnd(35);
     const qty = item.quantity.toString().padStart(5);
@@ -180,20 +180,20 @@ function formatInvoiceText(invoice: InvoiceData): string {
     const total = formatCurrency(item.total).padStart(11);
     text += `${desc} ${qty} ${rate} ${total}\n`;
   });
-  
+
   text += '───────────────────────────────────────────────────────────────\n';
   text += `${'Subtotal:'.padEnd(35)} ${formatCurrency(invoice.subtotal).padStart(30)}\n`;
   text += `${'Tax:'.padEnd(35)} ${formatCurrency(invoice.tax).padStart(30)}\n`;
   text += `${'TOTAL:'.padEnd(35)} ${formatCurrency(invoice.total).padStart(30)}\n`;
   text += '═══════════════════════════════════════════════════════════════\n\n';
-  
+
   if (invoice.notes) {
     text += `Notes:\n${invoice.notes}\n\n`;
   }
-  
+
   text += 'Thank you for your business!\n';
   text += 'Depo-Pro Court Reporting Management System\n';
-  
+
   return text;
 }
 
@@ -223,7 +223,7 @@ export function calculateJobPrice(
   pageCount: number,
   durationMinutes: number,
   isRush: boolean,
-  rates = DEFAULT_RATES
+  rates = DEFAULT_RATES,
 ): InvoiceItem[] {
   const items: InvoiceItem[] = [];
 

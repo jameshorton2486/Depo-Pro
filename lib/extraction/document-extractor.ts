@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 // COMPREHENSIVE DOCUMENT EXTRACTION SERVICE
 // lib/extraction/document-extractor.ts
-// 
+//
 // Semantic, format-agnostic extraction using Claude AI
 // Per-field confidence scoring
 // Handles: NOD, CSR Paperwork, Depo Notes, Court Orders
@@ -26,7 +26,7 @@ export interface ComprehensiveExtractedData {
   causeNumber: string | null;          // Alternative format
   caseStyle: string | null;            // "Eric Estopinal v. A&H Foods, LLC..."
   shortTitle: string | null;           // "Estopinal v. A&H Foods"
-  
+
   // ═══════════════════════════════════════════════════════════════
   // COURT INFORMATION
   // ═══════════════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ export interface ComprehensiveExtractedData {
     state: string | null;              // "Texas"
     judge: string | null;              // Judge name
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // PARTIES
   // ═══════════════════════════════════════════════════════════════
@@ -47,19 +47,19 @@ export interface ComprehensiveExtractedData {
     type: 'individual' | 'company' | 'government' | 'other';
     role?: string;
   }>;
-  
+
   defendants: Array<{
     name: string;
     type: 'individual' | 'company' | 'government' | 'other';
     role?: string;
   }>;
-  
+
   otherParties: Array<{
     name: string;
     type: string;
     role: string;                      // "Intervenor", "Third-Party Defendant"
   }>;
-  
+
   // ═══════════════════════════════════════════════════════════════
   // DEPONENT INFORMATION
   // ═══════════════════════════════════════════════════════════════
@@ -70,7 +70,7 @@ export interface ComprehensiveExtractedData {
     company: string | null;            // "A&H Foods, LLC"
     title: string | null;              // Job title if mentioned
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // DEPOSITION SCHEDULING
   // ═══════════════════════════════════════════════════════════════
@@ -81,7 +81,7 @@ export interface ComprehensiveExtractedData {
     actualStartTime: string | null;
     actualEndTime: string | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // LOCATION
   // ═══════════════════════════════════════════════════════════════
@@ -96,7 +96,7 @@ export interface ComprehensiveExtractedData {
     zoomLink: string | null;
     conferenceRoom: boolean | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // COURT REPORTING DETAILS
   // ═══════════════════════════════════════════════════════════════
@@ -106,7 +106,7 @@ export interface ComprehensiveExtractedData {
     reporterCSRNumber: string | null;
     isCertifiedShorthand: boolean | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // RECORDING METHOD
   // ═══════════════════════════════════════════════════════════════
@@ -116,7 +116,7 @@ export interface ComprehensiveExtractedData {
     videographerName: string | null;
     videographerCompany: string | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // INTERPRETER
   // ═══════════════════════════════════════════════════════════════
@@ -125,7 +125,7 @@ export interface ComprehensiveExtractedData {
     name: string | null;
     language: string | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // ATTORNEYS (All attorneys from all documents)
   // ═══════════════════════════════════════════════════════════════
@@ -149,7 +149,7 @@ export interface ComprehensiveExtractedData {
     rushDueDate: string | null;
     associateAttorneys: Array<{ name: string; email?: string }>;
   }>;
-  
+
   // ═══════════════════════════════════════════════════════════════
   // TRANSCRIPT OPTIONS
   // ═══════════════════════════════════════════════════════════════
@@ -158,7 +158,7 @@ export interface ComprehensiveExtractedData {
     signatureWaived: boolean | null;
     sendTo: string | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // EXHIBITS (From Depo Notes)
   // ═══════════════════════════════════════════════════════════════
@@ -172,7 +172,7 @@ export interface ComprehensiveExtractedData {
     blackAndWhite: number | null;
     color: number | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // INSURANCE/EUO FIELDS (For Examination Under Oath)
   // ═══════════════════════════════════════════════════════════════
@@ -184,7 +184,7 @@ export interface ComprehensiveExtractedData {
     policyNumber: string | null;
     dateOfLoss: string | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // DEPOSITION TOPICS (From Rule 199 / 30(b)(6) Notices)
   // ═══════════════════════════════════════════════════════════════
@@ -193,7 +193,7 @@ export interface ComprehensiveExtractedData {
     category: string | null;
     description: string;
   }>;
-  
+
   // ═══════════════════════════════════════════════════════════════
   // BILLING & LOGISTICS
   // ═══════════════════════════════════════════════════════════════
@@ -205,25 +205,25 @@ export interface ComprehensiveExtractedData {
     isRush: boolean;
     rushDueDate: string | null;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // SPECIAL INSTRUCTIONS
   // ═══════════════════════════════════════════════════════════════
   specialInstructions: string | null;
   notes: string | null;
-  
+
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTED KEYWORDS FOR DEEPGRAM
   // ═══════════════════════════════════════════════════════════════
   extractedTerms: Array<{
     term: string;
     normalizedTerm: string;
-    category: 'person_name' | 'company_name' | 'place_name' | 'legal_term' | 
-              'medical_term' | 'technical_term' | 'case_specific' | 
+    category: 'person_name' | 'company_name' | 'place_name' | 'legal_term' |
+              'medical_term' | 'technical_term' | 'case_specific' |
               'attorney_name' | 'witness_name' | 'product_name' | 'vehicle_info';
     source: string;                    // Which document
   }>;
-  
+
   // ═══════════════════════════════════════════════════════════════
   // CONFIDENCE SCORING (Per-field)
   // ═══════════════════════════════════════════════════════════════
@@ -239,14 +239,14 @@ export interface ComprehensiveExtractedData {
     exhibits?: number;
     insurance?: number;
   };
-  
+
   // ═══════════════════════════════════════════════════════════════
   // SOURCE TRACKING
   // ═══════════════════════════════════════════════════════════════
   sourcesByField: {
     [fieldName: string]: string[];     // Which documents contributed
   };
-  
+
   // Overall metadata
   documentTypes: string[];             // What types of documents were processed
   overallConfidence: number;
@@ -382,7 +382,7 @@ RESPOND WITH ONLY VALID JSON in the exact structure provided. No markdown, no ex
 // ═══════════════════════════════════════════════════════════════
 
 export async function extractFromDocuments(
-  documents: Array<{ text: string; fileName: string; type?: string }>
+  documents: Array<{ text: string; fileName: string; type?: string }>,
 ): Promise<{
   success: boolean;
   data: ComprehensiveExtractedData | null;
@@ -390,8 +390,8 @@ export async function extractFromDocuments(
 }> {
   try {
     // Combine all document texts with source markers
-    const combinedText = documents.map(doc => 
-      `\n══════════════════════════════════════\nDOCUMENT: ${doc.fileName}\nTYPE: ${doc.type || 'UNKNOWN'}\n══════════════════════════════════════\n${doc.text}`
+    const combinedText = documents.map(doc =>
+      `\n══════════════════════════════════════\nDOCUMENT: ${doc.fileName}\nTYPE: ${doc.type || 'UNKNOWN'}\n══════════════════════════════════════\n${doc.text}`,
     ).join('\n\n');
 
     const message = await anthropic.messages.create({
@@ -411,10 +411,10 @@ Extract all information and respond with ONLY valid JSON matching the Comprehens
     });
 
     // Extract JSON from response
-    const responseText = message.content[0].type === 'text' 
-      ? message.content[0].text 
+    const responseText = message.content[0].type === 'text'
+      ? message.content[0].text
       : '';
-    
+
     // Parse JSON (handle potential markdown code blocks)
     let jsonStr = responseText;
     if (responseText.includes('```json')) {
@@ -424,16 +424,16 @@ Extract all information and respond with ONLY valid JSON matching the Comprehens
     }
 
     const extractedData = JSON.parse(jsonStr.trim()) as ComprehensiveExtractedData;
-    
+
     // Post-process: normalize keywords
     if (extractedData.extractedTerms) {
       extractedData.extractedTerms = normalizeKeywords(extractedData.extractedTerms);
     }
-    
+
     // Calculate if review needed
     extractedData.needsReview = checkIfNeedsReview(extractedData);
     extractedData.reviewReasons = getReviewReasons(extractedData);
-    
+
     return {
       success: true,
       data: extractedData,
@@ -454,18 +454,18 @@ Extract all information and respond with ONLY valid JSON matching the Comprehens
 // ═══════════════════════════════════════════════════════════════
 
 function normalizeKeywords(
-  terms: ComprehensiveExtractedData['extractedTerms']
+  terms: ComprehensiveExtractedData['extractedTerms'],
 ): ComprehensiveExtractedData['extractedTerms'] {
   const seen = new Set<string>();
   const normalized: ComprehensiveExtractedData['extractedTerms'] = [];
-  
+
   for (const term of terms) {
     // Normalize: trim, title case for names, remove extra punctuation
     let normalizedTerm = term.term.trim();
-    
+
     // Remove trailing punctuation
     normalizedTerm = normalizedTerm.replace(/[.,;:!?]+$/, '');
-    
+
     // Title case for names
     if (term.category.includes('name')) {
       normalizedTerm = normalizedTerm
@@ -473,16 +473,16 @@ function normalizeKeywords(
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ');
     }
-    
+
     // Skip if we've seen this normalized form
     const key = normalizedTerm.toLowerCase();
     if (seen.has(key)) continue;
     if (normalizedTerm.length < 2) continue; // Skip single chars
-    
+
     // Skip common stop words
     const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for'];
     if (stopWords.includes(key)) continue;
-    
+
     seen.add(key);
     normalized.push({
       ...term,
@@ -490,7 +490,7 @@ function normalizeKeywords(
       normalizedTerm,
     });
   }
-  
+
   return normalized;
 }
 
@@ -501,7 +501,7 @@ function normalizeKeywords(
 function checkIfNeedsReview(data: ComprehensiveExtractedData): boolean {
   const conf = data.confidenceByField;
   if (!conf) return true;
-  
+
   // Check critical fields
   const criticalFields = ['caseNumber', 'deponentName', 'depositionDate'];
   for (const field of criticalFields) {
@@ -510,30 +510,30 @@ function checkIfNeedsReview(data: ComprehensiveExtractedData): boolean {
       return true;
     }
   }
-  
+
   // Check if missing critical data
   if (!data.caseNumber && !data.caseStyle) return true;
   if (!data.deponent?.name) return true;
-  
+
   return data.overallConfidence < 0.80;
 }
 
 function getReviewReasons(data: ComprehensiveExtractedData): string[] {
   const reasons: string[] = [];
   const conf = data.confidenceByField;
-  
+
   if (!data.caseNumber) reasons.push('Case number not found');
   if (!data.deponent?.name) reasons.push('Deponent name not found');
   if (!data.scheduling?.date) reasons.push('Deposition date not found');
-  
+
   if (conf) {
     if (conf.caseNumber && conf.caseNumber < 0.85) reasons.push('Case number confidence low');
     if (conf.deponentName && conf.deponentName < 0.85) reasons.push('Deponent name confidence low');
     if (conf.attorneys && conf.attorneys < 0.85) reasons.push('Attorney info confidence low');
   }
-  
+
   if (!data.attorneys?.length) reasons.push('No attorneys extracted');
-  
+
   return reasons;
 }
 
@@ -543,7 +543,7 @@ function getReviewReasons(data: ComprehensiveExtractedData): string[] {
 
 export function getDeepgramKeywords(data: ComprehensiveExtractedData): string[] {
   if (!data.extractedTerms) return [];
-  
+
   return data.extractedTerms
     .filter(t => t.normalizedTerm && t.normalizedTerm.length >= 2)
     .map(t => t.normalizedTerm);

@@ -3,8 +3,8 @@
 
 export const DEEPGRAM_MODELS = {
   STANDARD: 'nova-3',
-  MEDICAL: 'nova-3-medical', 
-  BILINGUAL: 'nova-3'
+  MEDICAL: 'nova-3-medical',
+  BILINGUAL: 'nova-3',
 } as const;
 
 export type DeepgramModelType = 'STANDARD' | 'MEDICAL' | 'BILINGUAL';
@@ -63,19 +63,19 @@ export const MODEL_DESCRIPTIONS = {
   STANDARD: {
     name: 'Standard (General Legal)',
     description: 'Best for contract disputes, family law, civil cases',
-    model: 'nova-3'
+    model: 'nova-3',
   },
   MEDICAL: {
     name: 'Personal Injury / Medical',
     description: 'Optimized for medical malpractice, injury cases, workers\' comp - enhanced medical terminology',
     model: 'nova-3-medical',
-    recommended: true
+    recommended: true,
   },
   BILINGUAL: {
     name: 'Bilingual (English + Spanish)',
     description: 'For cases with interpreter or bilingual witness. Note: Uses general model for language detection',
-    model: 'nova-3'
-  }
+    model: 'nova-3',
+  },
 } as const;
 
 // Low confidence threshold for flagging words
@@ -87,14 +87,14 @@ export const CONTEXT_WINDOW_SIZE = 5;
 // Speaker types for depositions
 export const SPEAKER_TYPES = [
   'Attorney',
-  'Witness', 
+  'Witness',
   'Translator',
   'Court Reporter',
   'Videographer',
   'Opposing Counsel',
   'Expert Witness',
   'Guardian ad Litem',
-  'Other'
+  'Other',
 ] as const;
 
 export type SpeakerType = typeof SPEAKER_TYPES[number];
@@ -158,7 +158,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'preliminary injunction',
   'arbitration',
   'mediation',
-  
+
   // Evidence Law
   'evidence',
   'admissibility',
@@ -200,7 +200,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'Daubert standard',
   'Frye test',
   'forensic evidence',
-  
+
   // Contract Law
   'contract',
   'offer',
@@ -247,7 +247,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'novation',
   'privity of contract',
   'force majeure',
-  
+
   // Personal Injury
   'negligence',
   'duty of care',
@@ -287,7 +287,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'independent medical examination',
   'life care plan',
   'vocational rehabilitation',
-  
+
   // Medical Terms
   'diagnosis',
   'prognosis',
@@ -340,7 +340,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'referral',
   'consultation',
   'specialist',
-  
+
   // Courtroom Protocol
   'objection',
   'sustained',
@@ -369,7 +369,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'perjury',
   'contempt',
   'sequestration',
-  
+
   // Latin Legal Phrases
   'pro se',
   'prima facie',
@@ -391,7 +391,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'status quo',
   'ultra vires',
   'caveat emptor',
-  
+
   // Deposition-Specific
   'deponent',
   'examining attorney',
@@ -419,7 +419,7 @@ export const LEGAL_VOCABULARY: string[] = [
   'mark as exhibit',
   'previously marked',
   'admitted',
-  'lodged'
+  'lodged',
 ];
 
 // Key phrases that indicate attorney speech

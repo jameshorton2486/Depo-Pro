@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       });
       return NextResponse.json(
         { error: 'Missing required fields' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       logger.warn('Registration attempt with existing email', { email });
       return NextResponse.json(
         { error: 'A user with this email already exists' },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -69,24 +69,24 @@ export async function POST(request: Request) {
       });
 
       return NextResponse.json(
-        { 
+        {
           message: 'User registered successfully',
           user,
         },
-        { status: 201 }
+        { status: 201 },
       );
     } catch (error) {
       logger.error('User creation', error as Error);
       return NextResponse.json(
         { error: 'Failed to create user account' },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
     logger.error('/api/auth/register', error as Error);
     return NextResponse.json(
       { error: 'Failed to register user. Please try again.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -18,15 +18,15 @@ export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps)
       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
         Transcription Model
       </label>
-      
+
       <div className="space-y-2">
         {models.map(([key, model]) => (
           <label
             key={key}
             className={`
               relative flex items-start p-4 cursor-pointer rounded-lg border-2 transition-all
-              ${value === key 
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+              ${value === key
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
               }
               ${disabled ? 'opacity-60 cursor-not-allowed' : ''}
@@ -41,7 +41,7 @@ export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps)
               disabled={disabled}
               className="sr-only"
             />
-            
+
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className={`font-medium ${value === key ? 'text-blue-700 dark:text-blue-300' : 'text-slate-900 dark:text-slate-100'}`}>
@@ -58,7 +58,7 @@ export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps)
                 {model.description}
               </p>
             </div>
-            
+
             {value === key && (
               <div className="flex-shrink-0 ml-3">
                 <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">

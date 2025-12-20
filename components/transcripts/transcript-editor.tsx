@@ -59,16 +59,16 @@ export function TranscriptEditor({
         const res = await fetch(`/api/transcripts/${transcriptId}`);
         if (res.ok) {
           const data = await res.json();
-          
+
           // Prefer contentJson if available, otherwise fallback to content (HTML/Text)
           const contentToLoad = data.contentJson || data.content || '';
-          
+
           if (editor) {
             editor.commands.setContent(contentToLoad);
             // Reset history after loading
-            (editor.commands as any).clearHistory(); 
+            (editor.commands as any).clearHistory();
           }
-          
+
           setVersion(data.version);
           if (data.audioUrl) {
             setAudioUrl(data.audioUrl);
@@ -103,9 +103,9 @@ export function TranscriptEditor({
       const res = await fetch(`/api/transcripts/${transcriptId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           content: contentText, // Store plain text for search/indexing
-          contentJson: contentJson, // Store rich text structure
+          contentJson, // Store rich text structure
           // We could also store HTML if needed: contentHtml
         }),
       });
@@ -171,7 +171,7 @@ export function TranscriptEditor({
             </div>
           </CardTitle>
         </CardHeader>
-        
+
         <div className="px-6 pb-2">
            <EditorToolbar editor={editor} />
         </div>
@@ -185,7 +185,7 @@ export function TranscriptEditor({
               {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
-          
+
           <div className="border rounded-md min-h-[600px] bg-background">
             <EditorContent editor={editor} />
           </div>

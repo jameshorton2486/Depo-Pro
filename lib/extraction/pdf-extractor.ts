@@ -19,7 +19,7 @@ export interface PDFExtractionResult {
 export async function extractTextFromPDFBuffer(buffer: Buffer): Promise<PDFExtractionResult> {
   try {
     const data = await pdfParse(buffer);
-    
+
     return {
       success: true,
       text: data.text,
@@ -67,7 +67,7 @@ export function detectDocumentType(fileName: string, content: string): string {
   }
 
   // Check content patterns
-  if (contentLower.includes('notice of intention to take') || 
+  if (contentLower.includes('notice of intention to take') ||
       contentLower.includes('oral and videotaped deposition') ||
       contentLower.includes('take notice') ||
       contentLower.includes('deposition of')) {
@@ -76,21 +76,21 @@ export function detectDocumentType(fileName: string, content: string): string {
     }
     return 'NOTICE_OF_DEPOSITION';
   }
-  
-  if (contentLower.includes('court reporting') && 
-      (contentLower.includes('ordering attorney') || 
+
+  if (contentLower.includes('court reporting') &&
+      (contentLower.includes('ordering attorney') ||
        contentLower.includes('copy attorney') ||
        contentLower.includes('csr:'))) {
     return 'CSR_PAPERWORK';
   }
-  
+
   if ((contentLower.includes('exhibit') && contentLower.includes('description')) ||
       contentLower.includes('depo notes') ||
       contentLower.includes('euo')) {
     return 'DEPO_NOTES';
   }
-  
-  if (contentLower.includes('it is ordered') || 
+
+  if (contentLower.includes('it is ordered') ||
       contentLower.includes('hereby ordered') ||
       contentLower.includes('scheduling order')) {
     return 'COURT_ORDER';

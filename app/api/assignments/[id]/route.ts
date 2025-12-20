@@ -16,11 +16,11 @@ import { logger } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -99,14 +99,14 @@ export async function PATCH(
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation failed', details: error },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     logger.error('PATCH /api/assignments/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to update assignment' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -117,11 +117,11 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -165,7 +165,7 @@ export async function DELETE(
     logger.error('DELETE /api/assignments/[id]', error as Error);
     return NextResponse.json(
       { error: 'Failed to delete assignment' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

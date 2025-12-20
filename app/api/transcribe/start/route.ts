@@ -57,23 +57,23 @@ export async function POST(request: NextRequest) {
       modelType: (validated.options?.model as 'STANDARD' | 'MEDICAL' | 'BILINGUAL') || 'MEDICAL',
     });
 
-    return NextResponse.json({ 
-      message: 'Transcription started', 
-      jobId: validated.jobId 
+    return NextResponse.json({
+      message: 'Transcription started',
+      jobId: validated.jobId,
     }, { status: 200 });
   } catch (error) {
     console.error('Transcription start error:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request', details: error.issues },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: 'Failed to start transcription' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

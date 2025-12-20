@@ -5,6 +5,15 @@ import { useState, useCallback } from 'react';
 import { Upload, FileText, Image, File, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+const ACCEPTED_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/jpg',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+] as const;
+
 interface ExhibitUploadProps {
   jobId: string;
   onUploadComplete: () => void;
@@ -15,15 +24,6 @@ export function ExhibitUpload({ jobId, onUploadComplete }: ExhibitUploadProps) {
   const [applyStamp, setApplyStamp] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-
-  const acceptedTypes = [
-    'application/pdf',
-    'image/jpeg',
-    'image/png',
-    'image/jpg',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword',
-  ];
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -38,11 +38,11 @@ export function ExhibitUpload({ jobId, onUploadComplete }: ExhibitUploadProps) {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
+
     const droppedFiles = Array.from(e.dataTransfer.files).filter(file =>
-      acceptedTypes.includes(file.type)
+      ACCEPTED_TYPES.includes(file.type as typeof ACCEPTED_TYPES[number]),
     );
-    
+
     if (droppedFiles.length > 0) {
       setFiles(prev => [...prev, ...droppedFiles]);
     } else {
@@ -63,7 +63,7 @@ export function ExhibitUpload({ jobId, onUploadComplete }: ExhibitUploadProps) {
 
   const getFileIcon = (type: string) => {
     if (type === 'application/pdf') return <FileText className="w-5 h-5 text-red-500" />;
-    if (type.startsWith('image/')) return <Image className="w-5 h-5 text-blue-500" />;
+    if (type.startsWith('image/')) return <Image className="w-5 h-5 text-blue-500" aria-label="Image file" />;
     return <File className="w-5 h-5 text-gray-500" />;
   };
 
@@ -97,7 +97,7 @@ export function ExhibitUpload({ jobId, onUploadComplete }: ExhibitUploadProps) {
       }
 
       const result = await response.json();
-      
+
       toast.success(`Successfully uploaded ${result.exhibits.length} exhibit(s)`);
       setFiles([]);
       onUploadComplete();
@@ -118,8 +118,8 @@ export function ExhibitUpload({ jobId, onUploadComplete }: ExhibitUploadProps) {
         onDrop={handleDrop}
         className={`
           border-2 border-dashed rounded-lg p-6 text-center transition-colors
-          ${isDragOver 
-            ? 'border-blue-500 bg-blue-50' 
+          ${isDragOver
+            ? 'border-blue-500 bg-blue-50'
             : 'border-gray-300 hover:border-gray-400'
           }
         `}
