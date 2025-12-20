@@ -10,120 +10,8 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-// Update a flagged word
-export async function PUT(request: NextRequest, context: RouteContext) {
-  try {
-    const session = await auth();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
-    const body = await request.json();
-    const { wordId, correctedWord, isReviewed } = body;
-
-    if (!wordId) {
-      return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
-    }
-
-    // Get the transcription
-    const transcription = await prisma.transcription.findUnique({
-      where: { id: transcriptId },
-      include: {
-        job: {
-          include: {
-            assignments: {
-              where: {
-                scopistId: session.user.id,
-                status: {
-                  in: ['ACCEPTED', 'IN_PROGRESS']
-                }
-              }
-            }
-          }
-        }
-      },
-    });
-
-    if (!transcription) {
-      return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
-    }
-
-    // Check permissions
-    const isOwner = transcription.job.createdById === session.user.id;
-    const isAssignedScopist = transcription.job.assignments.length > 0;
-    const isAdmin = session.user.role === 'ADMIN';
-
-    if (!isOwner && !isAssignedScopist && !isAdmin) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Parse flagged segments
-    const flaggedSegments: FlaggedWord[] = transcription.flaggedSegments 
-      ? JSON.parse(transcription.flaggedSegments as string)
-      : [];
-
-    // Find and update the word
-    const wordIndex = flaggedSegments.findIndex(w => w.id === wordId);
-    
-    if (wordIndex === -1) {
-      return NextResponse.json({ error: 'Word not found' }, { status: 404 });
-    }
-
-    // Update the flagged word
-    if (correctedWord !== undefined) {
-      flaggedSegments[wordIndex].correctedWord = correctedWord;
-    }
-    
-    if (isReviewed !== undefined) {
-      flaggedSegments[wordIndex].isReviewed = isReviewed;
-    }
-
-    // Update in database
-    await prisma.transcription.update({
-      where: { id: transcriptId },
-      data: {
-        flaggedSegments: JSON.stringify(flaggedSegments),
-        updatedAt: new Date(),
-      },
-    });
-
-    // Create edit record
-    await prisma.transcriptionEdit.create({
-      data: {
-        transcriptionId: transcriptId,
-        editorId: session.user.id,
-        editorEmail: session.user.email || undefined,
-        editorRole: session.user.role,
-        editType: 'WORD_CORRECTION',
-        originalText: flaggedSegments[wordIndex].word,
-        editedText: correctedWord,
-        position: flaggedSegments[wordIndex].startTime,
-        metadata: {
-          wordId,
-          confidence: flaggedSegments[wordIndex].confidence,
-          isReviewed,
-        },
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      word: flaggedSegments[wordIndex],
-    });
-
-  } catch (error) {
-    console.error('Error updating word:', error);
-    return NextResponse.json(
-      { error: 'Failed to update word' },
-      { status: 500 }
-    );
-  }
-}
-
-// Batch update multiple words
-export async function POST(request: NextRequest, context: RouteContext) {
+// Batch update words (PATCH method as per spec)
+export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const session = await auth();
     
@@ -171,54 +59,77 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Parse flagged segments
+    // Parse words and flagged segments
+    const words: any[] = transcription.words 
+      ? JSON.parse(transcription.words as string)
+      : [];
     const flaggedSegments: FlaggedWord[] = transcription.flaggedSegments 
       ? JSON.parse(transcription.flaggedSegments as string)
       : [];
 
     // Apply all updates
     const updatedWords: FlaggedWord[] = [];
+    const now = new Date().toISOString();
     
     for (const update of updates) {
-      const wordIndex = flaggedSegments.findIndex(w => w.id === update.wordId);
+      // Find in flagged segments
+      const segmentIndex = flaggedSegments.findIndex(w => w.id === update.wordId || w.wordIndex === update.wordIndex);
       
-      if (wordIndex !== -1) {
+      if (segmentIndex !== -1) {
+        // Update flagged segment
         if (update.correctedWord !== undefined) {
-          flaggedSegments[wordIndex].correctedWord = update.correctedWord;
+          flaggedSegments[segmentIndex].correctedWord = update.correctedWord;
         }
         
         if (update.isReviewed !== undefined) {
-          flaggedSegments[wordIndex].isReviewed = update.isReviewed;
+          flaggedSegments[segmentIndex].isReviewed = update.isReviewed;
+          if (update.isReviewed) {
+            (flaggedSegments[segmentIndex] as any).reviewedAt = now;
+            (flaggedSegments[segmentIndex] as any).reviewedById = session.user.id;
+          }
         }
 
-        updatedWords.push(flaggedSegments[wordIndex]);
+        updatedWords.push(flaggedSegments[segmentIndex]);
+
+        // Update corresponding word in words array if corrected
+        if (update.correctedWord !== undefined && flaggedSegments[segmentIndex].wordIndex !== undefined) {
+          const wordIndex = flaggedSegments[segmentIndex].wordIndex;
+          if (words[wordIndex]) {
+            words[wordIndex].word = update.correctedWord;
+            words[wordIndex].isEdited = true;
+          }
+        }
 
         // Create edit record
-        await prisma.transcriptionEdit.create({
-          data: {
-            transcriptionId: transcriptId,
-            editorId: session.user.id,
-            editorEmail: session.user.email || undefined,
-            editorRole: session.user.role,
-            editType: 'WORD_CORRECTION',
-            originalText: flaggedSegments[wordIndex].word,
-            editedText: update.correctedWord,
-            position: flaggedSegments[wordIndex].startTime,
-            metadata: {
-              wordId: update.wordId,
-              confidence: flaggedSegments[wordIndex].confidence,
-              isReviewed: update.isReviewed,
-              batchUpdate: true,
+        if (update.correctedWord !== undefined) {
+          await prisma.transcriptionEdit.create({
+            data: {
+              transcriptionId: transcriptId,
+              editorId: session.user.id,
+              editorEmail: session.user.email || undefined,
+              editorRole: session.user.role,
+              editType: 'WORD_CORRECTION',
+              originalText: flaggedSegments[segmentIndex].word,
+              editedText: update.correctedWord,
+              position: flaggedSegments[segmentIndex].startTime || 0,
+              metadata: {
+                wordId: update.wordId,
+                wordIndex: flaggedSegments[segmentIndex].wordIndex,
+                confidence: flaggedSegments[segmentIndex].confidence,
+                isReviewed: update.isReviewed,
+                batchUpdate: true,
+              },
             },
-          },
-        });
+          });
+        }
       }
     }
 
-    // Update in database
+    // Update both words and flaggedSegments in database
     await prisma.transcription.update({
       where: { id: transcriptId },
       data: {
+        words: JSON.stringify(words),
         flaggedSegments: JSON.stringify(flaggedSegments),
         updatedAt: new Date(),
       },

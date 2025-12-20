@@ -41,6 +41,7 @@ model User {
   
   // Relationships
   jobsCreated       Job[]           @relation("CreatedBy")
+  casesCreated      Case[]          @relation("CaseCreator")
   assignments       JobAssignment[]
   messages          Message[]
   notifications     Notification[]
@@ -87,6 +88,10 @@ model Job {
   createdBy       User        @relation("CreatedBy", fields: [createdById], references: [id])
   assignedToId    String?     // If self-edit, same as createdById
   
+  // Case association
+  caseId          String?
+  case            Case?         @relation(fields: [caseId], references: [id])
+  
   // Files
   files           JobFile[]
   
@@ -116,6 +121,7 @@ model Job {
   
   @@index([createdById])
   @@index([firmId])
+  @@index([caseId])
   @@index([status])
   @@index([depositionDate])
 }
@@ -592,4 +598,183 @@ model Firm {
   updatedAt DateTime @updatedAt
 
   jobs      Job[]
+  cases     Case[]
+}
+
+// ============================================
+// CASE INTAKE SYSTEM
+// ============================================
+
+model Case {
+  id        String   @id @default(cuid())
+  
+  // Multi-tenant
+  firmId    String?
+  firm      Firm?    @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  
+  // Created by
+  createdById String
+  createdBy   User   @relation("CaseCreator", fields: [createdById], references: [id])
+  
+  // Case Information
+  caseNumber    String
+  caseStyle     String    // Full case name (Plaintiff v. Defendant)
+  shortTitle    String?   // Short reference name
+  
+  // Court Information
+  courtName     String?   // e.g., "419th Judicial District Court"
+  courtType     String?   // e.g., "District Court", "County Court"
+  county        String?
+  state         String    @default("Texas")
+  judgeAssigned String?
+  
+  // Parties (stored as JSON arrays)
+  plaintiffs    Json?     // [{ name, type, role }]
+  defendants    Json?     // [{ name, type, role }]
+  otherParties  Json?     // [{ name, type, role }]
+  
+  // Related Jobs
+  jobs          Job[]
+  
+  // Attorneys on the case
+  attorneys     CaseAttorney[]
+  
+  // Custom dictionary terms extracted from this case
+  extractedTerms CaseExtractedTerm[]
+  
+  // Source documents
+  sourceDocuments CaseDocument[]
+  
+  // Metadata
+  status        CaseStatus @default(ACTIVE)
+  notes         String?    @db.Text
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@unique([firmId, caseNumber])
+  @@index([firmId])
+  @@index([caseNumber])
+  @@index([createdById])
+}
+
+enum CaseStatus {
+  ACTIVE
+  CLOSED
+  SETTLED
+  ARCHIVED
+}
+
+model CaseAttorney {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  // Attorney info
+  name          String
+  barNumber     String?
+  firm          String?
+  role          AttorneyRole
+  representing  String?     // Which party they represent
+  
+  // Contact info
+  email         String?
+  phone         String?
+  fax           String?
+  address       String?     @db.Text
+  city          String?
+  state         String?
+  zipCode       String?
+  
+  // Delivery preferences
+  deliveryFormat    String?   // "E-Trans", "Hard Copy", "Both"
+  deliveryPriority  String?   // "Standard", "Rush"
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([caseId])
+  @@index([email])
+}
+
+enum AttorneyRole {
+  PLAINTIFF_COUNSEL
+  DEFENSE_COUNSEL
+  ORDERING_ATTORNEY
+  COPY_ATTORNEY
+  OTHER
+}
+
+model CaseDocument {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  // File info
+  documentType  CaseDocumentType
+  fileName      String
+  fileUrl       String
+  fileSize      Int
+  mimeType      String
+  
+  // Extraction status
+  extractionStatus  ExtractionStatus @default(PENDING)
+  extractedData     Json?            // Raw extracted data from AI
+  extractedAt       DateTime?
+  extractionError   String?          @db.Text
+  
+  // Upload info
+  uploadedById      String
+  uploadedAt        DateTime         @default(now())
+  
+  @@index([caseId])
+  @@index([documentType])
+}
+
+enum CaseDocumentType {
+  NOTICE_OF_DEPOSITION
+  CSR_PAPERWORK
+  DEPO_NOTES
+  COURT_ORDER
+  SUBPOENA
+  EXHIBIT_LIST
+  OTHER
+}
+
+enum ExtractionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model CaseExtractedTerm {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  
+  term          String
+  category      TermCategory
+  phonetic      String?     // Optional pronunciation hint
+  source        String?     // Which document it came from
+  confidence    Float?      // AI confidence score
+  
+  // Whether to use in Deepgram
+  useInTranscription  Boolean @default(true)
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([caseId, term])
+  @@index([caseId])
+  @@index([category])
+}
+
+enum TermCategory {
+  PERSON_NAME
+  COMPANY_NAME
+  PLACE_NAME
+  LEGAL_TERM
+  MEDICAL_TERM
+  TECHNICAL_TERM
+  CASE_SPECIFIC
 }

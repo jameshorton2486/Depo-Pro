@@ -23,6 +23,10 @@ const eslintConfig = defineConfig([
     "backup/",
     // Generated files
     "types/deepgram.ts",
+    // Test files
+    "test-env.js",
+    // Work files (reference/draft files)
+    "work_files/**",
   ]),
   {
     rules: {

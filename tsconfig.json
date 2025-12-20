@@ -41,6 +41,7 @@
     "scripts",
     "tests",
     "prisma",
-    "archive"
+    "archive",
+    "work_files"
   ]
 }

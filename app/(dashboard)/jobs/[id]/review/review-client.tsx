@@ -1,14 +1,15 @@
 // app/(dashboard)/jobs/[id]/review/review-client.tsx
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, CheckCircle, FileText } from 'lucide-react';
 import { AudioPlayer, AudioPlayerRef } from '@/components/transcripts/audio-player';
+import { SyncedTranscript } from '@/components/transcripts/synced-transcript';
 import { LowConfidenceReview } from '@/components/transcripts/low-confidence-review';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { FlaggedWord, TranscriptUtterance } from '@/types/transcript';
+import { FlaggedWord, TranscriptUtterance, TranscriptWord } from '@/types/transcript';
 
 interface ReviewPageClientProps {
   job: {
@@ -57,6 +58,7 @@ export function ReviewPageClient({
   const [currentAudioTime, setCurrentAudioTime] = useState(0);
   const [flaggedWords, setFlaggedWords] = useState<FlaggedWord[]>(transcription.flaggedSegments);
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingEdits, setPendingEdits] = useState<Map<string, { correctedWord?: string; isReviewed?: boolean }>>(new Map());
   const [reviewProgress, setReviewProgress] = useState(() => {
     const reviewed = flaggedWords.filter(w => w.isReviewed).length;
     return {
@@ -66,90 +68,171 @@ export function ReviewPageClient({
     };
   });
 
+  // Convert words to format expected by SyncedTranscript
+  const transcriptWords: TranscriptWord[] = transcription.words.map((w: any) => ({
+    word: w.word || w.punctuated_word || '',
+    start: w.start || w.startTime || 0,
+    end: w.end || w.endTime || 0,
+    confidence: w.confidence || 1,
+    speaker: w.speaker,
+    punctuated_word: w.punctuated_word || w.word,
+  }));
+
+  // Keyboard shortcuts (must ignore input/textarea/contentEditable)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input, textarea, or contentEditable
+      const target = e.target as HTMLElement;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      // Only handle if audio player ref is available
+      if (!audioPlayerRef.current) return;
+
+      switch (e.key) {
+        case ' ': // Spacebar - play/pause
+          e.preventDefault();
+          audioPlayerRef.current.toggle();
+          break;
+        case 'ArrowLeft': // Rewind 5 seconds
+          e.preventDefault();
+          const currentTime = audioPlayerRef.current.getCurrentTime();
+          audioPlayerRef.current.seekTo(Math.max(0, currentTime - 5));
+          break;
+        case 'ArrowRight': // Skip forward 5 seconds
+          e.preventDefault();
+          const currentTime2 = audioPlayerRef.current.getCurrentTime();
+          const duration = audioPlayerRef.current.getDuration();
+          audioPlayerRef.current.seekTo(Math.min(duration, currentTime2 + 5));
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Handle audio time updates
   const handleAudioTimeUpdate = useCallback((time: number) => {
     setCurrentAudioTime(time);
   }, []);
 
-  // Handle seeking audio from flagged word
+  // Handle seeking audio from flagged word (with 1.5s pre-roll)
   const handleSeekAudio = useCallback((timestamp: number) => {
-    audioPlayerRef.current?.seekTo(timestamp);
+    const seekTime = Math.max(0, timestamp - 1.5);
+    audioPlayerRef.current?.seekTo(seekTime);
     audioPlayerRef.current?.play();
   }, []);
 
-  // Handle word update
+  // Handle word click in transcript
+  const handleWordClick = useCallback((index: number, startTime: number) => {
+    handleSeekAudio(startTime);
+  }, [handleSeekAudio]);
+
+  // Handle word update (stores in pending edits, doesn't save yet)
   const handleWordUpdate = useCallback(async (wordId: string, correctedWord: string) => {
-    setIsSaving(true);
-    try {
-      const response = await fetch(`/api/transcripts/${transcription.id}/words`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wordId, correctedWord }),
-      });
+    setPendingEdits(prev => {
+      const updated = new Map(prev);
+      const existing = updated.get(wordId) || {};
+      updated.set(wordId, { ...existing, correctedWord });
+      return updated;
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to update word');
-      }
+    // Update local state immediately for UI feedback
+    setFlaggedWords(prev => 
+      prev.map(w => w.id === wordId ? { ...w, correctedWord } : w)
+    );
+  }, []);
 
-      const data = await response.json();
-
-      // Update local state
-      setFlaggedWords(prev => 
-        prev.map(w => w.id === wordId ? data.word : w)
-      );
-
-      toast.success('Word updated successfully');
-    } catch (error) {
-      console.error('Error updating word:', error);
-      toast.error('Failed to update word');
-      throw error;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [transcription.id]);
-
-  // Handle mark as reviewed
+  // Handle mark as reviewed (stores in pending edits, doesn't save yet)
   const handleMarkReviewed = useCallback(async (wordId: string, reviewed: boolean) => {
+    setPendingEdits(prev => {
+      const updated = new Map(prev);
+      const existing = updated.get(wordId) || {};
+      updated.set(wordId, { ...existing, isReviewed: reviewed });
+      return updated;
+    });
+
+    // Update local state immediately for UI feedback
+    setFlaggedWords(prev => 
+      prev.map(w => w.id === wordId ? { ...w, isReviewed: reviewed } : w)
+    );
+
+    // Update progress
+    setReviewProgress(prev => ({
+      total: prev.total,
+      reviewed: reviewed ? prev.reviewed + 1 : prev.reviewed - 1,
+      percentage: prev.total > 0 
+        ? Math.round(((reviewed ? prev.reviewed + 1 : prev.reviewed - 1) / prev.total) * 100)
+        : 0,
+    }));
+  }, []);
+
+  // Handle save edits (saves all pending edits)
+  const handleSaveEdits = useCallback(async () => {
+    if (pendingEdits.size === 0) {
+      toast.info('No changes to save');
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/transcripts/${transcription.id}/words`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wordId, isReviewed: reviewed }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark word as reviewed');
-      }
-
-      const data = await response.json();
-
-      // Update local state
-      setFlaggedWords(prev => 
-        prev.map(w => w.id === wordId ? data.word : w)
-      );
-
-      // Update progress
-      setReviewProgress(prev => ({
-        total: prev.total,
-        reviewed: reviewed ? prev.reviewed + 1 : prev.reviewed - 1,
-        percentage: prev.total > 0 
-          ? Math.round(((reviewed ? prev.reviewed + 1 : prev.reviewed - 1) / prev.total) * 100)
-          : 0,
+      // Convert pending edits to array format
+      const updates = Array.from(pendingEdits.entries()).map(([wordId, edits]) => ({
+        wordId,
+        ...edits,
       }));
 
-      toast.success(reviewed ? 'Marked as reviewed' : 'Unmarked');
+      const response = await fetch(`/api/transcripts/${transcription.id}/words`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save edits');
+      }
+
+      const data = await response.json();
+
+      // Clear pending edits
+      setPendingEdits(new Map());
+
+      // Update local state with server response
+      if (data.words) {
+        setFlaggedWords(prev => {
+          const updated = [...prev];
+          data.words.forEach((updatedWord: FlaggedWord) => {
+            const index = updated.findIndex(w => w.id === updatedWord.id);
+            if (index !== -1) {
+              updated[index] = updatedWord;
+            }
+          });
+          return updated;
+        });
+      }
+
+      toast.success(`Saved ${updates.length} edit(s)`);
     } catch (error) {
-      console.error('Error marking word as reviewed:', error);
-      toast.error('Failed to update review status');
-      throw error;
+      console.error('Error saving edits:', error);
+      toast.error('Failed to save edits');
     } finally {
       setIsSaving(false);
     }
-  }, [transcription.id]);
+  }, [transcription.id, pendingEdits]);
 
-  // Handle complete review
+  // Handle complete review (saves edits first, then updates job status)
   const handleCompleteReview = useCallback(async () => {
+    // Save any pending edits first
+    if (pendingEdits.size > 0) {
+      await handleSaveEdits();
+    }
+
     if (reviewProgress.reviewed < reviewProgress.total) {
       const confirm = window.confirm(
         `You have reviewed ${reviewProgress.reviewed} out of ${reviewProgress.total} flagged words. ` +
@@ -161,7 +244,7 @@ export function ReviewPageClient({
     setIsSaving(true);
     try {
       // Update job status
-      const response = await fetch(`/api/jobs/${job.id}`, {
+      const response = await fetch(`/api/jobs/${job.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -181,7 +264,7 @@ export function ReviewPageClient({
     } finally {
       setIsSaving(false);
     }
-  }, [job.id, reviewProgress, router, user.isAssignedScopist]);
+  }, [job.id, reviewProgress, router, user.isAssignedScopist, pendingEdits, handleSaveEdits]);
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900">
@@ -222,14 +305,27 @@ export function ReviewPageClient({
               </div>
             </div>
 
+            {/* Save Button */}
+            {pendingEdits.size > 0 && (
+              <Button
+                onClick={handleSaveEdits}
+                disabled={isSaving}
+                variant="outline"
+                className="gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Save ({pendingEdits.size})
+              </Button>
+            )}
+
             {/* Complete Review Button */}
             <Button
               onClick={handleCompleteReview}
               disabled={isSaving}
               className="gap-2"
             >
-              <Save className="w-4 h-4" />
-              Complete Review
+              <CheckCircle className="w-4 h-4" />
+              Mark Complete
             </Button>
 
             {/* View Full Transcript */}
@@ -246,93 +342,39 @@ export function ReviewPageClient({
       </div>
 
       {/* Main Content - Split View */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Side - Audio Player & Transcript Info */}
-        <div className="w-1/3 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 overflow-y-auto">
-          <div className="space-y-6">
-            {/* Audio Player */}
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-                Audio Player
-              </h2>
-              <AudioPlayer
-                ref={audioPlayerRef}
-                src={audioFile.fileUrl}
-                onTimeUpdate={handleAudioTimeUpdate}
-                className="w-full"
-              />
-            </div>
-
-            {/* Transcript Stats */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Transcript Information
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Duration</div>
-                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {Math.floor(transcription.duration / 60)}:{String(Math.floor(transcription.duration % 60)).padStart(2, '0')}
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Word Count</div>
-                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {transcription.wordCount.toLocaleString()}
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Flagged Words</div>
-                  <div className="text-lg font-semibold text-orange-600 dark:text-orange-400">
-                    {transcription.flaggedWordCount}
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Avg Confidence</div>
-                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {Math.round(transcription.averageConfidence * 100)}%
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Speaker Info */}
-            {transcription.speakerAnalysis?.guesses && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Detected Speakers
-                </h3>
-                <div className="space-y-2">
-                  {transcription.speakerAnalysis.guesses.map((guess: any) => (
-                    <div 
-                      key={guess.speakerId}
-                      className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                          Speaker {guess.speakerId}
-                        </span>
-                        <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-                          {guess.suggestedType}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {Math.round(guess.confidence * 100)}% confidence
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Audio Player at Top */}
+        <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+          <AudioPlayer
+            ref={audioPlayerRef}
+            src={audioFile.fileUrl}
+            onTimeUpdate={handleAudioTimeUpdate}
+            className="w-full"
+          />
         </div>
 
-        {/* Right Side - Low Confidence Word Review */}
-        <div className="flex-1 bg-white dark:bg-slate-800 overflow-hidden">
+        {/* Split View - Transcript and Review */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Side - Synced Transcript */}
+          <div className="w-1/2 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Transcript
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <SyncedTranscript
+                words={transcriptWords}
+                currentTime={currentAudioTime}
+                onWordClick={handleWordClick}
+                lowConfidenceThreshold={0.85}
+                className="prose prose-slate dark:prose-invert max-w-none"
+              />
+            </div>
+          </div>
+
+          {/* Right Side - Low Confidence Word Review */}
+          <div className="flex-1 bg-white dark:bg-slate-800 overflow-hidden">
           <LowConfidenceReview
             flaggedWords={flaggedWords}
             onSeekAudio={handleSeekAudio}
@@ -341,6 +383,7 @@ export function ReviewPageClient({
             currentAudioTime={currentAudioTime}
             isLoading={isSaving}
           />
+          </div>
         </div>
       </div>
     </div>
