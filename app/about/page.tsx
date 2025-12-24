@@ -62,7 +62,7 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <ValueCard
               title="Accuracy"
-              description="We're committed to delivering transcripts with 95%+ accuracy, meeting the rigorous standards of the legal profession."
+              description="We&apos;re committed to delivering transcripts with 95%+ accuracy, meeting the rigorous standards of the legal profession."
             />
             <ValueCard
               title="Security"
@@ -81,8 +81,8 @@ export default function AboutPage() {
         <h2 className="text-3xl font-bold text-center mb-12">Built by Legal Professionals, for Legal Professionals</h2>
         <p className="text-gray-700 text-lg text-center leading-relaxed">
           Our team includes former court reporters, legal tech experts, and software engineers
-          who understand the unique needs of the legal transcription industry. We're not just
-          building software—we're solving real problems for real professionals.
+          who understand the unique needs of the legal transcription industry. We&apos;re not just
+          building software—We&apos;re solving real problems for real professionals.
         </p>
       </div>
 
