@@ -1,5 +1,7 @@
+<!-- markdownlint-disable -->
+
 # Build Issues Report
-**Generated:** 2025-01-27  
+**Generated:** 2025-01-27
 **Status:** ✅ BUILD SUCCESSFUL (with warnings)
 
 ---
@@ -7,8 +9,8 @@
 ## ✅ RESOLVED CRITICAL ISSUES
 
 ### 1. TypeScript Error: Zod Error Property Access ✅ FIXED
-**File:** `app/api/auth/reset-password/route.ts`  
-**Line:** 14  
+**File:** `app/api/auth/reset-password/route.ts`
+**Line:** 14
 **Error:** `Property 'errors' does not exist on type 'ZodError'`
 
 **Problem:**
@@ -29,7 +31,7 @@ Changed to use `issues` instead of `errors`:
 ## 🟡 ESLint Configuration Issues
 
 ### 2. ESLint Flat Config - Circular Reference Error
-**File:** `eslint.config.mjs`  
+**File:** `eslint.config.mjs`
 **Status:** ⚠️ Partially Working (ignores array works, but Next.js configs fail)
 
 **Problem:**
@@ -70,8 +72,8 @@ Changed to use `issues` instead of `errors`:
 ## 🟢 NON-BLOCKING ISSUES (Warnings)
 
 ### 4. ESLint Accessibility Warning
-**File:** `components/transcripts/review-progress.tsx`  
-**Line:** 114-119  
+**File:** `components/transcripts/review-progress.tsx`
+**Line:** 114-119
 **Issue:** Invalid ARIA attribute values
 
 **Problem:**
@@ -140,8 +142,8 @@ aria-valuemax="100"
 
 ## 🚀 Build Status
 
-**Current:** ✅ **SUCCESSFUL** (with warnings)  
-**Build Output:** All routes generated successfully  
+**Current:** ✅ **SUCCESSFUL** (with warnings)
+**Build Output:** All routes generated successfully
 **Remaining Issues:** Non-blocking warnings only
 
 ---
@@ -154,4 +156,3 @@ aria-valuemax="100"
 - Redis connection errors during build are expected if Redis is not running locally (non-blocking)
 - All remaining issues are warnings that don't prevent the build from completing
 - Build generates 39 static pages and all API routes successfully
-
