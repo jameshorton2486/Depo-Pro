@@ -69,7 +69,6 @@ export function getOptimalDeepgramConfig(options: ConfigOptions = {}): Prerecord
   // Add term boosting based on model
   if (isNova3) {
     // Nova-3: Use keyterm (max 100 terms)
-    // @ts-expect-error - keyterm may not be in SDK types yet
     config.keyterm = allTerms.slice(0, 100);
   } else {
     // Nova-2: Use keywords with optional intensifiers
@@ -136,3 +135,87 @@ export default {
   getPresetConfig,
   CONFIG_PRESETS,
 };
+
+// ============================================
+// UI Component Types and Data
+// ============================================
+
+export type DeepgramModelType = 'nova-3' | 'nova-2' | 'nova-2-medical';
+
+export const MODEL_DESCRIPTIONS: Record<DeepgramModelType, {
+  name: string;
+  description: string;
+  recommended?: boolean;
+}> = {
+  'nova-3': {
+    name: 'Nova 3',
+    description: 'Latest Deepgram model with superior accuracy for legal transcription',
+    recommended: true,
+  },
+  'nova-2': {
+    name: 'Nova 2',
+    description: 'High-quality transcription with good accuracy',
+  },
+  'nova-2-medical': {
+    name: 'Nova 2 Medical',
+    description: 'Specialized model for medical terminology',
+  },
+};
+
+export type SpeakerType = 'Attorney' | 'Witness' | 'Court Reporter' | 'Judge' | 'Expert Witness' | 'Paralegal' | 'Other';
+
+export const SPEAKER_TYPES: SpeakerType[] = [
+  'Attorney',
+  'Witness',
+  'Court Reporter',
+  'Judge',
+  'Expert Witness',
+  'Paralegal',
+  'Other',
+];
+
+export const ATTORNEY_PHRASES = [
+  'objection',
+  'sustained',
+  'overruled',
+  'move to strike',
+  'foundation',
+  'hearsay',
+  'relevance',
+  'your honor',
+  'counsel',
+  'plaintiff',
+  'defendant',
+  'motion',
+  'deposition',
+  'testimony',
+  'witness',
+  'exhibit',
+  'stipulate',
+  'withdraw',
+  'approach',
+  'sidebar',
+];
+
+export const REPORTER_PHRASES = [
+  'please state',
+  'your name',
+  'spell your name',
+  'raise your right hand',
+  'swear or affirm',
+  'truthfully',
+  'whole truth',
+  'nothing but the truth',
+  'help you god',
+  'court reporter',
+  'stenographer',
+  'transcript',
+  'certify',
+  'deposition taken',
+  'pages',
+  'lines',
+  'read back',
+  'correction',
+  'strike that',
+  'off the record',
+];

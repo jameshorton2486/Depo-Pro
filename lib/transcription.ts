@@ -50,7 +50,6 @@ export async function transcribeAudio(
 
   if (isNova3) {
     // Nova-3: Use keyterm parameter (max 100 terms)
-    // @ts-expect-error - keyterm may not be in SDK types yet
     transcriptionOptions.keyterm = allTerms.slice(0, 100);
     console.log(`   Using keyterm for Nova-3: ${Math.min(allTerms.length, 100)} terms`);
   } else {
@@ -105,7 +104,6 @@ export async function transcribeFromUrl(
   };
 
   if (isNova3) {
-    // @ts-expect-error - keyterm may not be in SDK types yet
     transcriptionOptions.keyterm = allTerms.slice(0, 100);
   } else {
     transcriptionOptions.keywords = allTerms.slice(0, 1000);

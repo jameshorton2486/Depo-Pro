@@ -223,8 +223,8 @@ export async function POST(request: NextRequest) {
         mimeType: file.type,
         fileName: file.name,
         fileSize: file.size,
-        uploadedByRole: session.user.role as any,
-        createdById: session.user.id,
+        uploadedByRole: user.role as any,
+        createdById: user.id,
         stamped: false,
       },
       include: {

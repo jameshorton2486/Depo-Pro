@@ -93,7 +93,7 @@ export async function checkCaseAccess(
   }
 
   // For reporters: Check if they have a deposition in this case
-  if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
+  if (user.role === 'REPORTER') {
     const deposition = await db.job.findFirst({
       where: {
         caseId,
@@ -149,7 +149,7 @@ export async function checkCasePermission(
 
   if (!membership) {
     // Reporter access (via deposition assignment)
-    if (user?.role === 'REPORTER' || user?.role === 'COURT_REPORTER') {
+    if (user?.role === 'REPORTER') {
       // Reporters can only view and upload to their own depositions
       return action === 'view' || action === 'upload';
     }
@@ -199,6 +199,9 @@ export async function getUserAccessibleCases(userId: string): Promise<string[]> 
 
   // Admin sees all cases in their firm
   if (user.role === 'ADMIN' || user.role === 'FIRM_ADMIN') {
+    if (!user.firmId) {
+      return []; // No firm = no cases
+    }
     const cases = await db.case.findMany({
       where: { firmId: user.firmId },
       select: { id: true },
@@ -294,7 +297,7 @@ export async function assertReporterDepositionAccess(
     throw new Error('User not found');
   }
 
-  if (user.role !== 'REPORTER' && user.role !== 'COURT_REPORTER' && user.role !== 'ADMIN') {
+  if (user.role !== 'REPORTER' && user.role !== 'ADMIN') {
     throw new Error('Access denied: Reporter access required');
   }
 
@@ -350,7 +353,7 @@ export async function assertCanUploadExhibit(
   }
 
   // Reporter can only upload to own deposition
-  if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
+  if (user.role === 'REPORTER') {
     if (!depositionId) {
       throw new Error('Access denied: Reporters cannot upload case-global exhibits');
     }
@@ -388,7 +391,7 @@ export async function assertCanAnnotateTranscript(
   }
 
   // Reporters cannot annotate
-  if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
+  if (user.role === 'REPORTER') {
     throw new Error('Access denied: Reporters cannot annotate transcripts');
   }
 

@@ -180,9 +180,13 @@ async function saveExtractedData(
 
   // Create Case if requested
   if (createCase) {
+    if (!firmId) {
+      throw new Error('firmId is required to create a case');
+    }
+
     const newCase = await db.case.create({
       data: {
-        firmId: firmId || null,
+        firmId,
         createdById: userId,
 
         // Use defaults for missing required fields
@@ -255,7 +259,7 @@ async function saveExtractedData(
   // Create Job if requested
   if (createJob) {
     const jobData: any = {
-      firmId: firmId || null,
+      ...(firmId && { firmId }),
       createdById: userId,
 
       // Link to case if created

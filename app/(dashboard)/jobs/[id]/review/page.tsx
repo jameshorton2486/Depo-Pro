@@ -155,7 +155,6 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       <ReviewClient
         jobId={job.id}
         transcriptionId={job.transcription.id}
-        caseName={job.caseName || 'Untitled Case'}
         audioUrl={audioFile.storageUrl}
         words={words}
         savedSession={savedSession}

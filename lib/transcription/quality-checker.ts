@@ -25,7 +25,7 @@ const THRESHOLDS = {
  */
 export function calculateQualityMetrics(
   words: TranscriptWord[],
-  utterances?: Utterance[],
+  _utterances?: Utterance[],
 ): QualityReport {
   if (words.length === 0) {
     return {

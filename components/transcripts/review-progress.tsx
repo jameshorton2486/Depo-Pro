@@ -115,9 +115,11 @@ export function ReviewProgress({
             className={cn('h-full rounded-full transition-all duration-300', progressColor)}
             style={{ width: `${percentComplete}%` }}
             role="progressbar"
-            aria-valuenow={percentComplete}
-            aria-valuemin={0}
-            aria-valuemax={100}
+            {...({
+              'aria-valuenow': String(percentComplete),
+              'aria-valuemin': '0',
+              'aria-valuemax': '100',
+            } as unknown as React.HTMLAttributes<HTMLDivElement>)}
             aria-label={`${percentComplete}% complete`}
           />
         </div>

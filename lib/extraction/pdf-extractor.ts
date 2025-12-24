@@ -3,8 +3,9 @@
 // lib/extraction/pdf-extractor.ts
 // ═══════════════════════════════════════════════════════════════
 
-// @ts-expect-error - pdf-parse has incorrect type definitions for ESM
-import pdfParse from 'pdf-parse';
+// pdf-parse import - handled dynamically
+
+const pdfParse = require('pdf-parse');
 
 export interface PDFExtractionResult {
   success: boolean;

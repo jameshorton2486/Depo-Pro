@@ -110,15 +110,14 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* TODO: Phase 2 - Add "Forgot password?" link */}
-            {/* <div className="flex justify-end">
+            <div className="flex justify-end">
               <Link
                 href="/forgot-password"
                 className="text-sm text-blue-600 hover:text-blue-500"
               >
                 Forgot password?
               </Link>
-            </div> */}
+            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">

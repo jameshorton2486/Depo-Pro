@@ -7,8 +7,8 @@ dotenv.config();
 const envSchema = z.object({
   // Core Infrastructure
   DATABASE_URL: z.string().min(1),
-  REDIS_HOST: z.string().min(1),
-  REDIS_PORT: z.string().min(1),
+  REDIS_HOST: z.string().min(1).optional(),
+  REDIS_PORT: z.string().min(1).optional(),
   REDIS_PASSWORD: z.string().optional(),
   NEXTAUTH_URL: z.string().url(),
   NEXTAUTH_SECRET: z.string().min(1),
@@ -57,8 +57,8 @@ export const config = {
     url: env.DATABASE_URL,
   },
   redis: {
-    host: env.REDIS_HOST,
-    port: parseInt(env.REDIS_PORT),
+    host: env.REDIS_HOST || 'localhost',
+    port: parseInt(env.REDIS_PORT || '6379'),
     password: env.REDIS_PASSWORD,
   },
   apis: {

@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    if (transcript.uploadedById !== session.user.id && session.user.role !== Role.ADMIN) {
+    if (transcript.uploadedById !== user.id && user.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

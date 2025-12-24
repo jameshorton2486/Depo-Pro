@@ -37,7 +37,7 @@ export function ExportButton({ transcriptId, className }: ExportButtonProps) {
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = `transcript.${format}`;
       if (contentDisposition) {
-        const match = contentDisposition.match(/filename=\"(.+)\"/);
+        const match = contentDisposition.match(/filename="(.+)"/);
         if (match) {
           filename = match[1];
         }

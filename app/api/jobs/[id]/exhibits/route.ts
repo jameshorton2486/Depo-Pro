@@ -94,6 +94,7 @@ export async function POST(
         id: true,
         createdById: true,
         firmId: true,
+        caseId: true,
         caseName: true,
         title: true,
         depositionDate: true,
@@ -198,7 +199,9 @@ export async function POST(
       // Create database record
       const exhibit = await db.exhibit.create({
         data: {
+          caseId: job.caseId || job.firmId || '', // Required - get from job
           jobId,
+          exhibitLabel: `Exhibit ${exhibitNumber}`, // Required
           exhibitNumber,
           description,
           originalFileUrl: originalUpload.url,
@@ -208,6 +211,7 @@ export async function POST(
           fileName: file.name,
           fileSize: file.size,
           stamped: !!stampedUpload,
+          uploadedByRole: user.role as any, // Required
           createdById: user.id,
         },
       });

@@ -114,12 +114,12 @@ export async function POST(
 }
 
 /**
- * DELETE /api/attorney/annotations/[id]/exhibits/[exhibitId]
- * Unlink an exhibit from an annotation
+ * DELETE /api/attorney/annotations/[id]/exhibits
+ * Unlink an exhibit from an annotation (exhibitId in request body)
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; exhibitId: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
@@ -132,7 +132,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id: annotationId, exhibitId } = await params;
+    const { id: annotationId } = await params;
+    const body = await request.json();
+    const { exhibitId } = body;
+
+    if (!exhibitId) {
+      return NextResponse.json(
+        { error: 'exhibitId is required in request body' },
+        { status: 400 },
+      );
+    }
 
     // Verify annotation exists
     const annotation = await db.transcriptAnnotation.findUnique({

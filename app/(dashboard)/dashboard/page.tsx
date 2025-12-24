@@ -11,13 +11,18 @@ export default async function DashboardPage() {
   switch (session.user.role) {
     case 'ADMIN':
       redirect('/admin');
+      break;
     case 'REPORTER':
       redirect('/reporter');
+      break;
     case 'SCOPIST':
       redirect('/scopist');
+      break;
     case 'ATTORNEY':
-      redirect('/attorney/dashboard');
+      redirect('/attorney/attorney-dashboard');
+      break;
     default:
       redirect('/jobs');
+      break;
   }
 }

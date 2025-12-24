@@ -44,8 +44,8 @@ export async function GET(
 
     // Check permissions
     const hasAccess =
-      exhibit.job.createdById === user.id ||
-      exhibit.job.assignments.some(a => a.scopistId === user.id) ||
+      (exhibit.job?.createdById === user.id) ||
+      (exhibit.job?.assignments.some(a => a.scopistId === user.id)) ||
       user.role === 'ADMIN';
 
     if (!hasAccess) {
@@ -111,7 +111,7 @@ export async function PATCH(
 
     // Check permissions (only reporter who created job, or admin can edit)
     const canEdit =
-      exhibit.job.createdById === user.id ||
+      exhibit.job?.createdById === user.id ||
       user.role === 'ADMIN';
 
     if (!canEdit) {
@@ -169,7 +169,7 @@ export async function DELETE(
 
     // Check permissions (only reporter who created job, admin, or creator can delete)
     const canDelete =
-      exhibit.job.createdById === user.id ||
+      exhibit.job?.createdById === user.id ||
       exhibit.createdById === user.id ||
       user.role === 'ADMIN';
 
@@ -183,7 +183,7 @@ export async function DELETE(
     // Extract path from originalFileUrl (Supabase storage path)
     if (exhibit.originalFileUrl) {
       // Extract path from Supabase URL format: https://.../storage/v1/object/public/bucket/path
-      const urlMatch = exhibit.originalFileUrl.match(/\/storage\/v1\/object\/public\/[^\/]+\/(.+)$/);
+      const urlMatch = exhibit.originalFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
       if (urlMatch) {
         pathsToDelete.push(urlMatch[1]);
       }
@@ -191,7 +191,7 @@ export async function DELETE(
 
     // Extract path from stampedFileUrl if exists
     if (exhibit.stampedFileUrl) {
-      const urlMatch = exhibit.stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^\/]+\/(.+)$/);
+      const urlMatch = exhibit.stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
       if (urlMatch) {
         pathsToDelete.push(urlMatch[1]);
       }

@@ -159,7 +159,9 @@ export async function GET(
       caseNumber: transcription.job.caseNumber || undefined,
       depositionDate: transcription.job.depositionDate || new Date(),
       deponentName: transcription.job.title || 'Unknown',
-      courtReporterName: `${transcription.job.createdBy.firstName} ${transcription.job.createdBy.lastName}` || undefined,
+      courtReporterName: transcription.job.createdBy.firstName && transcription.job.createdBy.lastName
+        ? `${transcription.job.createdBy.firstName} ${transcription.job.createdBy.lastName}`
+        : undefined,
       firmName: transcription.job.firm?.name || undefined,
       location: transcription.job.location || undefined,
     };

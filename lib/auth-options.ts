@@ -41,7 +41,7 @@ export const authConfig: NextAuthConfig = {
        * @param credentials - Email and password from login form
        * @returns User object if valid, null if invalid
        */
-      async authorize(credentials) {
+      async authorize(credentials, _request) {
         try {
           // Validate input with Zod
           const validatedFields = loginSchema.safeParse(credentials);
@@ -99,7 +99,7 @@ export const authConfig: NextAuthConfig = {
             email: user.email,
             name: `${user.firstName} ${user.lastName}`,
             role: user.role,
-          };
+          } as any; // NextAuth v5 accepts this shape
         } catch (error) {
           console.error('[Auth] Authorization failed:', error);
           return null;
