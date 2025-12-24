@@ -14,51 +14,67 @@ datasource db {
 // ============================================
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  role          UserRole
-  
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+
+  // Multi-tenant: Every user belongs to a Firm
+  firmId String?
+  firm   Firm?   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
   // Profile
-  firstName     String
-  lastName      String
-  phone         String?
-  photo         String?   // URL to Supabase Storage
-  timezone      String    @default("America/New_York")
-  
+  firstName String
+  lastName  String
+  phone     String?
+  photo     String? // URL to Supabase Storage
+  timezone  String  @default("America/New_York")
+
   // Reporter-specific
-  agencyName    String?
-  csrNumber     String?   // Certified Shorthand Reporter number
-  
+  agencyName String?
+  csrNumber  String? // Certified Shorthand Reporter number
+
   // Scopist-specific
-  specialties   String[]  // ["medical", "technical", "legal"]
+  specialties     String[] // ["medical", "technical", "legal"]
   experienceLevel String? // "beginner", "intermediate", "expert"
-  availability  Boolean   @default(true)
-  
+  availability    Boolean  @default(true)
+
   // Settings
   defaultTranscriptSettings Json?
   notificationPreferences   Json?
-  
+
   // Relationships
-  jobsCreated       Job[]           @relation("CreatedBy")
-  casesCreated      Case[]          @relation("CaseCreator")
-  assignments       JobAssignment[]
-  messages          Message[]
-  notifications     Notification[]
-  auditLogs         AuditLog[]
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  
+  jobsCreated                Job[]                         @relation("CreatedBy")
+  casesCreated               Case[]                        @relation("CaseCreator")
+  assignments                JobAssignment[]
+  messages                   Message[]
+  notifications              Notification[]
+  auditLogs                  AuditLog[]
+  attorneyTranscriptsCreated AttorneyTranscript[]          @relation("TranscriptCreator")
+  transcriptAnnotations      TranscriptAnnotation[]
+  exhibitsCreated            Exhibit[]
+  annotationExhibitLinks     TranscriptAnnotationExhibit[]
+
+  // Case-level access (multi-case membership)
+  caseMemberships CaseMembership[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
   @@index([email])
   @@index([role])
+  @@index([firmId])
 }
 
 enum UserRole {
   REPORTER
   SCOPIST
   ADMIN
+  ATTORNEY
+  PARALEGAL // Future: paralegals can assist attorneys
+  AGENCY_ADMIN // Future: agency administrators
+  FIRM_ADMIN // Future: firm administrators
 }
 
 // ============================================
@@ -66,60 +82,60 @@ enum UserRole {
 // ============================================
 
 model Job {
-  id              String      @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Basic Info
-  title           String
-  caseName        String
-  caseNumber      String?
-  depositionDate  DateTime
-  location        String?     // Physical address or "Zoom"
-  zoomLink        String?
-  
+  title          String
+  caseName       String
+  caseNumber     String?
+  depositionDate DateTime
+  location       String? // Physical address or "Zoom"
+  zoomLink       String?
+
   // Status
-  status          JobStatus   @default(CREATED)
-  
+  status JobStatus @default(CREATED)
+
   // Firm association (optional for now)
-  firmId          String?
-  firm            Firm?       @relation(fields: [firmId], references: [id])
+  firmId String?
+  firm   Firm?   @relation(fields: [firmId], references: [id])
 
   // Assignment
-  createdById     String
-  createdBy       User        @relation("CreatedBy", fields: [createdById], references: [id])
-  assignedToId    String?     // If self-edit, same as createdById
-  
+  createdById  String
+  createdBy    User    @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedToId String? // If self-edit, same as createdById
+
   // Case association
-  caseId          String?
-  case            Case?         @relation(fields: [caseId], references: [id])
-  
+  caseId String?
+  case   Case?   @relation(fields: [caseId], references: [id])
+
   // Files
-  files           JobFile[]
-  exhibits        Exhibit[]
-  
+  files    JobFile[]
+  exhibits Exhibit[]
+
   // Transcription
-  transcriptionJobs         TranscriptionJob[]
-  transcription             Transcription?
-  transcripts               Transcript[]
-  transcriptionModelType    String?  @default("MEDICAL")  // STANDARD, MEDICAL, BILINGUAL
-  transcriptionCompletedAt  DateTime?
-  errorMessage              String?
-  
+  transcriptionJobs        TranscriptionJob[]
+  transcription            Transcription?
+  transcripts              Transcript[]
+  transcriptionModelType   String?            @default("MEDICAL") // STANDARD, MEDICAL, BILINGUAL
+  transcriptionCompletedAt DateTime?
+  errorMessage             String?
+
   // Communication
-  messages        Message[]
-  assignments     JobAssignment[]
-  
+  messages    Message[]
+  assignments JobAssignment[]
+
   // Metadata
-  notes           String?     @db.Text
-  internalNotes   String?     @db.Text // Private notes not visible to scopist
-  
+  notes         String? @db.Text
+  internalNotes String? @db.Text // Private notes not visible to scopist
+
   // Lock system
-  lockedBy        String?
-  lockedAt        DateTime?
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  completedAt     DateTime?
-  
+  lockedBy String?
+  lockedAt DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
   @@index([createdById])
   @@index([firmId])
   @@index([caseId])
@@ -138,29 +154,31 @@ enum JobStatus {
   IN_EDIT
   SUBMITTED_FOR_REVIEW
   IN_REVIEW
+  SCOPIST_COMPLETE
+  REVIEW_COMPLETE
   COMPLETED
   CANCELLED
 }
 
 model JobFile {
-  id          String      @id @default(cuid())
-  jobId       String
-  job         Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  type        FileType
-  fileName    String
-  fileSize    Int         // bytes
-  mimeType    String
-  
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  type     FileType
+  fileName String
+  fileSize Int // bytes
+  mimeType String
+
   // Storage
-  storageUrl  String      // Supabase Storage URL
-  storagePath String      // Path in bucket
-  
+  storageUrl  String // Supabase Storage URL
+  storagePath String // Path in bucket
+
   // For extracted data (Notice, Court Order)
   extractedData Json?
-  
-  createdAt   DateTime    @default(now())
-  
+
+  createdAt DateTime @default(now())
+
   @@index([jobId, type])
 }
 
@@ -169,28 +187,45 @@ model JobFile {
 // ============================================
 
 model Exhibit {
-  id              String   @id @default(cuid())
-  jobId           String
-  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  exhibitNumber   Int
-  description     String
-  
+  id String @id @default(cuid())
+
+  // Dual ownership: Case (required) and Job/Deposition (optional)
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  jobId String? // Nullable - attorney can upload case-global exhibits
+  job   Job?    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // Exhibit identification
+  exhibitLabel  String // e.g., "Exhibit 12" or "Exhibit A"
+  exhibitNumber Int? // Numeric value if applicable (for sorting)
+  description   String
+
+  // File storage
   originalFileUrl String
   stampedFileUrl  String?
-  
-  fileType        String   // PDF, IMAGE, DOCX
-  mimeType        String
-  fileName        String
-  fileSize        Int      // bytes
-  
-  stamped         Boolean  @default(false)
-  
-  createdById     String
-  createdAt       DateTime @default(now())
-  
-  @@unique([jobId, exhibitNumber])
+
+  fileType String // PDF, IMAGE, DOCX
+  mimeType String
+  fileName String
+  fileSize Int // bytes
+
+  stamped Boolean @default(false)
+
+  // Upload tracking
+  uploadedByRole UserRole // REPORTER, ATTORNEY, ADMIN
+  createdById    String
+  createdBy      User     @relation(fields: [createdById], references: [id])
+  createdAt      DateTime @default(now())
+
+  // Links to transcript annotations
+  annotationLinks TranscriptAnnotationExhibit[]
+
+  @@unique([caseId, jobId, exhibitLabel]) // Unique per case+deposition combination
+  @@index([caseId])
   @@index([jobId])
+  @@index([createdById])
+  @@index([uploadedByRole])
 }
 
 enum FileType {
@@ -208,42 +243,42 @@ enum FileType {
 // ============================================
 
 model AudioEnhancement {
-  id                  String    @id @default(cuid())
-  jobId               String
-  
+  id    String @id @default(cuid())
+  jobId String
+
   // Input
-  originalAudioUrl    String
-  originalDuration    Float     // seconds
-  originalFileSize    Int       // bytes
-  
+  originalAudioUrl String
+  originalDuration Float // seconds
+  originalFileSize Int // bytes
+
   // Enhancement
-  enhancementMode     EnhancementMode
-  dolbyProcessed      Boolean   @default(false)
-  dolbyAudioUrl       String?
-  dolbyQualityScore   Float?    // 0-100
-  
-  auphonicProcessed   Boolean   @default(false)
-  auphonicAudioUrl    String?
+  enhancementMode   EnhancementMode
+  dolbyProcessed    Boolean         @default(false)
+  dolbyAudioUrl     String?
+  dolbyQualityScore Float? // 0-100
+
+  auphonicProcessed    Boolean @default(false)
+  auphonicAudioUrl     String?
   auphonicQualityScore Float?
-  
-  finalAudioUrl       String    // The one sent to Deepgram
-  engineUsed          String    // "dolby", "auphonic", or "none"
-  
+
+  finalAudioUrl String // The one sent to Deepgram
+  engineUsed    String // "dolby", "auphonic", or "none"
+
   // Cost tracking
-  dolbyCostCents      Int?
-  auphonicCostCents   Int?
-  totalCostCents      Int
-  
+  dolbyCostCents    Int?
+  auphonicCostCents Int?
+  totalCostCents    Int
+
   // Metadata
-  qualityFlags        Json?     // {"noise": "high", "clipping": "low"}
-  decisionReason      String?   // Why Auphonic was/wasn't used
-  
-  status              EnhancementStatus @default(PENDING)
-  errorMessage        String?
-  
-  createdAt           DateTime  @default(now())
-  completedAt         DateTime?
-  
+  qualityFlags   Json? // {"noise": "high", "clipping": "low"}
+  decisionReason String? // Why Auphonic was/wasn't used
+
+  status       EnhancementStatus @default(PENDING)
+  errorMessage String?
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
   @@index([jobId])
 }
 
@@ -267,35 +302,35 @@ enum EnhancementStatus {
 // ============================================
 
 model TranscriptionJob {
-  id                  String      @id @default(cuid())
-  jobId               String
-  job                 Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
   // Deepgram
-  deepgramRequestId   String      @unique
-  audioUrl            String      // Enhanced audio URL
-  
+  deepgramRequestId String @unique
+  audioUrl          String // Enhanced audio URL
+
   // Configuration
-  config              Json        // Deepgram options used
-  
+  config Json // Deepgram options used
+
   // Status
-  status              TranscriptionStatus @default(PENDING)
-  
+  status TranscriptionStatus @default(PENDING)
+
   // Results
-  rawJson             Json?       // Full Deepgram response
-  duration            Float?      // Audio duration
-  wordCount           Int?
-  averageConfidence   Float?
-  speakerCount        Int?
-  
+  rawJson           Json? // Full Deepgram response
+  duration          Float? // Audio duration
+  wordCount         Int?
+  averageConfidence Float?
+  speakerCount      Int?
+
   // Error handling
-  errorMessage        String?
-  retryCount          Int         @default(0)
-  maxRetries          Int         @default(3)
-  
-  createdAt           DateTime    @default(now())
-  completedAt         DateTime?
-  
+  errorMessage String?
+  retryCount   Int     @default(0)
+  maxRetries   Int     @default(3)
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
   @@index([jobId])
   @@index([status])
 }
@@ -309,127 +344,127 @@ enum TranscriptionStatus {
 }
 
 model Transcript {
-  id                String      @id @default(cuid())
-  jobId             String
-  job               Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
   // Version
-  version           String      // "1.0-raw", "2.0-ai-reviewed", "3.0-scopist", "4.0-final"
-  versionNumber     Int         // 1, 2, 3, 4
-  
+  version       String // "1.0-raw", "2.0-ai-reviewed", "3.0-scopist", "4.0-final"
+  versionNumber Int // 1, 2, 3, 4
+
   // Content
-  content           String      @db.Text  // Plain text
-  contentJson       Json        // TipTap JSON document
-  
+  content     String @db.Text // Plain text
+  contentJson Json // TipTap JSON document
+
   // Tokens (for audio sync)
-  tokens            TranscriptToken[]
-  
+  tokens TranscriptToken[]
+
   // Metadata
   wordCount         Int?
   pageCount         Int?
   averageConfidence Float?
   speakerCount      Int?
-  
+
   // AI Review (for version 2.0)
-  aiChanges         Json?       // List of changes made
-  aiFlags           Json?       // Low-confidence sections
-  
+  aiChanges Json? // List of changes made
+  aiFlags   Json? // Low-confidence sections
+
   // Creator
-  createdBy         String      // "system", userId
-  
-  createdAt         DateTime    @default(now())
-  
+  createdBy String // "system", userId
+
+  createdAt DateTime @default(now())
+
   @@unique([jobId, version])
   @@index([jobId, versionNumber])
 }
 
 model TranscriptToken {
-  id            String      @id @default(cuid())
-  transcriptId  String
-  transcript    Transcript  @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-  
+  id           String     @id @default(cuid())
+  transcriptId String
+  transcript   Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
   // Position in transcript
-  index         Int         // Word index in document
-  
+  index Int // Word index in document
+
   // Content
-  word          String
-  punctuatedWord String?    // With punctuation
-  
+  word           String
+  punctuatedWord String? // With punctuation
+
   // Timing
-  start         Float       // seconds
-  end           Float       // seconds
-  
+  start Float // seconds
+  end   Float // seconds
+
   // Quality
-  confidence    Float       // 0.0 - 1.0
-  isFlagged     Boolean     @default(false)  // confidence < 0.80
-  isReviewed    Boolean     @default(false)  // User marked as reviewed
-  
+  confidence Float // 0.0 - 1.0
+  isFlagged  Boolean @default(false) // confidence < 0.80
+  isReviewed Boolean @default(false) // User marked as reviewed
+
   // Speaker
-  speaker       Int?        // Speaker ID from diarization
-  
-  createdAt     DateTime    @default(now())
-  
+  speaker Int? // Speaker ID from diarization
+
+  createdAt DateTime @default(now())
+
   @@index([transcriptId, index])
   @@index([transcriptId, isFlagged])
 }
 
 model Transcription {
-  id                  String      @id @default(cuid())
-  jobId               String      @unique
-  job                 Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id    String @id @default(cuid())
+  jobId String @unique
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   // Core transcript data
-  fullTranscript      String      @db.Text
-  deepgramRawJson     String?     @db.Text  // Full Deepgram response
-  
+  fullTranscript  String  @db.Text
+  deepgramRawJson String? @db.Text // Full Deepgram response
+
   // Structured data (JSON strings)
-  words               Json                  // Word-level data with timestamps
-  utterances          Json?                 // Speaker turns
-  flaggedSegments     Json?                 // Low-confidence words
-  speakerAnalysis     Json?                 // AI speaker identification
-  speakerAssignments  Json?                 // User-defined speaker mapping
-  
+  words              Json // Word-level data with timestamps
+  utterances         Json? // Speaker turns
+  flaggedSegments    Json? // Low-confidence words
+  speakerAnalysis    Json? // AI speaker identification
+  speakerAssignments Json? // User-defined speaker mapping
+
   // Metadata
-  duration            Float?                // Audio duration in seconds
-  wordCount           Int?
-  flaggedWordCount    Int?
-  averageConfidence   Float?
-  speakerCount        Int         @default(0)
-  modelUsed           String?               // STANDARD, MEDICAL, BILINGUAL
-  
+  duration          Float? // Audio duration in seconds
+  wordCount         Int?
+  flaggedWordCount  Int?
+  averageConfidence Float?
+  speakerCount      Int     @default(0)
+  modelUsed         String? // STANDARD, MEDICAL, BILINGUAL
+
   // Status
-  status              TranscriptionStatus @default(PENDING)
-  
+  status TranscriptionStatus @default(PENDING)
+
   // Versioning
-  version             Int         @default(1)
-  
+  version Int @default(1)
+
   // Relations
-  edits               TranscriptionEdit[]
+  edits TranscriptionEdit[]
 
   // Timestamps
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([jobId])
 }
 
 model TranscriptionEdit {
-  id                String      @id @default(cuid())
-  transcriptionId   String
-  transcription     Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  transcriptionId String
+  transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
 
-  editorId          String
-  editorEmail       String?
-  editorRole        UserRole?
+  editorId    String
+  editorEmail String?
+  editorRole  UserRole?
 
-  editType          EditType     @default(WORD_CORRECTION)
-  originalText      String?
-  editedText        String?
-  position          Float?       // audio timestamp
+  editType     EditType @default(WORD_CORRECTION)
+  originalText String?
+  editedText   String?
+  position     Float? // audio timestamp
 
-  metadata          Json?
+  metadata Json?
 
-  createdAt         DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@index([transcriptionId])
 }
@@ -447,25 +482,25 @@ enum EditType {
 // ============================================
 
 model AIRule {
-  id          String      @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
   category    RuleCategory
   description String
-  enabled     Boolean     @default(true)
-  priority    Int         @default(0)  // Higher runs first
-  
+  enabled     Boolean      @default(true)
+  priority    Int          @default(0) // Higher runs first
+
   // Rule definition
-  ruleType    String      // "regex", "llm", "dictionary"
-  pattern     String?     // For regex
-  replacement String?     // For simple replacements
-  prompt      String?     @db.Text  // For LLM rules
-  
+  ruleType    String // "regex", "llm", "dictionary"
+  pattern     String? // For regex
+  replacement String? // For simple replacements
+  prompt      String? @db.Text // For LLM rules
+
   // Examples
-  examples    Json?       // Before/after pairs
-  
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
+  examples Json? // Before/after pairs
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([enabled, priority])
 }
 
@@ -485,24 +520,24 @@ enum RuleCategory {
 // ============================================
 
 model JobAssignment {
-  id            String      @id @default(cuid())
-  jobId         String
-  job           Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  scopistId     String
-  scopist       User        @relation(fields: [scopistId], references: [id])
-  
-  status        AssignmentStatus @default(INVITED)
-  
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  scopistId String
+  scopist   User   @relation(fields: [scopistId], references: [id])
+
+  status AssignmentStatus @default(INVITED)
+
   // Timing
-  invitedAt     DateTime    @default(now())
-  respondedAt   DateTime?
-  startedAt     DateTime?
-  submittedAt   DateTime?
-  
+  invitedAt   DateTime  @default(now())
+  respondedAt DateTime?
+  startedAt   DateTime?
+  submittedAt DateTime?
+
   // Notes
-  scopistNotes  String?     @db.Text
-  
+  scopistNotes String? @db.Text
+
   @@index([jobId])
   @@index([scopistId, status])
 }
@@ -522,48 +557,48 @@ enum AssignmentStatus {
 // ============================================
 
 model Message {
-  id          String      @id @default(cuid())
-  jobId       String
-  job         Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
-  senderId    String
-  sender      User        @relation(fields: [senderId], references: [id])
-  
-  content     String      @db.Text
-  
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id])
+
+  content String @db.Text
+
   // Metadata
-  isRead      Boolean     @default(false)
-  readAt      DateTime?
-  
-  createdAt   DateTime    @default(now())
-  
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
   @@index([jobId, createdAt])
 }
 
 model Notification {
-  id          String      @id @default(cuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type        NotificationType
-  title       String
-  message     String
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String
+
   // Link
-  linkUrl     String?
-  linkText    String?
-  
+  linkUrl  String?
+  linkText String?
+
   // Status
-  isRead      Boolean     @default(false)
+  isRead      Boolean   @default(false)
   readAt      DateTime?
-  emailSent   Boolean     @default(false)
+  emailSent   Boolean   @default(false)
   emailSentAt DateTime?
-  
+
   // Related job
-  jobId       String?
-  
-  createdAt   DateTime    @default(now())
-  
+  jobId String?
+
+  createdAt DateTime @default(now())
+
   @@index([userId, isRead])
   @@index([createdAt])
 }
@@ -586,21 +621,21 @@ enum NotificationType {
 // ============================================
 
 model AuditLog {
-  id          String      @id @default(cuid())
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  
-  action      String      // "view_job", "edit_transcript", "export_file"
-  resource    String      // "Job", "Transcript"
-  resourceId  String
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  action     String // "view_job", "edit_transcript", "export_file"
+  resource   String // "Job", "Transcript"
+  resourceId String
+
   // Details
-  details     Json?
-  ipAddress   String?
-  userAgent   String?
-  
-  createdAt   DateTime    @default(now())
-  
+  details   Json?
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
   @@index([userId, createdAt])
   @@index([resourceId])
 }
@@ -610,16 +645,16 @@ model AuditLog {
 // ============================================
 
 model SystemConfig {
-  id          String      @id @default(cuid())
-  key         String      @unique
+  id          String  @id @default(cuid())
+  key         String  @unique
   value       Json
   description String?
-  
-  updatedAt   DateTime    @updatedAt
+
+  updatedAt DateTime @updatedAt
 }
 
 model Firm {
-  id        String   @id
+  id        String   @id @default(cuid())
   name      String
   address   String?
   phone     String?
@@ -627,8 +662,12 @@ model Firm {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  jobs      Job[]
-  cases     Case[]
+  // Relationships
+  users User[]
+  jobs  Job[]
+  cases Case[]
+
+  @@index([name])
 }
 
 // ============================================
@@ -636,52 +675,58 @@ model Firm {
 // ============================================
 
 model Case {
-  id        String   @id @default(cuid())
-  
-  // Multi-tenant
-  firmId    String?
-  firm      Firm?    @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  
+  id String @id @default(cuid())
+
+  // Multi-tenant: REQUIRED - every case belongs to a firm
+  firmId String
+  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
   // Created by
   createdById String
   createdBy   User   @relation("CaseCreator", fields: [createdById], references: [id])
-  
+
   // Case Information
-  caseNumber    String
-  caseStyle     String    // Full case name (Plaintiff v. Defendant)
-  shortTitle    String?   // Short reference name
-  
+  caseNumber String
+  caseStyle  String // Full case name (Plaintiff v. Defendant)
+  shortTitle String? // Short reference name
+
   // Court Information
-  courtName     String?   // e.g., "419th Judicial District Court"
-  courtType     String?   // e.g., "District Court", "County Court"
+  courtName     String? // e.g., "419th Judicial District Court"
+  courtType     String? // e.g., "District Court", "County Court"
   county        String?
-  state         String    @default("Texas")
+  state         String  @default("Texas")
   judgeAssigned String?
-  
+
   // Parties (stored as JSON arrays)
-  plaintiffs    Json?     // [{ name, type, role }]
-  defendants    Json?     // [{ name, type, role }]
-  otherParties  Json?     // [{ name, type, role }]
-  
+  plaintiffs   Json? // [{ name, type, role }]
+  defendants   Json? // [{ name, type, role }]
+  otherParties Json? // [{ name, type, role }]
+
   // Related Jobs
-  jobs          Job[]
-  
+  jobs Job[]
+
   // Attorneys on the case
-  attorneys     CaseAttorney[]
-  
+  attorneys CaseAttorney[]
+
   // Custom dictionary terms extracted from this case
   extractedTerms CaseExtractedTerm[]
-  
+
   // Source documents
   sourceDocuments CaseDocument[]
-  
+
+  // Exhibits (attorney-global or deposition-specific)
+  exhibits Exhibit[]
+
+  // Case-level access control
+  memberships CaseMembership[]
+
   // Metadata
-  status        CaseStatus @default(ACTIVE)
-  notes         String?    @db.Text
-  
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  
+  status CaseStatus @default(ACTIVE)
+  notes  String?    @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([firmId, caseNumber])
   @@index([firmId])
   @@index([caseNumber])
@@ -695,34 +740,81 @@ enum CaseStatus {
   ARCHIVED
 }
 
+// ============================================
+// CASE-LEVEL PERMISSIONS (MULTI-TENANT)
+// ============================================
+
+/**
+ * CaseMembership - Controls who can access which cases
+ * This is the heart of the multi-tenant permission system.
+ * Key Rules:
+ * - Attorneys can belong to many cases
+ * - Reporters belong only to their deposition's case (via Job)
+ * - Paralegals can be added per case
+ * - Access is granted per case, not globally
+ */
+model CaseMembership {
+  id String @id @default(cuid())
+
+  // User and Case
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Role within this specific case
+  roleInCase CaseRole
+
+  // Optional permission overrides (JSONB for flexibility)
+  permissions Json? // e.g., { "canEditAnnotations": true, "canDeleteReports": false }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, caseId])
+  @@index([userId])
+  @@index([caseId])
+  @@index([roleInCase])
+}
+
+/**
+ * Role within a specific case
+ * Different from UserRole (which is global)
+ */
+enum CaseRole {
+  ATTORNEY // Attorney on this case
+  PARALEGAL // Paralegal assisting on this case
+  REPORTER // Court reporter assigned to deposition in this case
+}
+
 model CaseAttorney {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
   // Attorney info
-  name          String
-  barNumber     String?
-  firm          String?
-  role          AttorneyRole
-  representing  String?     // Which party they represent
-  
+  name         String
+  barNumber    String?
+  firm         String?
+  role         AttorneyRole
+  representing String? // Which party they represent
+
   // Contact info
-  email         String?
-  phone         String?
-  fax           String?
-  address       String?     @db.Text
-  city          String?
-  state         String?
-  zipCode       String?
-  
+  email   String?
+  phone   String?
+  fax     String?
+  address String? @db.Text
+  city    String?
+  state   String?
+  zipCode String?
+
   // Delivery preferences
-  deliveryFormat    String?   // "E-Trans", "Hard Copy", "Both"
-  deliveryPriority  String?   // "Standard", "Rush"
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  deliveryFormat   String? // "E-Trans", "Hard Copy", "Both"
+  deliveryPriority String? // "Standard", "Rush"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([caseId])
   @@index([email])
 }
@@ -736,27 +828,27 @@ enum AttorneyRole {
 }
 
 model CaseDocument {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
   // File info
-  documentType  CaseDocumentType
-  fileName      String
-  fileUrl       String
-  fileSize      Int
-  mimeType      String
-  
+  documentType CaseDocumentType
+  fileName     String
+  fileUrl      String
+  fileSize     Int
+  mimeType     String
+
   // Extraction status
-  extractionStatus  ExtractionStatus @default(PENDING)
-  extractedData     Json?            // Raw extracted data from AI
-  extractedAt       DateTime?
-  extractionError   String?          @db.Text
-  
+  extractionStatus ExtractionStatus @default(PENDING)
+  extractedData    Json? // Raw extracted data from AI
+  extractedAt      DateTime?
+  extractionError  String?          @db.Text
+
   // Upload info
-  uploadedById      String
-  uploadedAt        DateTime         @default(now())
-  
+  uploadedById String
+  uploadedAt   DateTime @default(now())
+
   @@index([caseId])
   @@index([documentType])
 }
@@ -779,21 +871,21 @@ enum ExtractionStatus {
 }
 
 model CaseExtractedTerm {
-  id        String   @id @default(cuid())
-  caseId    String
-  case      Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  
-  term          String
-  category      TermCategory
-  phonetic      String?     // Optional pronunciation hint
-  source        String?     // Which document it came from
-  confidence    Float?      // AI confidence score
-  
+  id     String @id @default(cuid())
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  term       String
+  category   TermCategory
+  phonetic   String? // Optional pronunciation hint
+  source     String? // Which document it came from
+  confidence Float? // AI confidence score
+
   // Whether to use in Deepgram
-  useInTranscription  Boolean @default(true)
-  
-  createdAt     DateTime @default(now())
-  
+  useInTranscription Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
   @@unique([caseId, term])
   @@index([caseId])
   @@index([category])
@@ -807,4 +899,114 @@ enum TermCategory {
   MEDICAL_TERM
   TECHNICAL_TERM
   CASE_SPECIFIC
+}
+
+// ============================================
+// ATTORNEY TRANSCRIPT MODELS
+// ============================================
+
+/**
+ * Attorney Transcript - Read-only transcript for attorney review
+ * Stored as JSONB for flexibility (page/line structure)
+ */
+model AttorneyTranscript {
+  id String @id @default(cuid())
+
+  // Basic Info
+  name           String
+  deponent       String
+  caseName       String?
+  depositionDate DateTime?
+
+  // Status
+  status AttorneyTranscriptStatus @default(NOT_REVIEWED)
+
+  // Transcript data (stored as JSONB)
+  // Structure: { pages: [{ pageNumber, lines: [{ page, line, speaker, text }] }] }
+  transcriptData Json // Full transcript structure
+
+  // Metadata
+  totalPages Int
+  totalLines Int
+
+  // Upload info
+  uploadedById String
+  uploadedBy   User     @relation("TranscriptCreator", fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now())
+
+  // Relationships
+  annotations TranscriptAnnotation[]
+
+  @@index([uploadedById])
+  @@index([status])
+  @@index([deponent])
+}
+
+enum AttorneyTranscriptStatus {
+  NOT_REVIEWED
+  IN_PROGRESS
+  COMPLETE
+}
+
+/**
+ * Transcript Annotation - Issue codes tagged on transcript lines
+ */
+model TranscriptAnnotation {
+  id String @id @default(cuid())
+
+  // Transcript reference
+  transcriptId String
+  transcript   AttorneyTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  // Issue code
+  issueCode  String // Code identifier (e.g., "PERJURY", "CONTRADICTION")
+  issueLabel String // Display label
+  issueColor String // Hex color
+
+  // Annotation range
+  pageStart Int
+  lineStart Int
+  pageEnd   Int
+  lineEnd   Int
+
+  // Notes
+  note String? @db.Text
+
+  // Creator
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  // Linked exhibits
+  linkedExhibits TranscriptAnnotationExhibit[]
+
+  @@index([transcriptId])
+  @@index([createdById])
+  @@index([issueCode])
+}
+
+/**
+ * Junction table linking transcript annotations to exhibits
+ * Allows attorneys to reference exhibits in their annotations
+ */
+model TranscriptAnnotationExhibit {
+  id String @id @default(cuid())
+
+  // Annotation reference
+  annotationId String
+  annotation   TranscriptAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+
+  // Exhibit reference
+  exhibitId String
+  exhibit   Exhibit @relation(fields: [exhibitId], references: [id], onDelete: Cascade)
+
+  // Creator
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([annotationId, exhibitId])
+  @@index([annotationId])
+  @@index([exhibitId])
+  @@index([createdById])
 }

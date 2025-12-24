@@ -51,6 +51,14 @@ const statusConfig: Record<JobStatus, { label: string; className: string }> = {
     label: 'In Review',
     className: 'bg-cyan-100 text-cyan-700 border-cyan-300',
   },
+  SCOPIST_COMPLETE: {
+    label: 'Scopist Complete',
+    className: 'bg-purple-100 text-purple-800 border-purple-300',
+  },
+  REVIEW_COMPLETE: {
+    label: 'Review Complete',
+    className: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  },
   COMPLETED: {
     label: 'Completed',
     className: 'bg-emerald-100 text-emerald-700 border-emerald-300',

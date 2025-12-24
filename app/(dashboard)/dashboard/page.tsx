@@ -15,6 +15,8 @@ export default async function DashboardPage() {
       redirect('/reporter');
     case 'SCOPIST':
       redirect('/scopist');
+    case 'ATTORNEY':
+      redirect('/attorney/dashboard');
     default:
       redirect('/jobs');
   }

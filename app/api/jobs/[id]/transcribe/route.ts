@@ -3,14 +3,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
 import { processTranscriptionJob } from '@/lib/workers/transcription-worker';
 import type { TranscriptionJobData } from '@/types/deepgram';
-import { DeepgramModelType } from '@/lib/transcription/config';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
+
 
 export async function POST(
   request: NextRequest,
@@ -26,17 +26,27 @@ export async function POST(
     const user = session.user as { id: string; role: string; firmId?: string };
     const { id: jobId } = await context.params;
 
-    // Get request body for model selection
+    // Get request body for model selection (optional)
     const body = await request.json().catch(() => ({}));
-    const modelType: DeepgramModelType = body.modelType || 'MEDICAL';
+    const modelType = body.modelType || 'MEDICAL'; // Legacy: MEDICAL, STANDARD, BILINGUAL
 
     // Fetch job with files
-    const job = await prisma.job.findUnique({
+    const job = await db.job.findUnique({
       where: { id: jobId },
       include: {
         files: {
           where: {
-            type: 'AUDIO',
+            OR: [
+              { type: 'AUDIO' },
+              { mimeType: { startsWith: 'audio/' } },
+              { mimeType: { startsWith: 'video/' } },
+            ],
+          },
+        },
+        case: {
+          select: {
+            id: true,
+            firmId: true,
           },
         },
       },
@@ -49,14 +59,17 @@ export async function POST(
     // Check permissions
     const isOwner = job.createdById === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = job.firmId === user.firmId;
+    const isSameFirm = job.firmId === user.firmId || job.case?.firmId === user.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Check for audio file
-    const audioFile = job.files[0];
+    const audioFile = job.files.find(
+      (f) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/') || f.mimeType?.startsWith('video/'),
+    );
+
     if (!audioFile) {
       return NextResponse.json(
         { error: 'No audio file found for this job' },
@@ -65,7 +78,7 @@ export async function POST(
     }
 
     // Check if already processing
-    if (job.status === 'TRANSCRIBING') {
+    if (job.status === 'TRANSCRIBING' || job.status === 'AI_REVIEWING') {
       return NextResponse.json(
         { error: 'Transcription already in progress' },
         { status: 409 },
@@ -73,7 +86,7 @@ export async function POST(
     }
 
     // Update job status to TRANSCRIBING
-    await prisma.job.update({
+    await db.job.update({
       where: { id: jobId },
       data: {
         status: 'TRANSCRIBING',
@@ -87,8 +100,9 @@ export async function POST(
       audioFileId: audioFile.id,
       audioFileUrl: audioFile.storageUrl || audioFile.storagePath,
       audioFileName: audioFile.fileName,
-      firmId: job.firmId || '',
+      firmId: job.firmId || job.case?.firmId || undefined,
       userId: user.id,
+      requestedBy: user.id,
       modelType,
     };
 

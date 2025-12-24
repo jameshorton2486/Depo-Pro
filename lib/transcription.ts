@@ -1,303 +1,364 @@
-// lib/transcription.ts
-// Main Deepgram transcription service
+/**
+ * Deepgram Transcription Service for Depo-Pro
+ *
+ * This replaces the mock implementation with real Deepgram API calls.
+ * Provides word-level timestamps, confidence scores, and speaker diarization.
+ *
+ * INSTALLATION: npm install @deepgram/sdk
+ */
 
-import { createClient, DeepgramClient } from '@deepgram/sdk';
-import {
-  getDeepgramConfig,
-  LOW_CONFIDENCE_THRESHOLD,
-  CONTEXT_WINDOW_SIZE,
-  DeepgramModelType,
-} from './transcription/config';
-import {
+import { PrerecordedSchema, SyncPrerecordedResponse } from '@deepgram/sdk';
+import { getDeepgramClient, LEGAL_TRANSCRIPTION_OPTIONS, LEGAL_VOCABULARY } from './deepgram/client';
+import type {
+  TranscriptionResult,
   TranscriptWord,
-  TranscriptUtterance,
-  FlaggedWord,
-  DeepgramResponse,
-  ProcessedTranscript,
-  SpeakerAssignment,
-} from '@/types/transcript';
-import { v4 as uuidv4 } from 'uuid';
+  Utterance,
+  FlaggedSegment,
+  QualityReport,
+} from '@/types/deepgram';
 
-// Singleton Deepgram client
-let deepgramClient: DeepgramClient | null = null;
+// Low confidence threshold - words below this are flagged for review
+const LOW_CONFIDENCE_THRESHOLD = parseFloat(process.env.LOW_CONFIDENCE_THRESHOLD || '0.85');
 
-function getDeepgramClient(): DeepgramClient {
-  if (!deepgramClient) {
-    const apiKey = process.env.DEEPGRAM_API_KEY;
-    if (!apiKey) {
-      throw new Error('DEEPGRAM_API_KEY environment variable is not set');
-    }
-    deepgramClient = createClient(apiKey);
-  }
-  return deepgramClient;
-}
-
-// Transcribe audio buffer
+/**
+ * Transcribe audio using Deepgram with legal-optimized settings
+ *
+ * NOTE: Nova-3 uses `keyterm` (max 100) instead of `keywords`
+ */
 export async function transcribeAudio(
   audioBuffer: Buffer,
-  modelType: DeepgramModelType = 'MEDICAL',
-  mimetype: string = 'audio/wav',
-): Promise<DeepgramResponse> {
-  const client = getDeepgramClient();
-  const config = getDeepgramConfig(modelType);
+  options: {
+    customKeyterms?: string[];
+    modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
+  } = {},
+): Promise<TranscriptionResult> {
+  const deepgram = getDeepgramClient();
+
+  // For Nova-3: Use keyterm (max 100 terms)
+  // For Nova-2: Use keywords (up to 1000 terms)
+  const isNova3 = !options.modelPreference || options.modelPreference === 'nova-3';
+
+  // Prioritize custom terms, then add legal vocabulary up to limit
+  const customTerms = options.customKeyterms || [];
+  const allTerms = [...customTerms, ...LEGAL_VOCABULARY];
+
+  // Build transcription options
+  const transcriptionOptions: PrerecordedSchema = {
+    ...LEGAL_TRANSCRIPTION_OPTIONS,
+    model: options.modelPreference || 'nova-3',
+  };
+
+  if (isNova3) {
+    // Nova-3: Use keyterm parameter (max 100 terms)
+    // @ts-expect-error - keyterm may not be in SDK types yet
+    transcriptionOptions.keyterm = allTerms.slice(0, 100);
+    console.log(`   Using keyterm for Nova-3: ${Math.min(allTerms.length, 100)} terms`);
+  } else {
+    // Nova-2: Use keywords parameter (up to 1000 terms)
+    transcriptionOptions.keywords = allTerms.slice(0, 1000);
+    console.log(`   Using keywords for Nova-2: ${Math.min(allTerms.length, 1000)} terms`);
+  }
+
+  console.log('🎤 Starting Deepgram transcription...');
+  console.log(`   Model: ${transcriptionOptions.model}`);
 
   try {
-    const { result, error } = await client.listen.prerecorded.transcribeFile(
+    // Call Deepgram API
+    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
       audioBuffer,
-      {
-        ...config,
-        mimetype,
-      },
+      transcriptionOptions,
     );
 
     if (error) {
+      console.error('❌ Deepgram API error:', error);
       throw new Error(`Deepgram transcription failed: ${error.message}`);
     }
 
-    return result as DeepgramResponse;
+    // Process the response
+    return processDeepgramResponse(result);
+
   } catch (err) {
-    console.error('Deepgram API error:', err);
+    console.error('❌ Transcription error:', err);
     throw err;
   }
 }
 
-// Transcribe from URL
+/**
+ * Transcribe audio from a URL (e.g., Supabase storage URL)
+ */
 export async function transcribeFromUrl(
   audioUrl: string,
-  modelType: DeepgramModelType = 'MEDICAL',
-): Promise<DeepgramResponse> {
-  const client = getDeepgramClient();
-  const config = getDeepgramConfig(modelType);
+  options: {
+    customKeyterms?: string[];
+    modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
+  } = {},
+): Promise<TranscriptionResult> {
+  const deepgram = getDeepgramClient();
+
+  const isNova3 = !options.modelPreference || options.modelPreference === 'nova-3';
+  const customTerms = options.customKeyterms || [];
+  const allTerms = [...customTerms, ...LEGAL_VOCABULARY];
+
+  const transcriptionOptions: PrerecordedSchema = {
+    ...LEGAL_TRANSCRIPTION_OPTIONS,
+    model: options.modelPreference || 'nova-3',
+  };
+
+  if (isNova3) {
+    // @ts-expect-error - keyterm may not be in SDK types yet
+    transcriptionOptions.keyterm = allTerms.slice(0, 100);
+  } else {
+    transcriptionOptions.keywords = allTerms.slice(0, 1000);
+  }
+
+  console.log('🎤 Starting Deepgram transcription from URL...');
+  console.log(`   URL: ${audioUrl.substring(0, 50)}...`);
+  console.log(`   Model: ${transcriptionOptions.model}`);
 
   try {
-    const { result, error } = await client.listen.prerecorded.transcribeUrl(
+    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
       { url: audioUrl },
-      config as any,
+      transcriptionOptions,
     );
 
     if (error) {
       throw new Error(`Deepgram transcription failed: ${error.message}`);
     }
 
-    return result as DeepgramResponse;
+    return processDeepgramResponse(result);
+
   } catch (err) {
-    console.error('Deepgram API error:', err);
+    console.error('❌ Transcription error:', err);
     throw err;
   }
 }
 
-// Extract flagged (low-confidence) words
-export function extractFlaggedWords(
-  words: TranscriptWord[],
-  threshold: number = LOW_CONFIDENCE_THRESHOLD,
-): FlaggedWord[] {
-  const flaggedWords: FlaggedWord[] = [];
+/**
+ * Process Deepgram response into our standardized format
+ */
+function processDeepgramResponse(result: SyncPrerecordedResponse): TranscriptionResult {
+  const channel = result.results?.channels?.[0];
+  const alternative = channel?.alternatives?.[0];
 
-  words.forEach((word, index) => {
-    if (word.confidence < threshold) {
-      // Get context words
-      const contextBefore: string[] = [];
-      const contextAfter: string[] = [];
+  if (!alternative) {
+    throw new Error('No transcription results returned from Deepgram');
+  }
 
-      // Words before
-      for (let i = Math.max(0, index - CONTEXT_WINDOW_SIZE); i < index; i++) {
-        contextBefore.push(words[i].punctuated_word || words[i].word);
-      }
+  // Extract words with our format
+  const words: TranscriptWord[] = (alternative.words || []).map((word) => ({
+    word: word.word || '',
+    start: word.start || 0,
+    end: word.end || 0,
+    confidence: word.confidence || 0,
+    speaker: word.speaker,
+    punctuated_word: word.punctuated_word,
+  }));
 
-      // Words after
-      for (let i = index + 1; i < Math.min(words.length, index + 1 + CONTEXT_WINDOW_SIZE); i++) {
-        contextAfter.push(words[i].punctuated_word || words[i].word);
-      }
+  // Extract utterances (speaker segments)
+  const utterances: Utterance[] = (result.results?.utterances || []).map((utt) => ({
+    speaker: utt.speaker || 0,
+    start: utt.start || 0,
+    end: utt.end || 0,
+    transcript: utt.transcript || '',
+    confidence: utt.confidence || 0,
+    words: (utt.words || []).map((w) => ({
+      word: w.word || '',
+      start: w.start || 0,
+      end: w.end || 0,
+      confidence: w.confidence || 0,
+      speaker: w.speaker,
+    })),
+  }));
 
-      flaggedWords.push({
-        id: uuidv4(),
-        wordIndex: index,
-        word: word.punctuated_word || word.word,
-        confidence: word.confidence,
-        startTime: word.start,
-        endTime: word.end,
-        speaker: word.speaker,
-        contextBefore,
-        contextAfter,
-        alternatives: [],
-        correctedWord: undefined,
-        isReviewed: false,
-      });
-    }
-  });
+  // Flag low-confidence words for scopist review
+  const flaggedSegments = extractFlaggedSegments(words);
 
-  return flaggedWords;
-}
+  // Calculate quality metrics
+  const qualityReport = calculateQualityMetrics(words, flaggedSegments);
 
-// Process Deepgram response into structured data
-export function processTranscriptResponse(
-  response: DeepgramResponse,
-): ProcessedTranscript {
-  const channel = response.results.channels[0];
-  const alternative = channel.alternatives[0];
-
-  const words = alternative.words || [];
-  const utterances = response.results.utterances || [];
-  const flaggedWords = extractFlaggedWords(words);
-
-  // Calculate average confidence
-  const totalConfidence = words.reduce((sum, w) => sum + w.confidence, 0);
-  const averageConfidence = words.length > 0 ? totalConfidence / words.length : 0;
+  console.log('✅ Transcription complete');
+  console.log(`   Duration: ${result.metadata?.duration?.toFixed(1)}s`);
+  console.log(`   Words: ${words.length}`);
+  console.log(`   Speakers: ${new Set(utterances.map(u => u.speaker)).size}`);
+  console.log(`   Flagged for review: ${flaggedSegments.length} segments`);
+  console.log(`   Quality score: ${qualityReport.qualityScore.toFixed(1)}%`);
 
   return {
-    fullText: alternative.transcript,
+    // Full transcript text
+    transcript: alternative.transcript || '',
+
+    // Overall confidence
+    confidence: alternative.confidence || 0,
+
+    // Word-level data with timestamps
     words,
+
+    // Speaker-segmented utterances
     utterances,
-    flaggedWords,
-    speakerAssignments: [],  // To be set by user
-    duration: response.metadata.duration,
-    wordCount: words.length,
-    flaggedWordCount: flaggedWords.length,
-    averageConfidence,
+
+    // Low-confidence segments for scopist review
+    flaggedSegments,
+
+    // Quality analysis
+    qualityReport,
+
+    // Metadata
+    metadata: {
+      duration: result.metadata?.duration || 0,
+      channels: result.metadata?.channels || 1,
+      modelInfo: result.metadata?.model_info,
+      requestId: result.metadata?.request_id,
+    },
+
+    // Raw Deepgram response for debugging/storage
+    rawResponse: result,
   };
 }
 
-// Get unique speakers from transcript
-export function getUniqueSpeakers(words: TranscriptWord[]): number[] {
-  const speakers = new Set<number>();
-  words.forEach(word => {
-    if (word.speaker !== undefined) {
-      speakers.add(word.speaker);
-    }
-  });
-  return Array.from(speakers).sort((a, b) => a - b);
-}
+/**
+ * Extract segments that need scopist review
+ */
+function extractFlaggedSegments(words: TranscriptWord[]): FlaggedSegment[] {
+  const flagged: FlaggedSegment[] = [];
+  let currentSegment: FlaggedSegment | null = null;
 
-// Format transcript with speaker labels
-export function formatTranscriptWithSpeakers(
-  utterances: TranscriptUtterance[],
-  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>,
-): string {
-  let formatted = '';
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const isLowConfidence = word.confidence < LOW_CONFIDENCE_THRESHOLD;
 
-  for (const utterance of utterances) {
-    const assignment = speakerAssignments.get(utterance.speaker);
+    if (isLowConfidence) {
+      // Get context (3 words before and after)
+      const contextStart = Math.max(0, i - 3);
+      const contextEnd = Math.min(words.length, i + 4);
+      const contextWords = words.slice(contextStart, contextEnd);
+      const contextText = contextWords.map(w => w.word).join(' ');
 
-    // Skip excluded speakers (e.g., witness speaking through interpreter)
-    if (assignment?.exclude) {
-      continue;
-    }
-
-    const speakerLabel = assignment
-      ? `${assignment.name} (${assignment.type})`
-      : `Speaker ${utterance.speaker}`;
-
-    formatted += `${speakerLabel}: ${utterance.transcript}\n\n`;
-  }
-
-  return formatted.trim();
-}
-
-// Format as Q&A (legal deposition format)
-export function formatAsQA(
-  utterances: TranscriptUtterance[],
-  speakerAssignments: Map<number, { name: string; type: string; exclude: boolean }>,
-): string {
-  let formatted = '';
-
-  for (const utterance of utterances) {
-    const assignment = speakerAssignments.get(utterance.speaker);
-
-    // Skip excluded speakers
-    if (assignment?.exclude) {
-      continue;
-    }
-
-    let prefix = '';
-    if (assignment) {
-      if (assignment.type === 'Attorney' || assignment.type === 'Opposing Counsel') {
-        prefix = 'Q';
-      } else if (assignment.type === 'Witness' || assignment.type === 'Translator') {
-        prefix = 'A';
+      if (currentSegment && word.start - currentSegment.end < 1.0) {
+        // Extend current segment if words are close together
+        currentSegment.end = word.end;
+        currentSegment.text = contextText;
+        currentSegment.words.push(word);
+        // Use lowest confidence in the segment
+        currentSegment.confidence = Math.min(currentSegment.confidence, word.confidence);
       } else {
-        prefix = assignment.type.toUpperCase();
+        // Start new segment
+        if (currentSegment) {
+          flagged.push(currentSegment);
+        }
+        currentSegment = {
+          start: word.start,
+          end: word.end,
+          text: contextText,
+          confidence: word.confidence,
+          reason: word.confidence < 0.5 ? 'inaudible' : 'low_confidence',
+          words: [word],
+          wordIndex: i,
+          speaker: word.speaker,
+        };
       }
-    } else {
-      prefix = `SPEAKER ${utterance.speaker}`;
+    } else if (currentSegment) {
+      // End current segment
+      flagged.push(currentSegment);
+      currentSegment = null;
     }
-
-    formatted += `${prefix}: ${utterance.transcript}\n\n`;
   }
 
-  return formatted.trim();
+  // Don't forget the last segment
+  if (currentSegment) {
+    flagged.push(currentSegment);
+  }
+
+  return flagged;
 }
 
-// Convert SpeakerAssignment array to Map for formatting functions
-export function createSpeakerAssignmentMap(
-  assignments: SpeakerAssignment[],
-): Map<number, { name: string; type: string; exclude: boolean }> {
-  const map = new Map<number, { name: string; type: string; exclude: boolean }>();
+/**
+ * Calculate quality metrics for the transcription
+ */
+function calculateQualityMetrics(
+  words: TranscriptWord[],
+  flaggedSegments: FlaggedSegment[],
+): QualityReport {
+  if (words.length === 0) {
+    return {
+      overallConfidence: 0,
+      lowConfidenceCount: 0,
+      inaudibleCount: 0,
+      qualityScore: 0,
+      needsReview: true,
+      flaggedSegments,
+    };
+  }
 
-  assignments.forEach(assignment => {
-    if (assignment.speakerId >= 0) {
-      map.set(assignment.speakerId, {
-        name: assignment.speakerName,
-        type: assignment.speakerType,
-        exclude: assignment.excludeFromTranscript,
-      });
-    }
-  });
+  // Calculate overall confidence
+  const totalConfidence = words.reduce((sum, w) => sum + w.confidence, 0);
+  const overallConfidence = totalConfidence / words.length;
 
-  return map;
-}
+  // Count low confidence and inaudible words
+  const lowConfidenceCount = words.filter(
+    w => w.confidence < LOW_CONFIDENCE_THRESHOLD && w.confidence >= 0.5,
+  ).length;
 
-// Get mimetype from file extension
-export function getMimetypeFromExtension(filename: string): string {
-  const ext = filename.toLowerCase().split('.').pop();
-  const mimetypes: Record<string, string> = {
-    'mp3': 'audio/mpeg',
-    'mp4': 'audio/mp4',
-    'm4a': 'audio/mp4',
-    'wav': 'audio/wav',
-    'webm': 'audio/webm',
-    'ogg': 'audio/ogg',
-    'flac': 'audio/flac',
+  const inaudibleCount = words.filter(w => w.confidence < 0.5).length;
+
+  // Quality score: 100 = perfect, 0 = all words flagged
+  const flaggedWordCount = lowConfidenceCount + inaudibleCount;
+  const qualityScore = ((words.length - flaggedWordCount) / words.length) * 100;
+
+  // Needs review if more than 5% of words are flagged or any are inaudible
+  const needsReview = (flaggedWordCount / words.length) > 0.05 || inaudibleCount > 0;
+
+  return {
+    overallConfidence,
+    lowConfidenceCount,
+    inaudibleCount,
+    qualityScore,
+    needsReview,
+    flaggedSegments,
   };
-  return mimetypes[ext || ''] || 'audio/wav';
 }
 
-// Legacy compatibility function
-export interface TranscriptionResult {
-  success: boolean;
-  transcript: string;
-  words: TranscriptWord[];
-  flaggedSegments: FlaggedWord[];
-  rawResponse: DeepgramResponse;
-  duration: number;
-  error?: string;
-}
+/**
+ * Get formatted transcript with speaker labels (Q/A format for depositions)
+ */
+export function formatDepositionTranscript(utterances: Utterance[]): string {
+  const speakerLabels: Record<number, string> = {};
+  let questionerSpeaker: number | null = null;
 
-export async function transcribeAudioLegacy(
-  audioBuffer: Buffer,
-  mimetype: string = 'audio/wav',
-): Promise<TranscriptionResult> {
-  try {
-    const response = await transcribeAudio(audioBuffer, 'STANDARD', mimetype);
-    const processed = processTranscriptResponse(response);
-
-    return {
-      success: true,
-      transcript: processed.fullText,
-      words: processed.words,
-      flaggedSegments: processed.flaggedWords,
-      rawResponse: response,
-      duration: processed.duration,
-    };
-  } catch (error) {
-    console.error('Legacy transcription error:', error);
-    return {
-      success: false,
-      transcript: '',
-      words: [],
-      flaggedSegments: [],
-      rawResponse: {} as DeepgramResponse,
-      duration: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+  // Determine who is asking questions (usually has shorter utterances with "?")
+  for (const utt of utterances) {
+    if (utt.transcript.includes('?') && !questionerSpeaker) {
+      questionerSpeaker = utt.speaker;
+      break;
+    }
   }
+
+  // Assign labels
+  for (const utt of utterances) {
+    if (!(utt.speaker in speakerLabels)) {
+      if (utt.speaker === questionerSpeaker) {
+        speakerLabels[utt.speaker] = 'Q';
+      } else if (Object.keys(speakerLabels).length === 0) {
+        speakerLabels[utt.speaker] = 'A';
+      } else {
+        // Additional speakers get numbered
+        const count = Object.keys(speakerLabels).length;
+        speakerLabels[utt.speaker] = `SPEAKER ${count}`;
+      }
+    }
+  }
+
+  // Format transcript
+  const lines: string[] = [];
+  for (const utt of utterances) {
+    const label = speakerLabels[utt.speaker] || `SPEAKER ${utt.speaker}`;
+    lines.push(`${label}: ${utt.transcript}`);
+  }
+
+  return lines.join('\n\n');
 }
+
+export default {
+  transcribeAudio,
+  transcribeFromUrl,
+  formatDepositionTranscript,
+};

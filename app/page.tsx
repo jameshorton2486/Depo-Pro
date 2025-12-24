@@ -67,10 +67,19 @@ export default async function Home() {
           </Button>
         </div>
 
-        {/* Footer note */}
-        <p className="text-sm text-gray-500 pt-8">
-          Phase 1: Core features • Authentication • Role-based dashboards • Job management
-        </p>
+        {/* Footer */}
+        <div className="pt-12 border-t border-gray-200 mt-12">
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600">
+            <Link href="/features" className="hover:text-gray-900">Features</Link>
+            <Link href="/pricing" className="hover:text-gray-900">Pricing</Link>
+            <Link href="/security" className="hover:text-gray-900">Security</Link>
+            <Link href="/about" className="hover:text-gray-900">About</Link>
+            <Link href="/contact" className="hover:text-gray-900">Contact</Link>
+          </div>
+          <p className="text-xs text-gray-500 mt-4 text-center">
+            © {new Date().getFullYear()} Depo-Pro. All rights reserved.
+          </p>
+        </div>
       </div>
     </div>
   );

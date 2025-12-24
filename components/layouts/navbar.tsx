@@ -59,8 +59,7 @@ export function Navbar({ user }: NavbarProps) {
             >
               Jobs
             </Link>
-            {/* Admin link removed for MVP
-            {user.role === Role.ADMIN && (
+            {user.role === 'ADMIN' && (
               <Link
                 href="/admin"
                 className={`text-sm font-medium transition-colors hover:text-gray-900 ${
@@ -70,7 +69,6 @@ export function Navbar({ user }: NavbarProps) {
                 Admin
               </Link>
             )}
-            */}
           </div>
         </div>
 

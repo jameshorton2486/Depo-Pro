@@ -163,6 +163,9 @@ export default function RegisterPage() {
                   <SelectItem value={Role.SCOPIST}>
                     {ROLE_LABELS[Role.SCOPIST]}
                   </SelectItem>
+                  <SelectItem value={Role.ATTORNEY}>
+                    {ROLE_LABELS[Role.ATTORNEY]}
+                  </SelectItem>
                 </SelectContent>
               </Select>
               {errors.role && (

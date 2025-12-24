@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { requireReporterDepositionAccess } from '@/lib/permissions/api-guards';
 import {
   uploadExhibitOriginal,
   uploadExhibitStamped,
@@ -43,15 +44,16 @@ export async function GET(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check permissions
-    const hasAccess =
-      job.createdById === user.id ||
-      job.assignments.some(a => a.scopistId === user.id) ||
-      user.role === 'ADMIN' ||
-      (user.role === 'REPORTER' && job.createdById === user.id);
-
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    // SECURITY: Enforce reporter deposition access
+    if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
+      const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
+      if (accessCheck instanceof NextResponse) return accessCheck;
+    } else if (user.role !== 'ADMIN') {
+      // Allow scopists assigned to the job
+      const hasScopistAccess = job.assignments.some(a => a.scopistId === user.id);
+      if (!hasScopistAccess) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     // Fetch exhibits
@@ -108,12 +110,11 @@ export async function POST(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check permissions (only reporter who created job, or admin can upload)
-    const canUpload =
-      job.createdById === user.id ||
-      user.role === 'ADMIN';
-
-    if (!canUpload) {
+    // SECURITY: Enforce reporter deposition access for upload
+    if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
+      const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
+      if (accessCheck instanceof NextResponse) return accessCheck;
+    } else if (user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

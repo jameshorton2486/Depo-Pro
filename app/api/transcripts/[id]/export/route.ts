@@ -67,6 +67,92 @@ export async function GET(
       return NextResponse.json({ error: 'No transcript text available' }, { status: 400 });
     }
 
+    // Apply edits before export (Phase 7 requirement)
+    let exportText = transcription.fullTranscript;
+
+    // Fetch all edits for this transcription
+    const edits = await prisma.transcriptionEdit.findMany({
+      where: { transcriptionId: transcriptId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // If there are edits, apply them to the words array
+    if (edits.length > 0 && transcription.words) {
+      try {
+        const words = JSON.parse(transcription.words as string) as Array<{
+          word: string;
+          correctedWord?: string;
+          isEdited?: boolean;
+        }>;
+
+        // Apply corrections from TranscriptionEdit records
+        // Edit metadata contains wordIndex and wordId
+        edits.forEach(edit => {
+          if (edit.editedText && edit.metadata) {
+            const metadata = edit.metadata as { wordIndex?: number; wordId?: string };
+            const wordIndex = metadata.wordIndex;
+
+            if (wordIndex !== undefined && wordIndex !== null && words[wordIndex]) {
+              words[wordIndex].word = edit.editedText;
+              words[wordIndex].correctedWord = edit.editedText;
+              words[wordIndex].isEdited = true;
+            }
+          }
+        });
+
+        // Also check flaggedSegments for correctedWord values (may have been updated directly)
+        if (transcription.flaggedSegments) {
+          const flaggedSegments = JSON.parse(transcription.flaggedSegments as string) as Array<{
+            wordIndex: number;
+            correctedWord?: string;
+            word: string;
+          }>;
+
+          flaggedSegments.forEach(segment => {
+            if (segment.correctedWord && segment.wordIndex !== undefined) {
+              const wordIndex = segment.wordIndex;
+              if (words[wordIndex]) {
+                words[wordIndex].word = segment.correctedWord;
+                words[wordIndex].correctedWord = segment.correctedWord;
+                words[wordIndex].isEdited = true;
+              }
+            }
+          });
+        }
+
+        // Generate corrected text from words array
+        exportText = words.map(w => w.correctedWord || w.word).join(' ');
+      } catch (error) {
+        console.error('Error applying edits to export:', error);
+        // Fall back to original transcript if edit application fails
+      }
+    } else if (transcription.flaggedSegments) {
+      // Even without TranscriptionEdit records, check flaggedSegments for corrections
+      try {
+        const flaggedSegments = JSON.parse(transcription.flaggedSegments as string) as Array<{
+          wordIndex: number;
+          correctedWord?: string;
+          word: string;
+        }>;
+
+        const words = JSON.parse(transcription.words as string) as Array<{
+          word: string;
+          correctedWord?: string;
+        }>;
+
+        flaggedSegments.forEach(segment => {
+          if (segment.correctedWord && segment.wordIndex !== undefined && words[segment.wordIndex]) {
+            words[segment.wordIndex].word = segment.correctedWord;
+            words[segment.wordIndex].correctedWord = segment.correctedWord;
+          }
+        });
+
+        exportText = words.map(w => w.correctedWord || w.word).join(' ');
+      } catch (error) {
+        console.error('Error applying flagged segment corrections to export:', error);
+      }
+    }
+
     // Build metadata
     const metadata: ExportMetadata = {
       caseName: transcription.job.title,
@@ -87,9 +173,9 @@ export async function GET(
       useQAFormat: true,
     };
 
-    // Generate export
+    // Generate export with corrected text
     const { buffer, filename, contentType } = await exportTranscript(
-      transcription.fullTranscript,
+      exportText,
       metadata,
       options,
     );

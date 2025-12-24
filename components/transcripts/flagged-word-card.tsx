@@ -1,50 +1,48 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Volume2, Check, Edit2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+// ═══════════════════════════════════════════════════════════════
+// FLAGGED WORD CARD - Individual word review card
+// ═══════════════════════════════════════════════════════════════
+// Features:
+// - Display word with confidence percentage
+// - Show surrounding context
+// - Play button to seek audio
+// - Edit mode for corrections
+// - Mark as reviewed (OK) button
+// - Loop button for repeated listening
+// - Accessible with aria-label
 
-export interface FlaggedSegment {
-  wordIndex: number;
-  word: string;
-  confidence: number;
-  start: number;
-  end: number;
-  context: string;
-  alternatives: string[];
-}
+import React, { useState, useRef, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { FlaggedWordWithContext } from '@/types/review';
 
 interface FlaggedWordCardProps {
-  segment: FlaggedSegment;
-  isReviewed: boolean;
+  flaggedWord: FlaggedWordWithContext;
+  isActive: boolean;
   isPlaying: boolean;
-  isSelected: boolean;
-  onPlay: () => void;
-  onEdit: (newWord: string) => void;
-  onMarkReviewed: () => void;
-  onSelect: () => void;
-}
-
-function getConfidenceColor(confidence: number): string {
-  if (confidence < 0.5) return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-  if (confidence < 0.7) return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
-  return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+  onSeek: (time: number) => void;
+  onCorrect: (wordIndex: number, newWord: string) => void;
+  onMarkReviewed: (wordIndex: number) => void;
+  onLoop?: (start: number, end: number) => void;
 }
 
 export function FlaggedWordCard({
-  segment,
-  isReviewed,
+  flaggedWord,
+  isActive,
   isPlaying,
-  isSelected,
-  onPlay,
-  onEdit,
+  onSeek,
+  onCorrect,
   onMarkReviewed,
-  onSelect,
+  onLoop,
 }: FlaggedWordCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(segment.word);
+  const [editValue, setEditValue] = useState(flaggedWord.correctedWord || flaggedWord.word);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const confidencePercent = Math.round(flaggedWord.confidence * 100);
+
+  // Focus input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
@@ -52,173 +50,229 @@ export function FlaggedWordCard({
     }
   }, [isEditing]);
 
-  const handleConfirmEdit = () => {
-    if (editValue.trim() && editValue !== segment.word) {
-      onEdit(editValue.trim());
+  // Reset edit value when flagged word changes
+  useEffect(() => {
+    setEditValue(flaggedWord.correctedWord || flaggedWord.word);
+  }, [flaggedWord.correctedWord, flaggedWord.word]);
+
+  const handlePlayClick = () => {
+    // Seek to 2 seconds before the word for context
+    const seekTime = Math.max(0, flaggedWord.start - 2);
+    onSeek(seekTime);
+  };
+
+  const handleLoopClick = () => {
+    if (onLoop) {
+      // Loop from 1 second before to 1 second after
+      const loopStart = Math.max(0, flaggedWord.start - 1);
+      const loopEnd = flaggedWord.end + 1;
+      onLoop(loopStart, loopEnd);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (editValue.trim() && editValue.trim() !== flaggedWord.word) {
+      onCorrect(flaggedWord.wordIndex, editValue.trim());
     }
     setIsEditing(false);
   };
 
   const handleCancelEdit = () => {
-    setEditValue(segment.word);
+    setEditValue(flaggedWord.correctedWord || flaggedWord.word);
     setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      e.preventDefault();
-      handleConfirmEdit();
+      handleSaveEdit();
     } else if (e.key === 'Escape') {
       handleCancelEdit();
     }
   };
 
-  const handleAlternativeClick = (alt: string) => {
-    onEdit(alt);
-    onMarkReviewed();
+  // Get confidence color
+  const getConfidenceColor = () => {
+    if (confidencePercent >= 80) return 'text-orange-500';
+    if (confidencePercent >= 60) return 'text-orange-600';
+    return 'text-red-600';
   };
 
-  // Highlight the flagged word in context
-  const formattedContext = segment.context.replace(
-    /\[([^\]]+)\]/,
-    '<mark class="bg-yellow-200 dark:bg-yellow-800 px-1 rounded font-medium">$1</mark>',
-  );
+  // Accessible label for the card
+  const cardAriaLabel = `Word "${flaggedWord.word}", confidence ${confidencePercent}%${
+    flaggedWord.reviewed ? ', reviewed' : ', needs review'
+  }${flaggedWord.correctedWord ? `, corrected to "${flaggedWord.correctedWord}"` : ''}`;
 
   return (
     <div
-      onClick={onSelect}
-      className={cn(
-        'rounded-lg p-4 transition-all cursor-pointer',
-        'border-l-4',
-        isReviewed
-          ? 'bg-slate-50 dark:bg-slate-900 border-l-green-500 opacity-75'
-          : 'bg-white dark:bg-slate-800 border-l-amber-500 shadow-sm hover:shadow-md',
-        isPlaying && 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20',
-        isSelected && !isPlaying && 'ring-2 ring-slate-400',
-      )}
+      className={`border rounded-lg p-3 transition-all ${
+        isActive
+          ? 'border-blue-500 bg-blue-50 shadow-md'
+          : flaggedWord.reviewed
+          ? 'border-gray-200 bg-gray-50'
+          : 'border-gray-200 bg-white hover:border-gray-300'
+      }`}
+      aria-label={cardAriaLabel}
+      role="article"
     >
-      {/* Header: Word and Confidence */}
-      <div className="flex items-start justify-between mb-3">
+      {/* Header: Word and confidence */}
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onPlay();
-            }}
-            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            title="Play audio from this point"
-          >
-            <Volume2 className={cn('w-4 h-4', isPlaying ? 'text-blue-600' : 'text-slate-500')} />
-          </button>
+          {/* Reviewed indicator */}
+          {flaggedWord.reviewed && (
+            <span className="text-green-500" title="Reviewed" aria-label="Reviewed">
+              ✓
+            </span>
+          )}
 
+          {/* The word */}
           {isEditing ? (
-            <input
+            <Input
               ref={inputRef}
-              type="text"
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              onBlur={handleCancelEdit}
-              className="px-2 py-1 border rounded text-lg font-medium w-40 dark:bg-slate-700 dark:border-slate-600"
-              onClick={(e) => e.stopPropagation()}
+              className="w-32 h-8 font-mono text-lg"
+              aria-label="Edit word"
             />
           ) : (
-            <span className="text-lg font-medium text-slate-900 dark:text-slate-100">
-              &quot;{segment.word}&quot;
+            <span
+              className={`font-mono text-lg font-bold ${
+                flaggedWord.correctedWord ? 'text-green-600' : 'text-gray-900'
+              }`}
+            >
+              {flaggedWord.correctedWord || flaggedWord.word}
+            </span>
+          )}
+
+          {/* Show original if corrected */}
+          {flaggedWord.correctedWord && !isEditing && (
+            <span className="text-sm text-gray-400 line-through">
+              {flaggedWord.word}
             </span>
           )}
         </div>
 
-        <span className={cn('px-2 py-0.5 text-xs font-medium rounded-full', getConfidenceColor(segment.confidence))}>
-          {Math.round(segment.confidence * 100)}%
+        {/* Confidence badge */}
+        <span
+          className={`text-sm font-medium ${getConfidenceColor()}`}
+          aria-label={`Confidence: ${confidencePercent}%`}
+        >
+          {confidencePercent}%
         </span>
       </div>
 
       {/* Context */}
-      <div className="mb-3">
-        <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Context:</div>
-        <div
-          className="text-sm text-slate-700 dark:text-slate-300 italic"
-          dangerouslySetInnerHTML={{ __html: formattedContext }}
-        />
+      <div className="text-sm text-gray-600 mb-3 bg-gray-50 rounded px-2 py-1">
+        <span className="text-gray-400">...</span>
+        {flaggedWord.contextBefore}
+        <span className="font-medium text-gray-900 mx-1 bg-yellow-100 px-1 rounded">
+          {flaggedWord.correctedWord || flaggedWord.word}
+        </span>
+        {flaggedWord.contextAfter}
+        <span className="text-gray-400">...</span>
       </div>
 
-      {/* Alternatives */}
-      {segment.alternatives.length > 0 && !isReviewed && (
-        <div className="mb-3">
-          <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Suggestions:</div>
-          <div className="flex flex-wrap gap-2">
-            {segment.alternatives.map((alt, idx) => (
-              <button
-                key={idx}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAlternativeClick(alt);
-                }}
-                className="px-2 py-1 text-sm bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded transition-colors"
-              >
-                {alt}
-              </button>
-            ))}
-          </div>
+      {/* Alternatives (if available) */}
+      {flaggedWord.alternatives && flaggedWord.alternatives.length > 0 && !isEditing && (
+        <div className="text-xs text-gray-500 mb-3">
+          <span className="font-medium">Suggestions: </span>
+          {flaggedWord.alternatives.map((alt, i) => (
+            <button
+              key={i}
+              onClick={() => onCorrect(flaggedWord.wordIndex, alt)}
+              className="inline-block bg-gray-100 hover:bg-gray-200 rounded px-1.5 py-0.5 mx-0.5 transition-colors"
+              aria-label={`Use suggestion: ${alt}`}
+            >
+              {alt}
+            </button>
+          ))}
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-2 border-t dark:border-slate-700">
+      <div className="flex items-center gap-2">
         {isEditing ? (
-          <div className="flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleConfirmEdit();
-              }}
-              className="flex items-center gap-1 px-2 py-1 text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded hover:bg-green-200"
+          <>
+            <Button
+              size="sm"
+              onClick={handleSaveEdit}
+              className="flex-1"
+              aria-label="Save correction"
             >
-              <Check className="w-3 h-3" /> Save
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCancelEdit();
-              }}
-              className="flex items-center gap-1 px-2 py-1 text-sm bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 rounded hover:bg-slate-200"
+              Save
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCancelEdit}
+              aria-label="Cancel editing"
             >
-              <X className="w-3 h-3" /> Cancel
-            </button>
-          </div>
+              Cancel
+            </Button>
+          </>
         ) : (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsEditing(true);
-            }}
-            disabled={isReviewed}
-            className="flex items-center gap-1 px-2 py-1 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded disabled:opacity-50"
-          >
-            <Edit2 className="w-3 h-3" /> Edit
-          </button>
-        )}
+          <>
+            {/* Play button */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handlePlayClick}
+              className="flex items-center gap-1"
+              title="Play audio at this word (with 2s context)"
+              aria-label={`Play audio for word "${flaggedWord.word}"`}
+            >
+              {isPlaying && isActive ? (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+              Play
+            </Button>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onMarkReviewed();
-          }}
-          className={cn(
-            'flex items-center gap-1 px-2 py-1 text-sm rounded transition-colors',
-            isReviewed
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
-          )}
-        >
-          <Check className="w-3 h-3" />
-          {isReviewed ? 'Reviewed' : 'Mark Done'}
-        </button>
+            {/* Loop button */}
+            {onLoop && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleLoopClick}
+                title="Loop this word"
+                aria-label={`Loop audio for word "${flaggedWord.word}"`}
+              >
+                🔁
+              </Button>
+            )}
+
+            {/* Edit button */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsEditing(true)}
+              aria-label={`Edit word "${flaggedWord.word}"`}
+            >
+              Edit
+            </Button>
+
+            {/* Mark OK button */}
+            {!flaggedWord.reviewed && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onMarkReviewed(flaggedWord.wordIndex)}
+                className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                aria-label={`Mark word "${flaggedWord.word}" as correct`}
+              >
+                ✓ OK
+              </Button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 export default FlaggedWordCard;
-

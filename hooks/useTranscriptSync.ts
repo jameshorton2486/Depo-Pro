@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import type { Word } from '@/components/transcripts/word-span';
+import type { ReviewWord } from '@/types/review';
+
+// Word type for sync hook (minimal fields needed)
+type Word = Pick<ReviewWord, 'start' | 'end'>;
 
 interface UseTranscriptSyncReturn {
   currentWordIndex: number | null;

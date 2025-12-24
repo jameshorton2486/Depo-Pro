@@ -169,6 +169,8 @@ export function JobForm({ initialData, mode }: JobFormProps) {
                 <SelectItem value={JobStatus.IN_EDIT}>In Edit</SelectItem>
                 <SelectItem value={JobStatus.SUBMITTED_FOR_REVIEW}>Submitted for Review</SelectItem>
                 <SelectItem value={JobStatus.IN_REVIEW}>In Review</SelectItem>
+                <SelectItem value={JobStatus.SCOPIST_COMPLETE}>Scopist Complete</SelectItem>
+                <SelectItem value={JobStatus.REVIEW_COMPLETE}>Review Complete</SelectItem>
                 <SelectItem value={JobStatus.COMPLETED}>Completed</SelectItem>
                 <SelectItem value={JobStatus.CANCELLED}>Cancelled</SelectItem>
               </SelectContent>

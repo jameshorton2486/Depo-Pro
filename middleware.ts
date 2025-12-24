@@ -19,6 +19,7 @@ const roleRestrictedPaths: Record<string, string[]> = {
   '/admin': ['ADMIN'],
   '/reporter': ['ADMIN', 'REPORTER'],
   '/scopist': ['ADMIN', 'SCOPIST'],
+  '/attorney': ['ADMIN', 'ATTORNEY'],
 };
 
 export async function middleware(request: NextRequest) {

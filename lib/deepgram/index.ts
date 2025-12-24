@@ -2,6 +2,9 @@ import { Queue } from 'bullmq';
 import { redisConnection } from '@/lib/redis';
 import { _config } from './config';
 
+// Re-export Deepgram client utilities
+export { getDeepgramClient, LEGAL_TRANSCRIPTION_OPTIONS, LEGAL_VOCABULARY } from './client';
+
 // Transcription job queue
 export const transcriptionQueue = new Queue('transcription', {
   connection: redisConnection,

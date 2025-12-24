@@ -1,0 +1,160 @@
+import { prisma } from '@/lib/db';
+import { transcriptionQueue } from '@/lib/deepgram';
+import { z } from 'zod';
+
+// This file contains Express.js patterns that need to be converted to Next.js API routes
+// TODO: Move these handlers to app/api/jobs/route.ts following Next.js conventions
+
+// Validation schemas
+const createJobSchema = z.object({
+  firmId: z.string().cuid(),
+  createdById: z.string().cuid(),
+  caseNumber: z.string().optional(),
+  caseName: z.string().optional(),
+});
+
+// GET /api/jobs - List all jobs (with multi-tenant filtering)
+router.get('/', async (req, res) => {
+  try {
+    // TODO: Add authentication middleware to get firmId from token
+    const firmId = req.query.firmId as string;
+    
+    if (!firmId) {
+      return res.status(400).json({ error: 'firmId is required' });
+    }
+    
+    const jobs = await prisma.job.findMany({
+      where: { firmId },
+      include: {
+        createdBy: {
+          select: { email: true, name: true },
+        },
+        assignedTo: {
+          select: { email: true, name: true },
+        },
+        files: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    
+    res.json({ jobs, count: jobs.length });
+    
+  } catch (error) {
+    console.error('Error listing jobs:', error);
+    res.status(500).json({ error: 'Failed to list jobs' });
+  }
+});
+
+// GET /api/jobs/:id - Get single job details
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        createdBy: true,
+        assignedTo: true,
+        files: true,
+        transcription: true,
+      },
+    });
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    // TODO: Add multi-tenant check - verify requesting user's firmId matches job's firmId
+    
+    res.json({ job });
+    
+  } catch (error) {
+    console.error('Error fetching job:', error);
+    res.status(500).json({ error: 'Failed to fetch job' });
+  }
+});
+
+// POST /api/jobs - Create new job
+router.post('/', async (req, res) => {
+  try {
+    const validated = createJobSchema.parse(req.body);
+    
+    const job = await prisma.job.create({
+      data: {
+        firmId: validated.firmId,
+        createdById: validated.createdById,
+        caseNumber: validated.caseNumber,
+        caseName: validated.caseName,
+        status: 'PENDING',
+        stage: 'AI_TRANSCRIPTION',
+      },
+      include: {
+        createdBy: true,
+      },
+    });
+    
+    res.status(201).json({ job });
+    
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid input', details: error.issues });
+    }
+    console.error('Error creating job:', error);
+    res.status(500).json({ error: 'Failed to create job' });
+  }
+});
+
+// POST /api/jobs/:id/transcribe - Queue transcription job
+router.post('/:id/transcribe', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const job = await prisma.job.findUnique({
+      where: { id },
+      include: {
+        files: true,
+        firm: true,
+        createdBy: true,
+      },
+    });
+    
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    // Find audio file
+    const audioFile = job.files.find(f => f.fileType === 'AUDIO');
+    
+    if (!audioFile) {
+      return res.status(400).json({ error: 'No audio file attached to job' });
+    }
+    
+    // Queue transcription job
+    await transcriptionQueue.add('transcribe', {
+      jobId: job.id,
+      firmId: job.firmId,
+      audioFileUrl: audioFile.originalFileUrl,
+      audioFileName: audioFile.originalFileName,
+      requestedBy: job.createdBy.email,
+    });
+    
+    // Update job status
+    await prisma.job.update({
+      where: { id },
+      data: { status: 'PROCESSING' },
+    });
+    
+    res.json({ 
+      message: 'Transcription job queued',
+      jobId: job.id,
+      status: 'PROCESSING'
+    });
+    
+  } catch (error) {
+    console.error('Error queuing transcription:', error);
+    res.status(500).json({ error: 'Failed to queue transcription' });
+  }
+});
+
+export default router;

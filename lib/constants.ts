@@ -10,6 +10,7 @@ export const Role = {
   ADMIN: 'ADMIN',
   REPORTER: 'REPORTER',
   SCOPIST: 'SCOPIST',
+  ATTORNEY: 'ATTORNEY',
 } as const;
 
 export type Role = (typeof Role)[keyof typeof Role];
@@ -28,6 +29,8 @@ export const JobStatus = {
   IN_EDIT: 'IN_EDIT',
   SUBMITTED_FOR_REVIEW: 'SUBMITTED_FOR_REVIEW',
   IN_REVIEW: 'IN_REVIEW',
+  SCOPIST_COMPLETE: 'SCOPIST_COMPLETE',
+  REVIEW_COMPLETE: 'REVIEW_COMPLETE',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
 } as const;
@@ -115,6 +118,8 @@ export const JOB_STATUS_COLORS: Record<JobStatus, string> = {
   IN_EDIT: 'bg-orange-100 text-orange-800 border-orange-300',
   SUBMITTED_FOR_REVIEW: 'bg-teal-100 text-teal-800 border-teal-300',
   IN_REVIEW: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  SCOPIST_COMPLETE: 'bg-purple-100 text-purple-800 border-purple-300',
+  REVIEW_COMPLETE: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   COMPLETED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   CANCELLED: 'bg-red-100 text-red-800 border-red-300',
 };
@@ -137,6 +142,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   ADMIN: 'Admin',
   REPORTER: 'Court Reporter',
   SCOPIST: 'Scopist',
+  ATTORNEY: 'Attorney',
 };
 
 /**
@@ -146,6 +152,7 @@ export const ROLE_COLORS: Record<Role, string> = {
   ADMIN: 'bg-red-100 text-red-800 border-red-300',
   REPORTER: 'bg-blue-100 text-blue-800 border-blue-300',
   SCOPIST: 'bg-green-100 text-green-800 border-green-300',
+  ATTORNEY: 'bg-purple-100 text-purple-800 border-purple-300',
 };
 
 /**
@@ -174,6 +181,8 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   IN_EDIT: 'In Edit',
   SUBMITTED_FOR_REVIEW: 'Submitted for Review',
   IN_REVIEW: 'In Review',
+  SCOPIST_COMPLETE: 'Scopist Review Complete',
+  REVIEW_COMPLETE: 'Review Complete',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
 };

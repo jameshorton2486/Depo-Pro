@@ -1,64 +1,67 @@
-// scripts/test-db-connection.ts
-// Quick script to test database connection
+import { config } from 'dotenv';
+import { resolve } from 'path';
+import { Client } from 'pg';
 
-import { PrismaClient } from '@prisma/client';
+// Explicitly load .env.local
+const envPath = resolve(process.cwd(), '.env.local');
+config({ path: envPath });
 
-const prisma = new PrismaClient();
+console.log(`📁 Loaded environment from: .env.local`);
 
-async function testConnection() {
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set');
+  process.exit(1);
+}
+
+console.log('✅ DATABASE_URL is set');
+console.log(
+  '   Connection:',
+  process.env.DATABASE_URL.replace(/:.+@/, ':****@'),
+);
+
+async function test() {
+  const dbUrl = process.env.DATABASE_URL!;
+  
+  // Remove sslmode from connection string and configure SSL explicitly
+  // The ?sslmode=require in the URL can conflict with SSL object config
+  const cleanUrl = dbUrl.replace(/\?sslmode=[^&]*/, '');
+  
+  const clientConfig: any = {
+    connectionString: cleanUrl,
+  };
+
+  // For Supabase, configure SSL to accept certificate chain
+  if (dbUrl.includes('supabase.co')) {
+    clientConfig.ssl = {
+      rejectUnauthorized: false, // Supabase uses valid certs, but Node.js may need this
+    };
+  }
+
+  const client = new Client(clientConfig);
+
   try {
-    console.log('🔍 Testing database connection...\n');
-    
-    // Test basic connection
-    await prisma.$connect();
-    console.log('✅ Database connection successful!\n');
-    
-    // Test a simple query
-    const userCount = await prisma.user.count();
-    console.log(`✅ Query test successful! Found ${userCount} user(s) in database.\n`);
-    
-    // Test schema access
-    const tables = await prisma.$queryRaw<Array<{ tablename: string }>>`
-      SELECT tablename FROM pg_tables 
-      WHERE schemaname = 'public'
-      ORDER BY tablename;
-    `;
-    
-    console.log(`✅ Schema access successful! Found ${tables.length} tables:\n`);
-    tables.forEach(table => {
-      console.log(`   - ${table.tablename}`);
-    });
-    
-    console.log('\n🎉 All database tests passed!');
-    
-  } catch (error) {
-    console.error('\n❌ Database connection failed!\n');
-    
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      
-      if (error.message.includes('P1000') || error.message.includes('Authentication')) {
-        console.error('\n💡 This is an authentication error.');
-        console.error('   Check your DATABASE_URL in .env.local');
-        console.error('   Verify your Supabase password is correct');
-        console.error('   Ensure you\'re using direct connection (port 5432)');
-      } else if (error.message.includes('P1001') || error.message.includes('Can\'t reach')) {
-        console.error('\n💡 Cannot reach database server.');
-        console.error('   Check your internet connection');
-        console.error('   Verify Supabase project is active');
-        console.error('   Check if IP is whitelisted in Supabase');
-      } else if (error.message.includes('SSL')) {
-        console.error('\n💡 SSL connection issue.');
-        console.error('   Add ?sslmode=require to your DATABASE_URL');
-      }
-    } else {
-      console.error('Unknown error:', error);
-    }
-    
+    console.log('🔌 Attempting database connection...');
+    await client.connect();
+
+    const res = await client.query(
+      'SELECT 1 AS ok, current_database() AS db_name',
+    );
+    console.log('✅ Query successful:', res.rows[0]);
+
+    const version = await client.query('SHOW server_version');
+    console.log('✅ PostgreSQL version:', version.rows[0].server_version);
+
+    console.log('\n🎉 All connection tests passed!');
+    console.log('📝 Next steps:');
+    console.log('   1. npx prisma generate');
+    console.log('   2. npx prisma db push');
+  } catch (err: any) {
+    console.error('❌ Database connection failed:');
+    console.error(err.message || err);
     process.exit(1);
   } finally {
-    await prisma.$disconnect();
+    await client.end();
   }
 }
 
-testConnection();
+test();

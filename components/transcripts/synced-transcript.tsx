@@ -1,183 +1,208 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback, useMemo } from 'react';
-import { WordSpan, Word } from './word-span';
-import { cn } from '@/lib/utils';
+// ═══════════════════════════════════════════════════════════════
+// SYNCED TRANSCRIPT - Bi-directional audio-text synchronization
+// ═══════════════════════════════════════════════════════════════
+// Features:
+// - Audio → Text: Highlights current word as audio plays
+// - Text → Audio: Click any word to seek audio
+// - Auto-scroll to keep active word visible (only when outside viewport)
+// - Red text for low-confidence words
+// - Binary search for O(log n) active word lookup
+
+import React, { useRef, useEffect, useMemo, useCallback } from 'react';
+import { WordSpan } from './word-span';
+import { ReviewWord } from '@/types/review';
+
+// Configurable: Break paragraphs on pauses longer than this (seconds)
+const PARAGRAPH_PAUSE_SECONDS = 2;
 
 interface SyncedTranscriptProps {
-  words: Word[];
+  words: ReviewWord[];
   currentTime: number;
-  onWordClick: (index: number, startTime: number) => void;
-  lowConfidenceThreshold?: number;
-  speakerLabels?: Record<number, string>;
+  confidenceThreshold: number;
+  reviewedIndices: Set<number>;
+  correctedIndices: Set<number>;
+  onWordClick: (time: number, wordIndex: number) => void;
   className?: string;
-}
-
-// Binary search to find word at current time
-function findWordAtTime(words: Word[], time: number): number | null {
-  if (!words.length) return null;
-
-  let left = 0;
-  let right = words.length - 1;
-
-  // Binary search for word containing the time
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    const word = words[mid];
-
-    if (time >= word.start && time <= word.end) {
-      return mid;
-    }
-
-    if (time < word.start) {
-      right = mid - 1;
-    } else {
-      left = mid + 1;
-    }
-  }
-
-  // If between words, return the next word (or last if past end)
-  if (left >= words.length) return words.length - 1;
-  if (left === 0) return 0;
-
-  // Return the word we're closest to
-  const prevWord = words[left - 1];
-
-  // If we're past the previous word's end, return next word
-  if (time > prevWord.end) {
-    return left;
-  }
-
-  return left - 1;
 }
 
 export function SyncedTranscript({
   words,
   currentTime,
+  confidenceThreshold,
+  reviewedIndices,
+  correctedIndices,
   onWordClick,
-  lowConfidenceThreshold = 0.85,
-  speakerLabels = {},
-  className,
+  className = '',
 }: SyncedTranscriptProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const wordRefs = useRef<Map<number, HTMLSpanElement>>(new Map());
-  const lastScrolledIndex = useRef<number | null>(null);
 
-  // Find current word using binary search
-  const currentWordIndex = useMemo(() => {
-    return findWordAtTime(words, currentTime);
+  // Binary search to find the active word index based on current time
+  // O(log n) performance for large transcripts
+  const activeWordIndex = useMemo(() => {
+    if (words.length === 0 || currentTime < 0) return -1;
+
+    let left = 0;
+    let right = words.length - 1;
+    let result = -1;
+
+    while (left <= right) {
+      const mid = Math.floor((left + right) / 2);
+      const word = words[mid];
+
+      if (currentTime >= word.start && currentTime <= word.end) {
+        return mid;
+      } else if (currentTime < word.start) {
+        right = mid - 1;
+      } else {
+        result = mid; // Keep track of the last word we passed
+        left = mid + 1;
+      }
+    }
+
+    return result;
   }, [words, currentTime]);
 
-  // Auto-scroll to current word (debounced)
+  // Auto-scroll to keep active word visible (only when outside viewport)
   useEffect(() => {
-    if (currentWordIndex === null) return;
-    if (currentWordIndex === lastScrolledIndex.current) return;
+    if (activeWordIndex < 0) return;
 
-    const element = wordRefs.current.get(currentWordIndex);
     const container = containerRef.current;
+    if (!container) return;
 
-    if (element && container) {
-      const elementRect = element.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
+    const activeElement = container.querySelector(
+      `[data-word-index="${activeWordIndex}"]`,
+    ) as HTMLElement;
 
-      // Only scroll if word is outside the middle 60% of visible area
-      const visibleTop = containerRect.top + containerRect.height * 0.2;
-      const visibleBottom = containerRect.bottom - containerRect.height * 0.2;
+    if (!activeElement) return;
 
-      if (elementRect.top < visibleTop || elementRect.bottom > visibleBottom) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        lastScrolledIndex.current = currentWordIndex;
-      }
+    // Check if element is visible within the container viewport
+    const containerRect = container.getBoundingClientRect();
+    const elementRect = activeElement.getBoundingClientRect();
+
+    const isVisible =
+      elementRect.top >= containerRect.top &&
+      elementRect.bottom <= containerRect.bottom;
+
+    // Only scroll if the active word is outside the visible area
+    // This prevents "scroll jitter" during playback
+    if (!isVisible) {
+      activeElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest',
+      });
     }
-  }, [currentWordIndex]);
+  }, [activeWordIndex]);
 
-  // Handle word click
-  const handleWordClick = useCallback((index: number, startTime: number) => {
-    onWordClick(index, startTime);
-  }, [onWordClick]);
+  // Memoized click handler
+  const handleWordClick = useCallback(
+    (time: number, wordIndex: number) => {
+      onWordClick(time, wordIndex);
+    },
+    [onWordClick],
+  );
 
-  // Set ref for word element
-  const setWordRef = useCallback((index: number, el: HTMLSpanElement | null) => {
-    if (el) {
-      wordRefs.current.set(index, el);
-    } else {
-      wordRefs.current.delete(index);
-    }
-  }, []);
+  // Group words into paragraphs based on speaker changes or long pauses
+  const paragraphs = useMemo(() => {
+    if (words.length === 0) return [];
 
-  // Group words by speaker for display
-  const wordGroups = useMemo(() => {
-    const groups: Array<{ speaker: number | undefined; startIndex: number; words: Word[] }> = [];
-    let currentSpeaker: number | undefined = undefined;
-    let currentGroup: Word[] = [];
-    let startIndex = 0;
+    const result: ReviewWord[][] = [];
+    let currentParagraph: ReviewWord[] = [];
+    let lastSpeaker: number | undefined = undefined;
+    let lastEnd = 0;
 
     words.forEach((word, index) => {
-      if (word.speaker !== currentSpeaker && currentGroup.length > 0) {
-        groups.push({ speaker: currentSpeaker, startIndex, words: currentGroup });
-        currentGroup = [];
-        startIndex = index;
+      // Start new paragraph on speaker change or pause > threshold
+      const speakerChanged = lastSpeaker !== undefined && word.speaker !== lastSpeaker;
+      const longPause = lastEnd > 0 && word.start - lastEnd > PARAGRAPH_PAUSE_SECONDS;
+
+      if ((speakerChanged || longPause) && currentParagraph.length > 0) {
+        result.push(currentParagraph);
+        currentParagraph = [];
       }
-      currentSpeaker = word.speaker;
-      currentGroup.push(word);
+
+      currentParagraph.push({ ...word, index });
+      lastSpeaker = word.speaker;
+      lastEnd = word.end;
     });
 
-    if (currentGroup.length > 0) {
-      groups.push({ speaker: currentSpeaker, startIndex, words: currentGroup });
+    if (currentParagraph.length > 0) {
+      result.push(currentParagraph);
     }
 
-    return groups;
+    return result;
   }, [words]);
+
+  if (words.length === 0) {
+    return (
+      <div className={`flex items-center justify-center h-full text-gray-500 ${className}`}>
+        No transcript available
+      </div>
+    );
+  }
 
   return (
     <div
       ref={containerRef}
-      className={cn(
-        'prose dark:prose-invert max-w-none',
-        'leading-relaxed text-lg',
-        className,
-      )}
+      className={`h-full overflow-y-auto p-6 bg-white rounded-lg border border-gray-200 ${className}`}
     >
-      {wordGroups.map((group, groupIndex) => {
-        const speakerLabel = group.speaker !== undefined
-          ? speakerLabels[group.speaker] || `SPEAKER ${group.speaker + 1}`
-          : null;
-
-        return (
-          <p key={groupIndex} className="mb-4">
-            {speakerLabel && (
-              <span className="font-bold text-blue-600 dark:text-blue-400 mr-2 block mb-1">
-                {speakerLabel}:
-              </span>
-            )}
-            {group.words.map((word, wordIndex) => {
-              const globalIndex = group.startIndex + wordIndex;
-              const isLowConfidence = word.confidence < lowConfidenceThreshold;
-              const isCurrentWord = globalIndex === currentWordIndex;
+      <div className="text-lg leading-relaxed space-y-4">
+        {paragraphs.map((paragraph, pIndex) => (
+          <p key={pIndex} className="mb-4">
+            {paragraph.map((word, wIndex) => {
+              const isFlagged = word.confidence < confidenceThreshold;
+              const isActive = word.index === activeWordIndex;
+              const isReviewed = reviewedIndices.has(word.index);
+              const isCorrected = correctedIndices.has(word.index);
 
               return (
-                <React.Fragment key={globalIndex}>
-                  <span
-                    ref={(el) => setWordRef(globalIndex, el)}
-                  >
-                    <WordSpan
-                      word={word}
-                      index={globalIndex}
-                      isCurrentWord={isCurrentWord}
-                      isLowConfidence={isLowConfidence}
-                      onClick={handleWordClick}
-                    />
-                  </span>
-                  {' '}
+                <React.Fragment key={word.index}>
+                  <WordSpan
+                    word={word.correctedWord || word.word}
+                    index={word.index}
+                    start={word.start}
+                    end={word.end}
+                    confidence={word.confidence}
+                    isActive={isActive}
+                    isFlagged={isFlagged}
+                    isReviewed={isReviewed}
+                    isCorrected={isCorrected}
+                    onClick={handleWordClick}
+                  />
+                  {/* Add space after word unless it's the last in paragraph */}
+                  {wIndex < paragraph.length - 1 && ' '}
                 </React.Fragment>
               );
             })}
           </p>
-        );
-      })}
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-6 pt-4 border-t border-gray-200 text-sm text-gray-600">
+        <div className="flex flex-wrap gap-4">
+          <span className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-blue-500 rounded"></span>
+            Currently playing
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-4 h-4 border-b-2 border-red-400 border-wavy text-red-600">abc</span>
+            Needs review
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-green-100 text-green-600 rounded px-1">abc</span>
+            Corrected
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-gray-100 rounded"></span>
+            Reviewed (OK)
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default SyncedTranscript;
-
