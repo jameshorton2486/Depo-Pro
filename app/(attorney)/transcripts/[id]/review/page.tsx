@@ -5,18 +5,17 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { TranscriptViewer } from '@/components/attorney/transcript-viewer';
 import { IssueCodePalette } from '@/components/attorney/issue-code-palette';
 import { ExhibitLinker } from '@/components/attorney/exhibit-linker';
 import { AttorneyTranscript } from '@/types/attorney-transcript';
-import { IssueCode, TranscriptAnnotation, DEFAULT_ISSUE_CODES } from '@/types/issue-code';
+import { IssueCode, TranscriptAnnotation } from '@/types/issue-code';
 import { X } from 'lucide-react';
 
 // TODO: Replace with real data fetching

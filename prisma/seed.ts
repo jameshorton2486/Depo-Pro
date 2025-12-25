@@ -8,52 +8,7 @@ async function main() {
 
   const passwordHash = await hash('password123', 10);
 
-  // Create admin user
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@depo-pro.com' },
-    update: {},
-    create: {
-      email: 'admin@depo-pro.com',
-      firstName: 'Admin',
-      lastName: 'User',
-      role: UserRole.ADMIN,
-      passwordHash,
-    },
-  });
-
-  console.log('✅ Created admin:', admin.email);
-
-  // Create court reporter
-  const reporter = await prisma.user.upsert({
-    where: { email: 'reporter@depo-pro.com' },
-    update: {},
-    create: {
-      email: 'reporter@depo-pro.com',
-      firstName: 'Court',
-      lastName: 'Reporter',
-      role: UserRole.REPORTER,
-      passwordHash,
-    },
-  });
-
-  console.log('✅ Created court reporter:', reporter.email);
-
-  // Create scopist
-  const scopist = await prisma.user.upsert({
-    where: { email: 'scopist@depo-pro.com' },
-    update: {},
-    create: {
-      email: 'scopist@depo-pro.com',
-      firstName: 'Scopist',
-      lastName: 'User',
-      role: UserRole.SCOPIST,
-      passwordHash,
-    },
-  });
-
-  console.log('✅ Created scopist:', scopist.email);
-
-  // Create demo firm (optional association)
+  // Create demo firm first (required for multi-tenant, needed for user firmId)
   const firm = await prisma.firm.upsert({
     where: { id: 'demo-firm-001' },
     update: {},
@@ -66,6 +21,114 @@ async function main() {
     },
   });
   console.log('✅ Created firm:', firm.name);
+
+  // Create admin user
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@depo-pro.com' },
+    update: {
+      firmId: firm.id,
+    },
+    create: {
+      email: 'admin@depo-pro.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: UserRole.ADMIN,
+      passwordHash,
+      firmId: firm.id,
+    },
+  });
+
+  console.log('✅ Created admin:', admin.email);
+
+  // Create court reporter
+  const reporter = await prisma.user.upsert({
+    where: { email: 'reporter@depo-pro.com' },
+    update: {
+      firmId: firm.id,
+    },
+    create: {
+      email: 'reporter@depo-pro.com',
+      firstName: 'Court',
+      lastName: 'Reporter',
+      role: UserRole.REPORTER,
+      passwordHash,
+      firmId: firm.id,
+    },
+  });
+
+  console.log('✅ Created court reporter:', reporter.email);
+
+  // Create scopist
+  const scopist = await prisma.user.upsert({
+    where: { email: 'scopist@depo-pro.com' },
+    update: {
+      firmId: firm.id,
+    },
+    create: {
+      email: 'scopist@depo-pro.com',
+      firstName: 'Scopist',
+      lastName: 'User',
+      role: UserRole.SCOPIST,
+      passwordHash,
+      firmId: firm.id,
+    },
+  });
+
+  console.log('✅ Created scopist:', scopist.email);
+
+
+  // Create attorney user (required for Phase 3 attorney portal)
+  const attorney = await prisma.user.upsert({
+    where: { email: 'attorney@depo-pro.com' },
+    update: {
+      role: UserRole.ATTORNEY,
+      firmId: firm.id,
+    },
+    create: {
+      email: 'attorney@depo-pro.com',
+      firstName: 'Attorney',
+      lastName: 'User',
+      role: UserRole.ATTORNEY,
+      passwordHash,
+      firmId: firm.id,
+    },
+  });
+  console.log('✅ Created attorney:', attorney.email);
+
+  // Create attorney profile for onboarding completion
+  await prisma.attorneyProfile.upsert({
+    where: { userId: attorney.id },
+    update: {},
+    create: {
+      userId: attorney.id,
+      barNumber: 'TX-12345',
+      barState: 'Texas',
+      firmName: 'Demo Legal Services',
+      practiceAreas: ['Civil Litigation', 'Personal Injury'],
+    },
+  });
+  console.log('✅ Created attorney profile for:', attorney.email);
+
+  // Create a sample case with attorney membership
+  const sampleCase = await prisma.case.upsert({
+    where: { id: 'case-001' },
+    update: {},
+    create: {
+      id: 'case-001',
+      caseNumber: 'CV-2024-001234',
+      caseStyle: 'Smith vs. Johnson',
+      status: 'ACTIVE',
+      firmId: firm.id,
+      createdById: attorney.id,
+      memberships: {
+        create: {
+          userId: attorney.id,
+          roleInCase: 'ATTORNEY',
+        },
+      },
+    },
+  });
+  console.log('✅ Created sample case:', sampleCase.caseStyle);
 
   // Sample jobs for reporter (different lifecycle stages)
   const jobs = [
@@ -140,6 +203,8 @@ async function main() {
   console.log('  Admin: admin@depo-pro.com');
   console.log('  Reporter: reporter@depo-pro.com');
   console.log('  Scopist: scopist@depo-pro.com');
+  console.log('  Attorney: attorney@depo-pro.com');
+  console.log('\n💡 All users are assigned to firm:', firm.name);
 }
 
 main()

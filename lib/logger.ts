@@ -1,13 +1,19 @@
-// lib/logger.ts
-// Structured logging for production
+// =============================================================================
+// STRUCTURED LOGGER
+// Production-safe logging with levels and context
+// =============================================================================
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+interface LogContext {
+  [key: string]: unknown;
+}
+
 interface LogEntry {
+  timestamp: string;
   level: LogLevel;
   message: string;
-  timestamp: string;
-  context?: Record<string, any>;
+  context?: LogContext;
   error?: {
     name: string;
     message: string;
@@ -15,74 +21,127 @@ interface LogEntry {
   };
 }
 
-class Logger {
-  private isDevelopment = process.env.NODE_ENV === 'development';
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
 
-  private formatLog(entry: LogEntry): string {
-    if (this.isDevelopment) {
-      // Pretty print in development
-      const contextStr = entry.context ? ` ${JSON.stringify(entry.context)}` : '';
-      const errorStr = entry.error ? `\n${entry.error.stack || entry.error.message}` : '';
-      return `[${entry.level.toUpperCase()}] ${entry.message}${contextStr}${errorStr}`;
-    }
+const LOG_LEVELS: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
 
-    // JSON format for production (easier to parse in log aggregators)
+const CURRENT_LEVEL: LogLevel =
+  (process.env.LOG_LEVEL as LogLevel) ||
+  (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
+
+// =============================================================================
+// LOGGER IMPLEMENTATION
+// =============================================================================
+
+function shouldLog(level: LogLevel): boolean {
+  return LOG_LEVELS[level] >= LOG_LEVELS[CURRENT_LEVEL];
+}
+
+function formatEntry(entry: LogEntry): string {
+  if (process.env.NODE_ENV === 'production') {
     return JSON.stringify(entry);
   }
 
-  private log(level: LogLevel, message: string, context?: Record<string, any>, error?: Error) {
-    const entry: LogEntry = {
-      level,
-      message,
-      timestamp: new Date().toISOString(),
-      context,
-    };
+  const { timestamp, level, message, context, error } = entry;
+  let output = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
 
-    if (error) {
-      entry.error = {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      };
-    }
+  if (context && Object.keys(context).length > 0) {
+    output += ` ${JSON.stringify(context)}`;
+  }
 
-    const formatted = this.formatLog(entry);
-
-    switch (level) {
-      case 'debug':
-        if (this.isDevelopment) console.debug(formatted);
-        break;
-      case 'info':
-        console.info(formatted);
-        break;
-      case 'warn':
-        console.warn(formatted);
-        break;
-      case 'error':
-        console.error(formatted);
-        break;
+  if (error) {
+    output += `\n  Error: ${error.name}: ${error.message}`;
+    if (error.stack && (process.env.NODE_ENV as string) !== 'production') {
+      output += `\n  ${error.stack}`;
     }
   }
 
-  debug(message: string, context?: Record<string, any>) {
-    this.log('debug', message, context);
-  }
+  return output;
+}
 
-  info(message: string, context?: Record<string, any>) {
-    this.log('info', message, context);
-  }
+function log(level: LogLevel, message: string, context?: LogContext, err?: Error): void {
+  if (!shouldLog(level)) return;
 
-  warn(message: string, context?: Record<string, any>) {
-    this.log('warn', message, context);
-  }
+  const entry: LogEntry = {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...(context && { context }),
+    ...(err && {
+      error: {
+        name: err.name,
+        message: err.message,
+        ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
+      },
+    }),
+  };
 
-  error(message: string, error?: Error, context?: Record<string, any>) {
-    this.log('error', message, context, error);
+  const output = formatEntry(entry);
+
+  switch (level) {
+    case 'debug':
+    case 'info':
+      console.log(output);
+      break;
+    case 'warn':
+      console.warn(output);
+      break;
+    case 'error':
+      console.error(output);
+      break;
   }
 }
 
-export const logger = new Logger();
+// =============================================================================
+// EXPORTED LOGGER
+// =============================================================================
 
-// Usage examples:
-// logger.info('User logged in', { userId: '123' });
-// logger.error('Failed to process job', error, { jobId: '456' });
+export const logger = {
+  debug: (message: string, context?: LogContext) => log('debug', message, context),
+  info: (message: string, context?: LogContext) => log('info', message, context),
+  warn: (message: string, context?: LogContext) => log('warn', message, context),
+  error: (message: string, error?: Error, context?: LogContext) =>
+    log('error', message, context, error),
+
+  api: (method: string, path: string, status: number, durationMs: number, context?: LogContext) => {
+    log('info', `${method} ${path} ${status} ${durationMs}ms`, {
+      method,
+      path,
+      status,
+      durationMs,
+      ...context,
+    });
+  },
+
+  time: (label: string) => {
+    const start = performance.now();
+    return {
+      end: (context?: LogContext) => {
+        const duration = Math.round(performance.now() - start);
+        log('debug', `${label} completed`, { durationMs: duration, ...context });
+        return duration;
+      },
+    };
+  },
+};
+
+// =============================================================================
+// REQUEST CONTEXT HELPER
+// =============================================================================
+
+export function createRequestContext(request: Request): LogContext {
+  const url = new URL(request.url);
+  return {
+    method: request.method,
+    path: url.pathname,
+    query: Object.fromEntries(url.searchParams),
+    userAgent: request.headers.get('user-agent')?.substring(0, 100),
+  };
+}

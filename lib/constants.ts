@@ -11,6 +11,7 @@ export const Role = {
   REPORTER: 'REPORTER',
   SCOPIST: 'SCOPIST',
   ATTORNEY: 'ATTORNEY',
+  AGENCY: 'AGENCY',
 } as const;
 
 export type Role = (typeof Role)[keyof typeof Role];
@@ -143,6 +144,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   REPORTER: 'Court Reporter',
   SCOPIST: 'Scopist',
   ATTORNEY: 'Attorney',
+  AGENCY: 'Agency',
 };
 
 /**
@@ -153,6 +155,7 @@ export const ROLE_COLORS: Record<Role, string> = {
   REPORTER: 'bg-blue-100 text-blue-800 border-blue-300',
   SCOPIST: 'bg-green-100 text-green-800 border-green-300',
   ATTORNEY: 'bg-purple-100 text-purple-800 border-purple-300',
+  AGENCY: 'bg-orange-100 text-orange-800 border-orange-300',
 };
 
 /**
@@ -186,6 +189,42 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
 };
+
+/**
+ * Transcript access levels
+ */
+export const TranscriptAccessLevel = {
+  VIEW: 'VIEW',
+  COMMENT: 'COMMENT',
+  EDIT: 'EDIT',
+} as const;
+
+export type TranscriptAccessLevel = (typeof TranscriptAccessLevel)[keyof typeof TranscriptAccessLevel];
+
+/**
+ * Share types for transcripts
+ */
+export const ShareType = {
+  USER: 'USER',
+  LINK: 'LINK',
+  ORGANIZATION: 'ORGANIZATION',
+} as const;
+
+export type ShareType = (typeof ShareType)[keyof typeof ShareType];
+
+/**
+ * Highlight colors
+ */
+export const HighlightColor = {
+  YELLOW: 'YELLOW',
+  GREEN: 'GREEN',
+  BLUE: 'BLUE',
+  PINK: 'PINK',
+  ORANGE: 'ORANGE',
+  PURPLE: 'PURPLE',
+} as const;
+
+export type HighlightColor = (typeof HighlightColor)[keyof typeof HighlightColor];
 
 /**
  * Pagination defaults

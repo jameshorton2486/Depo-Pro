@@ -22,6 +22,9 @@ const roleRestrictedPaths: Record<string, string[]> = {
   '/attorney': ['ADMIN', 'ATTORNEY'],
 };
 
+// Attorney-specific routes that require ATTORNEY role
+const attorneyRoutes = ['/attorney', '/attorney/cases', '/attorney/transcripts', '/attorney/onboarding'];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -74,6 +77,14 @@ export async function middleware(request: NextRequest) {
       if (!roles.includes(userRole)) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
+    }
+  }
+
+  // Explicit attorney route protection
+  if (attorneyRoutes.some(route => pathname.startsWith(route))) {
+    const userRole = token.role as string;
+    if (userRole !== 'ATTORNEY' && userRole !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
 

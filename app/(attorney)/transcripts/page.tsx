@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 // List of uploaded transcripts with status and issue counts
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -62,10 +62,14 @@ export default function TranscriptsPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No transcripts yet
             </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Upload functionality coming in Phase 2
+            <p className="text-sm text-gray-500 text-center max-w-md mb-4">
+              Transcripts will appear here once they are finalized and made available for review.
+              You can tag issues, link exhibits, and generate reports from completed transcripts.
             </p>
-            <Button disabled title="Coming in Phase 2">Upload Transcript</Button>
+            <Button disabled title="Coming in Phase 2">
+              <Plus className="h-4 w-4 mr-2" />
+              Upload Transcript
+            </Button>
           </CardContent>
         </Card>
       ) : (

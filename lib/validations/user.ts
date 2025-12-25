@@ -52,7 +52,7 @@ export const registerSchema = z.object({
       'Password must contain at least one uppercase letter, one lowercase letter, and one number',
     ),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
-  role: z.enum([Role.ADMIN, Role.REPORTER, Role.SCOPIST, Role.ATTORNEY] as const, {
+  role: z.enum([Role.ADMIN, Role.REPORTER, Role.SCOPIST, Role.ATTORNEY, Role.AGENCY] as const, {
     message: 'Please select a role',
   }),
   // Optional: Agency name for reporters

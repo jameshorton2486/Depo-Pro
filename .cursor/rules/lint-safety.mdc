@@ -1,0 +1,19 @@
+---
+description: ESLint guardrails to ensure zero warnings/errors in the codebase.
+globs: **/*.{ts,tsx,js,jsx}
+---
+# Lint Safety Rule
+
+You must NEVER introduce:
+- ESLint warnings
+- ESLint errors
+- Unused imports or variables
+- `any` types without explicit approval
+
+Rules:
+- If lint fails, FIX it before proceeding
+- Do NOT silence rules
+- Do NOT relax ESLint config
+- Assume `--max-warnings=0` is enforced in CI
+
+If unsure, ask before coding.

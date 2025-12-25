@@ -174,13 +174,14 @@ export default function ProfileSettingsPage() {
           <div>
             <h3 className="font-medium mb-2">Change Password</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Update your password to keep your account secure.
+              Password reset functionality is currently disabled for the MVP version of Depo-Pro.
+              Please contact your administrator if you need to reset your password.
             </p>
             <Button variant="outline" disabled>
               Change Password
             </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              Password change functionality coming soon.
+            <p className="text-xs text-amber-600 mt-2">
+              This feature is disabled for MVP. Contact support for assistance.
             </p>
           </div>
         </CardContent>

@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-// import { Role } from '@/lib/constants';
+import { Role } from '@/lib/constants';
 import { Session } from 'next-auth';
 import {
   DropdownMenu,
@@ -59,6 +59,70 @@ export function Navbar({ user }: NavbarProps) {
             >
               Jobs
             </Link>
+            <Link
+              href="/calendar"
+              className={`text-sm font-medium transition-colors hover:text-gray-900 ${
+                isActive('/calendar') ? 'text-gray-900' : 'text-gray-600'
+              }`}
+            >
+              Calendar
+            </Link>
+            {user.role === Role.REPORTER && (
+              <Link
+                href="/calendar/availability"
+                className={`text-sm font-medium transition-colors hover:text-gray-900 ${
+                  isActive('/calendar/availability') ? 'text-gray-900' : 'text-gray-600'
+                }`}
+              >
+                My Availability
+              </Link>
+            )}
+            {user.role === Role.ATTORNEY && (
+              <>
+                <Link
+                  href="/attorney"
+                  className={`text-sm font-medium transition-colors hover:text-gray-900 ${
+                    isActive('/attorney') ? 'text-gray-900' : 'text-gray-600'
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/attorney/transcripts"
+                  className={`text-sm font-medium transition-colors hover:text-gray-900 ${
+                    isActive('/attorney/transcripts') ? 'text-gray-900' : 'text-gray-600'
+                  }`}
+                >
+                  Transcripts
+                </Link>
+                <Link
+                  href="/attorney/cases"
+                  className={`text-sm font-medium transition-colors hover:text-gray-900 ${
+                    isActive('/attorney/cases') ? 'text-gray-900' : 'text-gray-600'
+                  }`}
+                >
+                  Cases
+                </Link>
+                <Link
+                  href="/calendar"
+                  className={`text-sm font-medium transition-colors hover:text-gray-900 ${
+                    isActive('/calendar') ? 'text-gray-900' : 'text-gray-600'
+                  }`}
+                >
+                  Calendar
+                </Link>
+              </>
+            )}
+            {(user.role === Role.AGENCY || user.role === Role.ADMIN) && (
+              <Link
+                href="/calendar/requests"
+                className={`text-sm font-medium transition-colors hover:text-gray-900 ${
+                  isActive('/calendar/requests') ? 'text-gray-900' : 'text-gray-600'
+                }`}
+              >
+                Booking Requests
+              </Link>
+            )}
             {user.role === 'ADMIN' && (
               <Link
                 href="/admin"

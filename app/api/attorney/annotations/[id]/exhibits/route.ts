@@ -75,7 +75,7 @@ export async function POST(
 
     // Verify all exhibits belong to the same case as the transcript
     // (We need to get the caseId from the transcript's case)
-    const transcript = await db.attorneyTranscript.findUnique({
+    const _transcript = await db.attorneyTranscript.findUnique({
       where: { id: annotation.transcriptId },
       select: {
         id: true,

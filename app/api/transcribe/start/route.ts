@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { JobStatus } from '@prisma/client';
 import { transcriptionQueue } from '@/lib/queue/transcription-queue';
+import { logger, withRequestLogging } from '@/lib/observability';
+import { checkRateLimit } from '@/lib/security';
 
 const startSchema = z.object({
   audioFileUrl: z.string().url(),
@@ -15,15 +17,27 @@ const startSchema = z.object({
   }).optional(),
 });
 
-export async function POST(request: NextRequest) {
+async function postTranscribeStartHandler(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session) {
+    if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_TRANSCRIPTION');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many transcription requests' }, { status: 429 });
     }
 
     const body = await request.json();
     const validated = startSchema.parse(body);
+
+    logger.info('Starting transcription', {
+      jobId: validated.jobId,
+      userId: session.user.id,
+      options: validated.options,
+    });
 
     // Verify job exists and user has access
     const job = await prisma.job.findUnique({
@@ -34,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (job.createdById !== session.user.id) {
+    if (job.createdById !== session.user.id && session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -52,17 +66,21 @@ export async function POST(request: NextRequest) {
       audioFileId: validated.jobId, // Use jobId as fileId for now
       audioFileUrl: validated.audioFileUrl,
       audioFileName: 'audio', // We might want to get this from the file URL or metadata
-      firmId: '', // Not used in MVP
+      firmId: (session.user as any).firmId || '',
       userId: session.user.id,
       modelType: (validated.options?.model as 'STANDARD' | 'MEDICAL' | 'BILINGUAL') || 'MEDICAL',
     });
+
+    logger.info('Transcription added to queue', { jobId: validated.jobId });
 
     return NextResponse.json({
       message: 'Transcription started',
       jobId: validated.jobId,
     }, { status: 200 });
   } catch (error) {
-    console.error('Transcription start error:', error);
+    logger.error('Transcription start error', error as Error, {
+      userId: (await auth())?.user?.id,
+    });
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -77,3 +95,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withRequestLogging(postTranscribeStartHandler);

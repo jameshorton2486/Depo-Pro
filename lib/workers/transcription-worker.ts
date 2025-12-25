@@ -6,6 +6,9 @@ import { db } from '@/lib/db';
 import { transcribeAudio, transcribeFromUrl } from '@/lib/transcription';
 import { downloadFile } from '@/lib/storage';
 import type { TranscriptionJobData } from '@/types/deepgram';
+import { Logger } from '@/lib/observability';
+
+const logger = new Logger('TranscriptionWorker');
 
 // ============================================
 // Now using shared TranscriptionJobData from @/types/deepgram
@@ -28,7 +31,7 @@ export async function processTranscriptionJob(
     modelType,
   } = data;
 
-  console.log(`Processing transcription for job ${jobId}`);
+  logger.info(`Processing transcription for job ${jobId}`, { jobId, audioFileName, modelType });
 
   try {
     // Update job status to TRANSCRIBING
@@ -41,11 +44,6 @@ export async function processTranscriptionJob(
     const customKeyterms: string[] = [];
     if (data.firmId) {
       // TODO: Fetch custom dictionary terms from database
-      // const customDictionary = await db.customDictionaryEntry.findMany({
-      //   where: { firmId: data.firmId },
-      //   select: { word: true },
-      // });
-      // customKeyterms.push(...customDictionary.map(d => d.word));
     }
 
     // Map modelType to Deepgram model preference
@@ -55,7 +53,7 @@ export async function processTranscriptionJob(
       'nova-3';
 
     // Transcribe with Deepgram - NO MOCK FALLBACK
-    console.log(`Starting Deepgram transcription with model: ${modelPreference}`);
+    logger.info(`Starting Deepgram transcription with model: ${modelPreference}`, { jobId, modelPreference });
     let result;
 
     // Try URL first (faster, no download needed)
@@ -66,21 +64,25 @@ export async function processTranscriptionJob(
       });
     } else {
       // Download and transcribe from buffer
-      console.log(`Downloading audio from: ${audioFileUrl}`);
+      logger.info(`Downloading audio from: ${audioFileUrl}`, { jobId, audioFileUrl });
       const audioBuffer = await downloadFile(audioFileUrl);
 
       if (!audioBuffer || audioBuffer.length === 0) {
         throw new Error('Failed to download audio file or file is empty');
       }
 
-      console.log(`Audio size: ${audioBuffer.length} bytes`);
+      logger.info(`Audio size: ${audioBuffer.length} bytes`, { jobId, size: audioBuffer.length });
       result = await transcribeAudio(audioBuffer, {
         customKeyterms,
         modelPreference,
       });
     }
 
-    console.log(`✅ Transcription complete: ${result.words.length} words, ${result.flaggedSegments.length} flagged segments`);
+    logger.info(`✅ Transcription complete`, {
+      jobId,
+      wordCount: result.words.length,
+      flaggedCount: result.flaggedSegments.length
+    });
 
     // Analyze speakers (optional enhancement)
     // Note: analyzeSpeakersEnhanced expects different format, skip for now
@@ -135,10 +137,10 @@ export async function processTranscriptionJob(
       },
     });
 
-    console.log(`Job ${jobId} transcription completed successfully (status: ${finalStatus})`);
+    logger.info(`Job ${jobId} transcription completed successfully (status: ${finalStatus})`, { jobId, finalStatus });
 
   } catch (error) {
-    console.error(`❌ Transcription failed for job ${jobId}:`, error);
+    logger.error(`❌ Transcription failed for job ${jobId}`, error as Error, { jobId });
 
     // Update job status to FAILED (not CANCELLED - this is a real failure)
     try {
@@ -150,7 +152,7 @@ export async function processTranscriptionJob(
         },
       });
     } catch (updateError) {
-      console.error('Failed to update job status:', updateError);
+      logger.error('Failed to update job status', updateError as Error, { jobId });
     }
 
     // Re-throw to ensure error is logged

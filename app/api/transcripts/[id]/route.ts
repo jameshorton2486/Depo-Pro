@@ -1,23 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { logger } from '@/lib/logger';
+import { withRequestLogging } from '@/lib/observability';
+import { checkRateLimit, requireAuth } from '@/lib/security';
 
 // ═══════════════════════════════════════════════════════════════
 // GET /api/transcripts/[id] - Get full transcript content
 // ═══════════════════════════════════════════════════════════════
 
-export async function GET(
-  _request: NextRequest,
+export const GET = withRequestLogging(async (
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
-    const session = await getCurrentUser();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const session = await requireAuth(request);
     const { id: transcriptId } = await params;
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
 
     // Get full transcript with content
     const transcript = await db.transcript.findUnique({
@@ -85,30 +87,31 @@ export async function GET(
       { status: 200 },
     );
   } catch (error) {
-    const { id } = await params;
-    logger.error(`Failed to get transcript content - transcriptId: ${id}, error: ${error}`);
-    return NextResponse.json(
-      { error: 'Failed to get transcript content' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    throw error;
   }
-}
+});
 
 // ═══════════════════════════════════════════════════════════════
 // PATCH /api/transcripts/[id] - Update transcript content
 // ═══════════════════════════════════════════════════════════════
 
-export async function PATCH(
+export const PATCH = withRequestLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
-    const session = await getCurrentUser();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await requireAuth(request);
+    const { id: transcriptId } = await params;
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const { id: transcriptId } = await params;
     const body = await request.json();
     const { content } = body;
 
@@ -160,8 +163,6 @@ export async function PATCH(
       },
     });
 
-    logger.info(`Transcript updated - transcriptId: ${newTranscript.id}, version: ${newTranscript.versionNumber}`);
-
     return NextResponse.json({
       id: newTranscript.id,
       version: newTranscript.version,
@@ -171,30 +172,31 @@ export async function PATCH(
     );
 
   } catch (error) {
-    const { id } = await params;
-    logger.error(`Failed to update transcript - transcriptId: ${id}, error: ${error}`);
-    return NextResponse.json(
-      { error: 'Failed to update transcript' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    throw error;
   }
-}
+});
 
 // ═══════════════════════════════════════════════════════════════
 // PUT /api/transcripts/[id] - Update transcript content
 // ═══════════════════════════════════════════════════════════════
 
-export async function PUT(
+export const PUT = withRequestLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
-    const session = await getCurrentUser();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await requireAuth(request);
+    const { id: transcriptId } = await params;
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const { id: transcriptId } = await params;
     const data = await request.json();
     const { content, contentJson } = data;
 
@@ -239,13 +241,7 @@ export async function PUT(
       data: {
         content: content || undefined,
         contentJson: contentJson || undefined,
-        // TODO: Handle versioning logic here (e.g., increment version number)
       },
-    });
-
-    logger.info('Transcript updated', {
-      transcriptId,
-      userId: session.user.id,
     });
 
     return NextResponse.json({
@@ -256,11 +252,9 @@ export async function PUT(
       },
     });
   } catch (error) {
-    const { id } = await params;
-    logger.error(`Failed to update transcript - transcriptId: ${id}, error: ${error}`);
-    return NextResponse.json(
-      { error: 'Failed to update transcript' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    throw error;
   }
-}
+});

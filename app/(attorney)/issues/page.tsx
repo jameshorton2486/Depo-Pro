@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Flag, Search, ExternalLink } from 'lucide-react';
-import { TranscriptAnnotation, IssueCode, DEFAULT_ISSUE_CODES, getAllIssueCodes } from '@/types/issue-code';
+import { TranscriptAnnotation, DEFAULT_ISSUE_CODES, getAllIssueCodes } from '@/types/issue-code';
 import Link from 'next/link';
 
 // TODO: Replace with real data fetching
@@ -182,11 +182,18 @@ export default function IssuesPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No issues found
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 text-center max-w-md">
               {searchQuery || selectedIssueCode !== 'all' || selectedTranscript !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Start reviewing transcripts to tag issues'}
+                ? 'Try adjusting your filters to see more results.'
+                : 'No issues have been tagged yet. Open a transcript and use the review interface to tag issues like contradictions, admissions, or perjury.'}
             </p>
+            {!(searchQuery || selectedIssueCode !== 'all' || selectedTranscript !== 'all') && (
+              <Link href="/attorney/transcripts" className="mt-4">
+                <Button>
+                  View Transcripts
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       ) : (

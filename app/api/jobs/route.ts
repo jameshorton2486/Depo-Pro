@@ -8,14 +8,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createJobSchema } from '@/lib/validations/job';
-import { logger } from '@/lib/logger';
+import { logger, withRequestLogging } from '@/lib/observability';
+import { createPaginatedResponse } from '@/lib/pagination';
+import { checkRateLimit } from '@/lib/security';
 import { JobStatus } from '@prisma/client';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs - List jobs with filters
 // ───────────────────────────────────────────────────────────────
 
-export async function GET(request: NextRequest) {
+async function getJobsHandler(request: NextRequest) {
   try {
     const session = await auth();
 
@@ -23,11 +25,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as JobStatus | null;
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100);
     const skip = (page - 1) * limit;
 
     // 🔒 Multi-tenant security: Build where clause based on role
@@ -99,15 +107,7 @@ export async function GET(request: NextRequest) {
       db.job.count({ where }),
     ]);
 
-    return NextResponse.json({
-      jobs,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
+    return NextResponse.json(createPaginatedResponse(jobs, total, { page, limit, skip }));
 
   } catch (error) {
     logger.error('GET /api/jobs', error as Error);
@@ -118,16 +118,24 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export const GET = withRequestLogging(getJobsHandler);
+
 // ───────────────────────────────────────────────────────────────
 // POST /api/jobs - Create new job
 // ───────────────────────────────────────────────────────────────
 
-export async function POST(request: NextRequest) {
+async function postJobsHandler(request: NextRequest) {
   try {
     const session = await auth();
 
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
     // Only reporters and admins can create jobs
@@ -178,3 +186,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withRequestLogging(postJobsHandler);

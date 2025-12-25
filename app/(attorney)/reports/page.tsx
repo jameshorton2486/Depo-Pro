@@ -6,7 +6,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -309,9 +308,22 @@ export default function ReportsPage() {
       )}
 
       {/* Previously Generated Reports */}
-      {mockReports.length > 0 && (
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Previously Generated</h2>
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Previously Generated Reports</h2>
+        {mockReports.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <FileCheck className="h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No reports generated yet
+              </h3>
+              <p className="text-sm text-gray-500 text-center max-w-md">
+                Generate your first report by selecting a report type above and clicking &quot;Generate Preview&quot;.
+                Reports are created from tagged issues in your transcripts.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
           <div className="grid gap-4">
             {mockReports.map((report) => (
               <Card key={report.id} className="hover:shadow-md transition-shadow">
@@ -342,8 +354,8 @@ export default function ReportsPage() {
               </Card>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,83 @@
+# Enum Guardrail Rule
+
+## CRITICAL: Enum Usage Requirements
+
+All enum values in this codebase MUST be imported from `@/lib/enums.ts`.
+NEVER use raw string literals for enum values.
+
+## Forbidden Patterns
+
+The following string literals are BANNED and must NEVER appear:
+
+```typescript
+// ❌ FORBIDDEN - Will cause runtime errors
+"VIEW_DOWNLOAD"
+"VIEW_ANNOTATE" 
+"FULL"
+"EMAIL"
+"CASE_ACCESS"
+```
+
+## Required Patterns
+
+```typescript
+// ✅ CORRECT - Import and use enum members
+import { AccessLevel, ShareType, UserRole } from "@/lib/enums";
+
+// Access levels
+if (accessLevel === AccessLevel.VIEW) { }
+if (accessLevel === AccessLevel.COMMENT) { }
+if (accessLevel === AccessLevel.EDIT) { }
+
+// Share types
+if (shareType === ShareType.USER) { }
+if (shareType === ShareType.ORGANIZATION) { }
+
+// User roles
+if (user.role === UserRole.ADMIN) { }
+if (user.role === UserRole.COURT_REPORTER) { }
+```
+
+## Migration Reference
+
+| Deprecated Value | New Enum Member |
+|-----------------|-----------------|
+| VIEW_DOWNLOAD | AccessLevel.VIEW |
+| VIEW_ANNOTATE | AccessLevel.COMMENT |
+| FULL | AccessLevel.EDIT |
+| EMAIL | ShareType.USER |
+| CASE_ACCESS | ShareType.ORGANIZATION |
+
+## Type Safety
+
+When creating objects with enum fields:
+
+```typescript
+// ✅ CORRECT
+const share: TranscriptShare = {
+  accessLevel: AccessLevel.COMMENT,
+  shareType: ShareType.USER,
+};
+
+// ❌ WRONG - String literal
+const share = {
+  accessLevel: "COMMENT",  // Bad!
+  shareType: "USER",       // Bad!
+};
+```
+
+## Validation Functions
+
+Use the helper functions in `@/lib/enums.ts`:
+
+```typescript
+import { isValidEnumValue, parseEnum, AccessLevel } from "@/lib/enums";
+
+// Validate user input
+if (isValidEnumValue(AccessLevel, userInput)) {
+  // Safe to use
+}
+
+// Parse with fallback
+const level = parseEnum(AccessLevel, userInput, AccessLevel.VIEW);
+```

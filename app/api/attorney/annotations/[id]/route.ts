@@ -3,7 +3,6 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
 import { requireAuth, requireTranscriptAnnotation } from '@/lib/permissions/api-guards';

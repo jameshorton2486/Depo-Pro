@@ -8,27 +8,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { JobStatus } from '@prisma/client';
 
-import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createJobSchema } from '@/lib/validations/job';
-import { logger } from '@/lib/logger';
+import { withRequestLogging } from '@/lib/observability';
+import { checkRateLimit, requireAuth } from '@/lib/security';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs/[id] - Get single job
 // ───────────────────────────────────────────────────────────────
 
-export async function GET(
+export const GET = withRequestLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const session = await requireAuth(request);
     const { id } = await params;
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
 
     const job = await db.job.findUnique({
       where: { id },
@@ -83,30 +84,30 @@ export async function GET(
     return NextResponse.json(job);
 
   } catch (error) {
-    logger.error('GET /api/jobs/[id]', error as Error);
-    return NextResponse.json(
-      { error: 'Failed to fetch job' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    throw error;
   }
-}
+});
 
 // ───────────────────────────────────────────────────────────────
 // PUT /api/jobs/[id] - Update job
 // ───────────────────────────────────────────────────────────────
 
-export async function PUT(
+export const PUT = withRequestLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const session = await requireAuth(request);
     const { id } = await params;
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
 
     // Check if job exists and user has access
     const existingJob = await db.job.findUnique({
@@ -147,42 +148,40 @@ export async function PUT(
       },
     });
 
-    logger.info(`Job updated: ${job.id} by user ${session.user.id}`);
-
     return NextResponse.json(job);
 
   } catch (error) {
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation failed', details: error },
         { status: 400 },
       );
     }
-
-    logger.error('PUT /api/jobs/[id]', error as Error);
-    return NextResponse.json(
-      { error: 'Failed to update job' },
-      { status: 500 },
-    );
+    throw error;
   }
-}
+});
 
 // ───────────────────────────────────────────────────────────────
 // PATCH /api/jobs/[id] - Update job status only
 // ───────────────────────────────────────────────────────────────
 
-export async function PATCH(
+export const PATCH = withRequestLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
-    const session = await auth();
+    const session = await requireAuth(request);
+    const { id } = await params;
 
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const { id } = await params;
     const body = await request.json();
     const { status } = body as { status?: JobStatus };
 
@@ -219,30 +218,30 @@ export async function PATCH(
 
     return NextResponse.json(updatedJob);
   } catch (error) {
-    logger.error('PATCH /api/jobs/[id]', error as Error);
-    return NextResponse.json(
-      { error: 'Failed to update job status' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    throw error;
   }
-}
+});
 
 // ───────────────────────────────────────────────────────────────
 // DELETE /api/jobs/[id] - Delete job
 // ───────────────────────────────────────────────────────────────
 
-export async function DELETE(
+export const DELETE = withRequestLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const session = await requireAuth(request);
     const { id } = await params;
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
 
     // Check if job exists and user has access
     const existingJob = await db.job.findUnique({
@@ -269,15 +268,12 @@ export async function DELETE(
       where: { id },
     });
 
-    logger.info(`Job deleted: ${id} by user ${session.user.id}`);
-
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    logger.error('DELETE /api/jobs/[id]', error as Error);
-    return NextResponse.json(
-      { error: 'Failed to delete job' },
-      { status: 500 },
-    );
+    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    throw error;
   }
-}
+});

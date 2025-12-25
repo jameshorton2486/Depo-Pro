@@ -59,6 +59,26 @@ model User {
   // Case-level access (multi-case membership)
   caseMemberships CaseMembership[]
 
+  // Calendar relations
+  reporterAssignments  CalendarEvent[]      @relation("ReporterAssignments")
+  attorneyRequests     CalendarEvent[]      @relation("AttorneyRequests")
+  agencyScheduled      CalendarEvent[]      @relation("AgencyScheduled")
+  eventsCreated        CalendarEvent[]      @relation("EventCreator")
+  eventParticipations  EventParticipant[]
+  reporterAvailability ReporterAvailability[]
+  bookingRequests      BookingRequest[]
+  bookingResponses     BookingRequest[]     @relation("AgencyResponder")
+
+  // Phase 3: Attorney Portal
+  attorneyProfile         AttorneyProfile?
+  transcriptAccess        TranscriptAccess[] @relation("TranscriptAccessUser")
+  transcriptAccessGranted TranscriptAccess[] @relation("TranscriptAccessGranter")
+  transcriptShares        TranscriptShare[]
+  transcriptHighlights    TranscriptHighlight[]
+  userTags                TranscriptTag[] @relation("UserTags")
+  transcriptNotes         TranscriptNote[]
+  transcriptBookmarks      TranscriptBookmark[]
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   lastLoginAt DateTime?
@@ -66,6 +86,10 @@ model User {
   @@index([email])
   @@index([role])
   @@index([firmId])
+  @@index([firmId, role])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([lastLoginAt])
 }
 
 enum UserRole {
@@ -74,6 +98,7 @@ enum UserRole {
   ADMIN
   ATTORNEY
   PARALEGAL // Future: paralegals can assist attorneys
+  AGENCY // Agency administrators
   AGENCY_ADMIN // Future: agency administrators
   FIRM_ADMIN // Future: firm administrators
 }
@@ -104,10 +129,15 @@ model Job {
   createdById  String
   createdBy    User    @relation("CreatedBy", fields: [createdById], references: [id])
   assignedToId String? // If self-edit, same as createdById
+  scopistId    String?
+  dueDate      DateTime?
 
   // Case association
   caseId String?
   case   Case?   @relation(fields: [caseId], references: [id])
+
+  // Calendar association
+  calendarEvent CalendarEvent?
 
   // Files
   files    JobFile[]
@@ -139,9 +169,18 @@ model Job {
 
   @@index([createdById])
   @@index([firmId])
-  @@index([caseId])
   @@index([status])
+  @@index([scopistId])
+  @@index([firmId, status])
+  @@index([firmId, createdById])
+  @@index([firmId, scopistId])
+  @@index([status, dueDate])
+  @@index([caseId])
   @@index([depositionDate])
+  @@index([dueDate])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([completedAt])
 }
 
 enum JobStatus {
@@ -227,6 +266,7 @@ model Exhibit {
   @@index([jobId])
   @@index([createdById])
   @@index([uploadedByRole])
+  @@index([createdAt])
 }
 
 enum FileType {
@@ -274,13 +314,12 @@ model AudioEnhancement {
   qualityFlags   Json? // {"noise": "high", "clipping": "low"}
   decisionReason String? // Why Auphonic was/wasn't used
 
-  status       EnhancementStatus @default(PENDING)
-  errorMessage String?
-
   createdAt   DateTime  @default(now())
   completedAt DateTime?
 
   @@index([jobId])
+  @@index([createdAt])
+  @@index([completedAt])
 }
 
 enum EnhancementMode {
@@ -334,6 +373,8 @@ model TranscriptionJob {
 
   @@index([jobId])
   @@index([status])
+  @@index([createdAt])
+  @@index([completedAt])
 }
 
 enum TranscriptionStatus {
@@ -373,10 +414,18 @@ model Transcript {
   // Creator
   createdBy String // "system", userId
 
+  // Phase 3: Attorney Portal
+  accessGrants            TranscriptAccess[]
+  shares                  TranscriptShare[]
+  highlights              TranscriptHighlight[]
+  notes                   TranscriptNote[]
+  bookmarks               TranscriptBookmark[]
+
   createdAt DateTime @default(now())
 
   @@unique([jobId, version])
   @@index([jobId, versionNumber])
+  @@index([createdAt])
 }
 
 model TranscriptToken {
@@ -407,6 +456,7 @@ model TranscriptToken {
 
   @@index([transcriptId, index])
   @@index([transcriptId, isFlagged])
+  @@index([createdAt])
 }
 
 model Transcription {
@@ -447,6 +497,8 @@ model Transcription {
   updatedAt DateTime @updatedAt
 
   @@index([jobId])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 model TranscriptionEdit {
@@ -468,6 +520,7 @@ model TranscriptionEdit {
   createdAt DateTime @default(now())
 
   @@index([transcriptionId])
+  @@index([createdAt])
 }
 
 enum EditType {
@@ -503,6 +556,8 @@ model AIRule {
   updatedAt DateTime @updatedAt
 
   @@index([enabled, priority])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 enum RuleCategory {
@@ -541,6 +596,10 @@ model JobAssignment {
 
   @@index([jobId])
   @@index([scopistId, status])
+  @@index([invitedAt])
+  @@index([respondedAt])
+  @@index([startedAt])
+  @@index([submittedAt])
 }
 
 enum AssignmentStatus {
@@ -622,23 +681,26 @@ enum NotificationType {
 // ============================================
 
 model AuditLog {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
 
-  action     String // "view_job", "edit_transcript", "export_file"
-  resource   String // "Job", "Transcript"
-  resourceId String
+  action      String
+  entityType  String
+  entityId    String
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
 
-  // Details
-  details   Json?
-  ipAddress String?
-  userAgent String?
+  createdAt   DateTime @default(now())
 
-  createdAt DateTime @default(now())
-
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
   @@index([userId, createdAt])
-  @@index([resourceId])
 }
 
 // ============================================
@@ -668,7 +730,17 @@ model Firm {
   jobs  Job[]
   cases Case[]
 
+  // Calendar relations
+  calendarEvents       CalendarEvent[]
+  reporterAvailability ReporterAvailability[]
+  bookingRequests      BookingRequest[]
+
+  // Phase 3: Attorney Portal
+  tags                  TranscriptTag[]
+
   @@index([name])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 // ============================================
@@ -721,6 +793,10 @@ model Case {
   // Case-level access control
   memberships CaseMembership[]
 
+  // Phase 3: Attorney Portal
+  transcriptAccess        TranscriptAccess[]
+  tags                    TranscriptTag[]
+
   // Metadata
   status CaseStatus @default(ACTIVE)
   notes  String?    @db.Text
@@ -732,6 +808,8 @@ model Case {
   @@index([firmId])
   @@index([caseNumber])
   @@index([createdById])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 enum CaseStatus {
@@ -776,6 +854,8 @@ model CaseMembership {
   @@index([userId])
   @@index([caseId])
   @@index([roleInCase])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 /**
@@ -818,6 +898,8 @@ model CaseAttorney {
 
   @@index([caseId])
   @@index([email])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 enum AttorneyRole {
@@ -852,6 +934,7 @@ model CaseDocument {
 
   @@index([caseId])
   @@index([documentType])
+  @@index([uploadedAt])
 }
 
 enum CaseDocumentType {
@@ -890,6 +973,7 @@ model CaseExtractedTerm {
   @@unique([caseId, term])
   @@index([caseId])
   @@index([category])
+  @@index([createdAt])
 }
 
 enum TermCategory {
@@ -941,6 +1025,7 @@ model AttorneyTranscript {
   @@index([uploadedById])
   @@index([status])
   @@index([deponent])
+  @@index([uploadedAt])
 }
 
 enum AttorneyTranscriptStatus {
@@ -984,6 +1069,7 @@ model TranscriptAnnotation {
   @@index([transcriptId])
   @@index([createdById])
   @@index([issueCode])
+  @@index([createdAt])
 }
 
 /**
@@ -1010,6 +1096,7 @@ model TranscriptAnnotationExhibit {
   @@index([annotationId])
   @@index([exhibitId])
   @@index([createdById])
+  @@index([createdAt])
 }
 
 // ============================================
@@ -1025,4 +1112,612 @@ model PasswordResetToken {
 
   @@index([email])
   @@index([token])
+  @@index([createdAt])
+  @@index([expires])
+}
+
+// ============================================
+// CALENDAR SYSTEM
+// Phase 2: Calendar & Scheduling
+// ============================================
+
+// ------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------
+
+enum CalendarEventStatus {
+  REQUESTED      // Attorney submitted request, awaiting agency action
+  SCHEDULED      // Agency created/confirmed the event
+  CONFIRMED      // Reporter accepted the assignment
+  IN_PROGRESS    // Deposition is currently happening
+  COMPLETED      // Deposition finished, ready for transcription
+  CANCELLED      // Event was cancelled (see cancellationReason)
+  RESCHEDULED    // Moved to a new time (original event archived)
+}
+
+enum EventType {
+  DEPOSITION           // Standard deposition
+  HEARING              // Court hearing
+  ARBITRATION          // Arbitration proceeding
+  MEDIATION            // Mediation session
+  EUO                  // Examination Under Oath
+  STATEMENT            // Recorded statement
+  OTHER                // Other legal proceeding
+}
+
+enum AvailabilityType {
+  AVAILABLE            // Reporter is available
+  UNAVAILABLE          // Reporter is blocked (vacation, etc.)
+  TENTATIVE            // Possibly available, needs confirmation
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum ParticipantRole {
+  ATTORNEY_PLAINTIFF
+  ATTORNEY_DEFENSE
+  WITNESS
+  DEPONENT
+  INTERPRETER
+  VIDEOGRAPHER
+  OBSERVER
+}
+
+enum BookingRequestStatus {
+  PENDING         // Awaiting agency review
+  APPROVED        // Approved, event created
+  REJECTED        // Rejected by agency
+  CANCELLED       // Cancelled by attorney
+  MODIFIED        // Agency proposed different time
+}
+
+// ============================================
+// PHASE 3: ATTORNEY PORTAL ENUMS
+// ============================================
+
+enum TranscriptAccessLevel {
+  VIEW
+  COMMENT
+  EDIT
+}
+
+enum ShareType {
+  USER
+  LINK
+  ORGANIZATION
+}
+
+enum ShareStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum HighlightColor {
+  YELLOW
+  GREEN
+  BLUE
+  PINK
+  ORANGE
+  PURPLE
+}
+
+// ------------------------------------------------------------
+// CALENDAR EVENT (Core scheduling model)
+// ------------------------------------------------------------
+
+model CalendarEvent {
+  id                String              @id @default(cuid())
+
+  // === MULTI-TENANT ===
+  firmId            String
+  firm              Firm                @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // === EVENT DETAILS ===
+  title             String              // e.g., "Smith v. Jones Deposition"
+  eventType         EventType           @default(DEPOSITION)
+  status            CalendarEventStatus @default(REQUESTED)
+
+  // === TIMING (All times stored as UTC) ===
+  startTime         DateTime
+  endTime           DateTime
+  timezone          String              @default("America/Chicago") // IANA timezone
+  allDay            Boolean             @default(false)
+
+  // === RECURRENCE (Optional) ===
+  isRecurring       Boolean             @default(false)
+  recurrenceRule    String?             // RRULE format: "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+  recurrenceEndDate DateTime?
+  parentEventId     String?             // For recurring instances, points to parent
+  parentEvent       CalendarEvent?      @relation("RecurringEvents", fields: [parentEventId], references: [id])
+  childEvents       CalendarEvent[]     @relation("RecurringEvents")
+
+  // === LOCATION ===
+  location          String?             // Physical address or "Remote"
+  isRemote          Boolean             @default(false)
+  meetingLink       String?             // Zoom/Teams link if remote
+
+  // === RELATIONSHIPS ===
+  // Link to Job (for transcription workflow)
+  jobId             String?             @unique
+  job               Job?                @relation(fields: [jobId], references: [id])
+
+  // Assigned court reporter
+  assignedReporterId String?
+  assignedReporter   User?              @relation("ReporterAssignments", fields: [assignedReporterId], references: [id])
+
+  // Attorney who requested (for REQUESTED status)
+  requestedById     String?
+  requestedBy       User?               @relation("AttorneyRequests", fields: [requestedById], references: [id])
+
+  // Agency user who scheduled/approved
+  scheduledById     String?
+  scheduledBy       User?               @relation("AgencyScheduled", fields: [scheduledById], references: [id])
+
+  // Participants (attorneys, witnesses, etc.)
+  participants      EventParticipant[]
+
+  // Booking request that created this event
+  bookingRequest    BookingRequest?
+
+  // === METADATA ===
+  notes             String?             @db.Text
+  internalNotes     String?             @db.Text  // Agency-only notes
+  cancellationReason String?
+
+  // === AUDIT ===
+  createdById       String
+  createdBy         User                @relation("EventCreator", fields: [createdById], references: [id])
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  confirmedAt       DateTime?           // When reporter confirmed
+  cancelledAt       DateTime?
+
+  // === INDEXES for fast queries ===
+  @@index([firmId, startTime, endTime])  // Conflict detection
+  @@index([assignedReporterId, startTime])        // Reporter schedule
+  @@index([status])                               // Status filtering
+  @@index([jobId])                                // Job lookup
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([confirmedAt])
+  @@index([cancelledAt])
+
+  @@map("calendar_events")
+}
+
+// ------------------------------------------------------------
+// EVENT PARTICIPANTS (Attorneys, witnesses, interpreters, etc.)
+// ------------------------------------------------------------
+
+model EventParticipant {
+  id              String          @id @default(cuid())
+
+  eventId         String
+  event           CalendarEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Can be a system user OR external person
+  userId          String?
+  user            User?           @relation(fields: [userId], references: [id])
+
+  // For external participants (not in system)
+  externalName    String?
+  externalEmail   String?
+  externalPhone   String?
+
+  // Role in the event
+  role            ParticipantRole
+
+  // Status
+  notified        Boolean         @default(false)
+  notifiedAt      DateTime?
+  confirmed       Boolean         @default(false)
+  confirmedAt     DateTime?
+
+  createdAt       DateTime        @default(now())
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([createdAt])
+  @@map("event_participants")
+}
+
+// ------------------------------------------------------------
+// REPORTER AVAILABILITY (For scheduling optimization)
+// ------------------------------------------------------------
+
+model ReporterAvailability {
+  id              String            @id @default(cuid())
+
+  // Which reporter
+  reporterId      String
+  reporter        User              @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // Firm context
+  firmId          String
+  firm            Firm              @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // Time block
+  startTime       DateTime
+  endTime         DateTime
+  timezone        String            @default("America/Chicago")
+
+  // Type of availability
+  type            AvailabilityType  @default(AVAILABLE)
+
+  // Recurrence for regular schedules
+  isRecurring     Boolean           @default(false)
+  recurrenceRule  String?           // "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
+  recurrenceEnd   DateTime?
+
+  // Notes
+  notes           String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([reporterId, startTime, endTime])
+  @@index([firmId, type])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("reporter_availability")
+}
+
+// ------------------------------------------------------------
+// BOOKING REQUEST (Attorney → Agency workflow)
+// ------------------------------------------------------------
+
+model BookingRequest {
+  id              String              @id @default(cuid())
+
+  firmId          String
+  firm            Firm                @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // Requesting attorney
+  requestedById   String
+  requestedBy     User                @relation(fields: [requestedById], references: [id])
+
+  // Request details
+  caseName        String
+  caseNumber      String?
+  preferredDate   DateTime
+  alternateDate1  DateTime?
+  alternateDate2  DateTime?
+  estimatedDuration Int               @default(240)  // Minutes
+
+  eventType       EventType           @default(DEPOSITION)
+  location        String?
+  isRemote        Boolean             @default(false)
+
+  // Deponent info
+  deponentName    String
+  deponentContact String?
+
+  // Special requirements
+  needsInterpreter Boolean            @default(false)
+  interpreterLanguage String?
+  needsVideographer Boolean           @default(false)
+  needsRealtime   Boolean             @default(false)  // Realtime transcription
+  specialNotes    String?             @db.Text
+
+  // Status
+  status          BookingRequestStatus @default(PENDING)
+
+  // If approved, link to created event
+  calendarEventId String?             @unique
+  calendarEvent   CalendarEvent?      @relation(fields: [calendarEventId], references: [id])
+
+  // Agency response
+  respondedById   String?
+  respondedBy     User?               @relation("AgencyResponder", fields: [respondedById], references: [id])
+  respondedAt     DateTime?
+  rejectionReason String?
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([firmId, status])
+  @@index([requestedById])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([respondedAt])
+  @@map("booking_requests")
+}
+
+// ============================================
+// PHASE 3: ATTORNEY PORTAL MODELS
+// ============================================
+
+// 3.1.1 ATTORNEY PROFILE & SETTINGS
+model AttorneyProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Professional Information
+  barNumber     String?
+  barState      String?              // State of bar admission
+  firmName      String?              // Law firm name
+  firmAddress   String?
+  firmPhone     String?
+
+  // Practice Areas (for filtering/matching)
+  practiceAreas String[]             // ["Personal Injury", "Medical Malpractice", "Civil Litigation"]
+
+  // Preferences
+  defaultExportFormat   String?      @default("PDF")  // PDF, DOCX, TXT
+  emailNotifications    Boolean      @default(true)
+  smsNotifications      Boolean      @default(false)
+
+  // Billing Contact (if different from user)
+  billingEmail    String?
+  billingAddress  String?
+
+  // Metadata
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([barNumber])
+  @@index([barState])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+// 3.1.2 TRANSCRIPT ACCESS & SHARING
+model TranscriptAccess {
+  id              String   @id @default(cuid())
+
+  // The transcript being accessed
+  transcriptId    String
+  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  // Who has access (attorney user)
+  userId          String
+  user            User     @relation("TranscriptAccessUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Access level
+  accessLevel     TranscriptAccessLevel @default(VIEW)
+
+  // Who granted access
+  grantedById     String
+  grantedBy       User     @relation("TranscriptAccessGranter", fields: [grantedById], references: [id])
+
+  // Optional: Link to case for context
+  caseId          String?
+  case            Case?    @relation(fields: [caseId], references: [id])
+
+  // Access constraints
+  expiresAt       DateTime?            // Optional expiration
+  downloadLimit   Int?                 // Max downloads allowed (null = unlimited)
+  downloadCount   Int      @default(0) // Current download count
+
+  // Activity tracking
+  lastAccessedAt  DateTime?
+  accessCount     Int      @default(0)
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([transcriptId, userId])
+  @@index([userId])
+  @@index([transcriptId])
+  @@index([caseId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([lastAccessedAt])
+  @@index([expiresAt])
+}
+
+model TranscriptShare {
+  id              String   @id @default(cuid())
+
+  transcriptId    String
+  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  // Who shared it
+  sharedById      String
+  sharedBy        User     @relation(fields: [sharedById], references: [id])
+
+  // Share type
+  shareType       ShareType
+
+  // For EMAIL share type
+  recipientEmail  String?
+  recipientName   String?
+
+  // For LINK share type - unique token for secure access
+  shareToken      String?  @unique @default(cuid())
+
+  // Access settings
+  accessLevel     TranscriptAccessLevel @default(VIEW)
+  expiresAt       DateTime?
+  password        String?              // Optional password protection
+
+  // Usage tracking
+  accessCount     Int      @default(0)
+  lastAccessedAt  DateTime?
+
+  // Status
+  status          ShareStatus @default(ACTIVE)
+  revokedAt       DateTime?
+
+  // Metadata
+  message         String?  @db.Text     // Optional message to recipient
+  createdAt       DateTime @default(now())
+
+  @@index([transcriptId])
+  @@index([sharedById])
+  @@index([shareToken])
+  @@index([recipientEmail])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([lastAccessedAt])
+}
+
+// 3.1.3 ANNOTATIONS (Highlights, Tags, Notes, Bookmarks)
+model TranscriptHighlight {
+  id              String   @id @default(cuid())
+
+  transcriptId    String
+  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  // Who created the highlight
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Position in transcript
+  startIndex      Int                  // Character start position
+  endIndex        Int                  // Character end position
+  startLine       Int?                 // Line number start (if applicable)
+  endLine         Int?                 // Line number end
+
+  // The highlighted text (denormalized for quick display)
+  highlightedText String   @db.Text
+
+  // Visual styling
+  color           HighlightColor @default(YELLOW)
+
+  // Optional note attached to highlight
+  note            String?  @db.Text
+
+  // Tags associated with this highlight
+  tags            TranscriptHighlightTag[]
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([transcriptId])
+  @@index([userId])
+  @@index([transcriptId, userId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model TranscriptTag {
+  id              String   @id @default(cuid())
+
+  // Tag can be personal (user-specific) or shared (case-level or firm-level)
+  userId          String?              // If set, personal tag
+  user            User?    @relation("UserTags", fields: [userId], references: [id], onDelete: Cascade)
+
+  firmId          String?              // If set, firm-wide tag
+  firm            Firm?    @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  caseId          String?              // If set, case-specific tag
+  case            Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  // Tag details
+  name            String               // "Key Admission", "Impeachment", "Follow Up"
+  color           String?              // Hex color code
+  description     String?
+
+  // System vs custom
+  isSystem        Boolean  @default(false)  // Pre-defined tags vs user-created
+
+  // Usage
+  highlights      TranscriptHighlightTag[]
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@unique([firmId, name])
+  @@unique([caseId, name])
+  @@index([userId])
+  @@index([firmId])
+  @@index([caseId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model TranscriptHighlightTag {
+  id              String   @id @default(cuid())
+
+  highlightId     String
+  highlight       TranscriptHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+
+  tagId           String
+  tag             TranscriptTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([highlightId, tagId])
+  @@index([highlightId])
+  @@index([tagId])
+  @@index([createdAt])
+}
+
+model TranscriptNote {
+  id              String   @id @default(cuid())
+
+  transcriptId    String
+  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Position (optional - can be general note or attached to specific location)
+  lineNumber      Int?
+  pageNumber      Int?
+  timestamp       String?              // Audio timestamp if applicable
+
+  // Note content
+  title           String?
+  content         String   @db.Text
+
+  // Visibility
+  isPrivate       Boolean  @default(true)  // Private to user vs shared with case team
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([transcriptId])
+  @@index([userId])
+  @@index([transcriptId, userId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model TranscriptBookmark {
+  id              String   @id @default(cuid())
+
+  transcriptId    String
+  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Position
+  lineNumber      Int
+  pageNumber      Int?
+  timestamp       String?              // Audio timestamp
+
+  // Bookmark details
+  label           String               // User-friendly label
+  description     String?
+
+  // Quick reference text (snippet at bookmark location)
+  snippetText     String?  @db.VarChar(500)
+
+  // Ordering (for custom sort)
+  sortOrder       Int      @default(0)
+
+  // Metadata
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([transcriptId])
+  @@index([userId])
+  @@index([transcriptId, userId])
+  @@index([createdAt])
+  @@index([updatedAt])
 }

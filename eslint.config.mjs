@@ -21,10 +21,7 @@ export default [
       '**/*.config.mjs',
       // Non-MVP / Legacy files
       'test-env.js',
-      'app/(attorney)/**',
-      'app/api/attorney/**',
       'app/features/**',
-      'components/attorney/**',
       'lib/extraction/**',
       'lib/permissions/**',
       'lib/workers/**',

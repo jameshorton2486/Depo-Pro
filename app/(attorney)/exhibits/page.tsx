@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Plus, Search, Eye, Download } from 'lucide-react';
 import { Exhibit, ExhibitGroup } from '@/types/exhibits';
-import Link from 'next/link';
 
 // TODO: Replace with real data fetching
 const mockExhibits: Exhibit[] = [
@@ -254,11 +253,17 @@ export default function ExhibitsPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               No exhibits found
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 text-center max-w-md mb-4">
               {searchQuery || selectedDeposition !== 'all' || selectedUploader !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Upload your first exhibit to get started'}
+                ? 'Try adjusting your filters to see more results.'
+                : 'No exhibits have been uploaded yet. Exhibits can be uploaded by court reporters during depositions or by attorneys for case-level documents.'}
             </p>
+            {!(searchQuery || selectedDeposition !== 'all' || selectedUploader !== 'all') && (
+              <Button disabled className="flex items-center gap-2" title="Coming in Phase 2">
+                <Plus className="h-4 w-4" />
+                Upload Exhibit
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

@@ -5,10 +5,9 @@
 
 'use client';
 
-import { IssueCode, DEFAULT_ISSUE_CODES, getAllIssueCodes } from '@/types/issue-code';
+import { IssueCode, getAllIssueCodes } from '@/types/issue-code';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
 
 interface IssueCodePaletteProps {
   selectedCode?: IssueCode | null;

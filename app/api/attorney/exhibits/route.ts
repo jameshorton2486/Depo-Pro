@@ -4,15 +4,12 @@
 // API routes for exhibit management (attorney unified view)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
 import {
   requireAuth,
   requireAttorneyCaseAccess,
   requireExhibitUpload,
-  extractCaseId,
-  extractDepositionId,
 } from '@/lib/permissions/api-guards';
 
 /**

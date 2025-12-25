@@ -1,0 +1,445 @@
+// ============================================================
+// CALENDAR EVENTS API ROUTE
+// Path: app/api/calendar/events/route.ts
+// ============================================================
+
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { z } from 'zod';
+import { logger, withRequestLogging } from '@/lib/observability';
+import { checkRateLimit } from '@/lib/security';
+
+// ------------------------------------------------------------
+// VALIDATION SCHEMAS
+// ------------------------------------------------------------
+
+const createEventSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  eventType: z.enum(['DEPOSITION', 'HEARING', 'ARBITRATION', 'MEDIATION', 'EUO', 'STATEMENT', 'OTHER']).default('DEPOSITION'),
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime(),
+  timezone: z.string().default('America/Chicago'),
+  allDay: z.boolean().default(false),
+  location: z.string().optional(),
+  isRemote: z.boolean().default(false),
+  meetingLink: z.string().url().optional(),
+  assignedReporterId: z.string().optional(),
+  jobId: z.string().optional(),
+  notes: z.string().optional(),
+  internalNotes: z.string().optional(),
+  // Recurrence
+  isRecurring: z.boolean().default(false),
+  recurrenceRule: z.string().optional(),
+  recurrenceEndDate: z.string().datetime().optional(),
+  // Participants
+  participants: z.array(z.object({
+    userId: z.string().optional(),
+    externalName: z.string().optional(),
+    externalEmail: z.string().email().optional(),
+    externalPhone: z.string().optional(),
+    role: z.enum(['ATTORNEY_PLAINTIFF', 'ATTORNEY_DEFENSE', 'WITNESS', 'DEPONENT', 'INTERPRETER', 'VIDEOGRAPHER', 'OBSERVER']),
+  })).optional(),
+});
+
+const querySchema = z.object({
+  start: z.string().datetime().optional(),
+  end: z.string().datetime().optional(),
+  status: z.string().optional(),
+  reporterId: z.string().optional(),
+  jobId: z.string().optional(),
+});
+
+// ------------------------------------------------------------
+// GET - Fetch calendar events (role-filtered)
+// ------------------------------------------------------------
+
+async function getEventsHandler(request: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const query = querySchema.parse({
+      start: searchParams.get('start') || undefined,
+      end: searchParams.get('end') || undefined,
+      status: searchParams.get('status') || undefined,
+      reporterId: searchParams.get('reporterId') || undefined,
+      jobId: searchParams.get('jobId') || undefined,
+    });
+
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      include: { firm: true },
+    });
+
+    if (!user?.firmId) {
+      return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
+    }
+
+    // Build where clause based on role
+    const whereClause: any = {
+      firmId: user.firmId,
+    };
+
+    // Date range filter
+    if (query.start && query.end) {
+      whereClause.OR = [
+        {
+          startTime: { gte: new Date(query.start), lte: new Date(query.end) },
+        },
+        {
+          endTime: { gte: new Date(query.start), lte: new Date(query.end) },
+        },
+        {
+          AND: [
+            { startTime: { lte: new Date(query.start) } },
+            { endTime: { gte: new Date(query.end) } },
+          ],
+        },
+      ];
+    }
+
+    // Status filter
+    if (query.status) {
+      whereClause.status = query.status;
+    }
+
+    // Role-based filtering
+    switch (user.role) {
+      case 'REPORTER':
+        // Reporters only see their assigned events
+        whereClause.assignedReporterId = user.id;
+        break;
+
+      case 'ATTORNEY':
+        // Attorneys see events they requested or are participating in
+        whereClause.OR = [
+          { requestedById: user.id },
+          { participants: { some: { userId: user.id } } },
+        ];
+        break;
+
+      case 'AGENCY':
+      case 'ADMIN':
+        // Full access to organization events
+        // Additional reporter filter if specified
+        if (query.reporterId) {
+          whereClause.assignedReporterId = query.reporterId;
+        }
+        break;
+
+      case 'SCOPIST':
+        // Scopists can view events for jobs they're assigned to
+        whereClause.job = {
+          assignments: {
+            some: {
+              scopistId: user.id,
+              status: { in: ['ACCEPTED', 'IN_PROGRESS', 'SUBMITTED'] },
+            },
+          },
+        };
+        break;
+
+      default:
+        // Allow other roles to view but with limited access
+        // They'll only see events they're explicitly part of
+        whereClause.participants = {
+          some: { userId: user.id },
+        };
+        break;
+    }
+
+    // Job filter
+    if (query.jobId) {
+      whereClause.jobId = query.jobId;
+    }
+
+    const events = await db.calendarEvent.findMany({
+      where: whereClause,
+      include: {
+        assignedReporter: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        requestedBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        job: {
+          select: { id: true, caseName: true, status: true },
+        },
+        participants: {
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, email: true },
+            },
+          },
+        },
+        createdBy: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+      },
+      orderBy: { startTime: 'asc' },
+    });
+
+    // Transform for FullCalendar format
+    const calendarEvents = events.map((event: any) => ({
+      id: event.id,
+      title: event.title,
+      start: event.startTime.toISOString(),
+      end: event.endTime.toISOString(),
+      allDay: event.allDay,
+      extendedProps: {
+        eventType: event.eventType,
+        status: event.status,
+        location: event.location,
+        isRemote: event.isRemote,
+        meetingLink: event.meetingLink,
+        assignedReporter: event.assignedReporter ? {
+          ...event.assignedReporter,
+          name: `${event.assignedReporter.firstName} ${event.assignedReporter.lastName}`,
+        } : undefined,
+        requestedBy: event.requestedBy ? {
+          ...event.requestedBy,
+          name: `${event.requestedBy.firstName} ${event.requestedBy.lastName}`,
+        } : undefined,
+        job: event.job,
+        participants: event.participants?.map((p: any) => ({
+          ...p,
+          user: p.user ? {
+            ...p.user,
+            name: `${p.user.firstName} ${p.user.lastName}`,
+          } : undefined,
+        })),
+        notes: event.notes,
+        timezone: event.timezone,
+        createdBy: event.createdBy ? {
+          ...event.createdBy,
+          name: `${event.createdBy.firstName} ${event.createdBy.lastName}`,
+        } : undefined,
+      },
+      // FullCalendar styling based on status
+      backgroundColor: getStatusColor(event.status),
+      borderColor: getStatusColor(event.status),
+    }));
+
+    return NextResponse.json({
+      events: calendarEvents,
+      total: events.length,
+    });
+
+  } catch (error) {
+    logger.error('Calendar GET error:', error as Error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid query parameters', details: error.issues }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to fetch events' }, { status: 500 });
+  }
+}
+
+export const GET = withRequestLogging(getEventsHandler);
+
+// ------------------------------------------------------------
+// POST - Create calendar event (Agency/Admin only)
+// ------------------------------------------------------------
+
+async function postEventsHandler(request: NextRequest) {
+  try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      include: { firm: true },
+    });
+
+    if (!user?.firmId) {
+      return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
+    }
+
+    // Only Agency and Admin can create events directly
+    if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
+      return NextResponse.json({
+        error: 'Only Agency and Admin users can create events. Attorneys should submit booking requests.'
+      }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const data = createEventSchema.parse(body);
+
+    // Validate times
+    const startTime = new Date(data.startTime);
+    const endTime = new Date(data.endTime);
+
+    if (endTime <= startTime) {
+      return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 });
+    }
+
+    // Check for conflicts if reporter is assigned
+    if (data.assignedReporterId) {
+      const conflicts = await checkReporterConflicts(
+        data.assignedReporterId,
+        startTime,
+        endTime,
+        user.firmId
+      );
+
+      if (conflicts.length > 0) {
+        return NextResponse.json({
+          error: 'Reporter has conflicting events',
+          conflicts: conflicts.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            start: c.startTime,
+            end: c.endTime,
+          })),
+        }, { status: 409 });
+      }
+    }
+
+    // Create the event
+    const event = await db.calendarEvent.create({
+      data: {
+        firmId: user.firmId,
+        title: data.title,
+        eventType: data.eventType,
+        status: data.assignedReporterId ? 'SCHEDULED' : 'REQUESTED',
+        startTime,
+        endTime,
+        timezone: data.timezone,
+        allDay: data.allDay,
+        location: data.location,
+        isRemote: data.isRemote,
+        meetingLink: data.meetingLink,
+        assignedReporterId: data.assignedReporterId,
+        scheduledById: user.id,
+        jobId: data.jobId,
+        notes: data.notes,
+        internalNotes: data.internalNotes,
+        isRecurring: data.isRecurring,
+        recurrenceRule: data.recurrenceRule,
+        recurrenceEndDate: data.recurrenceEndDate ? new Date(data.recurrenceEndDate) : null,
+        createdById: user.id,
+        // Create participants if provided
+        participants: data.participants ? {
+          create: data.participants.map(p => ({
+            userId: p.userId,
+            externalName: p.externalName,
+            externalEmail: p.externalEmail,
+            externalPhone: p.externalPhone,
+            role: p.role,
+          })),
+        } : undefined,
+      },
+      include: {
+        assignedReporter: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        participants: true,
+        job: true,
+      },
+    });
+
+    // TODO: Send notification to assigned reporter
+    // await notifyReporter(event);
+
+    return NextResponse.json({
+      message: 'Event created successfully',
+      event,
+    }, { status: 201 });
+
+  } catch (error) {
+    logger.error('Calendar POST error:', error as Error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Validation failed', details: error.issues }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to create event' }, { status: 500 });
+  }
+}
+
+export const POST = withRequestLogging(postEventsHandler);
+
+// ------------------------------------------------------------
+// HELPER FUNCTIONS
+// ------------------------------------------------------------
+
+function getStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    REQUESTED: '#FFA500',    // Orange
+    SCHEDULED: '#3788D8',    // Blue
+    CONFIRMED: '#28A745',    // Green
+    IN_PROGRESS: '#17A2B8',  // Teal
+    COMPLETED: '#6C757D',    // Gray
+    CANCELLED: '#DC3545',    // Red
+    RESCHEDULED: '#9B59B6',  // Purple
+  };
+  return colors[status] || '#3788D8';
+}
+
+async function checkReporterConflicts(
+  reporterId: string,
+  startTime: Date,
+  endTime: Date,
+  firmId: string,
+  excludeEventId?: string
+) {
+  const whereClause: any = {
+    firmId,
+    assignedReporterId: reporterId,
+    status: { notIn: ['CANCELLED', 'COMPLETED'] },
+    OR: [
+      // New event starts during existing event
+      {
+        AND: [
+          { startTime: { lte: startTime } },
+          { endTime: { gt: startTime } },
+        ],
+      },
+      // New event ends during existing event
+      {
+        AND: [
+          { startTime: { lt: endTime } },
+          { endTime: { gte: endTime } },
+        ],
+      },
+      // New event completely contains existing event
+      {
+        AND: [
+          { startTime: { gte: startTime } },
+          { endTime: { lte: endTime } },
+        ],
+      },
+    ],
+  };
+
+  if (excludeEventId) {
+    whereClause.id = { not: excludeEventId };
+  }
+
+  return db.calendarEvent.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+      title: true,
+      startTime: true,
+      endTime: true,
+    },
+  });
+}
