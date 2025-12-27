@@ -14,10 +14,13 @@
 
 export enum UserRole {
   ADMIN = "ADMIN",
-  COURT_REPORTER = "COURT_REPORTER",
+  REPORTER = "REPORTER",
   SCOPIST = "SCOPIST",
   ATTORNEY = "ATTORNEY",
+  PARALEGAL = "PARALEGAL",
   AGENCY = "AGENCY",
+  AGENCY_ADMIN = "AGENCY_ADMIN",
+  FIRM_ADMIN = "FIRM_ADMIN",
 }
 
 // =============================================================================
@@ -25,15 +28,19 @@ export enum UserRole {
 // =============================================================================
 
 export enum JobStatus {
-  PENDING = "PENDING",
-  PROCESSING = "PROCESSING",
-  AI_COMPLETE = "AI_COMPLETE",
-  SCOPIST_ASSIGNED = "SCOPIST_ASSIGNED",
-  SCOPIST_REVIEW = "SCOPIST_REVIEW",
+  CREATED = "CREATED",
+  FILES_UPLOADED = "FILES_UPLOADED",
+  ENHANCING_AUDIO = "ENHANCING_AUDIO",
+  TRANSCRIBING = "TRANSCRIBING",
+  AI_REVIEWING = "AI_REVIEWING",
+  READY_FOR_EDIT = "READY_FOR_EDIT",
+  ASSIGNED = "ASSIGNED",
+  IN_EDIT = "IN_EDIT",
+  SUBMITTED_FOR_REVIEW = "SUBMITTED_FOR_REVIEW",
+  IN_REVIEW = "IN_REVIEW",
   SCOPIST_COMPLETE = "SCOPIST_COMPLETE",
-  FINAL_REVIEW = "FINAL_REVIEW",
+  REVIEW_COMPLETE = "REVIEW_COMPLETE",
   COMPLETED = "COMPLETED",
-  FAILED = "FAILED",
   CANCELLED = "CANCELLED",
 }
 
@@ -49,16 +56,18 @@ export enum Priority {
 // =============================================================================
 
 export enum TranscriptStatus {
+  PENDING = "PENDING",
   PROCESSING = "PROCESSING",
   COMPLETED = "COMPLETED",
-  FAILED = "FAILED",
+  ERROR = "ERROR",
+  CANCELLED = "CANCELLED",
 }
 
 /**
  * Access levels for transcript shares
  * 
  * ⚠️ MIGRATION NOTE: These replaced the following deprecated values:
- * - VIEW_DOWNLOAD → Use VIEW (read-only, can download)
+ * - VIEW_DOWNLOAD → Use COMMENT (read-only with download, can add annotations)
  * - VIEW_ANNOTATE → Use COMMENT (can add annotations)
  * - FULL → Use EDIT (full edit access)
  */
@@ -72,8 +81,8 @@ export enum AccessLevel {
  * Share recipient types
  * 
  * ⚠️ MIGRATION NOTE: These replaced the following deprecated values:
- * - EMAIL → Use USER (share with specific user)
- * - CASE_ACCESS → Use ORGANIZATION (share with organization)
+ * - EMAIL → Use USER (share with specific user via email)
+ * - CASE_ACCESS → Use ORGANIZATION (share with organization/case members)
  */
 export enum ShareType {
   USER = "USER",
@@ -133,6 +142,39 @@ export enum EventType {
   OTHER = "OTHER",
 }
 
+export enum CalendarEventStatus {
+  REQUESTED = "REQUESTED",
+  SCHEDULED = "SCHEDULED",
+  CONFIRMED = "CONFIRMED",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
+  CANCELLED = "CANCELLED",
+  RESCHEDULED = "RESCHEDULED",
+  CONVERTED = "CONVERTED",
+}
+
+export enum ConflictType {
+  REPORTER_DOUBLE_BOOKED = "REPORTER_DOUBLE_BOOKED",
+  LOCATION_CONFLICT = "LOCATION_CONFLICT",
+  TRAVEL_TIME_INSUFFICIENT = "TRAVEL_TIME_INSUFFICIENT",
+  RESOURCE_UNAVAILABLE = "RESOURCE_UNAVAILABLE",
+}
+
+export enum ConflictStatus {
+  PENDING = "PENDING",
+  OVERRIDDEN = "OVERRIDDEN",
+  RESOLVED = "RESOLVED",
+  AUTO_FIXED = "AUTO_FIXED",
+}
+
+export enum ConflictResolution {
+  KEPT_ORIGINAL = "KEPT_ORIGINAL",
+  MOVED_ORIGINAL = "MOVED_ORIGINAL",
+  REASSIGNED_REPORTER = "REASSIGNED_REPORTER",
+  OVERRIDE_ACCEPTED = "OVERRIDE_ACCEPTED",
+  TIME_ADJUSTED = "TIME_ADJUSTED",
+}
+
 // =============================================================================
 // EXPORT ENUMS
 // =============================================================================
@@ -171,6 +213,17 @@ export enum AuditAction {
   TRANSCRIPTION_START = "TRANSCRIPTION_START",
   TRANSCRIPTION_COMPLETE = "TRANSCRIPTION_COMPLETE",
   TRANSCRIPTION_FAILED = "TRANSCRIPTION_FAILED",
+  // Phase 3: Calendar Mutations
+  CALENDAR_CONVERT_TO_JOB = "CALENDAR_CONVERT_TO_JOB",
+  JOB_ASSIGN_REPORTER = "JOB_ASSIGN_REPORTER",
+  JOB_UNASSIGN_REPORTER = "JOB_UNASSIGN_REPORTER",
+  CALENDAR_RESCHEDULE = "CALENDAR_RESCHEDULE",
+  // Phase 4: Drag-and-Drop Scheduling
+  CALENDAR_DRAG_DROP = "CALENDAR_DRAG_DROP",
+  CALENDAR_RESIZE = "CALENDAR_RESIZE",
+  CALENDAR_CONFLICT_OVERRIDE = "CALENDAR_CONFLICT_OVERRIDE",
+  CALENDAR_CONFLICT_DETECTED = "CALENDAR_CONFLICT_DETECTED",
+  CALENDAR_UNDO_RESCHEDULE = "CALENDAR_UNDO_RESCHEDULE",
 }
 
 export enum AuditEntityType {
@@ -215,7 +268,7 @@ export function parseEnum<T extends Record<string, string>>(
 
 export const JOB_CREATOR_ROLES = [
   UserRole.ADMIN,
-  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
   UserRole.AGENCY,
 ] as const;
 
