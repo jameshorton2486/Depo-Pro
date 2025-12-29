@@ -34,7 +34,7 @@ const _applySuggestionSchema = z.object({
 // POST - Generate suggestions
 // ============================================================
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   // Feature flag guard
   if (!FEATURES.SCHEDULING_SUGGESTIONS) {
     return NextResponse.json({ suggestions: [] }, { status: 200 });
@@ -64,7 +64,7 @@ export async function POST(_request: NextRequest) {
       );
     }
     
-    const body = await _request.json();
+    const body = await request.json();
     const validation = getSuggestionsSchema.safeParse(body);
     
     if (!validation.success) {
