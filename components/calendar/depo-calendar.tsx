@@ -1,6 +1,8 @@
 // ============================================================
-// DEPO-PRO CALENDAR COMPONENT
-// Path: components/calendar/depo-calendar.tsx
+// PHASE 4: ENHANCED DEPO-CALENDAR COMPONENT
+// Path: components/calendar/depo-calendar.tsx (REPLACEMENT)
+// ============================================================
+// Full drag-and-drop with conflict detection, undo, and previews
 // ============================================================
 
 'use client';
@@ -10,10 +12,18 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { EventClickArg, DateSelectArg, EventDropArg } from '@fullcalendar/core';
+import { 
+  EventClickArg, 
+  DateSelectArg, 
+  EventDropArg,
+  EventResizeDoneArg,
+} from '@fullcalendar/core';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { CalendarEventModal } from './calendar-event-modal';
 import { CalendarEventDetail } from './calendar-event-detail';
+import { ConflictDialog } from './conflict-dialog';
+import { DragPreview } from './drag-preview';
 import { Button } from '@/components/ui/button';
 import { 
   Select, 
@@ -23,8 +33,9 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, RefreshCw, Filter } from 'lucide-react';
+import { Loader2, Plus, RefreshCw, Filter, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRescheduleUndo } from '@/hooks/use-undo-toast';
 
 // ------------------------------------------------------------
 // TYPES
@@ -38,6 +49,7 @@ interface CalendarEvent {
   allDay?: boolean;
   backgroundColor?: string;
   borderColor?: string;
+  editable?: boolean;
   extendedProps: {
     eventType: string;
     status: string;
@@ -65,13 +77,31 @@ interface CalendarEvent {
   };
 }
 
+interface Conflict {
+  type: string;
+  conflictingEventId: string;
+  conflictingEventTitle: string;
+  conflictingStart: string;
+  conflictingEnd: string;
+  overlapMinutes: number;
+  reporterName?: string;
+  location?: string;
+  severity: 'WARNING' | 'ERROR';
+  message: string;
+}
+
+interface AlternativeTimeSlot {
+  start: string;
+  end: string;
+}
+
 interface DepoCalendarProps {
   initialView?: 'dayGridMonth' | 'timeGridWeek' | 'timeGridDay';
   reporters?: Array<{ id: string; name: string }>;
 }
 
 // ------------------------------------------------------------
-// STATUS COLORS (matching API)
+// STATUS COLORS
 // ------------------------------------------------------------
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
@@ -82,7 +112,11 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
   COMPLETED: { bg: '#6C757D', text: '#fff', label: 'Completed' },
   CANCELLED: { bg: '#DC3545', text: '#fff', label: 'Cancelled' },
   RESCHEDULED: { bg: '#9B59B6', text: '#fff', label: 'Rescheduled' },
+  CONVERTED: { bg: '#4F46E5', text: '#fff', label: 'Converted' },
 };
+
+// Locked statuses - cannot be dragged
+const LOCKED_STATUSES = ['CONVERTED', 'CANCELLED', 'COMPLETED'];
 
 // ------------------------------------------------------------
 // MAIN COMPONENT
@@ -93,9 +127,11 @@ export function DepoCalendar({
   reporters = [],
 }: DepoCalendarProps) {
   const { data: session } = useSession();
+  const _router = useRouter();
   const calendarRef = useRef<FullCalendar>(null);
+  const { showRescheduleUndo } = useRescheduleUndo();
   
-  // State
+  // Core state
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -106,10 +142,61 @@ export function DepoCalendar({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [reporterFilter, setReporterFilter] = useState<string>('all');
 
+  // Phase 4: Drag state
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPreviewData, setDragPreviewData] = useState<{
+    eventTitle: string;
+    proposedStart: Date | null;
+    proposedEnd: Date | null;
+    isChecking: boolean;
+    hasConflicts: boolean;
+    conflictCount: number;
+    canDrop: boolean;
+    position: { x: number; y: number };
+  }>({
+    eventTitle: '',
+    proposedStart: null,
+    proposedEnd: null,
+    isChecking: false,
+    hasConflicts: false,
+    conflictCount: 0,
+    canDrop: true,
+    position: { x: 0, y: 0 },
+  });
+
+  // Phase 4: Conflict dialog state
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [pendingReschedule, setPendingReschedule] = useState<{
+    eventId: string;
+    eventTitle: string;
+    newStart: Date;
+    newEnd: Date;
+    revertFn: () => void;
+  } | null>(null);
+  const [detectedConflicts, setDetectedConflicts] = useState<Conflict[]>([]);
+  const [canOverrideConflicts, setCanOverrideConflicts] = useState(false);
+  const [suggestedAlternatives, setSuggestedAlternatives] = useState<AlternativeTimeSlot[]>([]);
+
   // User role checks
   const userRole = session?.user?.role || 'ATTORNEY';
   const canCreateEvents = ['AGENCY', 'ADMIN'].includes(userRole);
   const canDragDrop = ['AGENCY', 'ADMIN'].includes(userRole);
+
+  // ------------------------------------------------------------
+  // REFRESH EVENT LISTENER
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      const calendarApi = calendarRef.current?.getApi();
+      if (calendarApi) {
+        fetchEvents(calendarApi.view.activeStart, calendarApi.view.activeEnd);
+      }
+    };
+
+    window.addEventListener('calendar-refresh', handleRefresh);
+    return () => window.removeEventListener('calendar-refresh', handleRefresh);
+  }, []);
 
   // ------------------------------------------------------------
   // DATA FETCHING
@@ -140,14 +227,21 @@ export function DepoCalendar({
       }
 
       const data = await response.json();
-      setEvents(data.events);
+      
+      // Process events to set editability based on status
+      const processedEvents = data.events.map((event: CalendarEvent) => ({
+        ...event,
+        editable: canDragDrop && !LOCKED_STATUSES.includes(event.extendedProps.status),
+      }));
+      
+      setEvents(processedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
       toast.error('Failed to load calendar events');
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, reporterFilter]);
+  }, [statusFilter, reporterFilter, canDragDrop]);
 
   // Initial fetch and refetch on filter change
   useEffect(() => {
@@ -165,12 +259,10 @@ export function DepoCalendar({
   // EVENT HANDLERS
   // ------------------------------------------------------------
 
-  // Date range change (when navigating months/weeks)
   const handleDatesSet = useCallback((arg: { start: Date; end: Date }) => {
     fetchEvents(arg.start, arg.end);
   }, [fetchEvents]);
 
-  // Click on event
   const handleEventClick = useCallback((arg: EventClickArg) => {
     const event = events.find(e => e.id === arg.event.id);
     if (event) {
@@ -179,7 +271,6 @@ export function DepoCalendar({
     }
   }, [events]);
 
-  // Select date range (for creating new event)
   const handleDateSelect = useCallback((arg: DateSelectArg) => {
     if (!canCreateEvents) {
       toast.info('Contact your agency to schedule depositions');
@@ -193,7 +284,33 @@ export function DepoCalendar({
     setIsCreateModalOpen(true);
   }, [canCreateEvents]);
 
-  // Drag and drop to reschedule
+  // ------------------------------------------------------------
+  // PHASE 4: DRAG AND DROP WITH CONFLICT DETECTION
+  // ------------------------------------------------------------
+
+  const handleEventDragStart = useCallback((info: any) => {
+    if (!canDragDrop) return;
+    
+    const status = info.event.extendedProps?.status;
+    if (LOCKED_STATUSES.includes(status)) {
+      toast.error(`Cannot move ${status.toLowerCase()} events`);
+      return;
+    }
+    
+    setIsDragging(true);
+    setDragPreviewData(prev => ({
+      ...prev,
+      eventTitle: info.event.title,
+      isChecking: false,
+      hasConflicts: false,
+      canDrop: true,
+    }));
+  }, [canDragDrop]);
+
+  const handleEventDragStop = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
   const handleEventDrop = useCallback(async (arg: EventDropArg) => {
     if (!canDragDrop) {
       arg.revert();
@@ -201,13 +318,190 @@ export function DepoCalendar({
     }
 
     const { event } = arg;
+    const status = event.extendedProps?.status;
+    
+    // Check if locked
+    if (LOCKED_STATUSES.includes(status)) {
+      toast.error(`Cannot reschedule ${status.toLowerCase()} events`);
+      arg.revert();
+      return;
+    }
+
+    const newStart = event.start!;
+    const newEnd = event.end!;
     
     try {
-      const response = await fetch(`/api/calendar/events/${event.id}`, {
-        method: 'PATCH',
+      // First, check for conflicts via preview
+      const previewResponse = await fetch(`/api/calendar/events/${event.id}/reschedule`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          startTime: event.start?.toISOString(),
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+        }),
+      });
+
+      const previewData = await previewResponse.json();
+
+      if (previewData.isLocked) {
+        toast.error('This event is locked and cannot be rescheduled');
+        arg.revert();
+        return;
+      }
+
+      // If there are conflicts, show dialog
+      if (previewData.hasConflicts) {
+        setDetectedConflicts(previewData.conflicts);
+        setCanOverrideConflicts(previewData.canOverride);
+        setSuggestedAlternatives(previewData.suggestedAlternatives || []);
+        setPendingReschedule({
+          eventId: event.id,
+          eventTitle: event.title,
+          newStart,
+          newEnd,
+          revertFn: arg.revert,
+        });
+        setConflictDialogOpen(true);
+        return;
+      }
+
+      // No conflicts - proceed with reschedule
+      await performReschedule(event.id, event.title, newStart, newEnd);
+      
+    } catch (error) {
+      console.error('Error checking conflicts:', error);
+      toast.error('Failed to reschedule event');
+      arg.revert();
+    }
+  }, [canDragDrop]);
+
+  // Perform the actual reschedule
+  const performReschedule = async (
+    eventId: string,
+    eventTitle: string,
+    newStart: Date,
+    newEnd: Date,
+    forceOverride: boolean = false,
+    overrideReason?: string
+  ) => {
+    try {
+      const response = await fetch(`/api/calendar/events/${eventId}/reschedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startTime: newStart.toISOString(),
+          endTime: newEnd.toISOString(),
+          forceOverride,
+          overrideReason,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reschedule');
+      }
+
+      // Show undo toast
+      if (data.undoToken && data.event) {
+        showRescheduleUndo({
+          eventId,
+          eventTitle,
+          undoToken: data.undoToken,
+          previousStart: new Date(data.event.previousStart),
+          previousEnd: new Date(data.event.previousEnd),
+          newStart: new Date(data.event.startTime),
+          newEnd: new Date(data.event.endTime),
+        });
+      } else {
+        toast.success('Event rescheduled');
+      }
+
+      // Refresh calendar
+      fetchEvents();
+      
+      return true;
+    } catch (error) {
+      console.error('Reschedule failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to reschedule');
+      return false;
+    }
+  };
+
+  // Handle conflict override
+  const handleConflictOverride = async (reason: string) => {
+    if (!pendingReschedule) return;
+
+    const success = await performReschedule(
+      pendingReschedule.eventId,
+      pendingReschedule.eventTitle,
+      pendingReschedule.newStart,
+      pendingReschedule.newEnd,
+      true,
+      reason
+    );
+
+    if (!success) {
+      pendingReschedule.revertFn();
+    }
+
+    setConflictDialogOpen(false);
+    setPendingReschedule(null);
+  };
+
+  // Handle selecting alternative time
+  const handleSelectAlternative = async (start: Date, end: Date) => {
+    if (!pendingReschedule) return;
+
+    // Revert the original drag
+    pendingReschedule.revertFn();
+
+    // Schedule at the alternative time
+    const success = await performReschedule(
+      pendingReschedule.eventId,
+      pendingReschedule.eventTitle,
+      start,
+      end
+    );
+
+    if (!success) {
+      toast.error('Failed to reschedule to alternative time');
+    }
+
+    setConflictDialogOpen(false);
+    setPendingReschedule(null);
+  };
+
+  // Handle conflict dialog cancel
+  const handleConflictCancel = () => {
+    if (pendingReschedule) {
+      pendingReschedule.revertFn();
+    }
+    setConflictDialogOpen(false);
+    setPendingReschedule(null);
+  };
+
+  // Handle resize
+  const handleEventResize = useCallback(async (arg: EventResizeDoneArg) => {
+    if (!canDragDrop) {
+      arg.revert();
+      return;
+    }
+
+    const { event } = arg;
+    const status = event.extendedProps?.status;
+
+    if (LOCKED_STATUSES.includes(status)) {
+      toast.error(`Cannot resize ${status.toLowerCase()} events`);
+      arg.revert();
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/calendar/events/${event.id}/resize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           endTime: event.end?.toISOString(),
         }),
       });
@@ -215,59 +509,27 @@ export function DepoCalendar({
       if (!response.ok) {
         const data = await response.json();
         
-        // Handle conflict
         if (response.status === 409) {
           toast.error('Conflict detected', {
-            description: 'Reporter already has an event at this time',
+            description: 'Extending this event would create scheduling conflicts',
           });
           arg.revert();
           return;
         }
         
-        throw new Error(data.error || 'Failed to update');
+        throw new Error(data.error || 'Failed to resize');
       }
 
-      toast.success('Event rescheduled');
+      toast.success('Event duration updated');
       fetchEvents();
     } catch (error) {
-      console.error('Error updating event:', error);
-      toast.error('Failed to reschedule event');
+      console.error('Error resizing event:', error);
+      toast.error('Failed to resize event');
       arg.revert();
     }
   }, [canDragDrop, fetchEvents]);
 
-  // Event resize
-  const handleEventResize = useCallback(async (arg: any) => {
-    if (!canDragDrop) {
-      arg.revert();
-      return;
-    }
-
-    const { event } = arg;
-
-    try {
-      const response = await fetch(`/api/calendar/events/${event.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startTime: event.start?.toISOString(),
-          endTime: event.end?.toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update');
-      }
-
-      toast.success('Event duration updated');
-    } catch (error) {
-      console.error('Error resizing event:', error);
-      toast.error('Failed to update event');
-      arg.revert();
-    }
-  }, [canDragDrop]);
-
-  // Create event callback
+  // Callbacks for modals
   const handleEventCreated = useCallback(() => {
     setIsCreateModalOpen(false);
     setSelectedDateRange(null);
@@ -275,12 +537,10 @@ export function DepoCalendar({
     toast.success('Event created successfully');
   }, [fetchEvents]);
 
-  // Update event callback  
   const handleEventUpdated = useCallback(() => {
     setIsDetailOpen(false);
     setSelectedEvent(null);
     fetchEvents();
-    toast.success('Event updated successfully');
   }, [fetchEvents]);
 
   // ------------------------------------------------------------
@@ -318,7 +578,7 @@ export function DepoCalendar({
             </SelectContent>
           </Select>
 
-          {/* Reporter Filter (Agency/Admin only) */}
+          {/* Reporter Filter */}
           {canCreateEvents && reporters.length > 0 && (
             <Select value={reporterFilter} onValueChange={setReporterFilter}>
               <SelectTrigger className="w-[160px]">
@@ -360,7 +620,7 @@ export function DepoCalendar({
             ))}
           </div>
 
-          {/* Create Button (Agency/Admin only) */}
+          {/* Create Button */}
           {canCreateEvents && (
             <Button onClick={() => setIsCreateModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
@@ -384,7 +644,7 @@ export function DepoCalendar({
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
-              right: '', // We handle view switching in our toolbar
+              right: '',
             }}
             events={events}
             editable={canDragDrop}
@@ -401,14 +661,22 @@ export function DepoCalendar({
             slotMinTime="06:00:00"
             slotMaxTime="22:00:00"
             allDaySlot={true}
+            snapDuration="00:15:00"
             datesSet={handleDatesSet}
             eventClick={handleEventClick}
             select={handleDateSelect}
+            eventDragStart={handleEventDragStart}
+            eventDragStop={handleEventDragStop}
             eventDrop={handleEventDrop}
             eventResize={handleEventResize}
             eventContent={(arg) => (
-              <div className="p-1 overflow-hidden">
-                <div className="font-medium text-xs truncate">{arg.event.title}</div>
+              <div className="p-1 overflow-hidden relative">
+                <div className="font-medium text-xs truncate flex items-center gap-1">
+                  {LOCKED_STATUSES.includes(arg.event.extendedProps.status) && (
+                    <Lock className="h-3 w-3 opacity-70" />
+                  )}
+                  {arg.event.title}
+                </div>
                 {arg.event.extendedProps.assignedReporter && (
                   <div className="text-xs opacity-80 truncate">
                     {arg.event.extendedProps.assignedReporter.name}
@@ -422,6 +690,32 @@ export function DepoCalendar({
         )}
       </div>
 
+      {/* Drag Preview */}
+      <DragPreview
+        isVisible={isDragging}
+        eventTitle={dragPreviewData.eventTitle}
+        proposedStart={dragPreviewData.proposedStart}
+        proposedEnd={dragPreviewData.proposedEnd}
+        isChecking={dragPreviewData.isChecking}
+        hasConflicts={dragPreviewData.hasConflicts}
+        conflictCount={dragPreviewData.conflictCount}
+        canDrop={dragPreviewData.canDrop}
+        position={dragPreviewData.position}
+      />
+
+      {/* Conflict Dialog */}
+      <ConflictDialog
+        isOpen={conflictDialogOpen}
+        onClose={() => setConflictDialogOpen(false)}
+        conflicts={detectedConflicts}
+        canOverride={canOverrideConflicts}
+        suggestedAlternatives={suggestedAlternatives}
+        eventTitle={pendingReschedule?.eventTitle || ''}
+        onOverride={handleConflictOverride}
+        onSelectAlternative={handleSelectAlternative}
+        onCancel={handleConflictCancel}
+      />
+
       {/* Create Event Modal */}
       <CalendarEventModal
         isOpen={isCreateModalOpen}
@@ -434,7 +728,7 @@ export function DepoCalendar({
         reporters={reporters}
       />
 
-      {/* Event Detail Sidebar/Modal */}
+      {/* Event Detail Sidebar */}
       <CalendarEventDetail
         isOpen={isDetailOpen}
         onClose={() => {

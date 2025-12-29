@@ -12,6 +12,8 @@ import { logger, withRequestLogging } from '@/lib/observability';
 import { createPaginatedResponse } from '@/lib/pagination';
 import { checkRateLimit } from '@/lib/security';
 import { JobStatus } from '@prisma/client';
+import { invalidateDashboardCache } from '@/lib/cache';
+import { safePagination, SelectPatterns as _SelectPatterns } from '@/lib/query-optimization';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs - List jobs with filters
@@ -34,9 +36,10 @@ async function getJobsHandler(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') as JobStatus | null;
     const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100);
-    const skip = (page - 1) * limit;
+    const pagination = safePagination({
+      page: parseInt(searchParams.get('page') || '1'),
+      limit: parseInt(searchParams.get('limit') || '20'),
+    });
 
     // 🔒 Multi-tenant security: Build where clause based on role
     const where: Record<string, unknown> = {};
@@ -66,7 +69,7 @@ async function getJobsHandler(request: NextRequest) {
       ];
     }
 
-    // Execute query
+    // Execute query with optimized select
     const [jobs, total] = await Promise.all([
       db.job.findMany({
         where,
@@ -79,18 +82,6 @@ async function getJobsHandler(request: NextRequest) {
               email: true,
             },
           },
-          assignments: {
-            include: {
-              scopist: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                },
-              },
-            },
-          },
           _count: {
             select: {
               files: true,
@@ -101,13 +92,13 @@ async function getJobsHandler(request: NextRequest) {
         orderBy: {
           depositionDate: 'desc',
         },
-        skip,
-        take: limit,
+        skip: pagination.skip,
+        take: pagination.take,
       }),
       db.job.count({ where }),
     ]);
 
-    return NextResponse.json(createPaginatedResponse(jobs, total, { page, limit, skip }));
+    return NextResponse.json(createPaginatedResponse(jobs, total, { page: pagination.page, limit: pagination.limit, skip: pagination.skip }));
 
   } catch (error) {
     logger.error('GET /api/jobs', error as Error);
@@ -168,6 +159,9 @@ async function postJobsHandler(request: NextRequest) {
     });
 
     logger.info(`Job created: ${job.id} by user ${session.user.id}`);
+
+    // Invalidate dashboard cache after creating a job
+    invalidateDashboardCache();
 
     return NextResponse.json(job, { status: 201 });
 

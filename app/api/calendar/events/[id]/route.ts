@@ -1,11 +1,16 @@
 // ============================================================
-// CALENDAR EVENT DETAIL API ROUTE
+// CALENDAR EVENT DETAIL API ROUTE (STABILIZED)
 // Path: app/api/calendar/events/[id]/route.ts
+// ============================================================
+// STABILIZATION: Added explicit tenant isolation, audit logging,
+// and tightened permission checks
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { logAudit } from '@/lib/audit';
+import { AuditAction, AuditEntityType } from '@/lib/enums';
 import { z } from 'zod';
 
 // ------------------------------------------------------------
@@ -30,159 +35,277 @@ const updateEventSchema = z.object({
 });
 
 // ------------------------------------------------------------
+// ROUTE PARAMS TYPE
+// ------------------------------------------------------------
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+// ------------------------------------------------------------
+// HELPER: Assert Tenant Isolation
+// Returns user with firmId or throws appropriate error response
+// ------------------------------------------------------------
+
+async function assertTenantIsolation(
+  session: { user: { id: string; role?: string } } | null
+): Promise<{ user: NonNullable<typeof session>['user'] & { firmId: string; role: string } }> {
+  if (!session?.user) {
+    throw NextResponse.json(
+      { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
+      { status: 401 }
+    );
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, role: true, firmId: true },
+  });
+
+  if (!user) {
+    throw NextResponse.json(
+      { error: 'User not found', code: 'USER_NOT_FOUND' },
+      { status: 403 }
+    );
+  }
+
+  if (!user.firmId) {
+    throw NextResponse.json(
+      { error: 'User not associated with a firm', code: 'NO_FIRM' },
+      { status: 403 }
+    );
+  }
+
+  return { user: { ...session.user, ...user, firmId: user.firmId, role: user.role } };
+}
+
+// ------------------------------------------------------------
+// HELPER: Assert Event Access
+// Validates user can access the event (tenant + role)
+// ------------------------------------------------------------
+
+async function assertEventAccess(
+  eventId: string,
+  user: { id: string; firmId: string; role: string },
+  requireWriteAccess: boolean = false
+): Promise<NonNullable<Awaited<ReturnType<typeof db.calendarEvent.findFirst>>>> {
+  // TENANT ISOLATION: Always filter by firmId
+  const event = await db.calendarEvent.findFirst({
+    where: {
+      id: eventId,
+      firmId: user.firmId, // CRITICAL: Tenant boundary
+    },
+    include: {
+      assignedReporter: {
+        select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+      },
+      requestedBy: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
+      scheduledBy: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      job: {
+        select: {
+          id: true,
+          caseName: true,
+          caseNumber: true,
+          status: true,
+        },
+      },
+      participants: {
+        include: {
+          user: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+      },
+      createdBy: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+    },
+  });
+
+  if (!event) {
+    throw NextResponse.json(
+      { error: 'Event not found', code: 'NOT_FOUND' },
+      { status: 404 }
+    );
+  }
+
+  // Role-based access check - map to DTO for role access check
+  const hasAccess = checkEventRoleAccess(
+    user,
+    {
+      assignedReporterId: event.assignedReporterId,
+      requestedById: event.requestedById,
+      participants: event.participants
+        ?.filter(p => p.userId)
+        .map(p => ({ userId: p.userId! })),
+    },
+    requireWriteAccess
+  );
+  if (!hasAccess) {
+    throw NextResponse.json(
+      { error: 'Access denied', code: 'FORBIDDEN' },
+      { status: 403 }
+    );
+  }
+
+  return event;
+}
+
+// ------------------------------------------------------------
+// HELPER: Check Role-Based Access
+// ------------------------------------------------------------
+
+function checkEventRoleAccess(
+  user: { id: string; role: string },
+  event: { assignedReporterId: string | null; requestedById: string | null; participants?: { userId: string }[] },
+  requireWriteAccess: boolean
+): boolean {
+  const role = user.role;
+
+  // Admin and Agency have full access
+  if (role === 'ADMIN' || role === 'AGENCY') {
+    return true;
+  }
+
+  // Reporters: read access to assigned events, limited write
+  if (role === 'REPORTER') {
+    const isAssigned = event.assignedReporterId === user.id;
+    if (requireWriteAccess) {
+      // Reporters can only update their own assigned events
+      return isAssigned;
+    }
+    return isAssigned;
+  }
+
+  // Attorneys: read access to requested events and participated events
+  if (role === 'ATTORNEY') {
+    const isRequester = event.requestedById === user.id;
+    const isParticipant = event.participants?.some(p => p.userId === user.id);
+    // Attorneys have read-only access
+    if (requireWriteAccess) {
+      return false;
+    }
+    return isRequester || !!isParticipant;
+  }
+
+  // Scopists: no calendar access
+  return false;
+}
+
+// ------------------------------------------------------------
 // GET - Fetch single event
 // ------------------------------------------------------------
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: RouteParams
 ) {
   const { id } = await params;
+
   try {
     const session = await auth();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { user } = await assertTenantIsolation(session);
+    const event = await assertEventAccess(id, user, false);
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
+    // AUDIT: Log view action
+    await logAudit({
+      userId: user.id,
+      action: AuditAction.VIEW,
+      entityType: AuditEntityType.CalendarEvent,
+      entityId: id,
+      details: { eventTitle: event.title },
     });
-
-    if (!user?.firmId) {
-      return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
-    }
-
-    const event = await db.calendarEvent.findFirst({
-      where: {
-        id: id,
-        firmId: user.firmId,
-      },
-      include: {
-        assignedReporter: {
-          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
-        },
-        requestedBy: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        scheduledBy: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-        job: {
-          select: { 
-            id: true, 
-            caseName: true, 
-            caseNumber: true,
-            status: true,
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: { id: true, firstName: true, lastName: true, email: true },
-            },
-          },
-        },
-        createdBy: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-      },
-    });
-
-    if (!event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
-    }
-
-    // Role-based access check
-    const canView = checkEventAccess(user, event);
-    if (!canView) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-    }
 
     return NextResponse.json({ event });
 
   } catch (error) {
+    // If error is already a NextResponse, return it
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Calendar GET [id] error:', error);
-    return NextResponse.json({ error: 'Failed to fetch event' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch event', code: 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
   }
 }
 
 // ------------------------------------------------------------
-// PATCH - Update event (Agency/Admin, or Reporter for status)
+// PATCH - Update event (with strict permission checks)
 // ------------------------------------------------------------
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   const { id } = await params;
+
   try {
     const session = await auth();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { user } = await assertTenantIsolation(session);
+    const existingEvent = await assertEventAccess(id, user, true);
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-    });
-
-    if (!user?.firmId) {
-      return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
-    }
-
-    // Fetch existing event
-    const existingEvent = await db.calendarEvent.findFirst({
-      where: {
-        id: id,
-        firmId: user.firmId,
-      },
-    });
-
-    if (!existingEvent) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
-    }
-
+    // Parse and validate request body
     const body = await request.json();
-    const data = updateEventSchema.parse(body);
+    const validation = updateEventSchema.safeParse(body);
 
-    // Permission checks based on role
-    const isAgencyOrAdmin = ['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: validation.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const data = validation.data;
+    const isAgencyOrAdmin = ['ADMIN', 'AGENCY'].includes(user.role);
     const isAssignedReporter = existingEvent.assignedReporterId === user.id;
 
-    // Reporters can only update status to CONFIRMED
+    // STRICT PERMISSION ENFORCEMENT for Reporters
     if (user.role === 'REPORTER') {
       if (!isAssignedReporter) {
-        return NextResponse.json({ error: 'You can only update events assigned to you' }, { status: 403 });
+        return NextResponse.json(
+          { error: 'You can only update events assigned to you', code: 'FORBIDDEN' },
+          { status: 403 }
+        );
       }
-      
+
       // Reporters can only confirm or add notes
       const allowedFields = ['status', 'notes'];
       const attemptedFields = Object.keys(data);
       const disallowedFields = attemptedFields.filter(f => !allowedFields.includes(f));
-      
+
       if (disallowedFields.length > 0) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'Reporters can only update status and notes',
+          code: 'FORBIDDEN',
           disallowedFields,
         }, { status: 403 });
       }
 
       // Can only set status to CONFIRMED
       if (data.status && data.status !== 'CONFIRMED') {
-        return NextResponse.json({ 
-          error: 'Reporters can only confirm events' 
+        return NextResponse.json({
+          error: 'Reporters can only confirm events',
+          code: 'FORBIDDEN',
         }, { status: 403 });
       }
     }
 
     // Only Agency/Admin can update most fields
     if (!isAgencyOrAdmin && !isAssignedReporter) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Access denied', code: 'FORBIDDEN' },
+        { status: 403 }
+      );
     }
 
     // Build update data
-    const updateData: any = { ...data };
+    const updateData: Record<string, unknown> = { ...data };
 
     // Handle datetime conversions
     if (data.startTime) {
@@ -192,36 +315,56 @@ export async function PATCH(
       updateData.endTime = new Date(data.endTime);
     }
 
-    // Validate time range if both provided
+    // VALIDATION: Time range
     if (updateData.startTime && updateData.endTime) {
-      if (updateData.endTime <= updateData.startTime) {
-        return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 });
+      if ((updateData.endTime as Date) <= (updateData.startTime as Date)) {
+        return NextResponse.json(
+          { error: 'End time must be after start time', code: 'INVALID_TIME_RANGE' },
+          { status: 400 }
+        );
       }
     }
 
     // Check for conflicts if reporter or time changed
-    const reporterChanged = data.assignedReporterId !== undefined && 
+    const reporterChanged = data.assignedReporterId !== undefined &&
                            data.assignedReporterId !== existingEvent.assignedReporterId;
     const timeChanged = data.startTime || data.endTime;
 
     if ((reporterChanged || timeChanged) && (data.assignedReporterId || existingEvent.assignedReporterId)) {
       const reporterId = data.assignedReporterId ?? existingEvent.assignedReporterId;
-      const startTime = updateData.startTime ?? existingEvent.startTime;
-      const endTime = updateData.endTime ?? existingEvent.endTime;
+      const startTime = (updateData.startTime as Date) ?? existingEvent.startTime;
+      const endTime = (updateData.endTime as Date) ?? existingEvent.endTime;
 
       if (reporterId) {
+        // TENANT ISOLATION: Validate reporter belongs to same firm
+        const reporter = await db.user.findFirst({
+          where: {
+            id: reporterId,
+            firmId: user.firmId, // CRITICAL: Same tenant check
+            role: { in: ['REPORTER'] },
+          },
+        });
+
+        if (!reporter) {
+          return NextResponse.json(
+            { error: 'Reporter not found or not in your firm', code: 'INVALID_REPORTER' },
+            { status: 400 }
+          );
+        }
+
         const conflicts = await checkReporterConflicts(
           reporterId,
           startTime,
           endTime,
           user.firmId,
-          id // Exclude current event
+          id
         );
 
         if (conflicts.length > 0) {
           return NextResponse.json({
             error: 'Reporter has conflicting events',
-            conflicts: conflicts.map((c: any) => ({
+            code: 'CONFLICT',
+            conflicts: conflicts.map((c) => ({
               id: c.id,
               title: c.title,
               start: c.startTime,
@@ -239,11 +382,14 @@ export async function PATCH(
     if (data.status === 'CANCELLED') {
       updateData.cancelledAt = new Date();
       if (!data.cancellationReason) {
-        return NextResponse.json({ error: 'Cancellation reason is required' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Cancellation reason is required', code: 'VALIDATION_ERROR' },
+          { status: 400 }
+        );
       }
     }
 
-    // Update the event
+    // Perform update
     const updatedEvent = await db.calendarEvent.update({
       where: { id: id },
       data: updateData,
@@ -256,9 +402,19 @@ export async function PATCH(
       },
     });
 
-    // TODO: Send notifications for significant changes
-    // if (reporterChanged) await notifyNewReporter(updatedEvent);
-    // if (data.status === 'CANCELLED') await notifyParticipants(updatedEvent);
+    // AUDIT: Log update action
+    await logAudit({
+      userId: user.id,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.CalendarEvent,
+      entityId: id,
+      details: {
+        eventTitle: updatedEvent.title,
+        changedFields: Object.keys(data),
+        previousStatus: existingEvent.status,
+        newStatus: updatedEvent.status,
+      },
+    });
 
     return NextResponse.json({
       message: 'Event updated successfully',
@@ -266,11 +422,20 @@ export async function PATCH(
     });
 
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Calendar PATCH [id] error:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation failed', details: error.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Validation failed', code: 'VALIDATION_ERROR', details: error.issues },
+        { status: 400 }
+      );
     }
-    return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update event', code: 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
   }
 }
 
@@ -279,50 +444,48 @@ export async function PATCH(
 // ------------------------------------------------------------
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  _request: NextRequest,
+  { params }: RouteParams
 ) {
   const { id } = await params;
+
   try {
     const session = await auth();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { user } = await assertTenantIsolation(session);
+
+    // STRICT: Only Agency and Admin can delete
+    if (!['ADMIN', 'AGENCY'].includes(user.role)) {
+      return NextResponse.json(
+        { error: 'Only Agency and Admin can delete events', code: 'FORBIDDEN' },
+        { status: 403 }
+      );
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-    });
-
-    if (!user?.firmId) {
-      return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
-    }
-
-    // Only Agency and Admin can delete
-    if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
-      return NextResponse.json({ error: 'Only Agency and Admin can delete events' }, { status: 403 });
-    }
-
+    // Get event with tenant isolation
     const event = await db.calendarEvent.findFirst({
       where: {
         id: id,
-        firmId: user.firmId,
+        firmId: user.firmId, // TENANT ISOLATION
       },
     });
 
     if (!event) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Event not found', code: 'NOT_FOUND' },
+        { status: 404 }
+      );
     }
 
     // Check if event has a linked job
     if (event.jobId) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Cannot delete event with linked job. Cancel the event instead.',
-        suggestion: 'PATCH with status: CANCELLED'
+        code: 'HAS_LINKED_JOB',
+        suggestion: 'PATCH with status: CANCELLED',
       }, { status: 400 });
     }
 
-    // Delete participants first (cascade should handle, but being explicit)
+    // Delete participants first
     await db.eventParticipant.deleteMany({
       where: { eventId: id },
     });
@@ -332,37 +495,37 @@ export async function DELETE(
       where: { id: id },
     });
 
+    // AUDIT: Log delete action
+    await logAudit({
+      userId: user.id,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.CalendarEvent,
+      entityId: id,
+      details: {
+        eventTitle: event.title,
+        eventStatus: event.status,
+      },
+    });
+
     return NextResponse.json({
       message: 'Event deleted successfully',
     });
 
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Calendar DELETE [id] error:', error);
-    return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete event', code: 'INTERNAL_ERROR' },
+      { status: 500 }
+    );
   }
 }
 
 // ------------------------------------------------------------
-// HELPER FUNCTIONS
+// HELPER: Check Reporter Conflicts
 // ------------------------------------------------------------
-
-function checkEventAccess(user: any, event: any): boolean {
-  switch (user.role) {
-    case 'ADMIN':
-    case 'AGENCY':
-      return true;
-    
-    case 'REPORTER':
-      return event.assignedReporterId === user.id;
-    
-    case 'ATTORNEY':
-      return event.requestedById === user.id || 
-             event.participants?.some((p: any) => p.userId === user.id);
-    
-    default:
-      return false;
-  }
-}
 
 async function checkReporterConflicts(
   reporterId: string,
@@ -371,8 +534,8 @@ async function checkReporterConflicts(
   firmId: string,
   excludeEventId?: string
 ) {
-  const whereClause: any = {
-    firmId,
+  const whereClause: Record<string, unknown> = {
+    firmId, // TENANT ISOLATION
     assignedReporterId: reporterId,
     status: { notIn: ['CANCELLED', 'COMPLETED'] },
     OR: [

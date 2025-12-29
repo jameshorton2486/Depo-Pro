@@ -71,7 +71,7 @@ export async function POST(
         {
           success: false,
           conflicts: result.conflicts?.conflicts || [],
-          alternativeSlots: result.conflicts?.alternativeSlots || [],
+          alternativeSlots: (result.conflicts?.suggestedAlternatives || result.conflicts?.alternativeSlots) || [],
         },
         { status: 409 } // Conflict
       );
@@ -153,7 +153,7 @@ export async function PUT(
         severity: c.severity === 'ERROR' ? 'high' : c.severity === 'WARNING' ? 'medium' : 'low',
         message: c.message,
       })),
-      alternativeSlots: (result.alternativeSlots || []).map((slot, idx) => ({
+      alternativeSlots: ((result.suggestedAlternatives || result.alternativeSlots) || []).map((slot: { start: Date; end: Date }, idx: number) => ({
         startTime: slot.start.toISOString(),
         endTime: slot.end.toISOString(),
         availabilityScore: 100 - idx * 10, // Score based on order (first is best)

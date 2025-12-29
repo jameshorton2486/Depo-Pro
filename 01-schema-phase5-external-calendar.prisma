@@ -1,0 +1,253 @@
+// ============================================
+// PHASE 5: EXTERNAL CALENDAR SYNC SCHEMA ADDITIONS
+// ============================================
+// Add these to prisma/schema.prisma
+// Run: npx prisma migrate dev --name phase5_external_calendar_sync
+// ============================================
+
+// ------------------------------------------------------------
+// STEP 4: EXTERNAL CALENDAR SYNC ENUMS
+// ------------------------------------------------------------
+
+enum ExternalCalendarSyncMode {
+  READ_ONLY        // Only read external events, no push
+  PUSH_INTERNAL    // Push Depo-Pro events to external calendar
+  BIDIRECTIONAL    // Full two-way sync (use with caution)
+}
+
+enum ExternalCalendarProvider {
+  GOOGLE           // Google Calendar
+  OUTLOOK          // Microsoft Outlook/Office 365
+  APPLE            // Apple Calendar (future)
+}
+
+enum ExternalEventSyncStatus {
+  SYNCED           // Successfully synced
+  PENDING          // Waiting to sync
+  CONFLICT         // Has scheduling conflict
+  FAILED           // Sync failed
+  DELETED          // Deleted from external source
+}
+
+// Add to CalendarEventStatus enum:
+// CONVERTED        // Event converted to Job - already exists from Phase 3/4
+// EXTERNAL_BLOCK   // External calendar block (read-only)
+
+// ------------------------------------------------------------
+// EXTERNAL CALENDAR CONNECTION
+// ------------------------------------------------------------
+// Links a user's external calendar account to Depo-Pro
+
+model ExternalCalendarConnection {
+  id                String                    @id @default(cuid())
+
+  // === MULTI-TENANT ===
+  firmId            String
+  firm              Firm                      @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // === USER ===
+  userId            String
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // === PROVIDER CONFIG ===
+  provider          ExternalCalendarProvider
+  syncMode          ExternalCalendarSyncMode  @default(READ_ONLY)
+  
+  // Provider-specific calendar ID
+  providerCalendarId String                   // e.g., "primary" for Google
+  calendarName      String?                   // Display name
+
+  // === OAUTH TOKENS (Encrypted) ===
+  accessToken       String                    @db.Text
+  refreshToken      String?                   @db.Text
+  tokenExpiresAt    DateTime?
+  scopes            String[]                  // OAuth scopes granted
+
+  // === SYNC STATE ===
+  lastSyncedAt      DateTime?
+  lastSyncToken     String?                   // Provider's sync token for incremental sync
+  syncErrorCount    Int                       @default(0)
+  lastSyncError     String?
+
+  // === SETTINGS ===
+  isEnabled         Boolean                   @default(true)
+  autoSync          Boolean                   @default(true)
+  syncIntervalMins  Int                       @default(15)
+
+  // === AUDIT ===
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  // External events from this connection
+  externalEvents    ExternalCalendarEvent[]
+
+  @@unique([userId, provider, providerCalendarId])
+  @@index([firmId])
+  @@index([userId])
+  @@index([provider])
+  @@index([isEnabled])
+  @@index([lastSyncedAt])
+
+  @@map("external_calendar_connections")
+}
+
+// ------------------------------------------------------------
+// EXTERNAL CALENDAR EVENT
+// ------------------------------------------------------------
+// Mirrors events from external calendars into Depo-Pro
+
+model ExternalCalendarEvent {
+  id                  String                      @id @default(cuid())
+
+  // === MULTI-TENANT ===
+  firmId              String
+  firm                Firm                        @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // === CONNECTION ===
+  connectionId        String
+  connection          ExternalCalendarConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  // === PROVIDER IDENTIFIERS ===
+  providerEventId     String                      // ID from Google/Outlook
+  providerCalendarId  String                      // Calendar it came from
+  providerEtag        String?                     // For change detection
+
+  // === EVENT DETAILS (Mirrored from external) ===
+  title               String
+  description         String?                     @db.Text
+  
+  // Times stored as UTC
+  startTime           DateTime
+  endTime             DateTime
+  timezone            String                      @default("UTC")
+  isAllDay            Boolean                     @default(false)
+
+  // Location
+  location            String?
+  meetingLink         String?
+
+  // === SYNC STATUS ===
+  syncStatus          ExternalEventSyncStatus     @default(SYNCED)
+  lastSyncedAt        DateTime                    @default(now())
+  syncError           String?
+
+  // === CONFLICT TRACKING ===
+  hasConflict         Boolean                     @default(false)
+  conflictingEventIds String[]                    // IDs of CalendarEvents that conflict
+
+  // === LINKED INTERNAL EVENT (if any) ===
+  // Only set if this external event maps to a Depo-Pro event
+  linkedEventId       String?                     @unique
+  linkedEvent         CalendarEvent?              @relation("ExternalToInternal", fields: [linkedEventId], references: [id])
+
+  // === DISPLAY ===
+  // External events render differently (striped/muted)
+  isBlockingTime      Boolean                     @default(true)  // Blocks scheduling
+  showInCalendar      Boolean                     @default(true)  // Display in UI
+
+  // === METADATA FROM PROVIDER ===
+  providerMetadata    Json?                       // Full provider response
+
+  // === AUDIT ===
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  deletedAt           DateTime?                   // Soft delete
+
+  @@unique([connectionId, providerEventId])
+  @@index([firmId])
+  @@index([connectionId])
+  @@index([startTime, endTime])
+  @@index([syncStatus])
+  @@index([hasConflict])
+  @@index([linkedEventId])
+  @@index([deletedAt])
+
+  @@map("external_calendar_events")
+}
+
+// ------------------------------------------------------------
+// ADD TO EXISTING CalendarEvent MODEL
+// ------------------------------------------------------------
+// Add this field to the existing CalendarEvent model:
+//
+// // External calendar link (for bidirectional sync)
+// externalEvent       ExternalCalendarEvent?      @relation("ExternalToInternal")
+
+
+// ------------------------------------------------------------
+// ADD TO EXISTING User MODEL
+// ------------------------------------------------------------
+// Add this relation to the existing User model:
+//
+// externalCalendars   ExternalCalendarConnection[]
+
+
+// ------------------------------------------------------------
+// ADD TO EXISTING Firm MODEL
+// ------------------------------------------------------------
+// Add this relation to the existing Firm model:
+//
+// externalCalendarConnections ExternalCalendarConnection[]
+// externalCalendarEvents      ExternalCalendarEvent[]
+
+
+// ------------------------------------------------------------
+// SYNC HISTORY (Audit trail for sync operations)
+// ------------------------------------------------------------
+
+model ExternalCalendarSyncLog {
+  id              String                      @id @default(cuid())
+
+  // === CONNECTION ===
+  connectionId    String
+  connection      ExternalCalendarConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  // === SYNC DETAILS ===
+  syncType        String                      // "FULL", "INCREMENTAL", "MANUAL"
+  status          String                      // "SUCCESS", "PARTIAL", "FAILED"
+  
+  // Counts
+  eventsCreated   Int                         @default(0)
+  eventsUpdated   Int                         @default(0)
+  eventsDeleted   Int                         @default(0)
+  conflictsFound  Int                         @default(0)
+
+  // Timing
+  startedAt       DateTime                    @default(now())
+  completedAt     DateTime?
+  durationMs      Int?
+
+  // Errors
+  errorMessage    String?
+  errorDetails    Json?
+
+  @@index([connectionId])
+  @@index([startedAt])
+  @@index([status])
+
+  @@map("external_calendar_sync_logs")
+}
+
+
+// ============================================
+// MIGRATION STEPS
+// ============================================
+// 
+// 1. Add the enums to your schema
+// 2. Add the new models
+// 3. Add relations to existing models (User, Firm, CalendarEvent)
+// 4. Run: npx prisma migrate dev --name phase5_external_calendar_sync
+// 5. Run: npx prisma generate
+//
+// IMPORTANT: The CalendarEventStatus enum needs EXTERNAL_BLOCK added:
+// enum CalendarEventStatus {
+//   REQUESTED
+//   SCHEDULED
+//   CONFIRMED
+//   IN_PROGRESS
+//   COMPLETED
+//   CANCELLED
+//   RESCHEDULED
+//   CONVERTED       // From Phase 3/4
+//   EXTERNAL_BLOCK  // NEW: External calendar block
+// }

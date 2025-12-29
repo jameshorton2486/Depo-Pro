@@ -4,13 +4,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { processTranscriptionJob } from '@/lib/workers/transcription-worker';
-import type { TranscriptionJobData } from '@/types/deepgram';
+import { enqueueJob } from '@/lib/jobs/queue';
+import { JobType, TranscriptionJobPayload } from '@/lib/jobs/types';
+import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
-
 
 export async function POST(
   request: NextRequest,
@@ -26,9 +26,23 @@ export async function POST(
     const user = session.user as { id: string; role: string; firmId?: string };
     const { id: jobId } = await context.params;
 
+    // Rate limit check
+    if (user.firmId) {
+      const rateLimit = checkCombinedRateLimit(
+        user.id,
+        user.firmId,
+        'TRANSCRIPTION',
+        'TRANSCRIPTION'
+      );
+
+      if (!rateLimit.allowed) {
+        return rateLimitResponse(rateLimit.userResult);
+      }
+    }
+
     // Get request body for model selection (optional)
     const body = await request.json().catch(() => ({}));
-    const modelType = body.modelType || 'MEDICAL'; // Legacy: MEDICAL, STANDARD, BILINGUAL
+    const modelPreference = body.modelPreference || 'nova-3';
 
     // Fetch job with files
     const job = await db.job.findUnique({
@@ -59,7 +73,7 @@ export async function POST(
     // Check permissions
     const isOwner = job.createdById === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = job.firmId === user.firmId || job.case?.firmId === user.firmId;
+    const isSameFirm = (job.firmId && job.firmId === user.firmId) || (job.case?.firmId && job.case?.firmId === user.firmId);
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -90,32 +104,36 @@ export async function POST(
       where: { id: jobId },
       data: {
         status: 'TRANSCRIBING',
-        transcriptionModelType: modelType,
       },
     });
 
-    // Prepare job data
-    const jobData: TranscriptionJobData = {
-      jobId,
-      audioFileId: audioFile.id,
-      audioFileUrl: audioFile.storageUrl || audioFile.storagePath,
-      audioFileName: audioFile.fileName,
-      firmId: job.firmId || job.case?.firmId || undefined,
-      userId: user.id,
-      requestedBy: user.id,
-      modelType,
-    };
-
-    // Start transcription in background
-    processTranscriptionJob(jobData).catch((error) => {
-      console.error('Background transcription failed:', error);
-    });
+    // Enqueue transcription job
+    await enqueueJob<TranscriptionJobPayload>(
+      JobType.TRANSCRIPTION_PROCESS,
+      {
+        jobId,
+        audioFileUrl: audioFile.storageUrl || audioFile.storagePath,
+        firmId: job.firmId || job.case?.firmId || '',
+        userId: user.id,
+        options: {
+          language: 'en',
+          diarize: true,
+          punctuate: true,
+          modelPreference,
+        },
+      },
+      {
+        priority: 1,
+        maxAttempts: 3,
+        idempotencyKey: `transcription:${jobId}`,
+      }
+    );
 
     return NextResponse.json({
       success: true,
       message: 'Transcription queued successfully',
       jobId,
-      modelType,
+      modelPreference,
     });
 
   } catch (error) {

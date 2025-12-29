@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { withRequestLogging } from '@/lib/observability';
 import { checkRateLimit, requireAuth } from '@/lib/security';
+import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 
 // ═══════════════════════════════════════════════════════════════
 // GET /api/transcripts/[id] - Get full transcript content
@@ -39,6 +40,7 @@ export const GET = withRequestLogging(async (
             depositionDate: true,
             status: true,
             createdById: true,
+            firmId: true,
             files: {
               where: {
                 type: 'AUDIO',
@@ -70,8 +72,30 @@ export const GET = withRequestLogging(async (
     const isAssignedScopist = transcript.job.assignments.length > 0;
 
     if (!isCreator && !isAssignedScopist && session.user.role !== 'ADMIN') {
+      // Log access denied
+      await createAuditLog({
+        actorUserId: session.user.id,
+        firmId: (session.user as any).firmId || null,
+        action: AuditAction.ACCESS_DENIED,
+        targetType: AuditTargetType.TRANSCRIPT,
+        targetId: transcriptId,
+        metadata: { reason: 'insufficient_permissions' },
+        ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
+        userAgent: request.headers.get('user-agent') || undefined,
+      }).catch(() => {}); // Fire and forget
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
+
+    // Log transcript view
+    await createAuditLog({
+      actorUserId: session.user.id,
+      firmId: transcript.job.firmId || (session.user as any).firmId || null,
+      action: AuditAction.TRANSCRIPT_VIEWED,
+      targetType: AuditTargetType.TRANSCRIPT,
+      targetId: transcriptId,
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
+      userAgent: request.headers.get('user-agent') || undefined,
+    }).catch(() => {}); // Fire and forget
 
     return NextResponse.json({
       id: transcript.id,

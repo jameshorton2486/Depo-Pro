@@ -40,27 +40,32 @@ export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
 
 /**
  * Assignment status for scopist assignments
+ * Matches Prisma AssignmentStatus enum
  */
 export const AssignmentStatus = {
-  PENDING: 'PENDING',
+  INVITED: 'INVITED',
   ACCEPTED: 'ACCEPTED',
+  DECLINED: 'DECLINED',
   IN_PROGRESS: 'IN_PROGRESS',
-  COMPLETED: 'COMPLETED',
-  REJECTED: 'REJECTED',
+  SUBMITTED: 'SUBMITTED',
+  EXPIRED: 'EXPIRED',
+  RELEASED: 'RELEASED',
 } as const;
 
 export type AssignmentStatus = (typeof AssignmentStatus)[keyof typeof AssignmentStatus];
 
 /**
  * File types for uploaded files
+ * Matches Prisma FileType enum
  */
 export const FileType = {
   AUDIO: 'AUDIO',
   VIDEO: 'VIDEO',
-  TRANSCRIPT: 'TRANSCRIPT',
+  NOTICE: 'NOTICE',
+  COURT_ORDER: 'COURT_ORDER',
+  ROUGH_TRANSCRIPT: 'ROUGH_TRANSCRIPT',
   EXHIBIT: 'EXHIBIT',
-  WORDLIST: 'WORDLIST',
-  OTHER: 'OTHER',
+  FINAL_TRANSCRIPT: 'FINAL_TRANSCRIPT',
 } as const;
 
 export type FileType = (typeof FileType)[keyof typeof FileType];
@@ -86,6 +91,36 @@ export const TranscriptSource = {
 } as const;
 
 export type TranscriptSource = (typeof TranscriptSource)[keyof typeof TranscriptSource];
+
+/**
+ * Calendar event status - matches Prisma CalendarEventStatus enum
+ */
+export const CalendarEventStatus = {
+  REQUESTED: 'REQUESTED',
+  SCHEDULED: 'SCHEDULED',
+  CONFIRMED: 'CONFIRMED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  RESCHEDULED: 'RESCHEDULED',
+} as const;
+
+export type CalendarEventStatus = (typeof CalendarEventStatus)[keyof typeof CalendarEventStatus];
+
+/**
+ * Event type - matches Prisma EventType enum
+ */
+export const EventType = {
+  DEPOSITION: 'DEPOSITION',
+  HEARING: 'HEARING',
+  ARBITRATION: 'ARBITRATION',
+  MEDIATION: 'MEDIATION',
+  EUO: 'EUO',
+  STATEMENT: 'STATEMENT',
+  OTHER: 'OTHER',
+} as const;
+
+export type EventType = (typeof EventType)[keyof typeof EventType];
 
 /**
  * Dictionary term categories
@@ -129,11 +164,13 @@ export const JOB_STATUS_COLORS: Record<JobStatus, string> = {
  * Assignment status colors
  */
 export const ASSIGNMENT_STATUS_COLORS: Record<AssignmentStatus, string> = {
-  PENDING: 'bg-gray-100 text-gray-800 border-gray-300',
+  INVITED: 'bg-gray-100 text-gray-800 border-gray-300',
   ACCEPTED: 'bg-blue-100 text-blue-800 border-blue-300',
+  DECLINED: 'bg-red-100 text-red-800 border-red-300',
   IN_PROGRESS: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  COMPLETED: 'bg-green-100 text-green-800 border-green-300',
-  REJECTED: 'bg-red-100 text-red-800 border-red-300',
+  SUBMITTED: 'bg-green-100 text-green-800 border-green-300',
+  EXPIRED: 'bg-orange-100 text-orange-800 border-orange-300',
+  RELEASED: 'bg-purple-100 text-purple-800 border-purple-300',
 };
 
 /**
@@ -164,10 +201,11 @@ export const ROLE_COLORS: Record<Role, string> = {
 export const FILE_TYPE_ICONS: Record<FileType, string> = {
   AUDIO: '🎵',
   VIDEO: '🎥',
-  TRANSCRIPT: '📄',
+  NOTICE: '📋',
+  COURT_ORDER: '⚖️',
+  ROUGH_TRANSCRIPT: '📝',
   EXHIBIT: '📎',
-  WORDLIST: '📝',
-  OTHER: '📁',
+  FINAL_TRANSCRIPT: '📄',
 };
 
 /**

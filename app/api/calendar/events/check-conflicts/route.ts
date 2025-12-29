@@ -15,7 +15,7 @@ const checkConflictsSchema = z.object({
   location: z.string().nullable().optional(),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
-  isRemote: z.boolean().optional().default(false),
+  _isRemote: z.boolean().optional().default(false),
 });
 
 /**
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const { eventId, reporterId, location, startTime, endTime, isRemote } = validation.data;
+    const { eventId, reporterId, location, startTime, endTime, _isRemote } = validation.data;
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
@@ -53,10 +53,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       eventId,
       reporterId: reporterId || undefined,
       location: location || undefined,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
+      proposedStart: new Date(startTime),
+      proposedEnd: new Date(endTime),
       firmId: user.firmId,
-      isRemote,
     });
 
     return NextResponse.json({
@@ -69,7 +68,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: c.severity === 'ERROR' ? 'high' : c.severity === 'WARNING' ? 'medium' : 'low',
         message: c.message,
       })),
-      alternativeSlots: (result.alternativeSlots || []).map((slot, idx) => ({
+      alternativeSlots: ((result.suggestedAlternatives || result.alternativeSlots) || []).map((slot: { start: Date; end: Date }, idx: number) => ({
         startTime: slot.start.toISOString(),
         endTime: slot.end.toISOString(),
         availabilityScore: 100 - idx * 10, // Score based on order (first is best)

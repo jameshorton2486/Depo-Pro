@@ -1,69 +1,125 @@
-import { Metadata } from 'next';
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { DepoCalendar } from '@/components/calendar/depo-calendar';
+import { getCurrentUser } from '@/lib/auth';
+import { CalendarShell } from '@/components/calendar/CalendarShell';
+import { Loader2 } from 'lucide-react';
+import { startOfMonth, endOfMonth } from 'date-fns';
+import { cookies } from 'next/headers';
 
-export const metadata: Metadata = {
+// ============================================
+// CALENDAR PAGE METADATA
+// ============================================
+
+export const metadata = {
   title: 'Calendar | Depo-Pro',
-  description: 'Manage your deposition schedule',
+  description: 'View and manage your deposition schedule',
 };
 
+// ============================================
+// FETCH CALENDAR EVENTS (Server Component)
+// ============================================
+
+async function fetchCalendarEvents(startDate: Date, endDate: Date) {
+  try {
+    // For server components, we can use the API endpoint
+    // In Next.js, we can use relative URLs for internal API routes
+    const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const url = new URL('/api/calendar', baseUrl);
+    url.searchParams.set('startDate', startDate.toISOString());
+    url.searchParams.set('endDate', endDate.toISOString());
+
+    const cookieStore = await cookies();
+    const cookieString = cookieStore.toString();
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        cookie: cookieString,
+      },
+      cache: 'no-store', // Always fetch fresh data
+    });
+
+    if (!res.ok) {
+      console.error('Failed to fetch calendar events:', res.statusText);
+      return { events: [] };
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching calendar events:', error);
+    return { events: [] };
+  }
+}
+
+// ============================================
+// CALENDAR PAGE
+// ============================================
+
 export default async function CalendarPage() {
-  const session = await auth();
-  
+  // Get session
+  const session = await getCurrentUser();
+
   if (!session?.user) {
     redirect('/login');
   }
 
-  // Fetch reporters for filter dropdown (Agency/Admin only)
-  let reporters: Array<{ id: string; name: string }> = [];
-  
-  if (['AGENCY', 'ADMIN'].includes(session.user.role)) {
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { firmId: true },
-    });
+  // Type assertion for user with custom fields
+  const user = session.user as {
+    id: string;
+    email: string;
+    role: 'ADMIN' | 'REPORTER' | 'SCOPIST' | 'ATTORNEY' | 'AGENCY_ADMIN';
+    firmId?: string;
+    agencyId?: string;
+  };
 
-    if (user?.firmId) {
-      const reporterUsers = await db.user.findMany({
-        where: {
-          firmId: user.firmId,
-          role: 'REPORTER',
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-        },
-        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-      });
-
-      reporters = reporterUsers.map(u => ({
-        id: u.id,
-        name: `${u.firstName} ${u.lastName}`,
-      }));
-    }
+  // Scopists don't have calendar access in Phase 1
+  if (user.role === 'SCOPIST') {
+    redirect('/scopist/jobs');
   }
 
+  // Fetch initial events for the current month (server-side)
+  const now = new Date();
+  const startDate = startOfMonth(now);
+  const endDate = endOfMonth(now);
+  
+  const { events: apiEvents } = await fetchCalendarEvents(startDate, endDate);
+  
+  // Transform API events to CalendarEventUI format (convert date strings to Date objects)
+  const initialEvents = (apiEvents || []).map((event: any) => ({
+    ...event,
+    start: event.start ? new Date(event.start) : new Date(),
+    end: event.end ? new Date(event.end) : new Date(event.start ? new Date(event.start).getTime() + 2 * 60 * 60 * 1000 : Date.now()),
+  }));
+
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Calendar</h1>
-        <p className="text-muted-foreground">
-          {session.user.role === 'REPORTER' 
-            ? 'View your assigned depositions'
-            : session.user.role === 'ATTORNEY'
-            ? 'View your requested depositions'
-            : 'Manage deposition scheduling'}
+    <div className="flex flex-col h-[calc(100vh-64px)]">
+      {/* Page Header */}
+      <div className="border-b bg-white px-6 py-4">
+        <h1 className="text-2xl font-bold text-gray-900">Deposition Calendar</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          View and manage your scheduled depositions
         </p>
       </div>
-      
-      <DepoCalendar 
-        reporters={reporters}
-        initialView="dayGridMonth"
-      />
+
+      {/* Calendar Shell */}
+      <Suspense
+        fallback={
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <span className="text-sm text-gray-500">Loading calendar...</span>
+            </div>
+          </div>
+        }
+      >
+        <CalendarShell
+          userRole={user.role}
+          userId={user.id}
+          firmId={user.firmId}
+          agencyId={user.agencyId}
+          initialEvents={initialEvents || []}
+        />
+      </Suspense>
     </div>
   );
 }
-

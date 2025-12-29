@@ -336,7 +336,7 @@ async function saveExtractedData(
       notes: data.notes,
 
       // Status
-      status: 'PENDING',
+      status: 'CREATED',
       needsReview: data.needsReview,
     };
 

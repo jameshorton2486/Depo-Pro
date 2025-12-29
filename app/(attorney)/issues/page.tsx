@@ -207,7 +207,7 @@ export default function IssuesPage() {
                   <div className="flex items-center gap-2">
                     <span
                       className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: issueCode.color }}
+                      style={{ backgroundColor: issueCode.color } as React.CSSProperties}
                     />
                     <CardTitle>
                       {issueCode.label} ({annotations.length})

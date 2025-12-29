@@ -187,7 +187,7 @@ export default function TranscriptReviewPage() {
                   <div className="mt-1 flex items-center gap-2 p-2 bg-gray-50 rounded-md">
                     <span
                       className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: selectedCode.color }}
+                      style={{ backgroundColor: selectedCode.color } as React.CSSProperties}
                     />
                     <span className="text-sm font-medium">{selectedCode.label}</span>
                   </div>
@@ -261,7 +261,7 @@ export default function TranscriptReviewPage() {
                           <div className="flex items-center gap-2 mb-1">
                             <span
                               className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: ann.issueCode.color }}
+                              style={{ backgroundColor: ann.issueCode.color } as React.CSSProperties}
                             />
                             <span className="text-sm font-medium">{ann.issueCode.label}</span>
                             {linkedExhibits.length > 0 && (

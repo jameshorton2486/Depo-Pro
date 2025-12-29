@@ -89,9 +89,8 @@ model TranscriptAccess {
 
 enum TranscriptAccessLevel {
   VIEW           // Can view transcript
-  VIEW_DOWNLOAD  // Can view and download
-  VIEW_ANNOTATE  // Can view and add annotations
-  FULL           // Full access (view, download, annotate, share)
+  COMMENT        // Can view, download, and add annotations (replaces VIEW_DOWNLOAD and VIEW_ANNOTATE)
+  EDIT           // Full access (view, download, annotate, share) - replaces FULL
 }
 
 // Tracks sharing of transcripts via email/link
@@ -108,7 +107,7 @@ model TranscriptShare {
   // Share type
   shareType       ShareType
   
-  // For EMAIL share type
+  // For USER share type (replaces EMAIL)
   recipientEmail  String?
   recipientName   String?
   
@@ -139,9 +138,9 @@ model TranscriptShare {
 }
 
 enum ShareType {
-  EMAIL          // Sent via email to specific person
+  USER           // Share with specific user via email (replaces EMAIL)
   LINK           // Shareable link
-  CASE_ACCESS    // Granted through case membership
+  ORGANIZATION   // Share with organization/case members (replaces CASE_ACCESS)
 }
 
 enum ShareStatus {

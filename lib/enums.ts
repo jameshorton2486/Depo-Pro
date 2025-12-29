@@ -6,22 +6,37 @@
 // ALWAYS import from this file.
 // 
 // Last synced with prisma/schema.prisma
+// 
+// NOTE: Calendar and Role enums are now imported from canonical sources
+// See lib/enums/calendar.ts and lib/enums/roles.ts
 // =============================================================================
 
 // =============================================================================
-// USER & AUTHENTICATION ENUMS
+// RE-EXPORT CANONICAL ENUMS
 // =============================================================================
 
-export enum UserRole {
-  ADMIN = "ADMIN",
-  REPORTER = "REPORTER",
-  SCOPIST = "SCOPIST",
-  ATTORNEY = "ATTORNEY",
-  PARALEGAL = "PARALEGAL",
-  AGENCY = "AGENCY",
-  AGENCY_ADMIN = "AGENCY_ADMIN",
-  FIRM_ADMIN = "FIRM_ADMIN",
-}
+export {
+  CalendarEventStatus,
+  EventType,
+  ConflictType,
+  ConflictStatus,
+  ConflictResolution,
+  ExternalCalendarSyncMode,
+  ExternalCalendarProvider,
+  ExternalEventSyncStatus,
+  SchedulingValidationType,
+  ValidationSeverity,
+  SchedulingSuggestionType,
+  SuggestionConfidence,
+} from './enums/calendar';
+
+export { UserRole } from './enums/roles';
+
+// =============================================================================
+// USER & AUTHENTICATION ENUMS (Other roles not in canonical roles.ts)
+// =============================================================================
+
+// Note: UserRole is now imported from lib/enums/roles.ts above
 
 // =============================================================================
 // JOB & WORKFLOW ENUMS
@@ -132,48 +147,8 @@ export enum ExhibitStatus {
 // =============================================================================
 // CALENDAR ENUMS
 // =============================================================================
-
-export enum EventType {
-  DEPOSITION = "DEPOSITION",
-  HEARING = "HEARING",
-  TRIAL = "TRIAL",
-  MEETING = "MEETING",
-  DEADLINE = "DEADLINE",
-  OTHER = "OTHER",
-}
-
-export enum CalendarEventStatus {
-  REQUESTED = "REQUESTED",
-  SCHEDULED = "SCHEDULED",
-  CONFIRMED = "CONFIRMED",
-  IN_PROGRESS = "IN_PROGRESS",
-  COMPLETED = "COMPLETED",
-  CANCELLED = "CANCELLED",
-  RESCHEDULED = "RESCHEDULED",
-  CONVERTED = "CONVERTED",
-}
-
-export enum ConflictType {
-  REPORTER_DOUBLE_BOOKED = "REPORTER_DOUBLE_BOOKED",
-  LOCATION_CONFLICT = "LOCATION_CONFLICT",
-  TRAVEL_TIME_INSUFFICIENT = "TRAVEL_TIME_INSUFFICIENT",
-  RESOURCE_UNAVAILABLE = "RESOURCE_UNAVAILABLE",
-}
-
-export enum ConflictStatus {
-  PENDING = "PENDING",
-  OVERRIDDEN = "OVERRIDDEN",
-  RESOLVED = "RESOLVED",
-  AUTO_FIXED = "AUTO_FIXED",
-}
-
-export enum ConflictResolution {
-  KEPT_ORIGINAL = "KEPT_ORIGINAL",
-  MOVED_ORIGINAL = "MOVED_ORIGINAL",
-  REASSIGNED_REPORTER = "REASSIGNED_REPORTER",
-  OVERRIDE_ACCEPTED = "OVERRIDE_ACCEPTED",
-  TIME_ADJUSTED = "TIME_ADJUSTED",
-}
+// NOTE: Calendar-related enums are now exported from lib/enums/calendar.ts
+// See re-exports at the top of this file
 
 // =============================================================================
 // EXPORT ENUMS
@@ -237,6 +212,50 @@ export enum AuditEntityType {
 }
 
 // =============================================================================
+// PHASE 5: EXTERNAL CALENDAR ENUMS
+// =============================================================================
+
+export enum ExternalCalendarSyncMode {
+  READ_ONLY = "READ_ONLY",
+  PUSH_INTERNAL = "PUSH_INTERNAL",
+  BIDIRECTIONAL = "BIDIRECTIONAL",
+}
+
+export enum ExternalCalendarProvider {
+  GOOGLE = "GOOGLE",
+  OUTLOOK = "OUTLOOK",
+  APPLE = "APPLE",
+}
+
+export enum ExternalEventSyncStatus {
+  SYNCED = "SYNCED",
+  PENDING = "PENDING",
+  CONFLICT = "CONFLICT",
+  FAILED = "FAILED",
+  DELETED = "DELETED",
+}
+
+// =============================================================================
+// PHASE 5: SCHEDULING VALIDATION ENUMS
+// =============================================================================
+
+export enum SchedulingValidationType {
+  OVERLAP = "OVERLAP",
+  DOUBLE_BOOKING = "DOUBLE_BOOKING",
+  PAST_TIME = "PAST_TIME",
+  TOO_SHORT_NOTICE = "TOO_SHORT_NOTICE",
+  OUTSIDE_HOURS = "OUTSIDE_HOURS",
+  EXTERNAL_CONFLICT = "EXTERNAL_CONFLICT",
+  DURATION_MISMATCH = "DURATION_MISMATCH",
+}
+
+export enum ValidationSeverity {
+  ERROR = "ERROR",
+  WARNING = "WARNING",
+  INFO = "INFO",
+}
+
+// =============================================================================
 // TYPE HELPERS
 // =============================================================================
 
@@ -265,6 +284,8 @@ export function parseEnum<T extends Record<string, string>>(
 // =============================================================================
 // ROLE PERMISSION HELPERS
 // =============================================================================
+
+import { UserRole } from './enums/roles';
 
 export const JOB_CREATOR_ROLES = [
   UserRole.ADMIN,

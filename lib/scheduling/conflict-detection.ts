@@ -6,7 +6,6 @@
 // ============================================================
 
 import { db } from '@/lib/db';
-import { ConflictType } from '@/lib/enums';
 
 // ------------------------------------------------------------
 // TYPES
@@ -19,16 +18,15 @@ export interface TimeRange {
 
 export interface ConflictCheckParams {
   eventId?: string;           // Exclude this event from conflict check (for updates)
-  reporterId?: string | null; // Reporter to check
-  location?: string | null;   // Physical location to check
-  startTime: Date;
-  endTime: Date;
+  reporterId?: string;        // Reporter to check
+  location?: string;          // Physical location to check
+  proposedStart: Date;
+  proposedEnd: Date;
   firmId: string;
-  isRemote?: boolean;
 }
 
 export interface DetectedConflict {
-  type: ConflictType | string;
+  type: ConflictType;
   conflictingEventId: string;
   conflictingEventTitle: string;
   conflictingStart: Date;
@@ -40,12 +38,18 @@ export interface DetectedConflict {
   message: string;
 }
 
+export type ConflictType = 
+  | 'REPORTER_DOUBLE_BOOKED'
+  | 'LOCATION_CONFLICT'
+  | 'TRAVEL_TIME_INSUFFICIENT'
+  | 'RESOURCE_UNAVAILABLE';
+
 export interface ConflictCheckResult {
   hasConflicts: boolean;
   conflicts: DetectedConflict[];
   canOverride: boolean;
   suggestedAlternatives?: TimeRange[];
-  alternativeSlots?: TimeRange[]; // Alias for suggestedAlternatives
+  alternativeSlots?: TimeRange[]; // Alias for API compatibility
 }
 
 // ------------------------------------------------------------
@@ -112,7 +116,7 @@ function generateConflictMessage(conflict: Omit<DetectedConflict, 'message'>): s
   
   switch (conflict.type) {
     case 'REPORTER_DOUBLE_BOOKED':
-      return `${conflict.reporterName || 'Reporter'} is already scheduled for "${conflict.conflictingEventTitle}" at ${startTime} (${conflict.overlapMinutes} min overlap)`;
+      return `${conflict.reporterName} is already scheduled for "${conflict.conflictingEventTitle}" at ${startTime} (${conflict.overlapMinutes} min overlap)`;
     
     case 'LOCATION_CONFLICT':
       return `Location "${conflict.location}" is already booked for "${conflict.conflictingEventTitle}" at ${startTime}`;
@@ -138,7 +142,7 @@ function generateConflictMessage(conflict: Omit<DetectedConflict, 'message'>): s
 export async function checkForConflicts(
   params: ConflictCheckParams
 ): Promise<ConflictCheckResult> {
-  const { eventId, reporterId, location, startTime: proposedStart, endTime: proposedEnd, firmId, isRemote } = params;
+  const { eventId, reporterId, location, proposedStart, proposedEnd, firmId } = params;
   const conflicts: DetectedConflict[] = [];
   
   // Build the base where clause
@@ -196,7 +200,7 @@ export async function checkForConflicts(
       );
 
       const conflict: Omit<DetectedConflict, 'message'> = {
-        type: ConflictType.REPORTER_DOUBLE_BOOKED,
+        type: 'REPORTER_DOUBLE_BOOKED',
         conflictingEventId: event.id,
         conflictingEventTitle: event.title,
         conflictingStart: event.startTime,
@@ -216,7 +220,7 @@ export async function checkForConflicts(
   }
 
   // 2. Check for location conflicts (physical locations only)
-  if (location && !isRemote && !location.toLowerCase().includes('remote') && !location.toLowerCase().includes('zoom')) {
+  if (location && !location.toLowerCase().includes('remote') && !location.toLowerCase().includes('zoom')) {
     const locationConflicts = await db.calendarEvent.findMany({
       where: {
         ...baseWhere,
@@ -238,7 +242,7 @@ export async function checkForConflicts(
       );
 
       const conflict: Omit<DetectedConflict, 'message'> = {
-        type: ConflictType.LOCATION_CONFLICT,
+        type: 'LOCATION_CONFLICT',
         conflictingEventId: event.id,
         conflictingEventTitle: event.title,
         conflictingStart: event.startTime,
@@ -288,7 +292,7 @@ export async function checkForConflicts(
       if (proposedEnd <= event.startTime) {
         if (!hasSufficientTravelTime(proposedEnd, event.startTime)) {
           const conflict: Omit<DetectedConflict, 'message'> = {
-            type: ConflictType.TRAVEL_TIME_INSUFFICIENT,
+            type: 'TRAVEL_TIME_INSUFFICIENT',
             conflictingEventId: event.id,
             conflictingEventTitle: event.title,
             conflictingStart: event.startTime,
@@ -308,7 +312,7 @@ export async function checkForConflicts(
       if (proposedStart >= event.endTime) {
         if (!hasSufficientTravelTime(event.endTime, proposedStart)) {
           const conflict: Omit<DetectedConflict, 'message'> = {
-            type: ConflictType.TRAVEL_TIME_INSUFFICIENT,
+            type: 'TRAVEL_TIME_INSUFFICIENT',
             conflictingEventId: event.id,
             conflictingEventTitle: event.title,
             conflictingStart: event.startTime,
@@ -328,7 +332,7 @@ export async function checkForConflicts(
 
   // Determine if conflicts can be overridden
   const hasBlockingConflicts = conflicts.some(c => c.severity === 'ERROR');
-  const canOverride = !hasBlockingConflicts || conflicts.every(c => c.type !== ConflictType.REPORTER_DOUBLE_BOOKED);
+  const canOverride = !hasBlockingConflicts || conflicts.every(c => c.type !== 'REPORTER_DOUBLE_BOOKED');
 
   // Generate alternative time suggestions if there are conflicts
   let suggestedAlternatives: TimeRange[] | undefined;
@@ -347,7 +351,7 @@ export async function checkForConflicts(
     conflicts,
     canOverride,
     suggestedAlternatives,
-    alternativeSlots: suggestedAlternatives, // Alias for compatibility
+    alternativeSlots: suggestedAlternatives, // API compatibility alias
   };
 }
 
@@ -397,6 +401,7 @@ export async function findAlternativeTimeSlots(
   const BUSINESS_START_HOUR = 8;
   const BUSINESS_END_HOUR = 18;
   const durationMs = duration;
+  const _durationMinutes = Math.ceil(durationMs / (1000 * 60));
 
   // Check each day in the search range
   for (let dayOffset = 0; dayOffset < CONFIG.ALTERNATIVE_SEARCH_DAYS && alternatives.length < CONFIG.MAX_ALTERNATIVES; dayOffset++) {
@@ -467,12 +472,10 @@ export async function isReporterAvailable(
   reporterId: string,
   start: Date,
   end: Date,
-  firmId: string,
   excludeEventId?: string
 ): Promise<boolean> {
   const conflictCount = await db.calendarEvent.count({
     where: {
-      firmId,
       assignedReporterId: reporterId,
       status: { notIn: ['CANCELLED', 'COMPLETED'] },
       ...(excludeEventId && { id: { not: excludeEventId } }),
@@ -506,15 +509,13 @@ export async function isReporterAvailable(
 export async function getReportersAvailability(
   reporterIds: string[],
   start: Date,
-  end: Date,
-  firmId: string
+  end: Date
 ): Promise<Map<string, boolean>> {
   const availability = new Map<string, boolean>();
 
   // Get all conflicting events for these reporters
   const conflicts = await db.calendarEvent.findMany({
     where: {
-      firmId,
       assignedReporterId: { in: reporterIds },
       status: { notIn: ['CANCELLED', 'COMPLETED'] },
       OR: [
@@ -533,53 +534,4 @@ export async function getReportersAvailability(
   }
 
   return availability;
-}
-
-// ------------------------------------------------------------
-// COMPATIBILITY EXPORTS (for existing code)
-// ------------------------------------------------------------
-
-export interface Conflict {
-  type: ConflictType | string;
-  conflictEventId: string;
-  conflictEventTitle: string;
-  overlapMinutes: number;
-  severity: 'low' | 'medium' | 'high';
-  message: string;
-}
-
-/**
- * Convert DetectedConflict to legacy Conflict format
- */
-export function convertToLegacyConflict(detected: DetectedConflict): Conflict {
-  return {
-    type: detected.type,
-    conflictEventId: detected.conflictingEventId,
-    conflictEventTitle: detected.conflictingEventTitle,
-    overlapMinutes: detected.overlapMinutes,
-    severity: detected.severity === 'ERROR' ? 'high' : detected.severity === 'WARNING' ? 'medium' : 'low',
-    message: detected.message,
-  };
-}
-
-export interface TimeSlot {
-  startTime: Date;
-  endTime: Date;
-  availabilityScore: number;
-}
-
-/**
- * Convert TimeRange to legacy TimeSlot format with score
- */
-export function convertToTimeSlot(range: TimeRange, preferredTime?: Date): TimeSlot {
-  const hoursDiff = preferredTime 
-    ? Math.abs(range.start.getTime() - preferredTime.getTime()) / (1000 * 60 * 60)
-    : 0;
-  const availabilityScore = Math.max(0, 100 - hoursDiff * 10);
-  
-  return {
-    startTime: range.start,
-    endTime: range.end,
-    availabilityScore,
-  };
 }

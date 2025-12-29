@@ -1,0 +1,876 @@
+// ============================================
+// DEPO-PRO CALENDAR & CSR SYSTEM
+// Schema Additions - Append to existing schema.prisma
+// 
+// VERSION: 2.0 - Enhanced with Insurance Defense,
+// TranscriptOrder, and AI Document Ingestion support
+// ============================================
+
+// ============================================
+// AGENCY (Super-Tenant)
+// ============================================
+
+model Agency {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique // URL-friendly identifier
+  
+  // Contact
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  
+  // Billing & Licensing
+  planType    AgencyPlanType @default(BASIC)
+  maxReporters Int           @default(10)
+  maxFirms     Int           @default(5)
+  
+  // Settings
+  settings    Json?    // { defaultTimezone, billingEmail, etc. }
+  
+  // Relations
+  firms       Firm[]   @relation("AgencyFirms")
+  reporters   User[]   @relation("AgencyReporters")
+  events      CalendarEvent[]
+  jobs        Job[]    @relation("AgencyJobs")
+  
+  // Audit
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([slug])
+}
+
+enum AgencyPlanType {
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+// ============================================
+// CALENDAR EVENT
+// ============================================
+
+model CalendarEvent {
+  id              String   @id @default(cuid())
+  
+  // === Case Information ===
+  caseStyle       String   // "Eric Estopinal v. A&H Foods, LLC"
+  caseNumber      String?
+  courtName       String?
+  county          String?
+  state           String?
+  
+  // === Deponent/Witness Details ===
+  deponentName    String
+  deponentRole    DeponentRole?
+  deponentLocation String? // City, State
+  
+  // === Scheduling ===
+  scheduledStart  DateTime
+  scheduledEnd    DateTime?
+  actualStart     DateTime?
+  actualEnd       DateTime?
+  timezone        String   @default("America/Chicago")
+  
+  // === Location ===
+  locationType    LocationType @default(IN_PERSON)
+  locationAddress String?
+  locationRoom    String?      // Conference room
+  zoomMeetingId   String?
+  zoomJoinUrl     String?
+  zoomPassword    String?
+  
+  // === Requirements ===
+  interpreterRequired   Boolean @default(false)
+  interpreterLanguage   String?
+  videographerRequired  Boolean @default(false)
+  realtimeRequired      Boolean @default(false)
+  
+  // === Participants ===
+  orderingAttorneyId    String?
+  orderingAttorney      Attorney? @relation("OrderingAttorneyEvents", fields: [orderingAttorneyId], references: [id])
+  
+  assignedReporterId    String?
+  assignedReporter      User?    @relation("AssignedReporterEvents", fields: [assignedReporterId], references: [id])
+  
+  // === Multi-Tenancy ===
+  firmId          String?
+  firm            Firm?    @relation("FirmEvents", fields: [firmId], references: [id])
+  agencyId        String?
+  agency          Agency?  @relation(fields: [agencyId], references: [id])
+  createdById     String
+  createdBy       User     @relation("CreatedEvents", fields: [createdById], references: [id])
+  
+  // === Status ===
+  status          CalendarEventStatus @default(SCHEDULED)
+  cancellationReason String?
+  
+  // === Link to Job ===
+  jobId           String?  @unique
+  job             Job?     @relation("CalendarEventJob", fields: [jobId], references: [id])
+  
+  // === Google Calendar Sync ===
+  googleEventId   String?
+  googleCalendarId String?
+  lastSyncedAt    DateTime?
+  syncEnabled     Boolean  @default(true)
+  
+  // === Notes ===
+  notes           String?  @db.Text
+  internalNotes   String?  @db.Text
+  
+  // === Audit ===
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([scheduledStart])
+  @@index([firmId])
+  @@index([agencyId])
+  @@index([assignedReporterId])
+  @@index([status])
+  @@index([googleEventId])
+}
+
+enum CalendarEventStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  POSTPONED
+  NO_SHOW
+}
+
+enum LocationType {
+  IN_PERSON
+  ZOOM
+  TEAMS
+  WEBEX
+  PHONE
+  HYBRID
+  OTHER
+}
+
+enum DeponentRole {
+  PLAINTIFF
+  DEFENDANT
+  CORPORATE_REP
+  EXPERT_WITNESS
+  FACT_WITNESS
+  THIRD_PARTY
+}
+
+// ============================================
+// REPORTER AVAILABILITY
+// ============================================
+
+model ReporterAvailability {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("ReporterAvailability", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Weekly recurring availability
+  dayOfWeek       Int      // 0=Sunday, 6=Saturday
+  startTime       String   // "09:00" (24-hour format)
+  endTime         String   // "17:00"
+  
+  // Active flag
+  isActive        Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([userId, dayOfWeek, startTime])
+  @@index([userId])
+}
+
+model ReporterUnavailability {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation("ReporterUnavailability", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Specific date/time range
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Reason
+  reason          String?  // "Vacation", "Personal", "Training"
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId])
+  @@index([startDate, endDate])
+}
+
+// ============================================
+// ATTORNEY (Global Registry)
+// ============================================
+
+model Attorney {
+  id              String   @id @default(cuid())
+  
+  // === Identity ===
+  firstName       String
+  lastName        String
+  normalizedName  String   // "john-smith-smith-jones-llp" for dedup
+  
+  // === Firm ===
+  firmName        String?
+  
+  // === Contact ===
+  email           String?
+  phone           String?
+  fax             String?
+  
+  // === Address ===
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  
+  // === Bar License ===
+  barNumber       String?
+  barState        String?
+  licensureStates String[] // Multiple states
+  
+  // === Delivery Preferences ===
+  preferredFormat       String?  // "Word", "PDF", "ASCII"
+  preferredDelivery     String?  // "E-Trans", "Hard Copy"
+  defaultRushPreference String?  // "Standard", "Expedite"
+  
+  // === Relations ===
+  csrAttorneys    CSRAttorney[]
+  orderedEvents   CalendarEvent[] @relation("OrderingAttorneyEvents")
+  
+  // === Audit ===
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([email])
+  @@index([normalizedName])
+  @@index([lastName])
+  @@index([firmName])
+  @@index([barNumber, barState])
+}
+
+// ============================================
+// CSR RECORD (Structured Intake)
+// LEGAL & BILLING AUTHORITY — Critical Model
+// 
+// Purpose: Authoritative legal, insurance, logistics,
+// and fulfillment data. This is the backbone of the
+// deposition record.
+// 
+// ⚠️ CSRRecord MUST lock once transcription begins.
+// ============================================
+
+model CSRRecord {
+  id              String   @id @default(cuid())
+  
+  // === Job Link (1:1) ===
+  jobId           String   @unique
+  job             Job      @relation("JobCSRRecord", fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // === Deposition Metadata ===
+  depositionDate        DateTime
+  scheduledStartTime    DateTime?
+  actualStartTime       DateTime?
+  endTime               DateTime?
+  timezone              String    @default("America/Chicago")
+  
+  // === Location ===
+  locationType          LocationType @default(IN_PERSON)
+  locationAddress       String?
+  locationCity          String?
+  locationState         String?
+  locationZip           String?
+  conferenceRoom        String?
+  
+  // === Requirements ===
+  interpreterRequired   Boolean  @default(false)
+  interpreterLanguage   String?
+  videographerRequired  Boolean  @default(false)
+  videographerName      String?
+  realtimeRequired      Boolean  @default(false)
+  
+  // === Recording Flags (Video Type) ===
+  videoType             VideoRecordType @default(CR_ONLY)
+  isCROnly              Boolean  @default(true)   // Court Reporter only (legacy)
+  isVideoRecord         Boolean  @default(false)  // Video recorded (legacy)
+  isPIP                 Boolean  @default(false)  // Picture-in-Picture (legacy)
+  
+  // === Case Information ===
+  caseCaption           String   // Full case style e.g. "Eric Estopinal v. A&H Foods, LLC"
+  causeNumber           String?
+  courtName             String?
+  courtType             String?  // "District Court", "County Court"
+  county                String?
+  state                 String   @default("Texas")
+  judge                 String?
+  
+  // ============================================
+  // INSURANCE DEFENSE METADATA (Critical for Billing)
+  // ============================================
+  dateOfLoss            DateTime?
+  claimNumber           String?
+  policyNumber          String?
+  insurerName           String?   // Insurance company name
+  insuredName           String?   // Name of insured party
+  isEUO                 Boolean  @default(false) // Examination Under Oath
+  adjustorName          String?   // Insurance adjustor
+  adjustorEmail         String?
+  adjustorPhone         String?
+  
+  // === Read & Sign ===
+  readAndSignRequired   Boolean  @default(true)
+  signatureWaived       Boolean  @default(false)
+  waivedReason          String?
+  readAndSignSentAt     DateTime?
+  readAndSignReceivedAt DateTime?
+  readAndSignExpiresAt  DateTime?
+  changesReceived       Boolean  @default(false)
+  changeCount           Int      @default(0)
+  
+  // ============================================
+  // LOGISTICS & BILLING FIELDS
+  // ============================================
+  travelMiles           Float?
+  parkingRequired       Boolean  @default(false)
+  parkingFees           Decimal? @db.Decimal(10, 2)
+  parkingNotes          String?
+  accessInstructions    String?  @db.Text
+  securityNotes         String?  @db.Text
+  
+  // === Delivery Priority ===
+  deliveryPriority      DeliveryPriority @default(STANDARD)
+  rushDueDate           DateTime?
+  
+  // === Locking (Immutable after transcription starts) ===
+  isLocked              Boolean  @default(false)
+  lockedAt              DateTime?
+  lockedReason          String?
+  
+  // === Relations ===
+  witnesses             CSRWitness[]
+  attorneys             CSRAttorney[]
+  parties               CSRParty[]
+  properNouns           CSRProperNoun[]
+  transcriptOptions     CSRTranscriptOptions?
+  transcriptOrders      TranscriptOrder[]  // Per-party delivery tracking
+  
+  // ============================================
+  // AI DOCUMENT INGESTION TRACKING
+  // ============================================
+  originalDocumentUrl   String?
+  originalDocumentType  String?  // "PDF", "DOCX", "Image"
+  aiExtractedFields     Json?    // Fields extracted by AI
+  aiExtractionConfidence Float?  // Overall confidence score
+  aiExtractedAt         DateTime?
+  manualOverrides       Json?    // Fields manually corrected after AI
+  
+  // === Audit ===
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  @@index([jobId])
+  @@index([depositionDate])
+  @@index([causeNumber])
+  @@index([claimNumber])
+  @@index([policyNumber])
+  @@index([deliveryPriority])
+}
+
+// Video recording type enum
+enum VideoRecordType {
+  CR_ONLY     // Court Reporter only (audio)
+  CR_VIDEO    // CR with video recording
+  CR_PIP      // CR with Picture-in-Picture
+  REMOTE      // Remote/Zoom recording
+  HYBRID      // Mixed in-person and remote
+}
+
+// Delivery priority for rush handling
+enum DeliveryPriority {
+  STANDARD    // Normal turnaround (14-21 days)
+  EXPEDITE    // 7-10 days
+  RUSH        // 3-5 days
+  DAILY       // Next business day
+  HOURLY      // Same day / within hours
+  REALTIME    // During deposition
+}
+
+// ============================================
+// TRANSCRIPT ORDER (Per-Party Fulfillment)
+// 
+// Purpose: Track delivery requirements per attorney/firm.
+// Each party may need different formats, delivery methods.
+// Critical for accurate billing and fulfillment.
+// ============================================
+
+model TranscriptOrder {
+  id              String   @id @default(cuid())
+  csrRecordId     String
+  csrRecord       CSRRecord @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+  
+  // === Attorney/Firm Info ===
+  attorneyName    String
+  firmName        String?
+  email           String
+  phone           String?
+  fax             String?
+  
+  // === Address for Hard Copy Delivery ===
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  
+  // === Delivery Specifications ===
+  deliveryType    TranscriptDeliveryType @default(E_TRANS)
+  fileFormat      TranscriptFileFormat   @default(WORD)
+  
+  // === Order Type ===
+  isOriginal      Boolean  @default(false)  // Original vs Copy
+  copyCount       Int      @default(1)
+  
+  // === Fulfillment Status ===
+  status          OrderFulfillmentStatus @default(PENDING)
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  trackingNumber  String?   // For hard copy shipments
+  
+  // === Billing ===
+  pageCount       Int?
+  pricePerPage    Decimal? @db.Decimal(10, 2)
+  totalPrice      Decimal? @db.Decimal(10, 2)
+  invoiced        Boolean  @default(false)
+  invoicedAt      DateTime?
+  
+  // === Audit ===
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([csrRecordId])
+  @@index([email])
+  @@index([status])
+}
+
+enum TranscriptDeliveryType {
+  E_TRANS       // Electronic delivery
+  HARD_COPY     // Physical mail
+  ORIGINAL      // Original transcript
+  BOTH          // Electronic + Hard copy
+  FTP           // FTP upload
+  PORTAL        // Client portal
+}
+
+enum TranscriptFileFormat {
+  WORD          // Microsoft Word (.docx)
+  PDF           // PDF format
+  ASCII         // Plain text ASCII
+  WORD_PERFECT  // WordPerfect format
+  RTF           // Rich Text Format
+  PTX           // E-Transcript format
+}
+
+enum OrderFulfillmentStatus {
+  PENDING       // Awaiting transcript completion
+  READY         // Transcript ready, not sent
+  SENT          // Sent to recipient
+  DELIVERED     // Confirmed delivered
+  RETURNED      // Returned/undeliverable
+  CANCELLED     // Order cancelled
+}
+
+// ============================================
+// CSR WITNESS
+// ============================================
+
+model CSRWitness {
+  id              String   @id @default(cuid())
+  csrRecordId     String
+  csrRecord       CSRRecord @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+  
+  // === Identity ===
+  fullLegalName   String
+  preferredName   String?
+  
+  // === Role ===
+  role            DeponentRole @default(FACT_WITNESS)
+  entityRepresented String?    // If corporate rep
+  
+  // === Location ===
+  city            String?
+  state           String?
+  appearanceType  AppearanceType @default(IN_PERSON)
+  
+  // === Read & Sign (per witness) ===
+  readAndSignRequired Boolean @default(true)
+  signatureWaived     Boolean @default(false)
+  
+  // === Ordering ===
+  sortOrder       Int      @default(0)
+  isPrimary       Boolean  @default(false) // Primary deponent
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([csrRecordId])
+}
+
+enum AppearanceType {
+  IN_PERSON
+  REMOTE
+  PHONE
+}
+
+// ============================================
+// CSR ATTORNEY (Junction Table)
+// ============================================
+
+model CSRAttorney {
+  id              String   @id @default(cuid())
+  csrRecordId     String
+  csrRecord       CSRRecord @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+  
+  // === Attorney Reference (Global) ===
+  attorneyId      String
+  attorney        Attorney @relation(fields: [attorneyId], references: [id])
+  
+  // === Role in This Deposition ===
+  role            CSRAttorneyRole
+  representing    String?  // Which party they represent
+  
+  // === Delivery for This Job ===
+  deliveryFormat  String?  // Override attorney default
+  deliveryMethod  String?
+  rushRequested   Boolean  @default(false)
+  rushType        RushType?
+  
+  // === Copies ===
+  needsOriginal   Boolean  @default(false)
+  needsCopy       Boolean  @default(true)
+  copyCount       Int      @default(1)
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([csrRecordId, attorneyId, role])
+  @@index([csrRecordId])
+  @@index([attorneyId])
+}
+
+enum CSRAttorneyRole {
+  ORDERING_ATTORNEY
+  COPY_ATTORNEY
+  PLAINTIFF_COUNSEL
+  DEFENSE_COUNSEL
+  CROSS_NOTICING
+  OTHER
+}
+
+enum RushType {
+  STANDARD
+  EXPEDITE       // 7-10 days
+  DAILY          // Next business day
+  HOURLY         // Within hours
+  REALTIME       // During deposition
+}
+
+// ============================================
+// CSR PARTY (Plaintiff/Defendant)
+// ============================================
+
+model CSRParty {
+  id              String   @id @default(cuid())
+  csrRecordId     String
+  csrRecord       CSRRecord @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+  
+  // === Party Info ===
+  partyName       String
+  partyType       PartyType
+  isEntity        Boolean  @default(false) // Corporation vs individual
+  entityType      String?  // "LLC", "Corporation", "Partnership"
+  
+  // === Sorting ===
+  sortOrder       Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([csrRecordId])
+  @@index([partyType])
+}
+
+enum PartyType {
+  PLAINTIFF
+  DEFENDANT
+  CROSS_PLAINTIFF
+  CROSS_DEFENDANT
+  THIRD_PARTY
+  INTERVENOR
+}
+
+// ============================================
+// CSR PROPER NOUN (Deepgram Vocabulary)
+// ============================================
+
+model CSRProperNoun {
+  id              String   @id @default(cuid())
+  csrRecordId     String
+  csrRecord       CSRRecord @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+  
+  // === Noun Details ===
+  value           String   // The actual word/phrase
+  category        ProperNounCategory
+  phoneticHint    String?  // Pronunciation guide
+  
+  // === Source ===
+  source          String?  // "Notice", "Manual", "Case File"
+  
+  // === Control ===
+  useInTranscription Boolean @default(true)
+  priority        Int      @default(0) // Higher = more important
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([csrRecordId, value])
+  @@index([csrRecordId])
+  @@index([category])
+}
+
+enum ProperNounCategory {
+  PERSON_NAME
+  COMPANY_NAME
+  PLACE_NAME
+  PRODUCT_NAME
+  LEGAL_TERM
+  MEDICAL_TERM
+  TECHNICAL_TERM
+  ACRONYM
+  OTHER
+}
+
+// ============================================
+// CSR TRANSCRIPT OPTIONS
+// ============================================
+
+model CSRTranscriptOptions {
+  id              String   @id @default(cuid())
+  csrRecordId     String   @unique
+  csrRecord       CSRRecord @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+  
+  // === Format ===
+  format          TranscriptFormat @default(WORD)
+  
+  // === Delivery ===
+  deliveryMethod  DeliveryMethod   @default(E_TRANS)
+  
+  // === Rush ===
+  rushType        RushType         @default(STANDARD)
+  rushDeadline    DateTime?
+  
+  // === Options ===
+  includeWordIndex    Boolean @default(false)
+  includeExhibitList  Boolean @default(true)
+  includeAppearances  Boolean @default(true)
+  colorExhibits       Boolean @default(false)
+  
+  // === Post-Production Stats ===
+  pageCount       Int?
+  lineCount       Int?
+  exhibitCount    Int?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([csrRecordId])
+}
+
+enum TranscriptFormat {
+  WORD
+  PDF
+  ASCII
+  WORD_PERFECT
+  RTF
+}
+
+enum DeliveryMethod {
+  E_TRANS
+  HARD_COPY
+  BOTH
+  FTP
+  PORTAL
+}
+
+// ============================================
+// JOB EXHIBIT (Timestamp-Linked)
+// ============================================
+
+model JobExhibit {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation("JobExhibits", fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // === Exhibit Identification ===
+  exhibitNumber   String   // "Ex 1", "Ex A", "13"
+  exhibitLabel    String?  // "Texas Franchise Report"
+  description     String?
+  
+  // === File Reference ===
+  fileId          String?
+  file            JobFile? @relation("ExhibitFile", fields: [fileId], references: [id])
+  
+  // External URL if not in system
+  externalUrl     String?
+  
+  // === Timestamp Markers ===
+  introducedAtTimestamp   Float?   // When exhibit was introduced
+  discussionStartTimestamp Float?  // Start of discussion
+  discussionEndTimestamp   Float?  // End of discussion
+  
+  // === Transcript Line References ===
+  introducedAtLine        Int?
+  introducedAtPage        Int?
+  
+  // === Metadata ===
+  pageCount       Int?
+  isMarkedForRecord Boolean @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([jobId, exhibitNumber])
+  @@index([jobId])
+}
+
+// ============================================
+// SCOPIST MARKETPLACE
+// ============================================
+
+model JobClaim {
+  id              String   @id @default(cuid())
+  jobId           String
+  job             Job      @relation("JobClaims", fields: [jobId], references: [id], onDelete: Cascade)
+  
+  scopistId       String
+  scopist         User     @relation("ScopistClaims", fields: [scopistId], references: [id])
+  
+  // === Status ===
+  status          ClaimStatus @default(PENDING)
+  
+  // === Timestamps ===
+  claimedAt       DateTime @default(now())
+  respondedAt     DateTime?
+  acceptedAt      DateTime?
+  completedAt     DateTime?
+  
+  // === Pricing ===
+  proposedRate    Decimal?
+  agreedRate      Decimal?
+  rateType        RateType @default(PER_PAGE)
+  
+  // === Notes ===
+  scopistNote     String?  @db.Text // Message from scopist
+  reporterNote    String?  @db.Text // Response from reporter
+  rejectionReason String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([jobId, scopistId])
+  @@index([scopistId])
+  @@index([status])
+  @@index([claimedAt])
+}
+
+enum ClaimStatus {
+  PENDING         // Scopist requested
+  ACCEPTED        // Reporter approved
+  REJECTED        // Reporter declined
+  IN_PROGRESS     // Work started
+  SUBMITTED       // Scopist finished
+  APPROVED        // Work accepted
+  DISPUTED        // Issue raised
+  CANCELLED       // Cancelled by either party
+}
+
+enum RateType {
+  PER_PAGE
+  PER_AUDIO_MINUTE
+  FLAT_RATE
+  HOURLY
+}
+
+// ============================================
+// MARKETPLACE SETTINGS
+// ============================================
+
+model MarketplaceSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation("MarketplaceSettings", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // === Scopist Settings ===
+  isAvailableForWork    Boolean @default(true)
+  minPagesAccepted      Int?    // Minimum page count
+  maxPagesAccepted      Int?    // Maximum page count
+  preferredRatePerPage  Decimal?
+  preferredRatePerMinute Decimal?
+  
+  // === Preferences ===
+  acceptsRushJobs       Boolean @default(true)
+  acceptsMedicalDepos   Boolean @default(true)
+  acceptsTechnicalDepos Boolean @default(true)
+  preferredStates       String[] // Geographic preferences
+  
+  // === Reporter Settings ===
+  autoAcceptClaims      Boolean @default(false)
+  preferredScopists     String[] // User IDs of preferred scopists
+  blockedScopists       String[] // User IDs to block
+  defaultRatePerPage    Decimal?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([isAvailableForWork])
+}
+
+// ============================================
+// UPDATES TO EXISTING MODELS
+// ============================================
+
+// Add these relations to the existing User model:
+// 
+// agencyId              String?
+// agency                Agency?  @relation("AgencyReporters", fields: [agencyId], references: [id])
+// 
+// assignedEvents        CalendarEvent[]      @relation("AssignedReporterEvents")
+// createdEvents         CalendarEvent[]      @relation("CreatedEvents")
+// reporterAvailability  ReporterAvailability[] @relation("ReporterAvailability")
+// reporterUnavailability ReporterUnavailability[] @relation("ReporterUnavailability")
+// scopistClaims         JobClaim[]           @relation("ScopistClaims")
+// marketplaceSettings   MarketplaceSettings? @relation("MarketplaceSettings")
+
+// Add these relations to the existing Job model:
+//
+// agencyId              String?
+// agency                Agency?  @relation("AgencyJobs", fields: [agencyId], references: [id])
+// 
+// calendarEvent         CalendarEvent?       @relation("CalendarEventJob")
+// csrRecord             CSRRecord?           @relation("JobCSRRecord")
+// jobExhibits           JobExhibit[]         @relation("JobExhibits")
+// claims                JobClaim[]           @relation("JobClaims")
+
+// Add these relations to the existing Firm model:
+//
+// agencyId              String?
+// agency                Agency?  @relation("AgencyFirms", fields: [agencyId], references: [id])
+// 
+// calendarEvents        CalendarEvent[]      @relation("FirmEvents")
+
+// Add this relation to the existing JobFile model:
+//
+// exhibitLink           JobExhibit?          @relation("ExhibitFile")

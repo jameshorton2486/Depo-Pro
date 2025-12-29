@@ -12,6 +12,7 @@ import { db } from '@/lib/db';
 import { createJobSchema } from '@/lib/validations/job';
 import { withRequestLogging } from '@/lib/observability';
 import { checkRateLimit, requireAuth } from '@/lib/security';
+import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs/[id] - Get single job
@@ -148,6 +149,10 @@ export const PUT = withRequestLogging(async (
       },
     });
 
+    // Invalidate caches
+    invalidateDashboardCache();
+    invalidateEntityCache('job', id);
+
     return NextResponse.json(job);
 
   } catch (error) {
@@ -216,6 +221,10 @@ export const PATCH = withRequestLogging(async (
       select: { id: true, status: true },
     });
 
+    // Invalidate caches
+    invalidateDashboardCache();
+    invalidateEntityCache('job', id);
+
     return NextResponse.json(updatedJob);
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
@@ -267,6 +276,10 @@ export const DELETE = withRequestLogging(async (
     await db.job.delete({
       where: { id },
     });
+
+    // Invalidate caches
+    invalidateDashboardCache();
+    invalidateEntityCache('job', id);
 
     return NextResponse.json({ success: true });
 

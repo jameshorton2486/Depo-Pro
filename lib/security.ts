@@ -84,7 +84,7 @@ export function cleanupRateLimits() {
 /**
  * Authentication guard for API routes
  */
-export async function requireAuth(_request: NextRequest) {
+export async function requireAuth(_request?: NextRequest) {
   const session = await auth();
 
   if (!session?.user) {

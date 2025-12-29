@@ -115,10 +115,14 @@ export async function canAccessJob(
     select: {
       id: true,
       firmId: true,
-      createdById: true,
-      scopistId: true,
       caseName: true,
       status: true,
+      createdBy: {
+        select: { id: true }
+      },
+      assignments: {
+        select: { scopistId: true }
+      }
     },
   });
 
@@ -130,14 +134,15 @@ export async function canAccessJob(
     return { allowed: true, job };
   }
 
-  if (user.firmId !== job.firmId) {
+  if (job.firmId && user.firmId !== job.firmId) {
     return { allowed: false };
   }
 
-  const canAccess =
-    job.createdById === user.id ||
-    job.scopistId === user.id ||
-    ([UserRole.REPORTER, UserRole.AGENCY] as string[]).includes(user.role);
+  const isCreator = job.createdBy?.id === user.id;
+  const isAssignedScopist = job.assignments?.some(a => a.scopistId === user.id);
+  const isAgencyOrReporter = ([UserRole.REPORTER, UserRole.AGENCY] as UserRole[]).includes(user.role);
+
+  const canAccess = isCreator || isAssignedScopist || isAgencyOrReporter;
 
   return { allowed: canAccess, job };
 }
@@ -154,8 +159,12 @@ export async function canAccessTranscript(
         select: {
           id: true,
           firmId: true,
-          createdById: true,
-          scopistId: true,
+          createdBy: {
+            select: { id: true }
+          },
+          assignments: {
+            select: { scopistId: true }
+          }
         },
       },
     },
@@ -170,12 +179,14 @@ export async function canAccessTranscript(
   }
 
   const job = transcript.job;
-  if (
-    job &&
-    user.firmId === job.firmId &&
-    (job.createdById === user.id || job.scopistId === user.id)
-  ) {
-    return { allowed: true, accessLevel: 'EDIT', transcript };
+  if (job) {
+    const isCreator = job.createdBy?.id === user.id;
+    const isAssignedScopist = job.assignments?.some(a => a.scopistId === user.id);
+    const isSameFirm = job.firmId && user.firmId === job.firmId;
+
+    if (isSameFirm && (isCreator || isAssignedScopist)) {
+      return { allowed: true, accessLevel: 'EDIT', transcript };
+    }
   }
 
   // Check direct access grants

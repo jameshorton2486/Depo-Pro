@@ -9,6 +9,7 @@ import { compare, compareSync } from 'bcryptjs';
 import { db } from '@/lib/db';
 import { loginSchema } from '@/lib/validations/user';
 import { Role } from '@/lib/constants';
+import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 
 /**
  * NextAuth configuration object
@@ -41,13 +42,24 @@ export const authConfig: NextAuthConfig = {
        * @param credentials - Email and password from login form
        * @returns User object if valid, null if invalid
        */
-      async authorize(credentials, _request) {
+      async authorize(credentials, request) {
         try {
           // Validate input with Zod
           const validatedFields = loginSchema.safeParse(credentials);
 
           if (!validatedFields.success) {
             console.warn('[Auth] Login attempt with invalid credentials format');
+            // Log failed login attempt
+            await createAuditLog({
+              actorUserId: null,
+              firmId: null,
+              action: AuditAction.LOGIN_FAILED,
+              targetType: AuditTargetType.USER,
+              targetId: 'unknown',
+              metadata: { reason: 'invalid_format' },
+              ipAddress: request?.headers?.get('x-forwarded-for')?.split(',')[0] || request?.headers?.get('x-real-ip') || undefined,
+              userAgent: request?.headers?.get('user-agent') || undefined,
+            }).catch(() => {}); // Fire and forget
             return null;
           }
 
@@ -55,7 +67,11 @@ export const authConfig: NextAuthConfig = {
 
           console.log(`[Auth] Login attempt for: ${email}`);
 
-          // Find user by email
+          // Get IP address for audit logging
+          const ipAddress = request?.headers?.get('x-forwarded-for')?.split(',')[0] || request?.headers?.get('x-real-ip') || undefined;
+          const userAgent = request?.headers?.get('user-agent') || undefined;
+
+          // Find user by email (include firmId for audit logging)
           const user = await db.user.findUnique({
             where: { email: email.toLowerCase() },
             select: {
@@ -65,12 +81,24 @@ export const authConfig: NextAuthConfig = {
               lastName: true,
               passwordHash: true,
               role: true,
+              firmId: true,
             },
           });
 
           // Check if user exists
           if (!user || !user.passwordHash) {
             console.warn(`[Auth] Login attempt for non-existent user: ${email}`);
+            // Log failed login attempt
+            await createAuditLog({
+              actorUserId: null,
+              firmId: null,
+              action: AuditAction.LOGIN_FAILED,
+              targetType: AuditTargetType.USER,
+              targetId: 'unknown',
+              metadata: { reason: 'user_not_found' },
+              ipAddress,
+              userAgent,
+            }).catch(() => {}); // Fire and forget
             return null;
           }
 
@@ -88,10 +116,32 @@ export const authConfig: NextAuthConfig = {
 
           if (!isPasswordValid) {
             console.warn(`[Auth] Login attempt with invalid password: ${email}`);
+            // Log failed login attempt
+            await createAuditLog({
+              actorUserId: null,
+              firmId: user.firmId || null,
+              action: AuditAction.LOGIN_FAILED,
+              targetType: AuditTargetType.USER,
+              targetId: user.id,
+              metadata: { reason: 'invalid_password' },
+              ipAddress,
+              userAgent,
+            }).catch(() => {}); // Fire and forget
             return null;
           }
 
           console.log(`[Auth] User logged in successfully: ${user.email} (${user.role})`);
+
+          // Log successful login
+          await createAuditLog({
+            actorUserId: user.id,
+            firmId: user.firmId || null,
+            action: AuditAction.LOGIN_SUCCESS,
+            targetType: AuditTargetType.USER,
+            targetId: user.id,
+            ipAddress,
+            userAgent,
+          }).catch(() => {}); // Fire and forget
 
           // Return user object (excluding passwordHash)
           return {

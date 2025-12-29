@@ -4,6 +4,7 @@
 // Utility functions for authentication and authorization
 
 import NextAuth from 'next-auth';
+import { NextResponse } from 'next/server';
 import { authConfig } from '@/lib/auth-options';
 import { Role } from '@/lib/constants';
 import { redirect } from 'next/navigation';
@@ -136,6 +137,81 @@ export async function hasAnyRole(roles: Role[]): Promise<boolean> {
   }
 
   return roles.includes(session.user.role as Role);
+}
+
+/**
+ * Require role for API routes - returns JSON error instead of redirect
+ * Use this in API routes
+ * 
+ * NOTE: This function intentionally returns NextResponse on failure
+ * to simplify API route usage. Do NOT refactor to throw.
+ * 
+ * @param roles - Array of allowed roles
+ * @returns Session object or NextResponse error
+ * 
+ * @example
+ * ```ts
+ * const session = await requireRoleApi([Role.ADMIN, Role.REPORTER]);
+ * if (session instanceof NextResponse) return session; // Error response
+ * // session is valid here
+ * ```
+ */
+export async function requireRoleApi(
+  roles: Role[]
+): Promise<{ user: { id: string; email: string; role: Role } } | NextResponse> {
+  const session = await getCurrentUser();
+  
+  if (!session || !session.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  
+  if (!roles.includes(session.user.role as Role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  
+  return session as { user: { id: string; email: string; role: Role } };
+}
+
+/**
+ * Check if session has one of the allowed roles
+ * Utility for inline checks
+ * 
+ * @param session - Session object (can be null)
+ * @param roles - Array of allowed roles
+ * @returns true if session has one of the roles
+ * 
+ * @example
+ * ```ts
+ * const session = await getCurrentUser();
+ * if (isAuthorized(session, [Role.ADMIN, Role.REPORTER])) {
+ *   // User is authorized
+ * }
+ * ```
+ */
+export function isAuthorized(session: any, roles: Role[]): boolean {
+  return session?.user?.role && roles.includes(session.user.role as Role);
+}
+
+/**
+ * Type guard to narrow session type after role check
+ * 
+ * @param session - Session object
+ * @param role - Role to check
+ * @returns true if session has the role
+ * 
+ * @example
+ * ```ts
+ * const session = await getCurrentUser();
+ * if (assertRole(session, Role.ADMIN)) {
+ *   // TypeScript knows session.user.role is Role.ADMIN here
+ * }
+ * ```
+ */
+export function assertRole<T extends Role>(
+  session: any,
+  role: T
+): session is { user: { id: string; email: string; role: T } } {
+  return session?.user?.role === role;
 }
 
 // /**

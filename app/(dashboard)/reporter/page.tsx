@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
-import { startOfMonth } from 'date-fns';
+import { getCachedJobCounts, getCachedRecentJobs } from '@/lib/cache/dashboard';
 
 export default async function ReporterDashboard() {
   const session = await auth();
@@ -30,47 +30,31 @@ export default async function ReporterDashboard() {
     redirect('/dashboard');
   }
 
-  // Fetch stats
-  const [totalJobs, pendingJobs, withScopist, completedThisMonth, recentJobs] = await Promise.all([
-    // Total jobs
-    prisma.job.count({
-      where: { createdById: user.id },
-    }),
-    // Pending transcription
-    prisma.job.count({
-      where: {
-        createdById: user.id,
-        status: { in: ['CREATED', 'FILES_UPLOADED', 'TRANSCRIBING'] },
-      },
-    }),
-    // With scopist
-    prisma.job.count({
-      where: {
-        createdById: user.id,
-        status: { in: ['ASSIGNED', 'READY_FOR_EDIT', 'IN_EDIT'] },
-      },
-    }),
-    // Completed this month
-    prisma.job.count({
-      where: {
-        createdById: user.id,
-        status: 'COMPLETED',
-        updatedAt: { gte: startOfMonth(new Date()) },
-      },
-    }),
-    // Recent jobs
-    prisma.job.findMany({
+  // Fetch stats using cached queries if firmId is available, otherwise fall back to real-time for personal jobs
+  // For reporters, we often want to see personal jobs, but we can use cached firm stats for overview
+  const [jobCounts, recentJobs] = await Promise.all([
+    user.firmId ? getCachedJobCounts(user.firmId) : Promise.resolve({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 }),
+    user.firmId ? getCachedRecentJobs(user.firmId, 5) : prisma.job.findMany({
       where: { createdById: user.id },
       orderBy: { updatedAt: 'desc' },
       take: 5,
       select: {
         id: true,
-        title: true,
+        caseName: true,
         status: true,
         updatedAt: true,
+        title: true,
       },
     }),
   ]);
+
+  // Transform recentJobs to match expected format for component
+  const formattedRecentJobs = recentJobs.map((job: any) => ({
+    id: job.id,
+    title: job.title || job.caseName || 'Untitled Job',
+    status: job.status,
+    updatedAt: job.updatedAt,
+  }));
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -98,28 +82,28 @@ export default async function ReporterDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Total Jobs"
-          value={totalJobs}
+          value={jobCounts.total}
           icon={Briefcase}
           iconColor="text-blue-600"
           iconBgColor="bg-blue-100 dark:bg-blue-900/30"
         />
         <StatCard
           title="Pending Transcription"
-          value={pendingJobs}
+          value={jobCounts.pending}
           icon={Clock}
           iconColor="text-yellow-600"
           iconBgColor="bg-yellow-100 dark:bg-yellow-900/30"
         />
         <StatCard
-          title="With Scopist"
-          value={withScopist}
+          title="Processing"
+          value={jobCounts.processing}
           icon={Users}
           iconColor="text-purple-600"
           iconBgColor="bg-purple-100 dark:bg-purple-900/30"
         />
         <StatCard
-          title="Completed This Month"
-          value={completedThisMonth}
+          title="Completed"
+          value={jobCounts.completed}
           icon={CheckCircle}
           iconColor="text-green-600"
           iconBgColor="bg-green-100 dark:bg-green-900/30"
@@ -130,7 +114,7 @@ export default async function ReporterDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Jobs */}
         <div className="lg:col-span-2">
-          <RecentJobs jobs={recentJobs} />
+          <RecentJobs jobs={formattedRecentJobs} />
         </div>
 
         {/* Quick Actions */}

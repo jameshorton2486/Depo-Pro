@@ -211,8 +211,8 @@ export async function rescheduleEvent(
     eventId,
     reporterId: event.assignedReporterId || undefined,
     location: event.location || undefined,
-    startTime: newStart,
-    endTime: newEnd,
+    proposedStart: newStart,
+    proposedEnd: newEnd,
     firmId: event.firmId,
   });
 
@@ -268,7 +268,7 @@ export async function rescheduleEvent(
         startTime: newStart,
         endTime: newEnd,
         lastRescheduledAt: new Date(),
-        lastRescheduledById: userId,
+        lastRescheduledBy: userId,
         rescheduleCount: { increment: 1 },
         // Store original time on first reschedule
         originalStartTime: event.originalStartTime || previousStart,
@@ -510,8 +510,8 @@ export async function resizeEvent(
     eventId,
     reporterId: event.assignedReporterId || undefined,
     location: event.location || undefined,
-    startTime: event.startTime,
-    endTime: newEnd,
+    proposedStart: event.startTime,
+    proposedEnd: newEnd,
     firmId: event.firmId,
   });
 
@@ -583,7 +583,7 @@ export async function resizeEvent(
 export async function previewReschedule(
   params: Omit<RescheduleParams, 'forceOverride' | 'overrideReason'>
 ): Promise<ConflictCheckResult & { eventTitle: string; isLocked: boolean }> {
-  const { eventId, newStart, newEnd } = params;
+  const { eventId, newStart, newEnd, firmId: _firmId } = params;
 
   // Fetch the event
   const event = await db.calendarEvent.findUnique({
@@ -606,8 +606,8 @@ export async function previewReschedule(
     eventId,
     reporterId: event.assignedReporterId || undefined,
     location: event.location || undefined,
-    startTime: newStart,
-    endTime: newEnd,
+    proposedStart: newStart,
+    proposedEnd: newEnd,
     firmId: event.firmId,
   });
 
@@ -617,3 +617,4 @@ export async function previewReschedule(
     isLocked,
   };
 }
+

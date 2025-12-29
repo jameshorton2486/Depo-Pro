@@ -110,9 +110,9 @@ try {
   console.error('  ✅ if (accessLevel === AccessLevel.VIEW)\n');
   console.error('━'.repeat(60));
   console.error('\nForbidden values and their replacements:\n');
-  console.error('  VIEW_DOWNLOAD  →  AccessLevel.VIEW');
-  console.error('  VIEW_ANNOTATE  →  AccessLevel.COMMENT');
-  console.error('  FULL           →  AccessLevel.EDIT');
+  console.error('  VIEW_DOWNLOAD  →  TranscriptAccessLevel.COMMENT');
+  console.error('  VIEW_ANNOTATE  →  TranscriptAccessLevel.COMMENT');
+  console.error('  FULL           →  TranscriptAccessLevel.EDIT');
   console.error('  EMAIL          →  ShareType.USER');
   console.error('  CASE_ACCESS    →  ShareType.ORGANIZATION\n');
   console.error('━'.repeat(60));

@@ -67,6 +67,7 @@ model User {
   calendarAuditLogs          CalendarAuditLog[]            @relation("AuditPerformer")
   rescheduledEvents          CalendarEvent[]               @relation("EventRescheduler")
   resolvedConflicts          ScheduleConflict[]            @relation("ConflictResolver")
+  externalCalendars          ExternalCalendarConnection[]
 
   @@index([email])
   @@index([role])
@@ -478,6 +479,9 @@ model Firm {
   calendarEvents       CalendarEvent[]
   reporterAvailability ReporterAvailability[]
   scheduleConflicts    ScheduleConflict[]
+  externalCalendarConnections ExternalCalendarConnection[]
+  externalCalendarEvents      ExternalCalendarEvent[]
+  billingAccount              BillingAccount?
 
   @@index([name])
   @@index([createdAt])
@@ -811,6 +815,7 @@ model CalendarEvent {
   lastRescheduledBy  User?               @relation("EventRescheduler", fields: [lastRescheduledById], references: [id])
   rescheduleCount    Int                 @default(0)
   originalStartTime  DateTime?
+  externalEvent      ExternalCalendarEvent? @relation("ExternalToInternal")
 
   @@index([firmId])
   @@index([jobId])
@@ -917,6 +922,107 @@ model ScheduleConflict {
   @@index([firmId])
   @@index([status])
   @@map("schedule_conflicts")
+}
+
+// ============================================
+// PHASE 5: EXTERNAL CALENDAR MODELS
+// ============================================
+
+model ExternalCalendarConnection {
+  id                String                    @id @default(cuid())
+  firmId            String
+  firm              Firm                      @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          ExternalCalendarProvider
+  syncMode          ExternalCalendarSyncMode  @default(READ_ONLY)
+  providerCalendarId String
+  calendarName      String?
+  accessToken       String                    @db.Text
+  refreshToken      String?                   @db.Text
+  tokenExpiresAt    DateTime?
+  scopes            String[]
+  lastSyncedAt      DateTime?
+  lastSyncToken     String?
+  syncErrorCount    Int                       @default(0)
+  lastSyncError     String?
+  isEnabled         Boolean                   @default(true)
+  autoSync          Boolean                   @default(true)
+  syncIntervalMins  Int                       @default(15)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  externalEvents    ExternalCalendarEvent[]
+  syncLogs          ExternalCalendarSyncLog[]
+  
+  @@unique([userId, provider, providerCalendarId], name: "unique_user_provider_calendar")
+  @@index([firmId])
+  @@index([userId])
+  @@index([isEnabled])
+  @@index([lastSyncedAt])
+  @@map("external_calendar_connections")
+}
+
+model ExternalCalendarEvent {
+  id                  String                      @id @default(cuid())
+  firmId              String
+  firm                Firm                        @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  connectionId        String
+  connection          ExternalCalendarConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  providerEventId     String
+  providerCalendarId  String
+  providerEtag        String?
+  title               String
+  description         String?                     @db.Text
+  startTime           DateTime
+  endTime             DateTime
+  timezone            String                      @default("UTC")
+  isAllDay            Boolean                     @default(false)
+  location            String?
+  meetingLink         String?
+  syncStatus          ExternalEventSyncStatus     @default(SYNCED)
+  lastSyncedAt        DateTime                    @default(now())
+  syncError           String?
+  hasConflict         Boolean                     @default(false)
+  conflictingEventIds String[]
+  linkedEventId       String?                     @unique
+  linkedEvent         CalendarEvent?              @relation("ExternalToInternal", fields: [linkedEventId], references: [id])
+  isBlockingTime      Boolean                     @default(true)
+  showInCalendar      Boolean                     @default(true)
+  providerMetadata    Json?
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                  @updatedAt
+  deletedAt           DateTime?
+  
+  @@unique([connectionId, providerEventId])
+  @@index([firmId])
+  @@index([connectionId])
+  @@index([startTime, endTime])
+  @@index([hasConflict])
+  @@index([linkedEventId])
+  @@index([deletedAt])
+  @@map("external_calendar_events")
+}
+
+model ExternalCalendarSyncLog {
+  id              String                      @id @default(cuid())
+  connectionId    String
+  connection      ExternalCalendarConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  syncType        String
+  status          String
+  eventsCreated   Int                         @default(0)
+  eventsUpdated   Int                         @default(0)
+  eventsDeleted   Int                         @default(0)
+  conflictsFound  Int                         @default(0)
+  startedAt       DateTime                    @default(now())
+  completedAt     DateTime?
+  durationMs      Int?
+  errorMessage    String?
+  errorDetails    Json?
+  
+  @@index([connectionId])
+  @@index([startedAt])
+  @@index([status])
+  @@map("external_calendar_sync_logs")
 }
 
 model CalendarAuditLog {
@@ -1696,6 +1802,7 @@ enum CalendarEventStatus {
   CONVERTED
   CANCELLED
   RESCHEDULED
+  EXTERNAL_BLOCK
 }
 
 enum ConflictType {
@@ -1718,6 +1825,30 @@ enum ConflictResolution {
   REASSIGNED_REPORTER
   OVERRIDE_ACCEPTED
   TIME_ADJUSTED
+}
+
+// ============================================
+// PHASE 5: EXTERNAL CALENDAR SYNC ENUMS
+// ============================================
+
+enum ExternalCalendarSyncMode {
+  READ_ONLY
+  PUSH_INTERNAL
+  BIDIRECTIONAL
+}
+
+enum ExternalCalendarProvider {
+  GOOGLE
+  OUTLOOK
+  APPLE
+}
+
+enum ExternalEventSyncStatus {
+  SYNCED
+  PENDING
+  CONFLICT
+  FAILED
+  DELETED
 }
 
 enum CalendarAuditAction {
@@ -1951,4 +2082,167 @@ enum RateType {
   PER_AUDIO_MINUTE
   FLAT_RATE
   HOURLY
+}
+
+// =============================================================================
+// PHASE 6: BILLING & TIME TRACKING
+// =============================================================================
+
+enum BillingServiceType {
+  TRANSCRIPTION_AUTOMATED
+  MODEL_UPGRADE
+  HUMAN_REVIEW_CONFIDENCE
+  HUMAN_REVIEW_FULL
+  FORENSIC_AUDIO_RX
+}
+
+enum BillingUnit {
+  PER_MINUTE
+  PER_WORD
+  PER_FILE
+  PER_HOUR
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+}
+
+enum AudioEnhancementType {
+  AUTOMATED_DOLBY
+  MANUAL_RX
+}
+
+model BillingAccount {
+  id                String   @id @default(cuid())
+  firmId            String   @unique
+  stripeCustomerId  String?  @unique
+  billingEmail      String
+  currency          String   @default("USD")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  firm              Firm             @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  invoices          Invoice[]
+  rates             BillingRate[]
+  billingPeriods    BillingPeriod[]
+  billingUsageRecords BillingUsageRecord[]
+
+  @@index([stripeCustomerId])
+}
+
+model BillingRate {
+  id           String             @id @default(cuid())
+  firmId       String
+  serviceType  BillingServiceType
+  unit         BillingUnit
+  amountCents  Int
+  version      Int
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+
+  billingAccount BillingAccount   @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+
+  @@unique([firmId, serviceType, version])
+  @@index([firmId, serviceType])
+  @@index([firmId, serviceType, isActive])
+}
+
+model BillingPeriod {
+  id        String   @id @default(cuid())
+  firmId    String
+  startAt   DateTime
+  endAt     DateTime
+  locked    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  billingAccount BillingAccount @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+
+  @@unique([firmId, startAt, endAt])
+  @@index([firmId, locked])
+}
+
+model Invoice {
+  id               String   @id @default(cuid())
+  billingAccountId String
+  invoiceNumber    String   @unique
+  stripeInvoiceId  String?  @unique
+  periodStart      DateTime
+  periodEnd        DateTime
+  totalCents       Int
+  status           InvoiceStatus @default(DRAFT)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  billingAccount   BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  lineItems        InvoiceLineItem[]
+
+  @@index([billingAccountId, status])
+  @@index([billingAccountId, periodStart])
+  @@index([stripeInvoiceId])
+}
+
+model InvoiceLineItem {
+  id              String             @id @default(cuid())
+  invoiceId       String
+  jobId           String?
+  serviceType     BillingServiceType
+  description     String
+  quantity        Decimal            @db.Decimal(10, 4)
+  unit            BillingUnit
+  unitPriceCents  Int
+  totalCents      Int
+  rateVersion     Int
+
+  invoice          Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  billingUsageRecords BillingUsageRecord[]
+
+  @@index([invoiceId])
+  @@index([jobId])
+}
+
+model BillingUsageRecord {
+  id                 String             @id @default(cuid())
+  firmId             String
+  jobId              String
+  serviceType        BillingServiceType
+  quantity           Decimal            @db.Decimal(10, 4)
+  unit               BillingUnit
+  recordedAt         DateTime           @default(now())
+  invoiceLineItemId  String?
+
+  billingAccount     BillingAccount     @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+  invoiceLineItem    InvoiceLineItem?   @relation(fields: [invoiceLineItemId], references: [id])
+
+  @@index([firmId, recordedAt])
+  @@index([firmId, serviceType])
+  @@index([jobId])
+  @@index([invoiceLineItemId])
+}
+
+model HumanReviewSession {
+  id                  String   @id @default(cuid())
+  jobId               String
+  reviewerId          String
+  minutesSpent        Int
+  wordsReviewed       Int
+  confidenceThreshold Int      @default(85)
+  createdAt           DateTime @default(now())
+
+  @@index([jobId])
+  @@index([reviewerId])
+}
+
+model AudioProcessingSession {
+  id               String               @id @default(cuid())
+  jobId            String
+  enhancementType  AudioEnhancementType
+  durationMinutes  Int
+  provider         String
+  createdAt        DateTime             @default(now())
+
+  @@index([jobId])
+  @@index([provider])
 }

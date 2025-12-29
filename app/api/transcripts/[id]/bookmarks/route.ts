@@ -7,61 +7,30 @@ interface Props {
 }
 
 export async function POST(request: NextRequest, { params }: Props) {
-  const { id: transcriptId } = await params;
+  const { id } = await params;
   const session = await auth();
   
-  if (!session?.user?.id) {
+  if (!session?.user?.id || !session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Any access level can bookmark
-  const share = await db.transcriptShare.findFirst({
-    where: {
-      transcriptId,
-      recipientEmail: session.user.email,
-      status: 'ACTIVE',
+  const body = await request.json();
+  const { lineNumber, label } = body;
+
+  const bookmark = await db.transcriptBookmark.create({
+    data: {
+      transcriptId: id,
+      userId: session.user.id,
+      lineNumber,
+      label,
     },
   });
 
-  const access = await db.transcriptAccess.findUnique({
-    where: {
-      transcriptId_userId: {
-        transcriptId,
-        userId: session.user.id
-      }
-    }
-  });
-
-  if (!share && !access && session.user.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
-  }
-
-  try {
-    const body = await request.json();
-    const { label, description, lineNumber, pageNumber, timestamp, snippetText } = body;
-
-    const bookmark = await db.transcriptBookmark.create({
-      data: {
-        transcriptId,
-        userId: session.user.id,
-        label,
-        description,
-        lineNumber: lineNumber ?? 0,
-        pageNumber,
-        timestamp,
-        snippetText,
-      },
-    });
-
-    return NextResponse.json(bookmark);
-  } catch (error) {
-    console.error('Failed to create bookmark:', error);
-    return NextResponse.json({ error: 'Failed to save bookmark' }, { status: 500 });
-  }
+  return NextResponse.json(bookmark);
 }
 
-export async function GET(request: NextRequest, { params }: Props) {
-  const { id: transcriptId } = await params;
+export async function GET(_request: NextRequest, { params }: Props) {
+  const { id } = await params;
   const session = await auth();
   
   if (!session?.user?.id) {
@@ -70,10 +39,10 @@ export async function GET(request: NextRequest, { params }: Props) {
 
   const bookmarks = await db.transcriptBookmark.findMany({
     where: {
-      transcriptId,
+      transcriptId: id,
       userId: session.user.id,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { lineNumber: 'asc' },
   });
 
   return NextResponse.json(bookmarks);
