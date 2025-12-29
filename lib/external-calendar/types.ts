@@ -182,11 +182,11 @@ export function canReadExternal(_mode: ExternalCalendarSyncMode): boolean {
   return true; // All modes can read
 }
 
-export function canWriteExternal(_mode: ExternalCalendarSyncMode): boolean {
+export function canWriteExternal(mode: ExternalCalendarSyncMode): boolean {
   return mode === ExternalCalendarSyncMode.PUSH_INTERNAL || 
          mode === ExternalCalendarSyncMode.BIDIRECTIONAL;
 }
 
-export function canSyncBidirectional(_mode: ExternalCalendarSyncMode): boolean {
+export function canSyncBidirectional(mode: ExternalCalendarSyncMode): boolean {
   return mode === ExternalCalendarSyncMode.BIDIRECTIONAL;
 }

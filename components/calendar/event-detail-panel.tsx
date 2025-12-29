@@ -87,7 +87,7 @@ export function EventDetailPanel({ event, userRole, onClose: _onClose }: EventDe
             </p>
           )}
         </div>
-        <EventStatusBadge status={event.status} hasJob={!!event.jobId} />
+        <EventStatusBadge status={event.status as any} hasJob={!!event.jobId} />
       </CardHeader>
 
       <CardContent className="space-y-4">

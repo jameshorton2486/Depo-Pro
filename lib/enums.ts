@@ -15,6 +15,7 @@
 // RE-EXPORT CANONICAL ENUMS
 // =============================================================================
 
+// Re-export canonical enums (no duplicates)
 export {
   CalendarEventStatus,
   EventType,
@@ -214,46 +215,16 @@ export enum AuditEntityType {
 // =============================================================================
 // PHASE 5: EXTERNAL CALENDAR ENUMS
 // =============================================================================
-
-export enum ExternalCalendarSyncMode {
-  READ_ONLY = "READ_ONLY",
-  PUSH_INTERNAL = "PUSH_INTERNAL",
-  BIDIRECTIONAL = "BIDIRECTIONAL",
-}
-
-export enum ExternalCalendarProvider {
-  GOOGLE = "GOOGLE",
-  OUTLOOK = "OUTLOOK",
-  APPLE = "APPLE",
-}
-
-export enum ExternalEventSyncStatus {
-  SYNCED = "SYNCED",
-  PENDING = "PENDING",
-  CONFLICT = "CONFLICT",
-  FAILED = "FAILED",
-  DELETED = "DELETED",
-}
+// NOTE: These are now exported from lib/enums/calendar.ts
+// See re-exports at the top of this file
+// =============================================================================
 
 // =============================================================================
 // PHASE 5: SCHEDULING VALIDATION ENUMS
 // =============================================================================
-
-export enum SchedulingValidationType {
-  OVERLAP = "OVERLAP",
-  DOUBLE_BOOKING = "DOUBLE_BOOKING",
-  PAST_TIME = "PAST_TIME",
-  TOO_SHORT_NOTICE = "TOO_SHORT_NOTICE",
-  OUTSIDE_HOURS = "OUTSIDE_HOURS",
-  EXTERNAL_CONFLICT = "EXTERNAL_CONFLICT",
-  DURATION_MISMATCH = "DURATION_MISMATCH",
-}
-
-export enum ValidationSeverity {
-  ERROR = "ERROR",
-  WARNING = "WARNING",
-  INFO = "INFO",
-}
+// NOTE: These are now exported from lib/enums/calendar.ts
+// See re-exports at the top of this file
+// =============================================================================
 
 // =============================================================================
 // TYPE HELPERS

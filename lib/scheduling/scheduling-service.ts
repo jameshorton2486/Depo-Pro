@@ -268,7 +268,7 @@ export async function rescheduleEvent(
         startTime: newStart,
         endTime: newEnd,
         lastRescheduledAt: new Date(),
-        lastRescheduledBy: userId,
+        lastRescheduledBy: { connect: { id: userId } },
         rescheduleCount: { increment: 1 },
         // Store original time on first reschedule
         originalStartTime: event.originalStartTime || previousStart,

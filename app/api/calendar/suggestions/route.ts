@@ -64,7 +64,7 @@ export async function POST(_request: NextRequest) {
       );
     }
     
-    const body = await request.json();
+    const body = await _request.json();
     const validation = getSuggestionsSchema.safeParse(body);
     
     if (!validation.success) {

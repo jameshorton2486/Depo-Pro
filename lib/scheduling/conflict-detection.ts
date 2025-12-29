@@ -16,6 +16,29 @@ export interface TimeRange {
   end: Date;
 }
 
+// Export Conflict type for compatibility with components
+export interface Conflict {
+  id: string;
+  type: ConflictType | string;
+  severity: 'WARNING' | 'ERROR' | 'low' | 'medium' | 'high';
+  conflictEventId: string;
+  conflictEventTitle: string;
+  eventId?: string;
+  eventTitle?: string;
+  start: Date;
+  end: Date;
+  overlapMinutes: number;
+  message: string;
+}
+
+// Export TimeSlot type for compatibility
+export interface TimeSlot {
+  start: Date;
+  end: Date;
+  duration?: number;
+  available?: boolean;
+}
+
 export interface ConflictCheckParams {
   eventId?: string;           // Exclude this event from conflict check (for updates)
   reporterId?: string;        // Reporter to check

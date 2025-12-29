@@ -481,7 +481,7 @@ export class ExternalCalendarSyncService {
         conflictsFound: data.conflictsFound,
         durationMs: data.durationMs,
         errorMessage: data.errors.length > 0 ? data.errors[0].message : null,
-        errorDetails: data.errors.length > 0 ? data.errors : null,
+        errorDetails: data.errors.length > 0 ? (data.errors as any) : null,
         completedAt: new Date(),
       },
     });
@@ -510,7 +510,7 @@ export class ExternalCalendarSyncService {
 
       // Get calendar info
       const calendars = await providerImpl.listCalendars(tokens.accessToken);
-      const selectedCalendar = calendars.find(c => c.id === calendarId) || calendars[0];
+      const selectedCalendar = calendars.find((c: any) => c.id === calendarId) || calendars[0];
 
       if (!selectedCalendar) {
         return { success: false, error: 'No calendars found' };
@@ -538,8 +538,7 @@ export class ExternalCalendarSyncService {
         entityType: AuditEntityType.CalendarEvent,
         entityId: connection.id,
         userId,
-        firmId,
-        metadata: { provider, calendarId: selectedCalendar.id },
+        details: { provider, calendarId: selectedCalendar.id, firmId },
       });
 
       // Trigger initial sync
@@ -592,8 +591,7 @@ export class ExternalCalendarSyncService {
       entityType: AuditEntityType.CalendarEvent,
       entityId: connectionId,
       userId,
-      firmId: connection.firmId,
-      metadata: { provider: connection.provider },
+      details: { provider: connection.provider, firmId: connection.firmId },
     });
   }
 }

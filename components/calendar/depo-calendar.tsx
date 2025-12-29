@@ -16,7 +16,6 @@ import {
   EventClickArg, 
   DateSelectArg, 
   EventDropArg,
-  EventResizeDoneArg,
 } from '@fullcalendar/core';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -79,20 +78,23 @@ interface CalendarEvent {
 
 interface Conflict {
   type: string;
-  conflictingEventId: string;
-  conflictingEventTitle: string;
-  conflictingStart: string;
-  conflictingEnd: string;
+  conflictEventId: string;
+  conflictEventTitle: string;
+  conflictingEventId?: string;
+  conflictingEventTitle?: string;
+  conflictingStart?: string;
+  conflictingEnd?: string;
   overlapMinutes: number;
   reporterName?: string;
   location?: string;
-  severity: 'WARNING' | 'ERROR';
+  severity: 'WARNING' | 'ERROR' | 'low' | 'medium' | 'high';
   message: string;
 }
 
 interface AlternativeTimeSlot {
-  start: string;
-  end: string;
+  startTime: string;
+  endTime: string;
+  availabilityScore?: number;
 }
 
 interface DepoCalendarProps {
@@ -174,7 +176,7 @@ export function DepoCalendar({
     revertFn: () => void;
   } | null>(null);
   const [detectedConflicts, setDetectedConflicts] = useState<Conflict[]>([]);
-  const [canOverrideConflicts, setCanOverrideConflicts] = useState(false);
+  const [_canOverrideConflicts, setCanOverrideConflicts] = useState(false);
   const [suggestedAlternatives, setSuggestedAlternatives] = useState<AlternativeTimeSlot[]>([]);
 
   // User role checks
@@ -403,16 +405,12 @@ export function DepoCalendar({
       }
 
       // Show undo toast
-      if (data.undoToken && data.event) {
-        showRescheduleUndo({
+      if (data.undoToken) {
+        showRescheduleUndo(
           eventId,
-          eventTitle,
-          undoToken: data.undoToken,
-          previousStart: new Date(data.event.previousStart),
-          previousEnd: new Date(data.event.previousEnd),
-          newStart: new Date(data.event.startTime),
-          newEnd: new Date(data.event.endTime),
-        });
+          data.undoToken,
+          `Event "${eventTitle}" rescheduled successfully`
+        );
       } else {
         toast.success('Event rescheduled');
       }
@@ -450,13 +448,15 @@ export function DepoCalendar({
   };
 
   // Handle selecting alternative time
-  const handleSelectAlternative = async (start: Date, end: Date) => {
+  const handleSelectAlternative = async (slot: AlternativeTimeSlot) => {
     if (!pendingReschedule) return;
 
     // Revert the original drag
     pendingReschedule.revertFn();
 
     // Schedule at the alternative time
+    const start = new Date(slot.startTime);
+    const end = new Date(slot.endTime);
     const success = await performReschedule(
       pendingReschedule.eventId,
       pendingReschedule.eventTitle,
@@ -482,7 +482,7 @@ export function DepoCalendar({
   };
 
   // Handle resize
-  const handleEventResize = useCallback(async (arg: EventResizeDoneArg) => {
+  const handleEventResize = useCallback(async (arg: any) => {
     if (!canDragDrop) {
       arg.revert();
       return;
@@ -669,7 +669,7 @@ export function DepoCalendar({
             eventDragStop={handleEventDragStop}
             eventDrop={handleEventDrop}
             eventResize={handleEventResize}
-            eventContent={(arg) => (
+            eventContent={(arg: any) => (
               <div className="p-1 overflow-hidden relative">
                 <div className="font-medium text-xs truncate flex items-center gap-1">
                   {LOCKED_STATUSES.includes(arg.event.extendedProps.status) && (
@@ -691,26 +691,23 @@ export function DepoCalendar({
       </div>
 
       {/* Drag Preview */}
-      <DragPreview
-        isVisible={isDragging}
-        eventTitle={dragPreviewData.eventTitle}
-        proposedStart={dragPreviewData.proposedStart}
-        proposedEnd={dragPreviewData.proposedEnd}
-        isChecking={dragPreviewData.isChecking}
-        hasConflicts={dragPreviewData.hasConflicts}
-        conflictCount={dragPreviewData.conflictCount}
-        canDrop={dragPreviewData.canDrop}
-        position={dragPreviewData.position}
-      />
+      {isDragging && dragPreviewData.proposedStart && dragPreviewData.proposedEnd && (
+        <DragPreview
+          eventTitle={dragPreviewData.eventTitle}
+          startTime={dragPreviewData.proposedStart}
+          endTime={dragPreviewData.proposedEnd}
+          hasConflicts={dragPreviewData.hasConflicts}
+          conflictCount={dragPreviewData.conflictCount}
+          isAvailable={dragPreviewData.canDrop}
+        />
+      )}
 
       {/* Conflict Dialog */}
       <ConflictDialog
         isOpen={conflictDialogOpen}
         onClose={() => setConflictDialogOpen(false)}
         conflicts={detectedConflicts}
-        canOverride={canOverrideConflicts}
-        suggestedAlternatives={suggestedAlternatives}
-        eventTitle={pendingReschedule?.eventTitle || ''}
+        alternativeSlots={suggestedAlternatives}
         onOverride={handleConflictOverride}
         onSelectAlternative={handleSelectAlternative}
         onCancel={handleConflictCancel}

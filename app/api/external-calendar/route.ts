@@ -9,6 +9,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
 import { FEATURES } from '@/lib/feature-flags';
+import { ExternalCalendarSyncService } from '@/lib/external-calendar/sync-service';
 
 // =============================================================================
 // GET: List user's external calendar connections
@@ -71,7 +72,7 @@ export async function POST(_request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = await _request.json();
     const { provider } = body as { provider: ExternalCalendarProvider };
 
     if (!provider || provider !== 'GOOGLE') {
@@ -110,7 +111,7 @@ export async function PATCH(_request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = await _request.json();
     const { connectionId, syncMode, isEnabled } = body as {
       connectionId: string;
       syncMode?: ExternalCalendarSyncMode;
@@ -172,7 +173,7 @@ export async function DELETE(_request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(_request.url);
     const connectionId = searchParams.get('connectionId');
 
     if (!connectionId) {
@@ -198,7 +199,8 @@ export async function DELETE(_request: NextRequest) {
       );
     }
 
-    await externalCalendarSyncService.disconnectCalendar(
+    const syncService = new ExternalCalendarSyncService();
+    await syncService.disconnectCalendar(
       connectionId,
       session.user.id
     );

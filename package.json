@@ -35,8 +35,9 @@
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.71.2",
-        "@auth/core": "^0.34.3",
+        "@auth/core": "^0.41.1",
         "@deepgram/sdk": "^4.11.2",
+        "@fullcalendar/core": "^6.1.20",
         "@fullcalendar/daygrid": "^6.1.20",
         "@fullcalendar/interaction": "^6.1.20",
         "@fullcalendar/react": "^6.1.20",
@@ -57,6 +58,7 @@
         "@radix-ui/react-slot": "^1.2.4",
         "@radix-ui/react-switch": "^1.2.6",
         "@radix-ui/react-tabs": "^1.1.13",
+        "@radix-ui/react-tooltip": "^1.2.8",
         "@supabase/supabase-js": "^2.81.1",
         "@tiptap/extension-highlight": "^3.11.0",
         "@tiptap/extension-typography": "^3.11.0",

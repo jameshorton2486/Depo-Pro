@@ -32,7 +32,7 @@ export interface Conflict {
 export interface AlternativeTimeSlot {
   startTime: string;
   endTime: string;
-  availabilityScore: number;
+  availabilityScore?: number;
 }
 
 interface ConflictDialogProps {

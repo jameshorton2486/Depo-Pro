@@ -23,6 +23,10 @@ export enum EventType {
   TRIAL = "TRIAL",
   MEETING = "MEETING",
   DEADLINE = "DEADLINE",
+  ARBITRATION = "ARBITRATION",
+  MEDIATION = "MEDIATION",
+  EUO = "EUO",
+  STATEMENT = "STATEMENT",
   OTHER = "OTHER",
 }
 
@@ -97,6 +101,13 @@ export enum ValidationSeverity {
 // =============================================================================
 
 export enum SchedulingSuggestionType {
+  AVAILABLE_SLOT = "AVAILABLE_SLOT",
+  REPORTER_AVAILABLE = "REPORTER_AVAILABLE",
+  HISTORICAL_PATTERN = "HISTORICAL_PATTERN",
+  OPTIMAL_TIME = "OPTIMAL_TIME",
+  DURATION_ESTIMATE = "DURATION_ESTIMATE",
+  CONFLICT_FREE = "CONFLICT_FREE",
+  // Legacy values for backward compatibility
   AVAILABILITY_BASED = "AVAILABILITY_BASED",
   TIME_PATTERN_BASED = "TIME_PATTERN_BASED",
   HISTORICAL_DURATION_BASED = "HISTORICAL_DURATION_BASED",
@@ -108,4 +119,7 @@ export enum SuggestionConfidence {
   MEDIUM = "MEDIUM",
   LOW = "LOW",
 }
+
+// Re-export UserRole for convenience
+export { UserRole } from './roles';
 

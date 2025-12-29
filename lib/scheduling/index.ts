@@ -11,6 +11,9 @@ export {
   type Conflict,
   type ConflictCheckResult,
   type TimeSlot,
+  type TimeRange,
+  type DetectedConflict,
+  type ConflictType,
 } from './conflict-detection';
 
 export {
@@ -23,4 +26,9 @@ export {
   type RescheduleParams,
   type RescheduleResult,
 } from './scheduling-service';
+
+export {
+  type SchedulingSuggestion,
+  type SuggestionContext,
+} from './suggestion-engine';
 

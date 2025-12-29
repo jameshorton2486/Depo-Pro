@@ -165,7 +165,7 @@ export class SchedulingSuggestionEngine {
 
     // Get duration estimate
     const duration = context.estimatedDuration || 
-      CONFIG.DEFAULT_DURATIONS[context.eventType] || 
+      (CONFIG.DEFAULT_DURATIONS[context.eventType as keyof typeof CONFIG.DEFAULT_DURATIONS] as number | undefined) || 
       120;
 
     for (const reporter of reporters.slice(0, 3)) {
@@ -220,7 +220,7 @@ export class SchedulingSuggestionEngine {
     const historicalEvents = await prisma.calendarEvent.findMany({
       where: {
         firmId: context.firmId,
-        eventType: context.eventType,
+        eventType: context.eventType as any,
         status: CalendarEventStatus.COMPLETED,
         startTime: {
           gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // Last 90 days
@@ -248,7 +248,7 @@ export class SchedulingSuggestionEngine {
     const windowStart = context.requestedStart || new Date();
     const duration = context.estimatedDuration || 
       patterns.avgDurationMinutes ||
-      CONFIG.DEFAULT_DURATIONS[context.eventType];
+      (CONFIG.DEFAULT_DURATIONS[context.eventType as keyof typeof CONFIG.DEFAULT_DURATIONS] as number | undefined);
 
     // Find next occurrence of peak hour
     const nextPeakTime = this.findNextPeakTime(
@@ -258,7 +258,7 @@ export class SchedulingSuggestionEngine {
     );
 
     const endTime = new Date(nextPeakTime);
-    endTime.setMinutes(endTime.getMinutes() + duration);
+    endTime.setMinutes(endTime.getMinutes() + (duration || 120));
 
     suggestions.push({
       id: `historical-${nextPeakTime.getTime()}`,
@@ -293,7 +293,7 @@ export class SchedulingSuggestionEngine {
     windowEnd.setDate(windowEnd.getDate() + CONFIG.SUGGESTION_WINDOW_DAYS);
 
     const duration = context.estimatedDuration ||
-      CONFIG.DEFAULT_DURATIONS[context.eventType] ||
+      (CONFIG.DEFAULT_DURATIONS[context.eventType as keyof typeof CONFIG.DEFAULT_DURATIONS] as number | undefined) ||
       120;
 
     // Generate candidate slots
@@ -344,7 +344,7 @@ export class SchedulingSuggestionEngine {
     const historicalEvents = await prisma.calendarEvent.findMany({
       where: {
         firmId: context.firmId,
-        eventType: context.eventType,
+        eventType: context.eventType as any,
         status: CalendarEventStatus.COMPLETED,
         job: context.caseType ? {
           caseName: { contains: context.caseType },
@@ -359,7 +359,7 @@ export class SchedulingSuggestionEngine {
 
     if (historicalEvents.length < 3) {
       // Use default duration
-      const defaultDuration = CONFIG.DEFAULT_DURATIONS[context.eventType] || 120;
+      const defaultDuration = (CONFIG.DEFAULT_DURATIONS[context.eventType as keyof typeof CONFIG.DEFAULT_DURATIONS] as number | undefined) || 120;
       const start = context.requestedStart || new Date();
       const end = new Date(start);
       end.setMinutes(end.getMinutes() + defaultDuration);
