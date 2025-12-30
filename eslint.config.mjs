@@ -49,11 +49,15 @@ export default [
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
+      // STABILIZATION: Strict unused-vars enforcement
+      // Variables/parameters prefixed with _ are allowed (intentionally unused)
+      // All other unused vars/params are errors
       '@typescript-eslint/no-unused-vars': [
-        'warn',
+        'error',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
         },
       ],
       'prefer-const': 'error',

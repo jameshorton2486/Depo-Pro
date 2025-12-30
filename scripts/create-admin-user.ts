@@ -24,32 +24,60 @@ function generateSecurePassword(): string {
 }
 
 async function main() {
-  console.log('🔐 Creating admin user with secure credentials...\n');
+  console.log('🔐 Creating admin user for James Horton...\n');
 
-  // Generate secure password
-  const plainPassword = generateSecurePassword();
+  // Secure password for initial login
+  const plainPassword = 'DepoProAdmin2025!';
   const passwordHash = await hash(plainPassword, 10);
+
+  // Check if firm exists, create if needed
+  let firm = await prisma.firm.findFirst();
+
+  if (!firm) {
+    firm = await prisma.firm.create({
+      data: {
+        id: 'james-horton-firm',
+        name: 'Depo-Pro Legal Services',
+        address: '123 Main Street',
+        phone: '555-123-4567',
+        email: 'jameshorton2486@gmail.com',
+      },
+    });
+    console.log('✅ Created firm:', firm.name);
+  } else {
+    console.log('✅ Using existing firm:', firm.name);
+  }
 
   // Create admin user
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@depo-pro.com' },
+    where: { email: 'jameshorton2486@gmail.com' },
     update: {
       passwordHash,
+      role: UserRole.ADMIN,
+      firstName: 'James',
+      lastName: 'Horton',
+      firmId: firm.id,
     },
     create: {
-      email: 'admin@depo-pro.com',
-      firstName: 'Admin',
-      lastName: 'User',
+      email: 'jameshorton2486@gmail.com',
+      firstName: 'James',
+      lastName: 'Horton',
       role: UserRole.ADMIN,
       passwordHash,
+      firmId: firm.id,
+      timezone: 'America/New_York',
     },
   });
 
-  console.log('✅ Admin user created/updated successfully!');
-  console.log('📧 Email: admin@depo-pro.com');
-  console.log('🔑 Password:', plainPassword);
-  console.log('\n⚠️  IMPORTANT: Save these credentials securely!');
-  console.log('🔒 This password will only be shown once.\n');
+  console.log('\n✅ Admin user created successfully!\n');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('📧 Email:    jameshorton2486@gmail.com');
+  console.log('🔑 Password: DepoProAdmin2025!');
+  console.log('👤 Role:     ADMIN');
+  console.log('🏢 Firm:     ' + firm.name);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('\n⚠️  IMPORTANT: Change your password after first login!');
+  console.log('🔒 Keep these credentials secure.\n');
 
   await prisma.$disconnect();
 }

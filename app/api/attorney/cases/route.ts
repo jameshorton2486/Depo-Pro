@@ -59,20 +59,16 @@ export async function GET(request: NextRequest) {
         {
           jobs: {
             some: {
-              transcription: {
-                job: {
-                  transcripts: {
-                    some: {
-                      accessGrants: {
-                        some: { userId: user.id },
-                      },
-                    },
-                  },
+              transcripts: {
+                some: {
+                  accessGrants: {
+                    some: { userId: user.id },
+                  } as any,
                 },
               },
             },
           },
-        },
+        } as any,
       ],
     };
     
@@ -220,8 +216,8 @@ export async function GET(request: NextRequest) {
     ]);
     
     // Get attorney's role for each case
-    const casesWithRole = cases.map((c) => {
-      const attorneyEntry = c.attorneys.find((a) => a.email === user.email);
+    const casesWithRole = cases.map((c: any) => {
+      const attorneyEntry = c.attorneys.find((a: any) => a.email === user.email);
       return {
         id: c.id,
         caseNumber: c.caseNumber,
@@ -236,9 +232,9 @@ export async function GET(request: NextRequest) {
         judgeAssigned: c.judgeAssigned,
         firm: c.firm,
         myRole: attorneyEntry?.role || 'VIEWER',
-        recentJobs: c.jobs.map((j) => ({
+        recentJobs: c.jobs.map((j: any) => ({
           ...j,
-          hasTranscript: j._count.transcripts > 0,
+          hasTranscript: (j._count as { transcripts: number }).transcripts > 0,
         })),
         attorneys: c.attorneys,
         counts: c._count,

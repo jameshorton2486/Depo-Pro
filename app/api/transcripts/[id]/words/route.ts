@@ -10,6 +10,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Role, JobStatus } from '@/lib/constants';
 import { ReviewState } from '@/types/review';
+import { isTranscriptLocked, getLockStatus } from '@/lib/transcript-locking';
 
 // Threshold bounds
 const MIN_THRESHOLD = 0.5;
@@ -64,7 +65,15 @@ export async function PATCH(
     // Fetch transcription with job
     const transcription = await db.transcription.findUnique({
       where: { id: transcriptionId },
-      include: {
+      select: {
+        id: true,
+        lockedAt: true,
+        lockedBy: true,
+        lockReason: true,
+        status: true,
+        words: true,
+        flaggedSegments: true,
+        flaggedWordCount: true,
         job: {
           include: {
             assignments: {
@@ -81,6 +90,23 @@ export async function PATCH(
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
     }
 
+    // Check lock status - CRITICAL: Prevent edits to locked transcripts
+    if (isTranscriptLocked(transcription)) {
+      const lockStatus = getLockStatus(transcription);
+      return NextResponse.json(
+        { 
+          error: 'Transcript is locked',
+          code: 'TRANSCRIPT_LOCKED',
+          details: {
+            reason: lockStatus.reason,
+            lockedAt: lockStatus.lockedAt,
+            message: 'This transcript has been finalized. Edits are tracked separately.',
+          }
+        }, 
+        { status: 403 }
+      );
+    }
+
     // Check access: user must be the creator OR an assigned scopist OR admin
     const isCreator = transcription.job.createdById === session.user.id;
     const isAssignedScopist = transcription.job.assignments.length > 0;
@@ -90,7 +116,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Get current words array
+    // Get current words array (transcription is already fetched above)
     const currentWords = (transcription.words as any[]) || [];
 
     // Apply corrections to words array
@@ -177,7 +203,7 @@ export async function PATCH(
     // Get current flaggedSegments or create empty object
     const currentFlaggedSegments = (transcription.flaggedSegments as Record<string, any>) || {};
 
-    // Update transcription
+    // Update transcription (only words and review data, not base text)
     await db.transcription.update({
       where: { id: transcriptionId },
       data: {

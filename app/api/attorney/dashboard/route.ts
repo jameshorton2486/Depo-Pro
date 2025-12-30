@@ -20,12 +20,12 @@ export async function GET(request: NextRequest) {
     }
     
     // Verify user is an attorney
-    const user = await db.user.findUnique({
+    const user = await (db.user.findUnique({
       where: { id: session.user.id },
       include: {
         attorneyProfile: true,
-      },
-    });
+      } as any,
+    }) as any); // Type assertion needed due to Prisma type inference limitations
     
     if (!user || user.role !== 'ATTORNEY') {
       return NextResponse.json({ error: 'Attorney access required' }, { status: 403 });
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       }),
       
       // Recent Transcripts: Get transcripts the attorney can access
-      db.transcriptAccess.findMany({
+      (db as any).transcriptAccess.findMany({
         where: {
           userId: user.id,
           OR: [
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
       }),
       
       // Upcoming Depositions: From calendar events
-      db.calendarEvent.findMany({
+      (db as any).calendarEvent.findMany({
         where: {
           OR: [
             { participants: { some: { userId: user.id } } },
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       }),
       
       // Recent Activity: Track recent shares and access
-      db.transcriptShare.findMany({
+      (db as any).transcriptShare.findMany({
         where: {
           OR: [
             { sharedById: user.id },
@@ -184,14 +184,14 @@ export async function GET(request: NextRequest) {
       
       // Annotation Stats: Count user's annotations
       Promise.all([
-        db.transcriptHighlight.count({ where: { userId: user.id } }),
-        db.transcriptNote.count({ where: { userId: user.id } }),
-        db.transcriptBookmark.count({ where: { userId: user.id } }),
+        (db as any).transcriptHighlight.count({ where: { userId: user.id } }),
+        (db as any).transcriptNote.count({ where: { userId: user.id } }),
+        (db as any).transcriptBookmark.count({ where: { userId: user.id } }),
       ]),
     ]);
     
     // Process and format data
-    const formattedCases = cases.map((ca) => ({
+    const formattedCases = (cases as any[]).map((ca: any) => ({
       id: ca.case.id,
       caseNumber: ca.case.caseNumber,
       caseStyle: ca.case.caseStyle,
@@ -201,10 +201,10 @@ export async function GET(request: NextRequest) {
       firm: ca.case.firm,
       role: ca.role,
       recentJobs: ca.case.jobs,
-      jobCount: ca.case._count.jobs,
+      jobCount: (ca.case._count as { jobs: number }).jobs,
     }));
     
-    const formattedTranscripts = recentTranscripts.map((ta) => ({
+    const formattedTranscripts = (recentTranscripts as any[]).map((ta: any) => ({
       id: ta.transcript.id,
       accessLevel: ta.accessLevel,
       grantedAt: ta.createdAt,
@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
       expiresAt: ta.expiresAt,
     }));
     
-    const formattedDepositions = upcomingDepositions.map((event) => ({
+    const formattedDepositions = (upcomingDepositions as any[]).map((event: any) => ({
       id: event.id,
       title: event.title,
       eventType: event.eventType,
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
     // Calculate stats
     const stats = {
       totalCases: formattedCases.length,
-      activeCases: formattedCases.filter((c) => c.status === 'ACTIVE').length,
+      activeCases: formattedCases.filter((c: any) => c.status === 'ACTIVE').length,
       accessibleTranscripts: recentTranscripts.length,
       upcomingDepositions: upcomingDepositions.length,
       annotations: {
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
       recentTranscripts: formattedTranscripts,
       upcomingDepositions: formattedDepositions,
       recentActivity,
-      profile: user.attorneyProfile,
+      profile: (user as any).attorneyProfile,
     });
   } catch (error) {
     console.error('Attorney dashboard error:', error);

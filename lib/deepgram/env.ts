@@ -1,7 +1,15 @@
-import { z } from 'zod';
-import dotenv from 'dotenv';
+/**
+ * Deepgram Environment Configuration (Legacy)
+ * 
+ * IMPORTANT: This file is kept for backward compatibility.
+ * - Do NOT call dotenv.config() - Next.js loads .env files automatically
+ * - New code should use @/lib/env instead
+ * 
+ * This file is only used by lib/redis.ts for now.
+ * Consider migrating redis.ts to use @/lib/env directly.
+ */
 
-dotenv.config();
+import { z } from 'zod';
 
 // Environment variable schema
 const envSchema = z.object({

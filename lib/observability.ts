@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 
 // Log levels
 export enum LogLevel {
@@ -294,8 +295,8 @@ export interface AuditEvent {
   id: string;
   userId: string;
   action: string;
-  resource: string;
-  resourceId: string;
+  entityType: string;
+  entityId: string;
   details: Record<string, any>;
   ipAddress?: string;
   userAgent?: string;
@@ -320,11 +321,11 @@ export async function logAuditEvent(event: Omit<AuditEvent, 'id' | 'timestamp'>)
 
     await prisma.auditLog.create({
       data: {
-        userId: event.userId,
+        actorUserId: event.userId,
         action: event.action,
-        entityType: event.resource,
-        entityId: event.resourceId,
-        details: event.details,
+        targetType: event.entityType,
+        targetId: event.entityId,
+        metadata: event.details ? (event.details as Prisma.InputJsonValue) : Prisma.JsonNull,
         ipAddress: event.ipAddress,
         userAgent: event.userAgent,
       },

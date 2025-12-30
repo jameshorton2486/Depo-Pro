@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { exportTranscript } from '@/lib/export';
 import { ExportOptions, ExportMetadata } from '@/types/transcript';
+import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
+import { useQuota } from '@/lib/cost-control-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -22,6 +24,24 @@ export async function GET(
 
     const user = session.user as { id: string; role: string; firmId?: string };
     const { id: transcriptId } = await context.params;
+
+    // Rate limit check
+    const rateLimit = checkUserRateLimit(user.id, 'TRANSCRIPT_EXPORT');
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
+
+    // Quota check
+    if (user.firmId) {
+      const tier = 'FREE'; // TODO: Get from subscription
+      const quotaCheck = await useQuota(user.firmId, 'exports', 1, tier);
+      if (!quotaCheck.allowed) {
+        return NextResponse.json(
+          { error: 'Export quota exceeded', ...quotaCheck },
+          { status: 429 }
+        );
+      }
+    }
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;

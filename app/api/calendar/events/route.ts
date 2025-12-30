@@ -9,6 +9,8 @@ import { db } from '@/lib/db';
 import { z } from 'zod';
 import { logger, withRequestLogging } from '@/lib/observability';
 import { checkRateLimit } from '@/lib/security';
+import { revalidatePath } from 'next/cache';
+import { EventType } from '@/lib/constants';
 
 // ------------------------------------------------------------
 // VALIDATION SCHEMAS
@@ -16,7 +18,7 @@ import { checkRateLimit } from '@/lib/security';
 
 const createEventSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  eventType: z.enum(['DEPOSITION', 'HEARING', 'ARBITRATION', 'MEDIATION', 'EUO', 'STATEMENT', 'OTHER']).default('DEPOSITION'),
+  eventType: z.nativeEnum(EventType).default(EventType.DEPOSITION),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
   timezone: z.string().default('America/Chicago'),
@@ -190,49 +192,33 @@ async function getEventsHandler(request: NextRequest) {
       orderBy: { startTime: 'asc' },
     });
 
-    // Transform for FullCalendar format
-    const calendarEvents = events.map((event: any) => ({
-      id: event.id,
-      title: event.title,
-      start: event.startTime.toISOString(),
-      end: event.endTime.toISOString(),
-      allDay: event.allDay,
-      extendedProps: {
+    // Return raw data - UI formatting happens client-side
+    return NextResponse.json({
+      events: events.map((event: any) => ({
+        id: event.id,
+        title: event.title,
         eventType: event.eventType,
         status: event.status,
+        startTime: event.startTime.toISOString(),
+        endTime: event.endTime.toISOString(),
+        timezone: event.timezone,
+        allDay: event.allDay,
         location: event.location,
         isRemote: event.isRemote,
         meetingLink: event.meetingLink,
-        assignedReporter: event.assignedReporter ? {
-          ...event.assignedReporter,
-          name: `${event.assignedReporter.firstName} ${event.assignedReporter.lastName}`,
-        } : undefined,
-        requestedBy: event.requestedBy ? {
-          ...event.requestedBy,
-          name: `${event.requestedBy.firstName} ${event.requestedBy.lastName}`,
-        } : undefined,
+        assignedReporterId: event.assignedReporterId,
+        assignedReporter: event.assignedReporter,
+        requestedById: event.requestedById,
+        requestedBy: event.requestedBy,
+        jobId: event.jobId,
         job: event.job,
-        participants: event.participants?.map((p: any) => ({
-          ...p,
-          user: p.user ? {
-            ...p.user,
-            name: `${p.user.firstName} ${p.user.lastName}`,
-          } : undefined,
-        })),
+        participants: event.participants,
         notes: event.notes,
-        timezone: event.timezone,
-        createdBy: event.createdBy ? {
-          ...event.createdBy,
-          name: `${event.createdBy.firstName} ${event.createdBy.lastName}`,
-        } : undefined,
-      },
-      // FullCalendar styling based on status
-      backgroundColor: getStatusColor(event.status),
-      borderColor: getStatusColor(event.status),
-    }));
-
-    return NextResponse.json({
-      events: calendarEvents,
+        internalNotes: event.internalNotes,
+        createdAt: event.createdAt.toISOString(),
+        updatedAt: event.updatedAt.toISOString(),
+        createdBy: event.createdBy,
+      })),
       total: events.length,
     });
 
@@ -360,6 +346,9 @@ async function postEventsHandler(request: NextRequest) {
     // TODO: Send notification to assigned reporter
     // await notifyReporter(event);
 
+    // Invalidate calendar cache
+    revalidatePath('/api/calendar/events');
+
     return NextResponse.json({
       message: 'Event created successfully',
       event,
@@ -379,19 +368,6 @@ export const POST = withRequestLogging(postEventsHandler);
 // ------------------------------------------------------------
 // HELPER FUNCTIONS
 // ------------------------------------------------------------
-
-function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    REQUESTED: '#FFA500',    // Orange
-    SCHEDULED: '#3788D8',    // Blue
-    CONFIRMED: '#28A745',    // Green
-    IN_PROGRESS: '#17A2B8',  // Teal
-    COMPLETED: '#6C757D',    // Gray
-    CANCELLED: '#DC3545',    // Red
-    RESCHEDULED: '#9B59B6',  // Purple
-  };
-  return colors[status] || '#3788D8';
-}
 
 async function checkReporterConflicts(
   reporterId: string,

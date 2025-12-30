@@ -69,14 +69,6 @@ export async function GET(
                 version: true,
                 versionNumber: true,
                 createdAt: true,
-                accessGrants: {
-                  where: { userId: user.id },
-                  select: {
-                    accessLevel: true,
-                    expiresAt: true,
-                    lastAccessedAt: true,
-                  },
-                },
               },
               orderBy: { versionNumber: 'desc' },
             },
@@ -138,17 +130,49 @@ export async function GET(
           },
         },
       },
-    });
+    }) as any;
     
     if (!caseData) {
       return NextResponse.json({ error: 'Case not found or access denied' }, { status: 404 });
     }
     
+    // Type assertion for included relations
+    const caseWithRelations = caseData as any;
+    
+    // Get transcript access grants separately for each transcript
+    const transcriptIds = caseWithRelations.jobs?.flatMap((job: any) => 
+      job.transcripts?.map((t: any) => t.id) || []
+    ) || [];
+    
+    type AccessGrant = {
+      transcriptId: string;
+      accessLevel: string;
+      expiresAt: Date | null;
+      lastAccessedAt: Date | null;
+    };
+    
+    const accessGrants: AccessGrant[] = transcriptIds.length > 0 ? await (db as any).transcriptAccess.findMany({
+      where: {
+        transcriptId: { in: transcriptIds },
+        userId: user.id,
+      },
+      select: {
+        transcriptId: true,
+        accessLevel: true,
+        expiresAt: true,
+        lastAccessedAt: true,
+      },
+    }) : [];
+    
+    const accessMap = new Map<string, AccessGrant>(
+      accessGrants.map((grant) => [grant.transcriptId, grant])
+    );
+    
     // Get attorney's role in this case
-    const attorneyEntry = caseData.attorneys?.find((a: any) => a.email === user.email);
+    const attorneyEntry = caseWithRelations.attorneys?.find((a: { email: string | null }) => a.email === user.email);
     
     // Format jobs with transcript access info
-    const jobsWithAccess = caseData.jobs?.map((job: any) => ({
+    const jobsWithAccess = caseWithRelations.jobs?.map((job: any) => ({
       id: job.id,
       caseName: job.caseName,
       caseNumber: job.caseNumber,
@@ -159,17 +183,19 @@ export async function GET(
       status: job.status,
       createdBy: job.createdBy,
       files: job.files,
-      transcripts: job.transcripts?.map((t: any) => ({
-        id: t.id,
-        version: t.version,
-        versionNumber: t.versionNumber,
-        status: t.status,
-        createdAt: t.createdAt,
-        hasAccess: t.accessGrants.length > 0,
-        accessLevel: t.accessGrants[0]?.accessLevel || null,
-        accessExpires: t.accessGrants[0]?.expiresAt || null,
-        lastAccessed: t.accessGrants[0]?.lastAccessedAt || null,
-      })),
+      transcripts: job.transcripts?.map((t: any) => {
+        const access = accessMap.get(t.id);
+        return {
+          id: t.id,
+          version: t.version,
+          versionNumber: t.versionNumber,
+          createdAt: t.createdAt,
+          hasAccess: !!access,
+          accessLevel: access?.accessLevel || null,
+          accessExpires: access?.expiresAt || null,
+          lastAccessed: access?.lastAccessedAt || null,
+        };
+      }),
       counts: job._count,
     }));
     
@@ -179,28 +205,28 @@ export async function GET(
     let otherParties = [];
     
     try {
-      plaintiffs = caseData.plaintiffs ? JSON.parse(caseData.plaintiffs as string) : [];
-      defendants = caseData.defendants ? JSON.parse(caseData.defendants as string) : [];
-      otherParties = caseData.otherParties ? JSON.parse(caseData.otherParties as string) : [];
+      plaintiffs = caseWithRelations.plaintiffs ? JSON.parse(caseWithRelations.plaintiffs as string) : [];
+      defendants = caseWithRelations.defendants ? JSON.parse(caseWithRelations.defendants as string) : [];
+      otherParties = caseWithRelations.otherParties ? JSON.parse(caseWithRelations.otherParties as string) : [];
     } catch {
       // If parsing fails, keep empty arrays
     }
     
     return NextResponse.json({
       case: {
-        id: caseData.id,
-        caseNumber: caseData.caseNumber,
-        caseStyle: caseData.caseStyle,
-        shortTitle: caseData.shortTitle,
-        status: caseData.status,
-        caseType: caseData.caseStyle, // Using caseStyle instead of caseType
+        id: caseWithRelations.id,
+        caseNumber: caseWithRelations.caseNumber,
+        caseStyle: caseWithRelations.caseStyle,
+        shortTitle: caseWithRelations.shortTitle,
+        status: caseWithRelations.status,
+        caseType: caseWithRelations.caseStyle, // Using caseStyle instead of caseType
         
         // Court info
-        courtName: caseData.courtName,
-        courtType: caseData.courtType,
-        county: caseData.county,
-        state: caseData.state,
-        judgeAssigned: caseData.judgeAssigned,
+        courtName: caseWithRelations.courtName,
+        courtType: caseWithRelations.courtType,
+        county: caseWithRelations.county,
+        state: caseWithRelations.state,
+        judgeAssigned: caseWithRelations.judgeAssigned,
         
         // Parties
         plaintiffs,
@@ -208,9 +234,9 @@ export async function GET(
         otherParties,
         
         // Related data
-        firm: caseData.firm || null,
-        createdBy: caseData.createdBy || null,
-        attorneys: caseData.attorneys || [],
+        firm: caseWithRelations.firm || null,
+        createdBy: caseWithRelations.createdBy || null,
+        attorneys: caseWithRelations.attorneys || [],
         
         // Current user's role
         myRole: attorneyEntry?.role || 'VIEWER',
@@ -219,25 +245,25 @@ export async function GET(
         jobs: jobsWithAccess,
         
         // Dictionary terms
-        extractedTerms: caseData.extractedTerms,
+        extractedTerms: caseWithRelations.extractedTerms,
         
         // Source documents
-        sourceDocuments: caseData.sourceDocuments,
+        sourceDocuments: caseWithRelations.sourceDocuments,
         
         // Team members
-        teamMembers: (caseData.memberships || []).map((m: any) => ({
+        teamMembers: (caseWithRelations.memberships || []).map((m: { user: any; roleInCase: string; createdAt: Date }) => ({
           ...m.user,
           roleInCase: m.roleInCase,
           joinedAt: m.createdAt,
         })),
         
         // Counts
-        counts: caseData._count,
+        counts: caseWithRelations._count,
         
         // Timestamps
-        createdAt: caseData.createdAt,
-        updatedAt: caseData.updatedAt,
-        notes: caseData.notes,
+        createdAt: caseWithRelations.createdAt,
+        updatedAt: caseWithRelations.updatedAt,
+        notes: caseWithRelations.notes,
       },
     });
   } catch (error) {

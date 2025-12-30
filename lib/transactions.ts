@@ -101,11 +101,11 @@ export const TransactionPatterns = {
 
     await tx.auditLog.create({
       data: {
-        userId,
+        actorUserId: userId,
         action: auditData.action,
-        entityType: 'User',
-        entityId: userId,
-        details: auditData.details,
+        targetType: 'User',
+        targetId: userId,
+        metadata: auditData.details ? (auditData.details as Prisma.InputJsonValue) : Prisma.JsonNull,
         ipAddress: auditData.ipAddress,
         userAgent: auditData.userAgent,
       },

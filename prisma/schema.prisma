@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,78 +8,66 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ============================================
-// USER MODELS
-// ============================================
-
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  role         UserRole
-
-  // Multi-tenant: Every user belongs to a Firm
-  firmId String?
-  firm   Firm?   @relation(fields: [firmId], references: [id], onDelete: Cascade)
-
-  // Profile
-  firstName String
-  lastName  String
-  phone     String?
-  photo     String? // URL to Supabase Storage
-  timezone  String  @default("America/New_York")
-
-  // Reporter-specific
-  agencyName String?
-  csrNumber  String? // Certified Shorthand Reporter number
-
-  // Scopist-specific
-  specialties     String[] // ["medical", "technical", "legal"]
-  experienceLevel String? // "beginner", "intermediate", "expert"
-  availability    Boolean  @default(true)
-
-  // Settings
-  defaultTranscriptSettings Json?
-  notificationPreferences   Json?
-
-  // Relationships
-  jobsCreated                Job[]                         @relation("CreatedBy")
+  id                         String                        @id @default(cuid())
+  email                      String                        @unique
+  passwordHash               String
+  role                       UserRole
+  firmId                     String?
+  firstName                  String
+  lastName                   String
+  phone                      String?
+  photo                      String?
+  timezone                   String                        @default("America/New_York")
+  agencyName                 String?
+  csrNumber                  String?
+  specialties                String[]
+  experienceLevel            String?
+  availability               Boolean                       @default(true)
+  defaultTranscriptSettings  Json?
+  notificationPreferences    Json?
+  createdAt                  DateTime                      @default(now())
+  updatedAt                  DateTime                      @updatedAt
+  lastLoginAt                DateTime?
+  deletedAt                  DateTime?
+  agencyId                   String?
+  attorneyProfile            AttorneyProfile?
+  attorneyTranscriptsCreated AttorneyTranscript[]          @relation("TranscriptCreator")
+  auditLogs                  AuditLog[]
   casesCreated               Case[]                        @relation("CaseCreator")
+  caseMemberships            CaseMembership[]
+  exhibitsCreated            Exhibit[]
+  jobsCreated                Job[]                         @relation("CreatedBy")
   assignments                JobAssignment[]
+  scopistClaims              JobClaim[]                    @relation("ScopistClaims")
+  marketplaceSettings        MarketplaceSettings?          @relation("MarketplaceSettings")
   messages                   Message[]
   notifications              Notification[]
-  auditLogs                  AuditLog[]
-  attorneyTranscriptsCreated AttorneyTranscript[]          @relation("TranscriptCreator")
+  reporterUnavailability     ReporterUnavailability[]      @relation("ReporterUnavailability")
+  transcriptAccessGranted    TranscriptAccess[]            @relation("TranscriptAccessGranter")
+  transcriptAccess           TranscriptAccess[]            @relation("TranscriptAccessUser")
   transcriptAnnotations      TranscriptAnnotation[]
-  exhibitsCreated            Exhibit[]
   annotationExhibitLinks     TranscriptAnnotationExhibit[]
-
-  // Case-level access (multi-case membership)
-  caseMemberships CaseMembership[]
-
-  // Calendar relations
-  reporterAssignments  CalendarEvent[]      @relation("ReporterAssignments")
-  attorneyRequests     CalendarEvent[]      @relation("AttorneyRequests")
-  agencyScheduled      CalendarEvent[]      @relation("AgencyScheduled")
-  eventsCreated        CalendarEvent[]      @relation("EventCreator")
-  eventParticipations  EventParticipant[]
-  reporterAvailability ReporterAvailability[]
-  bookingRequests      BookingRequest[]
-  bookingResponses     BookingRequest[]     @relation("AgencyResponder")
-
-  // Phase 3: Attorney Portal
-  attorneyProfile         AttorneyProfile?
-  transcriptAccess        TranscriptAccess[] @relation("TranscriptAccessUser")
-  transcriptAccessGranted TranscriptAccess[] @relation("TranscriptAccessGranter")
-  transcriptShares        TranscriptShare[]
-  transcriptHighlights    TranscriptHighlight[]
-  userTags                TranscriptTag[] @relation("UserTags")
-  transcriptNotes         TranscriptNote[]
-  transcriptBookmarks      TranscriptBookmark[]
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLoginAt DateTime?
+  transcriptBookmarks        TranscriptBookmark[]
+  transcriptHighlights       TranscriptHighlight[]
+  transcriptNotes            TranscriptNote[]
+  transcriptShares           TranscriptShare[]
+  userTags                   TranscriptTag[]               @relation("UserTags")
+  agency                     Agency?                       @relation("AgencyReporters", fields: [agencyId], references: [id])
+  firm                       Firm?                         @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  bookingRequests            BookingRequest[]
+  bookingResponses           BookingRequest[]              @relation("AgencyResponder")
+  reporterAssignments        CalendarEvent[]               @relation("ReporterAssignments")
+  eventsCreated              CalendarEvent[]               @relation("EventCreator")
+  attorneyRequests           CalendarEvent[]               @relation("AttorneyRequests")
+  agencyScheduled            CalendarEvent[]               @relation("AgencyScheduled")
+  eventParticipations        EventParticipant[]
+  reporterAvailability       ReporterAvailability[]
+  calendarEventNotes         CalendarEventNote[]           @relation("NoteCreator")
+  calendarAuditLogs          CalendarAuditLog[]            @relation("AuditPerformer")
+  rescheduledEvents          CalendarEvent[]               @relation("EventRescheduler")
+  resolvedConflicts          ScheduleConflict[]            @relation("ConflictResolver")
+  externalCalendars          ExternalCalendarConnection[]
 
   @@index([email])
   @@index([role])
@@ -92,80 +78,48 @@ model User {
   @@index([lastLoginAt])
 }
 
-enum UserRole {
-  REPORTER
-  SCOPIST
-  ADMIN
-  ATTORNEY
-  PARALEGAL // Future: paralegals can assist attorneys
-  AGENCY // Agency administrators
-  AGENCY_ADMIN // Future: agency administrators
-  FIRM_ADMIN // Future: firm administrators
-}
-
-// ============================================
-// JOB MODELS
-// ============================================
-
 model Job {
-  id String @id @default(cuid())
-
-  // Basic Info
-  title          String
-  caseName       String
-  caseNumber     String?
-  depositionDate DateTime
-  location       String? // Physical address or "Zoom"
-  zoomLink       String?
-
-  // Status
-  status JobStatus @default(CREATED)
-
-  // Firm association (optional for now)
-  firmId String?
-  firm   Firm?   @relation(fields: [firmId], references: [id])
-
-  // Assignment
-  createdById  String
-  createdBy    User    @relation("CreatedBy", fields: [createdById], references: [id])
-  assignedToId String? // If self-edit, same as createdById
-  scopistId    String?
-  dueDate      DateTime?
-
-  // Case association
-  caseId String?
-  case   Case?   @relation(fields: [caseId], references: [id])
-
-  // Calendar association
-  calendarEvent CalendarEvent?
-
-  // Files
-  files    JobFile[]
-  exhibits Exhibit[]
-
-  // Transcription
-  transcriptionJobs        TranscriptionJob[]
-  transcription            Transcription?
-  transcripts              Transcript[]
-  transcriptionModelType   String?            @default("MEDICAL") // STANDARD, MEDICAL, BILINGUAL
+  id                       String             @id @default(cuid())
+  title                    String
+  caseName                 String
+  caseNumber               String?
+  depositionDate           DateTime
+  location                 String?
+  zoomLink                 String?
+  status                   JobStatus          @default(CREATED)
+  firmId                   String?
+  createdById              String
+  assignedToId             String?
+  caseId                   String?
+  transcriptionModelType   String?            @default("MEDICAL")
   transcriptionCompletedAt DateTime?
   errorMessage             String?
-
-  // Communication
-  messages    Message[]
-  assignments JobAssignment[]
-
-  // Metadata
-  notes         String? @db.Text
-  internalNotes String? @db.Text // Private notes not visible to scopist
-
-  // Lock system
-  lockedBy String?
-  lockedAt DateTime?
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  completedAt DateTime?
+  notes                    String?
+  internalNotes            String?
+  lockedBy                 String?
+  lockedAt                 DateTime?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  completedAt              DateTime?
+  dueDate                  DateTime?
+  scopistId                String?
+  deletedAt                DateTime?
+  agencyId                 String?
+  csrRecord                CSRRecord?         @relation("JobCSRRecord")
+  exhibits                 Exhibit[]
+  agency                   Agency?            @relation("AgencyJobs", fields: [agencyId], references: [id])
+  case                     Case?              @relation(fields: [caseId], references: [id])
+  createdBy                User               @relation("CreatedBy", fields: [createdById], references: [id])
+  firm                     Firm?              @relation(fields: [firmId], references: [id])
+  assignments              JobAssignment[]
+  claims                   JobClaim[]         @relation("JobClaims")
+  jobExhibits              JobExhibit[]       @relation("JobExhibits")
+  files                    JobFile[]
+  messages                 Message[]
+  transcripts              Transcript[]
+  transcription            Transcription?
+  transcriptionJobs        TranscriptionJob[]
+  calendarEvent            CalendarEvent?
 
   @@index([createdById])
   @@index([firmId])
@@ -181,6 +135,1513 @@ model Job {
   @@index([createdAt])
   @@index([updatedAt])
   @@index([completedAt])
+}
+
+model JobFile {
+  id            String      @id @default(cuid())
+  jobId         String
+  type          FileType
+  fileName      String
+  fileSize      Int
+  mimeType      String
+  storageUrl    String
+  storagePath   String
+  extractedData Json?
+  createdAt     DateTime    @default(now())
+  exhibitLink   JobExhibit? @relation("ExhibitFile")
+  job           Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, type])
+}
+
+model Exhibit {
+  id              String                        @id @default(cuid())
+  caseId          String
+  jobId           String?
+  exhibitLabel    String
+  exhibitNumber   Int?
+  description     String
+  originalFileUrl String
+  stampedFileUrl  String?
+  fileType        String
+  mimeType        String
+  fileName        String
+  fileSize        Int
+  stamped         Boolean                       @default(false)
+  uploadedByRole  UserRole
+  createdById     String
+  createdAt       DateTime                      @default(now())
+  case            Case                          @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy       User                          @relation(fields: [createdById], references: [id])
+  job             Job?                          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  annotationLinks TranscriptAnnotationExhibit[]
+
+  @@unique([caseId, jobId, exhibitLabel])
+  @@index([caseId])
+  @@index([jobId])
+  @@index([createdById])
+  @@index([uploadedByRole])
+  @@index([stamped])
+  @@index([createdAt])
+}
+
+model AudioEnhancement {
+  id                   String          @id @default(cuid())
+  jobId                String
+  originalAudioUrl     String
+  originalDuration     Float
+  originalFileSize     Int
+  enhancementMode      EnhancementMode
+  dolbyProcessed       Boolean         @default(false)
+  dolbyAudioUrl        String?
+  dolbyQualityScore    Float?
+  auphonicProcessed    Boolean         @default(false)
+  auphonicAudioUrl     String?
+  auphonicQualityScore Float?
+  finalAudioUrl        String
+  engineUsed           String
+  dolbyCostCents       Int?
+  auphonicCostCents    Int?
+  totalCostCents       Int
+  qualityFlags         Json?
+  decisionReason       String?
+  createdAt            DateTime        @default(now())
+  completedAt          DateTime?
+
+  @@index([jobId])
+  @@index([createdAt])
+  @@index([completedAt])
+}
+
+model TranscriptionJob {
+  id                String              @id @default(cuid())
+  jobId             String
+  deepgramRequestId String              @unique
+  audioUrl          String
+  config            Json
+  status            TranscriptionStatus @default(PENDING)
+  rawJson           Json?
+  duration          Float?
+  wordCount         Int?
+  averageConfidence Float?
+  speakerCount      Int?
+  errorMessage      String?
+  retryCount        Int                 @default(0)
+  maxRetries        Int                 @default(3)
+  createdAt         DateTime            @default(now())
+  completedAt       DateTime?
+  job               Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([completedAt])
+}
+
+model Transcript {
+  id                String                @id @default(cuid())
+  jobId             String
+  version           String
+  versionNumber     Int
+  content           String
+  contentJson       Json
+  wordCount         Int?
+  pageCount         Int?
+  averageConfidence Float?
+  speakerCount      Int?
+  aiChanges         Json?
+  aiFlags           Json?
+  createdBy         String
+  createdAt         DateTime              @default(now())
+  deletedAt         DateTime?
+  job               Job                   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  accessGrants      TranscriptAccess[]
+  bookmarks         TranscriptBookmark[]
+  highlights        TranscriptHighlight[]
+  notes             TranscriptNote[]
+  shares            TranscriptShare[]
+  tokens            TranscriptToken[]
+
+  @@unique([jobId, version])
+  @@index([jobId, versionNumber])
+  @@index([createdAt])
+}
+
+model TranscriptToken {
+  id             String     @id @default(cuid())
+  transcriptId   String
+  index          Int
+  word           String
+  punctuatedWord String?
+  start          Float
+  end            Float
+  confidence     Float
+  isFlagged      Boolean    @default(false)
+  isReviewed     Boolean    @default(false)
+  speaker        Int?
+  createdAt      DateTime   @default(now())
+  transcript     Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId, index])
+  @@index([transcriptId, isFlagged])
+  @@index([createdAt])
+}
+
+model Transcription {
+  id                 String              @id @default(cuid())
+  jobId              String              @unique
+  fullTranscript     String
+  deepgramRawJson    String?
+  words              Json
+  utterances         Json?
+  flaggedSegments    Json?
+  speakerAnalysis    Json?
+  speakerAssignments Json?
+  duration           Float?
+  wordCount          Int?
+  flaggedWordCount   Int?
+  averageConfidence  Float?
+  speakerCount       Int                 @default(0)
+  modelUsed          String?
+  status             TranscriptionStatus @default(PENDING)
+  version            Int                 @default(1)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  lockReason         String?
+  lockedAt           DateTime?
+  lockedBy           String?
+  job                Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  edits              TranscriptionEdit[]
+
+  @@index([jobId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([lockedAt])
+}
+
+model TranscriptionEdit {
+  id              String        @id @default(cuid())
+  transcriptionId String
+  editorId        String
+  editorEmail     String?
+  editorRole      UserRole?
+  editType        EditType      @default(WORD_CORRECTION)
+  originalText    String?
+  editedText      String?
+  position        Float?
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptionId])
+  @@index([createdAt])
+}
+
+model AIRule {
+  id          String       @id @default(cuid())
+  name        String
+  category    RuleCategory
+  description String
+  enabled     Boolean      @default(true)
+  priority    Int          @default(0)
+  ruleType    String
+  pattern     String?
+  replacement String?
+  prompt      String?
+  examples    Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([enabled, priority])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model JobAssignment {
+  id           String           @id @default(cuid())
+  jobId        String
+  scopistId    String
+  status       AssignmentStatus @default(INVITED)
+  invitedAt    DateTime         @default(now())
+  respondedAt  DateTime?
+  startedAt    DateTime?
+  submittedAt  DateTime?
+  scopistNotes String?
+  job          Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  scopist      User             @relation(fields: [scopistId], references: [id])
+
+  @@index([jobId])
+  @@index([scopistId, status])
+  @@index([invitedAt])
+  @@index([respondedAt])
+  @@index([startedAt])
+  @@index([submittedAt])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  jobId     String
+  senderId  String
+  content   String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sender    User      @relation(fields: [senderId], references: [id])
+
+  @@index([jobId, createdAt])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  linkUrl     String?
+  linkText    String?
+  isRead      Boolean          @default(false)
+  readAt      DateTime?
+  emailSent   Boolean          @default(false)
+  emailSentAt DateTime?
+  jobId       String?
+  createdAt   DateTime         @default(now())
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  actorUserId String?
+  firmId      String?
+  metadata    Json?
+  targetId    String
+  targetType  String
+  user        User?    @relation(fields: [actorUserId], references: [id])
+
+  @@index([actorUserId])
+  @@index([firmId])
+  @@index([action])
+  @@index([targetType])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@index([firmId, createdAt])
+  @@index([firmId, action])
+}
+
+model UsageRecord {
+  id        String   @id @default(cuid())
+  firmId    String
+  type      String
+  amount    Float
+  createdAt DateTime @default(now())
+  firm      Firm     @relation(fields: [firmId], references: [id])
+
+  @@index([firmId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([firmId, type])
+  @@index([firmId, createdAt])
+  @@index([firmId, type, createdAt])
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Firm {
+  id                          String                       @id @default(cuid())
+  name                        String
+  address                     String?
+  phone                       String?
+  email                       String?
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  agencyId                    String?
+  cases                       Case[]
+  agency                      Agency?                      @relation("AgencyFirms", fields: [agencyId], references: [id])
+  jobs                        Job[]
+  tags                        TranscriptTag[]
+  usageRecords                UsageRecord[]
+  users                       User[]
+  webhooks                    WebhookConfig[]
+  bookingRequests             BookingRequest[]
+  calendarEvents              CalendarEvent[]
+  reporterAvailability        ReporterAvailability[]
+  scheduleConflicts           ScheduleConflict[]
+  externalCalendarConnections ExternalCalendarConnection[]
+  externalCalendarEvents      ExternalCalendarEvent[]
+  billingAccount              BillingAccount?
+
+  @@index([name])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model BackgroundJob {
+  id             String    @id @default(cuid())
+  type           String
+  payload        Json
+  status         String    @default("PENDING")
+  priority       Int       @default(0)
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  lastError      String?
+  scheduledFor   DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  idempotencyKey String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status])
+  @@index([type])
+  @@index([priority])
+  @@index([scheduledFor])
+  @@index([status, scheduledFor])
+  @@index([status, priority])
+  @@index([idempotencyKey])
+  @@index([createdAt])
+}
+
+model WebhookConfig {
+  id         String            @id @default(cuid())
+  firmId     String
+  url        String
+  secret     String
+  events     String[]
+  isActive   Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  firm       Firm              @relation(fields: [firmId], references: [id])
+  deliveries WebhookDelivery[]
+
+  @@index([firmId])
+  @@index([isActive])
+  @@index([firmId, isActive])
+}
+
+model WebhookDelivery {
+  id            String        @id @default(cuid())
+  webhookId     String
+  event         String
+  payload       String
+  status        String        @default("pending")
+  statusCode    Int?
+  attempts      Int           @default(0)
+  lastAttemptAt DateTime?
+  error         String?
+  createdAt     DateTime      @default(now())
+  webhook       WebhookConfig @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([status])
+  @@index([event])
+  @@index([createdAt])
+}
+
+model Case {
+  id               String              @id @default(cuid())
+  firmId           String
+  createdById      String
+  caseNumber       String
+  caseStyle        String
+  shortTitle       String?
+  courtName        String?
+  courtType        String?
+  county           String?
+  state            String              @default("Texas")
+  judgeAssigned    String?
+  plaintiffs       Json?
+  defendants       Json?
+  otherParties     Json?
+  status           CaseStatus          @default(ACTIVE)
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  createdBy        User                @relation("CaseCreator", fields: [createdById], references: [id])
+  firm             Firm                @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  attorneys        CaseAttorney[]
+  sourceDocuments  CaseDocument[]
+  extractedTerms   CaseExtractedTerm[]
+  memberships      CaseMembership[]
+  exhibits         Exhibit[]
+  jobs             Job[]
+  transcriptAccess TranscriptAccess[]
+  tags             TranscriptTag[]
+
+  @@unique([firmId, caseNumber])
+  @@index([firmId])
+  @@index([caseNumber])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+/// *
+///  * CaseMembership - Controls who can access which cases
+///  * This is the heart of the multi-tenant permission system.
+///  * Key Rules:
+///  * - Attorneys can belong to many cases
+///  * - Reporters belong only to their deposition's case (via Job)
+///  * - Paralegals can be added per case
+///  * - Access is granted per case, not globally
+model CaseMembership {
+  id          String   @id @default(cuid())
+  userId      String
+  caseId      String
+  roleInCase  CaseRole
+  permissions Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  case        Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, caseId])
+  @@index([userId])
+  @@index([caseId])
+  @@index([roleInCase])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model CaseAttorney {
+  id               String       @id @default(cuid())
+  caseId           String
+  name             String
+  barNumber        String?
+  firm             String?
+  role             AttorneyRole
+  representing     String?
+  email            String?
+  phone            String?
+  fax              String?
+  address          String?
+  city             String?
+  state            String?
+  zipCode          String?
+  deliveryFormat   String?
+  deliveryPriority String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  case             Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([email])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model CaseDocument {
+  id               String           @id @default(cuid())
+  caseId           String
+  documentType     CaseDocumentType
+  fileName         String
+  fileUrl          String
+  fileSize         Int
+  mimeType         String
+  extractionStatus ExtractionStatus @default(PENDING)
+  extractedData    Json?
+  extractedAt      DateTime?
+  extractionError  String?
+  uploadedById     String
+  uploadedAt       DateTime         @default(now())
+  case             Case             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([documentType])
+  @@index([uploadedAt])
+}
+
+model CaseExtractedTerm {
+  id                 String       @id @default(cuid())
+  caseId             String
+  term               String
+  category           TermCategory
+  phonetic           String?
+  source             String?
+  confidence         Float?
+  useInTranscription Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  case               Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, term])
+  @@index([caseId])
+  @@index([category])
+  @@index([createdAt])
+}
+
+/// *
+///  * Attorney Transcript - Read-only transcript for attorney review
+///  * Stored as JSONB for flexibility (page/line structure)
+model AttorneyTranscript {
+  id             String                   @id @default(cuid())
+  name           String
+  deponent       String
+  caseName       String?
+  depositionDate DateTime?
+  status         AttorneyTranscriptStatus @default(NOT_REVIEWED)
+  transcriptData Json
+  totalPages     Int
+  totalLines     Int
+  uploadedById   String
+  uploadedAt     DateTime                 @default(now())
+  uploadedBy     User                     @relation("TranscriptCreator", fields: [uploadedById], references: [id])
+  annotations    TranscriptAnnotation[]
+
+  @@index([uploadedById])
+  @@index([status])
+  @@index([deponent])
+  @@index([uploadedAt])
+}
+
+/// *
+///  * Transcript Annotation - Issue codes tagged on transcript lines
+model TranscriptAnnotation {
+  id             String                        @id @default(cuid())
+  transcriptId   String
+  issueCode      String
+  issueLabel     String
+  issueColor     String
+  pageStart      Int
+  lineStart      Int
+  pageEnd        Int
+  lineEnd        Int
+  note           String?
+  createdById    String
+  createdAt      DateTime                      @default(now())
+  createdBy      User                          @relation(fields: [createdById], references: [id])
+  transcript     AttorneyTranscript            @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  linkedExhibits TranscriptAnnotationExhibit[]
+
+  @@index([transcriptId])
+  @@index([createdById])
+  @@index([issueCode])
+  @@index([createdAt])
+}
+
+/// *
+///  * Junction table linking transcript annotations to exhibits
+///  * Allows attorneys to reference exhibits in their annotations
+model TranscriptAnnotationExhibit {
+  id           String               @id @default(cuid())
+  annotationId String
+  exhibitId    String
+  createdById  String
+  createdAt    DateTime             @default(now())
+  annotation   TranscriptAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  createdBy    User                 @relation(fields: [createdById], references: [id])
+  exhibit      Exhibit              @relation(fields: [exhibitId], references: [id], onDelete: Cascade)
+
+  @@unique([annotationId, exhibitId])
+  @@index([annotationId])
+  @@index([exhibitId])
+  @@index([createdById])
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([createdAt])
+  @@index([expires])
+}
+
+model CalendarEvent {
+  id                  String                 @id @default(cuid())
+  firmId              String
+  title               String
+  eventType           EventType              @default(DEPOSITION)
+  status              CalendarEventStatus    @default(REQUESTED)
+  startTime           DateTime
+  endTime             DateTime
+  timezone            String                 @default("America/Chicago")
+  allDay              Boolean                @default(false)
+  isRecurring         Boolean                @default(false)
+  recurrenceRule      String?
+  recurrenceEndDate   DateTime?
+  parentEventId       String?
+  location            String?
+  isRemote            Boolean                @default(false)
+  meetingLink         String?
+  jobId               String?                @unique
+  assignedReporterId  String?
+  requestedById       String?
+  scheduledById       String?
+  notes               String?
+  internalNotes       String?
+  cancellationReason  String?
+  createdById         String
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  confirmedAt         DateTime?
+  cancelledAt         DateTime?
+  agencyId            String?
+  orderingAttorneyId  String?
+  bookingRequest      BookingRequest?
+  agency              Agency?                @relation(fields: [agencyId], references: [id])
+  assignedReporter    User?                  @relation("ReporterAssignments", fields: [assignedReporterId], references: [id])
+  createdBy           User                   @relation("EventCreator", fields: [createdById], references: [id])
+  firm                Firm                   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  job                 Job?                   @relation(fields: [jobId], references: [id])
+  orderingAttorney    Attorney?              @relation("OrderingAttorneyEvents", fields: [orderingAttorneyId], references: [id])
+  parentEvent         CalendarEvent?         @relation("RecurringEvents", fields: [parentEventId], references: [id])
+  childEvents         CalendarEvent[]        @relation("RecurringEvents")
+  requestedBy         User?                  @relation("AttorneyRequests", fields: [requestedById], references: [id])
+  scheduledBy         User?                  @relation("AgencyScheduled", fields: [scheduledById], references: [id])
+  participants        EventParticipant[]
+  eventNotes          CalendarEventNote[]    @relation("EventNotes")
+  auditLogs           CalendarAuditLog[]     @relation("EventAuditLogs")
+  sourceConflicts     ScheduleConflict[]     @relation("SourceConflicts")
+  conflictsWith       ScheduleConflict[]     @relation("ConflictsWith")
+  lastRescheduledAt   DateTime?
+  lastRescheduledById String?
+  lastRescheduledBy   User?                  @relation("EventRescheduler", fields: [lastRescheduledById], references: [id])
+  rescheduleCount     Int                    @default(0)
+  originalStartTime   DateTime?
+  externalEvent       ExternalCalendarEvent? @relation("ExternalToInternal")
+
+  @@index([firmId])
+  @@index([jobId])
+  @@index([createdById])
+  @@index([assignedReporterId])
+  @@index([startTime])
+  @@index([endTime])
+  @@index([status])
+  @@index([firmId, startTime, endTime])
+  @@index([assignedReporterId, startTime])
+  @@index([createdById, startTime])
+  @@index([firmId, startTime])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([confirmedAt])
+  @@index([cancelledAt])
+  @@map("calendar_events")
+}
+
+model EventParticipant {
+  id            String          @id @default(cuid())
+  eventId       String
+  userId        String?
+  externalName  String?
+  externalEmail String?
+  externalPhone String?
+  role          ParticipantRole
+  notified      Boolean         @default(false)
+  notifiedAt    DateTime?
+  confirmed     Boolean         @default(false)
+  confirmedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  event         CalendarEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User?           @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([createdAt])
+  @@map("event_participants")
+}
+
+model ReporterAvailability {
+  id             String           @id @default(cuid())
+  reporterId     String
+  firmId         String
+  startTime      DateTime
+  endTime        DateTime
+  timezone       String           @default("America/Chicago")
+  type           AvailabilityType @default(AVAILABLE)
+  isRecurring    Boolean          @default(false)
+  recurrenceRule String?
+  recurrenceEnd  DateTime?
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  firm           Firm             @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  reporter       User             @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([reporterId, startTime, endTime])
+  @@index([firmId, type])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("reporter_availability")
+}
+
+model CalendarEventNote {
+  id          String        @id @default(cuid())
+  eventId     String
+  event       CalendarEvent @relation("EventNotes", fields: [eventId], references: [id], onDelete: Cascade)
+  content     String        @db.Text
+  isInternal  Boolean       @default(false)
+  createdById String
+  createdBy   User          @relation("NoteCreator", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([eventId])
+  @@index([createdById])
+  @@map("calendar_event_notes")
+}
+
+model ScheduleConflict {
+  id              String              @id @default(cuid())
+  sourceEventId   String
+  sourceEvent     CalendarEvent       @relation("SourceConflicts", fields: [sourceEventId], references: [id], onDelete: Cascade)
+  conflictEventId String
+  conflictEvent   CalendarEvent       @relation("ConflictsWith", fields: [conflictEventId], references: [id], onDelete: Cascade)
+  conflictType    ConflictType
+  proposedStart   DateTime
+  proposedEnd     DateTime
+  overlapMinutes  Int
+  status          ConflictStatus      @default(PENDING)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolvedBy      User?               @relation("ConflictResolver", fields: [resolvedById], references: [id])
+  resolution      ConflictResolution?
+  resolutionNotes String?
+  createdAt       DateTime            @default(now())
+  firmId          String
+  firm            Firm                @relation(fields: [firmId], references: [id])
+
+  @@index([sourceEventId])
+  @@index([conflictEventId])
+  @@index([firmId])
+  @@index([status])
+  @@map("schedule_conflicts")
+}
+
+// ============================================
+// PHASE 5: EXTERNAL CALENDAR MODELS
+// ============================================
+
+model ExternalCalendarConnection {
+  id                 String                    @id @default(cuid())
+  firmId             String
+  firm               Firm                      @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           ExternalCalendarProvider
+  syncMode           ExternalCalendarSyncMode  @default(READ_ONLY)
+  providerCalendarId String
+  calendarName       String?
+  accessToken        String                    @db.Text
+  refreshToken       String?                   @db.Text
+  tokenExpiresAt     DateTime?
+  scopes             String[]
+  lastSyncedAt       DateTime?
+  lastSyncToken      String?
+  syncErrorCount     Int                       @default(0)
+  lastSyncError      String?
+  isEnabled          Boolean                   @default(true)
+  autoSync           Boolean                   @default(true)
+  syncIntervalMins   Int                       @default(15)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  externalEvents     ExternalCalendarEvent[]
+  syncLogs           ExternalCalendarSyncLog[]
+
+  @@unique([userId, provider, providerCalendarId], name: "unique_user_provider_calendar")
+  @@index([firmId])
+  @@index([userId])
+  @@index([isEnabled])
+  @@index([lastSyncedAt])
+  @@map("external_calendar_connections")
+}
+
+model ExternalCalendarEvent {
+  id                  String                     @id @default(cuid())
+  firmId              String
+  firm                Firm                       @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  connectionId        String
+  connection          ExternalCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  providerEventId     String
+  providerCalendarId  String
+  providerEtag        String?
+  title               String
+  description         String?                    @db.Text
+  startTime           DateTime
+  endTime             DateTime
+  timezone            String                     @default("UTC")
+  isAllDay            Boolean                    @default(false)
+  location            String?
+  meetingLink         String?
+  syncStatus          ExternalEventSyncStatus    @default(SYNCED)
+  lastSyncedAt        DateTime                   @default(now())
+  syncError           String?
+  hasConflict         Boolean                    @default(false)
+  conflictingEventIds String[]
+  linkedEventId       String?                    @unique
+  linkedEvent         CalendarEvent?             @relation("ExternalToInternal", fields: [linkedEventId], references: [id])
+  isBlockingTime      Boolean                    @default(true)
+  showInCalendar      Boolean                    @default(true)
+  providerMetadata    Json?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  deletedAt           DateTime?
+
+  @@unique([connectionId, providerEventId])
+  @@index([firmId])
+  @@index([connectionId])
+  @@index([startTime, endTime])
+  @@index([hasConflict])
+  @@index([linkedEventId])
+  @@index([deletedAt])
+  @@map("external_calendar_events")
+}
+
+model ExternalCalendarSyncLog {
+  id             String                     @id @default(cuid())
+  connectionId   String
+  connection     ExternalCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  syncType       String
+  status         String
+  eventsCreated  Int                        @default(0)
+  eventsUpdated  Int                        @default(0)
+  eventsDeleted  Int                        @default(0)
+  conflictsFound Int                        @default(0)
+  startedAt      DateTime                   @default(now())
+  completedAt    DateTime?
+  durationMs     Int?
+  errorMessage   String?
+  errorDetails   Json?
+
+  @@index([connectionId])
+  @@index([startedAt])
+  @@index([status])
+  @@map("external_calendar_sync_logs")
+}
+
+model CalendarAuditLog {
+  id            String              @id @default(cuid())
+  eventId       String
+  event         CalendarEvent       @relation("EventAuditLogs", fields: [eventId], references: [id], onDelete: Cascade)
+  action        CalendarAuditAction
+  performedById String
+  performedBy   User                @relation("AuditPerformer", fields: [performedById], references: [id])
+  previousValue Json?
+  newValue      Json?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime            @default(now())
+
+  @@index([eventId])
+  @@index([performedById])
+  @@index([action])
+  @@index([createdAt])
+  @@map("calendar_audit_logs")
+}
+
+model BookingRequest {
+  id                  String               @id @default(cuid())
+  firmId              String
+  requestedById       String
+  caseName            String
+  caseNumber          String?
+  preferredDate       DateTime
+  alternateDate1      DateTime?
+  alternateDate2      DateTime?
+  estimatedDuration   Int                  @default(240)
+  eventType           EventType            @default(DEPOSITION)
+  location            String?
+  isRemote            Boolean              @default(false)
+  deponentName        String
+  deponentContact     String?
+  needsInterpreter    Boolean              @default(false)
+  interpreterLanguage String?
+  needsVideographer   Boolean              @default(false)
+  needsRealtime       Boolean              @default(false)
+  specialNotes        String?
+  status              BookingRequestStatus @default(PENDING)
+  calendarEventId     String?              @unique
+  respondedById       String?
+  respondedAt         DateTime?
+  rejectionReason     String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  calendarEvent       CalendarEvent?       @relation(fields: [calendarEventId], references: [id])
+  firm                Firm                 @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  requestedBy         User                 @relation(fields: [requestedById], references: [id])
+  respondedBy         User?                @relation("AgencyResponder", fields: [respondedById], references: [id])
+
+  @@index([firmId, status])
+  @@index([requestedById])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([respondedAt])
+  @@map("booking_requests")
+}
+
+model AttorneyProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  barNumber           String?
+  barState            String?
+  firmName            String?
+  firmAddress         String?
+  firmPhone           String?
+  practiceAreas       String[]
+  defaultExportFormat String?  @default("PDF")
+  emailNotifications  Boolean  @default(true)
+  smsNotifications    Boolean  @default(false)
+  billingEmail        String?
+  billingAddress      String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([barNumber])
+  @@index([barState])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model TranscriptAccess {
+  id             String                @id @default(cuid())
+  transcriptId   String
+  userId         String
+  accessLevel    TranscriptAccessLevel @default(VIEW)
+  grantedById    String
+  caseId         String?
+  expiresAt      DateTime?
+  downloadLimit  Int?
+  downloadCount  Int                   @default(0)
+  lastAccessedAt DateTime?
+  accessCount    Int                   @default(0)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  case           Case?                 @relation(fields: [caseId], references: [id])
+  grantedBy      User                  @relation("TranscriptAccessGranter", fields: [grantedById], references: [id])
+  transcript     Transcript            @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  user           User                  @relation("TranscriptAccessUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([transcriptId, userId])
+  @@index([userId])
+  @@index([transcriptId])
+  @@index([caseId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([lastAccessedAt])
+  @@index([expiresAt])
+}
+
+model TranscriptShare {
+  id             String                @id @default(cuid())
+  transcriptId   String
+  sharedById     String
+  shareType      ShareType
+  recipientEmail String?
+  recipientName  String?
+  shareToken     String?               @unique @default(cuid())
+  accessLevel    TranscriptAccessLevel @default(VIEW)
+  expiresAt      DateTime?
+  password       String?
+  accessCount    Int                   @default(0)
+  lastAccessedAt DateTime?
+  status         ShareStatus           @default(ACTIVE)
+  revokedAt      DateTime?
+  message        String?
+  createdAt      DateTime              @default(now())
+  deletedAt      DateTime?
+  sharedBy       User                  @relation(fields: [sharedById], references: [id])
+  transcript     Transcript            @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId])
+  @@index([recipientEmail])
+  @@index([sharedById])
+  @@index([accessLevel])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([recipientEmail, transcriptId])
+  @@index([transcriptId, status])
+  @@index([shareToken])
+  @@index([lastAccessedAt])
+}
+
+model TranscriptHighlight {
+  id              String                   @id @default(cuid())
+  transcriptId    String
+  userId          String
+  startIndex      Int
+  endIndex        Int
+  startLine       Int?
+  endLine         Int?
+  highlightedText String
+  color           HighlightColor           @default(YELLOW)
+  note            String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  transcript      Transcript               @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags            TranscriptHighlightTag[]
+
+  @@index([transcriptId])
+  @@index([userId])
+  @@index([transcriptId, userId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model TranscriptTag {
+  id          String                   @id @default(cuid())
+  userId      String?
+  firmId      String?
+  caseId      String?
+  name        String
+  color       String?
+  description String?
+  isSystem    Boolean                  @default(false)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  highlights  TranscriptHighlightTag[]
+  case        Case?                    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  firm        Firm?                    @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  user        User?                    @relation("UserTags", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@unique([firmId, name])
+  @@unique([caseId, name])
+  @@index([userId])
+  @@index([firmId])
+  @@index([caseId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model TranscriptHighlightTag {
+  id          String              @id @default(cuid())
+  highlightId String
+  tagId       String
+  createdAt   DateTime            @default(now())
+  highlight   TranscriptHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
+  tag         TranscriptTag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([highlightId, tagId])
+  @@index([highlightId])
+  @@index([tagId])
+  @@index([createdAt])
+}
+
+model TranscriptNote {
+  id           String     @id @default(cuid())
+  transcriptId String
+  userId       String
+  lineNumber   Int?
+  pageNumber   Int?
+  timestamp    String?
+  title        String?
+  content      String
+  isPrivate    Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  transcript   Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId])
+  @@index([userId])
+  @@index([transcriptId, userId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model TranscriptBookmark {
+  id           String     @id @default(cuid())
+  transcriptId String
+  userId       String
+  lineNumber   Int
+  pageNumber   Int?
+  timestamp    String?
+  label        String
+  description  String?
+  snippetText  String?    @db.VarChar(500)
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  transcript   Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptId])
+  @@index([userId])
+  @@index([transcriptId, userId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model Agency {
+  id           String          @id @default(cuid())
+  name         String
+  slug         String          @unique
+  email        String?
+  phone        String?
+  address      String?
+  city         String?
+  state        String?
+  zipCode      String?
+  planType     AgencyPlanType  @default(BASIC)
+  maxReporters Int             @default(10)
+  maxFirms     Int             @default(5)
+  settings     Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  firms        Firm[]          @relation("AgencyFirms")
+  jobs         Job[]           @relation("AgencyJobs")
+  reporters    User[]          @relation("AgencyReporters")
+  events       CalendarEvent[]
+
+  @@index([slug])
+}
+
+model ReporterUnavailability {
+  id        String   @id @default(cuid())
+  userId    String
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+  user      User     @relation("ReporterUnavailability", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startDate, endDate])
+}
+
+model Attorney {
+  id                    String          @id @default(cuid())
+  firstName             String
+  lastName              String
+  normalizedName        String
+  firmName              String?
+  email                 String?         @unique
+  phone                 String?
+  fax                   String?
+  address               String?
+  city                  String?
+  state                 String?
+  zipCode               String?
+  barNumber             String?
+  barState              String?
+  licensureStates       String[]
+  preferredFormat       String?
+  preferredDelivery     String?
+  defaultRushPreference String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  csrAttorneys          CSRAttorney[]
+  orderedEvents         CalendarEvent[] @relation("OrderingAttorneyEvents")
+
+  @@index([normalizedName])
+  @@index([lastName])
+  @@index([firmName])
+  @@index([barNumber, barState])
+}
+
+model CSRRecord {
+  id                     String                @id @default(cuid())
+  jobId                  String                @unique
+  depositionDate         DateTime
+  scheduledStartTime     DateTime?
+  actualStartTime        DateTime?
+  endTime                DateTime?
+  timezone               String                @default("America/Chicago")
+  locationType           LocationType          @default(IN_PERSON)
+  locationAddress        String?
+  locationCity           String?
+  locationState          String?
+  locationZip            String?
+  conferenceRoom         String?
+  interpreterRequired    Boolean               @default(false)
+  interpreterLanguage    String?
+  videographerRequired   Boolean               @default(false)
+  videographerName       String?
+  realtimeRequired       Boolean               @default(false)
+  videoType              VideoRecordType       @default(CR_ONLY)
+  isCROnly               Boolean               @default(true)
+  isVideoRecord          Boolean               @default(false)
+  isPIP                  Boolean               @default(false)
+  caseCaption            String
+  causeNumber            String?
+  courtName              String?
+  courtType              String?
+  county                 String?
+  state                  String                @default("Texas")
+  judge                  String?
+  dateOfLoss             DateTime?
+  claimNumber            String?
+  policyNumber           String?
+  insurerName            String?
+  insuredName            String?
+  isEUO                  Boolean               @default(false)
+  adjustorName           String?
+  adjustorEmail          String?
+  adjustorPhone          String?
+  readAndSignRequired    Boolean               @default(true)
+  signatureWaived        Boolean               @default(false)
+  waivedReason           String?
+  readAndSignSentAt      DateTime?
+  readAndSignReceivedAt  DateTime?
+  readAndSignExpiresAt   DateTime?
+  changesReceived        Boolean               @default(false)
+  changeCount            Int                   @default(0)
+  travelMiles            Float?
+  parkingRequired        Boolean               @default(false)
+  parkingFees            Decimal?              @db.Decimal(10, 2)
+  parkingNotes           String?
+  accessInstructions     String?
+  securityNotes          String?
+  deliveryPriority       DeliveryPriority      @default(STANDARD)
+  rushDueDate            DateTime?
+  isLocked               Boolean               @default(false)
+  lockedAt               DateTime?
+  lockedReason           String?
+  originalDocumentUrl    String?
+  originalDocumentType   String?
+  aiExtractedFields      Json?
+  aiExtractionConfidence Float?
+  aiExtractedAt          DateTime?
+  manualOverrides        Json?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  attorneys              CSRAttorney[]
+  parties                CSRParty[]
+  properNouns            CSRProperNoun[]
+  job                    Job                   @relation("JobCSRRecord", fields: [jobId], references: [id], onDelete: Cascade)
+  transcriptOptions      CSRTranscriptOptions?
+  witnesses              CSRWitness[]
+  transcriptOrders       TranscriptOrder[]
+
+  @@index([jobId])
+  @@index([depositionDate])
+  @@index([causeNumber])
+  @@index([claimNumber])
+  @@index([policyNumber])
+  @@index([deliveryPriority])
+}
+
+model TranscriptOrder {
+  id             String                 @id @default(cuid())
+  csrRecordId    String
+  attorneyName   String
+  firmName       String?
+  email          String
+  phone          String?
+  fax            String?
+  address        String?
+  city           String?
+  state          String?
+  zipCode        String?
+  deliveryType   TranscriptDeliveryType @default(E_TRANS)
+  fileFormat     TranscriptFileFormat   @default(WORD)
+  isOriginal     Boolean                @default(false)
+  copyCount      Int                    @default(1)
+  status         OrderFulfillmentStatus @default(PENDING)
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  trackingNumber String?
+  pageCount      Int?
+  pricePerPage   Decimal?               @db.Decimal(10, 2)
+  totalPrice     Decimal?               @db.Decimal(10, 2)
+  invoiced       Boolean                @default(false)
+  invoicedAt     DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  csrRecord      CSRRecord              @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+
+  @@index([csrRecordId])
+  @@index([email])
+  @@index([status])
+}
+
+model CSRWitness {
+  id                  String         @id @default(cuid())
+  csrRecordId         String
+  fullLegalName       String
+  preferredName       String?
+  role                DeponentRole   @default(FACT_WITNESS)
+  entityRepresented   String?
+  city                String?
+  state               String?
+  appearanceType      AppearanceType @default(IN_PERSON)
+  readAndSignRequired Boolean        @default(true)
+  signatureWaived     Boolean        @default(false)
+  sortOrder           Int            @default(0)
+  isPrimary           Boolean        @default(false)
+  createdAt           DateTime       @default(now())
+  csrRecord           CSRRecord      @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+
+  @@index([csrRecordId])
+}
+
+model CSRAttorney {
+  id             String          @id @default(cuid())
+  csrRecordId    String
+  attorneyId     String
+  role           CSRAttorneyRole
+  representing   String?
+  deliveryFormat String?
+  deliveryMethod String?
+  rushRequested  Boolean         @default(false)
+  rushType       RushType?
+  needsOriginal  Boolean         @default(false)
+  needsCopy      Boolean         @default(true)
+  copyCount      Int             @default(1)
+  createdAt      DateTime        @default(now())
+  attorney       Attorney        @relation(fields: [attorneyId], references: [id])
+  csrRecord      CSRRecord       @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([csrRecordId, attorneyId, role])
+  @@index([csrRecordId])
+  @@index([attorneyId])
+}
+
+model CSRParty {
+  id          String    @id @default(cuid())
+  csrRecordId String
+  partyName   String
+  partyType   PartyType
+  isEntity    Boolean   @default(false)
+  entityType  String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  csrRecord   CSRRecord @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+
+  @@index([csrRecordId])
+  @@index([partyType])
+}
+
+model CSRProperNoun {
+  id                 String             @id @default(cuid())
+  csrRecordId        String
+  value              String
+  category           ProperNounCategory
+  phoneticHint       String?
+  source             String?
+  useInTranscription Boolean            @default(true)
+  priority           Int                @default(0)
+  createdAt          DateTime           @default(now())
+  csrRecord          CSRRecord          @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([csrRecordId, value])
+  @@index([csrRecordId])
+  @@index([category])
+}
+
+model CSRTranscriptOptions {
+  id                 String           @id @default(cuid())
+  csrRecordId        String           @unique
+  format             TranscriptFormat @default(WORD)
+  deliveryMethod     DeliveryMethod   @default(E_TRANS)
+  rushType           RushType         @default(STANDARD)
+  rushDeadline       DateTime?
+  includeWordIndex   Boolean          @default(false)
+  includeExhibitList Boolean          @default(true)
+  includeAppearances Boolean          @default(true)
+  colorExhibits      Boolean          @default(false)
+  pageCount          Int?
+  lineCount          Int?
+  exhibitCount       Int?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  csrRecord          CSRRecord        @relation(fields: [csrRecordId], references: [id], onDelete: Cascade)
+
+  @@index([csrRecordId])
+}
+
+model JobExhibit {
+  id                       String   @id @default(cuid())
+  jobId                    String
+  exhibitNumber            String
+  exhibitLabel             String?
+  description              String?
+  fileId                   String?  @unique
+  externalUrl              String?
+  introducedAtTimestamp    Float?
+  discussionStartTimestamp Float?
+  discussionEndTimestamp   Float?
+  introducedAtLine         Int?
+  introducedAtPage         Int?
+  pageCount                Int?
+  isMarkedForRecord        Boolean  @default(false)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  file                     JobFile? @relation("ExhibitFile", fields: [fileId], references: [id])
+  job                      Job      @relation("JobExhibits", fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, exhibitNumber])
+  @@index([jobId])
+}
+
+model JobClaim {
+  id              String      @id @default(cuid())
+  jobId           String
+  scopistId       String
+  status          ClaimStatus @default(PENDING)
+  claimedAt       DateTime    @default(now())
+  respondedAt     DateTime?
+  acceptedAt      DateTime?
+  completedAt     DateTime?
+  proposedRate    Decimal?
+  agreedRate      Decimal?
+  rateType        RateType    @default(PER_PAGE)
+  scopistNote     String?
+  reporterNote    String?
+  rejectionReason String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  job             Job         @relation("JobClaims", fields: [jobId], references: [id], onDelete: Cascade)
+  scopist         User        @relation("ScopistClaims", fields: [scopistId], references: [id])
+
+  @@unique([jobId, scopistId])
+  @@index([scopistId])
+  @@index([status])
+  @@index([claimedAt])
+}
+
+model MarketplaceSettings {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  isAvailableForWork     Boolean  @default(true)
+  minPagesAccepted       Int?
+  maxPagesAccepted       Int?
+  preferredRatePerPage   Decimal?
+  preferredRatePerMinute Decimal?
+  acceptsRushJobs        Boolean  @default(true)
+  acceptsMedicalDepos    Boolean  @default(true)
+  acceptsTechnicalDepos  Boolean  @default(true)
+  preferredStates        String[]
+  autoAcceptClaims       Boolean  @default(false)
+  preferredScopists      String[]
+  blockedScopists        String[]
+  defaultRatePerPage     Decimal?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation("MarketplaceSettings", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isAvailableForWork])
+}
+
+enum UserRole {
+  REPORTER
+  SCOPIST
+  ADMIN
+  ATTORNEY
+  PARALEGAL
+  AGENCY
+  AGENCY_ADMIN
+  FIRM_ADMIN
 }
 
 enum JobStatus {
@@ -200,75 +1661,6 @@ enum JobStatus {
   CANCELLED
 }
 
-model JobFile {
-  id    String @id @default(cuid())
-  jobId String
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  type     FileType
-  fileName String
-  fileSize Int // bytes
-  mimeType String
-
-  // Storage
-  storageUrl  String // Supabase Storage URL
-  storagePath String // Path in bucket
-
-  // For extracted data (Notice, Court Order)
-  extractedData Json?
-
-  createdAt DateTime @default(now())
-
-  @@index([jobId, type])
-}
-
-// ============================================
-// EXHIBITS
-// ============================================
-
-model Exhibit {
-  id String @id @default(cuid())
-
-  // Dual ownership: Case (required) and Job/Deposition (optional)
-  caseId String
-  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  jobId String? // Nullable - attorney can upload case-global exhibits
-  job   Job?    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  // Exhibit identification
-  exhibitLabel  String // e.g., "Exhibit 12" or "Exhibit A"
-  exhibitNumber Int? // Numeric value if applicable (for sorting)
-  description   String
-
-  // File storage
-  originalFileUrl String
-  stampedFileUrl  String?
-
-  fileType String // PDF, IMAGE, DOCX
-  mimeType String
-  fileName String
-  fileSize Int // bytes
-
-  stamped Boolean @default(false)
-
-  // Upload tracking
-  uploadedByRole UserRole // REPORTER, ATTORNEY, ADMIN
-  createdById    String
-  createdBy      User     @relation(fields: [createdById], references: [id])
-  createdAt      DateTime @default(now())
-
-  // Links to transcript annotations
-  annotationLinks TranscriptAnnotationExhibit[]
-
-  @@unique([caseId, jobId, exhibitLabel]) // Unique per case+deposition combination
-  @@index([caseId])
-  @@index([jobId])
-  @@index([createdById])
-  @@index([uploadedByRole])
-  @@index([createdAt])
-}
-
 enum FileType {
   AUDIO
   VIDEO
@@ -277,49 +1669,6 @@ enum FileType {
   ROUGH_TRANSCRIPT
   EXHIBIT
   FINAL_TRANSCRIPT
-}
-
-// ============================================
-// AUDIO ENHANCEMENT
-// ============================================
-
-model AudioEnhancement {
-  id    String @id @default(cuid())
-  jobId String
-
-  // Input
-  originalAudioUrl String
-  originalDuration Float // seconds
-  originalFileSize Int // bytes
-
-  // Enhancement
-  enhancementMode   EnhancementMode
-  dolbyProcessed    Boolean         @default(false)
-  dolbyAudioUrl     String?
-  dolbyQualityScore Float? // 0-100
-
-  auphonicProcessed    Boolean @default(false)
-  auphonicAudioUrl     String?
-  auphonicQualityScore Float?
-
-  finalAudioUrl String // The one sent to Deepgram
-  engineUsed    String // "dolby", "auphonic", or "none"
-
-  // Cost tracking
-  dolbyCostCents    Int?
-  auphonicCostCents Int?
-  totalCostCents    Int
-
-  // Metadata
-  qualityFlags   Json? // {"noise": "high", "clipping": "low"}
-  decisionReason String? // Why Auphonic was/wasn't used
-
-  createdAt   DateTime  @default(now())
-  completedAt DateTime?
-
-  @@index([jobId])
-  @@index([createdAt])
-  @@index([completedAt])
 }
 
 enum EnhancementMode {
@@ -337,46 +1686,6 @@ enum EnhancementStatus {
   ERROR
 }
 
-// ============================================
-// TRANSCRIPTION
-// ============================================
-
-model TranscriptionJob {
-  id    String @id @default(cuid())
-  jobId String
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  // Deepgram
-  deepgramRequestId String @unique
-  audioUrl          String // Enhanced audio URL
-
-  // Configuration
-  config Json // Deepgram options used
-
-  // Status
-  status TranscriptionStatus @default(PENDING)
-
-  // Results
-  rawJson           Json? // Full Deepgram response
-  duration          Float? // Audio duration
-  wordCount         Int?
-  averageConfidence Float?
-  speakerCount      Int?
-
-  // Error handling
-  errorMessage String?
-  retryCount   Int     @default(0)
-  maxRetries   Int     @default(3)
-
-  createdAt   DateTime  @default(now())
-  completedAt DateTime?
-
-  @@index([jobId])
-  @@index([status])
-  @@index([createdAt])
-  @@index([completedAt])
-}
-
 enum TranscriptionStatus {
   PENDING
   PROCESSING
@@ -385,179 +1694,12 @@ enum TranscriptionStatus {
   CANCELLED
 }
 
-model Transcript {
-  id    String @id @default(cuid())
-  jobId String
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  // Version
-  version       String // "1.0-raw", "2.0-ai-reviewed", "3.0-scopist", "4.0-final"
-  versionNumber Int // 1, 2, 3, 4
-
-  // Content
-  content     String @db.Text // Plain text
-  contentJson Json // TipTap JSON document
-
-  // Tokens (for audio sync)
-  tokens TranscriptToken[]
-
-  // Metadata
-  wordCount         Int?
-  pageCount         Int?
-  averageConfidence Float?
-  speakerCount      Int?
-
-  // AI Review (for version 2.0)
-  aiChanges Json? // List of changes made
-  aiFlags   Json? // Low-confidence sections
-
-  // Creator
-  createdBy String // "system", userId
-
-  // Phase 3: Attorney Portal
-  accessGrants            TranscriptAccess[]
-  shares                  TranscriptShare[]
-  highlights              TranscriptHighlight[]
-  notes                   TranscriptNote[]
-  bookmarks               TranscriptBookmark[]
-
-  createdAt DateTime @default(now())
-
-  @@unique([jobId, version])
-  @@index([jobId, versionNumber])
-  @@index([createdAt])
-}
-
-model TranscriptToken {
-  id           String     @id @default(cuid())
-  transcriptId String
-  transcript   Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-
-  // Position in transcript
-  index Int // Word index in document
-
-  // Content
-  word           String
-  punctuatedWord String? // With punctuation
-
-  // Timing
-  start Float // seconds
-  end   Float // seconds
-
-  // Quality
-  confidence Float // 0.0 - 1.0
-  isFlagged  Boolean @default(false) // confidence < 0.80
-  isReviewed Boolean @default(false) // User marked as reviewed
-
-  // Speaker
-  speaker Int? // Speaker ID from diarization
-
-  createdAt DateTime @default(now())
-
-  @@index([transcriptId, index])
-  @@index([transcriptId, isFlagged])
-  @@index([createdAt])
-}
-
-model Transcription {
-  id    String @id @default(cuid())
-  jobId String @unique
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  // Core transcript data
-  fullTranscript  String  @db.Text
-  deepgramRawJson String? @db.Text // Full Deepgram response
-
-  // Structured data (JSON strings)
-  words              Json // Word-level data with timestamps
-  utterances         Json? // Speaker turns
-  flaggedSegments    Json? // Low-confidence words
-  speakerAnalysis    Json? // AI speaker identification
-  speakerAssignments Json? // User-defined speaker mapping
-
-  // Metadata
-  duration          Float? // Audio duration in seconds
-  wordCount         Int?
-  flaggedWordCount  Int?
-  averageConfidence Float?
-  speakerCount      Int     @default(0)
-  modelUsed         String? // STANDARD, MEDICAL, BILINGUAL
-
-  // Status
-  status TranscriptionStatus @default(PENDING)
-
-  // Versioning
-  version Int @default(1)
-
-  // Relations
-  edits TranscriptionEdit[]
-
-  // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([jobId])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
-model TranscriptionEdit {
-  id              String        @id @default(cuid())
-  transcriptionId String
-  transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
-
-  editorId    String
-  editorEmail String?
-  editorRole  UserRole?
-
-  editType     EditType @default(WORD_CORRECTION)
-  originalText String?
-  editedText   String?
-  position     Float? // audio timestamp
-
-  metadata Json?
-
-  createdAt DateTime @default(now())
-
-  @@index([transcriptionId])
-  @@index([createdAt])
-}
-
 enum EditType {
   WORD_CORRECTION
   SPEAKER_ASSIGNMENT
   PUNCTUATION
   INAUDIBLE_MARK
   FORMATTING
-}
-
-// ============================================
-// AI REVIEW
-// ============================================
-
-model AIRule {
-  id          String       @id @default(cuid())
-  name        String
-  category    RuleCategory
-  description String
-  enabled     Boolean      @default(true)
-  priority    Int          @default(0) // Higher runs first
-
-  // Rule definition
-  ruleType    String // "regex", "llm", "dictionary"
-  pattern     String? // For regex
-  replacement String? // For simple replacements
-  prompt      String? @db.Text // For LLM rules
-
-  // Examples
-  examples Json? // Before/after pairs
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([enabled, priority])
-  @@index([createdAt])
-  @@index([updatedAt])
 }
 
 enum RuleCategory {
@@ -571,37 +1713,6 @@ enum RuleCategory {
   CUSTOM
 }
 
-// ============================================
-// SCOPIST WORKFLOW
-// ============================================
-
-model JobAssignment {
-  id    String @id @default(cuid())
-  jobId String
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  scopistId String
-  scopist   User   @relation(fields: [scopistId], references: [id])
-
-  status AssignmentStatus @default(INVITED)
-
-  // Timing
-  invitedAt   DateTime  @default(now())
-  respondedAt DateTime?
-  startedAt   DateTime?
-  submittedAt DateTime?
-
-  // Notes
-  scopistNotes String? @db.Text
-
-  @@index([jobId])
-  @@index([scopistId, status])
-  @@index([invitedAt])
-  @@index([respondedAt])
-  @@index([startedAt])
-  @@index([submittedAt])
-}
-
 enum AssignmentStatus {
   INVITED
   ACCEPTED
@@ -610,57 +1721,6 @@ enum AssignmentStatus {
   SUBMITTED
   EXPIRED
   RELEASED
-}
-
-// ============================================
-// COMMUNICATION
-// ============================================
-
-model Message {
-  id    String @id @default(cuid())
-  jobId String
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  senderId String
-  sender   User   @relation(fields: [senderId], references: [id])
-
-  content String @db.Text
-
-  // Metadata
-  isRead Boolean   @default(false)
-  readAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  @@index([jobId, createdAt])
-}
-
-model Notification {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  type    NotificationType
-  title   String
-  message String
-
-  // Link
-  linkUrl  String?
-  linkText String?
-
-  // Status
-  isRead      Boolean   @default(false)
-  readAt      DateTime?
-  emailSent   Boolean   @default(false)
-  emailSentAt DateTime?
-
-  // Related job
-  jobId String?
-
-  createdAt DateTime @default(now())
-
-  @@index([userId, isRead])
-  @@index([createdAt])
 }
 
 enum NotificationType {
@@ -676,142 +1736,6 @@ enum NotificationType {
   MESSAGE_RECEIVED
 }
 
-// ============================================
-// AUDIT & SECURITY
-// ============================================
-
-model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
-
-  action      String
-  entityType  String
-  entityId    String
-  details     Json?
-  ipAddress   String?
-  userAgent   String?
-
-  createdAt   DateTime @default(now())
-
-  @@index([userId])
-  @@index([action])
-  @@index([entityType])
-  @@index([entityId])
-  @@index([entityType, entityId])
-  @@index([createdAt])
-  @@index([userId, createdAt])
-}
-
-// ============================================
-// SYSTEM CONFIGURATION
-// ============================================
-
-model SystemConfig {
-  id          String  @id @default(cuid())
-  key         String  @unique
-  value       Json
-  description String?
-
-  updatedAt DateTime @updatedAt
-}
-
-model Firm {
-  id        String   @id @default(cuid())
-  name      String
-  address   String?
-  phone     String?
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relationships
-  users User[]
-  jobs  Job[]
-  cases Case[]
-
-  // Calendar relations
-  calendarEvents       CalendarEvent[]
-  reporterAvailability ReporterAvailability[]
-  bookingRequests      BookingRequest[]
-
-  // Phase 3: Attorney Portal
-  tags                  TranscriptTag[]
-
-  @@index([name])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
-// ============================================
-// CASE INTAKE SYSTEM
-// ============================================
-
-model Case {
-  id String @id @default(cuid())
-
-  // Multi-tenant: REQUIRED - every case belongs to a firm
-  firmId String
-  firm   Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
-
-  // Created by
-  createdById String
-  createdBy   User   @relation("CaseCreator", fields: [createdById], references: [id])
-
-  // Case Information
-  caseNumber String
-  caseStyle  String // Full case name (Plaintiff v. Defendant)
-  shortTitle String? // Short reference name
-
-  // Court Information
-  courtName     String? // e.g., "419th Judicial District Court"
-  courtType     String? // e.g., "District Court", "County Court"
-  county        String?
-  state         String  @default("Texas")
-  judgeAssigned String?
-
-  // Parties (stored as JSON arrays)
-  plaintiffs   Json? // [{ name, type, role }]
-  defendants   Json? // [{ name, type, role }]
-  otherParties Json? // [{ name, type, role }]
-
-  // Related Jobs
-  jobs Job[]
-
-  // Attorneys on the case
-  attorneys CaseAttorney[]
-
-  // Custom dictionary terms extracted from this case
-  extractedTerms CaseExtractedTerm[]
-
-  // Source documents
-  sourceDocuments CaseDocument[]
-
-  // Exhibits (attorney-global or deposition-specific)
-  exhibits Exhibit[]
-
-  // Case-level access control
-  memberships CaseMembership[]
-
-  // Phase 3: Attorney Portal
-  transcriptAccess        TranscriptAccess[]
-  tags                    TranscriptTag[]
-
-  // Metadata
-  status CaseStatus @default(ACTIVE)
-  notes  String?    @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([firmId, caseNumber])
-  @@index([firmId])
-  @@index([caseNumber])
-  @@index([createdById])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
 enum CaseStatus {
   ACTIVE
   CLOSED
@@ -819,87 +1743,13 @@ enum CaseStatus {
   ARCHIVED
 }
 
-// ============================================
-// CASE-LEVEL PERMISSIONS (MULTI-TENANT)
-// ============================================
-
-/**
- * CaseMembership - Controls who can access which cases
- * This is the heart of the multi-tenant permission system.
- * Key Rules:
- * - Attorneys can belong to many cases
- * - Reporters belong only to their deposition's case (via Job)
- * - Paralegals can be added per case
- * - Access is granted per case, not globally
- */
-model CaseMembership {
-  id String @id @default(cuid())
-
-  // User and Case
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  caseId String
-  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  // Role within this specific case
-  roleInCase CaseRole
-
-  // Optional permission overrides (JSONB for flexibility)
-  permissions Json? // e.g., { "canEditAnnotations": true, "canDeleteReports": false }
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, caseId])
-  @@index([userId])
-  @@index([caseId])
-  @@index([roleInCase])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
-/**
- * Role within a specific case
- * Different from UserRole (which is global)
- */
+/// *
+///  * Role within a specific case
+///  * Different from UserRole (which is global)
 enum CaseRole {
-  ATTORNEY // Attorney on this case
-  PARALEGAL // Paralegal assisting on this case
-  REPORTER // Court reporter assigned to deposition in this case
-}
-
-model CaseAttorney {
-  id     String @id @default(cuid())
-  caseId String
-  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  // Attorney info
-  name         String
-  barNumber    String?
-  firm         String?
-  role         AttorneyRole
-  representing String? // Which party they represent
-
-  // Contact info
-  email   String?
-  phone   String?
-  fax     String?
-  address String? @db.Text
-  city    String?
-  state   String?
-  zipCode String?
-
-  // Delivery preferences
-  deliveryFormat   String? // "E-Trans", "Hard Copy", "Both"
-  deliveryPriority String? // "Standard", "Rush"
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([caseId])
-  @@index([email])
-  @@index([createdAt])
-  @@index([updatedAt])
+  ATTORNEY
+  PARALEGAL
+  REPORTER
 }
 
 enum AttorneyRole {
@@ -908,33 +1758,6 @@ enum AttorneyRole {
   ORDERING_ATTORNEY
   COPY_ATTORNEY
   OTHER
-}
-
-model CaseDocument {
-  id     String @id @default(cuid())
-  caseId String
-  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  // File info
-  documentType CaseDocumentType
-  fileName     String
-  fileUrl      String
-  fileSize     Int
-  mimeType     String
-
-  // Extraction status
-  extractionStatus ExtractionStatus @default(PENDING)
-  extractedData    Json? // Raw extracted data from AI
-  extractedAt      DateTime?
-  extractionError  String?          @db.Text
-
-  // Upload info
-  uploadedById String
-  uploadedAt   DateTime @default(now())
-
-  @@index([caseId])
-  @@index([documentType])
-  @@index([uploadedAt])
 }
 
 enum CaseDocumentType {
@@ -954,28 +1777,6 @@ enum ExtractionStatus {
   FAILED
 }
 
-model CaseExtractedTerm {
-  id     String @id @default(cuid())
-  caseId String
-  case   Case   @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  term       String
-  category   TermCategory
-  phonetic   String? // Optional pronunciation hint
-  source     String? // Which document it came from
-  confidence Float? // AI confidence score
-
-  // Whether to use in Deepgram
-  useInTranscription Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  @@unique([caseId, term])
-  @@index([caseId])
-  @@index([category])
-  @@index([createdAt])
-}
-
 enum TermCategory {
   PERSON_NAME
   COMPANY_NAME
@@ -986,169 +1787,102 @@ enum TermCategory {
   CASE_SPECIFIC
 }
 
-// ============================================
-// ATTORNEY TRANSCRIPT MODELS
-// ============================================
-
-/**
- * Attorney Transcript - Read-only transcript for attorney review
- * Stored as JSONB for flexibility (page/line structure)
- */
-model AttorneyTranscript {
-  id String @id @default(cuid())
-
-  // Basic Info
-  name           String
-  deponent       String
-  caseName       String?
-  depositionDate DateTime?
-
-  // Status
-  status AttorneyTranscriptStatus @default(NOT_REVIEWED)
-
-  // Transcript data (stored as JSONB)
-  // Structure: { pages: [{ pageNumber, lines: [{ page, line, speaker, text }] }] }
-  transcriptData Json // Full transcript structure
-
-  // Metadata
-  totalPages Int
-  totalLines Int
-
-  // Upload info
-  uploadedById String
-  uploadedBy   User     @relation("TranscriptCreator", fields: [uploadedById], references: [id])
-  uploadedAt   DateTime @default(now())
-
-  // Relationships
-  annotations TranscriptAnnotation[]
-
-  @@index([uploadedById])
-  @@index([status])
-  @@index([deponent])
-  @@index([uploadedAt])
-}
-
 enum AttorneyTranscriptStatus {
   NOT_REVIEWED
   IN_PROGRESS
   COMPLETE
 }
 
-/**
- * Transcript Annotation - Issue codes tagged on transcript lines
- */
-model TranscriptAnnotation {
-  id String @id @default(cuid())
-
-  // Transcript reference
-  transcriptId String
-  transcript   AttorneyTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-
-  // Issue code
-  issueCode  String // Code identifier (e.g., "PERJURY", "CONTRADICTION")
-  issueLabel String // Display label
-  issueColor String // Hex color
-
-  // Annotation range
-  pageStart Int
-  lineStart Int
-  pageEnd   Int
-  lineEnd   Int
-
-  // Notes
-  note String? @db.Text
-
-  // Creator
-  createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
-
-  // Linked exhibits
-  linkedExhibits TranscriptAnnotationExhibit[]
-
-  @@index([transcriptId])
-  @@index([createdById])
-  @@index([issueCode])
-  @@index([createdAt])
-}
-
-/**
- * Junction table linking transcript annotations to exhibits
- * Allows attorneys to reference exhibits in their annotations
- */
-model TranscriptAnnotationExhibit {
-  id String @id @default(cuid())
-
-  // Annotation reference
-  annotationId String
-  annotation   TranscriptAnnotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
-
-  // Exhibit reference
-  exhibitId String
-  exhibit   Exhibit @relation(fields: [exhibitId], references: [id], onDelete: Cascade)
-
-  // Creator
-  createdById String
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  createdAt   DateTime @default(now())
-
-  @@unique([annotationId, exhibitId])
-  @@index([annotationId])
-  @@index([exhibitId])
-  @@index([createdById])
-  @@index([createdAt])
-}
-
-// ============================================
-// PASSWORD RESET
-// ============================================
-
-model PasswordResetToken {
-  id        String   @id @default(cuid())
-  email     String
-  token     String   @unique
-  expires   DateTime
-  createdAt DateTime @default(now())
-
-  @@index([email])
-  @@index([token])
-  @@index([createdAt])
-  @@index([expires])
-}
-
-// ============================================
-// CALENDAR SYSTEM
-// Phase 2: Calendar & Scheduling
-// ============================================
-
-// ------------------------------------------------------------
-// ENUMS
-// ------------------------------------------------------------
-
 enum CalendarEventStatus {
-  REQUESTED      // Attorney submitted request, awaiting agency action
-  SCHEDULED      // Agency created/confirmed the event
-  CONFIRMED      // Reporter accepted the assignment
-  IN_PROGRESS    // Deposition is currently happening
-  COMPLETED      // Deposition finished, ready for transcription
-  CANCELLED      // Event was cancelled (see cancellationReason)
-  RESCHEDULED    // Moved to a new time (original event archived)
+  REQUESTED
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CONVERTED
+  CANCELLED
+  RESCHEDULED
+  EXTERNAL_BLOCK
+}
+
+enum ConflictType {
+  REPORTER_DOUBLE_BOOKED
+  LOCATION_CONFLICT
+  TRAVEL_TIME_INSUFFICIENT
+  RESOURCE_UNAVAILABLE
+}
+
+enum ConflictStatus {
+  PENDING
+  OVERRIDDEN
+  RESOLVED
+  AUTO_FIXED
+}
+
+enum ConflictResolution {
+  KEPT_ORIGINAL
+  MOVED_ORIGINAL
+  REASSIGNED_REPORTER
+  OVERRIDE_ACCEPTED
+  TIME_ADJUSTED
+}
+
+// ============================================
+// PHASE 5: EXTERNAL CALENDAR SYNC ENUMS
+// ============================================
+
+enum ExternalCalendarSyncMode {
+  READ_ONLY
+  PUSH_INTERNAL
+  BIDIRECTIONAL
+}
+
+enum ExternalCalendarProvider {
+  GOOGLE
+  OUTLOOK
+  APPLE
+}
+
+enum ExternalEventSyncStatus {
+  SYNCED
+  PENDING
+  CONFLICT
+  FAILED
+  DELETED
+}
+
+enum CalendarAuditAction {
+  EVENT_CREATED
+  EVENT_UPDATED
+  EVENT_CANCELLED
+  EVENT_RESCHEDULED
+  REPORTER_ASSIGNED
+  REPORTER_UNASSIGNED
+  SCOPIST_ASSIGNED
+  SCOPIST_UNASSIGNED
+  VIDEOGRAPHER_ASSIGNED
+  VIDEOGRAPHER_UNASSIGNED
+  INTERPRETER_ASSIGNED
+  INTERPRETER_UNASSIGNED
+  CONVERTED_TO_JOB
+  NOTE_ADDED
+  STATUS_CHANGED
 }
 
 enum EventType {
-  DEPOSITION           // Standard deposition
-  HEARING              // Court hearing
-  ARBITRATION          // Arbitration proceeding
-  MEDIATION            // Mediation session
-  EUO                  // Examination Under Oath
-  STATEMENT            // Recorded statement
-  OTHER                // Other legal proceeding
+  DEPOSITION
+  HEARING
+  ARBITRATION
+  MEDIATION
+  EUO
+  STATEMENT
+  OTHER
 }
 
 enum AvailabilityType {
-  AVAILABLE            // Reporter is available
-  UNAVAILABLE          // Reporter is blocked (vacation, etc.)
-  TENTATIVE            // Possibly available, needs confirmation
+  AVAILABLE
+  UNAVAILABLE
+  TENTATIVE
 }
 
 enum RecurrenceFrequency {
@@ -1169,16 +1903,12 @@ enum ParticipantRole {
 }
 
 enum BookingRequestStatus {
-  PENDING         // Awaiting agency review
-  APPROVED        // Approved, event created
-  REJECTED        // Rejected by agency
-  CANCELLED       // Cancelled by attorney
-  MODIFIED        // Agency proposed different time
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  MODIFIED
 }
-
-// ============================================
-// PHASE 3: ATTORNEY PORTAL ENUMS
-// ============================================
 
 enum TranscriptAccessLevel {
   VIEW
@@ -1194,8 +1924,8 @@ enum ShareType {
 
 enum ShareStatus {
   ACTIVE
-  REVOKED
   EXPIRED
+  REVOKED
 }
 
 enum HighlightColor {
@@ -1207,517 +1937,312 @@ enum HighlightColor {
   PURPLE
 }
 
-// ------------------------------------------------------------
-// CALENDAR EVENT (Core scheduling model)
-// ------------------------------------------------------------
+enum LocationType {
+  IN_PERSON
+  ZOOM
+  TEAMS
+  WEBEX
+  PHONE
+  HYBRID
+  OTHER
+}
 
-model CalendarEvent {
-  id                String              @id @default(cuid())
+enum AgencyPlanType {
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
 
-  // === MULTI-TENANT ===
+enum VideoRecordType {
+  CR_ONLY
+  CR_VIDEO
+  CR_PIP
+  REMOTE
+  HYBRID
+}
+
+enum DeliveryPriority {
+  STANDARD
+  EXPEDITE
+  RUSH
+  DAILY
+  HOURLY
+  REALTIME
+}
+
+enum TranscriptDeliveryType {
+  E_TRANS
+  HARD_COPY
+  ORIGINAL
+  BOTH
+  FTP
+  PORTAL
+}
+
+enum TranscriptFileFormat {
+  WORD
+  PDF
+  ASCII
+  WORD_PERFECT
+  RTF
+  PTX
+}
+
+enum OrderFulfillmentStatus {
+  PENDING
+  READY
+  SENT
+  DELIVERED
+  RETURNED
+  CANCELLED
+}
+
+enum DeponentRole {
+  PLAINTIFF
+  DEFENDANT
+  CORPORATE_REP
+  EXPERT_WITNESS
+  FACT_WITNESS
+  THIRD_PARTY
+}
+
+enum AppearanceType {
+  IN_PERSON
+  REMOTE
+  PHONE
+}
+
+enum CSRAttorneyRole {
+  ORDERING_ATTORNEY
+  COPY_ATTORNEY
+  PLAINTIFF_COUNSEL
+  DEFENSE_COUNSEL
+  CROSS_NOTICING
+  OTHER
+}
+
+enum RushType {
+  STANDARD
+  EXPEDITE
+  DAILY
+  HOURLY
+  REALTIME
+}
+
+enum PartyType {
+  PLAINTIFF
+  DEFENDANT
+  CROSS_PLAINTIFF
+  CROSS_DEFENDANT
+  THIRD_PARTY
+  INTERVENOR
+}
+
+enum ProperNounCategory {
+  PERSON_NAME
+  COMPANY_NAME
+  PLACE_NAME
+  PRODUCT_NAME
+  LEGAL_TERM
+  MEDICAL_TERM
+  TECHNICAL_TERM
+  ACRONYM
+  OTHER
+}
+
+enum TranscriptFormat {
+  WORD
+  PDF
+  ASCII
+  WORD_PERFECT
+  RTF
+}
+
+enum DeliveryMethod {
+  E_TRANS
+  HARD_COPY
+  BOTH
+  FTP
+  PORTAL
+}
+
+enum ClaimStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  DISPUTED
+  CANCELLED
+}
+
+enum RateType {
+  PER_PAGE
+  PER_AUDIO_MINUTE
+  FLAT_RATE
+  HOURLY
+}
+
+// =============================================================================
+// PHASE 6: BILLING & TIME TRACKING
+// =============================================================================
+
+enum BillingServiceType {
+  TRANSCRIPTION_AUTOMATED
+  MODEL_UPGRADE
+  HUMAN_REVIEW_CONFIDENCE
+  HUMAN_REVIEW_FULL
+  FORENSIC_AUDIO_RX
+}
+
+enum BillingUnit {
+  PER_MINUTE
+  PER_WORD
+  PER_FILE
+  PER_HOUR
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+}
+
+enum AudioEnhancementType {
+  AUTOMATED_DOLBY
+  MANUAL_RX
+}
+
+model BillingAccount {
+  id               String   @id @default(cuid())
+  firmId           String   @unique
+  stripeCustomerId String?  @unique
+  billingEmail     String
+  currency         String   @default("USD")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  firm                Firm                 @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  invoices            Invoice[]
+  rates               BillingRate[]
+  billingPeriods      BillingPeriod[]
+  billingUsageRecords BillingUsageRecord[]
+
+  @@index([stripeCustomerId])
+}
+
+model BillingRate {
+  id          String             @id @default(cuid())
+  firmId      String
+  serviceType BillingServiceType
+  unit        BillingUnit
+  amountCents Int
+  version     Int
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+
+  billingAccount BillingAccount @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+
+  @@unique([firmId, serviceType, version])
+  @@index([firmId, serviceType])
+  @@index([firmId, serviceType, isActive])
+}
+
+model BillingPeriod {
+  id        String   @id @default(cuid())
+  firmId    String
+  startAt   DateTime
+  endAt     DateTime
+  locked    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  billingAccount BillingAccount @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+
+  @@unique([firmId, startAt, endAt])
+  @@index([firmId, locked])
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  billingAccountId String
+  invoiceNumber    String        @unique
+  stripeInvoiceId  String?       @unique
+  periodStart      DateTime
+  periodEnd        DateTime
+  totalCents       Int
+  status           InvoiceStatus @default(DRAFT)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  billingAccount BillingAccount    @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  lineItems      InvoiceLineItem[]
+
+  @@index([billingAccountId, status])
+  @@index([billingAccountId, periodStart])
+  @@index([stripeInvoiceId])
+}
+
+model InvoiceLineItem {
+  id             String             @id @default(cuid())
+  invoiceId      String
+  jobId          String?
+  serviceType    BillingServiceType
+  description    String
+  quantity       Decimal            @db.Decimal(10, 4)
+  unit           BillingUnit
+  unitPriceCents Int
+  totalCents     Int
+  rateVersion    Int
+
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  billingUsageRecords BillingUsageRecord[]
+
+  @@index([invoiceId])
+  @@index([jobId])
+}
+
+model BillingUsageRecord {
+  id                String             @id @default(cuid())
   firmId            String
-  firm              Firm                @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  jobId             String
+  serviceType       BillingServiceType
+  quantity          Decimal            @db.Decimal(10, 4)
+  unit              BillingUnit
+  recordedAt        DateTime           @default(now())
+  invoiceLineItemId String?
 
-  // === EVENT DETAILS ===
-  title             String              // e.g., "Smith v. Jones Deposition"
-  eventType         EventType           @default(DEPOSITION)
-  status            CalendarEventStatus @default(REQUESTED)
+  billingAccount  BillingAccount   @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+  invoiceLineItem InvoiceLineItem? @relation(fields: [invoiceLineItemId], references: [id])
 
-  // === TIMING (All times stored as UTC) ===
-  startTime         DateTime
-  endTime           DateTime
-  timezone          String              @default("America/Chicago") // IANA timezone
-  allDay            Boolean             @default(false)
-
-  // === RECURRENCE (Optional) ===
-  isRecurring       Boolean             @default(false)
-  recurrenceRule    String?             // RRULE format: "FREQ=WEEKLY;BYDAY=MO,WE,FR"
-  recurrenceEndDate DateTime?
-  parentEventId     String?             // For recurring instances, points to parent
-  parentEvent       CalendarEvent?      @relation("RecurringEvents", fields: [parentEventId], references: [id])
-  childEvents       CalendarEvent[]     @relation("RecurringEvents")
-
-  // === LOCATION ===
-  location          String?             // Physical address or "Remote"
-  isRemote          Boolean             @default(false)
-  meetingLink       String?             // Zoom/Teams link if remote
-
-  // === RELATIONSHIPS ===
-  // Link to Job (for transcription workflow)
-  jobId             String?             @unique
-  job               Job?                @relation(fields: [jobId], references: [id])
-
-  // Assigned court reporter
-  assignedReporterId String?
-  assignedReporter   User?              @relation("ReporterAssignments", fields: [assignedReporterId], references: [id])
-
-  // Attorney who requested (for REQUESTED status)
-  requestedById     String?
-  requestedBy       User?               @relation("AttorneyRequests", fields: [requestedById], references: [id])
-
-  // Agency user who scheduled/approved
-  scheduledById     String?
-  scheduledBy       User?               @relation("AgencyScheduled", fields: [scheduledById], references: [id])
-
-  // Participants (attorneys, witnesses, etc.)
-  participants      EventParticipant[]
-
-  // Booking request that created this event
-  bookingRequest    BookingRequest?
-
-  // === METADATA ===
-  notes             String?             @db.Text
-  internalNotes     String?             @db.Text  // Agency-only notes
-  cancellationReason String?
-
-  // === AUDIT ===
-  createdById       String
-  createdBy         User                @relation("EventCreator", fields: [createdById], references: [id])
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  confirmedAt       DateTime?           // When reporter confirmed
-  cancelledAt       DateTime?
-
-  // === INDEXES for fast queries ===
-  @@index([firmId, startTime, endTime])  // Conflict detection
-  @@index([assignedReporterId, startTime])        // Reporter schedule
-  @@index([status])                               // Status filtering
-  @@index([jobId])                                // Job lookup
-  @@index([createdAt])
-  @@index([updatedAt])
-  @@index([confirmedAt])
-  @@index([cancelledAt])
-
-  @@map("calendar_events")
+  @@index([firmId, recordedAt])
+  @@index([firmId, serviceType])
+  @@index([jobId])
+  @@index([invoiceLineItemId])
 }
 
-// ------------------------------------------------------------
-// EVENT PARTICIPANTS (Attorneys, witnesses, interpreters, etc.)
-// ------------------------------------------------------------
+model HumanReviewSession {
+  id                  String   @id @default(cuid())
+  jobId               String
+  reviewerId          String
+  minutesSpent        Int
+  wordsReviewed       Int
+  confidenceThreshold Int      @default(85)
+  createdAt           DateTime @default(now())
 
-model EventParticipant {
-  id              String          @id @default(cuid())
-
-  eventId         String
-  event           CalendarEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  // Can be a system user OR external person
-  userId          String?
-  user            User?           @relation(fields: [userId], references: [id])
-
-  // For external participants (not in system)
-  externalName    String?
-  externalEmail   String?
-  externalPhone   String?
-
-  // Role in the event
-  role            ParticipantRole
-
-  // Status
-  notified        Boolean         @default(false)
-  notifiedAt      DateTime?
-  confirmed       Boolean         @default(false)
-  confirmedAt     DateTime?
-
-  createdAt       DateTime        @default(now())
-
-  @@unique([eventId, userId])
-  @@index([eventId])
-  @@index([createdAt])
-  @@map("event_participants")
+  @@index([jobId])
+  @@index([reviewerId])
 }
 
-// ------------------------------------------------------------
-// REPORTER AVAILABILITY (For scheduling optimization)
-// ------------------------------------------------------------
-
-model ReporterAvailability {
-  id              String            @id @default(cuid())
-
-  // Which reporter
-  reporterId      String
-  reporter        User              @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-
-  // Firm context
-  firmId          String
-  firm            Firm              @relation(fields: [firmId], references: [id], onDelete: Cascade)
-
-  // Time block
-  startTime       DateTime
-  endTime         DateTime
-  timezone        String            @default("America/Chicago")
-
-  // Type of availability
-  type            AvailabilityType  @default(AVAILABLE)
-
-  // Recurrence for regular schedules
-  isRecurring     Boolean           @default(false)
-  recurrenceRule  String?           // "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
-  recurrenceEnd   DateTime?
-
-  // Notes
-  notes           String?
-
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-
-  @@index([reporterId, startTime, endTime])
-  @@index([firmId, type])
-  @@index([createdAt])
-  @@index([updatedAt])
-  @@map("reporter_availability")
-}
-
-// ------------------------------------------------------------
-// BOOKING REQUEST (Attorney → Agency workflow)
-// ------------------------------------------------------------
-
-model BookingRequest {
-  id              String              @id @default(cuid())
-
-  firmId          String
-  firm            Firm                @relation(fields: [firmId], references: [id], onDelete: Cascade)
-
-  // Requesting attorney
-  requestedById   String
-  requestedBy     User                @relation(fields: [requestedById], references: [id])
-
-  // Request details
-  caseName        String
-  caseNumber      String?
-  preferredDate   DateTime
-  alternateDate1  DateTime?
-  alternateDate2  DateTime?
-  estimatedDuration Int               @default(240)  // Minutes
-
-  eventType       EventType           @default(DEPOSITION)
-  location        String?
-  isRemote        Boolean             @default(false)
-
-  // Deponent info
-  deponentName    String
-  deponentContact String?
-
-  // Special requirements
-  needsInterpreter Boolean            @default(false)
-  interpreterLanguage String?
-  needsVideographer Boolean           @default(false)
-  needsRealtime   Boolean             @default(false)  // Realtime transcription
-  specialNotes    String?             @db.Text
-
-  // Status
-  status          BookingRequestStatus @default(PENDING)
-
-  // If approved, link to created event
-  calendarEventId String?             @unique
-  calendarEvent   CalendarEvent?      @relation(fields: [calendarEventId], references: [id])
-
-  // Agency response
-  respondedById   String?
-  respondedBy     User?               @relation("AgencyResponder", fields: [respondedById], references: [id])
-  respondedAt     DateTime?
-  rejectionReason String?
-
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-
-  @@index([firmId, status])
-  @@index([requestedById])
-  @@index([createdAt])
-  @@index([updatedAt])
-  @@index([respondedAt])
-  @@map("booking_requests")
-}
-
-// ============================================
-// PHASE 3: ATTORNEY PORTAL MODELS
-// ============================================
-
-// 3.1.1 ATTORNEY PROFILE & SETTINGS
-model AttorneyProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Professional Information
-  barNumber     String?
-  barState      String?              // State of bar admission
-  firmName      String?              // Law firm name
-  firmAddress   String?
-  firmPhone     String?
-
-  // Practice Areas (for filtering/matching)
-  practiceAreas String[]             // ["Personal Injury", "Medical Malpractice", "Civil Litigation"]
-
-  // Preferences
-  defaultExportFormat   String?      @default("PDF")  // PDF, DOCX, TXT
-  emailNotifications    Boolean      @default(true)
-  smsNotifications      Boolean      @default(false)
-
-  // Billing Contact (if different from user)
-  billingEmail    String?
-  billingAddress  String?
-
-  // Metadata
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([barNumber])
-  @@index([barState])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
-// 3.1.2 TRANSCRIPT ACCESS & SHARING
-model TranscriptAccess {
-  id              String   @id @default(cuid())
-
-  // The transcript being accessed
-  transcriptId    String
-  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-
-  // Who has access (attorney user)
-  userId          String
-  user            User     @relation("TranscriptAccessUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  // Access level
-  accessLevel     TranscriptAccessLevel @default(VIEW)
-
-  // Who granted access
-  grantedById     String
-  grantedBy       User     @relation("TranscriptAccessGranter", fields: [grantedById], references: [id])
-
-  // Optional: Link to case for context
-  caseId          String?
-  case            Case?    @relation(fields: [caseId], references: [id])
-
-  // Access constraints
-  expiresAt       DateTime?            // Optional expiration
-  downloadLimit   Int?                 // Max downloads allowed (null = unlimited)
-  downloadCount   Int      @default(0) // Current download count
-
-  // Activity tracking
-  lastAccessedAt  DateTime?
-  accessCount     Int      @default(0)
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([transcriptId, userId])
-  @@index([userId])
-  @@index([transcriptId])
-  @@index([caseId])
-  @@index([createdAt])
-  @@index([updatedAt])
-  @@index([lastAccessedAt])
-  @@index([expiresAt])
-}
-
-model TranscriptShare {
-  id              String   @id @default(cuid())
-
-  transcriptId    String
-  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-
-  // Who shared it
-  sharedById      String
-  sharedBy        User     @relation(fields: [sharedById], references: [id])
-
-  // Share type
-  shareType       ShareType
-
-  // For EMAIL share type
-  recipientEmail  String?
-  recipientName   String?
-
-  // For LINK share type - unique token for secure access
-  shareToken      String?  @unique @default(cuid())
-
-  // Access settings
-  accessLevel     TranscriptAccessLevel @default(VIEW)
-  expiresAt       DateTime?
-  password        String?              // Optional password protection
-
-  // Usage tracking
-  accessCount     Int      @default(0)
-  lastAccessedAt  DateTime?
-
-  // Status
-  status          ShareStatus @default(ACTIVE)
-  revokedAt       DateTime?
-
-  // Metadata
-  message         String?  @db.Text     // Optional message to recipient
-  createdAt       DateTime @default(now())
-
-  @@index([transcriptId])
-  @@index([sharedById])
-  @@index([shareToken])
-  @@index([recipientEmail])
-  @@index([createdAt])
-  @@index([expiresAt])
-  @@index([lastAccessedAt])
-}
-
-// 3.1.3 ANNOTATIONS (Highlights, Tags, Notes, Bookmarks)
-model TranscriptHighlight {
-  id              String   @id @default(cuid())
-
-  transcriptId    String
-  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-
-  // Who created the highlight
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Position in transcript
-  startIndex      Int                  // Character start position
-  endIndex        Int                  // Character end position
-  startLine       Int?                 // Line number start (if applicable)
-  endLine         Int?                 // Line number end
-
-  // The highlighted text (denormalized for quick display)
-  highlightedText String   @db.Text
-
-  // Visual styling
-  color           HighlightColor @default(YELLOW)
-
-  // Optional note attached to highlight
-  note            String?  @db.Text
-
-  // Tags associated with this highlight
-  tags            TranscriptHighlightTag[]
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([transcriptId])
-  @@index([userId])
-  @@index([transcriptId, userId])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
-model TranscriptTag {
-  id              String   @id @default(cuid())
-
-  // Tag can be personal (user-specific) or shared (case-level or firm-level)
-  userId          String?              // If set, personal tag
-  user            User?    @relation("UserTags", fields: [userId], references: [id], onDelete: Cascade)
-
-  firmId          String?              // If set, firm-wide tag
-  firm            Firm?    @relation(fields: [firmId], references: [id], onDelete: Cascade)
-
-  caseId          String?              // If set, case-specific tag
-  case            Case?    @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  // Tag details
-  name            String               // "Key Admission", "Impeachment", "Follow Up"
-  color           String?              // Hex color code
-  description     String?
-
-  // System vs custom
-  isSystem        Boolean  @default(false)  // Pre-defined tags vs user-created
-
-  // Usage
-  highlights      TranscriptHighlightTag[]
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([userId, name])
-  @@unique([firmId, name])
-  @@unique([caseId, name])
-  @@index([userId])
-  @@index([firmId])
-  @@index([caseId])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
-model TranscriptHighlightTag {
-  id              String   @id @default(cuid())
-
-  highlightId     String
-  highlight       TranscriptHighlight @relation(fields: [highlightId], references: [id], onDelete: Cascade)
-
-  tagId           String
-  tag             TranscriptTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  createdAt       DateTime @default(now())
-
-  @@unique([highlightId, tagId])
-  @@index([highlightId])
-  @@index([tagId])
-  @@index([createdAt])
-}
-
-model TranscriptNote {
-  id              String   @id @default(cuid())
-
-  transcriptId    String
-  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Position (optional - can be general note or attached to specific location)
-  lineNumber      Int?
-  pageNumber      Int?
-  timestamp       String?              // Audio timestamp if applicable
-
-  // Note content
-  title           String?
-  content         String   @db.Text
-
-  // Visibility
-  isPrivate       Boolean  @default(true)  // Private to user vs shared with case team
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([transcriptId])
-  @@index([userId])
-  @@index([transcriptId, userId])
-  @@index([createdAt])
-  @@index([updatedAt])
-}
-
-model TranscriptBookmark {
-  id              String   @id @default(cuid())
-
-  transcriptId    String
-  transcript      Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
-
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Position
-  lineNumber      Int
-  pageNumber      Int?
-  timestamp       String?              // Audio timestamp
-
-  // Bookmark details
-  label           String               // User-friendly label
-  description     String?
-
-  // Quick reference text (snippet at bookmark location)
-  snippetText     String?  @db.VarChar(500)
-
-  // Ordering (for custom sort)
-  sortOrder       Int      @default(0)
-
-  // Metadata
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([transcriptId])
-  @@index([userId])
-  @@index([transcriptId, userId])
-  @@index([createdAt])
-  @@index([updatedAt])
+model AudioProcessingSession {
+  id              String               @id @default(cuid())
+  jobId           String
+  enhancementType AudioEnhancementType
+  durationMinutes Int
+  provider        String
+  createdAt       DateTime             @default(now())
+
+  @@index([jobId])
+  @@index([provider])
 }
