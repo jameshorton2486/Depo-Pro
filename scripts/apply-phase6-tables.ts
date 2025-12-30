@@ -170,47 +170,41 @@ async function applyPhase6Tables() {
     // Create Indexes
     console.log('\n🔍 Creating Indexes...');
 
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "BillingAccount_firmId_key" ON "BillingAccount"("firmId");
-      CREATE UNIQUE INDEX IF NOT EXISTS "BillingAccount_stripeCustomerId_key" ON "BillingAccount"("stripeCustomerId");
-      CREATE INDEX IF NOT EXISTS "BillingAccount_stripeCustomerId_idx" ON "BillingAccount"("stripeCustomerId");
-    `);
+    // BillingAccount indexes
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "BillingAccount_firmId_key" ON "BillingAccount"("firmId");`);
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "BillingAccount_stripeCustomerId_key" ON "BillingAccount"("stripeCustomerId");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingAccount_stripeCustomerId_idx" ON "BillingAccount"("stripeCustomerId");`);
     console.log('   ✅ BillingAccount indexes');
 
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "BillingRate_firmId_serviceType_version_key" ON "BillingRate"("firmId", "serviceType", "version");
-      CREATE INDEX IF NOT EXISTS "BillingRate_firmId_serviceType_idx" ON "BillingRate"("firmId", "serviceType");
-      CREATE INDEX IF NOT EXISTS "BillingRate_firmId_serviceType_isActive_idx" ON "BillingRate"("firmId", "serviceType", "isActive");
-    `);
+    // BillingRate indexes
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "BillingRate_firmId_serviceType_version_key" ON "BillingRate"("firmId", "serviceType", "version");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingRate_firmId_serviceType_idx" ON "BillingRate"("firmId", "serviceType");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingRate_firmId_serviceType_isActive_idx" ON "BillingRate"("firmId", "serviceType", "isActive");`);
     console.log('   ✅ BillingRate indexes');
 
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "BillingPeriod_firmId_startAt_endAt_key" ON "BillingPeriod"("firmId", "startAt", "endAt");
-      CREATE INDEX IF NOT EXISTS "BillingPeriod_firmId_locked_idx" ON "BillingPeriod"("firmId", "locked");
-    `);
+    // BillingPeriod indexes
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "BillingPeriod_firmId_startAt_endAt_key" ON "BillingPeriod"("firmId", "startAt", "endAt");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingPeriod_firmId_locked_idx" ON "BillingPeriod"("firmId", "locked");`);
     console.log('   ✅ BillingPeriod indexes');
 
-    await prisma.$executeRawUnsafe(`
-      CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_invoiceNumber_key" ON "Invoice"("invoiceNumber");
-      CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_stripeInvoiceId_key" ON "Invoice"("stripeInvoiceId");
-      CREATE INDEX IF NOT EXISTS "Invoice_billingAccountId_status_idx" ON "Invoice"("billingAccountId", "status");
-      CREATE INDEX IF NOT EXISTS "Invoice_billingAccountId_periodStart_idx" ON "Invoice"("billingAccountId", "periodStart");
-      CREATE INDEX IF NOT EXISTS "Invoice_stripeInvoiceId_idx" ON "Invoice"("stripeInvoiceId");
-    `);
+    // Invoice indexes
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_invoiceNumber_key" ON "Invoice"("invoiceNumber");`);
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "Invoice_stripeInvoiceId_key" ON "Invoice"("stripeInvoiceId");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Invoice_billingAccountId_status_idx" ON "Invoice"("billingAccountId", "status");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Invoice_billingAccountId_periodStart_idx" ON "Invoice"("billingAccountId", "periodStart");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Invoice_stripeInvoiceId_idx" ON "Invoice"("stripeInvoiceId");`);
     console.log('   ✅ Invoice indexes');
 
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "InvoiceLineItem_invoiceId_idx" ON "InvoiceLineItem"("invoiceId");
-      CREATE INDEX IF NOT EXISTS "InvoiceLineItem_jobId_idx" ON "InvoiceLineItem"("jobId");
-    `);
+    // InvoiceLineItem indexes
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InvoiceLineItem_invoiceId_idx" ON "InvoiceLineItem"("invoiceId");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "InvoiceLineItem_jobId_idx" ON "InvoiceLineItem"("jobId");`);
     console.log('   ✅ InvoiceLineItem indexes');
 
-    await prisma.$executeRawUnsafe(`
-      CREATE INDEX IF NOT EXISTS "BillingUsageRecord_firmId_recordedAt_idx" ON "BillingUsageRecord"("firmId", "recordedAt");
-      CREATE INDEX IF NOT EXISTS "BillingUsageRecord_firmId_serviceType_idx" ON "BillingUsageRecord"("firmId", "serviceType");
-      CREATE INDEX IF NOT EXISTS "BillingUsageRecord_jobId_idx" ON "BillingUsageRecord"("jobId");
-      CREATE INDEX IF NOT EXISTS "BillingUsageRecord_invoiceLineItemId_idx" ON "BillingUsageRecord"("invoiceLineItemId");
-    `);
+    // BillingUsageRecord indexes
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingUsageRecord_firmId_recordedAt_idx" ON "BillingUsageRecord"("firmId", "recordedAt");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingUsageRecord_firmId_serviceType_idx" ON "BillingUsageRecord"("firmId", "serviceType");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingUsageRecord_jobId_idx" ON "BillingUsageRecord"("jobId");`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "BillingUsageRecord_invoiceLineItemId_idx" ON "BillingUsageRecord"("invoiceLineItemId");`);
     console.log('   ✅ BillingUsageRecord indexes');
 
     // Create Foreign Keys

@@ -62,7 +62,7 @@ export async function GET(_request: NextRequest) {
 // POST: Initiate OAuth flow for external calendar
 // =============================================================================
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id || !session.user.firmId) {
@@ -72,7 +72,7 @@ export async function POST(_request: NextRequest) {
       );
     }
 
-    const body = await _request.json();
+    const body = await request.json();
     const { provider } = body as { provider: ExternalCalendarProvider };
 
     if (!provider || provider !== 'GOOGLE') {
@@ -101,7 +101,7 @@ export async function POST(_request: NextRequest) {
 // PATCH: Update connection settings
 // =============================================================================
 
-export async function PATCH(_request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id || !session.user.firmId) {
@@ -111,7 +111,7 @@ export async function PATCH(_request: NextRequest) {
       );
     }
 
-    const body = await _request.json();
+    const body = await request.json();
     const { connectionId, syncMode, isEnabled } = body as {
       connectionId: string;
       syncMode?: ExternalCalendarSyncMode;
@@ -163,7 +163,7 @@ export async function PATCH(_request: NextRequest) {
 // DELETE: Disconnect external calendar
 // =============================================================================
 
-export async function DELETE(_request: NextRequest) {
+export async function DELETE(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id || !session.user.firmId) {
@@ -173,7 +173,7 @@ export async function DELETE(_request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(_request.url);
+    const { searchParams } = new URL(request.url);
     const connectionId = searchParams.get('connectionId');
 
     if (!connectionId) {

@@ -67,6 +67,20 @@ export type ConflictType =
   | 'TRAVEL_TIME_INSUFFICIENT'
   | 'RESOURCE_UNAVAILABLE';
 
+// Enum versions for compatibility
+export enum ConflictTypeEnum {
+  TIME_OVERLAP = "TIME_OVERLAP",
+  DOUBLE_BOOKING = "DOUBLE_BOOKING",
+  TRAVEL_TIME = "TRAVEL_TIME",
+  BREAK_VIOLATION = "BREAK_VIOLATION",
+}
+
+export enum ConflictSeverity {
+  ERROR = "ERROR",
+  WARNING = "WARNING",
+  INFO = "INFO",
+}
+
 export interface ConflictCheckResult {
   hasConflicts: boolean;
   conflicts: DetectedConflict[];

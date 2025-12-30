@@ -14,6 +14,8 @@ export {
   type TimeRange,
   type DetectedConflict,
   type ConflictType,
+  ConflictTypeEnum,
+  ConflictSeverity,
 } from './conflict-detection';
 
 export {

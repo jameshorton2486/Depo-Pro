@@ -481,7 +481,7 @@ export class ExternalCalendarSyncService {
         conflictsFound: data.conflictsFound,
         durationMs: data.durationMs,
         errorMessage: data.errors.length > 0 ? data.errors[0].message : null,
-        errorDetails: data.errors.length > 0 ? (data.errors as any) : null,
+        errorDetails: data.errors.length > 0 ? (data.errors as any) : undefined,
         completedAt: new Date(),
       },
     });

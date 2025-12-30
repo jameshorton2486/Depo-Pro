@@ -19,22 +19,21 @@ interface TableCheck {
 async function checkTableExists(tableName: string): Promise<TableCheck> {
   try {
     // Check if table exists using information_schema
-    const result = await prisma.$queryRaw<Array<{ table_name: string }>>`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-      AND table_name = ${tableName}
-    `;
+    const result = await prisma.$queryRawUnsafe<Array<{ table_name: string }>>(
+      `SELECT table_name
+       FROM information_schema.tables
+       WHERE table_schema = 'public'
+       AND table_name = '${tableName}'`
+    );
 
     const exists = result.length > 0;
     let rowCount: number | undefined;
 
     if (exists) {
       // If table exists, count rows (safe read-only query)
-      const countResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*) as count
-        FROM ${prisma.$queryRawUnsafe(`"${tableName}"`)}
-      `;
+      const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+        `SELECT COUNT(*) as count FROM "${tableName}"`
+      );
       rowCount = Number(countResult[0]?.count || 0);
     }
 
@@ -54,11 +53,11 @@ async function checkTableExists(tableName: string): Promise<TableCheck> {
 
 async function checkEnumExists(enumName: string): Promise<boolean> {
   try {
-    const result = await prisma.$queryRaw<Array<{ typname: string }>>`
-      SELECT typname
-      FROM pg_type
-      WHERE typname = ${enumName}
-    `;
+    const result = await prisma.$queryRawUnsafe<Array<{ typname: string }>>(
+      `SELECT typname
+       FROM pg_type
+       WHERE typname = '${enumName}'`
+    );
     return result.length > 0;
   } catch (error) {
     return false;
@@ -135,4 +134,5 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
 
