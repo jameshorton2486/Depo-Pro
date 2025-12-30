@@ -460,25 +460,25 @@ model SystemConfig {
 }
 
 model Firm {
-  id                   String                 @id @default(cuid())
-  name                 String
-  address              String?
-  phone                String?
-  email                String?
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  agencyId             String?
-  cases                Case[]
-  agency               Agency?                @relation("AgencyFirms", fields: [agencyId], references: [id])
-  jobs                 Job[]
-  tags                 TranscriptTag[]
-  usageRecords         UsageRecord[]
-  users                User[]
-  webhooks             WebhookConfig[]
-  bookingRequests      BookingRequest[]
-  calendarEvents       CalendarEvent[]
-  reporterAvailability ReporterAvailability[]
-  scheduleConflicts    ScheduleConflict[]
+  id                          String                       @id @default(cuid())
+  name                        String
+  address                     String?
+  phone                       String?
+  email                       String?
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  agencyId                    String?
+  cases                       Case[]
+  agency                      Agency?                      @relation("AgencyFirms", fields: [agencyId], references: [id])
+  jobs                        Job[]
+  tags                        TranscriptTag[]
+  usageRecords                UsageRecord[]
+  users                       User[]
+  webhooks                    WebhookConfig[]
+  bookingRequests             BookingRequest[]
+  calendarEvents              CalendarEvent[]
+  reporterAvailability        ReporterAvailability[]
+  scheduleConflicts           ScheduleConflict[]
   externalCalendarConnections ExternalCalendarConnection[]
   externalCalendarEvents      ExternalCalendarEvent[]
   billingAccount              BillingAccount?
@@ -764,58 +764,58 @@ model PasswordResetToken {
 }
 
 model CalendarEvent {
-  id                 String              @id @default(cuid())
-  firmId             String
-  title              String
-  eventType          EventType           @default(DEPOSITION)
-  status             CalendarEventStatus @default(REQUESTED)
-  startTime          DateTime
-  endTime            DateTime
-  timezone           String              @default("America/Chicago")
-  allDay             Boolean             @default(false)
-  isRecurring        Boolean             @default(false)
-  recurrenceRule     String?
-  recurrenceEndDate  DateTime?
-  parentEventId      String?
-  location           String?
-  isRemote           Boolean             @default(false)
-  meetingLink        String?
-  jobId              String?             @unique
-  assignedReporterId String?
-  requestedById      String?
-  scheduledById      String?
-  notes              String?
-  internalNotes      String?
-  cancellationReason String?
-  createdById        String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  confirmedAt        DateTime?
-  cancelledAt        DateTime?
-  agencyId           String?
-  orderingAttorneyId String?
-  bookingRequest     BookingRequest?
-  agency             Agency?             @relation(fields: [agencyId], references: [id])
-  assignedReporter   User?               @relation("ReporterAssignments", fields: [assignedReporterId], references: [id])
-  createdBy          User                @relation("EventCreator", fields: [createdById], references: [id])
-  firm               Firm                @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  job                Job?                @relation(fields: [jobId], references: [id])
-  orderingAttorney   Attorney?           @relation("OrderingAttorneyEvents", fields: [orderingAttorneyId], references: [id])
-  parentEvent        CalendarEvent?      @relation("RecurringEvents", fields: [parentEventId], references: [id])
-  childEvents        CalendarEvent[]     @relation("RecurringEvents")
-  requestedBy        User?               @relation("AttorneyRequests", fields: [requestedById], references: [id])
-  scheduledBy        User?               @relation("AgencyScheduled", fields: [scheduledById], references: [id])
-  participants       EventParticipant[]
-  eventNotes         CalendarEventNote[] @relation("EventNotes")
-  auditLogs          CalendarAuditLog[]  @relation("EventAuditLogs")
-  sourceConflicts    ScheduleConflict[]  @relation("SourceConflicts")
-  conflictsWith      ScheduleConflict[]  @relation("ConflictsWith")
-  lastRescheduledAt  DateTime?
+  id                  String                 @id @default(cuid())
+  firmId              String
+  title               String
+  eventType           EventType              @default(DEPOSITION)
+  status              CalendarEventStatus    @default(REQUESTED)
+  startTime           DateTime
+  endTime             DateTime
+  timezone            String                 @default("America/Chicago")
+  allDay              Boolean                @default(false)
+  isRecurring         Boolean                @default(false)
+  recurrenceRule      String?
+  recurrenceEndDate   DateTime?
+  parentEventId       String?
+  location            String?
+  isRemote            Boolean                @default(false)
+  meetingLink         String?
+  jobId               String?                @unique
+  assignedReporterId  String?
+  requestedById       String?
+  scheduledById       String?
+  notes               String?
+  internalNotes       String?
+  cancellationReason  String?
+  createdById         String
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  confirmedAt         DateTime?
+  cancelledAt         DateTime?
+  agencyId            String?
+  orderingAttorneyId  String?
+  bookingRequest      BookingRequest?
+  agency              Agency?                @relation(fields: [agencyId], references: [id])
+  assignedReporter    User?                  @relation("ReporterAssignments", fields: [assignedReporterId], references: [id])
+  createdBy           User                   @relation("EventCreator", fields: [createdById], references: [id])
+  firm                Firm                   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  job                 Job?                   @relation(fields: [jobId], references: [id])
+  orderingAttorney    Attorney?              @relation("OrderingAttorneyEvents", fields: [orderingAttorneyId], references: [id])
+  parentEvent         CalendarEvent?         @relation("RecurringEvents", fields: [parentEventId], references: [id])
+  childEvents         CalendarEvent[]        @relation("RecurringEvents")
+  requestedBy         User?                  @relation("AttorneyRequests", fields: [requestedById], references: [id])
+  scheduledBy         User?                  @relation("AgencyScheduled", fields: [scheduledById], references: [id])
+  participants        EventParticipant[]
+  eventNotes          CalendarEventNote[]    @relation("EventNotes")
+  auditLogs           CalendarAuditLog[]     @relation("EventAuditLogs")
+  sourceConflicts     ScheduleConflict[]     @relation("SourceConflicts")
+  conflictsWith       ScheduleConflict[]     @relation("ConflictsWith")
+  lastRescheduledAt   DateTime?
   lastRescheduledById String?
-  lastRescheduledBy  User?               @relation("EventRescheduler", fields: [lastRescheduledById], references: [id])
-  rescheduleCount    Int                 @default(0)
-  originalStartTime  DateTime?
-  externalEvent      ExternalCalendarEvent? @relation("ExternalToInternal")
+  lastRescheduledBy   User?                  @relation("EventRescheduler", fields: [lastRescheduledById], references: [id])
+  rescheduleCount     Int                    @default(0)
+  originalStartTime   DateTime?
+  externalEvent       ExternalCalendarEvent? @relation("ExternalToInternal")
 
   @@index([firmId])
   @@index([jobId])
@@ -882,15 +882,15 @@ model ReporterAvailability {
 }
 
 model CalendarEventNote {
-  id          String         @id @default(cuid())
+  id          String        @id @default(cuid())
   eventId     String
-  event       CalendarEvent  @relation("EventNotes", fields: [eventId], references: [id], onDelete: Cascade)
-  content     String         @db.Text
-  isInternal  Boolean        @default(false)
+  event       CalendarEvent @relation("EventNotes", fields: [eventId], references: [id], onDelete: Cascade)
+  content     String        @db.Text
+  isInternal  Boolean       @default(false)
   createdById String
-  createdBy   User           @relation("NoteCreator", fields: [createdById], references: [id])
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdBy   User          @relation("NoteCreator", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@index([eventId])
   @@index([createdById])
@@ -898,25 +898,25 @@ model CalendarEventNote {
 }
 
 model ScheduleConflict {
-  id                String             @id @default(cuid())
-  sourceEventId     String
-  sourceEvent       CalendarEvent      @relation("SourceConflicts", fields: [sourceEventId], references: [id], onDelete: Cascade)
-  conflictEventId   String
-  conflictEvent     CalendarEvent      @relation("ConflictsWith", fields: [conflictEventId], references: [id], onDelete: Cascade)
-  conflictType      ConflictType
-  proposedStart     DateTime
-  proposedEnd       DateTime
-  overlapMinutes    Int
-  status            ConflictStatus     @default(PENDING)
-  resolvedAt        DateTime?
-  resolvedById      String?
-  resolvedBy        User?              @relation("ConflictResolver", fields: [resolvedById], references: [id])
-  resolution        ConflictResolution?
-  resolutionNotes   String?
-  createdAt         DateTime           @default(now())
-  firmId            String
-  firm              Firm               @relation(fields: [firmId], references: [id])
-  
+  id              String              @id @default(cuid())
+  sourceEventId   String
+  sourceEvent     CalendarEvent       @relation("SourceConflicts", fields: [sourceEventId], references: [id], onDelete: Cascade)
+  conflictEventId String
+  conflictEvent   CalendarEvent       @relation("ConflictsWith", fields: [conflictEventId], references: [id], onDelete: Cascade)
+  conflictType    ConflictType
+  proposedStart   DateTime
+  proposedEnd     DateTime
+  overlapMinutes  Int
+  status          ConflictStatus      @default(PENDING)
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolvedBy      User?               @relation("ConflictResolver", fields: [resolvedById], references: [id])
+  resolution      ConflictResolution?
+  resolutionNotes String?
+  createdAt       DateTime            @default(now())
+  firmId          String
+  firm            Firm                @relation(fields: [firmId], references: [id])
+
   @@index([sourceEventId])
   @@index([conflictEventId])
   @@index([firmId])
@@ -929,31 +929,31 @@ model ScheduleConflict {
 // ============================================
 
 model ExternalCalendarConnection {
-  id                String                    @id @default(cuid())
-  firmId            String
-  firm              Firm                      @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  userId            String
-  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider          ExternalCalendarProvider
-  syncMode          ExternalCalendarSyncMode  @default(READ_ONLY)
+  id                 String                    @id @default(cuid())
+  firmId             String
+  firm               Firm                      @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           ExternalCalendarProvider
+  syncMode           ExternalCalendarSyncMode  @default(READ_ONLY)
   providerCalendarId String
-  calendarName      String?
-  accessToken       String                    @db.Text
-  refreshToken      String?                   @db.Text
-  tokenExpiresAt    DateTime?
-  scopes            String[]
-  lastSyncedAt      DateTime?
-  lastSyncToken     String?
-  syncErrorCount    Int                       @default(0)
-  lastSyncError     String?
-  isEnabled         Boolean                   @default(true)
-  autoSync          Boolean                   @default(true)
-  syncIntervalMins  Int                       @default(15)
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  externalEvents    ExternalCalendarEvent[]
-  syncLogs          ExternalCalendarSyncLog[]
-  
+  calendarName       String?
+  accessToken        String                    @db.Text
+  refreshToken       String?                   @db.Text
+  tokenExpiresAt     DateTime?
+  scopes             String[]
+  lastSyncedAt       DateTime?
+  lastSyncToken      String?
+  syncErrorCount     Int                       @default(0)
+  lastSyncError      String?
+  isEnabled          Boolean                   @default(true)
+  autoSync           Boolean                   @default(true)
+  syncIntervalMins   Int                       @default(15)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  externalEvents     ExternalCalendarEvent[]
+  syncLogs           ExternalCalendarSyncLog[]
+
   @@unique([userId, provider, providerCalendarId], name: "unique_user_provider_calendar")
   @@index([firmId])
   @@index([userId])
@@ -963,36 +963,36 @@ model ExternalCalendarConnection {
 }
 
 model ExternalCalendarEvent {
-  id                  String                      @id @default(cuid())
+  id                  String                     @id @default(cuid())
   firmId              String
-  firm                Firm                        @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firm                Firm                       @relation(fields: [firmId], references: [id], onDelete: Cascade)
   connectionId        String
-  connection          ExternalCalendarConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connection          ExternalCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   providerEventId     String
   providerCalendarId  String
   providerEtag        String?
   title               String
-  description         String?                     @db.Text
+  description         String?                    @db.Text
   startTime           DateTime
   endTime             DateTime
-  timezone            String                      @default("UTC")
-  isAllDay            Boolean                     @default(false)
+  timezone            String                     @default("UTC")
+  isAllDay            Boolean                    @default(false)
   location            String?
   meetingLink         String?
-  syncStatus          ExternalEventSyncStatus     @default(SYNCED)
-  lastSyncedAt        DateTime                    @default(now())
+  syncStatus          ExternalEventSyncStatus    @default(SYNCED)
+  lastSyncedAt        DateTime                   @default(now())
   syncError           String?
-  hasConflict         Boolean                     @default(false)
+  hasConflict         Boolean                    @default(false)
   conflictingEventIds String[]
-  linkedEventId       String?                     @unique
-  linkedEvent         CalendarEvent?              @relation("ExternalToInternal", fields: [linkedEventId], references: [id])
-  isBlockingTime      Boolean                     @default(true)
-  showInCalendar      Boolean                     @default(true)
+  linkedEventId       String?                    @unique
+  linkedEvent         CalendarEvent?             @relation("ExternalToInternal", fields: [linkedEventId], references: [id])
+  isBlockingTime      Boolean                    @default(true)
+  showInCalendar      Boolean                    @default(true)
   providerMetadata    Json?
-  createdAt           DateTime                    @default(now())
-  updatedAt           DateTime                  @updatedAt
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
   deletedAt           DateTime?
-  
+
   @@unique([connectionId, providerEventId])
   @@index([firmId])
   @@index([connectionId])
@@ -1004,21 +1004,21 @@ model ExternalCalendarEvent {
 }
 
 model ExternalCalendarSyncLog {
-  id              String                      @id @default(cuid())
-  connectionId    String
-  connection      ExternalCalendarConnection  @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  syncType        String
-  status          String
-  eventsCreated   Int                         @default(0)
-  eventsUpdated   Int                         @default(0)
-  eventsDeleted   Int                         @default(0)
-  conflictsFound  Int                         @default(0)
-  startedAt       DateTime                    @default(now())
-  completedAt     DateTime?
-  durationMs      Int?
-  errorMessage    String?
-  errorDetails    Json?
-  
+  id             String                     @id @default(cuid())
+  connectionId   String
+  connection     ExternalCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  syncType       String
+  status         String
+  eventsCreated  Int                        @default(0)
+  eventsUpdated  Int                        @default(0)
+  eventsDeleted  Int                        @default(0)
+  conflictsFound Int                        @default(0)
+  startedAt      DateTime                   @default(now())
+  completedAt    DateTime?
+  durationMs     Int?
+  errorMessage   String?
+  errorDetails   Json?
+
   @@index([connectionId])
   @@index([startedAt])
   @@index([status])
@@ -2116,34 +2116,34 @@ enum AudioEnhancementType {
 }
 
 model BillingAccount {
-  id                String   @id @default(cuid())
-  firmId            String   @unique
-  stripeCustomerId  String?  @unique
-  billingEmail      String
-  currency          String   @default("USD")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String   @id @default(cuid())
+  firmId           String   @unique
+  stripeCustomerId String?  @unique
+  billingEmail     String
+  currency         String   @default("USD")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  firm              Firm             @relation(fields: [firmId], references: [id], onDelete: Cascade)
-  invoices          Invoice[]
-  rates             BillingRate[]
-  billingPeriods    BillingPeriod[]
+  firm                Firm                 @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  invoices            Invoice[]
+  rates               BillingRate[]
+  billingPeriods      BillingPeriod[]
   billingUsageRecords BillingUsageRecord[]
 
   @@index([stripeCustomerId])
 }
 
 model BillingRate {
-  id           String             @id @default(cuid())
-  firmId       String
-  serviceType  BillingServiceType
-  unit         BillingUnit
-  amountCents  Int
-  version      Int
-  isActive     Boolean            @default(true)
-  createdAt    DateTime           @default(now())
+  id          String             @id @default(cuid())
+  firmId      String
+  serviceType BillingServiceType
+  unit        BillingUnit
+  amountCents Int
+  version     Int
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
 
-  billingAccount BillingAccount   @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+  billingAccount BillingAccount @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
 
   @@unique([firmId, serviceType, version])
   @@index([firmId, serviceType])
@@ -2165,19 +2165,19 @@ model BillingPeriod {
 }
 
 model Invoice {
-  id               String   @id @default(cuid())
+  id               String        @id @default(cuid())
   billingAccountId String
-  invoiceNumber    String   @unique
-  stripeInvoiceId  String?  @unique
+  invoiceNumber    String        @unique
+  stripeInvoiceId  String?       @unique
   periodStart      DateTime
   periodEnd        DateTime
   totalCents       Int
   status           InvoiceStatus @default(DRAFT)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  billingAccount   BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
-  lineItems        InvoiceLineItem[]
+  billingAccount BillingAccount    @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  lineItems      InvoiceLineItem[]
 
   @@index([billingAccountId, status])
   @@index([billingAccountId, periodStart])
@@ -2185,18 +2185,18 @@ model Invoice {
 }
 
 model InvoiceLineItem {
-  id              String             @id @default(cuid())
-  invoiceId       String
-  jobId           String?
-  serviceType     BillingServiceType
-  description     String
-  quantity        Decimal            @db.Decimal(10, 4)
-  unit            BillingUnit
-  unitPriceCents  Int
-  totalCents      Int
-  rateVersion     Int
+  id             String             @id @default(cuid())
+  invoiceId      String
+  jobId          String?
+  serviceType    BillingServiceType
+  description    String
+  quantity       Decimal            @db.Decimal(10, 4)
+  unit           BillingUnit
+  unitPriceCents Int
+  totalCents     Int
+  rateVersion    Int
 
-  invoice          Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice             Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   billingUsageRecords BillingUsageRecord[]
 
   @@index([invoiceId])
@@ -2204,17 +2204,17 @@ model InvoiceLineItem {
 }
 
 model BillingUsageRecord {
-  id                 String             @id @default(cuid())
-  firmId             String
-  jobId              String
-  serviceType        BillingServiceType
-  quantity           Decimal            @db.Decimal(10, 4)
-  unit               BillingUnit
-  recordedAt         DateTime           @default(now())
-  invoiceLineItemId  String?
+  id                String             @id @default(cuid())
+  firmId            String
+  jobId             String
+  serviceType       BillingServiceType
+  quantity          Decimal            @db.Decimal(10, 4)
+  unit              BillingUnit
+  recordedAt        DateTime           @default(now())
+  invoiceLineItemId String?
 
-  billingAccount     BillingAccount     @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
-  invoiceLineItem    InvoiceLineItem?   @relation(fields: [invoiceLineItemId], references: [id])
+  billingAccount  BillingAccount   @relation(fields: [firmId], references: [firmId], onDelete: Cascade)
+  invoiceLineItem InvoiceLineItem? @relation(fields: [invoiceLineItemId], references: [id])
 
   @@index([firmId, recordedAt])
   @@index([firmId, serviceType])
@@ -2236,12 +2236,12 @@ model HumanReviewSession {
 }
 
 model AudioProcessingSession {
-  id               String               @id @default(cuid())
-  jobId            String
-  enhancementType  AudioEnhancementType
-  durationMinutes  Int
-  provider         String
-  createdAt        DateTime             @default(now())
+  id              String               @id @default(cuid())
+  jobId           String
+  enhancementType AudioEnhancementType
+  durationMinutes Int
+  provider        String
+  createdAt       DateTime             @default(now())
 
   @@index([jobId])
   @@index([provider])
