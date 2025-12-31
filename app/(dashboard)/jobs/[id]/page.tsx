@@ -11,6 +11,7 @@ import { AssignmentManagement } from '@/components/jobs/assignment-management';
 import { FileUpload } from '@/components/jobs/file-upload';
 import { ExhibitsManager } from '@/components/jobs/exhibits-manager';
 import { ReporterProperNounsPanel } from '@/components/notes/reporter-proper-nouns-panel';
+import { LiveNotesCapture } from '@/components/jobs/live-notes-capture';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -219,6 +220,13 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         canAssign={canAssign}
         currentUserId={session.user.id}
       />
+
+      {/* Live Notes Capture (Reporter Only) */}
+      {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') && (
+        <div className="mt-6">
+          <LiveNotesCapture jobId={job.id} />
+        </div>
+      )}
 
       {/* Proper Nouns & Spellings (Reporter Only) */}
       {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') && (

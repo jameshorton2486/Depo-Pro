@@ -40,7 +40,10 @@ export async function processTranscriptionJob(
       data: { status: 'TRANSCRIBING' },
     });
 
-    // Get proper noun keywords from reporter notes for Deepgram
+    // Get proper noun keywords from all sources:
+    // 1. DepositionNote (PROPER_NOUN type)
+    // 2. CSRProperNoun (live-captured during deposition)
+    // 3. CaseExtractedTerm (extracted from uploaded documents)
     const { buildKeywordsForJob } = await import('@/lib/transcription/buildKeywords');
     const keywordConfigs = await buildKeywordsForJob(jobId);
     const properNounKeywords = keywordConfigs.map(k => k.word);
@@ -49,13 +52,11 @@ export async function processTranscriptionJob(
       jobId,
       keywordCount: properNounKeywords.length,
       sampleKeywords: properNounKeywords.slice(0, 5),
+      sources: 'DepositionNote, CSRProperNoun, CaseExtractedTerm',
     });
     
-    // Get custom dictionary terms for this firm (if firmId available)
+    // Use keywords directly (no additional firm dictionary needed - all sources included above)
     const customKeyterms: string[] = [...properNounKeywords];
-    if (data.firmId) {
-      // TODO: Fetch custom dictionary terms from database
-    }
 
     // Map modelType to Deepgram model preference
     const modelPreference: 'nova-3' | 'nova-2' | 'nova-2-medical' =

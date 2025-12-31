@@ -25,10 +25,13 @@ export async function getProperNounKeywords(jobId: string): Promise<string[]> {
 }
 
 /**
- * Build keyword configurations from proper nouns
+ * Build keyword configurations from all sources:
+ * 1. DepositionNote (PROPER_NOUN type)
+ * 2. CSRProperNoun (live-captured during deposition)
+ * 3. CaseExtractedTerm (extracted from uploaded documents)
  */
 export async function buildKeywordsForJob(jobId: string): Promise<KeywordConfig[]> {
-  // Fetch proper nouns for this job
+  // 1. Fetch proper nouns from DepositionNote
   const notes = await db.depositionNote.findMany({
     where: {
       jobId,
@@ -38,33 +41,92 @@ export async function buildKeywordsForJob(jobId: string): Promise<KeywordConfig[
     orderBy: { createdAt: 'asc' },
   });
 
-  if (notes.length === 0) {
+  // 2. Fetch CSRProperNouns (live capture)
+  const csrRecord = await db.cSRRecord.findUnique({
+    where: { jobId },
+    include: {
+      properNouns: {
+        where: { useInTranscription: true },
+        select: { value: true, priority: true },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+      },
+    },
+  });
+
+  // 3. Fetch CaseExtractedTerms (from uploaded documents)
+  const job = await db.job.findUnique({
+    where: { id: jobId },
+    select: { caseId: true },
+  });
+
+  let caseExtractedTerms: Array<{ term: string }> = [];
+  if (job?.caseId) {
+    const extractedTerms = await db.caseExtractedTerm.findMany({
+      where: {
+        caseId: job.caseId,
+        useInTranscription: true,
+      },
+      select: { term: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    caseExtractedTerms = extractedTerms;
+  }
+
+  // Combine all sources
+  const allTerms: Array<{ word: string; priority?: number }> = [];
+
+  // Add DepositionNote terms
+  for (const note of notes) {
+    if (note.content?.trim()) {
+      allTerms.push({ word: note.content.trim() });
+    }
+  }
+
+  // Add CSRProperNoun terms (higher priority)
+  for (const noun of csrRecord?.properNouns || []) {
+    if (noun.value?.trim()) {
+      allTerms.push({ word: noun.value.trim(), priority: noun.priority });
+    }
+  }
+
+  // Add CaseExtractedTerm terms
+  for (const term of caseExtractedTerms) {
+    if (term.term?.trim()) {
+      allTerms.push({ word: term.term.trim() });
+    }
+  }
+
+  if (allTerms.length === 0) {
     return [];
   }
 
-  // Process keywords
+  // Process keywords with deduplication
   const seen = new Set<string>();
   const keywords: KeywordConfig[] = [];
 
-  for (const note of notes) {
-    // Skip empty content
-    if (!note.content?.trim()) continue;
+  // Sort by priority (higher first), then by creation order
+  const sortedTerms = allTerms.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
+  for (const term of sortedTerms) {
     // Normalize: trim and lowercase for deduplication
-    const normalized = note.content.trim().toLowerCase();
+    const normalized = term.word.trim().toLowerCase();
 
     // Skip duplicates
     if (seen.has(normalized)) continue;
     seen.add(normalized);
 
+    // Calculate boost: 15 base + priority (if present)
+    const boost = 15 + (term.priority || 0);
+
     // Add with original casing (trimmed)
     keywords.push({
-      word: note.content.trim(),
-      boost: 15, // High priority for proper nouns
+      word: term.word.trim(),
+      boost: Math.min(boost, 100), // Cap boost at 100
     });
   }
 
   // Respect Deepgram limit (Nova-2 allows 1000; Nova-3 keyterm allows 100)
+  // Prioritize higher-priority terms
   const MAX_KEYWORDS = 1000;
   if (keywords.length > MAX_KEYWORDS) {
     console.warn(`[Keywords] Truncating keywords from ${keywords.length} to ${MAX_KEYWORDS} for job ${jobId}`);
