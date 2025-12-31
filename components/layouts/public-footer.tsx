@@ -1,120 +1,102 @@
 import Link from 'next/link';
 
+const footerLinks = {
+  product: [
+    { label: 'Features', href: '/features' },
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'Security', href: '/security' },
+  ],
+  company: [
+    { label: 'About', href: '/about' },
+    { label: 'Contact', href: '/contact' },
+    { label: 'Careers', href: '/careers', disabled: true },
+  ],
+  legal: [
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms', href: '/terms' },
+    { label: 'Compliance', href: '/compliance' },
+  ],
+};
+
 export function PublicFooter() {
   return (
-    <footer className="bg-[var(--color-primary)] text-[var(--color-text-inverse)] border-t border-[var(--color-border)]">
-      <div className="container mx-auto px-4 lg:px-6 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 mb-8">
-          {/* Column 1: Product */}
+    <footer className="bg-ink text-white">
+      <div className="max-w-content mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          {/* Brand Column */}
+          <div className="col-span-2 md:col-span-1">
+            <Link href="/" className="text-xl font-bold">
+              Depo-Pro
+            </Link>
+            <p className="mt-3 text-sm text-white/60">
+              Professional deposition transcription software built for court reporters.
+            </p>
+          </div>
+
+          {/* Product */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-[var(--tracking-label)] mb-4 text-[var(--color-text-inverse)]">
-              Product
-            </h3>
+            <h4 className="text-meta text-white/80 mb-4">PRODUCT</h4>
             <ul className="space-y-3">
-              <li>
-                <Link
-                  href="/features"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  Features
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/pricing"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/security"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  Security
-                </Link>
-              </li>
+              {footerLinks.product.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-white/70 hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 2: Company */}
+          {/* Company */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-[var(--tracking-label)] mb-4 text-[var(--color-text-inverse)]">
-              Company
-            </h3>
+            <h4 className="text-meta text-white/80 mb-4">COMPANY</h4>
             <ul className="space-y-3">
-              <li>
-                <Link
-                  href="/about"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors opacity-60"
-                >
-                  Careers
-                </Link>
-              </li>
+              {footerLinks.company.map((link) => (
+                <li key={link.href}>
+                  {link.disabled ? (
+                    <span className="text-sm text-white/40 cursor-not-allowed">{link.label}</span>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className="text-sm text-white/70 hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 3: Legal */}
+          {/* Legal */}
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-[var(--tracking-label)] mb-4 text-[var(--color-text-inverse)]">
-              Legal
-            </h3>
+            <h4 className="text-meta text-white/80 mb-4">LEGAL</h4>
             <ul className="space-y-3">
-              <li>
-                <Link
-                  href="/privacy"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/terms"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  Terms
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/security"
-                  className="text-sm text-[var(--color-text-inverse)]/80 hover:text-[var(--color-text-inverse)] transition-colors"
-                >
-                  Compliance
-                </Link>
-              </li>
+              {footerLinks.legal.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-white/70 hover:text-white transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-[var(--color-text-inverse)]/20 pt-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-[var(--color-text-inverse)]/80">
-              © {new Date().getFullYear()} Depo-Pro. All rights reserved.
-            </p>
-            <p className="text-sm text-[var(--color-text-inverse)]/60 italic">
-              Built for Legal Professionals
-            </p>
-          </div>
+        <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-white/50">
+            © {new Date().getFullYear()} Depo-Pro. All rights reserved.
+          </p>
+          <p className="text-sm text-white/50 italic">
+            Built for Legal Professionals
+          </p>
         </div>
       </div>
     </footer>

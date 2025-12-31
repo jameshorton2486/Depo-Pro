@@ -75,13 +75,13 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
+          <CardTitle className="text-h2 font-bold text-center text-ink">
             Create Your Account
           </CardTitle>
-          <CardDescription className="text-center">
+          <CardDescription className="text-center text-body text-slate">
             Join Depo-Pro to manage your depositions and transcriptions
           </CardDescription>
         </CardHeader>
@@ -90,7 +90,7 @@ export default function RegisterPage() {
           <CardContent className="space-y-4">
             {/* Error message */}
             {error && (
-              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800 border border-red-200">
+              <div className="rounded-md bg-danger/10 p-3 text-sm text-danger border border-danger/20">
                 {error}
               </div>
             )}
@@ -123,7 +123,7 @@ export default function RegisterPage() {
                 {...register('lastName')}
               />
               {errors.lastName && (
-                <p className="text-sm text-red-600">{errors.lastName.message}</p>
+                <p className="text-sm text-danger">{errors.lastName.message}</p>
               )}
             </div>
 
@@ -139,7 +139,7 @@ export default function RegisterPage() {
                 {...register('email')}
               />
               {errors.email && (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
+                <p className="text-sm text-danger">{errors.email.message}</p>
               )}
             </div>
 
@@ -169,7 +169,7 @@ export default function RegisterPage() {
                 </SelectContent>
               </Select>
               {errors.role && (
-                <p className="text-sm text-red-600">{errors.role.message}</p>
+                <p className="text-sm text-danger">{errors.role.message}</p>
               )}
             </div>
 
@@ -201,7 +201,7 @@ export default function RegisterPage() {
                 {...register('password')}
               />
               {errors.password && (
-                <p className="text-sm text-red-600">{errors.password.message}</p>
+                <p className="text-sm text-danger">{errors.password.message}</p>
               )}
             </div>
 
@@ -217,7 +217,7 @@ export default function RegisterPage() {
                 {...register('confirmPassword')}
               />
               {errors.confirmPassword && (
-                <p className="text-sm text-red-600">{errors.confirmPassword.message}</p>
+                <p className="text-sm text-danger">{errors.confirmPassword.message}</p>
               )}
             </div>
           </CardContent>
@@ -225,17 +225,17 @@ export default function RegisterPage() {
           <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-ink hover:bg-ink/90"
               disabled={isLoading}
             >
               {isLoading ? 'Creating account...' : 'Create Account'}
             </Button>
 
-            <div className="text-sm text-center text-gray-600">
+            <div className="text-sm text-center text-slate">
               Already have an account?{' '}
               <Link
                 href="/login"
-                className="font-medium text-blue-600 hover:text-blue-500"
+                className="font-medium text-accent hover:text-accent-hover"
               >
                 Sign in
               </Link>

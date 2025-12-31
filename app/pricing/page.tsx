@@ -154,7 +154,7 @@ function PricingCard({
     <div
       className={`bg-[var(--color-surface)] rounded-[var(--radius-card)] border-2 p-8 lg:p-10 ${
         highlighted
-          ? 'border-[var(--color-accent)] shadow-[var(--shadow-medium)] scale-105'
+          ? 'border-[var(--color-accent)] ring-2 ring-accent shadow-[var(--shadow-medium)] scale-105'
           : 'border-[var(--color-border)] shadow-[var(--shadow-soft)]'
       }`}
     >
