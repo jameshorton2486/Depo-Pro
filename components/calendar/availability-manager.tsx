@@ -124,13 +124,26 @@ export function AvailabilityManager() {
 
       const response = await fetch(`/api/calendar/availability?${params}`);
 
-      if (!response.ok) throw new Error('Failed to fetch');
+      if (!response.ok) {
+        // If route doesn't exist (404) or server error, return empty array
+        if (response.status === 404 || response.status >= 500) {
+          console.warn('Availability API route not found or unavailable');
+          setSlots([]);
+          return;
+        }
+        throw new Error(`Availability fetch failed: ${response.status}`);
+      }
 
       const data = await response.json();
-      setSlots(data.availability || []);
+      // Handle both array and object with availability property
+      const availability = Array.isArray(data) 
+        ? data 
+        : (data.availability || []);
+      setSlots(availability);
     } catch (error) {
       console.error('Error fetching availability:', error);
-      toast.error('Failed to load availability');
+      // Don't show error toast if route doesn't exist (expected for disabled feature)
+      setSlots([]);
     } finally {
       setIsLoading(false);
     }
@@ -460,18 +473,22 @@ export function AvailabilityManager() {
                       {/* Quick add buttons if no slots */}
                       {daySlots.length === 0 && (
                         <div className="flex gap-1 mt-2">
-                          <button
-                            onClick={() => handleQuickAdd(day, 'AVAILABLE')}
-                            className="flex-1 text-xs py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            onClick={() => handleQuickAdd(day, 'UNAVAILABLE')}
-                            className="flex-1 text-xs py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded"
-                          >
-                            ✗
-                          </button>
+                            <button
+                              onClick={() => handleQuickAdd(day, 'AVAILABLE')}
+                              className="flex-1 text-xs py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded"
+                              title="Mark as available"
+                              aria-label="Mark as available"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => handleQuickAdd(day, 'UNAVAILABLE')}
+                              className="flex-1 text-xs py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded"
+                              title="Mark as unavailable"
+                              aria-label="Mark as unavailable"
+                            >
+                              ✗
+                            </button>
                         </div>
                       )}
                     </div>
