@@ -13,6 +13,7 @@ import { createJobSchema } from '@/lib/validations/job';
 import { withRequestLogging } from '@/lib/observability';
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
+import { lockNotesForJob } from '@/lib/phase6a/note-locking';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs/[id] - Get single job
@@ -220,6 +221,16 @@ export const PATCH = withRequestLogging(async (
       data: { status },
       select: { id: true, status: true },
     });
+
+    // Phase 6A: Auto-lock notes when transcript is finalized
+    if (status === JobStatus.COMPLETED || status === JobStatus.REVIEW_COMPLETE) {
+      try {
+        await lockNotesForJob(id, session.user.id);
+      } catch (error) {
+        // Log error but don't fail the status update
+        console.error('Failed to lock notes for job:', error);
+      }
+    }
 
     // Invalidate caches
     invalidateDashboardCache();

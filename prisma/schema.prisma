@@ -68,6 +68,9 @@ model User {
   rescheduledEvents          CalendarEvent[]               @relation("EventRescheduler")
   resolvedConflicts          ScheduleConflict[]            @relation("ConflictResolver")
   externalCalendars          ExternalCalendarConnection[]
+  // Phase 6A: Notes & Templates
+  reporterNotes              DepositionNote[]              @relation("ReporterNotes")
+  createdTemplates           DocumentTemplate[]            @relation("TemplateCreator")
 
   @@index([email])
   @@index([role])
@@ -120,6 +123,10 @@ model Job {
   transcription            Transcription?
   transcriptionJobs        TranscriptionJob[]
   calendarEvent            CalendarEvent?
+  // Phase 6A: Remote Meetings, Notes, Templates
+  remoteMeetingInfo        RemoteMeetingInfo?
+  depositionNotes          DepositionNote[]
+  templateSnapshots        DocumentTemplateSnapshot[]
 
   @@index([createdById])
   @@index([firmId])
@@ -482,6 +489,8 @@ model Firm {
   externalCalendarConnections ExternalCalendarConnection[]
   externalCalendarEvents      ExternalCalendarEvent[]
   billingAccount              BillingAccount?
+  // Phase 6A: Document Templates
+  documentTemplates           DocumentTemplate[]           @relation("FirmTemplates")
 
   @@index([name])
   @@index([createdAt])
@@ -1301,6 +1310,8 @@ model Agency {
   jobs         Job[]           @relation("AgencyJobs")
   reporters    User[]          @relation("AgencyReporters")
   events       CalendarEvent[]
+  // Phase 6A: Document Templates
+  documentTemplates DocumentTemplate[] @relation("AgencyTemplates")
 
   @@index([slug])
 }
@@ -1412,6 +1423,10 @@ model CSRRecord {
   aiExtractionConfidence Float?
   aiExtractedAt          DateTime?
   manualOverrides        Json?
+  // Data Provenance (internal use, not shown in UI)
+  dataSource             DataSource?          @default(MANUAL)
+  lastModifiedBy         String?
+  lastModifiedAt         DateTime?
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
   attorneys              CSRAttorney[]
@@ -2245,4 +2260,263 @@ model AudioProcessingSession {
 
   @@index([jobId])
   @@index([provider])
+}
+
+// =============================================================================
+// PHASE 6A: REMOTE MEETINGS, LIVE NOTES, DOCUMENT TEMPLATES
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// REMOTE MEETING INFO (1:1 with Job)
+// Zoom/Teams meeting details for remote depositions
+// Lives under Job (NOT CalendarEvent) — survives rescheduling
+// -----------------------------------------------------------------------------
+//
+// FIELD-LEVEL PERMISSIONS:
+// ┌─────────────────┬──────────┬──────────┬─────────────┬─────────────┬─────────┐
+// │ Field           │ Reporter │ Attorney │ Videographer│ Interpreter │ Scopist │
+// ├─────────────────┼──────────┼──────────┼─────────────┼─────────────┼─────────┤
+// │ meetingUrl      │    ✅    │    ✅    │     ✅      │     ✅      │   ❌    │
+// │ meetingId       │    ✅    │    ✅    │     ✅      │     ✅      │   ❌    │
+// │ passcode        │    ✅    │    ✅    │     ✅      │     ✅      │   ❌    │
+// │ dialInNumbers   │    ✅    │    ✅    │     ✅      │     ✅      │   ❌    │
+// │ hostKey         │    ✅    │    ❌    │     ❌      │     ❌      │   ❌    │
+// │ cloudRecording  │    ✅    │    ❌    │     ✅      │     ❌      │   ❌    │
+// └─────────────────┴──────────┴──────────┴─────────────┴─────────────┴─────────┘
+//
+// Host key is REPORTER-ONLY. Protects meeting control.
+// Scopist has NO access to meeting info (they work post-depo).
+// -----------------------------------------------------------------------------
+
+model RemoteMeetingInfo {
+  id                      String          @id @default(cuid())
+  jobId                   String          @unique
+  job                     Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // Platform
+  platform                MeetingPlatform @default(ZOOM)
+  
+  // Meeting Details (reporter, attorneys, videographers, interpreters)
+  meetingUrl              String?         // Full Zoom link
+  meetingId               String?         // "123 456 7890"
+  passcode                String?         // "abc123"
+  dialInNumbers           Json?           // [{ country: "US", number: "+1 xxx" }]
+  
+  // Host Controls (REPORTER ONLY)
+  hostKey                 String?         // For claiming host
+  coHostKey               String?         // Secondary host (rare)
+  
+  // Post-Deposition Recording (reporter + videographer only)
+  cloudRecordingUrl       String?         // Zoom cloud recording link
+  cloudRecordingPassword  String?         // If password-protected
+  recordingDownloadedAt   DateTime?       // When downloaded for processing
+  
+  // Metadata
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  
+  @@index([platform])
+  @@map("remote_meeting_info")
+}
+
+enum MeetingPlatform {
+  ZOOM
+  TEAMS
+  WEBEX
+  GOOGLE_MEET
+  OTHER
+}
+
+// -----------------------------------------------------------------------------
+// DEPOSITION NOTES (Live notes during deposition)
+// -----------------------------------------------------------------------------
+//
+// VISIBILITY RULES:
+// ┌─────────────────────┬──────────────────────────────────────┐
+// │ When                │ Who Can See                          │
+// ├─────────────────────┼──────────────────────────────────────┤
+// │ During deposition   │ 🔒 Reporter ONLY                     │
+// │ After deposition    │ 👁 Reporter + Scopist                │
+// │ Never               │ ❌ Attorneys, paralegals, firms      │
+// └─────────────────────┴──────────────────────────────────────┘
+//
+// EDITING RULES:
+// - ✏️ Editable until transcript is finalized/certified
+// - 🔒 Locked once Job.status = COMPLETED or REVIEW_COMPLETE
+//
+// DATA MODEL:
+// - Free-hand notes only
+// - ❌ No enforced categories (optional tagging allowed)
+// - Optional audio timestamp
+// -----------------------------------------------------------------------------
+
+model DepositionNote {
+  id              String    @id @default(cuid())
+  jobId           String
+  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // Author (always court reporter)
+  reporterId      String
+  reporter        User      @relation("ReporterNotes", fields: [reporterId], references: [id])
+  
+  // Note Content (freehand - NO enforced categories)
+  content         String    @db.Text
+  
+  // Note Type: Proper Nouns (for Deepgram keywords) or General Notes
+  type            DepositionNoteType  @default(PROPER_NOUN)
+  
+  // Optional Timing (rough, not required)
+  audioTimestamp  Float?    // Seconds into recording
+  
+  // Optional Category (NOT enforced, just helpful tagging)
+  noteCategory    String?   // "spelling", "exhibit", "off-record", etc.
+  
+  // Locking (when transcript finalized/certified)
+  isLocked        Boolean   @default(false)
+  lockedAt        DateTime?
+  lockedBy        String?
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([jobId])
+  @@index([jobId, createdAt])
+  @@index([jobId, type])
+  @@index([reporterId])
+  @@index([isLocked])
+  @@map("deposition_notes")
+}
+
+// -----------------------------------------------------------------------------
+// DOCUMENT TEMPLATES (State-specific title pages, certificates, etc.)
+// -----------------------------------------------------------------------------
+//
+// SCOPE:
+// - State = where deposition occurs (witness location)
+// - Multiple templates per state allowed (TX has variations)
+//
+// OWNERSHIP HIERARCHY:
+// 1. Agency-level templates (primary)
+// 2. Firm-level overrides (optional)
+// 3. System defaults (fallback)
+// ❌ Individual reporter templates are NOT the norm
+//
+// EDIT RULES:
+// - ✏️ Forward-applying only
+// - 📸 Snapshotted per transcript
+// - 🔒 Editing does NOT alter past transcripts
+// -----------------------------------------------------------------------------
+
+model DocumentTemplate {
+  id                String               @id @default(cuid())
+  
+  // Ownership Hierarchy (agency > firm > system)
+  agencyId          String?
+  agency            Agency?              @relation("AgencyTemplates", fields: [agencyId], references: [id])
+  firmId            String?
+  firm              Firm?                @relation("FirmTemplates", fields: [firmId], references: [id])
+  isSystemTemplate  Boolean              @default(false)
+  
+  // Template Identity
+  name              String               // "Texas Standard Certificate"
+  templateType      DocumentTemplateType
+  
+  // State Scope (based on deposition location / witness location)
+  state             String               // "TX", "CA", "NY"
+  stateVariant      String?              // "federal", "state", "rural_county"
+  
+  // Content
+  content           String               @db.Text   // HTML/Handlebars template
+  variables         Json?                           // Available merge fields
+  previewHtml       String?              @db.Text   // Rendered preview
+  
+  // Status
+  isActive          Boolean              @default(true)
+  isDefault         Boolean              @default(false)
+  
+  // Versioning (for snapshots)
+  version           Int                  @default(1)
+  
+  // Metadata
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  createdById       String?
+  createdBy         User?                @relation("TemplateCreator", fields: [createdById], references: [id])
+  
+  // Snapshots (frozen copies used in transcripts)
+  snapshots         DocumentTemplateSnapshot[]
+  
+  @@unique([state, templateType, name, version])
+  @@index([state, templateType])
+  @@index([templateType, isActive])
+  @@index([agencyId])
+  @@index([firmId])
+  @@index([isSystemTemplate])
+  @@map("document_templates")
+}
+
+enum DocumentTemplateType {
+  TITLE_PAGE
+  APPEARANCE_PAGE
+  CERTIFICATE_PAGE
+  INDEX_PAGE
+  ERRATA_SHEET
+  WORD_INDEX
+}
+
+// Frozen snapshot of template used for a specific transcript
+// Editing the source template does NOT alter past transcripts
+model DocumentTemplateSnapshot {
+  id              String               @id @default(cuid())
+  
+  // Link to original template
+  templateId      String
+  template        DocumentTemplate     @relation(fields: [templateId], references: [id])
+  
+  // Link to job
+  jobId           String
+  job             Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  // Frozen content (IMMUTABLE after creation)
+  templateType    DocumentTemplateType
+  content         String               @db.Text
+  templateVersion Int
+  
+  // Generated output
+  renderedHtml    String?              @db.Text
+  
+  createdAt       DateTime             @default(now())
+  
+  @@unique([jobId, templateType])
+  @@index([templateId])
+  @@index([jobId])
+  @@map("document_template_snapshots")
+}
+
+// -----------------------------------------------------------------------------
+// SOURCE METADATA ENUM (for tracking data provenance)
+// -----------------------------------------------------------------------------
+// DEPOSITION NOTE TYPES
+// -----------------------------------------------------------------------------
+// PROPER_NOUN: Names, companies, places - feeds Deepgram keyword hints
+// GENERAL_NOTE: Reporter-only memory aid (not attorney-visible)
+// -----------------------------------------------------------------------------
+
+enum DepositionNoteType {
+  PROPER_NOUN      // Names, companies, streets, cities - feeds Deepgram keywords
+  GENERAL_NOTE     // Reporter-only memory aid
+}
+
+// -----------------------------------------------------------------------------
+// DATA SOURCE TRACKING
+// -----------------------------------------------------------------------------
+// Used on CSRRecord and related tables
+// NOT shown in UI, but stored for auditability
+// -----------------------------------------------------------------------------
+
+enum DataSource {
+  IMPORT            // AI extraction from uploaded document
+  MANUAL            // User entered directly
+  REPORTER_OVERRIDE // Reporter corrected imported value
 }

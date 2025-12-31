@@ -40,8 +40,12 @@ export async function processTranscriptionJob(
       data: { status: 'TRANSCRIBING' },
     });
 
+    // Get proper noun keywords from reporter notes for Deepgram
+    const { getProperNounKeywords } = await import('@/lib/transcription/buildKeywords');
+    const properNounKeywords = await getProperNounKeywords(jobId);
+    
     // Get custom dictionary terms for this firm (if firmId available)
-    const customKeyterms: string[] = [];
+    const customKeyterms: string[] = [...properNounKeywords];
     if (data.firmId) {
       // TODO: Fetch custom dictionary terms from database
     }

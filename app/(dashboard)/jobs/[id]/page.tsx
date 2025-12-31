@@ -10,6 +10,7 @@ import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { AssignmentManagement } from '@/components/jobs/assignment-management';
 import { FileUpload } from '@/components/jobs/file-upload';
 import { ExhibitsManager } from '@/components/jobs/exhibits-manager';
+import { ReporterProperNounsPanel } from '@/components/notes/reporter-proper-nouns-panel';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -219,11 +220,40 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         currentUserId={session.user.id}
       />
 
-      {/* Notes */}
+      {/* Proper Nouns & Spellings (Reporter Only) */}
+      {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') && (
+        <div className="mt-6">
+          <ReporterProperNounsPanel
+            jobId={job.id}
+            disabled={job.status === 'COMPLETED' || job.status === 'REVIEW_COMPLETE'}
+          />
+        </div>
+      )}
+
+      {/* Live Deposition Notes (Legacy - can be removed if not needed) */}
+      {/* {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') ? (
+        <div className="mt-6">
+          <DepositionNotesPanel
+            jobId={job.id}
+            userRole={session.user.role as 'REPORTER' | 'ADMIN'}
+            userId={session.user.id}
+            className="h-[500px]"
+          />
+        </div>
+      ) : session.user.role === 'SCOPIST' ? (
+        <div className="mt-6">
+          <ScopistNotesView
+            jobId={job.id}
+            className="h-[400px]"
+          />
+        </div>
+      ) : null} */}
+
+      {/* Legacy Notes (keep for backward compatibility) */}
       {job.notes && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Notes</CardTitle>
+            <CardTitle>General Notes</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
