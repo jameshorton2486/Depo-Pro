@@ -41,8 +41,15 @@ export async function processTranscriptionJob(
     });
 
     // Get proper noun keywords from reporter notes for Deepgram
-    const { getProperNounKeywords } = await import('@/lib/transcription/buildKeywords');
-    const properNounKeywords = await getProperNounKeywords(jobId);
+    const { buildKeywordsForJob } = await import('@/lib/transcription/buildKeywords');
+    const keywordConfigs = await buildKeywordsForJob(jobId);
+    const properNounKeywords = keywordConfigs.map(k => k.word);
+    
+    logger.info(`[Keywords] Found ${properNounKeywords.length} proper noun keywords for job ${jobId}`, {
+      jobId,
+      keywordCount: properNounKeywords.length,
+      sampleKeywords: properNounKeywords.slice(0, 5),
+    });
     
     // Get custom dictionary terms for this firm (if firmId available)
     const customKeyterms: string[] = [...properNounKeywords];

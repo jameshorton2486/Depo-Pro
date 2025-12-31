@@ -86,7 +86,13 @@ export async function GET(
     }
 
     const whereClause: any = { jobId };
-    if (typeFilter && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(typeFilter)) {
+    
+    // Scopists can ONLY see PROPER_NOUN type notes (for reference during review)
+    // Even if they request GENERAL_NOTE or ALL, restrict to PROPER_NOUN
+    if (user.role === UserRole.SCOPIST) {
+      whereClause.type = DepositionNoteType.PROPER_NOUN;
+    } else if (typeFilter && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(typeFilter)) {
+      // Reporters and Admins can filter by type if requested
       whereClause.type = typeFilter as DepositionNoteType;
     }
 

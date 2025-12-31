@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
@@ -107,8 +107,20 @@ export function AvailabilityManager() {
     recurrenceWeeks: 4,
   });
 
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 0 });
+  // Memoize week boundaries to prevent infinite loops
+  // Use getTime() for stable comparison
+  const weekStart = useMemo(
+    () => startOfWeek(currentWeek, { weekStartsOn: 0 }),
+    [currentWeek.getTime()]
+  );
+  const weekEnd = useMemo(
+    () => endOfWeek(currentWeek, { weekStartsOn: 0 }),
+    [currentWeek.getTime()]
+  );
+
+  // Memoize ISO strings for stable dependency comparison
+  const weekStartISO = useMemo(() => weekStart.toISOString(), [weekStart.getTime()]);
+  const weekEndISO = useMemo(() => weekEnd.toISOString(), [weekEnd.getTime()]);
 
   // ------------------------------------------------------------
   // DATA FETCHING
@@ -118,8 +130,8 @@ export function AvailabilityManager() {
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
-        start: weekStart.toISOString(),
-        end: weekEnd.toISOString(),
+        start: weekStartISO,
+        end: weekEndISO,
       });
 
       const response = await fetch(`/api/calendar/availability?${params}`);
@@ -155,7 +167,7 @@ export function AvailabilityManager() {
     } finally {
       setIsLoading(false);
     }
-  }, [weekStart, weekEnd]);
+  }, [weekStartISO, weekEndISO]);
 
   useEffect(() => {
     fetchAvailability();

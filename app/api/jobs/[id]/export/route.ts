@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { exportDocument, ExportFormat, ExportOptions, TranscriptContent } from '@/lib/export/export-service';
-import { exportToGoogleDocs } from '@/lib/export/google-docs-export';
 
 interface RouteContext {
   params: Promise<{ id: string }>;

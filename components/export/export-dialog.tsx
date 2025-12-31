@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Download, FileText, Terminal, Cloud, Loader2, CheckCircle2, Archive } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Download, FileText, Terminal, Cloud, Loader2, Archive } from 'lucide-react';
 import { toast } from 'sonner';
 
 type ExportFormat = 'docx' | 'pdf' | 'txt' | 'ascii' | 'google-docs' | 'zip';
@@ -32,7 +31,7 @@ interface ExportDialogProps {
   trigger?: React.ReactNode;
 }
 
-export function ExportDialog({ jobId, caseName, trigger }: ExportDialogProps) {
+export function ExportDialog({ jobId, trigger }: ExportDialogProps) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ExportFormat>('docx');
   const [isExporting, setIsExporting] = useState(false);
@@ -242,7 +241,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
-export function ExportDropdown({ jobId, caseName }: { jobId: string; caseName?: string }) {
+export function ExportDropdown({ jobId }: { jobId: string; caseName?: string }) {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleQuickExport = async (format: ExportFormat) => {
