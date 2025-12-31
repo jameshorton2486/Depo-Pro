@@ -1,162 +1,162 @@
 // ═══════════════════════════════════════════════════════════════
-// FEATURES PAGE
+// FEATURES PAGE - Role-Based Feature Sections
 // ═══════════════════════════════════════════════════════════════
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, FileText, Users, Shield, Zap, BarChart3, Lock } from 'lucide-react';
+import { PublicHeader } from '@/components/layouts/public-header';
+import { PublicFooter } from '@/components/layouts/public-footer';
+import { FileText, Users, Shield } from 'lucide-react';
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header */}
-      <div className="border-b bg-white">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold text-gray-900">
-              Depo-Pro
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
-                Sign In
-              </Link>
-              <Link href="/register">
-                <Button>Get Started</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[var(--color-bg)]">
+      <PublicHeader />
 
       {/* Hero */}
-      <div className="container mx-auto px-4 py-16 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-          Everything You Need for Professional Deposition Management
-        </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-          Streamline your workflow with AI-powered transcription, seamless collaboration, and enterprise-grade security.
-        </p>
-        <div className="flex gap-4 justify-center">
-          <Link href="/register">
-            <Button size="lg">Start Free Trial</Button>
-          </Link>
-          <Link href="/contact">
-            <Button size="lg" variant="outline">Contact Sales</Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Features Grid */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <FeatureCard
-            icon={FileText}
-            title="AI-Powered Transcription"
-            description="Advanced speech recognition with 95%+ accuracy. Supports multiple speakers, legal terminology, and real-time processing."
-          />
-          <FeatureCard
-            icon={Users}
-            title="Team Collaboration"
-            description="Assign jobs to scopists, track progress, and manage workflows seamlessly. Built for court reporting firms."
-          />
-          <FeatureCard
-            icon={Shield}
-            title="Enterprise Security"
-            description="Bank-level encryption, SOC 2 compliance, and HIPAA-ready infrastructure. Your data is protected at every step."
-          />
-          <FeatureCard
-            icon={Zap}
-            title="Fast Processing"
-            description="Transcribe 60-minute depositions in under an hour. Real-time status updates and instant notifications."
-          />
-          <FeatureCard
-            icon={BarChart3}
-            title="Analytics & Insights"
-            description="Track productivity, monitor job status, and generate reports. Make data-driven decisions for your business."
-          />
-          <FeatureCard
-            icon={Lock}
-            title="Compliance Ready"
-            description="Built for legal professionals. Meets court reporting standards, maintains chain of custody, and audit trails."
-          />
-        </div>
-      </div>
-
-      {/* Use Cases */}
-      <div className="bg-gray-50 py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Built for Legal Professionals</h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <UseCaseCard
-              title="Court Reporters"
-              description="Create jobs, upload audio, assign to scopists, and export final transcripts. Everything in one place."
-            />
-            <UseCaseCard
-              title="Scopists"
-              description="Review flagged words, edit transcripts, and submit completed work. Streamlined review interface."
-            />
-            <UseCaseCard
-              title="Reporting Firms"
-              description="Manage multiple reporters, track assignments, and monitor productivity across your entire team."
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="container mx-auto px-4 py-16 text-center">
-        <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
-        <p className="text-gray-600 mb-8">Join court reporters and scopists who trust Depo-Pro</p>
-        <Link href="/register">
-          <Button size="lg">Create Your Account</Button>
-        </Link>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t bg-white py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-600">
-            <Link href="/features" className="hover:text-gray-900">Features</Link>
-            <Link href="/pricing" className="hover:text-gray-900">Pricing</Link>
-            <Link href="/security" className="hover:text-gray-900">Security</Link>
-            <Link href="/about" className="hover:text-gray-900">About</Link>
-            <Link href="/contact" className="hover:text-gray-900">Contact</Link>
-          </div>
-          <p className="text-xs text-gray-500 mt-4 text-center">
-            © {new Date().getFullYear()} Depo-Pro. All rights reserved.
+      <section className="pt-32 pb-16 lg:pt-40 lg:pb-24">
+        <div className="container mx-auto px-4 lg:px-6 text-center">
+          <h1 className="text-4xl md:text-5xl lg:text-[52px] font-bold text-[var(--color-primary)] mb-6 leading-[1.1] max-w-4xl mx-auto">
+            Features Built for Legal Professionals
+          </h1>
+          <p className="text-lg md:text-xl text-[var(--color-text-secondary)] max-w-3xl mx-auto mb-10 leading-relaxed">
+            Comprehensive tools designed specifically for court reporters, scopists, and reporting firms.
           </p>
         </div>
-      </div>
+      </section>
+
+      {/* For Court Reporters */}
+      <section className="py-16 lg:py-24 bg-[var(--color-surface)]">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="flex items-center gap-4 mb-12">
+            <div className="w-12 h-12 rounded-lg bg-[var(--color-accent)]/10 flex items-center justify-center">
+              <FileText className="w-6 h-6 text-[var(--color-accent)]" />
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold text-[var(--color-primary)]">
+              For Court Reporters
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            <FeatureItem
+              title="Job creation and case management"
+              description="Streamlined interface for entering case details, managing assignments, and tracking deposition status."
+            />
+            <FeatureItem
+              title="AI transcription with legal vocabulary support"
+              description="Legal-optimized speech recognition trained on court reporting terminology and proper nouns."
+            />
+            <FeatureItem
+              title="Proper-noun reference injection"
+              description="Feed names, locations, and terms into the transcription engine for improved accuracy."
+            />
+            <FeatureItem
+              title="Reporter notes for guiding transcription"
+              description="Capture notes during deposition to guide AI accuracy and assist scopist review."
+            />
+            <FeatureItem
+              title="Certified export formats"
+              description="Export transcripts in DOCX, PDF, TXT, and legacy ASCII formats—court-ready."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* For Scopists */}
+      <section className="py-16 lg:py-24 bg-[var(--color-bg)]">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="flex items-center gap-4 mb-12">
+            <div className="w-12 h-12 rounded-lg bg-[var(--color-success)]/10 flex items-center justify-center">
+              <Users className="w-6 h-6 text-[var(--color-success)]" />
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold text-[var(--color-primary)]">
+              For Scopists
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            <FeatureItem
+              title="Confidence-based word review"
+              description="Focus on low-confidence words flagged by AI, with visual highlighting for efficient correction."
+            />
+            <FeatureItem
+              title="Integrated audio playback with timestamps"
+              description="Jump to exact moments in audio recordings with synchronized playback controls."
+            />
+            <FeatureItem
+              title="Reporter notes visible during review"
+              description="Access reporter-entered notes and proper nouns to ensure accurate corrections."
+            />
+            <FeatureItem
+              title="Clean, distraction-free editing interface"
+              description="Optimized workspace designed for fast, accurate transcript editing."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* For Reporting Firms */}
+      <section className="py-16 lg:py-24 bg-[var(--color-surface)]">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="flex items-center gap-4 mb-12">
+            <div className="w-12 h-12 rounded-lg bg-[var(--color-warning)]/10 flex items-center justify-center">
+              <Shield className="w-6 h-6 text-[var(--color-warning)]" />
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold text-[var(--color-primary)]">
+              For Reporting Firms
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            <FeatureItem
+              title="Team assignments and role-based permissions"
+              description="Assign jobs to reporters and scopists with granular access controls and permissions."
+            />
+            <FeatureItem
+              title="Productivity and turnaround analytics"
+              description="Track team performance, job completion times, and identify workflow bottlenecks."
+            />
+            <FeatureItem
+              title="Secure storage and audit logging"
+              description="Enterprise-grade data protection with comprehensive audit trails for compliance."
+            />
+            <FeatureItem
+              title="Multi-job oversight with standardized workflows"
+              description="Manage multiple depositions simultaneously with consistent, repeatable processes."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-16 lg:py-24 bg-[var(--color-primary)] text-[var(--color-text-inverse)]">
+        <div className="container mx-auto px-4 lg:px-6 text-center">
+          <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+            Ready to Get Started?
+          </h2>
+          <p className="text-lg text-[var(--color-text-inverse)]/80 mb-8 max-w-2xl mx-auto">
+            Join court reporters and scopists who trust Depo-Pro
+          </p>
+          <Button
+            asChild
+            size="lg"
+            className="bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white rounded-[var(--radius-button)] px-8 py-6 text-base font-medium"
+          >
+            <Link href="/register">Create Your Account</Link>
+          </Button>
+        </div>
+      </section>
+
+      <PublicFooter />
     </div>
   );
 }
 
-function FeatureCard({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  description: string;
-}) {
+function FeatureItem({ title, description }: { title: string; description: string }) {
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-        <Icon className="w-6 h-6 text-blue-600" />
-      </div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-600">{description}</p>
+    <div className="bg-[var(--color-surface)] p-6 rounded-[var(--radius-card)] border border-[var(--color-border)] shadow-[var(--shadow-soft)]">
+      <h3 className="text-lg font-semibold text-[var(--color-primary)] mb-3">{title}</h3>
+      <p className="text-[var(--color-text-secondary)] leading-relaxed text-sm">{description}</p>
     </div>
   );
 }
-
-function UseCaseCard({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="bg-white p-6 rounded-lg">
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-600">{description}</p>
-    </div>
-  );
-}
-

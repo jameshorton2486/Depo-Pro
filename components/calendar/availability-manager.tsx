@@ -125,13 +125,20 @@ export function AvailabilityManager() {
       const response = await fetch(`/api/calendar/availability?${params}`);
 
       if (!response.ok) {
-        // If route doesn't exist (404) or server error, return empty array
-        if (response.status === 404 || response.status >= 500) {
-          console.warn('Availability API route not found or unavailable');
-          setSlots([]);
-          return;
+        // Handle all error status codes gracefully
+        // 403 = permission denied (user doesn't have firmId)
+        // 404 = route not found
+        // 4xx/5xx = other errors
+        // In all cases, just return empty array (feature not available)
+        if (response.status === 403) {
+          console.warn('Availability access denied - feature not available for this user');
+        } else if (response.status === 404) {
+          console.warn('Availability API route not found');
+        } else {
+          console.warn(`Availability API error: ${response.status}`);
         }
-        throw new Error(`Availability fetch failed: ${response.status}`);
+        setSlots([]);
+        return;
       }
 
       const data = await response.json();
@@ -140,9 +147,10 @@ export function AvailabilityManager() {
         ? data 
         : (data.availability || []);
       setSlots(availability);
-    } catch (error) {
-      console.error('Error fetching availability:', error);
-      // Don't show error toast if route doesn't exist (expected for disabled feature)
+    } catch (_error) {
+      // Handle network errors, JSON parsing errors, etc. silently
+      // This is expected if the feature is disabled or unavailable
+      // No logging needed - errors are handled gracefully by returning empty array
       setSlots([]);
     } finally {
       setIsLoading(false);
@@ -452,7 +460,7 @@ export function AvailabilityManager() {
                             `}
                           >
                             <div className="flex items-center gap-1 truncate">
-                              <Icon className="w-3 h-3 flex-shrink-0" />
+                              <Icon className="w-3 h-3 shrink-0" />
                               <span className="truncate">
                                 {format(new Date(slot.start), 'h:mm a')}
                               </span>
@@ -463,6 +471,8 @@ export function AvailabilityManager() {
                                 handleDeleteSlot(slot.id);
                               }}
                               className="hover:bg-white/20 rounded p-0.5"
+                              title="Delete availability slot"
+                              aria-label="Delete availability slot"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>

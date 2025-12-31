@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import '../styles/calendar.css';
+@import '../styles/design-tokens.css';
 
 @custom-variant dark (&:is(.dark *));
 
