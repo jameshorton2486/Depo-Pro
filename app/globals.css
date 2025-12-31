@@ -121,3 +121,66 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Section container */
+  .section {
+    @apply py-24 max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .section-sm {
+    @apply py-16 max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Card styles */
+  .card {
+    @apply bg-surface rounded-lg shadow-card border border-border p-6;
+  }
+  
+  .card-hover {
+    @apply card transition-all duration-200 hover:shadow-elevated hover:-translate-y-1;
+  }
+  
+  /* Button base */
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-hover text-white font-medium py-2.5 px-5 rounded-md transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+  
+  .btn-secondary {
+    @apply bg-surface hover:bg-bg text-ink border border-border font-medium py-2.5 px-5 rounded-md transition-colors;
+  }
+  
+  /* Text styles */
+  .text-hero {
+    @apply text-hero font-bold text-ink;
+  }
+  
+  .text-h1 {
+    @apply text-h1 font-bold text-ink;
+  }
+  
+  .text-h2 {
+    @apply text-h2 font-semibold text-ink;
+  }
+  
+  .text-h3 {
+    @apply text-h3 font-semibold text-ink;
+  }
+  
+  .text-body {
+    @apply text-body text-slate;
+  }
+  
+  .text-muted {
+    @apply text-small text-slate/70;
+  }
+  
+  .text-meta {
+    @apply text-meta uppercase tracking-wider text-slate/60 font-medium;
+  }
+  
+  /* Input focus states */
+  input:focus, select:focus, textarea:focus {
+    @apply ring-2 ring-accent/30 border-accent outline-none;
+  }
+}
