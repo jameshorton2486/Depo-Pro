@@ -361,7 +361,7 @@ export function LiveNotesCapture({ jobId }: LiveNotesCaptureProps) {
               return (
                 <div
                   key={noun.id}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
