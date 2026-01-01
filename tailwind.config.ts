@@ -105,8 +105,8 @@ const config: Config = {
          TYPOGRAPHY
          ===================================================================== */
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        sans: ["var(--font-geist-sans)", "Inter", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "JetBrains Mono", "Fira Code", "monospace"],
       },
 
       /* =====================================================================
