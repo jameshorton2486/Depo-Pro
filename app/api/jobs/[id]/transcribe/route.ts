@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { enqueueJob } from '@/lib/jobs/queue';
 import { JobType, TranscriptionJobPayload } from '@/lib/jobs/types';
 import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
+import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
+import type { AudioProcessingMode } from '@/lib/services/audio-enhancement-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -42,7 +44,6 @@ export async function POST(
 
     // Get request body for model selection (optional)
     const body = await request.json().catch(() => ({}));
-    const modelPreference = body.modelPreference || 'nova-3';
 
     // Fetch job with files
     const job = await db.job.findUnique({
@@ -99,6 +100,87 @@ export async function POST(
       );
     }
 
+    // Get processing mode from job's internalNotes
+    let processingMode: AudioProcessingMode = 'AUTOMATED';
+    let modelTier: 'STANDARD' | 'ENHANCED' = 'STANDARD';
+    
+    if (job.internalNotes) {
+      try {
+        const notes = JSON.parse(job.internalNotes);
+        if (notes.processingMode) {
+          processingMode = notes.processingMode.mode || 'AUTOMATED';
+          modelTier = notes.processingMode.modelTier || 'STANDARD';
+        }
+      } catch {
+        // Invalid JSON, use defaults
+      }
+    }
+
+    // Check processing mode and route accordingly
+    if (processingMode === 'MANUAL_RX') {
+      // Add job to RX queue instead of starting transcription
+      const queueResult = await AudioEnhancementService.addToRxQueue(
+        jobId,
+        audioFile.storageUrl || audioFile.storagePath,
+        {
+          priority: 'NORMAL',
+        },
+      );
+
+      if (!queueResult.success) {
+        return NextResponse.json(
+          { error: queueResult.error || 'Failed to add to RX queue' },
+          { status: 500 },
+        );
+      }
+
+      // Update job status
+      await db.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'ENHANCING_AUDIO',
+          internalNotes: JSON.stringify({
+            ...(job.internalNotes ? JSON.parse(job.internalNotes) : {}),
+            rxQueueAdded: true,
+            rxQueuePosition: queueResult.queuePosition,
+          }),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Job added to RX queue for manual processing',
+        jobId,
+        queuePosition: queueResult.queuePosition,
+      });
+    }
+
+    // Automated mode: proceed with Dolby enhancement and transcription
+    // Update job status to ENHANCING_AUDIO (will be updated to TRANSCRIBING after enhancement)
+    await db.job.update({
+      where: { id: jobId },
+      data: {
+        status: 'ENHANCING_AUDIO',
+      },
+    });
+
+    // Start automated enhancement
+    const enhancementResult = await AudioEnhancementService.enhanceWithDolby(
+      jobId,
+      audioFile.storageUrl || audioFile.storagePath,
+      {},
+    );
+
+    if (!enhancementResult.success) {
+      // Enhancement failed, but we can still try transcription
+      console.error('Enhancement failed, proceeding with original audio:', enhancementResult.error);
+    }
+
+    // Determine model preference based on tier
+    const modelPreference = modelTier === 'ENHANCED' 
+      ? 'nova-2-medical' 
+      : body.modelPreference || 'nova-3';
+
     // Update job status to TRANSCRIBING
     await db.job.update({
       where: { id: jobId },
@@ -107,12 +189,16 @@ export async function POST(
       },
     });
 
-    // Enqueue transcription job
+    // Enqueue transcription job with enhanced audio URL (or original if enhancement failed)
+    const audioUrlForTranscription = enhancementResult.success && enhancementResult.enhancedFileUrl
+      ? enhancementResult.enhancedFileUrl
+      : audioFile.storageUrl || audioFile.storagePath;
+
     await enqueueJob<TranscriptionJobPayload>(
       JobType.TRANSCRIPTION_PROCESS,
       {
         jobId,
-        audioFileUrl: audioFile.storageUrl || audioFile.storagePath,
+        audioFileUrl: audioUrlForTranscription,
         firmId: job.firmId || job.case?.firmId || '',
         userId: user.id,
         options: {
@@ -134,6 +220,8 @@ export async function POST(
       message: 'Transcription queued successfully',
       jobId,
       modelPreference,
+      processingMode,
+      enhancementApplied: enhancementResult.success,
     });
 
   } catch (error) {

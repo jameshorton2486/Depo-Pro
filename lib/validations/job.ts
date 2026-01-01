@@ -6,6 +6,14 @@
 import { z } from 'zod';
 import { JobStatus } from '@/lib/constants';
 
+// Audio Processing Mode values (matches Prisma enum)
+export const AudioProcessingMode = {
+  AUTOMATED: 'AUTOMATED',
+  MANUAL_RX: 'MANUAL_RX',
+} as const;
+
+export type AudioProcessingModeType = typeof AudioProcessingMode[keyof typeof AudioProcessingMode];
+
 /**
  * Create job schema
  * Used for: Job creation form
@@ -57,6 +65,17 @@ export const createJobSchema = z.object({
     JobStatus.COMPLETED,
     JobStatus.CANCELLED,
   ] as const),
+
+  // Audio Processing Mode (Phase 6B)
+  // AUTOMATED: Default - Dolby.io enhancement, fast turnaround
+  // MANUAL_RX: Premium - iZotope RX forensic enhancement, flat fee $150
+  audioProcessingMode: z
+    .enum([
+      AudioProcessingMode.AUTOMATED,
+      AudioProcessingMode.MANUAL_RX,
+    ] as const)
+    .default(AudioProcessingMode.AUTOMATED)
+    .optional(),
 
   // Notes
   notes: z

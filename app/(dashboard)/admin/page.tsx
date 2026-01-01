@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
+import { RxQueueManager } from '@/components/billing/rx-queue-manager';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default async function AdminDashboard() {
   const session = await auth();
@@ -91,7 +94,27 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Recent Jobs */}
-      <RecentJobs jobs={recentJobs} />
+      <div className="mb-8">
+        <RecentJobs jobs={recentJobs} />
+      </div>
+
+      {/* RX Queue Manager */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              Manual RX Queue
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">
+              Manage forensic audio enhancement jobs
+            </p>
+          </div>
+          <Link href="/admin/rx-queue">
+            <Button variant="outline">View Full Queue</Button>
+          </Link>
+        </div>
+        <RxQueueManager />
+      </div>
     </div>
   );
 }

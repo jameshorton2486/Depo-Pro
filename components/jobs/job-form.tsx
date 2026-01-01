@@ -6,7 +6,7 @@
 
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createJobSchema } from '@/lib/validations/job';
+import { createJobSchema, AudioProcessingMode } from '@/lib/validations/job';
 import { type CreateJobInput } from '@/lib/validations/job';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +42,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
     resolver: zodResolver(createJobSchema),
     defaultValues: initialData || {
       status: JobStatus.CREATED,
+      audioProcessingMode: AudioProcessingMode.AUTOMATED,
     },
   });
 
@@ -80,6 +81,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
   };
 
   const statusValue = watch('status');
+  const audioProcessingModeValue = watch('audioProcessingMode');
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -205,6 +207,76 @@ export function JobForm({ initialData, mode }: JobFormProps) {
           )}
         </div>
       </div>
+
+      {/* Audio Processing Mode - Phase 6B */}
+      {mode === 'create' && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Audio Processing</h3>
+          <p className="text-sm text-gray-500">
+            Select how audio files should be processed. This choice cannot be changed once processing begins.
+          </p>
+          
+          <div className="space-y-3">
+            <label 
+              className={`flex items-start gap-4 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                audioProcessingModeValue === AudioProcessingMode.AUTOMATED 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="radio"
+                value={AudioProcessingMode.AUTOMATED}
+                {...register('audioProcessingMode')}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900">Automated Enhancement</span>
+                  <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">Recommended</span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Industry-standard audio processing included by default. Fast turnaround with AI-powered enhancement.
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Best for: Most depositions, Zoom/Teams recordings, courtroom audio
+                </p>
+              </div>
+            </label>
+
+            <label 
+              className={`flex items-start gap-4 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                audioProcessingModeValue === AudioProcessingMode.MANUAL_RX 
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <input
+                type="radio"
+                value={AudioProcessingMode.MANUAL_RX}
+                {...register('audioProcessingMode')}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-gray-900">Manual Forensic Enhancement</span>
+                  <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">Premium</span>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Human-assisted forensic audio cleanup using professional tools. Flat fee: <strong>$150 per file</strong>
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Best for: Poor audio quality, heavy crosstalk, whispered testimony, severe background noise
+                </p>
+              </div>
+            </label>
+          </div>
+          
+          {errors.audioProcessingMode && (
+            <p className="text-sm text-red-600 mt-1">{errors.audioProcessingMode.message}</p>
+          )}
+        </div>
+      )}
 
       {/* Notes */}
       <div>

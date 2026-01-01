@@ -8,110 +8,207 @@ interface RouteContext {
 }
 
 /**
- * PATCH /api/jobs/[id]/proper-nouns/[nounId]
- * Update a CSRProperNoun entry
+ * GET /api/jobs/[id]/proper-nouns/[nounId]
+ * Get a single proper noun
  */
-export async function PATCH(
+export async function GET(
   request: NextRequest,
-  { params }: RouteContext
-) {
+  context: RouteContext,
+): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId, nounId } = await params;
-    const user = session.user as { id: string; role: string };
-    const body = await request.json();
+    const { id: jobId, nounId } = await context.params;
 
-    // Only reporters and admins can update proper nouns
-    if (user.role !== 'REPORTER' && user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Only reporters can update proper nouns' }, { status: 403 });
-    }
-
-    // Verify job access
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-      },
-    });
-
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    if (user.role === 'REPORTER' && job.createdById !== user.id) {
-      return NextResponse.json({ error: 'You can only update nouns in your own jobs' }, { status: 403 });
-    }
-
-    // Verify proper noun exists and belongs to this job
+    // Find the proper noun with job verification
     const properNoun = await db.cSRProperNoun.findUnique({
       where: { id: nounId },
       include: {
         csrRecord: {
-          select: { jobId: true },
+          select: {
+            job: {
+              select: {
+                id: true,
+                createdById: true,
+                firmId: true,
+              },
+            },
+          },
         },
       },
     });
 
-    if (!properNoun || properNoun.csrRecord.jobId !== jobId) {
+    if (!properNoun || properNoun.csrRecord?.job?.id !== jobId) {
       return NextResponse.json({ error: 'Proper noun not found' }, { status: 404 });
     }
 
-    // Validate update fields
+    // Check access
+    const user = session.user as any;
+    const job = properNoun.csrRecord.job;
+    const hasAccess =
+      user.role === 'ADMIN' ||
+      job?.createdById === user.id ||
+      (job?.firmId && job.firmId === user.firmId);
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    return NextResponse.json({ properNoun });
+
+  } catch (error) {
+    console.error('Error fetching proper noun:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch proper noun' },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * PATCH /api/jobs/[id]/proper-nouns/[nounId]
+ * Update a CSRProperNoun entry
+ */
+export async function PATCH(
+  request: NextRequest,
+  context: RouteContext,
+): Promise<NextResponse> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: jobId, nounId } = await context.params;
+    const body = await request.json();
+
+    const {
+      value,
+      category,
+      phoneticHint,
+      source,
+      useInTranscription,
+      priority,
+    } = body;
+
+    // Find the proper noun with job verification
+    const existingNoun = await db.cSRProperNoun.findUnique({
+      where: { id: nounId },
+      include: {
+        csrRecord: {
+          select: {
+            id: true,
+            job: {
+              select: {
+                id: true,
+                createdById: true,
+                firmId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!existingNoun || existingNoun.csrRecord?.job?.id !== jobId) {
+      return NextResponse.json({ error: 'Proper noun not found' }, { status: 404 });
+    }
+
+    // Check access
+    const user = session.user as any;
+    const job = existingNoun.csrRecord.job;
+    const hasAccess =
+      user.role === 'ADMIN' ||
+      job?.createdById === user.id ||
+      (job?.firmId && job.firmId === user.firmId);
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Build update data
     const updateData: any = {};
-    if (body.value !== undefined) {
-      if (!body.value || typeof body.value !== 'string' || !body.value.trim()) {
-        return NextResponse.json({ error: 'Value cannot be empty' }, { status: 400 });
+
+    if (value !== undefined) {
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        return NextResponse.json(
+          { error: 'Value must be a non-empty string' },
+          { status: 400 },
+        );
       }
-      updateData.value = body.value.trim();
+      updateData.value = value.trim();
     }
 
-    if (body.category !== undefined) {
-      if (!Object.values(ProperNounCategory).includes(body.category)) {
-        return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
+    if (category !== undefined) {
+      const validCategories: ProperNounCategory[] = [
+        'PERSON_NAME',
+        'COMPANY_NAME',
+        'PLACE_NAME',
+        'PRODUCT_NAME',
+        'LEGAL_TERM',
+        'MEDICAL_TERM',
+        'TECHNICAL_TERM',
+        'ACRONYM',
+        'OTHER',
+      ];
+
+      if (!validCategories.includes(category)) {
+        return NextResponse.json(
+          { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
+          { status: 400 },
+        );
       }
-      updateData.category = body.category;
+      updateData.category = category;
     }
 
-    if (body.phoneticHint !== undefined) {
-      updateData.phoneticHint = body.phoneticHint?.trim() || null;
+    if (phoneticHint !== undefined) {
+      updateData.phoneticHint = phoneticHint?.trim() || null;
     }
 
-    if (body.priority !== undefined) {
-      updateData.priority = parseInt(body.priority) || 0;
+    if (source !== undefined) {
+      updateData.source = source;
     }
 
-    if (body.useInTranscription !== undefined) {
-      updateData.useInTranscription = Boolean(body.useInTranscription);
+    if (useInTranscription !== undefined) {
+      updateData.useInTranscription = Boolean(useInTranscription);
     }
 
-    // If value changed, check for duplicate
-    if (updateData.value && updateData.value !== properNoun.value) {
-      const existing = await db.cSRProperNoun.findUnique({
+    if (priority !== undefined) {
+      updateData.priority = Number(priority) || 0;
+    }
+
+    // Check for duplicate value if value is being changed
+    if (updateData.value && updateData.value !== existingNoun.value) {
+      const duplicate = await db.cSRProperNoun.findUnique({
         where: {
           csrRecordId_value: {
-            csrRecordId: properNoun.csrRecordId,
+            csrRecordId: existingNoun.csrRecordId,
             value: updateData.value,
           },
         },
       });
 
-      if (existing) {
-        return NextResponse.json({ error: 'A proper noun with this value already exists' }, { status: 409 });
+      if (duplicate) {
+        return NextResponse.json(
+          { error: 'A term with this value already exists' },
+          { status: 409 },
+        );
       }
     }
 
-    // Update proper noun
-    const updated = await db.cSRProperNoun.update({
+    // Update the proper noun
+    const updatedNoun = await db.cSRProperNoun.update({
       where: { id: nounId },
       data: updateData,
     });
 
-    return NextResponse.json({ properNoun: updated });
+    return NextResponse.json({
+      success: true,
+      properNoun: updatedNoun,
+    });
   } catch (error: any) {
     console.error('Error updating proper noun:', error);
     
@@ -129,59 +226,59 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteContext
-) {
+  context: RouteContext,
+): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId, nounId } = await params;
-    const user = session.user as { id: string; role: string };
+    const { id: jobId, nounId } = await context.params;
 
-    // Only reporters and admins can delete proper nouns
-    if (user.role !== 'REPORTER' && user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Only reporters can delete proper nouns' }, { status: 403 });
-    }
-
-    // Verify job access
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-      },
-    });
-
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    if (user.role === 'REPORTER' && job.createdById !== user.id) {
-      return NextResponse.json({ error: 'You can only delete nouns from your own jobs' }, { status: 403 });
-    }
-
-    // Verify proper noun exists and belongs to this job
-    const properNoun = await db.cSRProperNoun.findUnique({
+    // Find the proper noun with job verification
+    const existingNoun = await db.cSRProperNoun.findUnique({
       where: { id: nounId },
       include: {
         csrRecord: {
-          select: { jobId: true },
+          select: {
+            job: {
+              select: {
+                id: true,
+                createdById: true,
+                firmId: true,
+              },
+            },
+          },
         },
       },
     });
 
-    if (!properNoun || properNoun.csrRecord.jobId !== jobId) {
+    if (!existingNoun || existingNoun.csrRecord?.job?.id !== jobId) {
       return NextResponse.json({ error: 'Proper noun not found' }, { status: 404 });
     }
 
-    // Delete proper noun
+    // Check access
+    const user = session.user as any;
+    const job = existingNoun.csrRecord.job;
+    const hasAccess =
+      user.role === 'ADMIN' ||
+      job?.createdById === user.id ||
+      (job?.firmId && job.firmId === user.firmId);
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Delete the proper noun
     await db.cSRProperNoun.delete({
       where: { id: nounId },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: 'Proper noun deleted',
+    });
   } catch (error) {
     console.error('Error deleting proper noun:', error);
     return NextResponse.json({ error: 'Failed to delete proper noun' }, { status: 500 });

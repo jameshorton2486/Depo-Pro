@@ -133,11 +133,22 @@ export const PUT = withRequestLogging(async (
     }
 
     const body = await request.json();
-    const validatedData = createJobSchema.parse(body);
+    
+    // Use safe update service (Phase 1: Domain Enforcement)
+    const { safeUpdateJob } = await import('@/lib/services/job-field-lock-service');
+    
+    const result = await safeUpdateJob(id, body, session.user.id);
+    
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: 400 },
+      );
+    }
 
-    const job = await db.job.update({
+    // Fetch updated job
+    const job = await db.job.findUnique({
       where: { id },
-      data: validatedData,
       include: {
         createdBy: {
           select: {
@@ -216,9 +227,20 @@ export const PATCH = withRequestLogging(async (
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const updatedJob = await db.job.update({
+    // Use status transition service (Phase 1: Domain Enforcement)
+    const { transitionJobStatus } = await import('@/lib/services/job-field-lock-service');
+    
+    const transitionResult = await transitionJobStatus(id, status, session.user.id);
+    
+    if (!transitionResult.success) {
+      return NextResponse.json(
+        { error: transitionResult.error },
+        { status: 400 },
+      );
+    }
+
+    const updatedJob = await db.job.findUnique({
       where: { id },
-      data: { status },
       select: { id: true, status: true },
     });
 

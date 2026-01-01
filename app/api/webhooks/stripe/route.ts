@@ -1,69 +1,63 @@
 // =============================================================================
-// STRIPE WEBHOOK HANDLER
-// Phase 6: Billing & Time Tracking
+// STRIPE WEBHOOK API ROUTE
+// =============================================================================
+// Location: app/api/webhooks/stripe/route.ts
+// Purpose: Handle Stripe webhook events
+//
+// SETUP:
+// 1. Create webhook endpoint in Stripe Dashboard
+// 2. Point to: https://yourdomain.com/api/webhooks/stripe
+// 3. Enable events: invoice.paid, invoice.payment_failed, invoice.voided
+// 4. Copy signing secret to STRIPE_WEBHOOK_SECRET
 // =============================================================================
 
-import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
-import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { processWebhookRequest } from '@/lib/services/webhook-verification-service';
 
-// Initialize Stripe only if API key is available (not during build)
-const getStripe = () => {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error("STRIPE_SECRET_KEY is not configured");
+// =============================================================================
+// POST Handler
+// =============================================================================
+
+export async function POST(request: NextRequest) {
+  // Check if Stripe is configured
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    console.warn('⚠️ Stripe not configured - webhook ignored');
+    return NextResponse.json(
+      { error: 'Stripe not configured' },
+      { status: 503 }
+    );
   }
-  return new Stripe(secretKey, {
-    apiVersion: "2025-10-29.clover",
-  });
-};
-
-export async function POST(req: NextRequest) {
-  const sig = req.headers.get("stripe-signature");
-  if (!sig) {
-    return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 });
-  }
-
-  const body = await req.text();
-
-  let event: Stripe.Event;
 
   try {
-    const stripe = getStripe();
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      return NextResponse.json({ error: "STRIPE_WEBHOOK_SECRET is not configured" }, { status: 500 });
-    }
+    // Get the raw body
+    const rawBody = await request.text();
 
-    event = stripe.webhooks.constructEvent(
-      body,
-      sig,
-      webhookSecret
+    // Get the signature header
+    const signature = request.headers.get('stripe-signature');
+
+    // Process webhook using verification service (Phase 4.4: Billing Completion)
+    const result = await processWebhookRequest(rawBody, signature);
+
+    return NextResponse.json(result.body || { received: result.success }, { status: result.status });
+
+  } catch (error) {
+    console.error('❌ Webhook error:', error);
+    return NextResponse.json(
+      { error: 'Webhook handler failed' },
+      { status: 500 }
     );
-  } catch (_err) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
-
-  switch (event.type) {
-    case "invoice.paid": {
-      const invoice = event.data.object as Stripe.Invoice;
-      await db.invoice.update({
-        where: { stripeInvoiceId: invoice.id },
-        data: { status: "PAID" },
-      });
-      break;
-    }
-
-    case "invoice.voided": {
-      const invoice = event.data.object as Stripe.Invoice;
-      await db.invoice.update({
-        where: { stripeInvoiceId: invoice.id },
-        data: { status: "VOID" },
-      });
-      break;
-    }
-  }
-
-  return NextResponse.json({ received: true });
 }
 
+// =============================================================================
+// GET Handler (for webhook verification)
+// =============================================================================
+
+export async function GET() {
+  return NextResponse.json({
+    status: 'ok',
+    endpoint: '/api/webhooks/stripe',
+    configured: !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_WEBHOOK_SECRET,
+    message: 'Stripe webhook endpoint is active',
+  });
+}

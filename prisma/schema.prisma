@@ -71,6 +71,10 @@ model User {
   // Phase 6A: Notes & Templates
   reporterNotes              DepositionNote[]              @relation("ReporterNotes")
   createdTemplates           DocumentTemplate[]            @relation("TemplateCreator")
+  // Phase 6B: Audio Processing Sessions
+  audioProcessingSessions    AudioProcessingSession[]      @relation("AudioProcessingSessions")
+  // Job Locking
+  lockedJobs                 Job[]                         @relation("JobLockedBy")
 
   @@index([email])
   @@index([role])
@@ -82,41 +86,48 @@ model User {
 }
 
 model Job {
-  id                       String             @id @default(cuid())
+  id                       String                     @id @default(cuid())
   title                    String
   caseName                 String
   caseNumber               String?
   depositionDate           DateTime
   location                 String?
   zoomLink                 String?
-  status                   JobStatus          @default(CREATED)
+  status                   JobStatus                  @default(CREATED)
   firmId                   String?
   createdById              String
   assignedToId             String?
   caseId                   String?
-  transcriptionModelType   String?            @default("MEDICAL")
+  transcriptionModelType   String?                    @default("MEDICAL")
   transcriptionCompletedAt DateTime?
   errorMessage             String?
   notes                    String?
   internalNotes            String?
   lockedBy                 String?
   lockedAt                 DateTime?
-  createdAt                DateTime           @default(now())
-  updatedAt                DateTime           @updatedAt
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
   completedAt              DateTime?
   dueDate                  DateTime?
   scopistId                String?
   deletedAt                DateTime?
   agencyId                 String?
-  csrRecord                CSRRecord?         @relation("JobCSRRecord")
+  // Phase 6B: Audio Processing & Billing
+  audioProcessingMode      AudioProcessingMode        @default(AUTOMATED)
+  asrModelTier             ASRModelTier               @default(STANDARD)
+  pricingSnapshotId        String? // Locked pricing at job creation
+  audioDurationMinutes     Float? // Captured for billing
+  audioDurationSeconds     Int? // Original duration in seconds
+  pricingSnapshot          PricingSnapshot?           @relation("JobPricingSnapshot", fields: [pricingSnapshotId], references: [id])
+  csrRecord                CSRRecord?                 @relation("JobCSRRecord")
   exhibits                 Exhibit[]
-  agency                   Agency?            @relation("AgencyJobs", fields: [agencyId], references: [id])
-  case                     Case?              @relation(fields: [caseId], references: [id])
-  createdBy                User               @relation("CreatedBy", fields: [createdById], references: [id])
-  firm                     Firm?              @relation(fields: [firmId], references: [id])
+  agency                   Agency?                    @relation("AgencyJobs", fields: [agencyId], references: [id])
+  case                     Case?                      @relation(fields: [caseId], references: [id])
+  createdBy                User                       @relation("CreatedBy", fields: [createdById], references: [id])
+  firm                     Firm?                      @relation(fields: [firmId], references: [id])
   assignments              JobAssignment[]
-  claims                   JobClaim[]         @relation("JobClaims")
-  jobExhibits              JobExhibit[]       @relation("JobExhibits")
+  claims                   JobClaim[]                 @relation("JobClaims")
+  jobExhibits              JobExhibit[]               @relation("JobExhibits")
   files                    JobFile[]
   messages                 Message[]
   transcripts              Transcript[]
@@ -127,6 +138,11 @@ model Job {
   remoteMeetingInfo        RemoteMeetingInfo?
   depositionNotes          DepositionNote[]
   templateSnapshots        DocumentTemplateSnapshot[]
+  // Phase 6B: Audio Processing Sessions
+  audioProcessingSessions  AudioProcessingSession[]
+
+  // Job Locking
+  lockedByUser User? @relation("JobLockedBy", fields: [lockedBy], references: [id])
 
   @@index([createdById])
   @@index([firmId])
@@ -142,6 +158,9 @@ model Job {
   @@index([createdAt])
   @@index([updatedAt])
   @@index([completedAt])
+  @@index([audioProcessingMode])
+  @@index([asrModelTier])
+  @@index([pricingSnapshotId])
 }
 
 model JobFile {
@@ -317,6 +336,10 @@ model Transcription {
   lockReason         String?
   lockedAt           DateTime?
   lockedBy           String?
+  // Review Tracking (B3 fix)
+  reviewTimeMinutes  Int?
+  reviewedByUserId   String?
+  reviewedAt         DateTime?
   job                Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
   edits              TranscriptionEdit[]
 
@@ -1291,25 +1314,25 @@ model TranscriptBookmark {
 }
 
 model Agency {
-  id           String          @id @default(cuid())
-  name         String
-  slug         String          @unique
-  email        String?
-  phone        String?
-  address      String?
-  city         String?
-  state        String?
-  zipCode      String?
-  planType     AgencyPlanType  @default(BASIC)
-  maxReporters Int             @default(10)
-  maxFirms     Int             @default(5)
-  settings     Json?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  firms        Firm[]          @relation("AgencyFirms")
-  jobs         Job[]           @relation("AgencyJobs")
-  reporters    User[]          @relation("AgencyReporters")
-  events       CalendarEvent[]
+  id                String             @id @default(cuid())
+  name              String
+  slug              String             @unique
+  email             String?
+  phone             String?
+  address           String?
+  city              String?
+  state             String?
+  zipCode           String?
+  planType          AgencyPlanType     @default(BASIC)
+  maxReporters      Int                @default(10)
+  maxFirms          Int                @default(5)
+  settings          Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  firms             Firm[]             @relation("AgencyFirms")
+  jobs              Job[]              @relation("AgencyJobs")
+  reporters         User[]             @relation("AgencyReporters")
+  events            CalendarEvent[]
   // Phase 6A: Document Templates
   documentTemplates DocumentTemplate[] @relation("AgencyTemplates")
 
@@ -1424,7 +1447,7 @@ model CSRRecord {
   aiExtractedAt          DateTime?
   manualOverrides        Json?
   // Data Provenance (internal use, not shown in UI)
-  dataSource             DataSource?          @default(MANUAL)
+  dataSource             DataSource?           @default(MANUAL)
   lastModifiedBy         String?
   lastModifiedAt         DateTime?
   createdAt              DateTime              @default(now())
@@ -1706,6 +1729,13 @@ enum TranscriptionStatus {
   PROCESSING
   COMPLETED
   ERROR
+  CANCELLED
+}
+
+enum AudioSessionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
   CANCELLED
 }
 
@@ -2130,6 +2160,22 @@ enum AudioEnhancementType {
   MANUAL_RX
 }
 
+// Audio Processing Mode Selection (per Authoritative Build Spec)
+// AUTOMATED: Default - Dolby.io enhancement, fast, scalable
+// MANUAL_RX: Premium - iZotope RX forensic enhancement, flat fee
+enum AudioProcessingMode {
+  AUTOMATED // Default: Dolby.io automated enhancement
+  MANUAL_RX // Premium: Human-operated iZotope RX forensic enhancement
+}
+
+// ASR Model Tier (per Authoritative Build Spec)
+// STANDARD: Base Deepgram Nova model
+// ENHANCED: 1.25× multiplier, enhanced accuracy
+enum ASRModelTier {
+  STANDARD
+  ENHANCED
+}
+
 model BillingAccount {
   id               String   @id @default(cuid())
   firmId           String   @unique
@@ -2179,6 +2225,35 @@ model BillingPeriod {
   @@index([firmId, locked])
 }
 
+// Pricing Snapshot (per Authoritative Build Spec)
+// IMMUTABLE record of pricing at job creation time
+// Ensures invoices are never affected by rate changes
+model PricingSnapshot {
+  id String @id @default(cuid())
+
+  // Core transcription pricing
+  transcriptionRateCents Int // $1.60/min = 160 cents
+  asrMultiplier          Float @default(1.0) // 1.25× for enhanced
+
+  // Human review pricing  
+  confidenceReviewRateCents Int // $0.35/1000 words = 35 cents per 1000
+  fullReviewRateCents       Int // $1.25/min = 125 cents
+
+  // Premium services
+  rxFlatFeeCents Int // $150 flat = 15000 cents
+
+  // Minimums
+  minTranscriptionMinutes Int @default(15) // 15-min minimum
+
+  // Metadata
+  createdAt DateTime @default(now())
+
+  // Relations
+  jobs Job[] @relation("JobPricingSnapshot")
+
+  @@index([createdAt])
+}
+
 model Invoice {
   id               String        @id @default(cuid())
   billingAccountId String
@@ -2186,10 +2261,28 @@ model Invoice {
   stripeInvoiceId  String?       @unique
   periodStart      DateTime
   periodEnd        DateTime
-  totalCents       Int
+  // Immutable Totals (A2 fix)
+  totalCents       Int // STORED, not computed
+  subtotalCents    Int           @default(0)
+  taxCents         Int           @default(0)
   status           InvoiceStatus @default(DRAFT)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+
+  // Timestamps
+  finalizedAt DateTime?
+  paidAt      DateTime?
+  voidedAt    DateTime?
+
+  // Voiding
+  voidedByUserId String?
+  voidReason     String?
+
+  // Stripe Integration
+  stripeInvoiceUrl      String?
+  stripePaymentIntentId String?
+  paymentMethod         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   billingAccount BillingAccount    @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
   lineItems      InvoiceLineItem[]
@@ -2251,15 +2344,48 @@ model HumanReviewSession {
 }
 
 model AudioProcessingSession {
-  id              String               @id @default(cuid())
-  jobId           String
-  enhancementType AudioEnhancementType
-  durationMinutes Int
-  provider        String
-  createdAt       DateTime             @default(now())
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  processingType String // 'MANUAL_RX' | 'AUTOMATED'
+  status         AudioSessionStatus @default(PENDING)
+
+  // Operator (Required for RX)
+  operatorUserId String?
+  operator       User?   @relation("AudioProcessingSessions", fields: [operatorUserId], references: [id])
+  operatorNotes  String?
+
+  // Timing
+  startedAt             DateTime  @default(now())
+  processingStartedAt   DateTime?
+  completedAt           DateTime?
+  processingTimeMinutes Int?
+
+  // Cancellation
+  cancelledAt        DateTime?
+  cancelledByUserId  String?
+  cancellationReason String?
+
+  // Output (legacy fields for backward compatibility)
+  enhancementType AudioEnhancementType?
+  durationMinutes Int?
+  provider        String?
+
+  // Output File (reference to JobFile - optional)
+  outputFileId String?
+
+  // Billing
+  feeCents Int?
+
+  // Metadata
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([jobId])
-  @@index([provider])
+  @@index([operatorUserId])
+  @@index([status])
 }
 
 // =============================================================================
@@ -2289,32 +2415,32 @@ model AudioProcessingSession {
 // -----------------------------------------------------------------------------
 
 model RemoteMeetingInfo {
-  id                      String          @id @default(cuid())
-  jobId                   String          @unique
-  job                     Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+  id    String @id @default(cuid())
+  jobId String @unique
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
   // Platform
-  platform                MeetingPlatform @default(ZOOM)
-  
+  platform MeetingPlatform @default(ZOOM)
+
   // Meeting Details (reporter, attorneys, videographers, interpreters)
-  meetingUrl              String?         // Full Zoom link
-  meetingId               String?         // "123 456 7890"
-  passcode                String?         // "abc123"
-  dialInNumbers           Json?           // [{ country: "US", number: "+1 xxx" }]
-  
+  meetingUrl    String? // Full Zoom link
+  meetingId     String? // "123 456 7890"
+  passcode      String? // "abc123"
+  dialInNumbers Json? // [{ country: "US", number: "+1 xxx" }]
+
   // Host Controls (REPORTER ONLY)
-  hostKey                 String?         // For claiming host
-  coHostKey               String?         // Secondary host (rare)
-  
+  hostKey   String? // For claiming host
+  coHostKey String? // Secondary host (rare)
+
   // Post-Deposition Recording (reporter + videographer only)
-  cloudRecordingUrl       String?         // Zoom cloud recording link
-  cloudRecordingPassword  String?         // If password-protected
-  recordingDownloadedAt   DateTime?       // When downloaded for processing
-  
+  cloudRecordingUrl      String? // Zoom cloud recording link
+  cloudRecordingPassword String? // If password-protected
+  recordingDownloadedAt  DateTime? // When downloaded for processing
+
   // Metadata
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([platform])
   @@map("remote_meeting_info")
 }
@@ -2351,35 +2477,35 @@ enum MeetingPlatform {
 // -----------------------------------------------------------------------------
 
 model DepositionNote {
-  id              String    @id @default(cuid())
-  jobId           String
-  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
   // Author (always court reporter)
-  reporterId      String
-  reporter        User      @relation("ReporterNotes", fields: [reporterId], references: [id])
-  
+  reporterId String
+  reporter   User   @relation("ReporterNotes", fields: [reporterId], references: [id])
+
   // Note Content (freehand - NO enforced categories)
-  content         String    @db.Text
-  
+  content String @db.Text
+
   // Note Type: Proper Nouns (for Deepgram keywords) or General Notes
-  type            DepositionNoteType  @default(PROPER_NOUN)
-  
+  type DepositionNoteType @default(PROPER_NOUN)
+
   // Optional Timing (rough, not required)
-  audioTimestamp  Float?    // Seconds into recording
-  
+  audioTimestamp Float? // Seconds into recording
+
   // Optional Category (NOT enforced, just helpful tagging)
-  noteCategory    String?   // "spelling", "exhibit", "off-record", etc.
-  
+  noteCategory String? // "spelling", "exhibit", "off-record", etc.
+
   // Locking (when transcript finalized/certified)
-  isLocked        Boolean   @default(false)
-  lockedAt        DateTime?
-  lockedBy        String?
-  
+  isLocked Boolean   @default(false)
+  lockedAt DateTime?
+  lockedBy String?
+
   // Timestamps
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([jobId])
   @@index([jobId, createdAt])
   @@index([jobId, type])
@@ -2409,44 +2535,44 @@ model DepositionNote {
 // -----------------------------------------------------------------------------
 
 model DocumentTemplate {
-  id                String               @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Ownership Hierarchy (agency > firm > system)
-  agencyId          String?
-  agency            Agency?              @relation("AgencyTemplates", fields: [agencyId], references: [id])
-  firmId            String?
-  firm              Firm?                @relation("FirmTemplates", fields: [firmId], references: [id])
-  isSystemTemplate  Boolean              @default(false)
-  
+  agencyId         String?
+  agency           Agency? @relation("AgencyTemplates", fields: [agencyId], references: [id])
+  firmId           String?
+  firm             Firm?   @relation("FirmTemplates", fields: [firmId], references: [id])
+  isSystemTemplate Boolean @default(false)
+
   // Template Identity
-  name              String               // "Texas Standard Certificate"
-  templateType      DocumentTemplateType
-  
+  name         String // "Texas Standard Certificate"
+  templateType DocumentTemplateType
+
   // State Scope (based on deposition location / witness location)
-  state             String               // "TX", "CA", "NY"
-  stateVariant      String?              // "federal", "state", "rural_county"
-  
+  state        String // "TX", "CA", "NY"
+  stateVariant String? // "federal", "state", "rural_county"
+
   // Content
-  content           String               @db.Text   // HTML/Handlebars template
-  variables         Json?                           // Available merge fields
-  previewHtml       String?              @db.Text   // Rendered preview
-  
+  content     String  @db.Text // HTML/Handlebars template
+  variables   Json? // Available merge fields
+  previewHtml String? @db.Text // Rendered preview
+
   // Status
-  isActive          Boolean              @default(true)
-  isDefault         Boolean              @default(false)
-  
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+
   // Versioning (for snapshots)
-  version           Int                  @default(1)
-  
+  version Int @default(1)
+
   // Metadata
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  createdById       String?
-  createdBy         User?                @relation("TemplateCreator", fields: [createdById], references: [id])
-  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation("TemplateCreator", fields: [createdById], references: [id])
+
   // Snapshots (frozen copies used in transcripts)
-  snapshots         DocumentTemplateSnapshot[]
-  
+  snapshots DocumentTemplateSnapshot[]
+
   @@unique([state, templateType, name, version])
   @@index([state, templateType])
   @@index([templateType, isActive])
@@ -2468,26 +2594,26 @@ enum DocumentTemplateType {
 // Frozen snapshot of template used for a specific transcript
 // Editing the source template does NOT alter past transcripts
 model DocumentTemplateSnapshot {
-  id              String               @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Link to original template
-  templateId      String
-  template        DocumentTemplate     @relation(fields: [templateId], references: [id])
-  
+  templateId String
+  template   DocumentTemplate @relation(fields: [templateId], references: [id])
+
   // Link to job
-  jobId           String
-  job             Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
   // Frozen content (IMMUTABLE after creation)
   templateType    DocumentTemplateType
   content         String               @db.Text
   templateVersion Int
-  
+
   // Generated output
-  renderedHtml    String?              @db.Text
-  
-  createdAt       DateTime             @default(now())
-  
+  renderedHtml String? @db.Text
+
+  createdAt DateTime @default(now())
+
   @@unique([jobId, templateType])
   @@index([templateId])
   @@index([jobId])
@@ -2504,8 +2630,8 @@ model DocumentTemplateSnapshot {
 // -----------------------------------------------------------------------------
 
 enum DepositionNoteType {
-  PROPER_NOUN      // Names, companies, streets, cities - feeds Deepgram keywords
-  GENERAL_NOTE     // Reporter-only memory aid
+  PROPER_NOUN // Names, companies, streets, cities - feeds Deepgram keywords
+  GENERAL_NOTE // Reporter-only memory aid
 }
 
 // -----------------------------------------------------------------------------
@@ -2516,7 +2642,7 @@ enum DepositionNoteType {
 // -----------------------------------------------------------------------------
 
 enum DataSource {
-  IMPORT            // AI extraction from uploaded document
-  MANUAL            // User entered directly
+  IMPORT // AI extraction from uploaded document
+  MANUAL // User entered directly
   REPORTER_OVERRIDE // Reporter corrected imported value
 }

@@ -122,21 +122,41 @@ export async function processTranscriptionJob(
       status: 'COMPLETED' as const,
     };
 
+    let transcriptionId: string;
     if (existingTranscript) {
       // Update existing transcript
       await db.transcription.update({
         where: { id: existingTranscript.id },
         data: transcriptData,
       });
+      transcriptionId = existingTranscript.id;
     } else {
       // Create new transcript
-      await db.transcription.create({
+      const newTranscript = await db.transcription.create({
         data: {
           ...transcriptData,
           jobId,
           version: 1,
         },
       });
+      transcriptionId = newTranscript.id;
+    }
+
+    // Persist confidence statistics (Phase 2.4: Pipeline Orchestration)
+    try {
+      const { persistConfidenceStats } = await import('@/lib/services/confidence-analysis-service');
+      const wordData = result.words.map((w: any) => ({
+        word: w.word || '',
+        confidence: w.confidence || 0,
+        speaker: w.speaker,
+        start: w.start || 0,
+        end: w.end || 0,
+      }));
+      await persistConfidenceStats(jobId, transcriptionId, wordData);
+      logger.info(`Confidence stats persisted for job ${jobId}`, { jobId, transcriptionId });
+    } catch (statsError) {
+      logger.error(`Failed to persist confidence stats for job ${jobId}`, statsError as Error, { jobId });
+      // Don't fail the transcription if stats persistence fails
     }
 
     // Update job status based on quality

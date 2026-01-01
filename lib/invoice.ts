@@ -210,13 +210,20 @@ export interface PricingRates {
   perMinute: number; // cents
   rushMultiplier: number; // e.g., 1.5 for 50% rush fee
   expeditedFee: number; // cents
+  rxFlatFee: number; // cents - Manual RX forensic enhancement
+  humanReviewPerThousandWords: number; // cents - Confidence-based review
 }
 
+// =============================================================================
+// LOCKED PRICING (matches Authoritative Build Specification)
+// =============================================================================
 export const DEFAULT_RATES: PricingRates = {
-  perPage: 350, // $3.50 per page
-  perMinute: 150, // $1.50 per minute
-  rushMultiplier: 1.5,
-  expeditedFee: 10000, // $100 flat fee
+  perPage: 350, // $3.50 per page (legacy per-page pricing)
+  perMinute: 160, // $1.60 per audio minute (primary billing unit)
+  rushMultiplier: 1.5, // 50% rush fee
+  expeditedFee: 10000, // $100 flat fee for expedited delivery
+  rxFlatFee: 15000, // $150 flat fee for Manual RX Forensic Enhancement
+  humanReviewPerThousandWords: 35, // $0.35 per 1,000 words reviewed
 };
 
 export function calculateJobPrice(
@@ -224,6 +231,10 @@ export function calculateJobPrice(
   durationMinutes: number,
   isRush: boolean,
   rates = DEFAULT_RATES,
+  options: {
+    includeRxEnhancement?: boolean;
+    humanReviewWordCount?: number;
+  } = {},
 ): InvoiceItem[] {
   const items: InvoiceItem[] = [];
 
@@ -238,14 +249,38 @@ export function calculateJobPrice(
     });
   }
 
-  // Audio duration charge
+  // Audio duration charge (primary billing unit per spec)
   if (durationMinutes > 0) {
-    const durationPrice = durationMinutes * rates.perMinute;
+    // Apply 15-minute minimum
+    const billableMinutes = Math.max(durationMinutes, 15);
+    const durationPrice = billableMinutes * rates.perMinute;
     items.push({
-      description: `Audio Processing (${durationMinutes} minutes @ ${formatCurrency(rates.perMinute)}/min)`,
-      quantity: durationMinutes,
+      description: `Automated Transcription (${billableMinutes} minutes @ ${formatCurrency(rates.perMinute)}/min)`,
+      quantity: billableMinutes,
       unitPrice: rates.perMinute,
       total: durationPrice,
+    });
+  }
+
+  // Manual RX Forensic Enhancement (flat fee per spec)
+  if (options.includeRxEnhancement) {
+    items.push({
+      description: 'Manual Forensic Enhancement (Premium)',
+      quantity: 1,
+      unitPrice: rates.rxFlatFee,
+      total: rates.rxFlatFee,
+    });
+  }
+
+  // Human Review - Confidence-based (per spec: $0.35 per 1,000 words)
+  if (options.humanReviewWordCount && options.humanReviewWordCount > 0) {
+    const thousands = options.humanReviewWordCount / 1000;
+    const reviewPrice = Math.round(thousands * rates.humanReviewPerThousandWords);
+    items.push({
+      description: `Confidence-Based Human Review (${options.humanReviewWordCount.toLocaleString()} words @ ${formatCurrency(rates.humanReviewPerThousandWords)}/1000 words)`,
+      quantity: thousands,
+      unitPrice: rates.humanReviewPerThousandWords,
+      total: reviewPrice,
     });
   }
 

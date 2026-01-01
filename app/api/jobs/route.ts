@@ -14,6 +14,8 @@ import { checkRateLimit } from '@/lib/security';
 import { JobStatus } from '@prisma/client';
 import { invalidateDashboardCache } from '@/lib/cache';
 import { safePagination, SelectPatterns as _SelectPatterns } from '@/lib/query-optimization';
+import { createPricingSnapshot } from '@/lib/services/pricing-snapshot-service';
+import { BillingService } from '@/lib/services/billing-service';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs - List jobs with filters
@@ -140,12 +142,38 @@ async function postJobsHandler(request: NextRequest) {
     const body = await request.json();
     const validatedData = createJobSchema.parse(body);
 
-    // 🔒 Security: Inject createdById
-    const job = await db.job.create({
-      data: {
-        ...validatedData,
-        createdById: session.user.id,
-      },
+    // Get user's firm ID
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { firmId: true },
+    });
+
+    if (!user?.firmId) {
+      return NextResponse.json(
+        { error: 'User must be associated with a firm' },
+        { status: 400 },
+      );
+    }
+
+    // Use job creation service (Phase 1: Domain Enforcement)
+    const { createJob } = await import('@/lib/services/job-creation-service');
+    
+    const result = await createJob({
+      ...validatedData,
+      firmId: user.firmId,
+      createdById: session.user.id,
+    });
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: 400 },
+      );
+    }
+
+    // Fetch the created job with relations
+    const job = await db.job.findUnique({
+      where: { id: result.jobId! },
       include: {
         createdBy: {
           select: {
@@ -157,6 +185,13 @@ async function postJobsHandler(request: NextRequest) {
         },
       },
     });
+
+    if (!job) {
+      return NextResponse.json(
+        { error: 'Job created but not found' },
+        { status: 500 },
+      );
+    }
 
     logger.info(`Job created: ${job.id} by user ${session.user.id}`);
 
