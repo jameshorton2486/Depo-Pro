@@ -128,19 +128,24 @@
     --error: 0 62% 61%;
   }
 
-  * {
-    border-color: inherit;
-  }
-  
-  html {
-    @apply scroll-smooth;
-  }
-  
-  body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
+      * {
+        border-color: inherit;
+      }
+      
+      html {
+        @apply scroll-smooth;
+      }
+      
+      body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-feature-settings: "rlig" 1, "calt" 1;
+        font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+      }
+      
+      code, pre {
+        font-family: var(--font-geist-mono), "JetBrains Mono", "Fira Code", monospace;
+      }
 
   /* Typography defaults */
   h1, h2, h3, h4, h5, h6 {
