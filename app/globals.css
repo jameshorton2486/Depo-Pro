@@ -7,48 +7,6 @@
 @import '../styles/calendar.css';
 @import '../styles/design-tokens.css';
 
-@custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}
-
 @layer base {
   :root {
     /* Base Colors (HSL format for shadcn compatibility) */
@@ -165,7 +123,7 @@
   }
 
   * {
-    @apply border-border;
+    border-color: inherit;
   }
   
   html {
@@ -173,7 +131,8 @@
   }
   
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -264,7 +223,9 @@
   input[type="number"],
   textarea,
   select {
-    @apply rounded-md border border-input bg-background px-3 py-2 text-sm 
+    @apply rounded-md px-3 py-2 text-sm;
+    border: 1px solid hsl(var(--input));
+    background-color: hsl(var(--background)); 
            ring-offset-background 
            placeholder:text-muted-foreground 
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
@@ -323,7 +284,9 @@
   }
 
   .page-header {
-    @apply py-8 bg-card border-b border-border;
+    @apply py-8 border-b;
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--border));
   }
 
   .page-title {
@@ -360,8 +323,9 @@
 
   /* Cards */
   .card-depo {
-    @apply bg-card rounded-xl border border-border shadow-card 
-           transition-all duration-200;
+    @apply rounded-xl transition-all duration-200;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px 0 rgb(0 0 0 / 0.02);
   }
 
@@ -374,7 +338,8 @@
   }
 
   .card-header-depo {
-    @apply px-6 py-4 border-b border-border;
+    @apply px-6 py-4 border-b;
+    border-color: hsl(var(--border));
   }
 
   .card-body-depo {
@@ -382,12 +347,16 @@
   }
 
   .card-footer-depo {
-    @apply px-6 py-4 bg-muted/30 border-t border-border rounded-b-xl;
+    @apply px-6 py-4 border-t rounded-b-xl;
+    background-color: hsl(var(--muted) / 0.3);
+    border-color: hsl(var(--border));
   }
 
   /* Navigation */
   .navbar {
-    @apply sticky top-0 z-[200] bg-card/80 backdrop-blur-md border-b border-border;
+    @apply sticky top-0 z-[200] backdrop-blur-md border-b;
+    background-color: hsl(var(--card) / 0.8);
+    border-color: hsl(var(--border));
   }
 
   .navbar-content {
@@ -473,7 +442,9 @@
 
   /* Tables */
   .table-container {
-    @apply overflow-x-auto border border-border rounded-xl bg-card;
+    @apply overflow-x-auto rounded-xl;
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--card));
   }
 
   .table-depo {
@@ -486,7 +457,8 @@
   }
 
   .table-depo td {
-    @apply px-4 py-3 border-b border-border/50;
+    @apply px-4 py-3 border-b;
+    border-color: hsl(var(--border) / 0.5);
   }
 
   .table-depo tr:last-child td {
@@ -504,7 +476,9 @@
   }
 
   .transcript-panel {
-    @apply bg-card border border-border rounded-xl overflow-hidden;
+    @apply rounded-xl overflow-hidden;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
   }
 
   .transcript-content {
@@ -612,7 +586,9 @@
 
   /* Stat Cards */
   .stat-card {
-    @apply bg-card rounded-xl border border-border p-6;
+    @apply rounded-xl p-6;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
   }
 
   .stat-value {
