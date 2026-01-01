@@ -5,18 +5,40 @@
 
 :root {
   /* ===================================================================
-     COLOR SYSTEM - Professional Legal Tech
+     BRAND COLOR SYSTEM - Legal-Grade Professional
+     Think: Clio + Notion + Stripe
      =================================================================== */
   
-  /* Primary Colors */
+  /* Brand Primary - Deep Blue / Indigo (trust, law, security) */
+  --brand-primary: #1e40af;        /* Indigo-800 */
+  --brand-primary-soft: #e0e7ff;   /* Indigo-100 */
+  --brand-primary-dark: #1e3a8a;   /* Indigo-900 */
+  
+  /* Brand Accent - Soft Teal (status, success, confirmation) */
+  --brand-accent: #0f766e;         /* Teal-700 */
+  --brand-accent-soft: #ccfbf1;    /* Teal-100 */
+  
+  /* Brand Muted */
+  --brand-muted: #475569;          /* Slate-600 */
+  
+  /* Brand Surfaces */
+  --brand-bg: #f8fafc;             /* Slate-50 - Warm off-white */
+  --brand-card: #ffffff;
+  
+  /* Primary Colors (legacy compatibility + enhanced) */
   --color-primary: #0F172A;        /* Deep Navy / Ink */
   --color-secondary: #334155;      /* Slate */
-  --color-accent: #2563EB;         /* Muted Blue */
+  --color-accent: #1e40af;         /* Updated to Indigo-800 */
+  --color-accent-hover: #1d4ed8;   /* Indigo-700 */
+  --color-accent-soft: #e0e7ff;    /* Indigo-100 */
   
   /* Status Colors */
-  --color-success: #16A34A;        /* Legal Green */
+  --color-success: #0f766e;        /* Teal-700 (aligned with brand) */
+  --color-success-soft: #ccfbf1;   /* Teal-100 */
   --color-warning: #D97706;        /* Amber */
+  --color-warning-soft: #fef3c7;   /* Amber-100 */
   --color-error: #DC2626;          /* Error Red */
+  --color-error-soft: #fee2e2;     /* Red-100 */
   
   /* Surface Colors */
   --color-surface: #FFFFFF;        /* White */
@@ -28,6 +50,9 @@
   --color-text-secondary: #334155; /* Slate */
   --color-text-muted: #64748B;     /* Muted Text */
   --color-text-inverse: #FFFFFF;   /* White text on dark */
+  
+  /* Hero Gradient */
+  --hero-gradient: linear-gradient(135deg, #1e3a8a 0%, #020617 100%);
   
   /* ===================================================================
      TYPOGRAPHY

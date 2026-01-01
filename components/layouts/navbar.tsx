@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getInitials } from '@/lib/utils';
+import { CommandTrigger } from '@/components/command';
 
 interface NavbarProps {
   user: Session['user'];
@@ -136,7 +137,12 @@ export function Navbar({ user }: NavbarProps) {
           </div>
         </div>
 
-        {/* User Menu */}
+        {/* Right: Command Palette + User Menu */}
+        <div className="flex items-center gap-2">
+          {/* Command Palette Trigger */}
+          <CommandTrigger className="hidden md:flex" />
+
+          {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -172,6 +178,7 @@ export function Navbar({ user }: NavbarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </nav>
   );

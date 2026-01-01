@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { FileText, Flag, BarChart3, Settings, LogOut, FolderOpen } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import { CommandTrigger } from '@/components/command';
 
 interface AttorneyNavbarProps {
   user: {
@@ -63,8 +64,9 @@ export function AttorneyNavbar({ user }: AttorneyNavbarProps) {
             })}
           </div>
 
-          {/* User Menu */}
+          {/* Right: Command Palette + User Menu */}
           <div className="flex items-center gap-4">
+            <CommandTrigger className="hidden md:flex" />
             <span className="text-sm text-gray-600">{user.name}</span>
             <Button
               variant="ghost"

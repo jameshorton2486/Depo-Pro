@@ -6,14 +6,7 @@ import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-const navItems = [
-  { label: 'Features', href: '/features' },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'Security', href: '/security' },
-  { label: 'About', href: '/about' },
-  { label: 'Contact', href: '/contact' },
-];
+import { PUBLIC_NAV_ITEMS } from '@/lib/navigation';
 
 export function PublicHeader() {
   const pathname = usePathname();
@@ -37,24 +30,31 @@ export function PublicHeader() {
           : 'bg-transparent'
       )}
     >
-      <div className="max-w-content mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-ink">Depo-Pro</span>
+            <span className={cn(
+              "text-xl font-bold transition-colors",
+              isScrolled ? "text-indigo-900" : "text-white"
+            )}>
+              Depo-Pro
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            {navItems.map((item) => (
+            {PUBLIC_NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
                   'text-sm font-medium transition-colors',
                   pathname === item.href
-                    ? 'text-accent'
-                    : 'text-slate hover:text-ink'
+                    ? isScrolled ? 'text-indigo-600' : 'text-white'
+                    : isScrolled 
+                      ? 'text-slate-600 hover:text-indigo-600' 
+                      : 'text-white/80 hover:text-white'
                 )}
               >
                 {item.label}
@@ -66,11 +66,24 @@ export function PublicHeader() {
           <div className="hidden md:flex items-center gap-4">
             <Link
               href="/login"
-              className="text-sm font-medium text-slate hover:text-ink transition-colors"
+              className={cn(
+                "text-sm font-medium transition-colors",
+                isScrolled 
+                  ? "text-slate-600 hover:text-indigo-600" 
+                  : "text-white/80 hover:text-white"
+              )}
             >
               Sign In
             </Link>
-            <Button asChild className="bg-accent hover:bg-accent-hover">
+            <Button 
+              asChild 
+              className={cn(
+                "font-medium",
+                isScrolled 
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white" 
+                  : "bg-white text-indigo-900 hover:bg-white/90"
+              )}
+            >
               <Link href="/register">Start Free Trial</Link>
             </Button>
           </div>
@@ -82,9 +95,9 @@ export function PublicHeader() {
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? (
-              <X className="h-6 w-6 text-ink" />
+              <X className={cn("h-6 w-6", isScrolled ? "text-slate-900" : "text-white")} />
             ) : (
-              <Menu className="h-6 w-6 text-ink" />
+              <Menu className={cn("h-6 w-6", isScrolled ? "text-slate-900" : "text-white")} />
             )}
           </button>
         </div>
@@ -92,30 +105,30 @@ export function PublicHeader() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white/95 backdrop-blur-sm border-t border-border animate-in slide-in-from-top-2 duration-200">
+        <div className="md:hidden bg-white/95 backdrop-blur-sm border-t border-slate-200 animate-in slide-in-from-top-2 duration-200">
           <div className="px-4 py-4 space-y-3">
-            {navItems.map((item) => (
+            {PUBLIC_NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
                   'block py-2 text-base font-medium',
-                  pathname === item.href ? 'text-accent' : 'text-slate'
+                  pathname === item.href ? 'text-indigo-600' : 'text-slate-600'
                 )}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {item.label}
               </Link>
             ))}
-            <hr className="my-4 border-border" />
+            <hr className="my-4 border-slate-200" />
             <Link
               href="/login"
-              className="block py-2 text-base font-medium text-slate"
+              className="block py-2 text-base font-medium text-slate-600"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Sign In
             </Link>
-            <Button asChild className="w-full bg-accent hover:bg-accent-hover">
+            <Button asChild className="w-full bg-indigo-600 hover:bg-indigo-700">
               <Link href="/register">Start Free Trial</Link>
             </Button>
           </div>

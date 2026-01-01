@@ -18,23 +18,24 @@ export default async function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
+    <div className="min-h-screen bg-[var(--brand-bg)]">
       <PublicHeader />
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 lg:pt-40 lg:pb-24">
-        <div className="container mx-auto px-4 lg:px-6 text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-[52px] font-bold text-[var(--color-primary)] mb-6 leading-[1.1] max-w-4xl mx-auto">
+      {/* Hero Section - Enhanced with gradient */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 text-white">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+        <div className="relative container mx-auto px-4 lg:px-6 pt-32 pb-20 lg:pt-40 lg:pb-28 text-center">
+          <h1 className="text-4xl md:text-5xl lg:text-[56px] font-bold mb-6 leading-[1.1] max-w-4xl mx-auto tracking-tight">
             Professional Deposition Transcription—Built for Court Reporters
           </h1>
-          <p className="text-lg md:text-xl text-[var(--color-text-secondary)] max-w-3xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto mb-10 leading-relaxed">
             Depo-Pro streamlines deposition management with AI-powered transcription, scopist collaboration, and enterprise-grade security—designed specifically for the legal reporting workflow.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               asChild
               size="lg"
-              className="bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white rounded-[var(--radius-button)] px-8 py-6 text-base font-medium"
+              className="bg-white text-indigo-900 hover:bg-white/90 rounded-lg px-8 py-6 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               <Link href="/register">Start Free Trial</Link>
             </Button>
@@ -42,7 +43,7 @@ export default async function Home() {
               asChild
               variant="outline"
               size="lg"
-              className="border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] rounded-[var(--radius-button)] px-8 py-6 text-base font-medium"
+              className="border-white/30 text-white hover:bg-white/10 rounded-lg px-8 py-6 text-base font-medium"
             >
               <Link href="#how-it-works">See How It Works</Link>
             </Button>
@@ -51,13 +52,13 @@ export default async function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-16 lg:py-24 bg-[var(--color-surface)]">
+      <section id="how-it-works" className="py-16 lg:py-24 bg-white">
         <div className="container mx-auto px-4 lg:px-6">
           <div className="text-center mb-12 lg:mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-[var(--color-primary)] mb-4">
+            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-4">
               How It Works
             </h2>
-            <p className="text-lg text-[var(--color-text-secondary)] max-w-2xl mx-auto">
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               A complete deposition workflow—from job creation to certified transcript.
             </p>
           </div>
@@ -98,10 +99,10 @@ export default async function Home() {
       </section>
 
       {/* Built for Legal Professionals Section */}
-      <section className="py-16 lg:py-24 bg-[var(--color-bg)]">
+      <section className="py-16 lg:py-24 bg-slate-50">
         <div className="container mx-auto px-4 lg:px-6">
           <div className="text-center mb-12 lg:mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-[var(--color-primary)] mb-4">
+            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-4">
               Built for Legal Professionals
             </h2>
           </div>
@@ -124,19 +125,19 @@ export default async function Home() {
       </section>
 
       {/* Security Trust Strip */}
-      <section className="py-12 bg-[var(--color-surface)] border-y border-[var(--color-border)]">
+      <section className="py-12 bg-white border-y border-slate-200">
         <div className="container mx-auto px-4 lg:px-6">
-          <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-12 text-sm text-[var(--color-text-secondary)]">
+          <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-12 text-sm text-slate-600">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[var(--color-primary)]">SOC 2</span>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">SOC 2</span>
               <span>Type II Audited</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[var(--color-primary)]">HIPAA</span>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">HIPAA</span>
               <span>Ready Architecture</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-[var(--color-primary)]">AES-256</span>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">AES-256</span>
               <span>Encryption</span>
             </div>
           </div>
@@ -144,18 +145,18 @@ export default async function Home() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-16 lg:py-24 bg-[var(--color-primary)] text-[var(--color-text-inverse)]">
+      <section className="py-16 lg:py-24 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 text-white">
         <div className="container mx-auto px-4 lg:px-6 text-center">
           <h2 className="text-3xl lg:text-4xl font-bold mb-4">
             Ready to modernize your deposition workflow?
           </h2>
-          <p className="text-lg text-[var(--color-text-inverse)]/80 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
             Start your free trial today—no credit card required.
           </p>
           <Button
             asChild
             size="lg"
-            className="bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white rounded-[var(--radius-button)] px-8 py-6 text-base font-medium"
+            className="bg-white text-indigo-900 hover:bg-white/90 rounded-lg px-8 py-6 text-base font-semibold shadow-lg"
           >
             <Link href="/register">Start Free Trial</Link>
           </Button>
@@ -179,24 +180,24 @@ function WorkflowStep({
   description: string;
 }) {
   return (
-    <div className="flex flex-col items-center text-center">
-      <div className="w-16 h-16 rounded-full bg-[var(--color-accent)]/10 flex items-center justify-center mb-4">
-        <Icon className="w-8 h-8 text-[var(--color-accent)]" />
+    <div className="flex flex-col items-center text-center group">
+      <div className="w-16 h-16 rounded-xl bg-indigo-100 flex items-center justify-center mb-4 group-hover:bg-indigo-200 transition-colors">
+        <Icon className="w-8 h-8 text-indigo-700" />
       </div>
-      <div className="text-sm font-semibold text-[var(--color-accent)] mb-2 uppercase tracking-[var(--tracking-label)]">
+      <div className="text-xs font-semibold text-indigo-600 mb-2 uppercase tracking-wider">
         Step {number}
       </div>
-      <h3 className="text-lg font-semibold text-[var(--color-primary)] mb-2">{title}</h3>
-      <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{description}</p>
+      <h3 className="text-lg font-semibold text-slate-900 mb-2">{title}</h3>
+      <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
     </div>
   );
 }
 
 function RoleCard({ title, description }: { title: string; description: string }) {
   return (
-    <div className="bg-[var(--color-surface)] p-6 lg:p-8 rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] border border-[var(--color-border)]">
-      <h3 className="text-xl font-semibold text-[var(--color-primary)] mb-3">{title}</h3>
-      <p className="text-[var(--color-text-secondary)] leading-relaxed">{description}</p>
+    <div className="bg-white p-6 lg:p-8 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 transition-all duration-200">
+      <h3 className="text-xl font-semibold text-slate-900 mb-3">{title}</h3>
+      <p className="text-slate-600 leading-relaxed">{description}</p>
     </div>
   );
 }

@@ -6,6 +6,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { Navbar } from '@/components/layouts/navbar';
+import { CommandPalette } from '@/components/command';
 
 export default async function DashboardLayout({
   children,
@@ -24,6 +25,7 @@ export default async function DashboardLayout({
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>
+      <CommandPalette />
     </div>
   );
 }

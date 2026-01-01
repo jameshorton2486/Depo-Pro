@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { WaveformPlayer } from '@/components/audio/waveform-player';
 import { SyncedTranscriptViewer, TranscriptSegment, TranscriptWord } from '@/components/transcripts/synced-transcript-viewer';
 import { LowConfidencePanel } from '@/components/transcripts/low-confidence-panel';
+import { TranscriptSkeleton } from '@/components/transcripts/transcript-skeleton';
+import { toast } from 'sonner';
 
 interface ReviewClientNewProps {
   jobId: string;
@@ -113,9 +115,8 @@ export function ReviewClientNew({
 
   // Complete review
   const handleCompleteReview = async () => {
-    if (!confirm('Mark this transcript as review complete? This will finalize the review.')) {
-      return;
-    }
+    // Use toast confirm instead of browser confirm
+    toast.loading('Completing review...', { id: 'complete-review' });
     
     await handleSave();
     
@@ -130,10 +131,20 @@ export function ReviewClientNew({
         throw new Error('Failed to complete review');
       }
       
-      router.push(`/jobs/${jobId}`);
+      toast.success('Review completed', {
+        id: 'complete-review',
+        description: 'Transcript review has been finalized.',
+      });
+      
+      setTimeout(() => {
+        router.push(`/jobs/${jobId}`);
+      }, 1000);
     } catch (err) {
       console.error('Complete failed:', err);
-      alert('Failed to complete review. Please try again.');
+      toast.error('Failed to complete review', {
+        id: 'complete-review',
+        description: err instanceof Error ? err.message : 'Please try again.',
+      });
     }
   };
 
@@ -141,23 +152,36 @@ export function ReviewClientNew({
   const confidenceThreshold = 0.85;
   const lowConfidenceWords = allWords.filter(w => w.confidence < confidenceThreshold);
 
+  // Show loading state if segments are empty
+  const isLoading = segments.length === 0;
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        <div className="p-4">
+          <TranscriptSkeleton />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen flex flex-col bg-slate-950">
+    <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="h-14 px-4 flex items-center justify-between border-b border-slate-800 bg-slate-900 shrink-0">
+      <header className="h-14 px-4 flex items-center justify-between border-b border-border bg-card shrink-0">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="text-slate-400 hover:text-slate-200 transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             ← Back
           </button>
           <div>
-            <h1 className="text-lg font-semibold text-slate-200">{caseName}</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-lg font-semibold text-foreground">{caseName}</h1>
+            <p className="text-sm text-muted-foreground">
               {deponentName || 'Review Mode'}
               {lastSaved && (
-                <span className="ml-2 text-green-400">
+                <span className="ml-2 text-green-600 dark:text-green-400">
                   Saved {lastSaved.toLocaleTimeString()}
                 </span>
               )}
@@ -169,14 +193,14 @@ export function ReviewClientNew({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm disabled:opacity-50 transition-colors"
           >
             {isSaving ? 'Saving...' : 'Save Progress'}
           </button>
           <button
             onClick={handleCompleteReview}
             disabled={isSaving}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm disabled:opacity-50 transition-colors"
           >
             Complete Review
           </button>
@@ -184,7 +208,7 @@ export function ReviewClientNew({
       </header>
 
       {/* Stats Bar */}
-      <div className="px-4 py-2 bg-slate-900/50 border-b border-slate-800 text-xs text-slate-400 flex gap-4 shrink-0">
+      <div className="px-4 py-2 bg-muted/50 border-b border-border text-xs text-muted-foreground flex gap-4 shrink-0">
         <span>Total Words: {allWords.length.toLocaleString()}</span>
         <span>Low Confidence: {lowConfidenceWords.length}</span>
         <span>Reviewed: {reviewedWords.size}</span>
@@ -192,14 +216,14 @@ export function ReviewClientNew({
       </div>
 
       {/* Audio Player */}
-      <div className="px-4 py-3 border-b border-slate-800 shrink-0">
+      <div className="px-4 py-3 border-b border-border shrink-0">
         {audioUrl ? (
           <WaveformPlayer
             audioUrl={audioUrl}
             onTimeUpdate={setCurrentTime}
           />
         ) : (
-          <div className="h-20 flex items-center justify-center text-slate-500 bg-slate-900 rounded-lg">
+          <div className="h-20 flex items-center justify-center text-muted-foreground bg-muted rounded-lg">
             No audio file available
           </div>
         )}
@@ -208,7 +232,7 @@ export function ReviewClientNew({
       {/* Main Content: Transcript + Review Panel */}
       <div className="flex-1 flex overflow-hidden">
         {/* Transcript (2/3 width) */}
-        <div className="w-2/3 border-r border-slate-800 overflow-hidden">
+        <div className="w-2/3 border-r border-border overflow-hidden">
           <SyncedTranscriptViewer
             segments={segments}
             currentTime={currentTime}
@@ -219,7 +243,7 @@ export function ReviewClientNew({
         </div>
 
         {/* Review Panel (1/3 width) */}
-        <div className="w-1/3 overflow-hidden">
+        <div className="w-1/3 overflow-hidden bg-card">
           <LowConfidencePanel
             allWords={allWords}
             confidenceThreshold={confidenceThreshold}

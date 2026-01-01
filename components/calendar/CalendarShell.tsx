@@ -37,6 +37,7 @@ import { CalendarView } from './CalendarView';
 import { CalendarTimeline } from './CalendarTimeline';
 import { EventDetailsDrawer } from './EventDetailsDrawer';
 import { CreateEventModal } from './CreateEventModal';
+import { CalendarViewControls } from './calendar-view-controls';
 import {
   CalendarEventUI,
   CalendarViewType,
@@ -65,6 +66,7 @@ export function CalendarShell({
   const hasInitialDataRef = useRef(initialEvents.length > 0);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarViewType>('week');
+  const calendarRef = useRef<any>(null); // For CalendarViewControls
   
   // Modals/Drawers
   const [selectedEvent, setSelectedEvent] = useState<CalendarEventUI | null>(null);
@@ -79,6 +81,7 @@ export function CalendarShell({
     'IN_PROGRESS',
   ]);
   const [showCancelled, setShowCancelled] = useState(false);
+  const [showPast, setShowPast] = useState(false); // Past depositions toggle
 
   // Reporters list (for assignment dropdown)
   const [reporters, setReporters] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
@@ -128,6 +131,9 @@ export function CalendarShell({
       if (showCancelled) {
         params.set('showCancelled', 'true');
       }
+      if (!showPast) {
+        params.set('hidePast', 'true');
+      }
       if (firmId) {
         params.set('firmId', firmId);
       }
@@ -145,11 +151,20 @@ export function CalendarShell({
       const data = await response.json();
       
           // Transform dates - API returns start/end (already Date objects or ISO strings)
-      const transformedEvents: CalendarEventUI[] = data.events.map((event: any) => ({
+      let transformedEvents: CalendarEventUI[] = data.events.map((event: any) => ({
         ...event,
         start: event.start ? new Date(event.start) : (event.startTime ? new Date(event.startTime) : new Date()),
         end: event.end ? new Date(event.end) : (event.endTime ? new Date(event.endTime) : new Date(event.start).getTime() + 2 * 60 * 60 * 1000), // Default 2 hours if no end
       }));
+
+      // Filter past events if showPast is false
+      if (!showPast) {
+        const now = new Date();
+        transformedEvents = transformedEvents.filter(event => {
+          const eventEnd = event.end ? new Date(event.end) : new Date(event.start);
+          return eventEnd >= now;
+        });
+      }
 
       // Detect conflicts
       const conflictIds = detectConflicts(transformedEvents);
@@ -167,7 +182,7 @@ export function CalendarShell({
     } finally {
       setIsLoading(false);
     }
-  }, [currentDate, view, statusFilters, showCancelled, firmId, agencyId, userRole, userId]);
+  }, [currentDate, view, statusFilters, showCancelled, showPast, firmId, agencyId, userRole, userId]);
 
   // Fetch reporters for assignment dropdown
   const fetchReporters = useCallback(async () => {
@@ -204,7 +219,7 @@ export function CalendarShell({
     }
     // User changed filters/view/date, refetch
     fetchEvents();
-  }, [fetchEvents, currentDate, view, statusFilters, showCancelled]);
+  }, [fetchEvents, currentDate, view, statusFilters, showCancelled, showPast]);
 
   // ============================================
   // NAVIGATION HANDLERS
@@ -357,9 +372,22 @@ export function CalendarShell({
   // RENDER
   // ============================================
 
+  // Note: Filtering is handled in fetchEvents via API params and client-side backup
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
+      {/* Header with View Controls */}
+      <CalendarViewControls
+        calendarRef={calendarRef}
+        currentView={view}
+        onViewChange={(newView: string) => setView(newView as CalendarViewType)}
+        showPast={showPast}
+        onShowPastChange={setShowPast}
+        currentDate={currentDate}
+        onDateChange={setCurrentDate}
+      />
+      
+      {/* Legacy Header (kept for backward compatibility, can be removed if CalendarViewControls works) */}
       <div className="flex items-center justify-between p-4 border-b bg-white">
         {/* Left: Navigation */}
         <div className="flex items-center gap-2">
@@ -433,6 +461,12 @@ export function CalendarShell({
                 onCheckedChange={setShowCancelled}
               >
                 Show Cancelled
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={showPast}
+                onCheckedChange={setShowPast}
+              >
+                Show Past Depositions
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -20,19 +20,31 @@ const config: Config = {
          COLORS
          ===================================================================== */
       colors: {
-        // Brand colors
+        // Brand colors (LOCKED - Use tokens, not raw colors)
         brand: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          800: "#1e40af",
-          900: "#1e3a8a",
-          950: "#172554",
+          DEFAULT: '#2563EB',        // Primary brand blue
+          foreground: '#FFFFFF',     // Text on brand background
+          subtle: '#EFF6FF',         // Light brand tint for backgrounds
+          hover: '#1D4ED8',          // Darker blue on hover
+          muted: '#3B82F6',          // Softer brand accent
+          primary: '#1e40af',        // Indigo-800 (legacy)
+          'primary-soft': '#e0e7ff', // Indigo-100 (legacy)
+          'primary-dark': '#1e3a8a', // Indigo-900 (legacy)
+          accent: '#0f766e',         // Teal-700 (legacy)
+          'accent-soft': '#ccfbf1',  // Teal-100 (legacy)
+          bg: '#f8fafc',             // Slate-50 (legacy)
+          card: '#ffffff',           // Legacy
+          50: '#eff6ff',
+          100: '#e0e7ff',
+          200: '#c7d2fe',
+          300: '#a5b4fc',
+          400: '#818cf8',
+          500: '#6366f1',
+          600: '#4f46e5',
+          700: '#4338ca',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          950: '#172554',
         },
         // shadcn/ui semantic colors
         border: "hsl(var(--border))",
@@ -155,6 +167,11 @@ const config: Config = {
       spacing: {
         "4.5": "1.125rem",
         "18": "4.5rem",
+      },
+      backgroundImage: {
+        'hero-gradient': 'linear-gradient(135deg, #1e3a8a 0%, #020617 100%)',
+        'hero-gradient-light': 'linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)',
+        'hero-gradient-indigo': 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0f172a 100%)',
       },
     },
   },

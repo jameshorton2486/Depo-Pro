@@ -13,6 +13,7 @@ import {
   STATUS_COLORS,
 } from './calendar.types';
 import { CalendarEventCard } from './CalendarEventCard';
+import { CalendarEventTooltip } from './calendar-event-tooltip';
 
 // ============================================
 // DATE-FNS LOCALIZER SETUP
@@ -132,15 +133,17 @@ export function CalendarView({
     };
   }, []);
 
-  // Custom event component
+  // Custom event component with tooltip
   const components = useMemo(
     () => ({
       event: ({ event }: { event: CalendarEventUI }) => (
-        <CalendarEventCard 
-          event={event} 
-          compact={view === 'month'} 
-          hasConflict={(event as any).hasConflict}
-        />
+        <CalendarEventTooltip event={event}>
+          <CalendarEventCard 
+            event={event} 
+            compact={view === 'month'} 
+            hasConflict={(event as any).hasConflict}
+          />
+        </CalendarEventTooltip>
       ),
     }),
     [view]
