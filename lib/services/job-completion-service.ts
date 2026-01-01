@@ -16,8 +16,6 @@
 import { db } from '@/lib/db';
 import { transitionJobStatus } from './job-field-lock-service';
 import { isPipelineComplete } from './audio-processing-orchestrator';
-import { getConfidenceStatsForJob } from './confidence-analysis-service';
-import { calculateJobBilling } from '@/lib/billing/pricing-snapshot';
 import { generateInvoiceForJob } from '@/lib/billing/invoice-generator';
 import type { JobStatus } from '@prisma/client';
 

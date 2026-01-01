@@ -9,7 +9,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { JobStatus } from '@prisma/client';
 
 import { db } from '@/lib/db';
-import { createJobSchema } from '@/lib/validations/job';
 import { withRequestLogging } from '@/lib/observability';
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
@@ -32,6 +31,11 @@ export const GET = withRequestLogging(async (
     if (!rateLimit.allowed) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
+
+    // Check for include query parameter
+    const searchParams = request.nextUrl.searchParams;
+    const includeParam = searchParams.get('include');
+    const includes = includeParam ? includeParam.split(',') : [];
 
     const job = await db.job.findUnique({
       where: { id },
@@ -66,6 +70,21 @@ export const GET = withRequestLogging(async (
             versionNumber: 'desc',
           },
         },
+        // Include transcription if requested
+        ...(includes.includes('transcription') && {
+          transcription: {
+            select: {
+              id: true,
+              words: true,
+              utterances: true,
+              fullTranscript: true,
+              wordCount: true,
+              flaggedWordCount: true,
+              averageConfidence: true,
+              status: true,
+            },
+          },
+        }),
       },
     });
 
@@ -81,6 +100,56 @@ export const GET = withRequestLogging(async (
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Transform data if transcription is included
+    if (includes.includes('transcription') && job.transcription) {
+      const transcription = job.transcription as any;
+      
+      // Transform utterances to segments format if utterances exist
+      if (transcription.utterances) {
+        const utterances = Array.isArray(transcription.utterances) 
+          ? transcription.utterances 
+          : JSON.parse(transcription.utterances as string || '[]');
+        
+        // Convert utterances to segments format expected by components
+        transcription.segments = utterances.map((utterance: any) => ({
+          speaker: utterance.speaker || 0,
+          words: utterance.words || [],
+          start: utterance.start || 0,
+          end: utterance.end || 0,
+        }));
+      } else if (transcription.words) {
+        // Fallback: create segments from words if utterances don't exist
+        const words = Array.isArray(transcription.words)
+          ? transcription.words
+          : JSON.parse(transcription.words as string || '[]');
+        
+        // Group words by speaker to create segments
+        const segmentsMap = new Map<number, any[]>();
+        words.forEach((word: any) => {
+          const speaker = word.speaker || 0;
+          if (!segmentsMap.has(speaker)) {
+            segmentsMap.set(speaker, []);
+          }
+          segmentsMap.get(speaker)!.push(word);
+        });
+        
+        transcription.segments = Array.from(segmentsMap.entries()).map(([speaker, wordsArray]) => ({
+          speaker,
+          words: wordsArray,
+          start: wordsArray[0]?.start || 0,
+          end: wordsArray[wordsArray.length - 1]?.end || 0,
+        }));
+      }
+    }
+
+    // Ensure files have url property (matching expected format)
+    if (includes.includes('files') && job.files) {
+      job.files = job.files.map((file: any) => ({
+        ...file,
+        url: file.storageUrl || file.url,
+      }));
     }
 
     return NextResponse.json(job);

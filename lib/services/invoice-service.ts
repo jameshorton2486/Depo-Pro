@@ -12,7 +12,6 @@
 
 import { db } from '@/lib/db';
 import { generateInvoiceForJob } from '@/lib/billing/invoice-generator';
-import type { InvoiceStatus } from '@prisma/client';
 
 // -----------------------------------------------------------------------------
 // Types

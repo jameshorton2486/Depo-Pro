@@ -15,6 +15,7 @@
 
 import { verifyWebhookSignature, handleStripeWebhook } from '@/lib/stripe/webhook-handler';
 import { db } from '@/lib/db';
+import { isWebhookProcessed, markWebhookProcessed } from '@/lib/services/stripe-idempotency';
 import type Stripe from 'stripe';
 
 // -----------------------------------------------------------------------------
@@ -39,10 +40,6 @@ export interface WebhookProcessingResult {
 // Get Stripe Client
 // -----------------------------------------------------------------------------
 
-function getStripeClient() {
-  const { stripe } = require('@/lib/stripe/client');
-  return stripe;
-}
 
 // -----------------------------------------------------------------------------
 // Verify Webhook Signature
@@ -114,14 +111,8 @@ export async function logWebhookEvent(
 // -----------------------------------------------------------------------------
 
 export async function isDuplicateEvent(eventId: string): Promise<boolean> {
-  const existingLog = await db.auditLog.findFirst({
-    where: {
-      targetType: 'stripe_event',
-      targetId: eventId,
-    },
-  });
-
-  return !!existingLog;
+  // Use the dedicated idempotency service
+  return await isWebhookProcessed(eventId);
 }
 
 // -----------------------------------------------------------------------------
@@ -141,6 +132,9 @@ export async function handleWebhookEvent(
       body: { received: true, duplicate: true },
     };
   }
+
+  // Mark as processed for idempotency
+  await markWebhookProcessed(event.id, event.type);
 
   // Log the event
   await logWebhookEvent(event.type, event.id, {

@@ -46,7 +46,6 @@ export function ReviewClient({
   // Core state
   const [words] = useState<ReviewWord[]>(initialWords);
   const [currentTime, setCurrentTime] = useState(savedSession?.audioPosition || 0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [confidenceThreshold, setConfidenceThreshold] = useState(
     savedSession?.confidenceThreshold || DEFAULT_CONFIDENCE_THRESHOLD,
   );
@@ -360,8 +359,6 @@ export function ReviewClient({
           src={audioUrl}
           currentTime={currentTime}
           onTimeUpdate={setCurrentTime}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
         />
       </div>
 
@@ -439,14 +436,12 @@ export function ReviewClient({
 
           {/* Low Confidence Panel */}
           <LowConfidencePanel
-            flaggedWords={flaggedWords}
-            currentWordIndex={currentWordIndex}
-            isPlaying={isPlaying}
-            onSeek={handleSeek}
-            onCorrect={handleCorrect}
+            allWords={words}
+            confidenceThreshold={confidenceThreshold}
+            onWordSelect={(word) => handleSeek(Math.max(0, word.start - 2))}
+            onWordCorrect={handleCorrect}
+            reviewedWords={reviewedIndices}
             onMarkReviewed={handleMarkReviewed}
-            onNavigateToWord={handleNavigateToWord}
-            className="flex-1 overflow-hidden"
           />
         </div>
       </div>

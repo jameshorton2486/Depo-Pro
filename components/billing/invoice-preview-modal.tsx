@@ -61,16 +61,6 @@ function formatCurrency(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function getServiceTypeLabel(serviceType: string): string {
-  const labels: Record<string, string> = {
-    TRANSCRIPTION_AUTOMATED: 'Transcription',
-    MODEL_UPGRADE: 'Model Upgrade',
-    AUDIO_ENHANCEMENT_MANUAL: 'RX Enhancement',
-    CONFIDENCE_REVIEW: 'Word Review',
-    FULL_SCOPIST_REVIEW: 'Full Review',
-  };
-  return labels[serviceType] || serviceType;
-}
 
 // -----------------------------------------------------------------------------
 // Component

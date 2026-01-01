@@ -19,7 +19,6 @@
 // =============================================================================
 
 import { db } from '@/lib/db';
-import { getCurrentPricingForFirm } from '@/lib/billing/pricing-snapshot';
 import { calculateJobBilling } from '@/lib/billing/pricing-snapshot';
 
 // -----------------------------------------------------------------------------
@@ -82,17 +81,11 @@ export async function generateInvoicePreview(
       return null;
     }
 
-    // Use pricing snapshot if available, otherwise get current pricing
-    const pricing = job.pricingSnapshot 
-      ? {
-          transcriptionRateCents: job.pricingSnapshot.transcriptionRateCents,
-          asrMultiplier: job.pricingSnapshot.asrMultiplier,
-          confidenceReviewRateCents: job.pricingSnapshot.confidenceReviewRateCents,
-          fullReviewRateCents: job.pricingSnapshot.fullReviewRateCents,
-          rxFlatFeeCents: job.pricingSnapshot.rxFlatFeeCents,
-          minTranscriptionMinutes: job.pricingSnapshot.minTranscriptionMinutes || 15,
-        }
-      : await getCurrentPricingForFirm(job.firmId || undefined);
+    // Use pricing snapshot if available (needed for calculateJobBilling)
+    if (!job.pricingSnapshot) {
+      // Should not happen - pricing snapshot should exist at this point
+      return null;
+    }
 
     // Determine actual or estimated values
     const durationMinutes = 
@@ -136,9 +129,6 @@ export async function generateInvoicePreview(
 
     // Warnings
     const warnings: string[] = [];
-    if (!job.pricingSnapshot) {
-      warnings.push('Using current pricing rates (snapshot will be created at job creation)');
-    }
     if (!job.audioDurationMinutes && !options.estimatedDurationMinutes) {
       warnings.push('Duration estimate based on default 15-minute minimum');
     }

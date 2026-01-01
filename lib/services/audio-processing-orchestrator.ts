@@ -15,7 +15,6 @@
 // =============================================================================
 
 import { db } from '@/lib/db';
-import type { JobStatus } from '@prisma/client';
 import { transitionJobStatus } from './job-field-lock-service';
 
 // -----------------------------------------------------------------------------

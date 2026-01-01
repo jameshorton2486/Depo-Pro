@@ -11,7 +11,7 @@
 // =============================================================================
 
 import { getOrCreateStripeCustomer } from '@/lib/stripe/customer-service';
-import { createStripeInvoice, markInvoicePaid, voidInvoice } from '@/lib/stripe/invoice-service';
+import { createStripeInvoice, voidInvoice } from '@/lib/stripe/invoice-service';
 import { stripe, isStripeEnabled } from '@/lib/stripe/client';
 import { db } from '@/lib/db';
 

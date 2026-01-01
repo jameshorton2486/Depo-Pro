@@ -180,7 +180,7 @@ export async function safeUpdateJob(
       allowedUpdates[field] = updates[field];
     }
 
-    const updatedJob = await db.job.update({
+    await db.job.update({
       where: { id: jobId },
       data: allowedUpdates,
     });

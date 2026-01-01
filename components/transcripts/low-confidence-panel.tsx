@@ -1,303 +1,319 @@
 'use client';
 
-// ═══════════════════════════════════════════════════════════════
-// LOW CONFIDENCE PANEL - Sidebar for reviewing flagged words
-// ═══════════════════════════════════════════════════════════════
-// Features:
-// - Progress bar showing review completion
-// - Filter tabs: All | Pending | Reviewed | Corrected
-// - Sort options: By timestamp | By confidence
-// - List of flagged word cards
-// - Keyboard navigation (arrows, Enter, R key)
-// - Next/Previous flagged word buttons
-// - Keyboard shortcuts help
+import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { FlaggedWordCard } from './flagged-word-card';
-import { FlaggedWordWithContext, FilterOption, SortOption } from '@/types/review';
+export interface TranscriptWord {
+  word: string;
+  start: number;
+  end: number;
+  confidence: number;
+  punctuated_word?: string;
+  speaker?: number;
+}
+
+interface FlaggedWord extends TranscriptWord {
+  originalIndex: number;
+}
 
 interface LowConfidencePanelProps {
-  flaggedWords: FlaggedWordWithContext[];
-  currentWordIndex: number;
-  isPlaying: boolean;
-  onSeek: (time: number) => void;
-  onCorrect: (wordIndex: number, newWord: string) => void;
+  allWords: TranscriptWord[];
+  confidenceThreshold?: number;
+  onWordSelect: (word: TranscriptWord) => void;
+  onWordCorrect: (wordIndex: number, correction: string) => void;
+  reviewedWords: Set<number>;
   onMarkReviewed: (wordIndex: number) => void;
-  onNavigateToWord: (wordIndex: number) => void;
-  className?: string;
 }
 
 export function LowConfidencePanel({
-  flaggedWords,
-  currentWordIndex,
-  isPlaying,
-  onSeek,
-  onCorrect,
+  allWords,
+  confidenceThreshold = 0.85,
+  onWordSelect,
+  onWordCorrect,
+  reviewedWords,
   onMarkReviewed,
-  onNavigateToWord,
-  className = '',
 }: LowConfidencePanelProps) {
-  const [filter, setFilter] = useState<FilterOption>('all');
-  const [sort, setSort] = useState<SortOption>('timestamp');
-  const [showShortcuts, setShowShortcuts] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'reviewed'>('pending');
+  const [sortBy, setSortBy] = useState<'confidence' | 'time'>('confidence');
 
-  // Calculate progress
-  const progress = useMemo(() => {
-    const total = flaggedWords.length;
-    const reviewed = flaggedWords.filter((w) => w.reviewed).length;
-    const corrected = flaggedWords.filter((w) => w.correctedWord).length;
-    const pending = total - reviewed;
-    const percentComplete = total > 0 ? Math.round((reviewed / total) * 100) : 0;
+  // Get flagged words with their original indices
+  const flaggedWords = useMemo((): FlaggedWord[] => {
+    return allWords
+      .map((word, index) => ({ ...word, originalIndex: index }))
+      .filter(word => word.confidence < confidenceThreshold)
+      .sort((a, b) => {
+        if (sortBy === 'confidence') return a.confidence - b.confidence;
+        return a.start - b.start;
+      });
+  }, [allWords, confidenceThreshold, sortBy]);
 
-    return { total, reviewed, corrected, pending, percentComplete };
-  }, [flaggedWords]);
-
-  // Filter and sort words
+  // Apply filter
   const displayedWords = useMemo(() => {
-    let filtered = [...flaggedWords];
+    return flaggedWords.filter(word => {
+      if (filter === 'all') return true;
+      if (filter === 'pending') return !reviewedWords.has(word.originalIndex);
+      return reviewedWords.has(word.originalIndex);
+    });
+  }, [flaggedWords, filter, reviewedWords]);
 
-    // Apply filter
-    switch (filter) {
-      case 'pending':
-        filtered = filtered.filter((w) => !w.reviewed);
-        break;
-      case 'reviewed':
-        filtered = filtered.filter((w) => w.reviewed && !w.correctedWord);
-        break;
-      case 'corrected':
-        filtered = filtered.filter((w) => w.correctedWord);
-        break;
-    }
-
-    // Apply sort
-    switch (sort) {
-      case 'confidence':
-        filtered.sort((a, b) => a.confidence - b.confidence);
-        break;
-      case 'timestamp':
-      default:
-        filtered.sort((a, b) => a.start - b.start);
-        break;
-    }
-
-    return filtered;
-  }, [flaggedWords, filter, sort]);
-
-  // Find current active word in displayed list
-  const activeDisplayIndex = useMemo(() => {
-    return displayedWords.findIndex((w) => w.wordIndex === currentWordIndex);
-  }, [displayedWords, currentWordIndex]);
-
-  // Navigate to next/previous flagged word
-  const navigateToFlagged = useCallback(
-    (direction: 'next' | 'prev') => {
-      if (displayedWords.length === 0) return;
-
-      let newIndex: number;
-      if (direction === 'next') {
-        newIndex = (selectedIndex + 1) % displayedWords.length;
-      } else {
-        newIndex = selectedIndex - 1 < 0 ? displayedWords.length - 1 : selectedIndex - 1;
-      }
-
-      setSelectedIndex(newIndex);
-      const word = displayedWords[newIndex];
-      if (word) {
-        onNavigateToWord(word.wordIndex);
-        onSeek(Math.max(0, word.start - 2));
-      }
-    },
-    [displayedWords, selectedIndex, onNavigateToWord, onSeek],
-  );
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-
-      switch (e.key) {
-        case 'n':
-        case 'N':
-          e.preventDefault();
-          navigateToFlagged('next');
-          break;
-        case 'p':
-        case 'P':
-          e.preventDefault();
-          navigateToFlagged('prev');
-          break;
-        case 'r':
-        case 'R':
-          e.preventDefault();
-          if (displayedWords[selectedIndex]) {
-            onMarkReviewed(displayedWords[selectedIndex].wordIndex);
-          }
-          break;
-        case '?':
-          e.preventDefault();
-          setShowShortcuts((prev) => !prev);
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigateToFlagged, displayedWords, selectedIndex, onMarkReviewed]);
-
-  // Update selected index when active word changes
-  useEffect(() => {
-    if (activeDisplayIndex >= 0) {
-      setSelectedIndex(activeDisplayIndex);
-    }
-  }, [activeDisplayIndex]);
+  // Progress stats
+  const totalFlagged = flaggedWords.length;
+  const reviewedCount = flaggedWords.filter(w => reviewedWords.has(w.originalIndex)).length;
+  const progressPercent = totalFlagged > 0 ? (reviewedCount / totalFlagged) * 100 : 100;
 
   return (
-    <div className={`flex flex-col h-full bg-gray-50 ${className}`}>
+    <div className="flex flex-col h-full bg-slate-900 rounded-lg">
       {/* Header */}
-      <div className="p-4 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-900">Words to Review</h2>
-          <button
-            onClick={() => setShowShortcuts((prev) => !prev)}
-            className="text-gray-400 hover:text-gray-600"
-            title="Keyboard shortcuts"
-          >
-            ⌨️
-          </button>
-        </div>
-
-        {/* Progress */}
+      <div className="p-4 border-b border-slate-700 shrink-0">
+        <h3 className="font-semibold text-slate-200 mb-3">
+          Low Confidence Words
+        </h3>
+        
+        {/* Progress Bar */}
         <div className="mb-4">
-          <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600">
-              {progress.reviewed} of {progress.total} reviewed
-            </span>
-            <span className="font-medium text-blue-600">{progress.percentComplete}%</span>
+          <div className="flex justify-between text-xs text-slate-400 mb-1">
+            <span>{reviewedCount} of {totalFlagged} reviewed</span>
+            <span>{Math.round(progressPercent)}%</span>
           </div>
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${progress.percentComplete}%` }}
+          <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div 
+              className={cn(
+                "h-full transition-all duration-300",
+                progressPercent === 100 ? "bg-green-500" : "bg-blue-500"
+              )}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
-          {progress.corrected > 0 && (
-            <p className="text-xs text-green-600 mt-1">
-              {progress.corrected} words corrected
-            </p>
+          {progressPercent === 100 && totalFlagged > 0 && (
+            <div className="text-xs text-green-400 mt-1 text-center">
+              🎉 All words reviewed!
+            </div>
           )}
         </div>
 
-        {/* Filter tabs */}
+        {/* Filters */}
         <div className="flex gap-1 mb-3">
-          {[
-            { value: 'all', label: 'All', count: progress.total },
-            { value: 'pending', label: 'Pending', count: progress.pending },
-            { value: 'reviewed', label: 'OK', count: progress.reviewed - progress.corrected },
-            { value: 'corrected', label: 'Corrected', count: progress.corrected },
-          ].map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setFilter(tab.value as FilterOption)}
-              className={`flex-1 text-xs py-1.5 px-2 rounded transition-colors ${
-                filter === tab.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {tab.label} ({tab.count})
-            </button>
-          ))}
+          {(['all', 'pending', 'reviewed'] as const).map((f) => {
+            const count = f === 'all' 
+              ? totalFlagged 
+              : f === 'pending' 
+                ? totalFlagged - reviewedCount 
+                : reviewedCount;
+            return (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  'flex-1 px-2 py-1.5 text-xs rounded transition-colors',
+                  filter === f 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                )}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)} ({count})
+              </button>
+            );
+          })}
         </div>
 
-        {/* Sort options */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">Sort:</span>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortOption)}
-            className="text-xs bg-white border border-gray-200 rounded px-2 py-1"
-          >
-            <option value="timestamp">By timestamp</option>
-            <option value="confidence">By confidence (lowest first)</option>
-          </select>
-        </div>
-
-        {/* Navigation buttons */}
-        <div className="flex gap-2 mt-3">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => navigateToFlagged('prev')}
-            disabled={displayedWords.length === 0}
-            className="flex-1"
-          >
-            ← Previous (P)
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => navigateToFlagged('next')}
-            disabled={displayedWords.length === 0}
-            className="flex-1"
-          >
-            Next (N) →
-          </Button>
-        </div>
+        {/* Sort */}
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'confidence' | 'time')}
+          className="w-full text-sm bg-slate-800 text-slate-300 rounded px-2 py-1.5 border border-slate-700"
+        >
+          <option value="confidence">Sort by Confidence (lowest first)</option>
+          <option value="time">Sort by Time</option>
+        </select>
       </div>
 
-      {/* Keyboard shortcuts help */}
-      {showShortcuts && (
-        <div className="p-3 bg-yellow-50 border-b border-yellow-200 text-xs">
-          <p className="font-medium text-yellow-800 mb-2">Keyboard Shortcuts:</p>
-          <div className="grid grid-cols-2 gap-1 text-yellow-700">
-            <span>N - Next word</span>
-            <span>P - Previous word</span>
-            <span>R - Mark as reviewed</span>
-            <span>Space - Play/Pause</span>
-            <span>← - Skip back 5s</span>
-            <span>→ - Skip forward 5s</span>
-          </div>
-        </div>
-      )}
-
-      {/* Flagged words list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Word List */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {displayedWords.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            {filter === 'all' ? (
-              <p>No flagged words found! 🎉</p>
+          <div className="text-center text-slate-500 py-8">
+            {totalFlagged === 0 ? (
+              <div>
+                <div className="text-2xl mb-2">✨</div>
+                <div>No low-confidence words found!</div>
+                <div className="text-xs mt-1">Confidence threshold: {Math.round(confidenceThreshold * 100)}%</div>
+              </div>
+            ) : filter === 'pending' ? (
+              <div>
+                <div className="text-2xl mb-2">🎉</div>
+                <div>All words reviewed!</div>
+              </div>
             ) : (
-              <p>No words match this filter.</p>
+              <div>No words to display</div>
             )}
           </div>
         ) : (
-          displayedWords.map((word, index) => (
-            <FlaggedWordCard
-              key={word.wordIndex}
-              flaggedWord={word}
-              isActive={index === selectedIndex}
-              isPlaying={isPlaying && word.wordIndex === currentWordIndex}
-              onSeek={onSeek}
-              onCorrect={onCorrect}
-              onMarkReviewed={onMarkReviewed}
+          displayedWords.map((word) => (
+            <LowConfidenceWordCard
+              key={word.originalIndex}
+              word={word}
+              isReviewed={reviewedWords.has(word.originalIndex)}
+              onSelect={() => onWordSelect(word)}
+              onCorrect={(correction) => onWordCorrect(word.originalIndex, correction)}
+              onMarkReviewed={() => onMarkReviewed(word.originalIndex)}
             />
           ))
         )}
-      </div>
-
-      {/* Footer with stats */}
-      <div className="p-3 bg-white border-t border-gray-200 text-xs text-gray-500 text-center">
-        {progress.pending > 0
-          ? `${progress.pending} words remaining to review`
-          : 'All words reviewed! ✓'}
       </div>
     </div>
   );
 }
 
-export default LowConfidencePanel;
+// Individual word card
+function LowConfidenceWordCard({
+  word,
+  isReviewed,
+  onSelect,
+  onCorrect,
+  onMarkReviewed,
+}: {
+  word: FlaggedWord;
+  isReviewed: boolean;
+  onSelect: () => void;
+  onCorrect: (correction: string) => void;
+  onMarkReviewed: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(word.punctuated_word || word.word);
+
+  const confidencePercent = Math.round(word.confidence * 100);
+  const confidenceColor = 
+    word.confidence < 0.5 ? 'text-red-400 bg-red-500/20 border-red-500/30' :
+    word.confidence < 0.7 ? 'text-orange-400 bg-orange-500/20 border-orange-500/30' :
+    'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
+
+  const handleSave = () => {
+    const trimmedValue = editValue.trim();
+    if (trimmedValue && trimmedValue !== (word.punctuated_word || word.word)) {
+      onCorrect(trimmedValue);
+    }
+    setIsEditing(false);
+    onMarkReviewed();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditValue(word.punctuated_word || word.word);
+      setIsEditing(false);
+    }
+  };
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div 
+      className={cn(
+        'p-3 rounded-lg border transition-all',
+        isReviewed 
+          ? 'bg-slate-800/30 border-slate-700/50 opacity-60' 
+          : 'bg-slate-800 border-slate-600 hover:border-slate-500'
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        {/* Word Display / Edit */}
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleSave}
+              className="w-full bg-slate-700 text-white rounded px-2 py-1 text-lg outline-none ring-2 ring-blue-500"
+              autoFocus
+            />
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-lg font-medium text-slate-200 hover:text-white text-left truncate"
+                title="Click to edit"
+              >
+                "{word.punctuated_word || word.word}"
+              </button>
+              
+              {/* Confidence Badge */}
+              <span className={cn(
+                'inline-flex items-center text-xs rounded px-1.5 py-0.5 border',
+                confidenceColor
+              )}>
+                {confidencePercent}%
+              </span>
+              
+              {isReviewed && (
+                <span className="text-xs text-green-400">✓</span>
+              )}
+            </div>
+          )}
+          
+          {/* Time */}
+          <div className="text-xs text-slate-500 mt-1">
+            at {formatTime(word.start)}
+            {word.speaker !== undefined && ` • Speaker ${word.speaker + 1}`}
+          </div>
+        </div>
+
+        {/* Play Button */}
+        <button
+          onClick={onSelect}
+          className="p-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white shrink-0 transition-colors"
+          title="Jump to audio (plays 2s before)"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Actions */}
+      {!isReviewed && !isEditing && (
+        <div className="flex gap-2 mt-2 pt-2 border-t border-slate-700/50">
+          <button
+            onClick={() => setIsEditing(true)}
+            className="flex-1 text-xs px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded transition-colors"
+          >
+            ✏️ Edit
+          </button>
+          <button
+            onClick={onMarkReviewed}
+            className="flex-1 text-xs px-2 py-1.5 bg-green-700/50 hover:bg-green-700 text-green-200 rounded transition-colors"
+          >
+            ✓ OK as-is
+          </button>
+        </div>
+      )}
+
+      {isEditing && (
+        <div className="flex gap-2 mt-2 pt-2 border-t border-slate-700/50">
+          <button
+            onClick={handleSave}
+            className="flex-1 text-xs px-2 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+          >
+            Save
+          </button>
+          <button
+            onClick={() => {
+              setEditValue(word.punctuated_word || word.word);
+              setIsEditing(false);
+            }}
+            className="flex-1 text-xs px-2 py-1.5 bg-slate-600 hover:bg-slate-500 text-white rounded transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

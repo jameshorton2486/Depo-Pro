@@ -14,8 +14,6 @@ import { checkRateLimit } from '@/lib/security';
 import { JobStatus } from '@prisma/client';
 import { invalidateDashboardCache } from '@/lib/cache';
 import { safePagination, SelectPatterns as _SelectPatterns } from '@/lib/query-optimization';
-import { createPricingSnapshot } from '@/lib/services/pricing-snapshot-service';
-import { BillingService } from '@/lib/services/billing-service';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs - List jobs with filters

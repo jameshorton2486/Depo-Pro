@@ -243,75 +243,154 @@ export function AvailabilityManager() {
   };
 
   const handleQuickAdd = async (day: Date, type: 'AVAILABLE' | 'UNAVAILABLE') => {
-    const dateStr = format(day, 'yyyy-MM-dd');
-    const startDateTime = `${dateStr}T${DEFAULT_WORK_HOURS.startTime}:00`;
-    const endDateTime = `${dateStr}T${DEFAULT_WORK_HOURS.endTime}:00`;
+    // Validate input
+    if (!day || !(day instanceof Date) || isNaN(day.getTime())) {
+      console.error('Invalid day parameter:', day);
+      toast.error('Invalid date');
+      return;
+    }
 
     try {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const startDateTime = `${dateStr}T${DEFAULT_WORK_HOURS.startTime}:00`;
+      const endDateTime = `${dateStr}T${DEFAULT_WORK_HOURS.endTime}:00`;
+
+      // Validate date strings
+      const startDate = new Date(startDateTime);
+      const endDate = new Date(endDateTime);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error('Invalid date format');
+      }
+
       const response = await fetch('/api/calendar/availability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          startTime: new Date(startDateTime).toISOString(),
-          endTime: new Date(endDateTime).toISOString(),
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
           type,
         }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        if (response.status === 409) {
-          toast.error('Slot already exists for this day');
-          return;
+        let errorMessage = 'Failed to save availability';
+        try {
+          const data = await response.json();
+          errorMessage = data.error || errorMessage;
+          if (response.status === 409) {
+            toast.error('Slot already exists for this day');
+            return;
+          }
+        } catch (_parseError) {
+          // Response might not be JSON
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
         }
-        throw new Error(data.error);
+        throw new Error(errorMessage);
       }
 
       toast.success(`Marked ${type.toLowerCase()}`);
-      fetchAvailability();
+      
+      // Refresh availability after successful save
+      await fetchAvailability();
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Failed to save');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error in handleQuickAdd:', errorMessage, error);
+      toast.error(`Failed to save: ${errorMessage}`);
     }
   };
 
   const handleCopyWeek = async () => {
     try {
+      // Validate weekStart
+      if (!weekStart || !(weekStart instanceof Date) || isNaN(weekStart.getTime())) {
+        throw new Error('Invalid week start date');
+      }
+
       // Copy current week's pattern to next week
       const nextWeekStart = addWeeks(weekStart, 1);
 
-      for (const slot of slots) {
-        const originalStart = new Date(slot.start);
-        const originalEnd = new Date(slot.end);
-
-        // Calculate the day offset
-        const dayOffset = originalStart.getDay();
-
-        const newStart = new Date(nextWeekStart);
-        newStart.setDate(newStart.getDate() + dayOffset);
-        newStart.setHours(originalStart.getHours(), originalStart.getMinutes());
-
-        const newEnd = new Date(nextWeekStart);
-        newEnd.setDate(newEnd.getDate() + dayOffset);
-        newEnd.setHours(originalEnd.getHours(), originalEnd.getMinutes());
-
-        await fetch('/api/calendar/availability', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            startTime: newStart.toISOString(),
-            endTime: newEnd.toISOString(),
-            type: slot.type,
-            notes: slot.notes,
-          }),
-        });
+      if (!slots || slots.length === 0) {
+        toast.info('No slots to copy');
+        return;
       }
 
-      toast.success('Week copied to next week');
-      setCurrentWeek(addWeeks(currentWeek, 1));
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const slot of slots) {
+        try {
+          if (!slot.start || !slot.end) {
+            console.warn('Skipping slot with missing start/end:', slot);
+            errorCount++;
+            continue;
+          }
+
+          const originalStart = new Date(slot.start);
+          const originalEnd = new Date(slot.end);
+
+          // Validate dates
+          if (isNaN(originalStart.getTime()) || isNaN(originalEnd.getTime())) {
+            console.warn('Skipping slot with invalid dates:', slot);
+            errorCount++;
+            continue;
+          }
+
+          // Calculate the day offset
+          const dayOffset = originalStart.getDay();
+
+          const newStart = new Date(nextWeekStart);
+          newStart.setDate(newStart.getDate() + dayOffset);
+          newStart.setHours(originalStart.getHours(), originalStart.getMinutes());
+
+          const newEnd = new Date(nextWeekStart);
+          newEnd.setDate(newEnd.getDate() + dayOffset);
+          newEnd.setHours(originalEnd.getHours(), originalEnd.getMinutes());
+
+          // Validate new dates
+          if (isNaN(newStart.getTime()) || isNaN(newEnd.getTime())) {
+            console.warn('Skipping slot with invalid calculated dates');
+            errorCount++;
+            continue;
+          }
+
+          const response = await fetch('/api/calendar/availability', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              startTime: newStart.toISOString(),
+              endTime: newEnd.toISOString(),
+              type: slot.type,
+              notes: slot.notes,
+            }),
+          });
+
+          if (!response.ok) {
+            // Skip 409 (already exists) errors silently
+            if (response.status !== 409) {
+              errorCount++;
+              console.warn('Failed to copy slot:', slot, response.status);
+            }
+          } else {
+            successCount++;
+          }
+        } catch (slotError) {
+          errorCount++;
+          console.warn('Error copying slot:', slot, slotError);
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Copied ${successCount} slot${successCount !== 1 ? 's' : ''}`);
+        setCurrentWeek(addWeeks(currentWeek, 1));
+        await fetchAvailability();
+      } else if (errorCount > 0) {
+        toast.error(`Failed to copy all ${errorCount} slot${errorCount !== 1 ? 's' : ''}`);
+      }
     } catch (error) {
-      console.error('Error copying week:', error);
-      toast.error('Failed to copy week');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error in handleCopyWeek:', errorMessage, error);
+      toast.error(`Failed to copy week: ${errorMessage}`);
     }
   };
 

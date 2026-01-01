@@ -19,7 +19,6 @@ import {
 } from '@/lib/services/rx-eligibility-service';
 import {
   createRXSession,
-  getRXSessionsForJob,
   getActiveRXSession,
 } from '@/lib/services/rx-session-service';
 
