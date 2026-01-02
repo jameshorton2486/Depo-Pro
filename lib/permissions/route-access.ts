@@ -51,6 +51,7 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/dashboard': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
   '/settings': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
   '/settings/profile': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
+  '/unauthorized': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
 
   // ─────────────────────────────────────────────────────────────────────────
   // ADMIN ROUTES
@@ -85,6 +86,7 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   // ATTORNEY ROUTES
   // ─────────────────────────────────────────────────────────────────────────
   '/attorney': ['ADMIN', 'ATTORNEY'],
+  '/attorney-dashboard': ['ADMIN', 'ATTORNEY'],
   '/attorney/cases': ['ADMIN', 'ATTORNEY'],
   '/attorney/transcripts': ['ADMIN', 'ATTORNEY'],
   '/attorney/onboarding': ['ADMIN', 'ATTORNEY'],
@@ -96,12 +98,16 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/agency': ['ADMIN', 'AGENCY'],
   '/agency/reporters': ['ADMIN', 'AGENCY'],
   '/agency/jobs': ['ADMIN', 'AGENCY'],
+  '/billing': ['ADMIN', 'REPORTER', 'AGENCY'],
 
   // ─────────────────────────────────────────────────────────────────────────
-  // CASES (Shared)
+  // SHARED ROUTES
   // ─────────────────────────────────────────────────────────────────────────
   '/cases': ['ADMIN', 'REPORTER', 'ATTORNEY'],
   '/cases/new': ['ADMIN', 'REPORTER', 'ATTORNEY'],
+  '/exhibits': ['ADMIN', 'ATTORNEY'],
+  '/issues': ['ADMIN', 'ATTORNEY'],
+  '/reports': ['ADMIN', 'ATTORNEY', 'REPORTER'],
 };
 
 // =============================================================================
@@ -112,23 +118,23 @@ export const API_ACCESS: Record<string, Role[]> = {
   // Jobs
   '/api/jobs': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/jobs/create': ['ADMIN', 'REPORTER'],
-  
+
   // Calendar
   '/api/calendar': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/calendar/availability': ['ADMIN', 'REPORTER'],
   '/api/calendar/events': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  
+
   // Transcripts
   '/api/transcripts': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/transcripts/edit': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  
+
   // Cases
   '/api/cases': ['ADMIN', 'REPORTER', 'ATTORNEY'],
-  
+
   // Admin
   '/api/admin': ['ADMIN'],
   '/api/admin/users': ['ADMIN'],
-  
+
   // Attorney
   '/api/attorney': ['ADMIN', 'ATTORNEY'],
 };
@@ -141,19 +147,16 @@ export const API_ACCESS: Record<string, Role[]> = {
  * Check if a role has access to a route
  */
 export function hasRouteAccess(path: string, role: Role): boolean {
-  // Check exact match first
   if (ROUTE_ACCESS[path]) {
     return ROUTE_ACCESS[path].includes(role);
   }
 
-  // Check prefix matches (e.g., /jobs/123 should match /jobs)
   for (const [route, roles] of Object.entries(ROUTE_ACCESS)) {
     if (path.startsWith(route + '/') || path === route) {
       return roles.includes(role);
     }
   }
 
-  // If no match found, check if it's under a role-specific prefix
   const rolePrefixes: Record<string, Role[]> = {
     '/admin': ['ADMIN'],
     '/reporter': ['ADMIN', 'REPORTER'],
@@ -168,7 +171,6 @@ export function hasRouteAccess(path: string, role: Role): boolean {
     }
   }
 
-  // Default: allow authenticated users
   return true;
 }
 
@@ -176,19 +178,16 @@ export function hasRouteAccess(path: string, role: Role): boolean {
  * Check if a role has access to an API route
  */
 export function hasApiAccess(path: string, role: Role): boolean {
-  // Check exact match first
   if (API_ACCESS[path]) {
     return API_ACCESS[path].includes(role);
   }
 
-  // Check prefix matches
   for (const [route, roles] of Object.entries(API_ACCESS)) {
     if (path.startsWith(route + '/') || path === route) {
       return roles.includes(role);
     }
   }
 
-  // Default: allow authenticated users for unlisted API routes
   return true;
 }
 
@@ -205,7 +204,7 @@ export function getRoutesForRole(role: Role): string[] {
  * Check if path is public
  */
 export function isPublicRoute(path: string): boolean {
-  return PUBLIC_ROUTES.some(publicPath => 
+  return PUBLIC_ROUTES.some(publicPath =>
     path === publicPath || path.startsWith(publicPath + '/')
   );
 }
@@ -214,12 +213,10 @@ export function isPublicRoute(path: string): boolean {
  * Get required roles for a route
  */
 export function getRequiredRoles(path: string): Role[] | null {
-  // Check exact match
   if (ROUTE_ACCESS[path]) {
     return ROUTE_ACCESS[path];
   }
 
-  // Check prefix matches
   for (const [route, roles] of Object.entries(ROUTE_ACCESS)) {
     if (path.startsWith(route + '/')) {
       return roles;
