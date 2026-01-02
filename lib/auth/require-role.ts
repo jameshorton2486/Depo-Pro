@@ -1,0 +1,253 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROUTE AUTHORIZATION UTILITIES
+// lib/auth/require-role.ts
+//
+// Layer 1: Route-level authorization (non-negotiable security gate)
+// URLs never imply permission - every route enforces role access
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type UserRole = 'ADMIN' | 'REPORTER' | 'SCOPIST' | 'ATTORNEY' | 'AGENCY';
+
+export interface RoleConfig {
+  allowed: UserRole[];
+  redirectTo?: string;
+  requireFirm?: boolean;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROLE HIERARCHIES AND PERMISSIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Role hierarchy - higher roles inherit lower role permissions
+ * ADMIN > AGENCY > REPORTER > SCOPIST
+ * ATTORNEY is separate (doesn't inherit from others)
+ */
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  ADMIN: 100,
+  AGENCY: 80,
+  REPORTER: 60,
+  ATTORNEY: 50,
+  SCOPIST: 40,
+};
+
+/**
+ * Check if a role has at least the required level
+ */
+export function hasRoleLevel(userRole: UserRole, requiredRole: UserRole): boolean {
+  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTHORIZATION FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Create a role checker function
+ * Use in server components and API routes
+ *
+ * @example
+ * const canAccess = requireRole(['ADMIN', 'AGENCY']);
+ * if (!canAccess(session.user.role)) redirect('/unauthorized');
+ */
+export function requireRole(allowed: UserRole[]) {
+  return (role: UserRole): boolean => allowed.includes(role);
+}
+
+/**
+ * Check if user can access a route based on role
+ * Returns true if allowed, false if not
+ */
+export function canAccessRoute(userRole: UserRole, allowedRoles: UserRole[]): boolean {
+  // Admin can access everything
+  if (userRole === 'ADMIN') return true;
+  
+  return allowedRoles.includes(userRole);
+}
+
+/**
+ * Higher-order function for server component protection
+ * Use this in page.tsx files
+ *
+ * @example
+ * export default async function AdminPage() {
+ *   await protectRoute(['ADMIN']);
+ *   // ... rest of component
+ * }
+ */
+export async function protectRoute(
+  allowedRoles: UserRole[],
+  options: { redirectTo?: string; requireAuth?: boolean } = {}
+): Promise<{ user: { id: string; role: UserRole; firmId?: string | null; name?: string | null; email?: string | null } }> {
+  const { redirectTo = '/dashboard', requireAuth = true } = options;
+
+  const session = await getCurrentUser();
+
+  // Not authenticated
+  if (!session?.user) {
+    if (requireAuth) {
+      redirect('/login');
+    }
+    throw new Error('Not authenticated');
+  }
+
+  const userRole = session.user.role as UserRole;
+
+  // Check role access (admin always has access)
+  if (userRole !== 'ADMIN' && !allowedRoles.includes(userRole)) {
+    redirect(redirectTo);
+  }
+
+  return {
+    user: {
+      id: session.user.id,
+      role: userRole,
+      firmId: session.user.firmId,
+      name: session.user.name,
+      email: session.user.email,
+    },
+  };
+}
+
+/**
+ * Get the default redirect path for a role
+ */
+export function getDefaultRedirectForRole(role: UserRole): string {
+  switch (role) {
+    case 'ADMIN':
+      return '/admin';
+    case 'REPORTER':
+      return '/reporter';
+    case 'SCOPIST':
+      return '/scopist';
+    case 'ATTORNEY':
+      return '/attorney';
+    case 'AGENCY':
+      return '/admin';
+    default:
+      return '/dashboard';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROUTE PERMISSION DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Define which roles can access each route pattern
+ * This is the single source of truth for route permissions
+ */
+export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
+  // Admin routes
+  '/admin': ['ADMIN', 'AGENCY'],
+  '/admin/users': ['ADMIN'],
+  '/admin/rx-queue': ['ADMIN', 'AGENCY'],
+  '/admin/firm': ['ADMIN', 'AGENCY'],
+  '/admin/security': ['ADMIN'],
+  '/admin/integrations': ['ADMIN'],
+  '/admin/reports': ['ADMIN', 'AGENCY'],
+
+  // Job routes
+  '/jobs': ['ADMIN', 'REPORTER', 'SCOPIST', 'AGENCY'],
+  '/jobs/new': ['ADMIN', 'REPORTER', 'AGENCY'],
+  '/cases/new': ['ADMIN', 'REPORTER', 'AGENCY'],
+
+  // Calendar routes
+  '/calendar': ['ADMIN', 'REPORTER', 'ATTORNEY', 'AGENCY'],
+  '/calendar/availability': ['REPORTER'],
+  '/calendar/requests': ['ADMIN', 'AGENCY'],
+
+  // Role-specific dashboards
+  '/reporter': ['ADMIN', 'REPORTER'],
+  '/scopist': ['ADMIN', 'SCOPIST'],
+  '/attorney': ['ADMIN', 'ATTORNEY'],
+
+  // Attorney-specific routes
+  '/attorney/cases': ['ADMIN', 'ATTORNEY'],
+  '/attorney/transcripts': ['ADMIN', 'ATTORNEY'],
+  '/attorney/exhibits': ['ADMIN', 'ATTORNEY'],
+  '/attorney/issues': ['ADMIN', 'ATTORNEY'],
+  '/attorney/reports': ['ADMIN', 'ATTORNEY'],
+
+  // Billing
+  '/billing': ['ADMIN', 'AGENCY', 'REPORTER'],
+
+  // Settings
+  '/settings': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
+  '/settings/profile': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
+};
+
+/**
+ * Check if a specific route is allowed for a role
+ */
+export function isRouteAllowedForRole(route: string, role: UserRole): boolean {
+  // Admin can access everything
+  if (role === 'ADMIN') return true;
+
+  // Check exact match first
+  if (ROUTE_PERMISSIONS[route]) {
+    return ROUTE_PERMISSIONS[route].includes(role);
+  }
+
+  // Check pattern matches (for dynamic routes)
+  for (const [pattern, allowedRoles] of Object.entries(ROUTE_PERMISSIONS)) {
+    if (route.startsWith(pattern + '/') || route === pattern) {
+      return allowedRoles.includes(role);
+    }
+  }
+
+  // Default: allow access (routes not in the list are considered public within dashboard)
+  return true;
+}
+
+/**
+ * Get all routes a role can access
+ */
+export function getRoutesForRole(role: UserRole): string[] {
+  if (role === 'ADMIN') {
+    return Object.keys(ROUTE_PERMISSIONS);
+  }
+
+  return Object.entries(ROUTE_PERMISSIONS)
+    .filter(([_, allowedRoles]) => allowedRoles.includes(role))
+    .map(([route]) => route);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// API ROUTE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Check role in API routes
+ *
+ * @example
+ * export async function GET(req: Request) {
+ *   const { authorized, user, error } = await checkApiRole(['ADMIN']);
+ *   if (!authorized) return NextResponse.json({ error }, { status: 403 });
+ *   // ... rest of handler
+ * }
+ */
+export async function checkApiRole(
+  allowedRoles: UserRole[]
+): Promise<{ authorized: boolean; user?: any; error?: string }> {
+  const session = await getCurrentUser();
+
+  if (!session?.user) {
+    return { authorized: false, error: 'Not authenticated' };
+  }
+
+  const userRole = session.user.role as UserRole;
+
+  if (userRole !== 'ADMIN' && !allowedRoles.includes(userRole)) {
+    return { authorized: false, error: 'Insufficient permissions' };
+  }
+
+  return { authorized: true, user: session.user };
+}

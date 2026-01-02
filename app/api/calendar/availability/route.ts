@@ -60,6 +60,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
+    // Role-based access control: ADMIN and REPORTER can access availability
+    // This matches the page-level permissions for /calendar/availability
+    const allowedRoles = ['ADMIN', 'REPORTER', 'AGENCY'];
+    if (!allowedRoles.includes(user.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
     // Build where clause
     const whereClause: any = {
       firmId: user.firmId,
@@ -163,10 +170,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    // Only reporters can create their own availability
-    // Agency/Admin can create for any reporter (handled via reporterId in body)
-    if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
-      return NextResponse.json({ error: 'Only reporters can set availability' }, { status: 403 });
+    // Role-based access control: ADMIN, REPORTER, and AGENCY can create availability
+    // Reporters create their own, Admin/Agency can create for any reporter
+    const allowedRoles = ['ADMIN', 'REPORTER', 'AGENCY'];
+    if (!allowedRoles.includes(user.role)) {
+      return NextResponse.json({ error: 'Insufficient permissions to set availability' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -175,7 +183,7 @@ export async function POST(request: NextRequest) {
     // Determine which reporter this is for
     let reporterId = user.id;
     
-    if (['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role) && body.reporterId) {
+    if (['ADMIN', 'AGENCY'].includes(user.role) && body.reporterId) {
       // Verify reporter exists in same firm
       const reporter = await db.user.findFirst({
         where: {
