@@ -32,11 +32,13 @@ export function WaveformPlayer({
     setIsLoading(true);
     setIsReady(false);
 
+    // WaveSurfer requires hex colors, so we use HSL converted to hex
+    // These match our design system: slate-500, blue-500, red-500
     const ws = WaveSurfer.create({
       container: containerRef.current,
-      waveColor: '#64748b',      // slate-500
-      progressColor: '#3b82f6',  // blue-500
-      cursorColor: '#ef4444',    // red-500
+      waveColor: '#64748b',      // slate-500 (muted)
+      progressColor: '#3b82f6',  // blue-500 (primary)
+      cursorColor: '#ef4444',    // red-500 (destructive)
       cursorWidth: 2,
       barWidth: 2,
       barGap: 1,

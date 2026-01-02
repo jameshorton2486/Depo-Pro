@@ -119,10 +119,10 @@ export async function GET(request: NextRequest) {
       start: slot.startTime.toISOString(),
       end: slot.endTime.toISOString(),
       backgroundColor: slot.type === 'AVAILABLE' 
-        ? '#28A745' 
+        ? 'hsl(142, 76%, 36%)'  // green-600
         : slot.type === 'UNAVAILABLE' 
-        ? '#DC3545' 
-        : '#FFC107',
+        ? 'hsl(0, 84%, 60%)'     // red-500
+        : 'hsl(45, 93%, 47%)',  // yellow-500
       borderColor: 'transparent',
       display: 'background', // Shows as background highlight
       extendedProps: {

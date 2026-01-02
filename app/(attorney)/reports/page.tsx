@@ -25,7 +25,7 @@ const mockAnnotations: TranscriptAnnotation[] = [
   {
     id: '1',
     transcriptId: '1',
-    issueCode: { code: 'PERJURY', label: 'Perjury', color: '#ef4444' },
+    issueCode: { code: 'PERJURY', label: 'Perjury', color: 'hsl(0, 84%, 60%)' },
     pageStart: 2,
     lineStart: 2,
     pageEnd: 2,
@@ -37,7 +37,7 @@ const mockAnnotations: TranscriptAnnotation[] = [
   {
     id: '2',
     transcriptId: '2',
-    issueCode: { code: 'CONTRADICTION', label: 'Contradiction', color: '#eab308' },
+    issueCode: { code: 'CONTRADICTION', label: 'Contradiction', color: 'hsl(45, 93%, 47%)' },
     pageStart: 5,
     lineStart: 12,
     pageEnd: 5,
@@ -49,7 +49,7 @@ const mockAnnotations: TranscriptAnnotation[] = [
   {
     id: '3',
     transcriptId: '1',
-    issueCode: { code: 'ADMISSION', label: 'Admission', color: '#22c55e' },
+    issueCode: { code: 'ADMISSION', label: 'Admission', color: 'hsl(142, 76%, 36%)' },
     pageStart: 10,
     lineStart: 5,
     pageEnd: 10,

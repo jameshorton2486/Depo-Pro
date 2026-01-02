@@ -10,7 +10,6 @@ import {
   CalendarEventUI,
   CalendarViewType,
   CalendarViewProps,
-  STATUS_COLORS,
 } from './calendar.types';
 import { CalendarEventCard } from './CalendarEventCard';
 import { CalendarEventTooltip } from './calendar-event-tooltip';
