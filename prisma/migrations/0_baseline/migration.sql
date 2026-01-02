@@ -1,5 +1,3 @@
-[dotenv@17.2.3] injecting env (14) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
-[dotenv@17.2.3] injecting env (7) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -2768,4 +2766,3 @@ ALTER TABLE "BillingUsageRecord" ADD CONSTRAINT "BillingUsageRecord_firmId_fkey"
 
 -- AddForeignKey
 ALTER TABLE "BillingUsageRecord" ADD CONSTRAINT "BillingUsageRecord_invoiceLineItemId_fkey" FOREIGN KEY ("invoiceLineItemId") REFERENCES "InvoiceLineItem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
