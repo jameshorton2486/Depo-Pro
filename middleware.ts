@@ -2,34 +2,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-
-// Paths that don't require authentication
-const publicPaths = [
-  '/',
-  '/login',
-  '/register',
-  '/forgot-password',
-  '/reset-password',
-  '/api/auth',
-  '/api/health',
-];
-
-// Paths that require specific roles
-const roleRestrictedPaths: Record<string, string[]> = {
-  '/admin': ['ADMIN'],
-  '/reporter': ['ADMIN', 'REPORTER'],
-  '/scopist': ['ADMIN', 'SCOPIST'],
-  '/attorney': ['ADMIN', 'ATTORNEY'],
-};
-
-// Attorney-specific routes that require ATTORNEY role
-const attorneyRoutes = ['/attorney', '/attorney/cases', '/attorney/transcripts', '/attorney/onboarding'];
+import { isPublicRoute, hasRouteAccess } from '@/lib/permissions/route-access';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  if (publicPaths.some(path => pathname.startsWith(path))) {
+  // Allow public paths (using centralized permissions)
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 
@@ -70,22 +49,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Check role-based access
-  for (const [path, roles] of Object.entries(roleRestrictedPaths)) {
-    if (pathname.startsWith(path)) {
-      const userRole = token.role as string;
-      if (!roles.includes(userRole)) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-    }
-  }
-
-  // Explicit attorney route protection
-  if (attorneyRoutes.some(route => pathname.startsWith(route))) {
-    const userRole = token.role as string;
-    if (userRole !== 'ATTORNEY' && userRole !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
+  // Check role-based access (using centralized permissions)
+  const userRole = token.role as string;
+  if (!hasRouteAccess(pathname, userRole as any)) {
+    // Redirect to appropriate dashboard based on role, or to /unauthorized
+    const unauthorizedUrl = new URL('/unauthorized', request.url);
+    return NextResponse.redirect(unauthorizedUrl);
   }
 
   // Add security headers

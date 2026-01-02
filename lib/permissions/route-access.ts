@@ -23,6 +23,11 @@ export interface RouteConfig {
 // =============================================================================
 // PUBLIC ROUTES (No auth required)
 // =============================================================================
+// NOTE: isPublicRoute() uses prefix matching
+// This means /api/auth covers /api/auth/* (intentional for NextAuth handlers)
+// Marketing pages like /about, /features, /pricing, /security, /contact
+// are included here even if not yet implemented
+// =============================================================================
 
 export const PUBLIC_ROUTES: string[] = [
   '/',
@@ -141,6 +146,22 @@ export const API_ACCESS: Record<string, Role[]> = {
 
 // =============================================================================
 // HELPER FUNCTIONS
+// =============================================================================
+// PERMISSION RESOLUTION ORDER
+// =============================================================================
+// The permission system resolves access in this order:
+//
+// 1. EXACT MATCH: Check if path exists exactly in ROUTE_ACCESS
+//    Example: "/admin" matches ROUTE_ACCESS["/admin"]
+//
+// 2. PREFIX MATCH: Check if path starts with a registered route
+//    Example: "/jobs/abc123" matches ROUTE_ACCESS["/jobs"]
+//
+// 3. ROLE PREFIX FALLBACK: Emergency guardrail for role-specific paths
+//    Example: "/admin/anything" falls back to ADMIN-only
+//
+// This layered approach is intentionally defensive. Do NOT remove
+// redundancy - it provides safety during active development.
 // =============================================================================
 
 /**

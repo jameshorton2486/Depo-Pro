@@ -30,6 +30,7 @@
         "check:enums": "tsx scripts/check-enum-usage.ts",
         "verify:prod": "tsx scripts/verify-production.ts",
         "check:permissions": "tsx scripts/check-route-permissions.ts",
+        "check:routes": "tsx scripts/check-route-coverage.ts",
         "audit:design": "tsx scripts/audit-design-system.ts",
         "test:watch": "jest --watch",
         "test:coverage": "jest --coverage",
