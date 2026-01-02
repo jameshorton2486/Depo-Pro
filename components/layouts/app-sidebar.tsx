@@ -141,9 +141,9 @@ function SidebarSection({
   if (collapsed) {
     return (
       <div className="flex flex-col items-center gap-1 py-2">
-        {section.items.map((item, itemIndex) => (
+        {section.items.map((item) => (
           <SidebarNavItem
-            key={`${section.section}-${item.href}-${itemIndex}`}
+            key={item.id}
             item={item}
             collapsed={collapsed}
             isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
@@ -174,9 +174,9 @@ function SidebarSection({
       </button>
       {isExpanded && (
         <div className="mt-1 space-y-1 px-2">
-          {section.items.map((item, itemIndex) => (
+          {section.items.map((item) => (
             <SidebarNavItem
-              key={`${section.section}-${item.href}-${itemIndex}`}
+              key={item.id}
               item={item}
               collapsed={collapsed}
               isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
