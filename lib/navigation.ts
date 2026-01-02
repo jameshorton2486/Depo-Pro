@@ -177,7 +177,7 @@ const REPORTER_NAV: NavigationSchema = [
     section: 'Settings',
     icon: Settings,
     items: [
-      { id: 'scopist-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
+      { id: 'reporter-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
     ],
   },
 ];
@@ -214,7 +214,7 @@ const SCOPIST_NAV: NavigationSchema = [
     section: 'Settings',
     icon: Settings,
     items: [
-      { id: 'scopist-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
+      { id: 'attorney-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
     ],
   },
 ];
