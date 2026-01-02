@@ -2,11 +2,13 @@
 // DASHBOARD LAYOUT
 // ═══════════════════════════════════════════════════════════════
 // Protected layout for all dashboard routes
+// Uses role-aware sidebar navigation
 
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { Navbar } from '@/components/layouts/navbar';
-import { CommandPalette } from '@/components/command';
+import { SidebarLayout } from '@/components/layouts/app-sidebar';
+import { Breadcrumbs } from '@/components/layouts/breadcrumbs';
+import { type UserRole } from '@/lib/navigation';
 
 export default async function DashboardLayout({
   children,
@@ -19,13 +21,16 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
+  const userRole = session.user.role as UserRole;
+  const userName = session.user.name || session.user.email;
+
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
-      <Navbar user={session.user} />
-      <main className="container mx-auto px-4 py-8">
+    <SidebarLayout userRole={userRole} userName={userName}>
+      {/* Page Content with Breadcrumbs */}
+      <div className="p-6">
+        <Breadcrumbs role={userRole} className="mb-4" />
         {children}
-      </main>
-      <CommandPalette />
-    </div>
+      </div>
+    </SidebarLayout>
   );
 }

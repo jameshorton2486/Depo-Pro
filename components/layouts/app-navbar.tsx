@@ -32,7 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 import { getInitials } from '@/lib/utils';
 import {
-  getNavigationForRole,
+  getNavigationItemsForRole,
   isPathActive,
   USER_MENU_ITEMS,
   ADMIN_MENU_ITEMS,
@@ -46,8 +46,8 @@ interface AppNavbarProps {
 
 export function AppNavbar({ user }: AppNavbarProps) {
   const pathname = usePathname();
-  const role = (user.role as UserRole) || 'COURT_REPORTER';
-  const navItems = getNavigationForRole(role);
+  const role = (user.role as UserRole) || 'REPORTER';
+  const navItems = getNavigationItemsForRole(role);
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">

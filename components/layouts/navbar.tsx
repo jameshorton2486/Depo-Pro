@@ -114,6 +114,16 @@ export function Navbar({ user }: NavbarProps) {
                 </Link>
               </>
             )}
+            {(user.role === Role.REPORTER || user.role === Role.AGENCY || user.role === Role.ADMIN) && (
+              <Link
+                href="/cases/new"
+                className={`text-sm font-medium transition-colors hover:text-[var(--color-primary)] ${
+                  isActive('/cases/new') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
+                }`}
+              >
+                New Case
+              </Link>
+            )}
             {(user.role === Role.AGENCY || user.role === Role.ADMIN) && (
               <Link
                 href="/calendar/requests"
