@@ -106,25 +106,24 @@ export function CalendarView({
     [onDateChange]
   );
 
-  // Custom event styling
+  // Custom event styling - using HSL colors from status-colors utility
   const eventStyleGetter = useCallback((event: CalendarEventUI) => {
-    const _colors = STATUS_COLORS[event.status] || STATUS_COLORS.SCHEDULED;
+    // Map CalendarEventStatus to HSL colors (for react-big-calendar which needs inline styles)
+    const statusColorMap: Record<string, { bg: string; border: string; text: string }> = {
+      CANCELLED: { bg: 'hsl(0, 84%, 95%)', border: 'hsl(0, 84%, 60%)', text: 'hsl(0, 84%, 30%)' },
+      CONFIRMED: { bg: 'hsl(142, 76%, 95%)', border: 'hsl(142, 76%, 36%)', text: 'hsl(142, 76%, 20%)' },
+      IN_PROGRESS: { bg: 'hsl(199, 89%, 95%)', border: 'hsl(199, 89%, 48%)', text: 'hsl(199, 89%, 25%)' },
+      COMPLETED: { bg: 'hsl(220, 9%, 95%)', border: 'hsl(220, 9%, 46%)', text: 'hsl(220, 9%, 25%)' },
+      SCHEDULED: { bg: 'hsl(217, 91%, 95%)', border: 'hsl(217, 91%, 60%)', text: 'hsl(217, 91%, 30%)' },
+    };
+    
+    const colors = statusColorMap[event.status] || statusColorMap.SCHEDULED;
     
     return {
       style: {
-        backgroundColor: event.status === 'CANCELLED' ? '#fee2e2' : 
-                        event.status === 'CONFIRMED' ? '#dcfce7' :
-                        event.status === 'IN_PROGRESS' ? '#fef3c7' :
-                        event.status === 'COMPLETED' ? '#f3f4f6' :
-                        '#dbeafe',
-        borderLeft: `4px solid ${
-          event.status === 'CANCELLED' ? '#ef4444' :
-          event.status === 'CONFIRMED' ? '#22c55e' :
-          event.status === 'IN_PROGRESS' ? '#f59e0b' :
-          event.status === 'COMPLETED' ? '#6b7280' :
-          '#3b82f6'
-        }`,
-        color: '#1f2937',
+        backgroundColor: colors.bg,
+        borderLeft: `4px solid ${colors.border}`,
+        color: colors.text,
         borderRadius: '4px',
         padding: '2px 4px',
         fontSize: '0.75rem',
@@ -168,7 +167,7 @@ export function CalendarView({
         events={calendarEvents}
         startAccessor="start"
         endAccessor="end"
-        style={{ height: 700 }}
+        style={{ height: '700px' }}
         view={VIEW_MAP[view as Exclude<CalendarViewType, 'timeline'>]}
         date={date}
         onView={handleViewChange}

@@ -22,7 +22,7 @@ export function CalendarEventCard({ event, variant, onClick }: CalendarEventCard
         className={`px-1 py-0.5 text-xs rounded truncate cursor-pointer border ${typeColors} hover:opacity-80 transition-opacity`}
         title={event.title}
       >
-        <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle" style={{ backgroundColor: statusIndicator }} />
+        <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle ${statusIndicator}`} />
         {format(event.start, 'h:mm a')} {event.title}
       </div>
     );
@@ -37,7 +37,7 @@ export function CalendarEventCard({ event, variant, onClick }: CalendarEventCard
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: statusIndicator }} />
+            <span className={`inline-block w-2 h-2 rounded-full ${statusIndicator}`} />
             <h4 className="font-medium text-gray-900 truncate">{event.title}</h4>
           </div>
           {event.caseName && (

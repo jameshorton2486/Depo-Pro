@@ -104,17 +104,19 @@ interface DepoCalendarProps {
 
 // ------------------------------------------------------------
 // STATUS COLORS
+// Using HSL colors from status-colors utility for FullCalendar
+// FullCalendar requires inline styles, so we use HSL values
 // ------------------------------------------------------------
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  REQUESTED: { bg: '#FFA500', text: '#fff', label: 'Requested' },
-  SCHEDULED: { bg: '#3788D8', text: '#fff', label: 'Scheduled' },
-  CONFIRMED: { bg: '#28A745', text: '#fff', label: 'Confirmed' },
-  IN_PROGRESS: { bg: '#17A2B8', text: '#fff', label: 'In Progress' },
-  COMPLETED: { bg: '#6C757D', text: '#fff', label: 'Completed' },
-  CANCELLED: { bg: '#DC3545', text: '#fff', label: 'Cancelled' },
-  RESCHEDULED: { bg: '#9B59B6', text: '#fff', label: 'Rescheduled' },
-  CONVERTED: { bg: '#4F46E5', text: '#fff', label: 'Converted' },
+  REQUESTED: { bg: 'hsl(38, 92%, 50%)', text: 'hsl(0, 0%, 100%)', label: 'Requested' },
+  SCHEDULED: { bg: 'hsl(217, 91%, 60%)', text: 'hsl(0, 0%, 100%)', label: 'Scheduled' },
+  CONFIRMED: { bg: 'hsl(142, 76%, 36%)', text: 'hsl(0, 0%, 100%)', label: 'Confirmed' },
+  IN_PROGRESS: { bg: 'hsl(199, 89%, 48%)', text: 'hsl(0, 0%, 100%)', label: 'In Progress' },
+  COMPLETED: { bg: 'hsl(220, 9%, 46%)', text: 'hsl(0, 0%, 100%)', label: 'Completed' },
+  CANCELLED: { bg: 'hsl(0, 84%, 60%)', text: 'hsl(0, 0%, 100%)', label: 'Cancelled' },
+  RESCHEDULED: { bg: 'hsl(271, 81%, 56%)', text: 'hsl(0, 0%, 100%)', label: 'Rescheduled' },
+  CONVERTED: { bg: 'hsl(239, 84%, 67%)', text: 'hsl(0, 0%, 100%)', label: 'Converted' },
 };
 
 // Locked statuses - cannot be dragged

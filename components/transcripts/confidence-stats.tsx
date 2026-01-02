@@ -315,11 +315,12 @@ export function ConfidenceRing({
   const offset = circumference - (value / 100) * circumference;
 
   const getColor = () => {
-    if (value >= 90) return '#22c55e'; // green
-    if (value >= 75) return '#84cc16'; // lime
-    if (value >= 60) return '#eab308'; // yellow
-    if (value >= 40) return '#f97316'; // orange
-    return '#ef4444'; // red
+    // Use HSL colors from status-colors utility
+    if (value >= 90) return 'hsl(142, 76%, 36%)'; // green
+    if (value >= 75) return 'hsl(84, 81%, 44%)';  // lime
+    if (value >= 60) return 'hsl(45, 93%, 47%)';   // yellow
+    if (value >= 40) return 'hsl(24, 95%, 53%)';   // orange
+    return 'hsl(0, 84%, 60%)';                     // red
   };
 
   return (
@@ -330,7 +331,7 @@ export function ConfidenceRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#e5e7eb"
+          stroke="hsl(220, 13%, 91%)"
           strokeWidth={strokeWidth}
           fill="none"
         />
