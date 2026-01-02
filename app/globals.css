@@ -13,8 +13,7 @@
 @layer base {
   :root {
     /* Font variables - set by Next.js font loader */
-    --font-geist-sans: var(--font-geist-sans);
-    --font-geist-mono: var(--font-geist-mono);
+    /* --font-sans is set by app/layout.tsx via Inter font */
     /* Base Colors (HSL format for shadcn compatibility) */
     --background: 210 40% 98%;           /* slate-50 */
     --foreground: 222.2 84% 4.9%;        /* slate-900 */
@@ -140,11 +139,11 @@
         background-color: hsl(var(--background));
         color: hsl(var(--foreground));
         font-feature-settings: "rlig" 1, "calt" 1;
-        font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+        font-family: var(--font-sans), Inter, system-ui, -apple-system, sans-serif;
       }
       
       code, pre {
-        font-family: var(--font-geist-mono), "JetBrains Mono", "Fira Code", monospace;
+        font-family: "JetBrains Mono", "Fira Code", monospace;
       }
 
   /* Typography defaults */
