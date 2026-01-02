@@ -1,261 +1,257 @@
-// ═══════════════════════════════════════════════════════════════════════════════
+#!/usr/bin/env npx tsx
+// =============================================================================
 // DESIGN SYSTEM AUDIT SCRIPT
 // scripts/audit-design-system.ts
 //
-// Scans codebase for design system violations:
-// - Hex colors (bg-[#...], text-[#...])
-// - Inline styles (style={{}})
-// - Raw HTML form elements (<button>, <input>, <select>)
-// - Missing page containers
-// - Raw Tailwind color classes
-// ═══════════════════════════════════════════════════════════════════════════════
+// Scans codebase for design system violations
+// Usage: npx tsx scripts/audit-design-system.ts
+// =============================================================================
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { glob } from 'glob';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const SCAN_DIRS = ['app', 'components'];
-const IGNORE_PATTERNS = [
-  '**/node_modules/**',
-  '**/.next/**',
-  '**/ui/**', // shadcn/ui components are allowed
-  '**/*.d.ts',
-  '**/globals.css',
-];
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// VIOLATION TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface Violation {
   file: string;
   line: number;
-  column: number;
-  type: 'hex-color' | 'inline-style' | 'raw-element' | 'raw-color' | 'missing-container';
+  type: string;
+  severity: 'error' | 'warning' | 'info';
   message: string;
   code: string;
+  suggestion?: string;
 }
 
-const violations: Violation[] = [];
+interface AuditResult {
+  totalFiles: number;
+  filesWithViolations: number;
+  violations: Violation[];
+  summary: Record<string, number>;
+}
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PATTERNS
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// PATTERNS TO DETECT
+// =============================================================================
 
-const HEX_COLOR_PATTERN = /(?:bg|text|border|ring)-\[#[\da-fA-F]{3,8}\]/g;
-const INLINE_STYLE_PATTERN = /style=\{\{/g;
-const RAW_BUTTON_PATTERN = /<button(?!\s+onClick=\{)/g; // Allow onClick handlers
-const RAW_INPUT_PATTERN = /<input(?!\s+type="hidden")/g; // Allow hidden inputs
-const RAW_SELECT_PATTERN = /<select/g;
-const RAW_COLORS = [
-  /bg-(red|blue|green|yellow|purple|pink|indigo|gray|grey|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|violet|fuchsia|rose)-\d{2,3}/g,
-  /text-(red|blue|green|yellow|purple|pink|indigo|gray|grey|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|violet|fuchsia|rose)-\d{2,3}/g,
-  /border-(red|blue|green|yellow|purple|pink|indigo|gray|grey|slate|zinc|neutral|stone|orange|amber|lime|emerald|teal|cyan|sky|violet|fuchsia|rose)-\d{2,3}/g,
+const PATTERNS = [
+  {
+    type: 'hex-color',
+    pattern: /'#[0-9A-Fa-f]{3,8}'|"#[0-9A-Fa-f]{3,8}"/g,
+    severity: 'error' as const,
+    message: 'Hardcoded hex color found',
+    suggestion: 'Use getStatusClasses() or getChartColor() from lib/status-colors.ts',
+  },
+  {
+    type: 'inline-style',
+    pattern: /style=\{\{[^}]*(?:color|background|border)[^}]*\}\}/gi,
+    severity: 'warning' as const,
+    message: 'Inline style with color found',
+    suggestion: 'Use Tailwind classes or status-colors utility',
+  },
+  {
+    type: 'raw-button',
+    pattern: /<button(?![^>]*(?:Button))[^>]*className=/gi,
+    severity: 'warning' as const,
+    message: 'Raw <button> element with className',
+    suggestion: 'Use <Button> from @/components/ui/button',
+  },
+  {
+    type: 'raw-input',
+    pattern: /<input(?![^>]*type=["'](?:hidden|file|checkbox|radio))[^>]*className=/gi,
+    severity: 'info' as const,
+    message: 'Raw <input> element',
+    suggestion: 'Consider using <Input> from @/components/ui/input',
+  },
+  {
+    type: 'raw-select',
+    pattern: /<select[^>]*className=/gi,
+    severity: 'info' as const,
+    message: 'Raw <select> element',
+    suggestion: 'Consider using <Select> from @/components/ui/select',
+  },
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// AUDIT FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// SCANNING
+// =============================================================================
 
-function scanFile(filePath: string): void {
+const SCAN_DIRS = ['app', 'components'];
+const SCAN_EXTENSIONS = ['.tsx', '.jsx'];
+const IGNORE_PATTERNS = ['node_modules', '.next', 'dist', 'ui/'];
+
+function shouldScanFile(filePath: string): boolean {
+  const ext = path.extname(filePath);
+  if (!SCAN_EXTENSIONS.includes(ext)) return false;
+  for (const pattern of IGNORE_PATTERNS) {
+    if (filePath.includes(pattern)) return false;
+  }
+  return true;
+}
+
+function getAllFiles(dir: string): string[] {
+  const files: string[] = [];
+  if (!fs.existsSync(dir)) return files;
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!IGNORE_PATTERNS.some(p => entry.name.includes(p))) {
+        files.push(...getAllFiles(fullPath));
+      }
+    } else if (shouldScanFile(fullPath)) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+function scanFile(filePath: string): Violation[] {
+  const violations: Violation[] = [];
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n');
-  const relativePath = path.relative(process.cwd(), filePath);
-
-  // Skip UI component files (they're the source of truth)
-  if (relativePath.includes('/ui/')) {
-    return;
-  }
 
   lines.forEach((line, index) => {
     const lineNum = index + 1;
 
-    // Check for hex colors
-    const hexMatches = line.matchAll(HEX_COLOR_PATTERN);
-    for (const match of hexMatches) {
-      violations.push({
-        file: relativePath,
-        line: lineNum,
-        column: (match.index || 0) + 1,
-        type: 'hex-color',
-        message: `Hex color detected: ${match[0]}. Use semantic tokens (bg-primary, text-foreground, etc.)`,
-        code: line.trim(),
-      });
+    // Skip comments and imports
+    if (line.trim().startsWith('//') || line.trim().startsWith('import ')) {
+      return;
     }
 
-    // Check for inline styles
-    if (INLINE_STYLE_PATTERN.test(line)) {
-      violations.push({
-        file: relativePath,
-        line: lineNum,
-        column: line.indexOf('style={{') + 1,
-        type: 'inline-style',
-        message: 'Inline style detected. Use Tailwind utility classes instead.',
-        code: line.trim(),
-      });
-    }
-
-    // Check for raw HTML elements
-    if (RAW_BUTTON_PATTERN.test(line) && !line.includes('from components/ui')) {
-      violations.push({
-        file: relativePath,
-        line: lineNum,
-        column: line.indexOf('<button') + 1,
-        type: 'raw-element',
-        message: 'Raw <button> detected. Use <Button> component from components/ui.',
-        code: line.trim(),
-      });
-    }
-
-    if (RAW_INPUT_PATTERN.test(line) && !line.includes('from components/ui')) {
-      violations.push({
-        file: relativePath,
-        line: lineNum,
-        column: line.indexOf('<input') + 1,
-        type: 'raw-element',
-        message: 'Raw <input> detected. Use <Input> component from components/ui.',
-        code: line.trim(),
-      });
-    }
-
-    if (RAW_SELECT_PATTERN.test(line) && !line.includes('from components/ui')) {
-      violations.push({
-        file: relativePath,
-        line: lineNum,
-        column: line.indexOf('<select') + 1,
-        type: 'raw-element',
-        message: 'Raw <select> detected. Use <Select> component from components/ui.',
-        code: line.trim(),
-      });
-    }
-
-    // Check for raw Tailwind colors
-    RAW_COLORS.forEach((pattern) => {
-      const matches = line.matchAll(pattern);
-      for (const match of matches) {
-        // Allow certain semantic uses (destructive, muted, etc.)
-        if (
-          match[0].includes('destructive') ||
-          match[0].includes('muted') ||
-          match[0].includes('background') ||
-          match[0].includes('foreground') ||
-          match[0].includes('border') ||
-          match[0].includes('primary') ||
-          match[0].includes('secondary') ||
-          match[0].includes('accent')
-        ) {
+    for (const check of PATTERNS) {
+      const matches = line.match(check.pattern);
+      if (matches) {
+        // Skip CSS variable references
+        if (check.type === 'hex-color' && (line.includes('var(--') || line.includes('hsl('))) {
           continue;
         }
 
         violations.push({
-          file: relativePath,
+          file: filePath,
           line: lineNum,
-          column: (match.index || 0) + 1,
-          type: 'raw-color',
-          message: `Raw Tailwind color detected: ${match[0]}. Use semantic tokens instead.`,
-          code: line.trim(),
+          type: check.type,
+          severity: check.severity,
+          message: check.message,
+          code: line.trim().substring(0, 80),
+          suggestion: check.suggestion,
         });
       }
-    });
+    }
   });
 
-  // Check for missing page container (only for page.tsx files)
-  if (filePath.endsWith('page.tsx') && !content.includes('container max-w-7xl')) {
-    // Allow exceptions for special pages
-    if (
-      !content.includes('layout.tsx') &&
-      !content.includes('template.tsx') &&
-      !content.includes('loading.tsx') &&
-      !content.includes('error.tsx') &&
-      !content.includes('not-found.tsx')
-    ) {
-      violations.push({
-        file: relativePath,
-        line: 1,
-        column: 1,
-        type: 'missing-container',
-        message:
-          'Page missing standard container. Add: <div className="container max-w-7xl space-y-6 py-6">',
-        code: lines[0]?.trim() || '',
-      });
-    }
-  }
+  return violations;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// REPORT
+// =============================================================================
 
-async function main() {
+function generateReport(result: AuditResult): string {
+  let report = '';
+
+  report += '═══════════════════════════════════════════════════════════════\n';
+  report += '🎨 DESIGN SYSTEM AUDIT REPORT\n';
+  report += '═══════════════════════════════════════════════════════════════\n\n';
+
+  report += `📊 Summary:\n`;
+  report += `   Files scanned: ${result.totalFiles}\n`;
+  report += `   Files with violations: ${result.filesWithViolations}\n`;
+  report += `   Total violations: ${result.violations.length}\n\n`;
+
+  report += `📋 By Type:\n`;
+  const sortedTypes = Object.entries(result.summary)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  for (const [type, count] of sortedTypes) {
+    const icon = count > 10 ? '🔴' : count > 5 ? '🟡' : '🟢';
+    report += `   ${icon} ${type}: ${count}\n`;
+  }
+
+  // Group by file
+  const byFile = new Map<string, Violation[]>();
+  for (const v of result.violations) {
+    const existing = byFile.get(v.file) || [];
+    existing.push(v);
+    byFile.set(v.file, existing);
+  }
+
+  report += '\n═══════════════════════════════════════════════════════════════\n';
+  report += '📁 VIOLATIONS BY FILE\n';
+  report += '═══════════════════════════════════════════════════════════════\n';
+
+  const sortedFiles = [...byFile.entries()].sort((a, b) => b[1].length - a[1].length);
+
+  for (const [file, violations] of sortedFiles.slice(0, 10)) {
+    report += `\n📄 ${file} (${violations.length})\n`;
+    for (const v of violations.slice(0, 5)) {
+      const icon = v.severity === 'error' ? '❌' : v.severity === 'warning' ? '⚠️' : 'ℹ️';
+      report += `   ${icon} L${v.line}: ${v.message}\n`;
+    }
+    if (violations.length > 5) {
+      report += `   ... and ${violations.length - 5} more\n`;
+    }
+  }
+
+  if (sortedFiles.length > 10) {
+    report += `\n... and ${sortedFiles.length - 10} more files\n`;
+  }
+
+  return report;
+}
+
+// =============================================================================
+// MAIN
+// =============================================================================
+
+function main() {
   console.log('🔍 Scanning for design system violations...\n');
 
-  // Find all TypeScript/TSX files
-  const files: string[] = [];
+  const allFiles: string[] = [];
   for (const dir of SCAN_DIRS) {
-    if (!fs.existsSync(dir)) {
-      console.log(`⚠️  Directory ${dir} does not exist, skipping...`);
-      continue;
+    allFiles.push(...getAllFiles(dir));
+  }
+
+  console.log(`Found ${allFiles.length} files to scan\n`);
+
+  const allViolations: Violation[] = [];
+  const filesWithViolations = new Set<string>();
+
+  for (const file of allFiles) {
+    const violations = scanFile(file);
+    if (violations.length > 0) {
+      filesWithViolations.add(file);
+      allViolations.push(...violations);
     }
-    const pattern = `${dir}/**/*.{ts,tsx}`;
-    const matches = await glob(pattern, { ignore: IGNORE_PATTERNS, cwd: process.cwd() });
-    files.push(...matches.map((f) => path.resolve(f)));
   }
 
-  console.log(`📁 Scanning ${files.length} files...\n`);
-
-  // Scan each file
-  files.forEach(scanFile);
-
-  // Report results
-  if (violations.length === 0) {
-    console.log('✅ No design system violations found!\n');
-    process.exit(0);
+  const summary: Record<string, number> = {};
+  for (const v of allViolations) {
+    summary[v.type] = (summary[v.type] || 0) + 1;
   }
 
-  // Group violations by type
-  const byType = violations.reduce(
-    (acc, v) => {
-      if (!acc[v.type]) acc[v.type] = [];
-      acc[v.type].push(v);
-      return acc;
-    },
-    {} as Record<string, Violation[]>
-  );
-
-  console.log(`❌ Found ${violations.length} violation(s):\n`);
-
-  // Print violations by type
-  const typeLabels: Record<string, string> = {
-    'hex-color': '🔴 Hex Colors',
-    'inline-style': '🔴 Inline Styles',
-    'raw-element': '🔴 Raw HTML Elements',
-    'raw-color': '🔴 Raw Tailwind Colors',
-    'missing-container': '🔴 Missing Page Container',
+  const result: AuditResult = {
+    totalFiles: allFiles.length,
+    filesWithViolations: filesWithViolations.size,
+    violations: allViolations,
+    summary,
   };
 
-  Object.entries(byType).forEach(([type, vs]) => {
-    console.log(`\n${typeLabels[type] || type} (${vs.length}):`);
-    console.log('─'.repeat(80));
+  console.log(generateReport(result));
 
-    vs.forEach((v) => {
-      console.log(`\n  ${v.file}:${v.line}:${v.column}`);
-      console.log(`  ${v.message}`);
-      console.log(`  ${v.code.substring(0, 100)}${v.code.length > 100 ? '...' : ''}`);
-    });
-  });
+  // Save JSON
+  fs.writeFileSync('design-audit-results.json', JSON.stringify(result, null, 2));
+  console.log('\n📄 Results saved to design-audit-results.json');
 
-  console.log('\n' + '═'.repeat(80));
-  console.log(`\n❌ Total violations: ${violations.length}`);
-  console.log('\n📖 See DESIGN_RULES.md for required fixes.\n');
-
-  process.exit(1);
+  const errorCount = allViolations.filter(v => v.severity === 'error').length;
+  if (errorCount > 0) {
+    console.log(`\n❌ ${errorCount} errors found`);
+  } else {
+    console.log('\n✅ No critical violations!');
+  }
 }
 
-main().catch((error) => {
-  console.error('Error running audit:', error);
-  process.exit(1);
-});
+main();

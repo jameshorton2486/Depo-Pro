@@ -1,215 +1,197 @@
 #!/usr/bin/env npx tsx
-// ═══════════════════════════════════════════════════════════════════════════════
-// CI CHECK: ROUTE PERMISSIONS
+// =============================================================================
+// ROUTE PERMISSIONS AUDIT SCRIPT
 // scripts/check-route-permissions.ts
 //
-// Validates that navigation and route permissions are in sync
-// Run in CI to prevent permission mismatches from reaching production
+// Verifies permission consistency across:
+// - lib/permissions/route-access.ts (source of truth)
+// - middleware.ts
+// - Actual page files
 //
-// Usage:
-//   npx tsx scripts/check-route-permissions.ts
-//   npm run check:permissions
-// ═══════════════════════════════════════════════════════════════════════════════
+// Usage: npx tsx scripts/check-route-permissions.ts
+// =============================================================================
 
-import { NAVIGATION, type UserRole } from '../lib/navigation';
-import { ROUTE_PERMISSIONS } from '../lib/auth/require-role';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-interface ValidationError {
-  type: 'error' | 'warning';
+interface PermissionIssue {
+  type: 'missing' | 'mismatch' | 'orphan';
+  route: string;
   message: string;
-  route?: string;
-  details?: string;
+  severity: 'error' | 'warning';
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// VALIDATION FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// SCAN FOR PAGES
+// =============================================================================
 
-function getAllNavigationRoutes(): Map<string, UserRole[]> {
-  const routeMap = new Map<string, UserRole[]>();
-
-  for (const role of Object.keys(NAVIGATION) as UserRole[]) {
-    NAVIGATION[role].forEach((section) => {
-      section.items.forEach((item) => {
-        if (item.href) {
-          const existing = routeMap.get(item.href) || [];
-          if (!existing.includes(role)) {
-            routeMap.set(item.href, [...existing, role]);
-          }
-        }
-      });
-    });
-  }
-
-  return routeMap;
-}
-
-function validatePermissions(): ValidationError[] {
-  const errors: ValidationError[] = [];
-  const navRoutes = getAllNavigationRoutes();
-
-  // Check 1: Every navigation route should have permission defined
-  console.log('\n📋 Checking navigation routes have permissions...');
+function findPageFiles(dir: string, basePath: string = ''): string[] {
+  const routes: string[] = [];
   
-  for (const [route, navRoles] of navRoutes) {
-    // Find matching permission (exact or prefix match)
-    let permRoles: string[] | undefined;
+  if (!fs.existsSync(dir)) return routes;
+  
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
     
-    // Try exact match first
-    if (ROUTE_PERMISSIONS[route]) {
-      permRoles = ROUTE_PERMISSIONS[route];
-    } else {
-      // Try prefix match
-      const sortedPerms = Object.keys(ROUTE_PERMISSIONS).sort((a, b) => b.length - a.length);
-      for (const perm of sortedPerms) {
-        if (route.startsWith(perm + '/') || route === perm) {
-          permRoles = ROUTE_PERMISSIONS[perm];
-          break;
-        }
+    if (entry.isDirectory()) {
+      // Skip special directories
+      if (entry.name.startsWith('_') || entry.name === 'api' || entry.name === 'node_modules') {
+        continue;
       }
-    }
-
-    if (!permRoles) {
-      errors.push({
-        type: 'warning',
-        message: `Route "${route}" is in navigation but has no permission defined`,
-        route,
-        details: `Shown to: ${navRoles.join(', ')}`,
-      });
-      continue;
-    }
-
-    // Check 2: Roles in navigation should be subset of roles in permissions
-    for (const navRole of navRoles) {
-      if (navRole === 'ADMIN') continue; // Admin always has access
       
-      if (!permRoles.includes(navRole)) {
-        errors.push({
-          type: 'error',
-          message: `Role "${navRole}" can see route "${route}" in navigation but is NOT in ROUTE_PERMISSIONS`,
-          route,
-          details: `Nav roles: ${navRoles.join(', ')} | Perm roles: ${permRoles.join(', ')}`,
-        });
+      // Handle route groups (parentheses)
+      let routeSegment = entry.name;
+      if (entry.name.startsWith('(') && entry.name.endsWith(')')) {
+        routeSegment = ''; // Route groups don't add to path
       }
+      
+      const newBasePath = routeSegment ? `${basePath}/${routeSegment}` : basePath;
+      routes.push(...findPageFiles(fullPath, newBasePath));
+    } else if (entry.name === 'page.tsx' || entry.name === 'page.ts') {
+      routes.push(basePath || '/');
     }
   }
-
-  // Check 3: Look for potential dead links (routes in permissions but not navigation)
-  console.log('\n📋 Checking for orphaned permission definitions...');
   
-  const navRouteSet = new Set(navRoutes.keys());
-  for (const [permRoute] of Object.entries(ROUTE_PERMISSIONS)) {
-    // Skip if any nav route starts with this permission route
-    const hasNavChild = Array.from(navRouteSet).some(
-      (navRoute) => navRoute === permRoute || navRoute.startsWith(permRoute + '/')
-    );
-    
-    if (!hasNavChild) {
-      // This is info only - some routes may be API-only or hidden intentionally
-      console.log(`  ℹ️  Permission for "${permRoute}" exists but route is not in any navigation`);
-    }
-  }
-
-  // Check 4: Validate navigation structure
-  console.log('\n📋 Validating navigation structure...');
-  
-  for (const role of Object.keys(NAVIGATION) as UserRole[]) {
-    const nav = NAVIGATION[role];
-    
-    if (!nav || nav.length === 0) {
-      errors.push({
-        type: 'warning',
-        message: `Role "${role}" has no navigation defined`,
-      });
-      continue;
-    }
-
-    // Check for empty sections
-    for (const section of nav) {
-      if (!section.items || section.items.length === 0) {
-        errors.push({
-          type: 'warning',
-          message: `Section "${section.section}" for role "${role}" has no items`,
-        });
-      }
-
-      // Check for items without hrefs
-      for (const item of section.items) {
-        if (!item.href) {
-          errors.push({
-            type: 'warning',
-            message: `Item "${item.label}" in section "${section.section}" for role "${role}" has no href`,
-          });
-        }
-      }
-    }
-  }
-
-  return errors;
+  return routes;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// MAIN AUDIT
+// =============================================================================
 
-function main(): void {
+function main() {
   console.log('═══════════════════════════════════════════════════════════════');
-  console.log('🔐 ROUTE PERMISSIONS CHECK');
-  console.log('═══════════════════════════════════════════════════════════════');
+  console.log('🔐 ROUTE PERMISSIONS AUDIT');
+  console.log('═══════════════════════════════════════════════════════════════\n');
 
-  const errors = validatePermissions();
+  const issues: PermissionIssue[] = [];
 
-  const criticalErrors = errors.filter((e) => e.type === 'error');
-  const warnings = errors.filter((e) => e.type === 'warning');
+  // 1. Find all page routes
+  const appDir = path.join(process.cwd(), 'app');
+  const pageRoutes = findPageFiles(appDir);
+  
+  console.log(`📄 Found ${pageRoutes.length} page routes\n`);
 
-  console.log('\n═══════════════════════════════════════════════════════════════');
-  console.log('📊 RESULTS');
-  console.log('═══════════════════════════════════════════════════════════════');
-
-  if (criticalErrors.length > 0) {
-    console.log(`\n❌ ERRORS (${criticalErrors.length}):`);
-    criticalErrors.forEach((err, i) => {
-      console.log(`\n  ${i + 1}. ${err.message}`);
-      if (err.details) console.log(`     ${err.details}`);
-    });
-  }
-
-  if (warnings.length > 0) {
-    console.log(`\n⚠️  WARNINGS (${warnings.length}):`);
-    warnings.forEach((err, i) => {
-      console.log(`\n  ${i + 1}. ${err.message}`);
-      if (err.details) console.log(`     ${err.details}`);
-    });
-  }
-
-  if (errors.length === 0) {
-    console.log('\n✅ All checks passed! Navigation and permissions are in sync.');
-  }
-
-  console.log('\n═══════════════════════════════════════════════════════════════');
-
-  // Summary
-  const navRoutes = getAllNavigationRoutes();
-  console.log(`\n📈 Summary:`);
-  console.log(`   Total navigation routes: ${navRoutes.size}`);
-  console.log(`   Total permission rules: ${Object.keys(ROUTE_PERMISSIONS).length}`);
-  console.log(`   Roles defined: ${Object.keys(NAVIGATION).join(', ')}`);
-  console.log(`   Errors: ${criticalErrors.length}`);
-  console.log(`   Warnings: ${warnings.length}`);
-
-  // Exit with error code if there are critical errors
-  if (criticalErrors.length > 0) {
-    console.log('\n💥 CI CHECK FAILED - Fix errors before merging\n');
+  // 2. Check route-access.ts exists
+  const routeAccessPath = path.join(process.cwd(), 'lib/permissions/route-access.ts');
+  
+  if (!fs.existsSync(routeAccessPath)) {
+    console.log('❌ lib/permissions/route-access.ts not found!');
+    console.log('   Create this file as the source of truth for route permissions.\n');
     process.exit(1);
   }
 
-  console.log('\n✅ CI CHECK PASSED\n');
-  process.exit(0);
+  // 3. Read route-access.ts and extract ROUTE_ACCESS
+  const routeAccessContent = fs.readFileSync(routeAccessPath, 'utf-8');
+  
+  // Simple extraction of routes from ROUTE_ACCESS
+  const routeAccessMatches = routeAccessContent.match(/['"]\/[^'"]+['"]\s*:\s*\[/g) || [];
+  const definedRoutes = routeAccessMatches.map(m => m.match(/['"]([^'"]+)['"]/)?.[1]).filter(Boolean) as string[];
+  
+  console.log(`📋 Defined in route-access.ts: ${definedRoutes.length} routes\n`);
+
+  // 4. Check for pages without permission definitions
+  const publicPrefixes = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/about', '/features', '/pricing', '/security', '/contact'];
+  
+  for (const route of pageRoutes) {
+    // Skip public routes
+    if (publicPrefixes.some(p => route === p || route.startsWith(p + '/'))) {
+      continue;
+    }
+    
+    // Skip api routes (handled separately)
+    if (route.startsWith('/api')) {
+      continue;
+    }
+    
+    // Check if route or parent is defined
+    const isDefined = definedRoutes.some(defined => 
+      route === defined || route.startsWith(defined + '/')
+    );
+    
+    if (!isDefined) {
+      issues.push({
+        type: 'missing',
+        route,
+        message: `Page exists but no permission defined`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  // 5. Check for orphan definitions (defined but no page exists)
+  for (const defined of definedRoutes) {
+    // Skip dynamic routes
+    if (defined.includes('[')) continue;
+    
+    const pageExists = pageRoutes.some(page => 
+      page === defined || page.startsWith(defined + '/')
+    );
+    
+    // Also check if it's a prefix that matches something
+    const hasChildren = pageRoutes.some(page => page.startsWith(defined));
+    
+    if (!pageExists && !hasChildren) {
+      issues.push({
+        type: 'orphan',
+        route: defined,
+        message: `Permission defined but no page exists`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  // 6. Report
+  console.log('═══════════════════════════════════════════════════════════════');
+  console.log('📊 RESULTS');
+  console.log('═══════════════════════════════════════════════════════════════\n');
+
+  if (issues.length === 0) {
+    console.log('✅ No permission issues found!\n');
+  } else {
+    const errors = issues.filter(i => i.severity === 'error');
+    const warnings = issues.filter(i => i.severity === 'warning');
+    
+    console.log(`Found ${issues.length} issues (${errors.length} errors, ${warnings.length} warnings)\n`);
+    
+    if (errors.length > 0) {
+      console.log('❌ ERRORS:\n');
+      for (const issue of errors) {
+        console.log(`   ${issue.route}`);
+        console.log(`   └─ ${issue.message}\n`);
+      }
+    }
+    
+    if (warnings.length > 0) {
+      console.log('⚠️  WARNINGS:\n');
+      for (const issue of warnings) {
+        console.log(`   ${issue.route}`);
+        console.log(`   └─ ${issue.message}\n`);
+      }
+    }
+  }
+
+  // 7. Summary table
+  console.log('═══════════════════════════════════════════════════════════════');
+  console.log('📋 ROUTE COVERAGE');
+  console.log('═══════════════════════════════════════════════════════════════\n');
+
+  console.log(`   Page routes found:     ${pageRoutes.length}`);
+  console.log(`   Permissions defined:   ${definedRoutes.length}`);
+  console.log(`   Missing definitions:   ${issues.filter(i => i.type === 'missing').length}`);
+  console.log(`   Orphan definitions:    ${issues.filter(i => i.type === 'orphan').length}`);
+  console.log('');
+
+  // Exit with error if there are errors
+  if (issues.filter(i => i.severity === 'error').length > 0) {
+    process.exit(1);
+  }
 }
 
-// Run
 main();

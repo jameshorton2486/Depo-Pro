@@ -1,14 +1,14 @@
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // STATUS COLOR UTILITIES
 // lib/status-colors.ts
 //
 // Centralized status color management for consistent UI
 // Use these utilities instead of hardcoded hex colors
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 export type JobStatus =
   | 'REQUESTED'
@@ -41,13 +41,17 @@ interface StatusStyle {
   dot: string;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // JOB STATUS COLORS
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 /**
  * Get Tailwind classes for job/deposition status
- * Uses CSS variables for dark mode support
+ * Uses semantic colors with dark mode support
+ * 
+ * @example
+ * const { bg, text, border, dot } = getStatusClasses('CONFIRMED');
+ * <div className={`${bg} ${text} ${border}`}>Confirmed</div>
  */
 export function getStatusClasses(status: JobStatus): StatusStyle {
   const statusMap: Record<JobStatus, StatusStyle> = {
@@ -105,7 +109,7 @@ export function getStatusClasses(status: JobStatus): StatusStyle {
 }
 
 /**
- * Get status label for display
+ * Get human-readable status label
  */
 export function getStatusLabel(status: JobStatus): string {
   const labels: Record<JobStatus, string> = {
@@ -122,9 +126,9 @@ export function getStatusLabel(status: JobStatus): string {
   return labels[status] || status;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // TRANSCRIPT STATUS COLORS
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 /**
  * Get Tailwind classes for transcript status
@@ -184,9 +188,9 @@ export function getTranscriptStatusClasses(status: TranscriptStatus): StatusStyl
   return statusMap[status] || statusMap.PENDING;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // CONFIDENCE COLORS
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 /**
  * Get Tailwind text class for confidence level
@@ -214,7 +218,7 @@ export function getConfidenceClasses(level: ConfidenceLevel | number): string {
 }
 
 /**
- * Get confidence background for progress bars
+ * Get confidence background class for progress bars
  */
 export function getConfidenceBgClasses(level: ConfidenceLevel | number): string {
   let resolvedLevel: ConfidenceLevel;
@@ -238,12 +242,12 @@ export function getConfidenceBgClasses(level: ConfidenceLevel | number): string 
   return classes[resolvedLevel];
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // SEMANTIC COLORS
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 /**
- * Get Tailwind classes for semantic color purposes
+ * Get Tailwind classes for semantic purposes
  */
 export function getSemanticClasses(color: SemanticColor): StatusStyle {
   const colorMap: Record<SemanticColor, StatusStyle> = {
@@ -282,24 +286,24 @@ export function getSemanticClasses(color: SemanticColor): StatusStyle {
   return colorMap[color];
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 // CHART COLORS (For libraries that need raw color values)
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
 
 /**
  * Get HSL color string for charts/graphs
- * Use only when Tailwind classes aren't available (e.g., chart libraries)
+ * Use ONLY when Tailwind classes aren't available
  */
 export function getChartColor(status: JobStatus): string {
   const colors: Record<JobStatus, string> = {
-    REQUESTED: 'hsl(38, 92%, 50%)', // amber
-    SCHEDULED: 'hsl(217, 91%, 60%)', // blue
-    CONFIRMED: 'hsl(142, 76%, 36%)', // green
+    REQUESTED: 'hsl(38, 92%, 50%)',    // amber
+    SCHEDULED: 'hsl(217, 91%, 60%)',   // blue
+    CONFIRMED: 'hsl(142, 76%, 36%)',   // green
     IN_PROGRESS: 'hsl(199, 89%, 48%)', // cyan
-    COMPLETED: 'hsl(220, 9%, 46%)', // gray
-    CANCELLED: 'hsl(0, 84%, 60%)', // red
+    COMPLETED: 'hsl(220, 9%, 46%)',    // gray
+    CANCELLED: 'hsl(0, 84%, 60%)',     // red
     RESCHEDULED: 'hsl(271, 81%, 56%)', // purple
-    CONVERTED: 'hsl(239, 84%, 67%)', // indigo
+    CONVERTED: 'hsl(239, 84%, 67%)',   // indigo
   };
 
   return colors[status] || colors.SCHEDULED;
@@ -310,10 +314,10 @@ export function getChartColor(status: JobStatus): string {
  */
 export function getConfidenceChartColor(value: number): string {
   if (value >= 90) return 'hsl(142, 76%, 36%)'; // green
-  if (value >= 75) return 'hsl(84, 81%, 44%)'; // lime
-  if (value >= 60) return 'hsl(45, 93%, 47%)'; // yellow
-  if (value >= 40) return 'hsl(24, 95%, 53%)'; // orange
-  return 'hsl(0, 84%, 60%)'; // red
+  if (value >= 75) return 'hsl(84, 81%, 44%)';  // lime
+  if (value >= 60) return 'hsl(45, 93%, 47%)';  // yellow
+  if (value >= 40) return 'hsl(24, 95%, 53%)';  // orange
+  return 'hsl(0, 84%, 60%)';                     // red
 }
 
 /**
@@ -330,9 +334,9 @@ export const CHART_PALETTE = {
   accent: 'hsl(239, 84%, 67%)',
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// STATUS BADGE COMPONENT HELPER
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// COMPONENT HELPERS
+// =============================================================================
 
 /**
  * Get complete class string for a status badge
@@ -343,9 +347,31 @@ export function getStatusBadgeClasses(status: JobStatus): string {
 }
 
 /**
- * Get complete class string for a status dot
+ * Get class string for a status dot indicator
  */
 export function getStatusDotClasses(status: JobStatus): string {
   const style = getStatusClasses(status);
   return `w-2 h-2 rounded-full ${style.dot}`;
+}
+
+/**
+ * FullCalendar event style object
+ */
+export function getCalendarEventStyle(status: JobStatus): {
+  backgroundColor: string;
+  borderColor: string;
+  textColor: string;
+} {
+  const colors: Record<JobStatus, { backgroundColor: string; borderColor: string; textColor: string }> = {
+    REQUESTED: { backgroundColor: 'hsl(38, 92%, 95%)', borderColor: 'hsl(38, 92%, 50%)', textColor: 'hsl(38, 92%, 30%)' },
+    SCHEDULED: { backgroundColor: 'hsl(217, 91%, 95%)', borderColor: 'hsl(217, 91%, 60%)', textColor: 'hsl(217, 91%, 30%)' },
+    CONFIRMED: { backgroundColor: 'hsl(142, 76%, 95%)', borderColor: 'hsl(142, 76%, 36%)', textColor: 'hsl(142, 76%, 20%)' },
+    IN_PROGRESS: { backgroundColor: 'hsl(199, 89%, 95%)', borderColor: 'hsl(199, 89%, 48%)', textColor: 'hsl(199, 89%, 25%)' },
+    COMPLETED: { backgroundColor: 'hsl(220, 9%, 95%)', borderColor: 'hsl(220, 9%, 46%)', textColor: 'hsl(220, 9%, 25%)' },
+    CANCELLED: { backgroundColor: 'hsl(0, 84%, 95%)', borderColor: 'hsl(0, 84%, 60%)', textColor: 'hsl(0, 84%, 30%)' },
+    RESCHEDULED: { backgroundColor: 'hsl(271, 81%, 95%)', borderColor: 'hsl(271, 81%, 56%)', textColor: 'hsl(271, 81%, 30%)' },
+    CONVERTED: { backgroundColor: 'hsl(239, 84%, 95%)', borderColor: 'hsl(239, 84%, 67%)', textColor: 'hsl(239, 84%, 30%)' },
+  };
+
+  return colors[status] || colors.SCHEDULED;
 }
