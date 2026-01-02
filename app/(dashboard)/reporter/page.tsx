@@ -68,14 +68,24 @@ export default async function ReporterDashboard() {
             Manage your depositions and transcripts
           </p>
         </div>
-        <Link
-          href="/jobs/new"
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
-            text-white font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          New Job
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/cases/new"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
+              text-white font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Case (AI Intake)
+          </Link>
+          <Link
+            href="/jobs/new"
+            className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700
+              text-white font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Job
+          </Link>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -125,18 +135,34 @@ export default async function ReporterDashboard() {
           </h3>
           <div className="space-y-3">
             <Link
+              href="/cases/new"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
+                dark:hover:bg-slate-700/50 transition-colors border-2 border-blue-200 dark:border-blue-800"
+            >
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Plus className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900 dark:text-slate-100">
+                  New Case (AI Intake)
+                </p>
+                <p className="text-sm text-slate-500">Upload documents & audio</p>
+              </div>
+            </Link>
+
+            <Link
               href="/jobs/new"
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
                 dark:hover:bg-slate-700/50 transition-colors"
             >
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Upload className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg">
+                <Upload className="w-5 h-5 text-slate-600" />
               </div>
               <div>
                 <p className="font-medium text-slate-900 dark:text-slate-100">
                   Upload New Recording
                 </p>
-                <p className="text-sm text-slate-500">Start a new transcription</p>
+                <p className="text-sm text-slate-500">Manual job creation</p>
               </div>
             </Link>
 
