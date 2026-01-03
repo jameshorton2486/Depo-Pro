@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { withRequestLogging } from '@/lib/observability';
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
+import { canEditTranscript } from '@/lib/transcripts/lock-service';
 
 // ═══════════════════════════════════════════════════════════════
 // GET /api/transcripts/[id] - Get full transcript content
@@ -155,11 +156,26 @@ export const PATCH = withRequestLogging(async (
         id: true,
         jobId: true,
         versionNumber: true,
+        status: true,
       },
     });
 
     if (!existingTranscript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
+    }
+
+    // Phase 3B-5: Check if transcript is locked
+    const lockCheck = await canEditTranscript(
+      transcriptId,
+      session.user.id,
+      session.user.role as any
+    );
+
+    if (!lockCheck.allowed) {
+      return NextResponse.json(
+        { error: lockCheck.reason || 'Transcript is locked' },
+        { status: 403 }
+      );
     }
 
     // Create new version
@@ -257,6 +273,20 @@ export const PUT = withRequestLogging(async (
 
     if (!isCreator && !isAssignedScopist && session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Phase 3B-5: Check if transcript is locked
+    const lockCheck = await canEditTranscript(
+      transcriptId,
+      session.user.id,
+      session.user.role as any
+    );
+
+    if (!lockCheck.allowed) {
+      return NextResponse.json(
+        { error: lockCheck.reason || 'Transcript is locked' },
+        { status: 403 }
+      );
     }
 
     // Update transcript

@@ -68,17 +68,27 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/admin/settings': ['ADMIN'],
   '/admin/audit': ['ADMIN'],
   '/admin/permissions': ['ADMIN'],
+  '/admin/features': ['ADMIN'],
   '/admin/sitemap': ['ADMIN'],
+  '/admin/actions': ['ADMIN'],
+  '/dashboard/admin': ['ADMIN'],
+  '/dashboard/admin/calendar': ['ADMIN'],
+  '/dashboard/admin/jobs': ['ADMIN'],
 
   // ─────────────────────────────────────────────────────────────────────────
   // REPORTER ROUTES
   // ─────────────────────────────────────────────────────────────────────────
   '/reporter': ['ADMIN', 'REPORTER'],
+  '/dashboard/reporter': ['ADMIN', 'REPORTER'],
+  '/dashboard/reporter/calendar': ['ADMIN', 'REPORTER'],
+  '/dashboard/reporter/jobs': ['ADMIN', 'REPORTER'],
   '/jobs': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/jobs/new': ['ADMIN', 'REPORTER'],
   '/calendar': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/calendar/availability': ['ADMIN', 'REPORTER'],
   '/transcripts': ['ADMIN', 'REPORTER', 'SCOPIST'],
+  '/transcription/upload': ['ADMIN', 'REPORTER'],
+  '/transcription/status': ['ADMIN', 'REPORTER', 'SCOPIST'],
 
   // ─────────────────────────────────────────────────────────────────────────
   // SCOPIST ROUTES
@@ -123,6 +133,8 @@ export const API_ACCESS: Record<string, Role[]> = {
   // Jobs
   '/api/jobs': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/jobs/create': ['ADMIN', 'REPORTER'],
+  '/api/jobs/[jobId]/status': ['ADMIN', 'REPORTER', 'SCOPIST'],
+  '/api/jobs/[jobId]/upload': ['ADMIN', 'REPORTER'],
 
   // Calendar
   '/api/calendar': ['ADMIN', 'REPORTER', 'SCOPIST'],
@@ -132,6 +144,10 @@ export const API_ACCESS: Record<string, Role[]> = {
   // Transcripts
   '/api/transcripts': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/transcripts/edit': ['ADMIN', 'REPORTER', 'SCOPIST'],
+  '/api/transcripts/[id]/finalize': ['ADMIN', 'REPORTER'],
+  
+  // Contact
+  '/api/contact': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
 
   // Cases
   '/api/cases': ['ADMIN', 'REPORTER', 'ATTORNEY'],
@@ -139,6 +155,9 @@ export const API_ACCESS: Record<string, Role[]> = {
   // Admin
   '/api/admin': ['ADMIN'],
   '/api/admin/users': ['ADMIN'],
+  '/api/admin/health': ['ADMIN'],
+  '/api/admin/users/[id]/role-history': ['ADMIN'],
+  '/api/admin/actions': ['ADMIN'],
 
   // Attorney
   '/api/attorney': ['ADMIN', 'ATTORNEY'],

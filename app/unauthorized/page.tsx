@@ -1,40 +1,29 @@
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
 // UNAUTHORIZED PAGE
-// ═══════════════════════════════════════════════════════════════
-// Shown when a user tries to access a route they don't have permission for
+// app/unauthorized/page.tsx
+//
+// Unauthorized access page
+// =============================================================================
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldX } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 export default function UnauthorizedPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-            <ShieldX className="h-6 w-6 text-destructive" />
-          </div>
-          <CardTitle className="text-2xl">Access Denied</CardTitle>
-          <CardDescription>
-            You don't have permission to access this page.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground text-center">
-            If you believe this is an error, please contact your administrator.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Button asChild className="w-full">
-              <Link href="/dashboard">Go to Dashboard</Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full">
-              <Link href="/">Go to Home</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mt-4 mb-2">Unauthorized</h2>
+        <p className="text-gray-600 mt-2 mb-6">
+          Please sign in to access this page.
+        </p>
+        <Link
+          href="/login"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors inline-block"
+        >
+          Sign In
+        </Link>
+      </div>
     </div>
   );
 }

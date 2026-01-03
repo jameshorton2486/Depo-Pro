@@ -11,6 +11,8 @@ import {
 import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
 import { RxQueueManager } from '@/components/billing/rx-queue-manager';
+import { HealthDashboard } from '@/components/admin/health-dashboard';
+import { ActionConsole } from '@/components/admin/action-console';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -96,6 +98,32 @@ export default async function AdminDashboard() {
       {/* Recent Jobs */}
       <div className="mb-8">
         <RecentJobs jobs={recentJobs} />
+      </div>
+
+      {/* System Health - Phase 3D-3 */}
+      <div className="mb-8">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+            System Health
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Real-time system status monitoring
+          </p>
+        </div>
+        <HealthDashboard />
+      </div>
+
+      {/* Admin Action Console - Phase 4D-1 */}
+      <div className="mb-8">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+            Admin Actions
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            View all sensitive admin actions and overrides
+          </p>
+        </div>
+        <ActionConsole />
       </div>
 
       {/* RX Queue Manager */}

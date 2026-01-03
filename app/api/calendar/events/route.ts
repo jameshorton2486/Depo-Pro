@@ -11,6 +11,7 @@ import { logger, withRequestLogging } from '@/lib/observability';
 import { checkRateLimit } from '@/lib/security';
 import { revalidatePath } from 'next/cache';
 import { EventType } from '@/lib/constants';
+import { checkConflicts } from '@/lib/calendar/conflict-detection';
 
 // ------------------------------------------------------------
 // VALIDATION SCHEMAS
@@ -278,27 +279,23 @@ async function postEventsHandler(request: NextRequest) {
       return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 });
     }
 
-    // Check for conflicts if reporter is assigned
+    // Phase 3A-4: Check for conflicts (soft warning, doesn't block)
+    let conflicts: Array<{ eventId: string; eventTitle: string; message: string }> = [];
     if (data.assignedReporterId) {
-      const conflicts = await checkReporterConflicts(
+      const conflictWarnings = await checkConflicts(
         data.assignedReporterId,
         startTime,
-        endTime,
-        user.firmId
+        endTime
       );
-
-      if (conflicts.length > 0) {
-        return NextResponse.json({
-          error: 'Reporter has conflicting events',
-          conflicts: conflicts.map((c: any) => ({
-            id: c.id,
-            title: c.title,
-            start: c.startTime,
-            end: c.endTime,
-          })),
-        }, { status: 409 });
-      }
+      conflicts = conflictWarnings.map((c) => ({
+        eventId: c.eventId,
+        eventTitle: c.eventTitle,
+        message: c.message,
+      }));
     }
+
+    // Note: We don't block on conflicts, but we return them in the response
+    // The UI will show a warning dialog
 
     // Create the event
     const event = await db.calendarEvent.create({
@@ -352,6 +349,7 @@ async function postEventsHandler(request: NextRequest) {
     return NextResponse.json({
       message: 'Event created successfully',
       event,
+      conflicts: conflicts.length > 0 ? conflicts : undefined, // Phase 3A-4: Include conflicts in response
     }, { status: 201 });
 
   } catch (error) {
@@ -369,7 +367,7 @@ export const POST = withRequestLogging(postEventsHandler);
 // HELPER FUNCTIONS
 // ------------------------------------------------------------
 
-async function checkReporterConflicts(
+async function _checkReporterConflicts(
   reporterId: string,
   startTime: Date,
   endTime: Date,

@@ -38,6 +38,10 @@ import { CalendarTimeline } from './CalendarTimeline';
 import { EventDetailsDrawer } from './EventDetailsDrawer';
 import { CreateEventModal } from './CreateEventModal';
 import { CalendarViewControls } from './calendar-view-controls';
+import { CalendarFilterBar } from './calendar-filter-bar';
+// Old CalendarShell - kept for backward compatibility
+// New implementation is in calendar-shell.tsx
+// import { CalendarViewToggle, type CalendarContentView } from './calendar-view-toggle';
 import {
   CalendarEventUI,
   CalendarViewType,
@@ -45,6 +49,8 @@ import {
   CalendarEventStatus,
 } from './calendar.types';
 import { detectConflicts } from '@/lib/calendar/calendar-utils';
+import { EventTypeFilter } from '@/lib/calendar/event-types';
+import { filterEventsByRole } from '@/lib/calendar/event-filters';
 
 // ============================================
 // CALENDAR SHELL COMPONENT
@@ -82,6 +88,7 @@ export function CalendarShell({
   ]);
   const [showCancelled, setShowCancelled] = useState(false);
   const [showPast, setShowPast] = useState(false); // Past depositions toggle
+  const [eventTypeFilter, setEventTypeFilter] = useState<EventTypeFilter>('all');
 
   // Reporters list (for assignment dropdown)
   const [reporters, setReporters] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
@@ -152,9 +159,30 @@ export function CalendarShell({
       
           // Transform dates - API returns start/end (already Date objects or ISO strings)
       let transformedEvents: CalendarEventUI[] = data.events.map((event: any) => ({
-        ...event,
+        id: event.id,
+        title: event.title || `${event.caseName || 'Event'} - ${event.deponentName || ''}`,
         start: event.start ? new Date(event.start) : (event.startTime ? new Date(event.startTime) : new Date()),
-        end: event.end ? new Date(event.end) : (event.endTime ? new Date(event.endTime) : new Date(event.start).getTime() + 2 * 60 * 60 * 1000), // Default 2 hours if no end
+        end: event.end ? new Date(event.end) : (event.endTime ? new Date(event.endTime) : new Date(event.start ? new Date(event.start) : new Date()).getTime() + 2 * 60 * 60 * 1000), // Default 2 hours if no end
+        allDay: false,
+        caseStyle: event.caseName || event.caseStyle || '',
+        caseNumber: event.caseNumber,
+        deponentName: event.deponentName || '',
+        status: event.status || 'SCHEDULED',
+        locationType: event.isRemote ? 'ZOOM' : 'IN_PERSON',
+        locationAddress: event.location,
+        zoomJoinUrl: event.meetingLink,
+        assignedReporter: event.assignedReporter,
+        interpreterRequired: false,
+        videographerRequired: false,
+        realtimeRequired: false,
+        jobId: event.jobId,
+        createdById: event.createdById || '',
+        firmId: event.firmId,
+        agencyId: event.agencyId,
+        notes: event.notes,
+        // Store raw event data for type detection
+        eventType: event.eventType,
+        assignedReporterId: event.assignedReporterId,
       }));
 
       // Filter past events if showPast is false
@@ -166,11 +194,20 @@ export function CalendarShell({
         });
       }
 
+      // Apply role-aware filtering
+      const roleFilteredEvents = filterEventsByRole(transformedEvents, {
+        typeFilter: eventTypeFilter,
+        userRole: userRole as any,
+        userId,
+        firmId,
+        agencyId,
+      });
+
       // Detect conflicts
-      const conflictIds = detectConflicts(transformedEvents);
+      const conflictIds = detectConflicts(roleFilteredEvents);
       
       // Add conflict flag to events
-      const eventsWithConflicts = transformedEvents.map(event => ({
+      const eventsWithConflicts = roleFilteredEvents.map(event => ({
         ...event,
         hasConflict: conflictIds.has(event.id),
       }));
@@ -219,7 +256,7 @@ export function CalendarShell({
     }
     // User changed filters/view/date, refetch
     fetchEvents();
-  }, [fetchEvents, currentDate, view, statusFilters, showCancelled, showPast]);
+  }, [fetchEvents, currentDate, view, statusFilters, showCancelled, showPast, eventTypeFilter]);
 
   // ============================================
   // NAVIGATION HANDLERS
@@ -386,6 +423,14 @@ export function CalendarShell({
         currentDate={currentDate}
         onDateChange={setCurrentDate}
       />
+      
+      {/* Event Type Filter Bar */}
+      <div className="px-4 py-2 border-b bg-white">
+        <CalendarFilterBar
+          selectedFilter={eventTypeFilter}
+          onFilterChange={setEventTypeFilter}
+        />
+      </div>
       
       {/* Legacy Header (kept for backward compatibility, can be removed if CalendarViewControls works) */}
       <div className="flex items-center justify-between p-4 border-b bg-white">

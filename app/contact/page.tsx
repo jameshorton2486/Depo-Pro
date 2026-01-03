@@ -1,183 +1,194 @@
-// ═══════════════════════════════════════════════════════════════
-// CONTACT PAGE - Use Case Dropdown
-// ═══════════════════════════════════════════════════════════════
+// =============================================================================
+// CONTACT PAGE
+// app/contact/page.tsx
+//
+// Contact form and company information
+// =============================================================================
 
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PublicHeader } from '@/components/layouts/public-header';
-import { PublicFooter } from '@/components/layouts/public-footer';
-import { Mail, Phone, Send } from 'lucide-react';
+import Link from 'next/link';
+import { Mail, Phone, MapPin, Send } from 'lucide-react';
 
 export default function ContactPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [useCase, setUseCase] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setIsSubmitting(true);
+    setLoading(true);
+    setError('');
 
-    // TODO: Implement actual contact form submission
-    // For now, just simulate success
-    setTimeout(() => {
-      setIsSubmitting(false);
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      message: formData.get('message'),
+    };
+
+    try {
+      // For v1.0, we'll use a simple mailto or API endpoint
+      // In production, this would send to a contact API
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
       setSubmitted(true);
-    }, 1000);
-  };
+    } catch (_err) {
+      setError('Failed to send message. Please try again or email us directly.');
+      setLoading(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Send className="w-8 h-8 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold mb-4">Message Sent!</h1>
+            <p className="text-gray-600 mb-6">
+              Thank you for contacting us. We'll get back to you as soon as possible.
+            </p>
+            <Link
+              href="/"
+              className="text-indigo-600 hover:text-indigo-700 font-semibold"
+            >
+              Return to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
-      <PublicHeader />
+    <div className="min-h-screen bg-gray-50 py-16">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
+            <p className="text-xl text-gray-600">
+              Have questions? We'd love to hear from you.
+            </p>
+          </div>
 
-      {/* Hero */}
-      <section className="pt-32 pb-16 lg:pt-40 lg:pb-24">
-        <div className="container mx-auto px-4 lg:px-6 text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-[52px] font-bold text-[var(--color-primary)] mb-6 leading-[1.1] max-w-4xl mx-auto">
-            Get in Touch
-          </h1>
-          <p className="text-lg md:text-xl text-[var(--color-text-secondary)] max-w-3xl mx-auto leading-relaxed mb-4">
-            Have questions about Depo-Pro? We&apos;d love to hear from you.
-          </p>
-          <p className="text-sm text-[var(--color-text-muted)]">
-            We respond within one business day.
-          </p>
-        </div>
-      </section>
-
-      {/* Contact Form & Info */}
-      <section className="py-16 lg:py-24 bg-[var(--color-surface)]">
-        <div className="container mx-auto px-4 lg:px-6 max-w-6xl">
-          <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Contact Form */}
-            <Card className="border-[var(--color-border)] shadow-[var(--shadow-soft)]">
-              <CardHeader>
-                <CardTitle className="text-[var(--color-primary)]">Send us a Message</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {submitted ? (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-[var(--color-success)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Send className="w-8 h-8 text-[var(--color-success)]" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-[var(--color-primary)] mb-2">Message Sent!</h3>
-                    <p className="text-[var(--color-text-secondary)]">
-                      Thank you for contacting us. We&apos;ll get back to you within one business day.
-                    </p>
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold mb-6">Send us a message</h2>
+                
+                {error && (
+                  <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">
+                    {error}
                   </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Name</Label>
-                      <Input id="name" name="name" required className="border-[var(--color-border)]" />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" name="email" required className="border-[var(--color-border)]" />
-                    </div>
-                    <div>
-                      <Label htmlFor="useCase">Use Case</Label>
-                      <Select value={useCase} onValueChange={setUseCase} required>
-                        <SelectTrigger className="border-[var(--color-border)]">
-                          <SelectValue placeholder="Select a use case" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sales">Sales</SelectItem>
-                          <SelectItem value="support">Support</SelectItem>
-                          <SelectItem value="security">Security</SelectItem>
-                          <SelectItem value="billing">Billing</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="subject">Subject</Label>
-                      <Input id="subject" name="subject" required className="border-[var(--color-border)]" />
-                    </div>
-                    <div>
-                      <Label htmlFor="message">Message</Label>
-                      <Textarea
-                        id="message"
-                        name="message"
-                        rows={6}
-                        required
-                        className="border-[var(--color-border)]"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full bg-[var(--color-accent)] hover:bg-[var(--color-accent)]/90 text-white rounded-[var(--radius-button)]"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? 'Sending...' : 'Send Message'}
-                    </Button>
-                  </form>
                 )}
-              </CardContent>
-            </Card>
 
-            {/* Contact Info */}
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium mb-2">
+                      Name *
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium mb-2">
+                      Email *
+                    </label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="message" className="block text-sm font-medium mb-2">
+                      Message *
+                    </label>
+                    <textarea
+                      id="message"
+                      name="message"
+                      required
+                      rows={6}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Sending...' : 'Send Message'}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Contact Information */}
             <div className="space-y-6">
-              <Card className="border-[var(--color-border)] shadow-[var(--shadow-soft)]">
-                <CardHeader>
-                  <CardTitle className="text-[var(--color-primary)]">Contact Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-[var(--color-accent)]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Mail className="w-5 h-5 text-[var(--color-accent)]" />
-                    </div>
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Get in Touch</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <Mail className="w-5 h-5 text-indigo-600 mr-3 mt-0.5" />
                     <div>
-                      <p className="font-medium text-[var(--color-primary)] mb-1">Email</p>
+                      <p className="font-medium">Email</p>
                       <a
                         href="mailto:support@depo-pro.com"
-                        className="text-[var(--color-accent)] hover:underline text-sm"
+                        className="text-indigo-600 hover:underline"
                       >
                         support@depo-pro.com
                       </a>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-[var(--color-accent)]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Phone className="w-5 h-5 text-[var(--color-accent)]" />
-                    </div>
+                  <div className="flex items-start">
+                    <Phone className="w-5 h-5 text-indigo-600 mr-3 mt-0.5" />
                     <div>
-                      <p className="font-medium text-[var(--color-primary)] mb-1">Phone</p>
-                      <a href="tel:+1-555-123-4567" className="text-[var(--color-accent)] hover:underline text-sm">
-                        (555) 123-4567
-                      </a>
+                      <p className="font-medium">Phone</p>
+                      <p className="text-gray-600">Available upon request</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="flex items-start">
+                    <MapPin className="w-5 h-5 text-indigo-600 mr-3 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Location</p>
+                      <p className="text-gray-600">United States</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <Card className="border-[var(--color-border)] shadow-[var(--shadow-soft)]">
-                <CardHeader>
-                  <CardTitle className="text-[var(--color-primary)]">Business Hours</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium text-[var(--color-primary)]">Monday - Friday</span>
-                      <span className="text-[var(--color-text-secondary)]">9:00 AM - 6:00 PM PST</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-4">
-                    We respond within one business day.
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="bg-indigo-50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold mb-2">Response Time</h3>
+                <p className="text-sm text-gray-600">
+                  We typically respond within 24 hours during business days. 
+                  For urgent matters, please indicate in your message.
+                </p>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-
-      <PublicFooter />
+      </div>
     </div>
   );
 }

@@ -214,7 +214,7 @@ const SCOPIST_NAV: NavigationSchema = [
     section: 'Settings',
     icon: Settings,
     items: [
-      { id: 'attorney-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
+      { id: 'scopist-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
     ],
   },
 ];
@@ -266,7 +266,7 @@ const ATTORNEY_NAV: NavigationSchema = [
     section: 'Settings',
     icon: Settings,
     items: [
-      { id: 'scopist-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
+      { id: 'attorney-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings, description: 'Your profile settings' },
     ],
   },
 ];
@@ -338,6 +338,47 @@ export const NAVIGATION: Record<UserRole, NavigationSchema> = {
   ATTORNEY: ATTORNEY_NAV,
   AGENCY: AGENCY_NAV,
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VALIDATION: Ensure unique nav IDs across all schemas
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Assert that all navigation item IDs are globally unique across all role schemas.
+ * This prevents React key conflicts and ensures stable navigation state.
+ * 
+ * @throws Error if duplicate IDs are detected
+ */
+function assertUniqueNavIds(): void {
+  const ids = new Set<string>();
+  const duplicates: Array<{ id: string; role: UserRole; section: string; label: string }> = [];
+
+  for (const [role, schema] of Object.entries(NAVIGATION) as Array<[UserRole, NavigationSchema]>) {
+    for (const section of schema) {
+      for (const item of section.items) {
+        if (ids.has(item.id)) {
+          duplicates.push({ id: item.id, role, section: section.section, label: item.label });
+        } else {
+          ids.add(item.id);
+        }
+      }
+    }
+  }
+
+  if (duplicates.length > 0) {
+    const errorDetails = duplicates
+      .map((d) => `  - "${d.id}" in ${d.role} → ${d.section} → ${d.label}`)
+      .join('\n');
+    throw new Error(
+      `Duplicate navigation IDs detected. Each nav item must have a globally unique ID.\n\nDuplicates:\n${errorDetails}\n\nFix: Use role-scoped IDs: <role>-<section>-<item>`
+    );
+  }
+}
+
+// Run validation in development mode to catch duplicate IDs early
+if (process.env.NODE_ENV !== 'production') {
+  assertUniqueNavIds();
+}
 
 /**
  * Get navigation for a specific role

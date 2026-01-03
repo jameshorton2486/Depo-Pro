@@ -6,6 +6,9 @@ import { exportTranscript } from '@/lib/export';
 import { ExportOptions, ExportMetadata } from '@/types/transcript';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 import { useQuota } from '@/lib/cost-control-service';
+import { canExportFormat, canUseProfile } from '@/lib/export/permissions';
+import { getExportProfile } from '@/lib/export/profiles';
+import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -81,6 +84,24 @@ export async function GET(
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Phase 3C-2: Check export format permissions
+    const userRole = user.role as any;
+    if (!canExportFormat(userRole, format)) {
+      return NextResponse.json(
+        { error: `Export format ${format} not allowed for your role` },
+        { status: 403 }
+      );
+    }
+
+    // Check for profile if provided
+    const profileId = searchParams.get('profileId');
+    if (profileId && !canUseProfile(userRole, profileId)) {
+      return NextResponse.json(
+        { error: `Export profile ${profileId} not allowed for your role` },
+        { status: 403 }
+      );
     }
 
     if (!transcription.fullTranscript) {
@@ -186,8 +207,8 @@ export async function GET(
       location: transcription.job.location || undefined,
     };
 
-    // Build options
-    const options: ExportOptions = {
+    // Phase 3C-1: Apply export profile if provided
+    let exportOptions: ExportOptions = {
       format,
       includeTimestamps: false,
       includeSpeakerLabels: true,
@@ -195,12 +216,41 @@ export async function GET(
       useQAFormat: true,
     };
 
+    if (profileId) {
+      const profile = getExportProfile(profileId);
+      if (profile) {
+        // Merge profile options with query options
+        exportOptions = {
+          ...exportOptions,
+          ...profile.options,
+          format: profile.format as any,
+        };
+      }
+    }
+
     // Generate export with corrected text
     const { buffer, filename, contentType } = await exportTranscript(
       exportText,
       metadata,
-      options,
+      exportOptions,
     );
+
+    // Phase 3C-3: Log export to audit trail
+    await createAuditLog({
+      actorUserId: user.id,
+      firmId: transcription.job.firmId || undefined,
+      action: AuditAction.TRANSCRIPT_EXPORTED,
+      targetType: AuditTargetType.TRANSCRIPT,
+      targetId: transcriptId,
+      metadata: {
+        format,
+        profileId: profileId || undefined,
+        filename,
+        contentType,
+      },
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
+      userAgent: request.headers.get('user-agent') || undefined,
+    }).catch(() => {}); // Fire and forget
 
     // Return file
     return new NextResponse(buffer as unknown as BodyInit, {

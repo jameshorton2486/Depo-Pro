@@ -2,6 +2,7 @@
 
 import { Video, MapPin, Phone, Users, Globe, AlertCircle, AlertTriangle } from 'lucide-react';
 import { CalendarEventUI, LocationType, STATUS_COLORS } from './calendar.types';
+import { getEventTypeColor } from '@/lib/calendar/event-types';
 import { cn } from '@/lib/utils';
 
 // ============================================
@@ -36,6 +37,7 @@ interface CalendarEventCardProps {
 export function CalendarEventCard({ event, compact = false, onClick, hasConflict = false }: CalendarEventCardProps) {
   const Icon = LocationIcon[event.locationType] || Globe;
   const _colors = STATUS_COLORS[event.status];
+  const eventTypeColor = getEventTypeColor(event);
 
   // Compact view (month view)
   if (compact) {
@@ -45,6 +47,11 @@ export function CalendarEventCard({ event, compact = false, onClick, hasConflict
           "truncate text-xs cursor-pointer hover:opacity-80 transition-opacity",
           hasConflict && "border-l-2 border-red-500 pl-1"
         )}
+        style={{
+          borderLeftColor: hasConflict ? undefined : eventTypeColor,
+          borderLeftWidth: hasConflict ? undefined : '2px',
+          paddingLeft: hasConflict ? undefined : '4px',
+        }}
         onClick={onClick}
         title={`${event.deponentName} - ${event.caseStyle}${hasConflict ? ' (CONFLICT)' : ''}`}
       >
@@ -68,6 +75,14 @@ export function CalendarEventCard({ event, compact = false, onClick, hasConflict
         "flex flex-col gap-0.5 cursor-pointer hover:opacity-90 transition-opacity p-1 rounded border",
         hasConflict && "border-red-500 border-2 bg-red-50"
       )}
+      style={
+        !hasConflict
+          ? {
+              borderColor: eventTypeColor,
+              borderWidth: '2px',
+            }
+          : undefined
+      }
       onClick={onClick}
     >
       {/* Conflict Warning */}
