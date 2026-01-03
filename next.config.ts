@@ -2,7 +2,13 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['bcrypt'],
+  // Server-side only packages (not bundled for client)
+  serverExternalPackages: [
+    'bcrypt',
+    'ioredis',
+    'bullmq',
+    '@dolbyio/media-apis', // Optional - may not be installed
+  ],
 
   // Webpack configuration
   webpack: (config, { isServer: _isServer }) => {
@@ -10,6 +16,13 @@ const nextConfig: NextConfig = {
       'utf-8-validate': 'commonjs utf-8-validate',
       bufferutil: 'commonjs bufferutil',
     });
+    
+    // Ignore missing optional dependencies
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      '@dolbyio/media-apis': false,
+    };
+    
     return config;
   },
 
