@@ -3,7 +3,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { db } from '@/lib/db';
 import { JobStatus } from '@prisma/client';
 
@@ -150,7 +149,7 @@ export async function PATCH(
     }
 
     // Get job to check permissions
-    const job = await prisma.job.findUnique({
+    const job = await db.job.findUnique({
       where: { id: jobId },
       include: {
         assignments: {
@@ -175,7 +174,7 @@ export async function PATCH(
     }
 
     // Update job status
-    const updatedJob = await prisma.job.update({
+    const updatedJob = await db.job.update({
       where: { id: jobId },
       data: {
         status: status as JobStatus,

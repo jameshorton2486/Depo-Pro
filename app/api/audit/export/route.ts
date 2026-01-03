@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { UserRole } from '@/lib/enums';
-import { db as prisma } from '@/lib/db';
+import { db } from '@/lib/db';
 import {
   createAuditLog,
   AuditAction,
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Count first to check limits
-    const count = await prisma.auditLog.count({ where });
+    const count = await db.auditLog.count({ where });
     
     if (count > SecurityConfig.MAX_EXPORT_RECORDS) {
       return NextResponse.json(
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Fetch logs
-    const logs = await prisma.auditLog.findMany({
+    const logs = await db.auditLog.findMany({
       where,
       orderBy: { createdAt: 'asc' },
       include: {

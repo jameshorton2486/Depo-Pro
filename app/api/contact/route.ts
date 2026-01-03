@@ -2,11 +2,32 @@
 // CONTACT API
 // app/api/contact/route.ts
 //
-// Handle contact form submissions
+// Handle contact form submissions with rate limiting
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { db } from '@/lib/db';
+
+// Simple in-memory rate limiting (5 requests per hour per IP)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(ip: string, limit: number = 5, windowMs: number = 3600000): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+  
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= limit) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
 
 /**
  * POST /api/contact
@@ -14,6 +35,19 @@ import { db } from '@/lib/db';
  */
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting check
+    const headersList = await headers();
+    const forwardedFor = headersList.get('x-forwarded-for');
+    const realIp = headersList.get('x-real-ip');
+    const ip = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown';
+    
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { name, email, message } = body;
 
