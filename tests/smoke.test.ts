@@ -4,7 +4,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { transcriptionQueue } from '../src/queue/index.js';
+import { transcriptionQueue } from '@/lib/queue/transcription-queue';
+import { db } from '@/lib/db';
 
 const prisma = new PrismaClient();
 

@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
       }),
-      Prisma.Case.count({ where }),
+      db.case.count({ where }),
     ]);
     
     // Get attorney's role for each case
