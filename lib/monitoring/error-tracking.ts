@@ -17,6 +17,9 @@ export interface ErrorContext {
   userRole?: string;
   action?: string;
   resource?: string;
+  query?: string;
+  duration?: number;
+  params?: string;
   metadata?: Record<string, unknown>;
 }
 

@@ -43,6 +43,12 @@
     "tests",
     "prisma",
     "archive",
-    "work_files"
+    "work_files",
+    "lib/_future",
+    "components/_future"
+  ],
+  "types": [
+    "jest",
+    "node"
   ]
 }

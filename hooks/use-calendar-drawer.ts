@@ -15,6 +15,8 @@ interface UseCalendarDrawerReturn {
 export function useCalendarDrawer(): UseCalendarDrawerReturn {
   const [drawerState, setDrawerState] = useState<DrawerState>({
     isOpen: false,
+    event: null,
+    action: null,
     selectedEvent: null,
     activeTab: 'details',
   });
@@ -22,6 +24,8 @@ export function useCalendarDrawer(): UseCalendarDrawerReturn {
   const openDrawer = useCallback((event: CalendarEventUI) => {
     setDrawerState({
       isOpen: true,
+      event,
+      action: null,
       selectedEvent: event,
       activeTab: 'details',
     });
@@ -38,13 +42,14 @@ export function useCalendarDrawer(): UseCalendarDrawerReturn {
     setTimeout(() => {
       setDrawerState(prev => ({
         ...prev,
+        event: null,
         selectedEvent: null,
       }));
     }, 300);
   }, []);
   
-  const setActiveTab = useCallback((tab: DrawerState['activeTab']) => {
-    setDrawerState(prev => ({
+  const setActiveTab = useCallback((tab: string | undefined) => {
+    setDrawerState((prev: DrawerState) => ({
       ...prev,
       activeTab: tab,
     }));

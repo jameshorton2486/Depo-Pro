@@ -75,7 +75,7 @@ export function useCalendarPermissions(
     permissions,
     canPerformAction,
     getAvailableActions,
-    preferredView: permissions.preferredView,
+    preferredView: permissions.preferredView as 'grid' | 'timeline',
     canToggleView: permissions.canToggleView,
   };
 }

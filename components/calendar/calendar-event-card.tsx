@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { CalendarEventUI } from '@/lib/calendar/types';
+import type { CalendarEventUI, EventType, EventStatus } from '@/lib/calendar/types';
 import { formatEventTime } from '@/lib/calendar/utils';
 import { EVENT_TYPE_COLORS, EVENT_STATUS_INDICATORS } from '@/lib/calendar/constants';
 
@@ -12,8 +12,8 @@ interface CalendarEventCardProps {
 }
 
 export function CalendarEventCard({ event, variant, onClick }: CalendarEventCardProps) {
-  const typeColors = EVENT_TYPE_COLORS[event.eventType] || EVENT_TYPE_COLORS.OTHER;
-  const statusIndicator = EVENT_STATUS_INDICATORS[event.status] || EVENT_STATUS_INDICATORS.SCHEDULED;
+  const typeColors = EVENT_TYPE_COLORS[(event.eventType || 'OTHER') as EventType] || EVENT_TYPE_COLORS.OTHER;
+  const statusIndicator = EVENT_STATUS_INDICATORS[event.status as EventStatus] || EVENT_STATUS_INDICATORS.SCHEDULED;
 
   if (variant === 'compact') {
     return (
@@ -47,7 +47,7 @@ export function CalendarEventCard({ event, variant, onClick }: CalendarEventCard
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm text-gray-600">
-        <div>{formatEventTime(event.start, event.end)}</div>
+        <div>{formatEventTime(event.start, event.end || null)}</div>
         {event.location && (
           <div>{event.isRemote ? 'Remote' : event.location}</div>
         )}

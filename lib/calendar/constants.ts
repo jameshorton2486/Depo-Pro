@@ -24,6 +24,7 @@ export const EVENT_STATUS_INDICATORS: Record<EventStatus, string> = {
   COMPLETED: 'bg-gray-400',
   CANCELLED: 'bg-red-400',
   RESCHEDULED: 'bg-orange-400',
+  CONVERTED: 'bg-purple-400',
 };
 
 // Event Status Colors (full card backgrounds)
@@ -35,6 +36,7 @@ export const EVENT_STATUS_COLORS: Record<EventStatus, { bg: string; border: stri
   COMPLETED: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-800' },
   CANCELLED: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800' },
   RESCHEDULED: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800' },
+  CONVERTED: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-800' },
 };
 
 // Event Type Labels
@@ -57,6 +59,7 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
   RESCHEDULED: 'Rescheduled',
+  CONVERTED: 'Converted',
 };
 
 // Default max visible events per day in grid
@@ -260,6 +263,12 @@ export const EVENT_STATUS_CONFIG: Record<EventStatus, {
     color: 'bg-orange-100 text-orange-800',
     dotColor: 'bg-orange-400',
     description: 'Event was rescheduled',
+  },
+  CONVERTED: {
+    label: 'Converted',
+    color: 'bg-purple-100 text-purple-800',
+    dotColor: 'bg-purple-400',
+    description: 'Event was converted to a job',
   },
 };
 

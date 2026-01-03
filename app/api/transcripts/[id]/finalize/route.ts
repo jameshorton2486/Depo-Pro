@@ -28,16 +28,33 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId } = await context.params;
+    const { id } = await context.params;
     const user = session.user as { id: string; role: string };
 
-    // Get job with transcription
-    const job = await db.job.findUnique({
-      where: { id: jobId },
+    // Try to find by job ID first (since pages use jobId)
+    let job = await db.job.findUnique({
+      where: { id },
       include: {
         transcription: true,
       },
     });
+
+    // If not found by job ID, try finding by transcript ID
+    if (!job) {
+      const transcription = await db.transcription.findUnique({
+        where: { id },
+        include: {
+          job: true,
+        },
+      });
+      
+      if (transcription && transcription.job) {
+        job = {
+          ...transcription.job,
+          transcription,
+        } as any;
+      }
+    }
 
     if (!job || !job.transcription) {
       return NextResponse.json(

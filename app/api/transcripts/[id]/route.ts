@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 import { withRequestLogging } from '@/lib/observability';
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
-import { canEditTranscript } from '@/lib/transcripts/lock-service';
+import { canEditTranscript } from '@/lib/_future/transcripts/lock-service';
 
 // ═══════════════════════════════════════════════════════════════
 // GET /api/transcripts/[id] - Get full transcript content

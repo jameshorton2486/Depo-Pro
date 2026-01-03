@@ -74,15 +74,15 @@ export default async function TranscriptViewPage({ params }: PageProps) {
   }
 
   const transcript = job.transcription;
-  const canEdit = 
+  const canEdit =
     user.role === 'ADMIN' ||
     (user.role === 'REPORTER' && job.createdById === user.id) ||
     (user.role === 'SCOPIST' && job.scopistId === user.id);
-  const canReview = 
+  const canReview =
     user.role === 'ADMIN' ||
     (user.role === 'REPORTER' && job.createdById === user.id) ||
     (user.role === 'SCOPIST' && job.scopistId === user.id);
-  const isFinalized = transcript?.status === 'FINALIZED' || transcript?.status === 'DELIVERED';
+  const isFinalized = transcript?.status === 'COMPLETED';
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -94,8 +94,8 @@ export default async function TranscriptViewPage({ params }: PageProps) {
             {job.createdBy && (
               <>Reporter: {job.createdBy.firstName} {job.createdBy.lastName}</>
             )}
-            {job.scopist && (
-              <> • Scopist: {job.scopist.firstName} {job.scopist.lastName}</>
+            {job.assignments?.[0]?.scopist && (
+              <> • Scopist: {job.assignments[0].scopist.firstName} {job.assignments[0].scopist.lastName}</>
             )}
           </p>
         </div>
@@ -160,7 +160,7 @@ export default async function TranscriptViewPage({ params }: PageProps) {
           </div>
           <div className="prose max-w-none">
             <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded">
-              {transcript.content || 'No transcript content available.'}
+              {transcript.fullTranscript || 'No transcript content available.'}
             </pre>
           </div>
         </div>

@@ -25,7 +25,7 @@ export function useCalendarFilters(
     eventTypes: undefined,
     status: undefined,
     assignedToMe: false,
-  });
+  } as CalendarFilters);
 
   const setFilter = <K extends keyof CalendarFilters>(
     key: K,
@@ -44,7 +44,7 @@ export function useCalendarFilters(
       eventTypes: undefined,
       status: undefined,
       assignedToMe: false,
-    });
+    } as CalendarFilters);
   };
 
   const hasActiveFilters = useMemo(() => {

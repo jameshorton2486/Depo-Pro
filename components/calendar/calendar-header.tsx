@@ -3,7 +3,7 @@
 import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CalendarView } from '@/lib/calendar/types';
+import type { CalendarView } from '@/lib/calendar/types';
 
 interface CalendarHeaderProps {
   currentDate: Date;
@@ -57,19 +57,19 @@ export function CalendarHeader({
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
 
-        {/* View Toggle */}
+        {/* View Toggle - Note: CalendarView is 'jobs' | 'availability' | 'assignments', not 'grid' | 'timeline' */}
         <div className="flex border rounded-md">
           <Button
-            variant={view === 'grid' ? 'secondary' : 'ghost'}
+            variant={view === 'jobs' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => onViewChange('grid')}
+            onClick={() => onViewChange('jobs')}
           >
             <LayoutGrid className="h-4 w-4" />
           </Button>
           <Button
-            variant={view === 'timeline' ? 'secondary' : 'ghost'}
+            variant={view === 'assignments' ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => onViewChange('timeline')}
+            onClick={() => onViewChange('assignments')}
           >
             <List className="h-4 w-4" />
           </Button>

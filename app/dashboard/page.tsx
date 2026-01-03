@@ -19,7 +19,7 @@ export default async function DashboardPage() {
 
   // Redirect based on role
   if (role === 'ADMIN') {
-    redirect('/dashboard/admin');
+    redirect('/admin');
   } else if (role === 'REPORTER') {
     redirect('/dashboard/reporter');
   } else if (role === 'SCOPIST') {

@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getVersions } from '@/lib/transcripts/version-service';
+import { getVersions } from '@/lib/_future/transcripts/version-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -36,7 +36,7 @@ export async function GET(
     const versions = await getVersions(transcriptId);
 
     return NextResponse.json({
-      versions: versions.map((v) => ({
+      versions: versions.map((v: any) => ({
         id: v.id,
         version: v.version,
         versionType: v.versionType,

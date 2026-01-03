@@ -1,0 +1,409 @@
+{
+  "totalFiles": 182,
+  "filesWithViolations": 27,
+  "violations": [
+    {
+      "file": "app\\(attorney)\\exhibits\\page.tsx",
+      "line": 185,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button disabled className=\"flex items-center gap-2\" title=\"Coming in Phase 2\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(attorney)\\exhibits\\page.tsx",
+      "line": 262,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button disabled className=\"flex items-center gap-2\" title=\"Coming in Phase 2\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(attorney)\\transcripts\\page.tsx",
+      "line": 51,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button disabled className=\"flex items-center gap-2\" title=\"Coming in Phase 2\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(attorney)\\transcripts\\[id]\\page.tsx",
+      "line": 76,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button variant=\"ghost\" size=\"sm\" className=\"mb-4\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(auth)\\forgot-password\\page.tsx",
+      "line": 36,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button asChild className=\"w-full\" variant=\"outline\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(auth)\\reset-password\\page.tsx",
+      "line": 36,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button asChild className=\"w-full\" variant=\"outline\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(dashboard)\\attorney\\cases\\page.tsx",
+      "line": 298,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[130px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "app\\(dashboard)\\attorney\\cases\\page.tsx",
+      "line": 315,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[130px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "app\\(dashboard)\\attorney\\cases\\page.tsx",
+      "line": 331,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button variant=\"outline\" size=\"sm\" className=\"relative\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(dashboard)\\attorney\\cases\\page.tsx",
+      "line": 485,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button variant=\"outline\" className=\"mt-4\" onClick={fetchCases}>",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\(dashboard)\\jobs\\[id]\\page.tsx",
+      "line": 126,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button variant=\"outline\" className=\"text-red-600 hover:text-red-700\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\contact\\page.tsx",
+      "line": 78,
+      "type": "raw-input",
+      "severity": "info",
+      "message": "Raw <input> element",
+      "code": "<Input id=\"name\" name=\"name\" required className=\"border-[var(--color-border)]\" /",
+      "suggestion": "Consider using <Input> from @/components/ui/input"
+    },
+    {
+      "file": "app\\contact\\page.tsx",
+      "line": 82,
+      "type": "raw-input",
+      "severity": "info",
+      "message": "Raw <input> element",
+      "code": "<Input id=\"email\" type=\"email\" name=\"email\" required className=\"border-[var(--co",
+      "suggestion": "Consider using <Input> from @/components/ui/input"
+    },
+    {
+      "file": "app\\contact\\page.tsx",
+      "line": 87,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"border-[var(--color-border)]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "app\\contact\\page.tsx",
+      "line": 100,
+      "type": "raw-input",
+      "severity": "info",
+      "message": "Raw <input> element",
+      "code": "<Input id=\"subject\" name=\"subject\" required className=\"border-[var(--color-borde",
+      "suggestion": "Consider using <Input> from @/components/ui/input"
+    },
+    {
+      "file": "app\\unauthorized\\page.tsx",
+      "line": 29,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button asChild className=\"w-full\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "app\\unauthorized\\page.tsx",
+      "line": 32,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button variant=\"outline\" asChild className=\"w-full\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\attorney\\issue-code-palette.tsx",
+      "line": 45,
+      "type": "inline-style",
+      "severity": "warning",
+      "message": "Inline style with color found",
+      "code": "style={{ backgroundColor: code.color }}",
+      "suggestion": "Use Tailwind classes or status-colors utility"
+    },
+    {
+      "file": "components\\attorney\\transcript-list.tsx",
+      "line": 79,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-40\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\attorney\\transcript-viewer.tsx",
+      "line": 165,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button variant=\"ghost\" size=\"icon\" className=\"h-7 w-7\"><Tag className=\"h-3.5 w-",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\audio\\waveform-player.tsx",
+      "line": 39,
+      "type": "hex-color",
+      "severity": "error",
+      "message": "Hardcoded hex color found",
+      "code": "waveColor: '#64748b',      // slate-500 (muted)",
+      "suggestion": "Use getStatusClasses() or getChartColor() from lib/status-colors.ts"
+    },
+    {
+      "file": "components\\audio\\waveform-player.tsx",
+      "line": 40,
+      "type": "hex-color",
+      "severity": "error",
+      "message": "Hardcoded hex color found",
+      "code": "progressColor: '#3b82f6',  // blue-500 (primary)",
+      "suggestion": "Use getStatusClasses() or getChartColor() from lib/status-colors.ts"
+    },
+    {
+      "file": "components\\audio\\waveform-player.tsx",
+      "line": 41,
+      "type": "hex-color",
+      "severity": "error",
+      "message": "Hardcoded hex color found",
+      "code": "cursorColor: '#ef4444',    // red-500 (destructive)",
+      "suggestion": "Use getStatusClasses() or getChartColor() from lib/status-colors.ts"
+    },
+    {
+      "file": "components\\billing\\rx-queue-manager.tsx",
+      "line": 332,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-40\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\calendar\\booking-request-queue.tsx",
+      "line": 292,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[150px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\calendar\\depo-calendar.tsx",
+      "line": 559,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[140px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\calendar\\depo-calendar.tsx",
+      "line": 571,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[140px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\calendar\\depo-calendar.tsx",
+      "line": 586,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[160px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\calendar\\depo-calendar.tsx",
+      "line": 617,
+      "type": "inline-style",
+      "severity": "warning",
+      "message": "Inline style with color found",
+      "code": "style={{ backgroundColor: bg }}",
+      "suggestion": "Use Tailwind classes or status-colors utility"
+    },
+    {
+      "file": "components\\calendar\\EventDetailsDrawer.tsx",
+      "line": 257,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button className=\"w-full\" variant=\"outline\" asChild>",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\calendar\\external-event-badge.tsx",
+      "line": 310,
+      "type": "hex-color",
+      "severity": "error",
+      "message": "Hardcoded hex color found",
+      "code": "style={{ backgroundColor: calendarColor || '#e5e7eb' }}",
+      "suggestion": "Use getStatusClasses() or getChartColor() from lib/status-colors.ts"
+    },
+    {
+      "file": "components\\calendar\\external-event-badge.tsx",
+      "line": 310,
+      "type": "inline-style",
+      "severity": "warning",
+      "message": "Inline style with color found",
+      "code": "style={{ backgroundColor: calendarColor || '#e5e7eb' }}",
+      "suggestion": "Use Tailwind classes or status-colors utility"
+    },
+    {
+      "file": "components\\cases\\case-intake.tsx",
+      "line": 365,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button onClick={handleExtract} disabled={isExtracting} className=\"w-full\" size=",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\cases\\case-intake.tsx",
+      "line": 675,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button onClick={handleCreateJob} disabled={isCreating} className=\"w-full\" size=",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\dashboard\\dashboard-shell.tsx",
+      "line": 102,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<button className=\"flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\jobs\\assign-reporter-dropdown.tsx",
+      "line": 163,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[240px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\jobs\\dictionary-management.tsx",
+      "line": 209,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-48\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\layouts\\navbar.tsx",
+      "line": 158,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button variant=\"ghost\" className=\"relative h-10 w-10 rounded-full\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\layouts\\public-header.tsx",
+      "line": 131,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<Button asChild className=\"w-full bg-indigo-600 hover:bg-indigo-700\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    },
+    {
+      "file": "components\\notes\\deposition-notes-panel.tsx",
+      "line": 306,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[150px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\notes\\deposition-notes-panel.tsx",
+      "line": 392,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"w-[150px]\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\review\\scopist-review-panel.tsx",
+      "line": 121,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"h-8 text-xs flex-1\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\review\\scopist-review-panel.tsx",
+      "line": 132,
+      "type": "raw-select",
+      "severity": "info",
+      "message": "Raw <select> element",
+      "code": "<SelectTrigger className=\"h-8 text-xs flex-1\">",
+      "suggestion": "Consider using <Select> from @/components/ui/select"
+    },
+    {
+      "file": "components\\theme-provider.tsx",
+      "line": 40,
+      "type": "raw-button",
+      "severity": "warning",
+      "message": "Raw <button> element with className",
+      "code": "<button className=\"p-2 rounded-lg bg-muted\" aria-label=\"Toggle theme\">",
+      "suggestion": "Use <Button> from @/components/ui/button"
+    }
+  ],
+  "summary": {
+    "raw-button": 19,
+    "raw-select": 15,
+    "raw-input": 3,
+    "inline-style": 3,
+    "hex-color": 4
+  }
+}

@@ -8,7 +8,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { ROUTE_ACCESS, API_ACCESS } from '@/lib/permissions/route-access';
-import { PermissionAuditTable } from '@/components/admin/permission-audit-table';
+import { PermissionAuditTable } from '@/components/_future/admin/permission-audit-table';
 
 export const metadata = {
   title: 'Permission Audit | Depo-Pro',

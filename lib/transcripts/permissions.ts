@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { UserRole } from '@prisma/client';
-import { canEditTranscript } from './lock-service';
+import { canEditTranscript } from '@/lib/_future/transcripts/lock-service';
 
 export interface EditorPermissions {
   canEdit: boolean;

@@ -8,10 +8,12 @@
 // =============================================================================
 
 import { useEffect, useState } from 'react';
-import { AssignmentBadge, type AssignmentStatus } from '@/components/ui/assignment-badge';
+import { AssignmentBadge } from '@/components/ui/assignment-badge';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+
+type AssignmentStatusUI = 'assigned' | 'pending' | 'conflict' | 'available';
 
 interface Assignment {
   id: string;
@@ -19,7 +21,7 @@ interface Assignment {
   title: string;
   start: string; // ISO string
   end: string;   // ISO string
-  status: 'assigned' | 'pending' | 'conflict' | 'available';
+  status: AssignmentStatusUI;
   assignedReporterName?: string;
   assignedScopistName?: string;
 }
@@ -47,8 +49,8 @@ export function AssignmentCalendar() {
       const assignments: Assignment[] = jobs
         .filter((job: any) => job.depositionDate) // Only jobs with dates
         .map((job: any) => {
-          // Determine status
-          let status: AssignmentStatus = 'available';
+          // Determine status (UI status, not Prisma enum)
+          let status: 'assigned' | 'pending' | 'conflict' | 'available' = 'available';
           if (job.assignments && job.assignments.length > 0) {
             status = 'assigned';
           } else if (job.status === 'ASSIGNED' || job.status === 'IN_EDIT') {
@@ -68,7 +70,7 @@ export function AssignmentCalendar() {
             end: job.depositionDate 
               ? new Date(new Date(job.depositionDate).getTime() + 4 * 60 * 60 * 1000).toISOString() // Default 4 hours
               : new Date().toISOString(),
-            status,
+            status: status as 'assigned' | 'pending' | 'conflict' | 'available',
             assignedReporterName: job.createdBy 
               ? `${job.createdBy.firstName} ${job.createdBy.lastName}`
               : undefined,
@@ -148,7 +150,7 @@ export function AssignmentCalendar() {
                   )}
                 </div>
                 <AssignmentBadge
-                  status={job.status}
+                  status={job.status === 'conflict' ? 'overbooked' : job.status}
                   assigneeName={
                     job.status === 'assigned'
                       ? job.assignedScopistName || job.assignedReporterName

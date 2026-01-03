@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { restoreVersion } from '@/lib/transcripts/version-service';
+import { restoreVersion } from '@/lib/_future/transcripts/version-service';
 
 interface RouteContext {
   params: Promise<{ id: string; version: string }>;

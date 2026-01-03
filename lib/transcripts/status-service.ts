@@ -7,7 +7,7 @@
 
 import { db } from '@/lib/db';
 import { UserRole } from '@prisma/client';
-import { createVersion } from './version-service';
+import { createVersion } from '@/lib/_future/transcripts/version-service';
 
 export type TranscriptStatus = 'DRAFT' | 'IN_REVIEW' | 'FINALIZED' | 'DELIVERED';
 

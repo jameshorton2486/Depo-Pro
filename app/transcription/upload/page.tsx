@@ -243,7 +243,7 @@ function FileUploadComponent({
         }
       });
 
-      xhr.open('POST', `/api/jobs/${jobId}/upload`);
+      xhr.open('POST', `/api/jobs/${jobId}/files`);
       xhr.send(formData);
     } catch (_err) {
       alert('Upload failed');

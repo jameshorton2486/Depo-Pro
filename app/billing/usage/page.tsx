@@ -5,8 +5,15 @@
 // Usage tracking coming soon
 // =============================================================================
 
-import { redirect } from 'next/navigation';
+import { StubPage } from '@/components/shared/stub-page';
 
 export default function BillingUsagePage() {
-  redirect('/billing');
+  return (
+    <StubPage 
+      title="Usage" 
+      icon="billing"
+      backLink="/billing"
+      backLabel="Back to Billing"
+    />
+  );
 }

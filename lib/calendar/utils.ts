@@ -149,8 +149,8 @@ export function parseEventDate(dateString: string): Date {
 export function transformEventToUI(event: any): CalendarEventUI {
   return {
     ...event,
-    start: parseEventDate(event.startTime),
-    end: event.endTime ? parseEventDate(event.endTime) : null,
+    start: event.start instanceof Date ? event.start : parseEventDate(event.startTime || event.start),
+    end: event.end instanceof Date ? event.end : (event.endTime ? parseEventDate(event.endTime) : new Date(event.start.getTime() + 4 * 60 * 60 * 1000)),
   };
 }
 

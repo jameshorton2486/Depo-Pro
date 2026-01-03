@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { subMinutes, subHours, subDays } from 'date-fns';
 
 export interface AccessPattern {
@@ -104,11 +105,11 @@ async function flagForReview(
       targetType: 'Security',
       targetId: 'monitoring',
       actorUserId: (pattern as AccessPattern).userId || 'system',
-      metadata: {
+      metadata: JSON.parse(JSON.stringify({
         flagType: type,
-        pattern,
+        pattern: pattern as Record<string, unknown>,
         flaggedAt: new Date().toISOString(),
-      },
+      })) as Prisma.InputJsonValue,
     },
   }).catch(() => {
     // Fire and forget - don't block on logging
@@ -165,7 +166,7 @@ export async function logAdminAction(
       targetType: details.targetType as string || 'System',
       targetId: details.targetId as string || 'unknown',
       actorUserId: adminId,
-      metadata: details,
+      metadata: details as unknown as Prisma.InputJsonValue,
     },
   });
 

@@ -7,10 +7,17 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
+
+interface TranscriptSummary {
+  caseName: string;
+  wordCount: number;
+  flaggedWordCount: number;
+  reviewedCount?: number;
+}
 
 export default function TranscriptFinalizePage() {
   const params = useParams();
@@ -18,6 +25,37 @@ export default function TranscriptFinalizePage() {
   const jobId = params.jobId as string;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [summary, setSummary] = useState<TranscriptSummary | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+
+  useEffect(() => {
+    async function loadSummary() {
+      try {
+        const res = await fetch(`/api/jobs/${jobId}?include=transcription`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.job?.transcription) {
+            setSummary({
+              caseName: data.job.caseName || data.job.title || 'Untitled',
+              wordCount: data.job.transcription.wordCount || 0,
+              flaggedWordCount: data.job.transcription.flaggedWordCount || 0,
+            });
+          } else if (data.caseName || data.title) {
+            setSummary({
+              caseName: data.caseName || data.title || 'Untitled',
+              wordCount: 0,
+              flaggedWordCount: 0,
+            });
+          }
+        }
+      } catch (_err) {
+        // Ignore errors, show generic summary
+      } finally {
+        setLoadingSummary(false);
+      }
+    }
+    loadSummary();
+  }, [jobId]);
 
   async function handleFinalize() {
     setLoading(true);
@@ -61,10 +99,31 @@ export default function TranscriptFinalizePage() {
 
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h3 className="font-semibold mb-4">Summary</h3>
-        <p className="text-gray-600">
-          You are about to finalize this transcript. This action will lock the transcript
-          and prevent further edits.
-        </p>
+        {loadingSummary ? (
+          <p className="text-gray-600">Loading summary...</p>
+        ) : summary ? (
+          <dl className="grid grid-cols-2 gap-4">
+            <div>
+              <dt className="text-sm text-gray-500">Case Name</dt>
+              <dd className="font-medium">{summary.caseName}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-500">Word Count</dt>
+              <dd className="font-medium">{summary.wordCount.toLocaleString()}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-500">Flagged Words</dt>
+              <dd className="font-medium">
+                {summary.flaggedWordCount} / {summary.wordCount}
+              </dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="text-gray-600">
+            You are about to finalize this transcript. This action will lock the transcript
+            and prevent further edits.
+          </p>
+        )}
       </div>
 
       {error && (

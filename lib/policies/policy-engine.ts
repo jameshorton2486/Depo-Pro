@@ -181,9 +181,11 @@ export async function checkAccessWithPolicies(
 
   // Step 2: Check applicable policies (all must pass)
   const fullContext: PolicyContext = {
-    ...context,
+    userId: (context as PolicyContext).userId || 'unknown',
     userRole,
     action: context.action || 'access',
+    resource: context.resource,
+    timestamp: context.timestamp || new Date(),
   };
 
   return evaluatePolicies(policies, fullContext);

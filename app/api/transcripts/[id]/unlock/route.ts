@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { unlockTranscript } from '@/lib/transcripts/lock-service';
+import { unlockTranscript } from '@/lib/_future/transcripts/lock-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;

@@ -17,6 +17,8 @@ export default [
       '.backup-*/**',
       'backup/**',
       'work_files/**',
+      'app_backup_*/**',
+      '*_backup_*/**',
       '**/*.config.js',
       '**/*.config.mjs',
       // Non-MVP / Legacy files

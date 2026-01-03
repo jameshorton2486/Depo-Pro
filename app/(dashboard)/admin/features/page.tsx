@@ -7,7 +7,7 @@
 
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { FeatureFlagsManager } from '@/components/admin/feature-flags-manager';
+import { FeatureFlagsManager } from '@/components/_future/admin/feature-flags-manager';
 
 export const metadata = {
   title: 'Feature Flags | Depo-Pro',
