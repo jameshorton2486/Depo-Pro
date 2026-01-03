@@ -155,8 +155,8 @@ export function AvailabilityManager() {
 
       const data = await response.json();
       // Handle both array and object with availability property
-      const availability = Array.isArray(data) 
-        ? data 
+      const availability = Array.isArray(data)
+        ? data
         : (data.availability || []);
       setSlots(availability);
     } catch (_error) {
@@ -258,7 +258,7 @@ export function AvailabilityManager() {
       // Validate date strings
       const startDate = new Date(startDateTime);
       const endDate = new Date(endDateTime);
-      
+
       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
         throw new Error('Invalid date format');
       }
@@ -290,7 +290,7 @@ export function AvailabilityManager() {
       }
 
       toast.success(`Marked ${type.toLowerCase()}`);
-      
+
       // Refresh availability after successful save
       await fetchAvailability();
     } catch (error) {
@@ -661,12 +661,12 @@ export function AvailabilityManager() {
 
             {/* Type */}
             <div className="space-y-2">
-              <Label>Availability Type</Label>
+              <Label htmlFor="availability-type">Availability Type</Label>
               <Select
                 value={formData.type}
                 onValueChange={(v: any) => setFormData(prev => ({ ...prev, type: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="availability-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -698,12 +698,12 @@ export function AvailabilityManager() {
 
             {formData.isRecurring && (
               <div className="space-y-2">
-                <Label>Repeat for (weeks)</Label>
+                <Label htmlFor="recurrence-weeks">Repeat for (weeks)</Label>
                 <Select
                   value={formData.recurrenceWeeks.toString()}
                   onValueChange={(v) => setFormData(prev => ({ ...prev, recurrenceWeeks: parseInt(v) }))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="recurrence-weeks">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

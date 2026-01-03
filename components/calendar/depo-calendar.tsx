@@ -12,9 +12,9 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { 
-  EventClickArg, 
-  DateSelectArg, 
+import {
+  EventClickArg,
+  DateSelectArg,
   EventDropArg,
 } from '@fullcalendar/core';
 import { useSession } from 'next-auth/react';
@@ -24,12 +24,12 @@ import { CalendarEventDetail } from './calendar-event-detail';
 import { ConflictDialog } from './conflict-dialog';
 import { DragPreview } from './drag-preview';
 import { Button } from '@/components/ui/button';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, RefreshCw, Filter, Lock } from 'lucide-react';
@@ -126,7 +126,7 @@ const LOCKED_STATUSES = ['CONVERTED', 'CANCELLED', 'COMPLETED'];
 // MAIN COMPONENT
 // ------------------------------------------------------------
 
-export function DepoCalendar({ 
+export function DepoCalendar({
   initialView = 'dayGridMonth',
   reporters = [],
 }: DepoCalendarProps) {
@@ -134,7 +134,7 @@ export function DepoCalendar({
   const _router = useRouter();
   const calendarRef = useRef<FullCalendar>(null);
   const { showRescheduleUndo } = useRescheduleUndo();
-  
+
   // Core state
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -210,34 +210,34 @@ export function DepoCalendar({
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      
+
       if (start && end) {
         params.set('start', start.toISOString());
         params.set('end', end.toISOString());
       }
-      
+
       if (statusFilter !== 'all') {
         params.set('status', statusFilter);
       }
-      
+
       if (reporterFilter !== 'all') {
         params.set('reporterId', reporterFilter);
       }
 
       const response = await fetch(`/api/calendar/events?${params.toString()}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch events');
       }
 
       const data = await response.json();
-      
+
       // Process events to set editability based on status
       const processedEvents = data.events.map((event: CalendarEvent) => ({
         ...event,
         editable: canDragDrop && !LOCKED_STATUSES.includes(event.extendedProps.status),
       }));
-      
+
       setEvents(processedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -280,7 +280,7 @@ export function DepoCalendar({
       toast.info('Contact your agency to schedule depositions');
       return;
     }
-    
+
     setSelectedDateRange({
       start: arg.start,
       end: arg.end,
@@ -294,13 +294,13 @@ export function DepoCalendar({
 
   const handleEventDragStart = useCallback((info: any) => {
     if (!canDragDrop) return;
-    
+
     const status = info.event.extendedProps?.status;
     if (LOCKED_STATUSES.includes(status)) {
       toast.error(`Cannot move ${status.toLowerCase()} events`);
       return;
     }
-    
+
     setIsDragging(true);
     setDragPreviewData(prev => ({
       ...prev,
@@ -323,7 +323,7 @@ export function DepoCalendar({
 
     const { event } = arg;
     const status = event.extendedProps?.status;
-    
+
     // Check if locked
     if (LOCKED_STATUSES.includes(status)) {
       toast.error(`Cannot reschedule ${status.toLowerCase()} events`);
@@ -333,7 +333,7 @@ export function DepoCalendar({
 
     const newStart = event.start!;
     const newEnd = event.end!;
-    
+
     try {
       // First, check for conflicts via preview
       const previewResponse = await fetch(`/api/calendar/events/${event.id}/reschedule`, {
@@ -371,7 +371,7 @@ export function DepoCalendar({
 
       // No conflicts - proceed with reschedule
       await performReschedule(event.id, event.title, newStart, newEnd);
-      
+
     } catch (error) {
       console.error('Error checking conflicts:', error);
       toast.error('Failed to reschedule event');
@@ -419,7 +419,7 @@ export function DepoCalendar({
 
       // Refresh calendar
       fetchEvents();
-      
+
       return true;
     } catch (error) {
       console.error('Reschedule failed:', error);
@@ -510,7 +510,7 @@ export function DepoCalendar({
 
       if (!response.ok) {
         const data = await response.json();
-        
+
         if (response.status === 409) {
           toast.error('Conflict detected', {
             description: 'Extending this event would create scheduling conflicts',
@@ -518,7 +518,7 @@ export function DepoCalendar({
           arg.revert();
           return;
         }
-        
+
         throw new Error(data.error || 'Failed to resize');
       }
 
@@ -556,7 +556,7 @@ export function DepoCalendar({
         <div className="flex items-center gap-2">
           {/* View Selector */}
           <Select value={currentView} onValueChange={(v: any) => setCurrentView(v)}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px]" aria-label="Calendar view">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -568,7 +568,7 @@ export function DepoCalendar({
 
           {/* Status Filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px]" aria-label="Filter by status">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -583,7 +583,7 @@ export function DepoCalendar({
           {/* Reporter Filter */}
           {canCreateEvents && reporters.length > 0 && (
             <Select value={reporterFilter} onValueChange={setReporterFilter}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[160px]" aria-label="Filter by reporter">
                 <SelectValue placeholder="Reporter" />
               </SelectTrigger>
               <SelectContent>
@@ -598,8 +598,8 @@ export function DepoCalendar({
           )}
 
           {/* Refresh Button */}
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="icon"
             onClick={() => fetchEvents()}
             disabled={isLoading}
@@ -612,8 +612,8 @@ export function DepoCalendar({
           {/* Status Legend */}
           <div className="hidden md:flex items-center gap-2">
             {Object.entries(STATUS_COLORS).slice(0, 4).map(([key, { bg, label }]) => (
-              <Badge 
-                key={key} 
+              <Badge
+                key={key}
                 style={{ backgroundColor: bg }}
                 className="text-white text-xs"
               >

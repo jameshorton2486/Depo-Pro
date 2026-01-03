@@ -126,7 +126,7 @@ export function AvailabilityGrid({
     const now = new Date();
     const start = new Date(now);
     start.setHours(now.getHours(), 0, 0, 0);
-    
+
     const end = new Date(start);
     end.setHours(start.getHours() + hours);
 
@@ -172,8 +172,9 @@ export function AvailabilityGrid({
 
       {/* Date Selector */}
       <div>
-        <label className="text-sm font-medium mb-2 block">Date</label>
+        <label htmlFor="availability-date" className="text-sm font-medium mb-2 block">Date</label>
         <input
+          id="availability-date"
           type="date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
@@ -192,7 +193,7 @@ export function AvailabilityGrid({
           ) : (
             dayBlocks.map((block) => {
               const overlaps = findOverlaps(block, blocks);
-              
+
               // Check for conflicts using the conflict utility
               const blockStart = new Date(block.start);
               const blockEnd = new Date(block.end);
