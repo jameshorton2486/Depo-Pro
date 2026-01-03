@@ -26,11 +26,11 @@ export default async function ReporterCalendarPage() {
   // Fetch calendar events and jobs
   const [_events, _jobs] = await Promise.all([
     db.calendarEvent.findMany({
-      where: { userId: user.id },
+      where: { createdById: user.id },
       orderBy: { startTime: 'asc' },
     }),
     db.job.findMany({
-      where: { reporterId: user.id },
+      where: { createdById: user.id },
       select: {
         id: true,
         caseName: true,

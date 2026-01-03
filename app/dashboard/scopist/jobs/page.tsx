@@ -49,7 +49,7 @@ export default async function ScopistJobsPage({ searchParams }: PageProps) {
       skip: (page - 1) * 20,
       take: 20,
       include: {
-        reporter: {
+        createdBy: {
           select: {
             firstName: true,
             lastName: true,

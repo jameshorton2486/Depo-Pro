@@ -65,12 +65,12 @@ export async function GET(
     }
 
     // Determine status and progress
-    let status = job.status;
+    let status: string = job.status;
     let progress: number | undefined;
     let transcriptId: string | undefined;
 
     if (job.transcription) {
-      status = job.transcription.status;
+      status = job.transcription.status as string;
       transcriptId = job.transcription.id;
       
       // Estimate progress based on status

@@ -56,22 +56,29 @@ export default async function AdminJobsPage({ searchParams }: PageProps) {
       skip: (page - 1) * 20,
       take: 20,
       include: {
-        reporter: {
+        createdBy: {
           select: {
             firstName: true,
             lastName: true,
             email: true,
           },
         },
-        scopist: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
+        assignments: {
+          where: { status: 'ACCEPTED' },
+          include: {
+            scopist: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
           },
+          take: 1,
         },
         transcription: {
           select: {
+            id: true,
             status: true,
             wordCount: true,
           },
@@ -155,8 +162,8 @@ export default async function AdminJobsPage({ searchParams }: PageProps) {
                         : 'Unassigned'}
                     </td>
                     <td className="p-4 text-sm text-gray-600">
-                      {job.scopist
-                        ? `${job.scopist.firstName} ${job.scopist.lastName}`
+                      {job.assignments && job.assignments.length > 0 && job.assignments[0]?.scopist
+                        ? `${job.assignments[0].scopist.firstName} ${job.assignments[0].scopist.lastName}`
                         : 'Unassigned'}
                     </td>
                     <td className="p-4">

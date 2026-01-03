@@ -34,7 +34,7 @@ export default async function ScopistDashboardPage() {
       },
       orderBy: { updatedAt: 'desc' },
       include: {
-        reporter: {
+        createdBy: {
           select: {
             firstName: true,
             lastName: true,
@@ -50,9 +50,9 @@ export default async function ScopistDashboardPage() {
       },
     }),
     db.job.count({
-      where: {
+      where: { 
         scopistId: user.id,
-        status: { in: ['SCOPIST_COMPLETE', 'FINALIZED', 'DELIVERED'] },
+        status: { in: ['SCOPIST_COMPLETE', 'COMPLETED'] },
       },
     }),
   ]);

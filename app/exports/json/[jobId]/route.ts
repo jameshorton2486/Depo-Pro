@@ -31,7 +31,7 @@ export async function GET(
         transcription: {
           select: {
             id: true,
-            content: true,
+            fullTranscript: true,
             wordCount: true,
             flaggedWordCount: true,
             status: true,
@@ -72,7 +72,7 @@ export async function GET(
       depositionDate: job.depositionDate,
       transcript: {
         id: job.transcription.id,
-        content: job.transcription.content,
+        content: job.transcription.fullTranscript,
         wordCount: job.transcription.wordCount,
         flaggedWordCount: job.transcription.flaggedWordCount,
         status: job.transcription.status,

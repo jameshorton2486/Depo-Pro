@@ -59,7 +59,7 @@ export async function POST(
     }
 
     // Check if already finalized
-    if (job.transcription.status === 'FINALIZED' || job.transcription.status === 'DELIVERED') {
+    if (job.transcription.status === 'COMPLETED') {
       return NextResponse.json(
         { error: 'Transcript already finalized' },
         { status: 400 }

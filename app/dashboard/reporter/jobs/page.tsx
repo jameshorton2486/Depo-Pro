@@ -59,11 +59,17 @@ export default async function ReporterJobsPage({ searchParams }: PageProps) {
       skip: (page - 1) * 20,
       take: 20,
       include: {
-        scopist: {
-          select: {
-            firstName: true,
-            lastName: true,
+        assignments: {
+          where: { status: 'ACCEPTED' },
+          include: {
+            scopist: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
+          take: 1,
         },
         transcription: {
           select: {
@@ -158,8 +164,8 @@ export default async function ReporterJobsPage({ searchParams }: PageProps) {
                       </span>
                     </td>
                     <td className="p-4 text-sm text-gray-600">
-                      {job.scopist
-                        ? `${job.scopist.firstName} ${job.scopist.lastName}`
+                      {job.assignments && job.assignments.length > 0 && job.assignments[0]?.scopist
+                        ? `${job.assignments[0].scopist.firstName} ${job.assignments[0].scopist.lastName}`
                         : 'Unassigned'}
                     </td>
                     <td className="p-4 text-sm text-gray-600">

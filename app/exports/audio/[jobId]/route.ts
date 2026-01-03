@@ -36,8 +36,8 @@ export async function GET(
           },
           select: {
             id: true,
-            url: true,
-            filename: true,
+            storageUrl: true,
+            fileName: true,
           },
           take: 1,
         },

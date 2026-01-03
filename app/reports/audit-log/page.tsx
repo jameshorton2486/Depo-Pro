@@ -45,7 +45,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
       skip: (page - 1) * 50,
       take: 50,
       include: {
-        actor: {
+        user: {
           select: {
             firstName: true,
             lastName: true,
@@ -104,8 +104,8 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
                   {new Date(log.createdAt).toLocaleString()}
                 </td>
                 <td className="p-4 text-sm">
-                  {log.actor
-                    ? `${log.actor.firstName} ${log.actor.lastName}`
+                  {log.user
+                    ? `${log.user.firstName} ${log.user.lastName}`
                     : 'System'}
                 </td>
                 <td className="p-4">

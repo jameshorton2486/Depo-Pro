@@ -61,8 +61,8 @@ export default async function AttorneyDashboardPage() {
             <div key={case_.id} className="bg-white rounded-lg shadow p-6">
               <h3 className="font-semibold text-lg mb-2">{case_.caseName || case_.title}</h3>
               <p className="text-sm text-gray-500 mb-4">
-                {case_.reporter && (
-                  <>Reporter: {case_.reporter.firstName} {case_.reporter.lastName} • </>
+                {case_.createdBy && (
+                  <>Reporter: {case_.createdBy.firstName} {case_.createdBy.lastName} • </>
                 )}
                 {case_.depositionDate
                   ? new Date(case_.depositionDate).toLocaleDateString()

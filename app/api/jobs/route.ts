@@ -26,8 +26,8 @@ export async function GET(_request: NextRequest) {
     // Build where clause based on role
     const where: any = {};
 
-    if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
-      where.reporterId = user.id;
+    if (user.role === 'REPORTER') {
+      where.createdById = user.id;
     } else if (user.role === 'SCOPIST') {
       where.scopistId = user.id;
     }
@@ -38,17 +38,23 @@ export async function GET(_request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: {
-        reporter: {
+        createdBy: {
           select: {
             firstName: true,
             lastName: true,
           },
         },
-        scopist: {
-          select: {
-            firstName: true,
-            lastName: true,
+        assignments: {
+          where: { status: 'ACCEPTED' },
+          include: {
+            scopist: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
           },
+          take: 1,
         },
       },
     });
@@ -108,7 +114,7 @@ export async function POST(request: NextRequest) {
       const result = await createJob({
         caseName: caseName || title,
         title: title || caseName,
-        depositionDate: depositionDate ? new Date(depositionDate) : null,
+        depositionDate: depositionDate ? new Date(depositionDate) : new Date(),
         firmId: userRecord.firmId,
         createdById: user.id,
       });
@@ -135,7 +141,7 @@ export async function POST(request: NextRequest) {
         data: {
           caseName: caseName || title,
           title: title || caseName,
-          depositionDate: depositionDate ? new Date(depositionDate) : null,
+          depositionDate: depositionDate ? new Date(depositionDate) : new Date(),
           status: 'CREATED',
           createdById: user.id,
           firmId: userRecord.firmId,
@@ -148,12 +154,6 @@ export async function POST(request: NextRequest) {
         message: 'Job created successfully',
       });
     }
-
-    return NextResponse.json({
-      id: job.id,
-      success: true,
-      message: 'Job created successfully',
-    });
   } catch (error) {
     console.error('Error creating job:', error);
     return NextResponse.json(

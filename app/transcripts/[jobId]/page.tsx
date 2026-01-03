@@ -29,18 +29,32 @@ export default async function TranscriptViewPage({ params }: PageProps) {
   const job = await db.job.findUnique({
     where: { id: jobId },
     include: {
-      transcription: true,
+      transcription: {
+        select: {
+          id: true,
+          fullTranscript: true,
+          status: true,
+          wordCount: true,
+          flaggedWordCount: true,
+        },
+      },
       createdBy: {
         select: {
           firstName: true,
           lastName: true,
         },
       },
-      scopist: {
-        select: {
-          firstName: true,
-          lastName: true,
+      assignments: {
+        where: { status: 'ACCEPTED' },
+        include: {
+          scopist: {
+            select: {
+              firstName: true,
+              lastName: true,
+            },
+          },
         },
+        take: 1,
       },
     },
   });

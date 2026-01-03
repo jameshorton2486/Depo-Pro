@@ -43,7 +43,7 @@ export default async function ReporterDashboardPage() {
     db.job.count({ 
       where: { 
         createdById: user.id,
-        status: { in: ['SCOPIST_COMPLETE', 'FINALIZED', 'DELIVERED'] } 
+        status: { in: ['SCOPIST_COMPLETE', 'COMPLETED'] } 
       } 
     }),
     db.job.findMany({
@@ -51,16 +51,29 @@ export default async function ReporterDashboardPage() {
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: { 
-        scopist: {
+        createdBy: {
           select: {
             firstName: true,
             lastName: true,
           },
         },
+        assignments: {
+          where: { status: 'ACCEPTED' },
+          include: {
+            scopist: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+          take: 1,
+        },
         transcription: {
           select: {
             status: true,
             wordCount: true,
+            flaggedWordCount: true,
           },
         },
       },
@@ -158,8 +171,8 @@ export default async function ReporterDashboardPage() {
                     <div>
                       <h3 className="font-medium">{job.caseName || job.title}</h3>
                       <p className="text-sm text-gray-500 mt-1">
-                        {job.scopist && (
-                          <>Scopist: {job.scopist.firstName} {job.scopist.lastName} • </>
+                        {job.assignments && job.assignments.length > 0 && job.assignments[0]?.scopist && (
+                          <>Scopist: {job.assignments[0].scopist.firstName} {job.assignments[0].scopist.lastName} • </>
                         )}
                         Status: {job.status}
                         {job.transcription?.wordCount && (

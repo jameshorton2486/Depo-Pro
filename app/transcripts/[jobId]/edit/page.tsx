@@ -53,7 +53,7 @@ export default async function TranscriptEditPage({ params }: PageProps) {
   }
 
   // Check if finalized
-  if (transcript.status === 'FINALIZED' || transcript.status === 'DELIVERED') {
+  if (transcript.status === 'COMPLETED') {
     return (
       <div className="p-6 text-center max-w-2xl mx-auto">
         <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -84,7 +84,7 @@ export default async function TranscriptEditPage({ params }: PageProps) {
       </div>
       <TranscriptEditor
         transcriptId={transcript.id}
-        initialContent={transcript.content || ''}
+        initialContent={transcript.fullTranscript || ''}
         jobId={jobId}
       />
     </div>

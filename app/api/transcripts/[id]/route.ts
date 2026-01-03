@@ -155,8 +155,8 @@ export const PATCH = withRequestLogging(async (
       select: {
         id: true,
         jobId: true,
+        version: true,
         versionNumber: true,
-        status: true,
       },
     });
 
