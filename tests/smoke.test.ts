@@ -15,8 +15,8 @@ async function smokeTest() {
   try {
     // 1. Check database connection
     console.log('1️⃣ Testing database connection...');
-    await prisma.$connect();
-    const firmCount = await prisma.firm.count();
+    await db.$connect();
+    const firmCount = await db.firm.count();
     console.log(`   ✅ Connected. Found ${firmCount} firms.\n`);
     
     // 2. Check Redis/Queue connection
@@ -27,26 +27,28 @@ async function smokeTest() {
     
     // 3. Create test job
     console.log('3️⃣ Creating test job...');
-    const testFirm = await prisma.firm.findFirst();
-    const testUser = await prisma.user.findFirst();
+    const testFirm = await db.firm.findFirst();
+    const testUser = await db.user.findFirst();
     
     if (!testFirm || !testUser) {
       throw new Error('No demo data found. Run: npm run db:seed');
     }
     
-    const job = await prisma.job.create({
+    const job = await db.job.create({
       data: {
         firmId: testFirm.id,
         createdById: testUser.id,
-        status: 'PENDING',
-        caseNumber: 'TEST-SMOKE-001',
+        status: 'CREATED',
+        title: 'Smoke Test Job',
+        caseName: 'TEST-SMOKE-001',
+        depositionDate: new Date(),
       }
     });
     console.log(`   ✅ Job created: ${job.id}\n`);
     
     // 4. Clean up test job
     console.log('4️⃣ Cleaning up...');
-    await prisma.job.delete({ where: { id: job.id } });
+    await db.job.delete({ where: { id: job.id } });
     console.log('   ✅ Test job deleted\n');
     
     console.log('✅ SMOKE TEST PASSED\n');
@@ -56,7 +58,7 @@ async function smokeTest() {
     console.error('❌ SMOKE TEST FAILED:', error);
     process.exit(1);
   } finally {
-    await prisma.$disconnect();
+    await db.$disconnect();
   }
 }
 
