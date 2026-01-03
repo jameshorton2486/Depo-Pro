@@ -17,5 +17,14 @@
 
   // TypeScript settings
   "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.enablePromptUseWorkspaceTsdk": true
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Line ending normalization (prevents CRLF/LF issues)
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Auto-save configuration (optional - uncomment if you want auto-save)
+  // "files.autoSave": "afterDelay",
+  // "files.autoSaveDelay": 1000
 }
