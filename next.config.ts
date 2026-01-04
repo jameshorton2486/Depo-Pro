@@ -2,6 +2,19 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Use standalone output to prevent Windows FS rename bug for error pages
+  output: 'standalone',
+
+  // Experimental optimizations
+  experimental: {
+    optimizePackageImports: [],
+  },
+
+  // Prevent Windows FS rename bug for error pages
+  generateBuildId: async () => {
+    return 'windows-build';
+  },
+
   // Server-side only packages (not bundled for client)
   serverExternalPackages: [
     'bcrypt',
