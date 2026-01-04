@@ -53,6 +53,61 @@ function getLineNumber(lineIndex: number): string {
   return '  ';
 }
 
+// Helper: Detect and format Q/A lines
+interface FormattedLine {
+  text: string;
+  isQuestion: boolean;
+  isAnswer: boolean;
+  isContinuation: boolean;
+}
+
+function formatQALines(lines: string[]): FormattedLine[] {
+  return lines.map((line, index) => {
+    const trimmed = line.trim();
+    const isQuestion = /^Q[.:]\s*/i.test(trimmed);
+    const isAnswer = /^A[.:]\s*/i.test(trimmed);
+    
+    // Continuation: not Q or A, and previous line was Q or A
+    const prevLine = index > 0 ? lines[index - 1].trim() : '';
+    const prevWasQA = /^[QA][.:]/i.test(prevLine);
+    const isContinuation = !isQuestion && !isAnswer && prevWasQA && trimmed.length > 0;
+    
+    return {
+      text: line,
+      isQuestion,
+      isAnswer,
+      isContinuation,
+    };
+  });
+}
+
+// Helper: Format seconds to timestamp string [HH:MM:SS]
+function formatTimestamp(seconds: number): string {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  return `[${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}]`;
+}
+
+// Helper: Replace speaker numbers with names
+function replaceSpeakerLabels(text: string, speakerNames?: Record<number, string>): string {
+  if (!speakerNames) return text;
+  
+  let result = text;
+  Object.entries(speakerNames).forEach(([speakerId, name]) => {
+    // Replace patterns like "Speaker 1:", "SPEAKER 1:", "[Speaker 1]"
+    const patterns = [
+      new RegExp(`Speaker\\s*${parseInt(speakerId) + 1}:`, 'gi'),
+      new RegExp(`\\[Speaker\\s*${parseInt(speakerId) + 1}\\]`, 'gi'),
+      new RegExp(`SPEAKER\\s*${parseInt(speakerId) + 1}:`, 'gi'),
+    ];
+    patterns.forEach(pattern => {
+      result = result.replace(pattern, `${name}:`);
+    });
+  });
+  return result;
+}
+
 // ============================================
 // DOCX EXPORT
 // ============================================
@@ -61,8 +116,11 @@ export async function exportToDocx(
   transcriptText: string,
   metadata: ExportMetadata,
   options: ExportOptions,
+  wordData?: Array<{ word: string; start: number; end: number }>,
 ): Promise<Buffer> {
-  const lines = splitIntoLines(transcriptText);
+  // Apply speaker name replacement
+  const processedText = replaceSpeakerLabels(transcriptText, metadata.speakerNames);
+  const lines = splitIntoLines(processedText);
   const pages: string[][] = [];
 
   // Split into pages
@@ -190,31 +248,93 @@ export async function exportToDocx(
 
   // Transcript Pages
   let globalLineNumber = 0;
+  const formattedLines = options.useQAFormat ? formatQALines(lines) : null;
+
   for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
     const pageLines = pages[pageIndex];
     const paragraphs: Paragraph[] = [];
+
+    // Add timestamp at page start if enabled
+    if (options.includeTimestamps && wordData && wordData.length > 0) {
+      // Estimate timestamp based on words per page
+      const wordsPerPage = LINES_PER_PAGE * 10; // rough estimate
+      const startWordIndex = pageIndex * wordsPerPage;
+      const startTime = wordData[Math.min(startWordIndex, wordData.length - 1)]?.start || 0;
+      
+      paragraphs.push(
+        new Paragraph({
+          spacing: { after: 200 },
+          children: [
+            new TextRun({
+              text: formatTimestamp(startTime),
+              size: 18,
+              font: 'Courier New',
+              color: '666666',
+              italics: true,
+            }),
+          ],
+        }),
+      );
+    }
 
     for (let lineIndex = 0; lineIndex < pageLines.length; lineIndex++) {
       globalLineNumber++;
       const line = pageLines[lineIndex];
       const lineNum = options.lineNumbering ? getLineNumber(globalLineNumber - 1) : '';
+      
+      // Get Q/A formatting info if enabled
+      const globalLineIdx = pageIndex * LINES_PER_PAGE + lineIndex;
+      const qaInfo = formattedLines ? formattedLines[globalLineIdx] : null;
+
+      // Build text runs
+      const textRuns: TextRun[] = [];
+      
+      // Line number (gray)
+      if (lineNum) {
+        textRuns.push(new TextRun({
+          text: `${lineNum}  `,
+          size: 24,
+          font: 'Courier New',
+          color: '888888',
+        }));
+      }
+      
+      // Main text with Q/A formatting
+      if (qaInfo?.isQuestion) {
+        // Bold "Q." prefix
+        textRuns.push(new TextRun({
+          text: line,
+          size: 24,
+          font: 'Courier New',
+          bold: true,
+        }));
+      } else if (qaInfo?.isAnswer) {
+        // Normal "A." line
+        textRuns.push(new TextRun({
+          text: line,
+          size: 24,
+          font: 'Courier New',
+        }));
+      } else if (qaInfo?.isContinuation) {
+        // Indented continuation
+        textRuns.push(new TextRun({
+          text: '     ' + line.trim(),  // 5-space indent
+          size: 24,
+          font: 'Courier New',
+        }));
+      } else {
+        // Regular line
+        textRuns.push(new TextRun({
+          text: line,
+          size: 24,
+          font: 'Courier New',
+        }));
+      }
 
       paragraphs.push(
         new Paragraph({
           spacing: { line: 360 }, // 1.5 line spacing
-          children: [
-            new TextRun({
-              text: lineNum ? `${lineNum}  ` : '',
-              size: 24,
-              font: 'Courier New',
-              color: '888888',
-            }),
-            new TextRun({
-              text: line,
-              size: 24,
-              font: 'Courier New',
-            }),
-          ],
+          children: textRuns,
         }),
       );
     }
@@ -277,6 +397,7 @@ export async function exportToPdf(
   transcriptText: string,
   metadata: ExportMetadata,
   options: ExportOptions,
+  wordData?: Array<{ word: string; start: number; end: number }>,
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
@@ -289,6 +410,9 @@ export async function exportToPdf(
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
+
+      // Apply speaker name replacement
+      const processedText = replaceSpeakerLabels(transcriptText, metadata.speakerNames);
 
       // Title Page
       doc.font('Courier').fontSize(16).text('DEPOSITION TRANSCRIPT', { align: 'center' });
@@ -324,7 +448,8 @@ export async function exportToPdf(
       };
 
       // Split text into lines
-      const lines = splitIntoLines(transcriptText);
+      const lines = splitIntoLines(processedText);
+      const formattedLines = options.useQAFormat ? formatQALines(lines) : null;
       let currentPage = 2;
       let lineOnPage = 0;
 
@@ -334,6 +459,13 @@ export async function exportToPdf(
       const lineHeight = 24;
       let yPosition = 72;
 
+      // Add timestamp at start if enabled
+      if (options.includeTimestamps && wordData && wordData.length > 0) {
+        const startTime = wordData[0]?.start || 0;
+        doc.fontSize(9).fillColor('#666666').font('Courier-Oblique').text(formatTimestamp(startTime), 72, yPosition);
+        yPosition = 96;
+      }
+
       for (let i = 0; i < lines.length; i++) {
         // Check if we need a new page
         if (lineOnPage >= LINES_PER_PAGE) {
@@ -341,9 +473,22 @@ export async function exportToPdf(
           doc.addPage();
           currentPage++;
           lineOnPage = 0;
+          
           yPosition = 72;
+          
+          // Add timestamp at page start if enabled
+          if (options.includeTimestamps && wordData && wordData.length > 0) {
+            const _wordsPerPage = LINES_PER_PAGE * 10;
+            const startWordIndex = (currentPage - 2) * _wordsPerPage;
+            const startTime = wordData[Math.min(startWordIndex, wordData.length - 1)]?.start || 0;
+            doc.fontSize(9).fillColor('#666666').font('Courier-Oblique').text(formatTimestamp(startTime), 72, yPosition);
+            yPosition = 96;
+          }
           addHeader();
         }
+
+        // Get Q/A formatting info if enabled
+        const qaInfo = formattedLines ? formattedLines[i] : null;
 
         // Line number
         if (options.lineNumbering) {
@@ -351,8 +496,15 @@ export async function exportToPdf(
           doc.fillColor('#888888').text(lineNum, 40, yPosition);
         }
 
-        // Line text
-        doc.fillColor('#000000').text(lines[i], 72, yPosition);
+        // Line text with Q/A formatting
+        doc.fillColor('#000000');
+        if (qaInfo?.isQuestion) {
+          doc.font('Courier-Bold').text(lines[i], 72, yPosition);
+        } else if (qaInfo?.isContinuation) {
+          doc.font('Courier').text('     ' + lines[i].trim(), 72, yPosition); // 5-space indent
+        } else {
+          doc.font('Courier').text(lines[i], 72, yPosition);
+        }
 
         yPosition += lineHeight;
         lineOnPage++;
@@ -377,7 +529,9 @@ export function exportToText(
   metadata: ExportMetadata,
   options: ExportOptions,
 ): Buffer {
-  const lines = splitIntoLines(transcriptText);
+  // Apply speaker name replacement
+  const processedText = replaceSpeakerLabels(transcriptText, metadata.speakerNames);
+  const lines = splitIntoLines(processedText);
   let output = '';
 
   // Header
@@ -427,13 +581,14 @@ export async function exportTranscript(
   transcriptText: string,
   metadata: ExportMetadata,
   options: ExportOptions,
+  wordData?: Array<{ word: string; start: number; end: number }>,
 ): Promise<{ buffer: Buffer; filename: string; contentType: string }> {
   const dateStr = format(metadata.depositionDate || new Date(), 'yyyy-MM-dd');
   const baseName = `${metadata.caseName?.replace(/[^a-zA-Z0-9]/g, '_') || 'Transcript'}_${dateStr}`;
 
   switch (options.format) {
     case 'docx': {
-      const buffer = await exportToDocx(transcriptText, metadata, options);
+      const buffer = await exportToDocx(transcriptText, metadata, options, wordData);
       return {
         buffer,
         filename: `${baseName}.docx`,
@@ -441,7 +596,7 @@ export async function exportTranscript(
       };
     }
     case 'pdf': {
-      const buffer = await exportToPdf(transcriptText, metadata, options);
+      const buffer = await exportToPdf(transcriptText, metadata, options, wordData);
       return {
         buffer,
         filename: `${baseName}.pdf`,

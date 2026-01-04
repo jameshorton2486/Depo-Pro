@@ -128,6 +128,7 @@ export interface ExportMetadata {
   reporterName?: string;
   firmName?: string;
   location?: string;
+  speakerNames?: Record<number, string>; // { 0: "Attorney Smith", 1: "Witness Jones" }
 }
 
 // Model selection for job
