@@ -202,11 +202,31 @@ export class AudioEnhancementService {
       // DOLBY.IO API INTEGRATION
       // ═══════════════════════════════════════════════════════════
 
-      // Import Dolby.io SDK
-      // NOTE: Package @dolbyio/media-apis needs to be installed
-      // @ts-expect-error - Package may not be installed
-      const dolbyModule = await import('@dolbyio/media-apis');
-      const MediaApis = dolbyModule.MediaApis;
+      // Import Dolby.io SDK (optional - graceful fallback if not installed)
+      let dolbyModule: { MediaApis?: unknown } | null = null;
+      try {
+        // @ts-expect-error - Optional dependency, may not be installed
+        dolbyModule = await import('@dolbyio/media-apis');
+      } catch (error) {
+        console.warn('[AudioEnhancement] Dolby.io SDK not available:', error);
+        throw new Error('Dolby.io SDK not installed. Please install @dolbyio/media-apis or use manual RX processing.');
+      }
+
+      if (!dolbyModule?.MediaApis) {
+        throw new Error('Dolby.io MediaApis not available');
+      }
+
+      const MediaApis = dolbyModule.MediaApis as new (config: { appKey: string; appSecret: string }) => {
+        media: {
+          enhance: {
+            start: (options: unknown) => Promise<{ job_id: string }>;
+            getStatus: (jobId: string) => Promise<{ status: string; error?: { message: string }; result?: { output_path: string } }>;
+          };
+          io: {
+            getDownloadUrl: (options: { url: string }) => Promise<{ url: string }>;
+          };
+        };
+      };
       
       // Initialize Dolby client
       const dolby = new MediaApis({

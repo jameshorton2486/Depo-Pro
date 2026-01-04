@@ -3,9 +3,12 @@ import { auth } from '@/lib/auth';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { JobStatus } from '@prisma/client';
-import { transcriptionQueue } from '@/lib/queue/transcription-queue';
+import { getTranscriptionQueue } from '@/lib/queue/transcription-queue';
 import { logger, withRequestLogging } from '@/lib/observability';
 import { checkRateLimit } from '@/lib/security';
+
+// Build-time guard
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
 
 const startSchema = z.object({
   audioFileUrl: z.string().url(),
@@ -18,6 +21,11 @@ const startSchema = z.object({
 });
 
 async function postTranscribeStartHandler(request: NextRequest) {
+  // Guard against build-time execution
+  if (isBuildPhase) {
+    return NextResponse.json({ error: 'Service unavailable during build' }, { status: 503 });
+  }
+
   try {
     const session = await auth();
     if (!session?.user) {
@@ -52,6 +60,16 @@ async function postTranscribeStartHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
+    // Get queue (may be null if Redis unavailable)
+    const queue = getTranscriptionQueue();
+    if (!queue) {
+      logger.warn('Transcription queue not available');
+      return NextResponse.json(
+        { error: 'Transcription service temporarily unavailable' },
+        { status: 503 },
+      );
+    }
+
     // Update job status
     await prisma.job.update({
       where: { id: validated.jobId },
@@ -61,12 +79,12 @@ async function postTranscribeStartHandler(request: NextRequest) {
     });
 
     // Add to queue
-    await transcriptionQueue.add('transcribe', {
+    await queue.add('transcribe', {
       jobId: validated.jobId,
       audioFileId: validated.jobId, // Use jobId as fileId for now
       audioFileUrl: validated.audioFileUrl,
       audioFileName: 'audio', // We might want to get this from the file URL or metadata
-      firmId: (session.user as any).firmId || '',
+      firmId: (session.user as { firmId?: string }).firmId || '',
       userId: session.user.id,
       modelType: (validated.options?.model as 'STANDARD' | 'MEDICAL' | 'BILINGUAL') || 'MEDICAL',
     });
