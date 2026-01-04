@@ -62,3 +62,9 @@ When following a plan:
 
 **Remember:** You are executing an approved plan. Your job is to implement it correctly, not to improve it.
 
+### AI Safety Hardening
+
+- **No repo-wide refactors:** Stay within the explicitly listed files.
+- **No “cleanup” passes:** Do not fix unrelated style or structure issues.
+- **No speculative fixes:** Only address issues directly related to the current task.
+

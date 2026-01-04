@@ -1,0 +1,6 @@
+.next
+node_modules
+.backup*
+work_files
+docs
+__tests__

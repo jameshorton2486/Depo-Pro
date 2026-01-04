@@ -86,3 +86,12 @@ async function process(id: string, otherId: string) {
 - **Clarity:** Explicit names reduce confusion
 - **Maintainability:** Easier to understand and modify code
 - **Type Safety:** TypeScript can better infer types with consistent naming
+
+## AI Tooling Safety (Cursor Usage)
+
+**Rule:** Cursor must be used in scoped mode to ensure codebase stability.
+
+- **Scoped Mode Required:** Any change affecting more than 10 files must be aborted.
+- **No Repo-Wide Fixes:** Prohibited unless explicitly approved.
+- **Locked Files:** Infrastructure and routing files are considered locked unless a task explicitly targets them.
+- **Human Review:** AI-generated changes must be reviewed for adherence to these standards.
