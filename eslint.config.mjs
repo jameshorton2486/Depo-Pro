@@ -1,4 +1,4 @@
-﻿import eslint from '@eslint/js';
+import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import nextPlugin from '@next/eslint-plugin-next';
 
@@ -38,6 +38,12 @@ export default [
   // TypeScript rules
   ...tseslint.configs.recommended,
   // Next.js plugin
+  // Equivalent to: extends: ['next/core-web-vitals']
+  // This configuration:
+  // - Prevents App Router contract violations
+  // - Catches server/client misuse early
+  // - Enforces Core Web Vitals best practices
+  // - Zero runtime impact (lint-time only)
   {
     plugins: {
       '@next/next': nextPlugin,
