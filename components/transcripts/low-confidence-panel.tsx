@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface TranscriptWord {
@@ -35,6 +35,8 @@ export function LowConfidencePanel({
 }: LowConfidencePanelProps) {
   const [filter, setFilter] = useState<'all' | 'pending' | 'reviewed'>('pending');
   const [sortBy, setSortBy] = useState<'confidence' | 'time'>('confidence');
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Get flagged words with their original indices
   const flaggedWords = useMemo((): FlaggedWord[] => {
@@ -56,6 +58,103 @@ export function LowConfidencePanel({
     });
   }, [flaggedWords, filter, reviewedWords]);
 
+  // Compute context words for each displayed word
+  const wordsWithContext = useMemo(() => {
+    return displayedWords.map(flaggedWord => {
+      const idx = flaggedWord.originalIndex;
+
+      // Get 3 words before (if available)
+      const contextBefore: string[] = [];
+      for (let i = Math.max(0, idx - 3); i < idx; i++) {
+        contextBefore.push(allWords[i]?.punctuated_word || allWords[i]?.word || '');
+      }
+
+      // Get 3 words after (if available)
+      const contextAfter: string[] = [];
+      for (let i = idx + 1; i <= Math.min(allWords.length - 1, idx + 3); i++) {
+        contextAfter.push(allWords[i]?.punctuated_word || allWords[i]?.word || '');
+      }
+
+      return {
+        ...flaggedWord,
+        contextBefore,
+        contextAfter,
+      };
+    });
+  }, [displayedWords, allWords]);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (wordsWithContext.length === 0) return;
+
+    // Don't handle if user is typing in an input
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+      case 'j': // vim-style
+        e.preventDefault();
+        setSelectedIndex(prev => {
+          if (prev === null) return 0;
+          return Math.min(prev + 1, wordsWithContext.length - 1);
+        });
+        break;
+
+      case 'ArrowUp':
+      case 'k': // vim-style
+        e.preventDefault();
+        setSelectedIndex(prev => {
+          if (prev === null) return 0;
+          return Math.max(prev - 1, 0);
+        });
+        break;
+
+      case 'Tab': {
+        // Jump to next unreviewed word
+        e.preventDefault();
+        const nextUnreviewed = wordsWithContext.findIndex(
+          (w, i) => i > (selectedIndex ?? -1) && !reviewedWords.has(w.originalIndex)
+        );
+        if (nextUnreviewed !== -1) {
+          setSelectedIndex(nextUnreviewed);
+        }
+        break;
+      }
+
+      case ' ': // Space - play audio
+        e.preventDefault();
+        if (selectedIndex !== null && wordsWithContext[selectedIndex]) {
+          onWordSelect(wordsWithContext[selectedIndex]);
+        }
+        break;
+
+      case 'Enter':
+        // Enter is handled by individual cards for edit mode
+        break;
+
+      case 'Escape':
+        setSelectedIndex(null);
+        break;
+    }
+  }, [wordsWithContext, selectedIndex, reviewedWords, onWordSelect]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Auto-scroll selected card into view
+  useEffect(() => {
+    if (selectedIndex !== null && containerRef.current) {
+      const selectedCard = containerRef.current.querySelector(`[data-word-index="${selectedIndex}"]`);
+      if (selectedCard) {
+        selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [selectedIndex]);
+
   // Progress stats
   const totalFlagged = flaggedWords.length;
   const reviewedCount = flaggedWords.filter(w => reviewedWords.has(w.originalIndex)).length;
@@ -65,10 +164,13 @@ export function LowConfidencePanel({
     <div className="flex flex-col h-full bg-slate-900 rounded-lg">
       {/* Header */}
       <div className="p-4 border-b border-slate-700 shrink-0">
-        <h3 className="font-semibold text-slate-200 mb-3">
+        <h3 className="font-semibold text-slate-200 mb-1">
           Low Confidence Words
         </h3>
-        
+        <p className="text-xs text-slate-500 mb-3">
+          ↑↓ navigate • Space play • Enter edit • Tab next
+        </p>
+
         {/* Progress Bar */}
         <div className="mb-4">
           <div className="flex justify-between text-xs text-slate-400 mb-1">
@@ -76,7 +178,7 @@ export function LowConfidencePanel({
             <span>{Math.round(progressPercent)}%</span>
           </div>
           <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-            <div 
+            <div
               className={cn(
                 "h-full transition-all duration-300",
                 progressPercent === 100 ? "bg-green-500" : "bg-blue-500"
@@ -94,10 +196,10 @@ export function LowConfidencePanel({
         {/* Filters */}
         <div className="flex gap-1 mb-3">
           {(['all', 'pending', 'reviewed'] as const).map((f) => {
-            const count = f === 'all' 
-              ? totalFlagged 
-              : f === 'pending' 
-                ? totalFlagged - reviewedCount 
+            const count = f === 'all'
+              ? totalFlagged
+              : f === 'pending'
+                ? totalFlagged - reviewedCount
                 : reviewedCount;
             return (
               <button
@@ -105,8 +207,8 @@ export function LowConfidencePanel({
                 onClick={() => setFilter(f)}
                 className={cn(
                   'flex-1 px-2 py-1.5 text-xs rounded transition-colors',
-                  filter === f 
-                    ? 'bg-blue-600 text-white' 
+                  filter === f
+                    ? 'bg-blue-600 text-white'
                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 )}
               >
@@ -128,8 +230,8 @@ export function LowConfidencePanel({
       </div>
 
       {/* Word List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {displayedWords.length === 0 ? (
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+        {wordsWithContext.length === 0 ? (
           <div className="text-center text-slate-500 py-8">
             {totalFlagged === 0 ? (
               <div>
@@ -147,14 +249,21 @@ export function LowConfidencePanel({
             )}
           </div>
         ) : (
-          displayedWords.map((word) => (
+          wordsWithContext.map((word, index) => (
             <LowConfidenceWordCard
               key={word.originalIndex}
               word={word}
+              contextBefore={word.contextBefore}
+              contextAfter={word.contextAfter}
               isReviewed={reviewedWords.has(word.originalIndex)}
-              onSelect={() => onWordSelect(word)}
+              isSelected={selectedIndex === index}
+              onSelect={() => {
+                setSelectedIndex(index);
+                onWordSelect(word);
+              }}
               onCorrect={(correction) => onWordCorrect(word.originalIndex, correction)}
               onMarkReviewed={() => onMarkReviewed(word.originalIndex)}
+              data-word-index={index}
             />
           ))
         )}
@@ -166,22 +275,30 @@ export function LowConfidencePanel({
 // Individual word card
 function LowConfidenceWordCard({
   word,
+  contextBefore,
+  contextAfter,
   isReviewed,
+  isSelected,
   onSelect,
   onCorrect,
   onMarkReviewed,
+  ...rest // for data-word-index
 }: {
   word: FlaggedWord;
+  contextBefore: string[];
+  contextAfter: string[];
   isReviewed: boolean;
+  isSelected: boolean;
   onSelect: () => void;
   onCorrect: (correction: string) => void;
   onMarkReviewed: () => void;
+  'data-word-index'?: number;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(word.punctuated_word || word.word);
 
   const confidencePercent = Math.round(word.confidence * 100);
-  const confidenceColor = 
+  const confidenceColor =
     word.confidence < 0.5 ? 'text-red-400 bg-red-500/20 border-red-500/30' :
     word.confidence < 0.7 ? 'text-orange-400 bg-orange-500/20 border-orange-500/30' :
     'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
@@ -213,14 +330,29 @@ function LowConfidenceWordCard({
   };
 
   return (
-    <div 
+    <div
+      {...rest}
       className={cn(
         'p-3 rounded-lg border transition-all',
-        isReviewed 
-          ? 'bg-slate-800/30 border-slate-700/50 opacity-60' 
-          : 'bg-slate-800 border-slate-600 hover:border-slate-500'
+        isReviewed
+          ? 'bg-slate-800/30 border-slate-700/50 opacity-60'
+          : 'bg-slate-800 border-slate-600 hover:border-slate-500',
+        isSelected && 'ring-2 ring-blue-500 ring-offset-1 ring-offset-slate-900'
       )}
     >
+      {/* Context Display */}
+      {(contextBefore.length > 0 || contextAfter.length > 0) && (
+        <div className="text-xs text-slate-500 mb-2 font-mono leading-relaxed">
+          <span className="text-slate-600">{contextBefore.join(' ')}</span>
+          {contextBefore.length > 0 && ' '}
+          <span className="text-white font-semibold bg-blue-500/30 px-1 rounded">
+            {word.punctuated_word || word.word}
+          </span>
+          {contextAfter.length > 0 && ' '}
+          <span className="text-slate-600">{contextAfter.join(' ')}</span>
+        </div>
+      )}
+
       <div className="flex items-start justify-between gap-2">
         {/* Word Display / Edit */}
         <div className="flex-1 min-w-0">
@@ -243,7 +375,7 @@ function LowConfidenceWordCard({
               >
                 "{word.punctuated_word || word.word}"
               </button>
-              
+
               {/* Confidence Badge */}
               <span className={cn(
                 'inline-flex items-center text-xs rounded px-1.5 py-0.5 border',
@@ -251,13 +383,13 @@ function LowConfidenceWordCard({
               )}>
                 {confidencePercent}%
               </span>
-              
+
               {isReviewed && (
                 <span className="text-xs text-green-400">✓</span>
               )}
             </div>
           )}
-          
+
           {/* Time */}
           <div className="text-xs text-slate-500 mt-1">
             at {formatTime(word.start)}
