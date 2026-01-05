@@ -1,85 +1,139 @@
 /* =============================================================================
-   DEPO-PRO GLOBAL STYLES
-   Tailwind v3 + shadcn/ui compatible
+   DEPO-PRO GLOBAL STYLES v2.0
+   Professional Legal Tech Design System
+   
+   Structure:
+   1. Imports & Tailwind Directives
+   2. CSS Custom Properties (shadcn/ui compatible)
+   3. Base Layer (resets, defaults)
+   4. Component Layer (reusable patterns)
+   5. Utility Layer (helpers)
+   6. Animations
+   7. Print Styles
+   ============================================================================= */
+
+/* =============================================================================
+   1. IMPORTS & TAILWIND DIRECTIVES
    ============================================================================= */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* IMPORTANT:
-   All @import statements MUST come before @layer blocks
-*/
-@import "../styles/calendar.css";
+/* Import design tokens - MUST come after @tailwind directives */
 @import "../styles/design-tokens.css";
 
 /* =============================================================================
-   BASE LAYER
+   2. CSS CUSTOM PROPERTIES (shadcn/ui compatible)
    ============================================================================= */
+
 @layer base {
   :root {
-    /* Base Colors (HSL for shadcn/ui) */
+    /* --- shadcn/ui Color Tokens (HSL format) --- */
     --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 224 64% 40%;
+    --primary: 224 76% 40%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 215 20.2% 65.1%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    --secondary: 215 20% 65%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 173 58% 39%;
+    --accent: 173 58% 26%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 224 64% 40%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 224 76% 40%;
 
     --radius: 0.5rem;
 
-    /* Semantic */
-    --success: 160 84% 39%;
+    /* --- Status Colors (HSL) --- */
+    --success: 173 58% 26%;
+    --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --info: 199 89% 48%;
-    --error: 0 72% 51%;
+    --warning-foreground: 38 92% 20%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
+
+    /* --- Sidebar (for dashboard) --- */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 224 76% 40%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 224 76% 40%;
+
+    /* --- Chart Colors --- */
+    --chart-1: 224 76% 40%;
+    --chart-2: 173 58% 26%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 4%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 8%;
+    --card: 222 47% 7%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 8%;
+    --popover: 222 47% 7%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 4%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 217.2 91.2% 59.8%;
+    --accent: 173 58% 39%;
+    --accent-foreground: 222 47% 4%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 7%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 4%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 217 91% 60%;
   }
+}
 
+/* =============================================================================
+   3. BASE LAYER
+   ============================================================================= */
+
+@layer base {
+  /* --- Global Resets --- */
   *,
   *::before,
   *::after {
@@ -88,107 +142,377 @@
 
   html {
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--font-sans), Inter, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans, 'Inter'), system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    line-height: 1.6;
   }
 
-  code,
-  pre {
-    font-family: "JetBrains Mono", "Fira Code", monospace;
+  /* --- Typography Defaults --- */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    color: hsl(var(--foreground));
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-semibold tracking-tight;
+  h1 { font-size: var(--text-h1, 2.5rem); font-weight: 700; }
+  h2 { font-size: var(--text-h2, 2rem); }
+  h3 { font-size: var(--text-h3, 1.5rem); }
+  h4 { font-size: var(--text-h4, 1.25rem); }
+  h5 { font-size: var(--text-h5, 1.125rem); }
+  h6 { font-size: 1rem; }
+
+  p {
+    margin-bottom: 1rem;
   }
 
+  /* --- Links --- */
   a {
-    @apply text-primary underline-offset-4 hover:underline;
+    color: hsl(var(--primary));
+    text-decoration: none;
+    transition: color 150ms ease;
   }
 
+  a:hover {
+    color: hsl(var(--primary) / 0.8);
+  }
+
+  /* --- Code --- */
+  code, pre, kbd, samp {
+    font-family: var(--font-mono, 'JetBrains Mono'), 'Fira Code', monospace;
+  }
+
+  code {
+    background-color: hsl(var(--muted));
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+
+  pre {
+    background-color: hsl(var(--muted));
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+  }
+
+  pre code {
+    background-color: transparent;
+    padding: 0;
+  }
+
+  /* --- Selection --- */
   ::selection {
-    background-color: hsl(var(--primary) / 0.2);
+    background-color: hsl(var(--primary) / 0.15);
     color: hsl(var(--primary));
+  }
+
+  /* --- Focus Visible --- */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* --- Form Elements --- */
+  input, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  /* --- Lists --- */
+  ul, ol {
+    padding-left: 1.5rem;
+  }
+
+  li {
+    margin-bottom: 0.25rem;
+  }
+
+  /* --- Tables --- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  th {
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* --- HR --- */
+  hr {
+    border: none;
+    border-top: 1px solid hsl(var(--border));
+    margin: 2rem 0;
+  }
+
+  /* --- Images --- */
+  img, video {
+    max-width: 100%;
+    height: auto;
   }
 }
 
 /* =============================================================================
-   COMPONENTS
+   4. COMPONENT LAYER
    ============================================================================= */
+
 @layer components {
+  /* --- Layout Components --- */
+  
   .page-container {
-    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+    width: 100%;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 
-  .card-depo {
-    @apply rounded-xl border transition-shadow;
+  .section {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+  }
+
+  @media (min-width: 768px) {
+    .section {
+      padding-top: 4rem;
+      padding-bottom: 4rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .section {
+      padding-top: 6rem;
+      padding-bottom: 6rem;
+    }
+  }
+
+  /* --- Card Components --- */
+  
+  .card-base {
     background-color: hsl(var(--card));
-    border-color: hsl(var(--border));
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    transition: box-shadow 200ms ease;
   }
 
-  .card-depo:hover {
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  .card-base:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
+  .card-elevated {
+    background-color: hsl(var(--card));
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .card-elevated:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  }
+
+  /* --- Navigation Components --- */
+  
   .navbar {
-    @apply sticky top-0 z-50 border-b backdrop-blur;
-    background-color: hsl(var(--card) / 0.85);
-    border-color: hsl(var(--border));
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(8px);
+    background-color: hsl(var(--card) / 0.9);
+    border-bottom: 1px solid hsl(var(--border));
   }
 
-  .badge-depo {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  .nav-link {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    transition: color 150ms ease;
+  }
+
+  .nav-link:hover {
+    color: hsl(var(--foreground));
+  }
+
+  .nav-link-active {
+    color: hsl(var(--primary));
+  }
+
+  /* --- Button Variants (extending shadcn) --- */
+  
+  .btn-primary-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(224 76% 35%) 100%);
+    color: hsl(var(--primary-foreground));
+    font-weight: 600;
+    transition: all 150ms ease;
+  }
+
+  .btn-primary-gradient:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+  }
+
+  .btn-accent {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    font-weight: 600;
+  }
+
+  .btn-accent:hover {
+    background-color: hsl(173 58% 30%);
+  }
+
+  /* --- Badge Components --- */
+  
+  .badge-base {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 9999px;
   }
 
   .badge-primary {
-    @apply bg-primary/10 text-primary;
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
   }
 
-  .table-depo {
-    @apply w-full text-sm;
+  .badge-success {
+    background-color: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
   }
 
-  .table-depo th {
-    @apply border-b px-4 py-3 text-left font-semibold text-muted-foreground;
+  .badge-warning {
+    background-color: hsl(var(--warning) / 0.1);
+    color: hsl(38 92% 35%);
   }
 
-  .table-depo td {
-    @apply border-b px-4 py-3;
+  .badge-error {
+    background-color: hsl(var(--error) / 0.1);
+    color: hsl(var(--error));
   }
 
+  /* --- Legal/Transcript Components --- */
+  
   .transcript-content {
-    @apply p-6 text-lg leading-loose;
-    font-family: "Courier New", monospace;
+    font-family: var(--font-legal, 'Courier New'), monospace;
+    font-size: 1rem;
+    line-height: 2;
+    letter-spacing: 0.02em;
+    padding: 1.5rem;
   }
 
   .word-token {
-    @apply cursor-pointer rounded-sm px-px transition-colors hover:bg-muted;
+    cursor: pointer;
+    padding: 0 1px;
+    border-radius: 2px;
+    transition: background-color 150ms ease;
+  }
+
+  .word-token:hover {
+    background-color: hsl(var(--muted));
   }
 
   .word-token-low-confidence {
-    @apply underline decoration-wavy decoration-amber-500 underline-offset-4;
+    text-decoration: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: hsl(38 92% 50%);
+    text-underline-offset: 4px;
+  }
+
+  .word-token-flagged {
+    background-color: hsl(38 92% 50% / 0.2);
+    border-radius: 2px;
+  }
+
+  /* --- Data Table Components --- */
+  
+  .table-container {
+    overflow-x: auto;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+  }
+
+  .table-row-hover:hover {
+    background-color: hsl(var(--muted) / 0.5);
+  }
+
+  /* --- Form Components --- */
+  
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    margin-bottom: 0.375rem;
+  }
+
+  .form-hint {
+    font-size: 0.8125rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 0.375rem;
+  }
+
+  .form-error {
+    font-size: 0.8125rem;
+    color: hsl(var(--error));
+    margin-top: 0.375rem;
+  }
+
+  /* --- Hero Components --- */
+  
+  .hero-gradient {
+    background: linear-gradient(135deg, 
+      hsl(222 47% 4%) 0%, 
+      hsl(224 76% 20%) 50%, 
+      hsl(224 76% 30%) 100%
+    );
+  }
+
+  .hero-text-gradient {
+    background: linear-gradient(135deg, #ffffff 0%, hsl(217 91% 80%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
 
 /* =============================================================================
-   UTILITIES
+   5. UTILITY LAYER
    ============================================================================= */
+
 @layer utilities {
+  /* --- Text Utilities --- */
+  
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
   .text-legal {
-    font-family: "Courier New", monospace;
+    font-family: var(--font-legal, 'Courier New'), monospace;
     line-height: 2;
     letter-spacing: 0.02em;
   }
 
+  /* --- Scrollbar Utilities --- */
+  
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -197,50 +521,234 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  /* --- Layout Utilities --- */
+  
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* --- Gradient Utilities --- */
+  
+  .gradient-mask-b {
+    mask-image: linear-gradient(to bottom, black 60%, transparent);
+  }
+
+  .gradient-mask-t {
+    mask-image: linear-gradient(to top, black 60%, transparent);
+  }
+
+  /* --- Glass Effect --- */
+  
+  .glass {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* --- Focus Ring Utilities --- */
+  
+  .focus-ring {
+    outline: none;
+  }
+
+  .focus-ring:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 /* =============================================================================
-   ANIMATIONS
+   6. ANIMATIONS
    ============================================================================= */
-@keyframes shimmer {
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
   from {
-    background-position: -200% 0;
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
-    background-position: 200% 0;
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+@keyframes fade-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Animation Classes */
+.animate-fade-in { animation: fade-in 200ms ease-out; }
+.animate-fade-in-up { animation: fade-in-up 300ms ease-out; }
+.animate-fade-in-down { animation: fade-in-down 300ms ease-out; }
+.animate-scale-in { animation: scale-in 200ms ease-out; }
+.animate-slide-in-right { animation: slide-in-right 300ms ease-out; }
+.animate-slide-in-left { animation: slide-in-left 300ms ease-out; }
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, hsl(var(--muted)), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+.animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-spin { animation: spin 1s linear infinite; }
+
 /* =============================================================================
-   PRINT
+   7. PRINT STYLES
    ============================================================================= */
+
 @media print {
+  /* Hide non-essential elements */
   .no-print,
   .navbar,
-  .sidebar {
+  .sidebar,
+  nav,
+  button,
+  .btn,
+  footer {
     display: none !important;
   }
 
+  /* Reset backgrounds */
   body {
-    background: white;
-    color: black;
+    background: white !important;
+    color: black !important;
   }
 
+  /* Optimize for print */
+  * {
+    box-shadow: none !important;
+  }
+
+  a {
+    color: black !important;
+    text-decoration: underline;
+  }
+
+  /* Transcript print styles */
   .transcript-content {
     font-size: 12pt;
     line-height: 2;
+    padding: 0;
+  }
+
+  /* Page breaks */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+
+  table, figure, img {
+    page-break-inside: avoid;
   }
 }
 
 /* =============================================================================
-   REDUCED MOTION
+   8. REDUCED MOTION
    ============================================================================= */
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation: none !important;
-    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* =============================================================================
+   9. HIGH CONTRAST MODE
+   ============================================================================= */
+
+@media (prefers-contrast: high) {
+  :root {
+    --border: 222 47% 30%;
+  }
+
+  .dark {
+    --border: 215 20% 60%;
   }
 }

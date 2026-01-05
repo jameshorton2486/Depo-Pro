@@ -6,7 +6,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { createSupabaseBrowserClient } from '@/utils/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,13 +35,13 @@ export default function LoginPage() {
       setIsLoading(true);
       setError(null);
 
-      const result = await signIn('credentials', {
+      const supabase = createSupabaseBrowserClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
-        redirect: false,
       });
 
-      if (result?.error) {
+      if (signInError) {
         setError('Invalid email or password. Please try again.');
         return;
       }

@@ -9,9 +9,8 @@ datasource db {
 }
 
 model User {
-  id                         String                        @id @default(cuid())
+  id                         String                        @id // Supabase auth user ID (UUID)
   email                      String                        @unique
-  passwordHash               String
   role                       UserRole
   firmId                     String?
   firstName                  String
@@ -58,6 +57,7 @@ model User {
   bookingRequests            BookingRequest[]
   bookingResponses           BookingRequest[]              @relation("AgencyResponder")
   reporterAssignments        CalendarEvent[]               @relation("ReporterAssignments")
+  reviewSessions             TranscriptReviewSession[]
   eventsCreated              CalendarEvent[]               @relation("EventCreator")
   attorneyRequests           CalendarEvent[]               @relation("AttorneyRequests")
   agencyScheduled            CalendarEvent[]               @relation("AgencyScheduled")
@@ -314,8 +314,8 @@ model TranscriptToken {
 }
 
 model Transcription {
-  id                 String              @id @default(cuid())
-  jobId              String              @unique
+  id                 String                    @id @default(cuid())
+  jobId              String                    @unique
   fullTranscript     String
   deepgramRawJson    String?
   words              Json
@@ -327,12 +327,12 @@ model Transcription {
   wordCount          Int?
   flaggedWordCount   Int?
   averageConfidence  Float?
-  speakerCount       Int                 @default(0)
+  speakerCount       Int                       @default(0)
   modelUsed          String?
-  status             TranscriptionStatus @default(PENDING)
-  version            Int                 @default(1)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  status             TranscriptionStatus       @default(PENDING)
+  version            Int                       @default(1)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
   lockReason         String?
   lockedAt           DateTime?
   lockedBy           String?
@@ -340,8 +340,9 @@ model Transcription {
   reviewTimeMinutes  Int?
   reviewedByUserId   String?
   reviewedAt         DateTime?
-  job                Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job                Job                       @relation(fields: [jobId], references: [id], onDelete: Cascade)
   edits              TranscriptionEdit[]
+  reviewSessions     TranscriptReviewSession[]
 
   @@index([jobId])
   @@index([createdAt])
@@ -365,6 +366,24 @@ model TranscriptionEdit {
 
   @@index([transcriptionId])
   @@index([createdAt])
+}
+
+// Review session persistence for transcript review workflow
+model TranscriptReviewSession {
+  id              String   @id @default(cuid())
+  transcriptionId String
+  userId          String
+  reviewedIndices Int[] // Array of word indices marked as reviewed
+  corrections     Json // Map of { wordIndex: correctedText }
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transcription Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([transcriptionId, userId])
+  @@index([transcriptionId])
+  @@index([userId])
 }
 
 model AIRule {
@@ -2235,7 +2254,7 @@ model PricingSnapshot {
   transcriptionRateCents Int // $1.60/min = 160 cents
   asrMultiplier          Float @default(1.0) // 1.25× for enhanced
 
-  // Human review pricing  
+  // Human review pricing
   confidenceReviewRateCents Int // $0.35/1000 words = 35 cents per 1000
   fullReviewRateCents       Int // $1.25/min = 125 cents
 

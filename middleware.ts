@@ -1,8 +1,8 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import { isPublicRoute, hasRouteAccess } from '@/lib/permissions/route-access';
+import { getSupabaseUserFromRequest } from '@/utils/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,38 +21,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check authentication
-  let token;
-  try {
-    token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
-  } catch (error) {
-    // Handle JWT decryption errors (e.g., after secret rotation)
-    // If token can't be decrypted, treat as not authenticated
-    if (
-      error instanceof Error &&
-      (error.message.includes('decryption') ||
-       error.message.includes('no matching decryption secret'))
-    ) {
-      token = null;
-    } else {
-      // Re-throw other errors
-      throw error;
-    }
-  }
-
-  if (!token) {
+  const { user, error } = await getSupabaseUserFromRequest(request);
+  if (!user || error) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Check role-based access (using centralized permissions)
-  const userRole = token.role as string;
-  if (!hasRouteAccess(pathname, userRole as any)) {
-    // Redirect to appropriate dashboard based on role, or to /unauthorized
+  const userRole = (user.user_metadata as any)?.role as string | undefined;
+  if (!hasRouteAccess(pathname, (userRole as any) ?? 'REPORTER')) {
     const unauthorizedUrl = new URL('/unauthorized', request.url);
     return NextResponse.redirect(unauthorizedUrl);
   }

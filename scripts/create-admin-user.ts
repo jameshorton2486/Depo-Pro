@@ -1,9 +1,14 @@
 // scripts/create-admin-user.ts
 // Create an admin user with secure credentials
+//
+// ⚠️ IMPORTANT: User must be created via Supabase Auth first!
+// This script only creates the Prisma User record that references the Supabase user.
+// Steps:
+// 1. Create user in Supabase Auth dashboard or via Supabase API
+// 2. Get the Supabase user ID (UUID)
+// 3. Run this script with the Supabase user ID
 
 import { PrismaClient, UserRole } from '@prisma/client';
-import { hash } from 'bcryptjs';
-import { randomBytes } from 'crypto';
 
 // Ensure DATABASE_URL is set
 if (!process.env.DATABASE_URL) {
@@ -13,22 +18,19 @@ if (!process.env.DATABASE_URL) {
 
 const prisma = new PrismaClient();
 
-function generateSecurePassword(): string {
-  // Generate a secure 12-character password
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let password = '';
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
-
 async function main() {
   console.log('🔐 Creating admin user for James Horton...\n');
+  console.log('⚠️  NOTE: User must exist in Supabase Auth first!');
+  console.log('Get the Supabase user ID from Supabase Auth dashboard.\n');
 
-  // Secure password for initial login
-  const plainPassword = 'DepoProAdmin2025!';
-  const passwordHash = await hash(plainPassword, 10);
+  // Replace with actual Supabase auth user ID (UUID)
+  const SUPABASE_USER_ID = process.env.SUPABASE_USER_ID || 'supabase-user-id-here';
+  
+  if (SUPABASE_USER_ID === 'supabase-user-id-here') {
+    console.error('❌ SUPABASE_USER_ID environment variable is not set');
+    console.error('   Set it to the Supabase auth user ID (UUID)');
+    process.exit(1);
+  }
 
   // Check if firm exists, create if needed
   let firm = await prisma.firm.findFirst();
@@ -48,22 +50,21 @@ async function main() {
     console.log('✅ Using existing firm:', firm.name);
   }
 
-  // Create admin user
+  // Create admin user (references Supabase auth user)
   const admin = await prisma.user.upsert({
     where: { email: 'jameshorton2486@gmail.com' },
     update: {
-      passwordHash,
       role: UserRole.ADMIN,
       firstName: 'James',
       lastName: 'Horton',
       firmId: firm.id,
     },
     create: {
+      id: SUPABASE_USER_ID, // Supabase auth user ID (UUID)
       email: 'jameshorton2486@gmail.com',
       firstName: 'James',
       lastName: 'Horton',
       role: UserRole.ADMIN,
-      passwordHash,
       firmId: firm.id,
       timezone: 'America/New_York',
     },
@@ -72,12 +73,12 @@ async function main() {
   console.log('\n✅ Admin user created successfully!\n');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('📧 Email:    jameshorton2486@gmail.com');
-  console.log('🔑 Password: DepoProAdmin2025!');
+  console.log('🆔 Supabase ID: ' + SUPABASE_USER_ID);
   console.log('👤 Role:     ADMIN');
   console.log('🏢 Firm:     ' + firm.name);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('\n⚠️  IMPORTANT: Change your password after first login!');
-  console.log('🔒 Keep these credentials secure.\n');
+  console.log('\n⚠️  IMPORTANT: User must be created in Supabase Auth first!');
+  console.log('🔒 Authentication is handled by Supabase.\n');
 
   await prisma.$disconnect();
 }

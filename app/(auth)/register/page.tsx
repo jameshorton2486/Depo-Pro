@@ -5,12 +5,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { hash } from 'bcryptjs';
 import { registerSchema, type RegisterInput } from '@/lib/validations/user';
 import { Role, ROLE_LABELS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
@@ -18,11 +17,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { createSupabaseBrowserClient } from '@/utils/supabase/client';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Fix hydration mismatch by ensuring client-only render
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const {
     register,
@@ -41,30 +47,49 @@ export default function RegisterPage() {
       setIsLoading(true);
       setError(null);
 
-      // Hash password
-      const passwordHash = await hash(data.password, 12);
+      const supabase = createSupabaseBrowserClient();
 
-      // Create user via API
-      const response = await fetch('/api/auth/register', {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            role: data.role,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            agencyName: data.agencyName,
+          },
+        },
+      });
+
+      if (signUpError || !signUpData.user || !signUpData.session) {
+        setError(signUpError?.message || 'Registration failed. Please try again.');
+        return;
+      }
+
+      // Persist profile in Prisma using the Supabase user id
+      const profileResp = await fetch('/api/profile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${signUpData.session.access_token}`,
+        },
         body: JSON.stringify({
+          userId: signUpData.user.id,
+          email: data.email,
+          role: data.role,
           firstName: data.firstName,
           lastName: data.lastName,
-          email: data.email,
-          passwordHash,
-          role: data.role,
           agencyName: data.agencyName,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        setError(errorData.error || 'Registration failed. Please try again.');
+      if (!profileResp.ok) {
+        const errBody = await profileResp.json().catch(() => ({}));
+        setError(errBody.error || 'Profile creation failed.');
         return;
       }
 
-      // Redirect to login on success
       router.push('/login?registered=true');
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -73,6 +98,10 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-4 py-12">

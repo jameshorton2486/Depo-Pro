@@ -219,7 +219,12 @@ export function LowConfidencePanel({
         </div>
 
         {/* Sort */}
+        <label htmlFor="sortSelect" className="sr-only">
+          Sort words
+        </label>
         <select
+          id="sortSelect"
+          aria-label="Sort words"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'confidence' | 'time')}
           className="w-full text-sm bg-slate-800 text-slate-300 rounded px-2 py-1.5 border border-slate-700"

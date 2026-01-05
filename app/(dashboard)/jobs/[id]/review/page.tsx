@@ -111,8 +111,8 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
         end: wordsArray[wordsArray.length - 1]?.end || 0,
       }));
     }
-  } catch (error) {
-    console.error('Error parsing transcription segments:', error);
+  } catch (_error) {
+    console.error('Error parsing transcription segments:', _error);
   }
 
   return (

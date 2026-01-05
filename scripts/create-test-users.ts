@@ -1,23 +1,26 @@
 // scripts/create-test-users.ts
 // Create test user accounts for beta testing
+// 
+// ⚠️ IMPORTANT: Users must be created via Supabase Auth first!
+// This script only creates the Prisma User records that reference Supabase users.
+// Run this AFTER creating users in Supabase Auth dashboard or via Supabase API.
 
 import { PrismaClient } from '@prisma/client';
-import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const password = await hash('Test123!', 10);
+  console.log('⚠️  NOTE: Users must exist in Supabase Auth first!');
+  console.log('This script creates Prisma User records that reference Supabase user IDs.\n');
 
-  console.log('Creating test users...');
-
-  // Create test reporter
+  // Create test reporter (requires Supabase user ID)
+  // Replace 'supabase-user-id-here' with actual Supabase auth user ID
   const reporter = await prisma.user.upsert({
     where: { email: 'reporter@test.com' },
     update: {},
     create: {
+      id: 'supabase-user-id-reporter', // Replace with actual Supabase auth user ID
       email: 'reporter@test.com',
-      passwordHash: password,
       role: 'REPORTER',
       firstName: 'Test',
       lastName: 'Reporter',
@@ -32,8 +35,8 @@ async function main() {
     where: { email: 'scopist@test.com' },
     update: {},
     create: {
+      id: 'supabase-user-id-scopist', // Replace with actual Supabase auth user ID
       email: 'scopist@test.com',
-      passwordHash: password,
       role: 'SCOPIST',
       firstName: 'Test',
       lastName: 'Scopist',
@@ -49,8 +52,8 @@ async function main() {
     where: { email: 'admin@test.com' },
     update: {},
     create: {
+      id: 'supabase-user-id-admin', // Replace with actual Supabase auth user ID
       email: 'admin@test.com',
-      passwordHash: password,
       role: 'ADMIN',
       firstName: 'Admin',
       lastName: 'User',
@@ -59,18 +62,13 @@ async function main() {
 
   console.log('✅ Admin created:', admin.email);
 
-  console.log('\n📋 Test Account Credentials:');
+  console.log('\n📋 Test Users Created:');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('Reporter:');
-  console.log('  Email: reporter@test.com');
-  console.log('  Password: Test123!');
-  console.log('\nScopist:');
-  console.log('  Email: scopist@test.com');
-  console.log('  Password: Test123!');
-  console.log('\nAdmin:');
-  console.log('  Email: admin@test.com');
-  console.log('  Password: Test123!');
+  console.log('Reporter: reporter@test.com');
+  console.log('Scopist: scopist@test.com');
+  console.log('Admin: admin@test.com');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('\n⚠️  Remember: Create these users in Supabase Auth first!');
 }
 
 main()

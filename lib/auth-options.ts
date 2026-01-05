@@ -5,8 +5,6 @@
 
 import { NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { compare, compareSync } from 'bcryptjs';
-import { db } from '@/lib/db';
 import { loginSchema } from '@/lib/validations/user';
 import { Role } from '@/lib/constants';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
@@ -63,7 +61,7 @@ export const authConfig: NextAuthConfig = {
             return null;
           }
 
-          const { email, password } = validatedFields.data;
+          const { email } = validatedFields.data;
 
           console.log(`[Auth] Login attempt for: ${email}`);
 
@@ -71,85 +69,18 @@ export const authConfig: NextAuthConfig = {
           const ipAddress = request?.headers?.get('x-forwarded-for')?.split(',')[0] || request?.headers?.get('x-real-ip') || undefined;
           const userAgent = request?.headers?.get('user-agent') || undefined;
 
-          // Find user by email (include firmId for audit logging)
-          const user = await db.user.findUnique({
-            where: { email: email.toLowerCase() },
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              passwordHash: true,
-              role: true,
-              firmId: true,
-            },
-          });
-
-          // Check if user exists
-          if (!user || !user.passwordHash) {
-            console.warn(`[Auth] Login attempt for non-existent user: ${email}`);
-            // Log failed login attempt
-            await createAuditLog({
-              actorUserId: null,
-              firmId: null,
-              action: AuditAction.LOGIN_FAILED,
-              targetType: AuditTargetType.USER,
-              targetId: 'unknown',
-              metadata: { reason: 'user_not_found' },
-              ipAddress,
-              userAgent,
-            }).catch(() => {}); // Fire and forget
-            return null;
-          }
-
-          console.log(`[Auth] Found user: ${user.email}, Has password: ${!!user.passwordHash}`);
-
-          // Verify password
-          let isPasswordValid = false;
-          try {
-            isPasswordValid = await compare(password, user.passwordHash);
-          } catch (error) {
-            console.error('[Auth] Password comparison error:', error);
-            // Fallback: try synchronous comparison
-            isPasswordValid = compareSync(password, user.passwordHash);
-          }
-
-          if (!isPasswordValid) {
-            console.warn(`[Auth] Login attempt with invalid password: ${email}`);
-            // Log failed login attempt
-            await createAuditLog({
-              actorUserId: null,
-              firmId: user.firmId || null,
-              action: AuditAction.LOGIN_FAILED,
-              targetType: AuditTargetType.USER,
-              targetId: user.id,
-              metadata: { reason: 'invalid_password' },
-              ipAddress,
-              userAgent,
-            }).catch(() => {}); // Fire and forget
-            return null;
-          }
-
-          console.log(`[Auth] User logged in successfully: ${user.email} (${user.role})`);
-
-          // Log successful login
+          console.warn('[Auth] Legacy credentials login is disabled.');
           await createAuditLog({
-            actorUserId: user.id,
-            firmId: user.firmId || null,
-            action: AuditAction.LOGIN_SUCCESS,
+            actorUserId: null,
+            firmId: null,
+            action: AuditAction.LOGIN_FAILED,
             targetType: AuditTargetType.USER,
-            targetId: user.id,
+            targetId: 'unknown',
+            metadata: { reason: 'legacy_disabled', email },
             ipAddress,
             userAgent,
-          }).catch(() => {}); // Fire and forget
-
-          // Return user object (excluding passwordHash)
-          return {
-            id: user.id,
-            email: user.email,
-            name: `${user.firstName} ${user.lastName}`,
-            role: user.role,
-          } as any; // NextAuth v5 accepts this shape
+          }).catch(() => {});
+          return null;
         } catch (error) {
           console.error('[Auth] Authorization failed:', error);
           return null;

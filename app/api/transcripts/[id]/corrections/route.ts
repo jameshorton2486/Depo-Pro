@@ -9,6 +9,51 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id: transcriptionId } = await params;
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch existing review session
+    const reviewSession = await db.transcriptReviewSession.findUnique({
+      where: {
+        transcriptionId_userId: {
+          transcriptionId,
+          userId: session.user.id,
+        },
+      },
+    });
+
+    if (!reviewSession) {
+      return NextResponse.json({ 
+        exists: false,
+        reviewedIndices: [],
+        corrections: {},
+      });
+    }
+
+    return NextResponse.json({
+      exists: true,
+      reviewedIndices: reviewSession.reviewedIndices,
+      corrections: reviewSession.corrections,
+      updatedAt: reviewSession.updatedAt,
+    });
+  } catch (_error) {
+    console.error('Error loading review session:', _error);
+    return NextResponse.json(
+      { error: 'Failed to load review session' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -25,6 +70,7 @@ export async function POST(
     const {
       corrections = [], // Array of [wordIndex, correction] pairs
       reviewedWordIndices = [], // Array of word indices marked as reviewed
+      expectedUpdatedAt,  // ISO string of last known updatedAt
     } = body;
 
     // Fetch transcription with job
@@ -54,6 +100,25 @@ export async function POST(
 
     if (!isCreator && !isAssignedScopist && !isAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Check for optimistic locking conflict
+    if (expectedUpdatedAt) {
+      const expectedDate = new Date(expectedUpdatedAt);
+      const actualDate = transcription.updatedAt;
+      
+      // Allow 1 second tolerance for timing differences
+      if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
+        return NextResponse.json(
+          { 
+            error: 'Conflict detected',
+            code: 'CONFLICT',
+            message: 'Transcript was modified by another user. Please refresh and try again.',
+            serverUpdatedAt: actualDate.toISOString(),
+          },
+          { status: 409 }
+        );
+      }
     }
 
     // Get current words array
@@ -109,6 +174,26 @@ export async function POST(
       },
     });
 
+    // Persist review session
+    await db.transcriptReviewSession.upsert({
+      where: {
+        transcriptionId_userId: {
+          transcriptionId,
+          userId: session.user.id,
+        },
+      },
+      create: {
+        transcriptionId,
+        userId: session.user.id,
+        reviewedIndices: reviewedWordIndices,
+        corrections: Object.fromEntries(corrections) as Record<string, string>,
+      },
+      update: {
+        reviewedIndices: reviewedWordIndices,
+        corrections: Object.fromEntries(corrections) as Record<string, string>,
+      },
+    });
+
     // Create audit log entries for corrections
     if (corrections.length > 0) {
       for (const [wordIndex, correctedWord] of corrections) {
@@ -140,9 +225,10 @@ export async function POST(
       correctionsApplied: corrections.length,
       reviewedCount: reviewedWordIndices.length,
       remainingFlagged: remainingFlagged,
+      updatedAt: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('Error saving corrections:', error);
+  } catch (_error) {
+    console.error('Error saving corrections:', _error);
     return NextResponse.json(
       { error: 'Failed to save corrections' },
       { status: 500 }

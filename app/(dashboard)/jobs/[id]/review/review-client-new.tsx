@@ -7,6 +7,15 @@ import { SyncedTranscriptViewer, TranscriptSegment, TranscriptWord } from '@/com
 import { LowConfidencePanel } from '@/components/transcripts/low-confidence-panel';
 import { TranscriptSkeleton } from '@/components/transcripts/transcript-skeleton';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface ReviewClientNewProps {
   jobId: string;
@@ -34,22 +43,57 @@ export function ReviewClientNew({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+  // NEW STATE
+  const [isLoading, setIsLoading] = useState(true);
+  const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
   // Flatten all words from segments for LowConfidencePanel
   const allWords = segments.flatMap(s => s.words);
 
-  // Load saved review progress from localStorage
+  // Load saved review progress from server
   useEffect(() => {
-    const savedProgress = localStorage.getItem(`review-progress-${jobId}`);
-    if (savedProgress) {
+    async function loadSession() {
+      setIsLoading(true);
       try {
-        const { reviewed, corrections: savedCorrections } = JSON.parse(savedProgress);
-        setReviewedWords(new Set(reviewed));
-        setCorrections(new Map(savedCorrections));
-      } catch (err) {
-        console.error('Failed to load saved progress:', err);
+        // First try server
+        const response = await fetch(`/api/transcripts/${transcriptionId}/corrections`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.exists) {
+            setReviewedWords(new Set(data.reviewedIndices || []));
+            setCorrections(new Map(Object.entries(data.corrections || {}).map(
+              ([k, v]) => [parseInt(k), v as string]
+            )));
+            setServerUpdatedAt(data.updatedAt);
+            toast.success('Resuming saved session', {
+              description: `Last saved ${new Date(data.updatedAt).toLocaleString()}`,
+            });
+          }
+        }
+        
+        // Fallback to localStorage if no server session
+        const savedProgress = localStorage.getItem(`review-progress-${jobId}`);
+        if (savedProgress && reviewedWords.size === 0) {
+          try {
+            const { reviewed, corrections: savedCorrections } = JSON.parse(savedProgress);
+            setReviewedWords(new Set(reviewed));
+            setCorrections(new Map(savedCorrections));
+          } catch (_err) {
+            console.error('Failed to load localStorage progress:', _err);
+          }
+        }
+      } catch (_err) {
+        console.error('Failed to load session:', _err);
+      } finally {
+        setIsLoading(false);
       }
     }
-  }, [jobId]);
+    
+    loadSession();
+  }, [transcriptionId, jobId]);
 
   // Auto-save to localStorage every 30 seconds
   useEffect(() => {
@@ -84,7 +128,7 @@ export function ReviewClientNew({
     setReviewedWords(prev => new Set(prev).add(wordIndex));
   }, []);
 
-  // Save progress to server
+  // Save progress to server with optimistic locking
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -92,33 +136,56 @@ export function ReviewClientNew({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          corrections: Array.from(corrections.entries()), // [wordIndex, correction] pairs
+          corrections: Array.from(corrections.entries()),
           reviewedWordIndices: Array.from(reviewedWords),
+          expectedUpdatedAt: serverUpdatedAt,
         }),
       });
+      
+      if (response.status === 409) {
+        // Conflict detected
+        const data = await response.json();
+        setServerUpdatedAt(data.serverUpdatedAt);
+        setShowConflictDialog(true);
+        return false;
+      }
       
       if (!response.ok) {
         throw new Error('Failed to save');
       }
       
+      const data = await response.json();
       setLastSaved(new Date());
+      setServerUpdatedAt(data.updatedAt);
       
       // Clear localStorage on successful server save
       localStorage.removeItem(`review-progress-${jobId}`);
+      
+      toast.success('Progress saved');
+      return true;
     } catch (err) {
       console.error('Save failed:', err);
-      alert('Failed to save. Your progress is saved locally.');
+      toast.error('Failed to save', {
+        description: 'Your progress is saved locally. Try again.',
+      });
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Complete review
-  const handleCompleteReview = async () => {
-    // Use toast confirm instead of browser confirm
-    toast.loading('Completing review...', { id: 'complete-review' });
+  // Open completion confirmation dialog
+  const handleCompleteReviewClick = () => {
+    setShowCompleteDialog(true);
+  };
+
+  // Actually complete the review
+  const handleConfirmComplete = async () => {
+    setShowCompleteDialog(false);
     
-    await handleSave();
+    // Save first
+    const saveSuccess = await handleSave();
+    if (!saveSuccess) return;
     
     try {
       const response = await fetch(`/api/jobs/${jobId}/status`, {
@@ -132,7 +199,6 @@ export function ReviewClientNew({
       }
       
       toast.success('Review completed', {
-        id: 'complete-review',
         description: 'Transcript review has been finalized.',
       });
       
@@ -142,9 +208,53 @@ export function ReviewClientNew({
     } catch (err) {
       console.error('Complete failed:', err);
       toast.error('Failed to complete review', {
-        id: 'complete-review',
         description: err instanceof Error ? err.message : 'Please try again.',
       });
+    }
+  };
+
+  // Handle export from review page
+  const handleExport = async (format: 'docx' | 'pdf' | 'txt') => {
+    setIsExporting(true);
+    try {
+      // Save current progress first
+      await handleSave();
+      
+      const response = await fetch(
+        `/api/transcripts/${transcriptionId}/export?format=${format}`,
+        { method: 'GET' }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+      
+      // Get filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+      const filename = filenameMatch?.[1] || `transcript.${format}`;
+      
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Export complete', {
+        description: `Downloaded ${filename}`,
+      });
+    } catch (err) {
+      console.error('Export failed:', err);
+      toast.error('Export failed', {
+        description: 'Please try again.',
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -152,10 +262,8 @@ export function ReviewClientNew({
   const confidenceThreshold = 0.85;
   const lowConfidenceWords = allWords.filter(w => w.confidence < confidenceThreshold);
 
-  // Show loading state if segments are empty
-  const isLoading = segments.length === 0;
-
-  if (isLoading) {
+  // Show loading state if segments are empty OR session is loading
+  if (isLoading || segments.length === 0) {
     return (
       <div className="h-screen flex flex-col bg-background">
         <div className="p-4">
@@ -189,7 +297,41 @@ export function ReviewClientNew({
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Export Dropdown */}
+          <div className="relative group">
+            <button
+              disabled={isSaving || isExporting}
+              className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm disabled:opacity-50 transition-colors flex items-center gap-1"
+            >
+              {isExporting ? 'Exporting...' : 'Export'} ▼
+            </button>
+            <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <button
+                onClick={() => handleExport('docx')}
+                disabled={isExporting}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors rounded-t-lg"
+              >
+                Word (.docx)
+              </button>
+              <button
+                onClick={() => handleExport('pdf')}
+                disabled={isExporting}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
+              >
+                PDF (.pdf)
+              </button>
+              <button
+                onClick={() => handleExport('txt')}
+                disabled={isExporting}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors rounded-b-lg"
+              >
+                Text (.txt)
+              </button>
+            </div>
+          </div>
+          
+          {/* Save Button */}
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -197,9 +339,11 @@ export function ReviewClientNew({
           >
             {isSaving ? 'Saving...' : 'Save Progress'}
           </button>
+          
+          {/* Complete Button */}
           <button
-            onClick={handleCompleteReview}
-            disabled={isSaving}
+            onClick={handleCompleteReviewClick}
+            disabled={isSaving || isExporting}
             className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm disabled:opacity-50 transition-colors"
           >
             Complete Review
@@ -254,6 +398,73 @@ export function ReviewClientNew({
           />
         </div>
       </div>
+
+      {/* Completion Confirmation Dialog */}
+      <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Review?</DialogTitle>
+            <DialogDescription>
+              You are about to mark this transcript review as complete.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total flagged words:</span>
+              <span className="font-medium">{lowConfidenceWords.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Words reviewed:</span>
+              <span className="font-medium">{reviewedWords.size}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Corrections made:</span>
+              <span className="font-medium">{corrections.size}</span>
+            </div>
+            {reviewedWords.size < lowConfidenceWords.length && (
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-xs">
+                ⚠️ {lowConfidenceWords.length - reviewedWords.size} flagged words have not been reviewed.
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmComplete}>
+              Complete Review
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Conflict Detection Dialog */}
+      <Dialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conflict Detected</DialogTitle>
+            <DialogDescription>
+              This transcript was modified by another user while you were editing.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 text-sm text-muted-foreground">
+            Your changes could not be saved because the transcript has been updated.
+            Please refresh the page to load the latest version.
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConflictDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => window.location.reload()}>
+              Refresh Page
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
