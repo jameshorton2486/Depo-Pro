@@ -283,7 +283,10 @@ export async function getHealthStatus(): Promise<HealthStatus> {
   return {
     status: hasUnhealthy ? 'unhealthy' : 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+    // Edge-safe: process.uptime() is Node-only, guard it
+    uptime: typeof process !== 'undefined' && typeof process.uptime === 'function' 
+      ? process.uptime() 
+      : 0,
     checks: allChecks,
   };
 }

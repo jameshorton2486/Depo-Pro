@@ -8,7 +8,8 @@
 import { NextRequest } from 'next/server';
 import { createSupabaseMiddlewareClient } from './middleware';
 import { getSupabaseAdminClient } from './admin';
-import { db } from '@/lib/db';
+// ⚠️ EDGE RUNTIME: Use dynamic import to avoid pulling Node APIs into Edge
+// db.ts imports observability.ts which uses process.uptime() (Node-only)
 
 export interface MiddlewareUser {
   id: string;
@@ -42,6 +43,8 @@ export async function getSupabaseUserWithProfile(
 
     // CRITICAL: Get role from database, NOT from user_metadata
     // This prevents role escalation attacks
+    // Use dynamic import to avoid Edge Runtime issues
+    const { db } = await import('@/lib/db');
     const profile = await db.user.findUnique({
       where: { id: supabaseUser.id },
       select: {
@@ -92,6 +95,8 @@ export async function getUserByToken(
     }
 
     // Get role from database
+    // Use dynamic import to avoid Edge Runtime issues
+    const { db } = await import('@/lib/db');
     const profile = await db.user.findUnique({
       where: { id: supabaseUser.id },
       select: {

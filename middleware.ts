@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createSupabaseMiddlewareClient } from '@/lib/supabase/middleware';
 import { isPublicRoute, hasRouteAccess } from '@/lib/permissions/route-access';
-import { db } from '@/lib/db';
+import { getSupabaseUserWithProfile } from '@/lib/supabase/middleware-helper';
 
 // Routes that should bypass auth even if not in PUBLIC_ROUTES
 const AUTH_BYPASS_ROUTES = [
@@ -56,14 +56,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // CRITICAL SECURITY: Get role from database, NOT from user_metadata
-    // This prevents role escalation attacks where users modify their metadata
-    const profile = await db.user.findUnique({
-      where: { id: user.id },
-      select: { role: true },
-    });
+    // CRITICAL SECURITY: Get role from database via middleware helper
+    // This prevents role escalation attacks and avoids Edge Runtime issues
+    // The helper uses dynamic imports to avoid pulling Node APIs into Edge
+    const { user: userWithProfile, error: profileError } = await getSupabaseUserWithProfile(request);
 
-    if (!profile) {
+    if (profileError || !userWithProfile) {
       // Profile doesn't exist - redirect to registration completion
       const registerUrl = new URL('/register', request.url);
       registerUrl.searchParams.set('callbackUrl', pathname);
@@ -71,7 +69,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Check route access using role from database (authoritative source)
-    if (!hasRouteAccess(pathname, profile.role as any)) {
+    if (!hasRouteAccess(pathname, userWithProfile.role as any)) {
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
