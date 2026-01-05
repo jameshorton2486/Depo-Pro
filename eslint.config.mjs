@@ -23,6 +23,9 @@ export default [
       '**/*.config.mjs',
       // Non-MVP / Legacy files
       'test-env.js',
+      'verify-supabase.js',
+      'verify-db.js',
+      'test-supabase-connection.js',
       'app/features/**',
       'lib/extraction/**',
       'lib/permissions/**',

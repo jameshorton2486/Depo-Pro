@@ -1,7 +1,7 @@
 /* =============================================================================
    DEPO-PRO GLOBAL STYLES v2.0
    Professional Legal Tech Design System
-   
+
    Structure:
    1. Imports & Tailwind Directives
    2. CSS Custom Properties (shadcn/ui compatible)
@@ -20,8 +20,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import design tokens - MUST come after @tailwind directives */
-@import "../styles/design-tokens.css";
+/*
+ * Design tokens are defined below in @layer base
+ * The design-tokens.css file exists but is deprecated - do not import it
+ * All active tokens use HSL format for shadcn/ui compatibility
+ */
 
 /* =============================================================================
    2. CSS CUSTOM PROPERTIES (shadcn/ui compatible)
@@ -60,6 +63,22 @@
 
     --radius: 0.5rem;
 
+    /* --- Typography Tokens --- */
+    --text-h1: 2.5rem;
+    --text-h2: 2rem;
+    --text-h3: 1.5rem;
+    --text-h4: 1.25rem;
+    --text-h5: 1.125rem;
+    --text-body: 1rem;
+    --text-body-sm: 0.875rem;
+    --text-caption: 0.8125rem;
+    --text-tiny: 0.75rem;
+
+    /* --- Font Families --- */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-legal: 'Courier New', 'Courier', monospace;
+
     /* --- Status Colors (HSL) --- */
     --success: 173 58% 26%;
     --success-foreground: 0 0% 100%;
@@ -86,6 +105,21 @@
     --chart-3: 38 92% 50%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* --- Compatibility Tokens (map old design-tokens.css to new system) --- */
+    /* These maintain backward compatibility with files using old token names */
+    --color-primary: var(--primary);
+    --color-accent: var(--accent);
+    --color-bg: var(--background);
+    --color-surface: var(--card);
+    --color-text: var(--foreground);
+    --color-text-secondary: var(--muted-foreground);
+    --color-text-muted: var(--muted-foreground);
+    --color-text-inverse: 0 0% 100%;
+    --color-border: var(--border);
+    --radius-card: var(--radius);
+    --radius-button: var(--radius);
+    --shadow-soft: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   }
 
   .dark {
@@ -125,6 +159,17 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217 33% 17%;
     --sidebar-ring: 217 91% 60%;
+
+    /* --- Compatibility Tokens (dark mode) --- */
+    --color-primary: var(--primary);
+    --color-accent: var(--accent);
+    --color-bg: var(--background);
+    --color-surface: var(--card);
+    --color-text: var(--foreground);
+    --color-text-secondary: var(--muted-foreground);
+    --color-text-muted: var(--muted-foreground);
+    --color-text-inverse: 0 0% 100%;
+    --color-border: var(--border);
   }
 }
 
@@ -272,7 +317,7 @@
 
 @layer components {
   /* --- Layout Components --- */
-  
+
   .page-container {
     width: 100%;
     max-width: 80rem;
@@ -302,7 +347,7 @@
   }
 
   /* --- Card Components --- */
-  
+
   .card-base {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
@@ -325,11 +370,12 @@
   }
 
   /* --- Navigation Components --- */
-  
+
   .navbar {
     position: sticky;
     top: 0;
     z-index: 50;
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     background-color: hsl(var(--card) / 0.9);
     border-bottom: 1px solid hsl(var(--border));
@@ -351,7 +397,7 @@
   }
 
   /* --- Button Variants (extending shadcn) --- */
-  
+
   .btn-primary-gradient {
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(224 76% 35%) 100%);
     color: hsl(var(--primary-foreground));
@@ -375,7 +421,7 @@
   }
 
   /* --- Badge Components --- */
-  
+
   .badge-base {
     display: inline-flex;
     align-items: center;
@@ -406,7 +452,7 @@
   }
 
   /* --- Legal/Transcript Components --- */
-  
+
   .transcript-content {
     font-family: var(--font-legal, 'Courier New'), monospace;
     font-size: 1rem;
@@ -439,7 +485,7 @@
   }
 
   /* --- Data Table Components --- */
-  
+
   .table-container {
     overflow-x: auto;
     border: 1px solid hsl(var(--border));
@@ -451,7 +497,7 @@
   }
 
   /* --- Form Components --- */
-  
+
   .form-label {
     display: block;
     font-size: 0.875rem;
@@ -473,11 +519,11 @@
   }
 
   /* --- Hero Components --- */
-  
+
   .hero-gradient {
-    background: linear-gradient(135deg, 
-      hsl(222 47% 4%) 0%, 
-      hsl(224 76% 20%) 50%, 
+    background: linear-gradient(135deg,
+      hsl(222 47% 4%) 0%,
+      hsl(224 76% 20%) 50%,
       hsl(224 76% 30%) 100%
     );
   }
@@ -496,7 +542,7 @@
 
 @layer utilities {
   /* --- Text Utilities --- */
-  
+
   .text-balance {
     text-wrap: balance;
   }
@@ -512,7 +558,7 @@
   }
 
   /* --- Scrollbar Utilities --- */
-  
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -542,7 +588,7 @@
   }
 
   /* --- Layout Utilities --- */
-  
+
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
@@ -552,32 +598,49 @@
   }
 
   /* --- Gradient Utilities --- */
-  
+
   .gradient-mask-b {
+    -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent);
     mask-image: linear-gradient(to bottom, black 60%, transparent);
   }
 
   .gradient-mask-t {
+    -webkit-mask-image: linear-gradient(to top, black 60%, transparent);
     mask-image: linear-gradient(to top, black 60%, transparent);
   }
 
   /* --- Glass Effect --- */
-  
+
   .glass {
     background: hsl(var(--card) / 0.8);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border: 1px solid hsl(var(--border) / 0.5);
   }
 
   /* --- Focus Ring Utilities --- */
-  
+
   .focus-ring {
     outline: none;
   }
 
   .focus-ring:focus-visible {
-    outline: 2px solid hsl(var(--ring));
+    outline: var(--focus-ring-width) solid hsl(var(--ring));
     outline-offset: 2px;
+  }
+
+  /* --- Semantic Size Utilities --- */
+
+  .cell-size-md {
+    --cell-size: 2rem; /* spacing.8 */
+  }
+
+  .cell-size-lg {
+    --cell-size: 3rem; /* spacing.12 */
+  }
+
+  .cell-size-sm {
+    --cell-size: 1.5rem; /* spacing.6 */
   }
 }
 

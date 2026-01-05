@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle } from 'lucide-react';
-import { createSupabaseBrowserClient } from '@/utils/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 const resetPasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -43,7 +43,7 @@ export default function ResetPasswordPage() {
     if (!mounted) return;
 
     const syncSession = async () => {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = getSupabaseBrowserClient();
       const hash = window.location.hash;
 
       if (hash) {
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      const supabase = createSupabaseBrowserClient();
+      const supabase = getSupabaseBrowserClient();
 
       // Update password with Supabase
       const { error: updateError } = await supabase.auth.updateUser({

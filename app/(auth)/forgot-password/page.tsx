@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, CheckCircle } from 'lucide-react';
-import { createSupabaseBrowserClient } from '@/utils/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
       setError(null);
       setSuccess(false);
 
-      const supabase = createSupabaseBrowserClient();
+      const supabase = getSupabaseBrowserClient();
 
       // Request password reset email from Supabase
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(data.email, {

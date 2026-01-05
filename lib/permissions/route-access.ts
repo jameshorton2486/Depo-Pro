@@ -35,6 +35,7 @@ export const PUBLIC_ROUTES: string[] = [
   '/register',
   '/forgot-password',
   '/reset-password',
+  '/update-password',
   '/about',
   '/features',
   '/pricing',
@@ -42,6 +43,9 @@ export const PUBLIC_ROUTES: string[] = [
   '/contact',
   '/api/auth',
   '/api/health',
+  // Auth callback routes (PKCE and email confirmation)
+  '/auth/callback',
+  '/auth/confirm',
 ];
 
 // =============================================================================

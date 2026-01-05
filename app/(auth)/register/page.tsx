@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { createSupabaseBrowserClient } from '@/utils/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -47,7 +47,19 @@ export default function RegisterPage() {
       setIsLoading(true);
       setError(null);
 
-      const supabase = createSupabaseBrowserClient();
+      // 🔍 DIAGNOSTIC: Verify environment variables are loaded
+      console.log('🔍 Diagnostic check:');
+      console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓ Set' : '❌ Missing');
+      console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 20) + '...' || '❌ Missing');
+
+      let supabase;
+      try {
+        supabase = getSupabaseBrowserClient();
+      } catch (clientError) {
+        console.error('❌ Failed to create Supabase client:', clientError);
+        setError('Configuration error: Missing Supabase environment variables. Please contact support.');
+        return;
+      }
 
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
@@ -63,7 +75,15 @@ export default function RegisterPage() {
       });
 
       if (signUpError || !signUpData.user || !signUpData.session) {
-        setError(signUpError?.message || 'Registration failed. Please try again.');
+        const errorMsg = signUpError?.message || 'Registration failed. Please try again.';
+
+        // Provide more helpful error message for common issues
+        if (errorMsg.includes('Invalid API key') || errorMsg.includes('Invalid JWT')) {
+          setError('Configuration error: Invalid Supabase credentials. Please refresh and try again.');
+          console.error('❌ Supabase API key error. Check NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local');
+        } else {
+          setError(errorMsg);
+        }
         return;
       }
 
@@ -183,8 +203,8 @@ export default function RegisterPage() {
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={Role.ADMIN}>
-                    {ROLE_LABELS[Role.ADMIN]}
+                  <SelectItem value={Role.ATTORNEY}>
+                    {ROLE_LABELS[Role.ATTORNEY]}
                   </SelectItem>
                   <SelectItem value={Role.REPORTER}>
                     {ROLE_LABELS[Role.REPORTER]}
@@ -192,14 +212,12 @@ export default function RegisterPage() {
                   <SelectItem value={Role.SCOPIST}>
                     {ROLE_LABELS[Role.SCOPIST]}
                   </SelectItem>
-                  <SelectItem value={Role.ATTORNEY}>
-                    {ROLE_LABELS[Role.ATTORNEY]}
-                  </SelectItem>
                 </SelectContent>
               </Select>
               {errors.role && (
                 <p className="text-sm text-danger">{errors.role.message}</p>
               )}
+              <p className="text-xs text-slate-500 mt-1">Admin roles are assigned by invitation only</p>
             </div>
 
             {/* Optional Agency name for Reporters */}

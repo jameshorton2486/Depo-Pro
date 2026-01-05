@@ -8,7 +8,7 @@
 // Automatically creates profile if Supabase user exists but profile doesn't.
 // ═══════════════════════════════════════════════════════════════
 
-import { createSupabaseServiceClient } from '@/utils/supabase/server';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ensureUserProfile } from './profile-guard';
 import { db } from '@/lib/db';
 
@@ -48,7 +48,7 @@ export async function getUserWithProfile(request: Request | { headers: Headers }
     return null;
   }
 
-  const supabase = createSupabaseServiceClient();
+  const supabase = getSupabaseAdminClient();
   const { data: userResult, error: userError } = await supabase.auth.getUser(token);
   
   if (userError || !userResult.user) {
