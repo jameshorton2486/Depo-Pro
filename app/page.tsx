@@ -7,8 +7,8 @@
 // =============================================================================
 
 import Link from 'next/link';
-import { 
-  Shield, 
+import {
+  Shield,
   Target,
   Zap,
   Building2,
@@ -19,8 +19,7 @@ import {
   ArrowRight,
   CheckCircle,
   Lock,
-  FileCheck,
-  Clock
+  FileCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PublicHeader } from '@/components/layouts/public-header';
@@ -39,7 +38,7 @@ function HeroSection() {
         <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl" />
         {/* Grid pattern */}
-        <div 
+        <div
           className="absolute inset-0 opacity-[0.02]"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
@@ -59,15 +58,15 @@ function HeroSection() {
 
           {/* Subheadline */}
           <p className="mt-6 text-lg sm:text-xl text-slate-300 leading-relaxed max-w-2xl">
-            Depo-Pro is a secure, AI-assisted deposition and transcript management platform 
-            built specifically for legal professionals — combining accuracy, auditability, 
+            Depo-Pro is a secure, AI-assisted deposition and transcript management platform
+            built specifically for legal professionals — combining accuracy, auditability,
             and modern workflows.
           </p>
 
           {/* CTA Buttons */}
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
-            <Button 
-              asChild 
+            <Button
+              asChild
               size="lg"
               className="h-12 px-8 text-base font-semibold bg-white text-indigo-900 hover:bg-white/90 shadow-xl shadow-black/20"
             >
@@ -76,9 +75,9 @@ function HeroSection() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button 
-              asChild 
-              variant="outline" 
+            <Button
+              asChild
+              variant="outline"
               size="lg"
               className="h-12 px-8 text-base font-semibold bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30"
             >
@@ -126,12 +125,12 @@ function ValuePropsSection() {
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 mb-5">
                 <prop.icon className="h-7 w-7" />
               </div>
-              
+
               {/* Title */}
               <h3 className="text-xl font-semibold text-slate-900 mb-3">
                 {prop.title}
               </h3>
-              
+
               {/* Description */}
               <p className="text-slate-600 leading-relaxed">
                 {prop.description}
@@ -170,7 +169,7 @@ function AudienceSection() {
         {/* Audience Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {AUDIENCES.map((audience) => (
-            <div 
+            <div
               key={audience.label}
               className="flex items-center gap-3 p-4 rounded-xl bg-white border border-slate-200 hover:border-indigo-200 hover:shadow-soft transition-all duration-200"
             >
@@ -232,7 +231,7 @@ function FeaturesSection() {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {FEATURES.map((feature) => (
-            <div 
+            <div
               key={feature.title}
               className="p-6 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-soft transition-all duration-200"
             >
@@ -277,9 +276,9 @@ function AIPhilosophySection() {
               AI Assists.{' '}
               <span className="text-teal-400">Humans Decide.</span>
             </h2>
-            
+
             <p className="mt-6 text-lg text-slate-300 leading-relaxed">
-              Depo-Pro uses AI to surface risk, not to replace legal judgment. 
+              Depo-Pro uses AI to surface risk, not to replace legal judgment.
               Every correction is human-approved, auditable, and traceable.
             </p>
 
@@ -333,7 +332,7 @@ function AIPhilosophySection() {
                 <p className="text-xl font-semibold text-white mb-2">Human in the Loop</p>
                 <p className="text-sm text-slate-400">Every decision is yours</p>
               </div>
-              
+
               {/* Floating badges */}
               <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-teal-500/20 text-teal-300 text-xs font-medium">
                 Auditable
@@ -362,7 +361,7 @@ function SecuritySection() {
           <div className="order-2 lg:order-1 mt-12 lg:mt-0">
             <div className="relative aspect-square max-w-md mx-auto rounded-2xl bg-gradient-to-br from-indigo-900 to-slate-900 p-8 flex items-center justify-center">
               <Shield className="h-32 w-32 text-white/10" />
-              
+
               {/* Security badges */}
               <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-white/10 text-white text-xs font-medium">
                 256-bit Encryption
@@ -382,13 +381,13 @@ function SecuritySection() {
               <Lock className="h-4 w-4" />
               Enterprise Security
             </div>
-            
+
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
               Enterprise-Grade Security, Built In
             </h2>
-            
+
             <p className="mt-4 text-lg text-slate-600 leading-relaxed">
-              All authentication is handled by Supabase. Depo-Pro never stores 
+              All authentication is handled by Supabase. Depo-Pro never stores
               plaintext or hashed passwords.
             </p>
 
@@ -466,10 +465,10 @@ function CTASection() {
         <p className="mt-6 text-lg text-slate-300 max-w-2xl mx-auto">
           Join legal professionals who demand accuracy, security, and modern workflows.
         </p>
-        
+
         <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-          <Button 
-            asChild 
+          <Button
+            asChild
             size="lg"
             className="h-12 px-8 text-base font-semibold bg-white text-indigo-900 hover:bg-white/90"
           >
@@ -478,9 +477,9 @@ function CTASection() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
-          <Button 
-            asChild 
-            variant="outline" 
+          <Button
+            asChild
+            variant="outline"
             size="lg"
             className="h-12 px-8 text-base font-semibold bg-transparent border-white/20 text-white hover:bg-white/10"
           >

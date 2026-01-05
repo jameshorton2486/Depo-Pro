@@ -25,7 +25,7 @@ type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const _searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push('/login?reset=success');
       }, 3000);
-    } catch (err) {
+    } catch (_err) {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
