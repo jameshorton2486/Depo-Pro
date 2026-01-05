@@ -6,7 +6,8 @@
 
 import { PrismaClient, Prisma } from '@prisma/client';
 import { PrismaTransactionClient } from './transactions';
-import { logger } from './observability';
+// ⚠️ EDGE RUNTIME: Lazy import logger to avoid pulling observability into Edge
+// observability.ts uses process.uptime() which is Node-only
 import { validateEnvironment } from './security';
 
 /**
@@ -18,12 +19,28 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Lazy logger getter to avoid Edge Runtime issues
+let loggerInstance: any = null;
+async function getLogger() {
+  if (!loggerInstance) {
+    const { logger } = await import('./observability');
+    loggerInstance = logger;
+  }
+  return loggerInstance;
+}
+
 // Validate environment variables on startup
 if (process.env.NODE_ENV === 'production') {
   try {
     validateEnvironment();
   } catch (error) {
-    logger.fatal('Environment validation failed', error as Error);
+    // Lazy import logger to avoid Edge Runtime issues
+    getLogger().then(logger => {
+      logger.fatal('Environment validation failed', error as Error);
+    }).catch(() => {
+      // Fallback if logger can't be loaded (Edge Runtime)
+      console.error('Environment validation failed', error);
+    });
     // In production, we might want to exit, but in Next.js we'll just log it
   }
 }
@@ -43,25 +60,42 @@ class EnhancedPrismaClient extends PrismaTransactionClient<Prisma.PrismaClientOp
       ...options,
     });
 
-    // Set up event listeners for logging
+    // Set up event listeners for logging (lazy logger to avoid Edge Runtime issues)
     this.$on('query', (e: any) => {
-      logger.debug('Database query', {
-        query: e.query,
-        duration: e.duration,
-        target: e.target,
+      getLogger().then(logger => {
+        logger.debug('Database query', {
+          query: e.query,
+          duration: e.duration,
+          target: e.target,
+        });
+      }).catch(() => {
+        // Fallback if logger can't be loaded (Edge Runtime)
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('Database query', e.query);
+        }
       });
     });
 
     this.$on('error', (e: any) => {
-      logger.error('Database error', new Error(e.message), {
-        target: e.target,
+      getLogger().then(logger => {
+        logger.error('Database error', new Error(e.message), {
+          target: e.target,
+        });
+      }).catch(() => {
+        // Fallback if logger can't be loaded (Edge Runtime)
+        console.error('Database error', e.message);
       });
     });
 
     this.$on('warn', (e: any) => {
-      logger.warn('Database warning', {
-        message: e.message,
-        target: e.target,
+      getLogger().then(logger => {
+        logger.warn('Database warning', {
+          message: e.message,
+          target: e.target,
+        });
+      }).catch(() => {
+        // Fallback if logger can't be loaded (Edge Runtime)
+        console.warn('Database warning', e.message);
       });
     });
   }
