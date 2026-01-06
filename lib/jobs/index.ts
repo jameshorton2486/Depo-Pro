@@ -1,10 +1,16 @@
-// =============================================================================
-// JOB QUEUE EXPORTS
-// =============================================================================
+﻿/**
+ * Jobs Module Exports
+ */
 
-export * from './types';
-export * from './queue';
+export type { JobType, JobResult, QueuedJob, JobStatus, JobOptions } from './queue';
+export { 
+  enqueueJob, 
+  processJobs, 
+  getQueueStatus, 
+  getQueueStats, 
+  getJobStatus,
+  registerHandler,
+} from './queue';
 
-// Register handlers
-import './handlers';
-
+// Re-export handlers
+export * from './handlers/transcription';

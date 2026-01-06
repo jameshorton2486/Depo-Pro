@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db as prisma } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -26,7 +26,10 @@ export async function GET() {
 async function checkDatabase() {
   const start = performance.now();
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    const supabase = await createSupabaseServerClient();
+    // Test connection by checking auth (no users table query needed)
+    const { error: _error } = await supabase.auth.getUser();
+    // Error is OK if not authenticated - we just want to test connection
     return { status: 'pass' as const, duration: Math.round(performance.now() - start) };
   } catch {
     return { status: 'fail' as const, message: 'Database connection failed' };

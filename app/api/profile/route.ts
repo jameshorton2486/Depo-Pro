@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ensureUserProfile } from '@/lib/auth/profile-guard';
 
@@ -58,17 +57,17 @@ export async function POST(request: Request) {
     const currentProfile = await ensureUserProfile(user);
 
     // Determine if this is a self-update or admin updating another user
-    const isAdminRequest = currentProfile.role === UserRole.ADMIN;
+    const isAdminRequest = currentProfile.role === 'ADMIN';
     const updateTargetId = targetUserId && isAdminRequest ? targetUserId : user.id;
     const isSelfUpdate = updateTargetId === user.id;
 
-    // Build allowed updates
+    // Build allowed updates for user_metadata (camelCase keys)
     const allowedUpdates: Record<string, unknown> = {};
 
     // Safe fields anyone can update on themselves
     if (isSelfUpdate) {
-      if (firstName) allowedUpdates.firstName = firstName;
-      if (lastName) allowedUpdates.lastName = lastName;
+      if (firstName !== undefined) allowedUpdates.firstName = firstName;
+      if (lastName !== undefined) allowedUpdates.lastName = lastName;
       if (agencyName !== undefined) allowedUpdates.agencyName = agencyName;
       if (phone !== undefined) allowedUpdates.phone = phone;
     }
@@ -76,7 +75,7 @@ export async function POST(request: Request) {
     // ═══════════════════════════════════════════════════════════════
     // 🔒 SECURITY: Role changes are ADMIN-ONLY
     // ═══════════════════════════════════════════════════════════════
-    if (role) {
+    if (role !== undefined) {
       if (!isAdminRequest) {
         return NextResponse.json(
           { error: 'Role changes require admin privileges' },
@@ -84,8 +83,9 @@ export async function POST(request: Request) {
         );
       }
 
-      // Validate role is a valid enum value
-      if (!Object.values(UserRole).includes(role)) {
+      // Validate role is a valid value
+      const validRoles: UserRole[] = ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'PARALEGAL', 'AGENCY', 'AGENCY_ADMIN', 'FIRM_ADMIN'];
+      if (!validRoles.includes(role as UserRole)) {
         return NextResponse.json(
           { error: 'Invalid role value' },
           { status: 400 }
@@ -96,32 +96,64 @@ export async function POST(request: Request) {
 
       // If admin is updating another user, allow name/agency fields too
       if (!isSelfUpdate) {
-        if (firstName) allowedUpdates.firstName = firstName;
-        if (lastName) allowedUpdates.lastName = lastName;
+        if (firstName !== undefined) allowedUpdates.firstName = firstName;
+        if (lastName !== undefined) allowedUpdates.lastName = lastName;
         if (agencyName !== undefined) allowedUpdates.agencyName = agencyName;
         if (phone !== undefined) allowedUpdates.phone = phone;
       }
     }
 
     // Only update if there are changes
+    // ⚠️ CRITICAL: Update user_metadata, NOT a users table
     if (Object.keys(allowedUpdates).length > 0) {
-      const updated = await db.user.update({
-        where: { id: updateTargetId },
-        data: allowedUpdates,
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          firstName: true,
-          lastName: true,
-          agencyName: true,
-          phone: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
+      const supabase = getSupabaseAdminClient();
+      
+      // Get current user to preserve existing metadata
+      const { data: currentUserData, error: getUserError } = await supabase.auth.admin.getUserById(updateTargetId);
+      if (getUserError || !currentUserData.user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
 
-      return NextResponse.json({ profile: updated });
+      // Build updated metadata (merge with existing)
+      const currentMetadata = currentUserData.user.user_metadata || {};
+      const updatedMetadata: Record<string, unknown> = {
+        ...currentMetadata,
+        ...allowedUpdates, // Already in camelCase
+      };
+
+      // Update user_metadata via Admin API
+      const { data: updatedUserData, error: updateError } = await supabase.auth.admin.updateUserById(
+        updateTargetId,
+        {
+          user_metadata: updatedMetadata,
+        }
+      );
+
+      if (updateError) {
+        console.error('Profile update error:', updateError);
+        return NextResponse.json(
+          { error: 'Failed to update profile' },
+          { status: 500 }
+        );
+      }
+
+      const updatedUser = updatedUserData.user;
+      const profile = {
+        id: updatedUser.id,
+        email: updatedUser.email || '',
+        role: (updatedUser.user_metadata?.role as UserRole) || 'REPORTER',
+        firstName: updatedUser.user_metadata?.firstName || '',
+        lastName: updatedUser.user_metadata?.lastName || '',
+        agencyName: updatedUser.user_metadata?.agencyName || null,
+        phone: updatedUser.user_metadata?.phone || null,
+        createdAt: updatedUser.created_at,
+        updatedAt: updatedUser.updated_at || updatedUser.created_at,
+      };
+
+      return NextResponse.json({ profile });
     }
 
     return NextResponse.json({ profile: currentProfile });

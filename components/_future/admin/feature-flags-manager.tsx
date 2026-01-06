@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { DEFAULT_FLAGS, type FeatureFlag } from '@/lib/feature-flags/index';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 import { toast } from 'sonner';
 
 const ROLE_LABELS: Partial<Record<UserRole, string>> = {

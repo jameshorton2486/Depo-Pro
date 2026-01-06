@@ -4,8 +4,7 @@
 // =============================================================================
 
 import { auth } from '@/lib/auth';
-import { db as prisma } from '@/lib/db';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 import { unauthorized, forbidden } from './api-response';
 
 // =============================================================================
@@ -78,7 +77,7 @@ export async function requireRole(
 }
 
 export async function requireAdmin(): Promise<AuthCheck> {
-  return requireRole([UserRole.ADMIN]);
+  return requireRole(['ADMIN']);
 }
 
 export async function requireSameFirm(firmId: string): Promise<AuthCheck> {
@@ -88,7 +87,7 @@ export async function requireSameFirm(firmId: string): Promise<AuthCheck> {
     return authResult;
   }
 
-  if (authResult.user.role === UserRole.ADMIN) {
+  if (authResult.user.role === 'ADMIN') {
     return authResult;
   }
 
@@ -110,37 +109,37 @@ export async function canAccessJob(
   user: AuthenticatedUser,
   jobId: string
 ): Promise<{ allowed: boolean; job?: any }> {
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
-    select: {
-      id: true,
-      firmId: true,
-      caseName: true,
-      status: true,
-      createdBy: {
-        select: { id: true }
-      },
-      assignments: {
-        select: { scopistId: true }
-      }
-    },
-  });
+  const { createSupabaseServerClient } = await import('@/lib/supabase/server');
+  const supabase = await createSupabaseServerClient();
 
-  if (!job) {
+  const { data: job, error } = await supabase
+    .from('Job')
+    .select(`
+      id,
+      firm_id,
+      case_name,
+      status,
+      created_by_id,
+      assignments:JobAssignment(scopist_id)
+    `)
+    .eq('id', jobId)
+    .single();
+
+  if (error || !job) {
     return { allowed: false };
   }
 
-  if (user.role === UserRole.ADMIN) {
+  if (user.role === 'ADMIN') {
     return { allowed: true, job };
   }
 
-  if (job.firmId && user.firmId !== job.firmId) {
+  if (job.firm_id && user.firmId !== job.firm_id) {
     return { allowed: false };
   }
 
-  const isCreator = job.createdBy?.id === user.id;
-  const isAssignedScopist = job.assignments?.some(a => a.scopistId === user.id);
-  const isAgencyOrReporter = ([UserRole.REPORTER, UserRole.AGENCY] as UserRole[]).includes(user.role);
+  const isCreator = job.created_by_id === user.id;
+  const isAssignedScopist = job.assignments?.some((a: any) => a.scopist_id === user.id);
+  const isAgencyOrReporter = (['REPORTER', 'AGENCY'] as UserRole[]).includes(user.role);
 
   const canAccess = isCreator || isAssignedScopist || isAgencyOrReporter;
 
@@ -151,38 +150,36 @@ export async function canAccessTranscript(
   user: AuthenticatedUser,
   transcriptId: string
 ): Promise<{ allowed: boolean; accessLevel?: string; transcript?: any }> {
-  const transcript = await prisma.transcript.findUnique({
-    where: { id: transcriptId },
-    select: {
-      id: true,
-      job: {
-        select: {
-          id: true,
-          firmId: true,
-          createdBy: {
-            select: { id: true }
-          },
-          assignments: {
-            select: { scopistId: true }
-          }
-        },
-      },
-    },
-  });
+  const { createSupabaseServerClient } = await import('@/lib/supabase/server');
+  const supabase = await createSupabaseServerClient();
 
-  if (!transcript) {
+  const { data: transcript, error } = await supabase
+    .from('Transcript')
+    .select(`
+      id,
+      job:Job(
+        id,
+        firm_id,
+        created_by_id,
+        assignments:JobAssignment(scopist_id)
+      )
+    `)
+    .eq('id', transcriptId)
+    .single();
+
+  if (error || !transcript) {
     return { allowed: false };
   }
 
-  if (user.role === UserRole.ADMIN) {
+  if (user.role === 'ADMIN') {
     return { allowed: true, accessLevel: 'EDIT', transcript };
   }
 
-  const job = transcript.job;
+  const job = transcript.job as any;
   if (job) {
-    const isCreator = job.createdBy?.id === user.id;
-    const isAssignedScopist = job.assignments?.some(a => a.scopistId === user.id);
-    const isSameFirm = job.firmId && user.firmId === job.firmId;
+    const isCreator = job.created_by_id === user.id;
+    const isAssignedScopist = job.assignments?.some((a: any) => a.scopist_id === user.id);
+    const isSameFirm = job.firm_id && user.firmId === job.firm_id;
 
     if (isSameFirm && (isCreator || isAssignedScopist)) {
       return { allowed: true, accessLevel: 'EDIT', transcript };
@@ -190,41 +187,29 @@ export async function canAccessTranscript(
   }
 
   // Check direct access grants
-  const access = await prisma.transcriptAccess.findFirst({
-    where: {
-      transcriptId,
-      userId: user.id,
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
-    },
-    select: {
-      accessLevel: true,
-    },
-  });
+  const { data: access } = await supabase
+    .from('TranscriptAccess')
+    .select('access_level')
+    .eq('transcript_id', transcriptId)
+    .eq('user_id', user.id)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .single();
 
   if (access) {
-    return { allowed: true, accessLevel: access.accessLevel, transcript };
+    return { allowed: true, accessLevel: access.access_level, transcript };
   }
 
   // Check external shares
-  const share = await prisma.transcriptShare.findFirst({
-    where: {
-      transcriptId,
-      recipientEmail: user.email,
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
-      ],
-    },
-    select: {
-      accessLevel: true,
-    },
-  });
+  const { data: share } = await supabase
+    .from('TranscriptShare')
+    .select('access_level')
+    .eq('transcript_id', transcriptId)
+    .eq('recipient_email', user.email)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .single();
 
   if (share) {
-    return { allowed: true, accessLevel: share.accessLevel, transcript };
+    return { allowed: true, accessLevel: share.access_level, transcript };
   }
 
   return { allowed: false };

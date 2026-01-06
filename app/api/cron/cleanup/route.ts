@@ -1,8 +1,8 @@
+﻿import { db } from '@/lib/db';
 // app/api/cron/cleanup/route.ts
 // Daily cleanup job for old files and failed jobs
 
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 
 // Verify cron secret to prevent unauthorized access
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Reset jobs stuck in PROCESSING for more than 1 hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-    const stuckJobs = await prisma.job.updateMany({
+    const stuckJobs = await db.job.updateMany({
       where: {
         status: 'TRANSCRIBING',
         updatedAt: { lt: oneHourAgo },
@@ -53,3 +53,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+

@@ -4,7 +4,7 @@
 // =============================================================================
 
 import { getCurrentUser as getAuthUser } from '@/lib/auth';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 export interface SessionUser {
   id: string;

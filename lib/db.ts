@@ -1,122 +1,334 @@
-// ═══════════════════════════════════════════════════════════════
-// PRISMA CLIENT SINGLETON
-// ═══════════════════════════════════════════════════════════════
-// Prevents multiple Prisma Client instances in development
-// due to hot reloading
-
-import { PrismaClient, Prisma } from '@prisma/client';
-import { PrismaTransactionClient } from './transactions';
-// ⚠️ EDGE RUNTIME: Lazy import logger to avoid pulling observability into Edge
-// observability.ts uses process.uptime() which is Node-only
-import { validateEnvironment } from './security';
-
-/**
- * Global Prisma Client instance
- * We use a global variable in development to prevent multiple instances
- * from being created during hot module replacement (HMR)
+﻿/**
+ * Prisma-Compatible Database Wrapper for Supabase
+ * Provides Prisma-like API over Supabase client
  */
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Type definitions
+type WhereClause = Record<string, any>;
+type SelectClause = Record<string, any>;
+type OrderByClause = Record<string, 'asc' | 'desc'> | Array<Record<string, 'asc' | 'desc'>>;
+
+interface FindOptions {
+  where?: WhereClause;
+  select?: SelectClause;
+  include?: Record<string, any>;
+  orderBy?: OrderByClause;
+  take?: number;
+  skip?: number;
+}
+
+interface CreateOptions {
+  data: Record<string, any>;
+  select?: SelectClause;
+  include?: Record<string, any>;
+}
+
+interface UpdateOptions {
+  where: WhereClause;
+  data: Record<string, any>;
+  select?: SelectClause;
+  include?: Record<string, any>;
+}
+
+interface DeleteOptions {
+  where: WhereClause;
+}
+
+interface UpsertOptions {
+  where: WhereClause;
+  create: Record<string, any>;
+  update: Record<string, any>;
+}
+
+interface CreateManyOptions {
+  data: Record<string, any>[];
+  skipDuplicates?: boolean;
+}
+
+// Helper: Convert camelCase to snake_case
+function toSnakeCase(str: string): string {
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+}
+
+// Helper: Convert snake_case to camelCase
+function toCamelCase(str: string): string {
+  return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+// Helper: Convert object keys
+function convertKeys(obj: any, converter: (s: string) => string): any {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(item => convertKeys(item, converter));
+  if (typeof obj !== 'object') return obj;
+  
+  const converted: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const newKey = converter(key);
+    converted[newKey] = convertKeys(value, converter);
+  }
+  return converted;
+}
+
+// Helper: Build where clause for Supabase
+function buildWhere(query: any, where: WhereClause): any {
+  for (const [key, value] of Object.entries(where)) {
+    const snakeKey = toSnakeCase(key);
+    
+    if (value === null) {
+      query = query.is(snakeKey, null);
+    } else if (typeof value === 'object' && value !== null) {
+      if ('equals' in value) query = query.eq(snakeKey, value.equals);
+      else if ('not' in value) query = query.neq(snakeKey, value.not);
+      else if ('in' in value) query = query.in(snakeKey, value.in);
+      else if ('notIn' in value) query = query.not(snakeKey, 'in', `(${value.notIn.join(',')})`);
+      else if ('contains' in value) query = query.ilike(snakeKey, `%${value.contains}%`);
+      else if ('startsWith' in value) query = query.ilike(snakeKey, `${value.startsWith}%`);
+      else if ('endsWith' in value) query = query.ilike(snakeKey, `%${value.endsWith}`);
+      else if ('gt' in value) query = query.gt(snakeKey, value.gt);
+      else if ('gte' in value) query = query.gte(snakeKey, value.gte);
+      else if ('lt' in value) query = query.lt(snakeKey, value.lt);
+      else if ('lte' in value) query = query.lte(snakeKey, value.lte);
+      else query = query.eq(snakeKey, value);
+    } else {
+      query = query.eq(snakeKey, value);
+    }
+  }
+  return query;
+}
+
+// Helper: Build select clause
+function buildSelect(select?: SelectClause, include?: Record<string, any>): string {
+  if (!select && !include) return '*';
+  
+  const fields: string[] = [];
+  
+  if (select) {
+    for (const [key, value] of Object.entries(select)) {
+      const snakeKey = toSnakeCase(key);
+      if (value === true) {
+        fields.push(snakeKey);
+      } else if (typeof value === 'object' && value !== null) {
+        fields.push(`${snakeKey}(*)`);
+      }
+    }
+  }
+  
+  if (include) {
+    for (const [key, value] of Object.entries(include)) {
+      const snakeKey = toSnakeCase(key);
+      if (value === true || (typeof value === 'object' && value !== null)) {
+        if (!fields.includes(`${snakeKey}(*)`)) {
+          fields.push(`${snakeKey}(*)`);
+        }
+      }
+    }
+  }
+  
+  return fields.length > 0 ? fields.join(',') : '*';
+}
+
+// Create model proxy
+function createModelProxy(tableName: string) {
+  const snakeTableName = toSnakeCase(tableName);
+  
+  return {
+    async findUnique(options: FindOptions = {}) {
+      const { where = {}, select, include } = options;
+      const selectStr = buildSelect(select, include);
+      
+      let query = supabase.from(snakeTableName).select(selectStr);
+      query = buildWhere(query, where);
+      
+      const { data, error } = await query.maybeSingle();
+      if (error) throw error;
+      return data ? convertKeys(data, toCamelCase) : null;
+    },
+
+    async findFirst(options: FindOptions = {}) {
+      const { where = {}, select, include, orderBy } = options;
+      const selectStr = buildSelect(select, include);
+      
+      let query = supabase.from(snakeTableName).select(selectStr);
+      query = buildWhere(query, where);
+      
+      if (orderBy) {
+        const orders = Array.isArray(orderBy) ? orderBy : [orderBy];
+        for (const order of orders) {
+          for (const [key, dir] of Object.entries(order)) {
+            query = query.order(toSnakeCase(key), { ascending: dir === 'asc' });
+          }
+        }
+      }
+      
+      const { data, error } = await query.limit(1).maybeSingle();
+      if (error) throw error;
+      return data ? convertKeys(data, toCamelCase) : null;
+    },
+
+    async findMany(options: FindOptions = {}) {
+      const { where = {}, select, include, orderBy, take, skip } = options;
+      const selectStr = buildSelect(select, include);
+      
+      let query = supabase.from(snakeTableName).select(selectStr);
+      query = buildWhere(query, where);
+      
+      if (orderBy) {
+        const orders = Array.isArray(orderBy) ? orderBy : [orderBy];
+        for (const order of orders) {
+          for (const [key, dir] of Object.entries(order)) {
+            query = query.order(toSnakeCase(key), { ascending: dir === 'asc' });
+          }
+        }
+      }
+      
+      if (take) query = query.limit(take);
+      if (skip) query = query.range(skip, skip + (take || 100) - 1);
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data || []).map(item => convertKeys(item, toCamelCase));
+    },
+
+    async create(options: CreateOptions) {
+      const { data, select, include } = options;
+      const snakeData = convertKeys(data, toSnakeCase);
+      const selectStr = buildSelect(select, include);
+      
+      const { data: result, error } = await supabase
+        .from(snakeTableName)
+        .insert(snakeData)
+        .select(selectStr)
+        .single();
+      
+      if (error) throw error;
+      return convertKeys(result, toCamelCase);
+    },
+
+    async createMany(options: CreateManyOptions) {
+      const snakeData = options.data.map(d => convertKeys(d, toSnakeCase));
+      
+      const { data, error } = await supabase
+        .from(snakeTableName)
+        .insert(snakeData)
+        .select();
+      
+      if (error) throw error;
+      return { count: data?.length || 0 };
+    },
+
+    async update(options: UpdateOptions) {
+      const { where, data, select, include } = options;
+      const snakeData = convertKeys(data, toSnakeCase);
+      const selectStr = buildSelect(select, include);
+      
+      let query = supabase.from(snakeTableName).update(snakeData);
+      query = buildWhere(query, where);
+      
+      const { data: result, error } = await query.select(selectStr).maybeSingle();
+      if (error) throw error;
+      return result ? convertKeys(result, toCamelCase) : null;
+    },
+
+    async updateMany(options: { where: WhereClause; data: Record<string, any> }) {
+      const { where, data } = options;
+      const snakeData = convertKeys(data, toSnakeCase);
+      
+      let query = supabase.from(snakeTableName).update(snakeData);
+      query = buildWhere(query, where);
+      
+      const { data: result, error } = await query.select();
+      if (error) throw error;
+      return { count: result?.length || 0 };
+    },
+
+    async delete(options: DeleteOptions) {
+      const { where } = options;
+      
+      let query = supabase.from(snakeTableName).delete();
+      query = buildWhere(query, where);
+      
+      const { data, error } = await query.select().maybeSingle();
+      if (error) throw error;
+      return data ? convertKeys(data, toCamelCase) : null;
+    },
+
+    async deleteMany(options: { where: WhereClause }) {
+      const { where } = options;
+      
+      let query = supabase.from(snakeTableName).delete();
+      query = buildWhere(query, where);
+      
+      const { data, error } = await query.select();
+      if (error) throw error;
+      return { count: data?.length || 0 };
+    },
+
+    async upsert(options: UpsertOptions) {
+      const { where, create, update } = options;
+      
+      let query = supabase.from(snakeTableName).select('id');
+      query = buildWhere(query, where);
+      const { data: existing } = await query.maybeSingle();
+      
+      if (existing) {
+        return this.update({ where, data: update });
+      } else {
+        return this.create({ data: create });
+      }
+    },
+
+    async count(options: { where?: WhereClause } = {}) {
+      const { where = {} } = options;
+      
+      let query = supabase.from(snakeTableName).select('id', { count: 'exact', head: true });
+      query = buildWhere(query, where);
+      
+      const { count, error } = await query;
+      if (error) throw error;
+      return count || 0;
+    },
+  };
+}
+
+// ALL models including missing ones
+const models = [
+  // Core models
+  'user', 'job', 'transcript', 'transcription', 'transcriptionEdit',
+  'file', 'firm', 'assignment', 'calendarEvent', 'case', 'caseAttorney',
+  'caseMembership', 'caseExtractedTerm', 'exhibit', 'invoice', 'auditLog',
+  'depositionNote', 'properNoun', 'reporterAvailability', 'bookingRequest',
+  'externalCalendarConnection', 'transcriptShare', 'transcriptAccess',
+  'transcriptAnnotation', 'transcriptHighlight', 'transcriptNote',
+  'transcriptBookmark', 'transcriptVersion', 'exportLog', 'attorneyProfile',
+  'attorneyTranscript', 'csrRecord', 'rxSession',
+  // Additional models that were missing
+  'jobAssignment', 'jobFile', 'transcriptionJob', 'transcriptReviewSession',
+  'eventParticipant', 'transcriptAnnotationExhibit', 'externalCalendarEvent',
+  'externalCalendarSyncLog', 'usageRecord', 'backgroundJob', 'webhookConfig',
+] as const;
+
+type ModelName = typeof models[number];
+
+// Create db object with all model proxies
+export const db = models.reduce((acc, model) => {
+  acc[model] = createModelProxy(model);
+  return acc;
+}, {} as Record<ModelName, ReturnType<typeof createModelProxy>>);
+
+// Transaction support
+(db as any).$transaction = async function<T>(
+  fn: (tx: typeof db) => Promise<T>
+): Promise<T> {
+  return fn(db);
 };
 
-// Lazy logger getter to avoid Edge Runtime issues
-let loggerInstance: any = null;
-async function getLogger() {
-  if (!loggerInstance) {
-    const { logger } = await import('./observability');
-    loggerInstance = logger;
-  }
-  return loggerInstance;
-}
-
-// Validate environment variables on startup
-if (process.env.NODE_ENV === 'production') {
-  try {
-    validateEnvironment();
-  } catch (error) {
-    // Lazy import logger to avoid Edge Runtime issues
-    getLogger().then(logger => {
-      logger.fatal('Environment validation failed', error as Error);
-    }).catch(() => {
-      // Fallback if logger can't be loaded (Edge Runtime)
-      console.error('Environment validation failed', error);
-    });
-    // In production, we might want to exit, but in Next.js we'll just log it
-  }
-}
-
-/**
- * Enhanced Prisma Client with transaction helpers and observability
- * Phase 5: Production Hardening
- */
-class EnhancedPrismaClient extends PrismaTransactionClient<Prisma.PrismaClientOptions, 'query' | 'error' | 'warn'> {
-  constructor(options?: any) {
-    super({
-      log: [
-        { level: 'query', emit: 'event' },
-        { level: 'error', emit: 'event' },
-        { level: 'warn', emit: 'event' }
-      ],
-      ...options,
-    });
-
-    // Set up event listeners for logging (lazy logger to avoid Edge Runtime issues)
-    this.$on('query', (e: any) => {
-      getLogger().then(logger => {
-        logger.debug('Database query', {
-          query: e.query,
-          duration: e.duration,
-          target: e.target,
-        });
-      }).catch(() => {
-        // Fallback if logger can't be loaded (Edge Runtime)
-        if (process.env.NODE_ENV === 'development') {
-          console.debug('Database query', e.query);
-        }
-      });
-    });
-
-    this.$on('error', (e: any) => {
-      getLogger().then(logger => {
-        logger.error('Database error', new Error(e.message), {
-          target: e.target,
-        });
-      }).catch(() => {
-        // Fallback if logger can't be loaded (Edge Runtime)
-        console.error('Database error', e.message);
-      });
-    });
-
-    this.$on('warn', (e: any) => {
-      getLogger().then(logger => {
-        logger.warn('Database warning', {
-          message: e.message,
-          target: e.target,
-        });
-      }).catch(() => {
-        // Fallback if logger can't be loaded (Edge Runtime)
-        console.warn('Database warning', e.message);
-      });
-    });
-  }
-}
-
-/**
- * Prisma Client instance with enhanced logging and transaction support
- */
-export const db = globalForPrisma.prisma ?? new EnhancedPrismaClient();
-
-// Prevent multiple instances in development
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = db;
-}
-
-/**
- * Helper to disconnect Prisma Client (useful in tests or scripts)
- */
-export async function disconnect() {
-  await db.$disconnect();
-}
-
-// Export prisma as an alias for backward compatibility
+// Export as prisma alias for compatibility
 export const prisma = db;
+export default db;

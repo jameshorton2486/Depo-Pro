@@ -4,8 +4,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { FileType } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { FileType } from '@/types/database';
 import { uploadFile } from '@/lib/storage';
 import { mkdir } from 'fs/promises';
 import { join } from 'path';
@@ -48,28 +48,29 @@ export async function POST(
     const { id: jobId } = await params;
 
     // 🔍 Fetch job with access check
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        assignments: {
-          select: {
-            scopistId: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, created_by_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
+
+    // Check assignments
+    const { data: assignments } = await supabase
+      .from('job_assignments')
+      .select('scopist_id')
+      .eq('job_id', jobId)
+      .eq('scopist_id', session.user.id);
 
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      job.createdById === session.user.id ||
-      job.assignments.some((a) => a.scopistId === session.user.id);
+      job.created_by_id === session.user.id ||
+      (assignments?.length || 0) > 0;
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -115,17 +116,23 @@ export async function POST(
     );
 
     // 💿 Save file metadata to database
-    const uploadedFile = await db.jobFile.create({
-      data: {
-        jobId,
-        fileName: file.name,
-        mimeType: file.type,
-        fileSize: buffer.length,
+    const { data: uploadedFile, error: fileError } = await supabase
+      .from('job_files')
+      .insert({
+        job_id: jobId,
+        file_name: file.name,
+        mime_type: file.type,
+        file_size: buffer.length,
         type: getFileType(file.type),
-        storagePath,
-        storageUrl: storagePath,
-      },
-    });
+        storage_path: storagePath,
+        storage_url: storagePath,
+      })
+      .select()
+      .single();
+
+    if (fileError) {
+      throw fileError;
+    }
 
     return NextResponse.json({ file: uploadedFile }, { status: 201 });
   } catch (error) {
@@ -150,40 +157,44 @@ export async function GET(
     const { id: jobId } = await params;
 
     // 🔍 Fetch job with access check
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        assignments: {
-          select: {
-            scopistId: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, created_by_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
+
+    // Check assignments
+    const { data: assignments } = await supabase
+      .from('job_assignments')
+      .select('scopist_id')
+      .eq('job_id', jobId)
+      .eq('scopist_id', session.user.id);
 
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      job.createdById === session.user.id ||
-      job.assignments.some((a) => a.scopistId === session.user.id);
+      job.created_by_id === session.user.id ||
+      (assignments?.length || 0) > 0;
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // 📋 Fetch all files for this job
-    const files = await db.jobFile.findMany({
-      where: { jobId },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const { data: files, error: filesError } = await supabase
+      .from('job_files')
+      .select('*')
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+
+    if (filesError) {
+      throw filesError;
+    }
 
     return NextResponse.json({ files }, { status: 200 });
   } catch (error) {

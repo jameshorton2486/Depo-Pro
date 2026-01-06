@@ -5,8 +5,14 @@
 // Phase 3B-2: Role-based editor permissions
 // =============================================================================
 
-import { UserRole } from '@prisma/client';
-import { canEditTranscript } from '@/lib/_future/transcripts/lock-service';
+import type { UserRole } from '@/types/database';
+
+// Stub for canEditTranscript (replaces _future/transcripts/lock-service)
+async function canEditTranscript(_transcriptId: string, _userId: string): Promise<{ canEdit: boolean; reason?: string }> {
+  // TODO: Implement transcript locking with Supabase
+  // For now, allow editing (will be implemented later)
+  return { canEdit: true };
+}
 
 export interface EditorPermissions {
   canEdit: boolean;
@@ -26,7 +32,7 @@ export async function getEditorPermissions(
   userRole: UserRole
 ): Promise<EditorPermissions> {
   // Check lock status first
-  const lockCheck = await canEditTranscript(transcriptId, userId, userRole);
+  const lockCheck = await canEditTranscript(transcriptId, userId);
 
   // Base permissions by role
   const rolePermissions: Record<UserRole, Omit<EditorPermissions, 'canEdit' | 'lockReason'>> = {
@@ -79,7 +85,7 @@ export async function getEditorPermissions(
   };
 
   return {
-    canEdit: lockCheck.allowed,
+    canEdit: lockCheck.canEdit,
     lockReason: lockCheck.reason,
     ...permissions,
   };

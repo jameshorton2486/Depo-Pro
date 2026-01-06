@@ -1,6 +1,6 @@
+﻿import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { z } from 'zod';
 
 // ============================================
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform using ACTUAL field names
-    const transformedEvents = events.map((event) => ({
+    const transformedEvents = events.map((event: any) => ({
       id: event.id,
       title: event.title,
       start: event.startTime,
@@ -188,3 +188,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+

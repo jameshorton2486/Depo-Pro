@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AssignPersonnelSchema } from '@/lib/calendar/validations';
 import { canAssignPersonnel } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
@@ -73,19 +72,14 @@ export async function POST(
     }
 
     // 4. Fetch Event
-    const event = await db.calendarEvent.findUnique({
-      where: { id: eventId },
-      select: {
-        id: true,
-        status: true,
-        assignedReporterId: true,
-        firmId: true,
-        agencyId: true,
-        internalNotes: true,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: event, error: eventError } = await supabase
+      .from('calendar_events')
+      .select('id, status, assigned_reporter_id, firm_id, agency_id, internal_notes')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -106,27 +100,23 @@ export async function POST(
 
     // 6. Validate Personnel if assigning
     if (personnelId) {
-      const personnel = await db.user.findUnique({
-        where: { id: personnelId },
-        select: { 
-          id: true, 
-          firstName: true,
-          lastName: true,
-          email: true,
-          role: true,
-          agencyId: true,
-        },
-      });
+      const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+      const adminClient = getSupabaseAdminClient();
+      const { data: userData, error: userError } = await adminClient.auth.admin.getUserById(personnelId);
 
-      if (!personnel) {
+      if (userError || !userData.user) {
         return NextResponse.json(
           { error: 'Personnel not found', code: 'PERSONNEL_NOT_FOUND' },
           { status: 404 }
         );
       }
 
+      const personnel = userData.user;
+      const role = (personnel.user_metadata?.role as string) || 'REPORTER';
+      const agencyId = personnel.user_metadata?.agencyId || null;
+
       // Validate role is REPORTER
-      if (personnel.role !== 'REPORTER' && personnel.role !== 'ADMIN' && personnel.role !== 'AGENCY_ADMIN') {
+      if (role !== 'REPORTER' && role !== 'ADMIN' && role !== 'AGENCY_ADMIN') {
         return NextResponse.json(
           { 
             error: 'Invalid personnel role', 
@@ -138,7 +128,7 @@ export async function POST(
       }
 
       // Check agency affiliation if event has an agency
-      if (event.agencyId && personnel.agencyId && personnel.agencyId !== event.agencyId) {
+      if (event.agency_id && agencyId && agencyId !== event.agency_id) {
         return NextResponse.json(
           { 
             error: 'Personnel not in agency', 
@@ -148,59 +138,68 @@ export async function POST(
           { status: 400 }
         );
       }
-
-      // _personnelName = `${personnel.firstName} ${personnel.lastName}`; // Unused
     }
 
     // 7. Store previous value for audit
-    const previousReporterId = event.assignedReporterId;
+    const previousReporterId = event.assigned_reporter_id;
 
-    // 8. Update in Transaction
-    const result = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Update the event
-      const updatedEvent = await tx.calendarEvent.update({
-        where: { id: eventId },
-        data: {
-          assignedReporterId: personnelId,
-          updatedAt: new Date(),
-          // Add notes to internalNotes if provided
-          ...(notes && {
-            internalNotes: event.internalNotes 
-              ? `${event.internalNotes}\n\nAssignment note: ${notes}`
-              : `Assignment note: ${notes}`,
-          }),
-        },
-        include: {
-          assignedReporter: { 
-            select: { 
-              id: true, 
-              firstName: true, 
-              lastName: true, 
-              email: true 
-            } 
-          },
-        },
-      });
+    // 8. Update Event (Supabase doesn't support transactions, so we do sequential updates)
+    const updateData: any = {
+      assigned_reporter_id: personnelId,
+      updated_at: new Date().toISOString(),
+    };
 
-      // Create audit log
-      const auditAction = personnelId 
-        ? 'REPORTER_ASSIGNED' as const
-        : 'REPORTER_UNASSIGNED' as const;
+    if (notes) {
+      updateData.internal_notes = event.internal_notes 
+        ? `${event.internal_notes}\n\nAssignment note: ${notes}`
+        : `Assignment note: ${notes}`;
+    }
 
-      await createAuditLog({
-        eventId: eventId,
-        action: auditAction,
-        performedById: userId,
-        previousValue: { assignedReporterId: previousReporterId },
-        newValue: { assignedReporterId: personnelId },
-        metadata: {
-          personnelType,
-          notifyAssignee,
-          notes,
-        },
-      }, tx);
+    const { error: updateError } = await supabase
+      .from('calendar_events')
+      .update(updateData)
+      .eq('id', eventId);
 
-      return updatedEvent;
+    if (updateError) {
+      console.error('Event update error:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update event', code: 'UPDATE_ERROR' },
+        { status: 500 }
+      );
+    }
+
+    // Get assigned reporter info if assigned
+    let assignedReporter = null;
+    if (personnelId) {
+      const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+      const adminClient = getSupabaseAdminClient();
+      const { data: reporterData } = await adminClient.auth.admin.getUserById(personnelId);
+      if (reporterData?.user) {
+        assignedReporter = {
+          id: reporterData.user.id,
+          firstName: reporterData.user.user_metadata?.firstName || '',
+          lastName: reporterData.user.user_metadata?.lastName || '',
+          email: reporterData.user.email || '',
+        };
+      }
+    }
+
+    // Create audit log (without transaction parameter)
+    const auditAction = personnelId 
+      ? 'REPORTER_ASSIGNED' as const
+      : 'REPORTER_UNASSIGNED' as const;
+
+    await createAuditLog({
+      eventId: eventId,
+      action: auditAction,
+      performedById: userId,
+      previousValue: { assignedReporterId: previousReporterId },
+      newValue: { assignedReporterId: personnelId },
+      metadata: {
+        personnelType,
+        notifyAssignee,
+        notes,
+      },
     });
 
     // 9. Send Notification (if enabled)
@@ -215,8 +214,8 @@ export async function POST(
     // }
 
     // 10. Return Success
-    const assignedReporterName = result.assignedReporter
-      ? `${result.assignedReporter.firstName} ${result.assignedReporter.lastName}`
+    const assignedReporterName = assignedReporter
+      ? `${assignedReporter.firstName} ${assignedReporter.lastName}`
       : null;
 
     return NextResponse.json({

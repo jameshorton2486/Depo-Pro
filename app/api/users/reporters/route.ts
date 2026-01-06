@@ -1,6 +1,6 @@
+﻿import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 
 // ============================================
 // GET /api/users/reporters - List reporters for assignment
@@ -56,3 +56,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

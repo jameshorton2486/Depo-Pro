@@ -3,7 +3,7 @@
 // Authoritative server-side permission checks
 // =============================================================================
 
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 /**
  * Require user to have one of the allowed roles

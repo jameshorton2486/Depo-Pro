@@ -6,10 +6,44 @@
 // DELETE /api/jobs/[id] - Delete job (🔒 firmId filtered)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { JobStatus } from '@prisma/client';
+import type { JobStatus } from '@/types/database';
+import { logger } from '@/lib/logger';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import {
+  getJobById,
+  getJobForAccessCheck,
+  getJobWithAssignments,
+  updateJob,
+  updateJobStatus,
+  deleteJob,
+} from '@/lib/supabase/queries/jobs';
 
-import { db } from '@/lib/db';
-import { withRequestLogging } from '@/lib/observability';
+// Simple request logging wrapper (replaces withRequestLogging)
+const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
+  return ((...args: any[]) => {
+    logger.info('Request started', { path: args[0]?.url });
+    try {
+      const result = fn(...args);
+      if (result instanceof Promise) {
+        return result.then(
+          (res) => {
+            logger.info('Request completed', { path: args[0]?.url });
+            return res;
+          },
+          (err) => {
+            logger.error('Request failed', { path: args[0]?.url, error: err });
+            throw err;
+          }
+        );
+      }
+      logger.info('Request completed', { path: args[0]?.url });
+      return result;
+    } catch (err) {
+      logger.error('Request failed', { path: args[0]?.url, error: err });
+      throw err;
+    }
+  }) as T;
+};
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
 import { lockNotesForJob } from '@/lib/phase6a/note-locking';
@@ -37,55 +71,15 @@ export const GET = withRequestLogging(async (
     const includeParam = searchParams.get('include');
     const includes = includeParam ? includeParam.split(',') : [];
 
-    const job = await db.job.findUnique({
-      where: { id },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-        assignments: {
-          include: {
-            scopist: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-              },
-            },
-          },
-        },
-        files: {
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-        transcripts: {
-          orderBy: {
-            versionNumber: 'desc',
-          },
-        },
-        // Include transcription if requested
-        ...(includes.includes('transcription') && {
-          transcription: {
-            select: {
-              id: true,
-              words: true,
-              utterances: true,
-              fullTranscript: true,
-              wordCount: true,
-              flaggedWordCount: true,
-              averageConfidence: true,
-              status: true,
-            },
-          },
-        }),
-      },
+    const supabase = await createSupabaseServerClient();
+    
+    // Get job with requested includes
+    const job = await getJobById(supabase, id, {
+      includeCreatedBy: true,
+      includeAssignments: true,
+      includeFiles: includes.includes('files'),
+      includeTranscripts: true,
+      includeTranscription: includes.includes('transcription'),
     });
 
     if (!job) {
@@ -95,64 +89,42 @@ export const GET = withRequestLogging(async (
     // 🔒 Security: Verify access rights
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      job.createdById === session.user.id ||
-      job.assignments.some((a) => a.scopistId === session.user.id);
+      job.created_by_id === session.user.id ||
+      (job.assignments && job.assignments.some((a: any) => a.scopist_id === session.user.id));
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Transform data if transcription is included
-    if (includes.includes('transcription') && job.transcription) {
-      const transcription = job.transcription as any;
-      
-      // Transform utterances to segments format if utterances exist
-      if (transcription.utterances) {
-        const utterances = Array.isArray(transcription.utterances) 
-          ? transcription.utterances 
-          : JSON.parse(transcription.utterances as string || '[]');
-        
-        // Convert utterances to segments format expected by components
-        transcription.segments = utterances.map((utterance: any) => ({
-          speaker: utterance.speaker || 0,
-          words: utterance.words || [],
-          start: utterance.start || 0,
-          end: utterance.end || 0,
-        }));
-      } else if (transcription.words) {
-        // Fallback: create segments from words if utterances don't exist
-        const words = Array.isArray(transcription.words)
-          ? transcription.words
-          : JSON.parse(transcription.words as string || '[]');
-        
-        // Group words by speaker to create segments
-        const segmentsMap = new Map<number, any[]>();
-        words.forEach((word: any) => {
-          const speaker = word.speaker || 0;
-          if (!segmentsMap.has(speaker)) {
-            segmentsMap.set(speaker, []);
-          }
-          segmentsMap.get(speaker)!.push(word);
-        });
-        
-        transcription.segments = Array.from(segmentsMap.entries()).map(([speaker, wordsArray]) => ({
-          speaker,
-          words: wordsArray,
-          start: wordsArray[0]?.start || 0,
-          end: wordsArray[wordsArray.length - 1]?.end || 0,
-        }));
-      }
-    }
+    // Map snake_case to camelCase for response
+    const response = {
+      id: job.id,
+      title: job.title,
+      caseName: job.case_name,
+      caseNumber: job.case_number,
+      depositionDate: job.deposition_date,
+      location: job.location,
+      status: job.status,
+      createdById: job.created_by_id,
+      firmId: job.firm_id,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      createdBy: job.createdBy,
+      assignments: job.assignments?.map((a: any) => ({
+        id: a.id,
+        jobId: a.job_id,
+        scopistId: a.scopist_id,
+        status: a.status,
+        createdAt: a.created_at,
+        updatedAt: a.updated_at,
+        scopist: a.scopist,
+      })) || [],
+      files: job.files || [],
+      transcripts: job.transcripts || [],
+      ...(job.transcription && { transcription: job.transcription }),
+    };
 
-    // Ensure files have url property (matching expected format)
-    if (includes.includes('files') && job.files) {
-      job.files = job.files.map((file: any) => ({
-        ...file,
-        url: file.storageUrl || file.url,
-      }));
-    }
-
-    return NextResponse.json(job);
+    return NextResponse.json(response);
 
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
@@ -180,13 +152,10 @@ export const PUT = withRequestLogging(async (
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
+    const supabase = await createSupabaseServerClient();
+    
     // Check if job exists and user has access
-    const existingJob = await db.job.findUnique({
-      where: { id },
-      select: {
-        createdById: true,
-      },
-    });
+    const existingJob = await getJobForAccessCheck(supabase, id);
 
     if (!existingJob) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -195,7 +164,7 @@ export const PUT = withRequestLogging(async (
     // 🔒 Security: Only reporter or admin can update
     const canUpdate =
       session.user.role === 'ADMIN' ||
-      existingJob.createdById === session.user.id;
+      existingJob.created_by_id === session.user.id;
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -215,26 +184,49 @@ export const PUT = withRequestLogging(async (
       );
     }
 
-    // Fetch updated job
-    const job = await db.job.findUnique({
-      where: { id },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
+    // Map camelCase to snake_case for update
+    const updateData: Record<string, unknown> = {};
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.caseName !== undefined) updateData.case_name = body.caseName;
+    if (body.caseNumber !== undefined) updateData.case_number = body.caseNumber;
+    if (body.depositionDate !== undefined) updateData.deposition_date = body.depositionDate;
+    if (body.location !== undefined) updateData.location = body.location;
+    if (body.status !== undefined) updateData.status = body.status;
+    // Add other fields as needed
+
+    // Update job
+    await updateJob(supabase, id, updateData);
+
+    // Fetch updated job with createdBy
+    const job = await getJobById(supabase, id, {
+      includeCreatedBy: true,
     });
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    // Map to camelCase for response
+    const response = {
+      id: job.id,
+      title: job.title,
+      caseName: job.case_name,
+      caseNumber: job.case_number,
+      depositionDate: job.deposition_date,
+      location: job.location,
+      status: job.status,
+      createdById: job.created_by_id,
+      firmId: job.firm_id,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      createdBy: job.createdBy,
+    };
 
     // Invalidate caches
     invalidateDashboardCache();
     invalidateEntityCache('job', id);
 
-    return NextResponse.json(job);
+    return NextResponse.json(response);
 
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
@@ -271,26 +263,45 @@ export const PATCH = withRequestLogging(async (
     const body = await request.json();
     const { status } = body as { status?: JobStatus };
 
-    if (!status || !Object.values(JobStatus).includes(status)) {
+    if (!status) {
+      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
+    }
+
+    // Validate status enum
+    const validStatuses: JobStatus[] = [
+      'CREATED',
+      'FILES_UPLOADED',
+      'ENHANCING_AUDIO',
+      'TRANSCRIBING',
+      'AI_REVIEWING',
+      'READY_FOR_EDIT',
+      'ASSIGNED',
+      'IN_EDIT',
+      'SUBMITTED_FOR_REVIEW',
+      'IN_REVIEW',
+      'SCOPIST_COMPLETE',
+      'REVIEW_COMPLETE',
+      'COMPLETED',
+      'CANCELLED',
+    ];
+
+    if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
     }
 
-    const job = await db.job.findUnique({
-      where: { id },
-      include: {
-        assignments: true,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    
+    const job = await getJobWithAssignments(supabase, id);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const isOwner = job.createdById === session.user.id;
+    const isOwner = job.created_by_id === session.user.id;
     const isAdmin = session.user.role === 'ADMIN';
     const isAssignedScopist =
       session.user.role === 'SCOPIST' &&
-      job.assignments.some((assignment) => assignment.scopistId === session.user.id);
+      job.assignments.some((assignment: any) => assignment.scopist_id === session.user.id);
 
     if (!isOwner && !isAdmin && !isAssignedScopist) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -308,13 +319,10 @@ export const PATCH = withRequestLogging(async (
       );
     }
 
-    const updatedJob = await db.job.findUnique({
-      where: { id },
-      select: { id: true, status: true },
-    });
+    const updatedJob = await updateJobStatus(supabase, id, status);
 
     // Phase 6A: Auto-lock notes when transcript is finalized
-    if (status === JobStatus.COMPLETED || status === JobStatus.REVIEW_COMPLETE) {
+    if (status === 'COMPLETED' || status === 'REVIEW_COMPLETE') {
       try {
         await lockNotesForJob(id, session.user.id);
       } catch (error) {
@@ -327,7 +335,10 @@ export const PATCH = withRequestLogging(async (
     invalidateDashboardCache();
     invalidateEntityCache('job', id);
 
-    return NextResponse.json(updatedJob);
+    return NextResponse.json({
+      id: updatedJob.id,
+      status: updatedJob.status,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -354,13 +365,10 @@ export const DELETE = withRequestLogging(async (
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
+    const supabase = await createSupabaseServerClient();
+    
     // Check if job exists and user has access
-    const existingJob = await db.job.findUnique({
-      where: { id },
-      select: {
-        createdById: true,
-      },
-    });
+    const existingJob = await getJobForAccessCheck(supabase, id);
 
     if (!existingJob) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -369,15 +377,13 @@ export const DELETE = withRequestLogging(async (
     // 🔒 Security: Only reporter or admin can delete
     const canDelete =
       session.user.role === 'ADMIN' ||
-      existingJob.createdById === session.user.id;
+      existingJob.created_by_id === session.user.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await db.job.delete({
-      where: { id },
-    });
+    await deleteJob(supabase, id);
 
     // Invalidate caches
     invalidateDashboardCache();

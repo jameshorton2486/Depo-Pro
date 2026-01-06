@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // STEP 4: EXTERNAL CALENDAR API ROUTES
 // =============================================================================
@@ -6,7 +7,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
 import { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
 import { FEATURES } from '@/lib/feature-flags';
 import { ExternalCalendarSyncService } from '@/lib/external-calendar/sync-service';
@@ -30,7 +30,7 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    const connections = await prisma.externalCalendarConnection.findMany({
+    const connections = await db.externalCalendarConnection.findMany({
       where: {
         userId: session.user.id,
         firmId: session.user.firmId,
@@ -119,7 +119,7 @@ export async function PATCH(request: NextRequest) {
     };
 
     // Verify ownership
-    const connection = await prisma.externalCalendarConnection.findFirst({
+    const connection = await db.externalCalendarConnection.findFirst({
       where: {
         id: connectionId,
         userId: session.user.id,
@@ -134,7 +134,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const updated = await prisma.externalCalendarConnection.update({
+    const updated = await db.externalCalendarConnection.update({
       where: { id: connectionId },
       data: {
         ...(syncMode !== undefined && { syncMode }),
@@ -184,7 +184,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify ownership
-    const connection = await prisma.externalCalendarConnection.findFirst({
+    const connection = await db.externalCalendarConnection.findFirst({
       where: {
         id: connectionId,
         userId: session.user.id,
@@ -214,3 +214,5 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+
+

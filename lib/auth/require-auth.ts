@@ -1,21 +1,21 @@
 // lib/auth/require-auth.ts
 // ═══════════════════════════════════════════════════════════════
 // API ROUTE AUTH WRAPPER
-// Validates authentication and ensures profile exists
+// Validates authentication using Supabase Auth
 // ═══════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
-import { ensureUserProfile } from '@/lib/auth/profile-guard';
 import { hasApiAccess } from '@/lib/permissions/route-access';
 import type { User } from '@supabase/supabase-js';
+import type { Role } from '@/lib/permissions/route-access';
 
 export interface AuthenticatedRequest {
   user: User;
   profile: {
     id: string;
     email: string;
-    role: string;
+    role: Role;
     firstName: string;
     lastName: string;
   };
@@ -62,12 +62,20 @@ export function requireAuth(handler: AuthHandler) {
         );
       }
 
-      // Ensure profile exists in database
-      const profile = await ensureUserProfile(data.user);
+      // Get profile from user_metadata (Supabase-only, no database lookup)
+      const user = data.user;
+      const role = (user.user_metadata?.role as Role) || 'REPORTER';
+      const profile = {
+        id: user.id,
+        email: user.email || '',
+        role: role,
+        firstName: user.user_metadata?.firstName || '',
+        lastName: user.user_metadata?.lastName || '',
+      };
 
       // Check API route access
       const url = new URL(request.url);
-      if (!hasApiAccess(url.pathname, profile.role as any)) {
+      if (!hasApiAccess(url.pathname, role)) {
         return NextResponse.json(
           { error: 'Insufficient permissions' },
           { status: 403 }
@@ -76,14 +84,8 @@ export function requireAuth(handler: AuthHandler) {
 
       // Call the handler with authenticated context
       return handler(request, {
-        user: data.user,
-        profile: {
-          id: profile.id,
-          email: profile.email,
-          role: profile.role,
-          firstName: profile.firstName || '',
-          lastName: profile.lastName || '',
-        },
+        user: user,
+        profile: profile,
         token,
       });
     } catch (error) {
@@ -99,7 +101,7 @@ export function requireAuth(handler: AuthHandler) {
 /**
  * Require specific roles for an API route
  */
-export function requireRole(roles: string[], handler: AuthHandler) {
+export function requireRole(roles: Role[], handler: AuthHandler) {
   return requireAuth(async (request, auth) => {
     if (!roles.includes(auth.profile.role)) {
       return NextResponse.json(

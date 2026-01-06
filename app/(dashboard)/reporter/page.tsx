@@ -1,7 +1,7 @@
-// app/(dashboard)/reporter/page.tsx
+﻿// app/(dashboard)/reporter/page.tsx
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
   Briefcase,
@@ -32,28 +32,35 @@ export default async function ReporterDashboard() {
 
   // Fetch stats using cached queries if firmId is available, otherwise fall back to real-time for personal jobs
   // For reporters, we often want to see personal jobs, but we can use cached firm stats for overview
-  const [jobCounts, recentJobs] = await Promise.all([
+  const supabase = await createSupabaseServerClient();
+  
+  const [jobCounts, recentJobsResult] = await Promise.all([
     user.firmId ? getCachedJobCounts(user.firmId) : Promise.resolve({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 }),
-    user.firmId ? getCachedRecentJobs(user.firmId, 5) : prisma.job.findMany({
-      where: { createdById: user.id },
-      orderBy: { updatedAt: 'desc' },
-      take: 5,
-      select: {
-        id: true,
-        caseName: true,
-        status: true,
-        updatedAt: true,
-        title: true,
-      },
-    }),
+    user.firmId 
+      ? getCachedRecentJobs(user.firmId, 5)
+      : supabase
+          .from('jobs')
+          .select('id, title, case_name, status, updated_at')
+          .eq('created_by_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(5),
   ]);
 
   // Transform recentJobs to match expected format for component
-  const formattedRecentJobs = recentJobs.map((job: any) => ({
+  const recentJobs = user.firmId 
+    ? recentJobsResult 
+    : (Array.isArray(recentJobsResult) ? recentJobsResult : (recentJobsResult?.data || [])).map((job: any) => ({
+        id: job.id,
+        title: job.title || job.case_name || 'Untitled Job',
+        status: job.status,
+        updatedAt: job.updated_at,
+      }));
+  
+  const formattedRecentJobs = (Array.isArray(recentJobs) ? recentJobs : []).map((job: any) => ({
     id: job.id,
-    title: job.title || job.caseName || 'Untitled Job',
+    title: job.title || job.case_name || 'Untitled Job',
     status: job.status,
-    updatedAt: job.updatedAt,
+    updatedAt: job.updatedAt || job.updated_at,
   }));
 
   return (
@@ -203,3 +210,5 @@ export default async function ReporterDashboard() {
     </div>
   );
 }
+
+

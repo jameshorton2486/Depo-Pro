@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { CalendarEventUI } from '@/components/calendar/calendar.types';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 import { filterEventsByType, EventTypeFilter } from './event-types';
 
 export interface EventFilterOptions {

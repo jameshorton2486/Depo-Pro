@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // AUDIT LOG PAGE
 // app/reports/audit-log/page.tsx
@@ -7,7 +8,6 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 
 interface PageProps {
   searchParams: Promise<{
@@ -98,7 +98,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {logs.map((log) => (
+            {logs.map((log: any) => (
               <tr key={log.id} className="hover:bg-gray-50">
                 <td className="p-4 text-sm text-gray-600">
                   {new Date(log.createdAt).toLocaleString()}
@@ -154,3 +154,5 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
     </div>
   );
 }
+
+

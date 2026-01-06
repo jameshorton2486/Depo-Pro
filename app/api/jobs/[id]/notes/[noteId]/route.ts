@@ -6,10 +6,10 @@
 // =============================================================================
 
 import { NextRequest } from 'next/server';
-import { db as prisma } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, assertEditableBeforeFinal } from '@/lib/auth/permissions';
-import { UserRole, DepositionNoteType } from '@prisma/client';
+import type { UserRole, DepositionNoteType } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 
 // GET /api/jobs/[id]/notes/[noteId] - Get single note
@@ -30,47 +30,75 @@ export async function GET(
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
-    const note = await prisma.depositionNote.findUnique({
-      where: { id: noteId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            status: true,
-            createdById: true,
-            assignments: {
-              select: {
-                scopistId: true,
-              },
-            },
-          },
-        },
-        reporter: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    
+    // Get note with job info
+    const { data: note, error: noteError } = await supabase
+      .from('deposition_notes')
+      .select('id, job_id, reporter_id, content, type, audio_timestamp, note_category, is_locked, created_at')
+      .eq('id', noteId)
+      .eq('job_id', jobId)
+      .single();
 
-    if (!note || note.jobId !== jobId) {
+    if (noteError || !note) {
       return error('NOT_FOUND', 'Note not found', 404);
     }
 
-    // Verify access
+    // Get job to check access
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, status, created_by_id')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return error('NOT_FOUND', 'Job not found', 404);
+    }
+
+    // Check assignments for scopist
     if (user.role === UserRole.SCOPIST) {
-      const isAssigned = note.job.assignments.some(a => a.scopistId === user.id);
-      if (!isAssigned) {
+      const { data: assignments } = await supabase
+        .from('job_assignments')
+        .select('scopist_id')
+        .eq('job_id', jobId)
+        .eq('scopist_id', user.id);
+      
+      if (!assignments || assignments.length === 0) {
         return error('FORBIDDEN', 'You are not assigned to this job', 403);
       }
-    } else if (user.role === UserRole.REPORTER && note.job.createdById !== user.id) {
+    } else if (user.role === UserRole.REPORTER && job.created_by_id !== user.id) {
       return error('FORBIDDEN', 'You can only access notes for your own jobs', 403);
     }
 
-    return success({ note });
+    // Get reporter info
+    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+    const adminClient = getSupabaseAdminClient();
+    const { data: reporterData } = await adminClient.auth.admin.getUserById(note.reporter_id);
+    
+    const reporter = reporterData?.user ? {
+      id: reporterData.user.id,
+      firstName: reporterData.user.user_metadata?.firstName || '',
+      lastName: reporterData.user.user_metadata?.lastName || '',
+      email: reporterData.user.email || '',
+    } : null;
+
+    return success({ 
+      note: {
+        ...note,
+        jobId: note.job_id,
+        reporterId: note.reporter_id,
+        audioTimestamp: note.audio_timestamp,
+        noteCategory: note.note_category,
+        isLocked: note.is_locked,
+        createdAt: note.created_at,
+        job: {
+          id: job.id,
+          status: job.status,
+          createdById: job.created_by_id,
+        },
+        reporter,
+      }
+    });
   } catch (err) {
     return handleApiError(err);
   }
@@ -88,35 +116,43 @@ export async function PATCH(
     // Only reporters can edit notes
     requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
 
-    const note = await prisma.depositionNote.findUnique({
-      where: { id: noteId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            status: true,
-            createdById: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    
+    // Get note
+    const { data: note, error: noteError } = await supabase
+      .from('deposition_notes')
+      .select('id, job_id, reporter_id, is_locked')
+      .eq('id', noteId)
+      .eq('job_id', jobId)
+      .single();
 
-    if (!note || note.jobId !== jobId) {
+    if (noteError || !note) {
       return error('NOT_FOUND', 'Note not found', 404);
     }
 
+    // Get job status
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, status')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return error('NOT_FOUND', 'Job not found', 404);
+    }
+
     // Only note creator can edit (or admin)
-    if (note.reporterId !== user.id && user.role !== UserRole.ADMIN) {
+    if (note.reporter_id !== user.id && user.role !== UserRole.ADMIN) {
       return error('FORBIDDEN', 'You can only edit your own notes', 403);
     }
 
     // Check if note is already locked
-    if (note.isLocked) {
+    if (note.is_locked) {
       return error('FORBIDDEN', 'This note is locked', 403);
     }
 
     // Assert transcript is not finalized
-    assertEditableBeforeFinal(note.job.status);
+    assertEditableBeforeFinal(job.status);
 
     const body = await req.json();
     const { content, type, audioTimestamp, noteCategory } = body;
@@ -127,32 +163,53 @@ export async function PATCH(
       }
     }
 
-    const updatedNote = await prisma.depositionNote.update({
-      where: { id: noteId },
-      data: {
-        ...(content !== undefined && { content: content.trim() }),
-        ...(type !== undefined && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(type) && { 
-          type: type as DepositionNoteType 
-        }),
-        ...(audioTimestamp !== undefined && {
-          audioTimestamp: audioTimestamp ? parseFloat(audioTimestamp) : null,
-        }),
-        ...(noteCategory !== undefined && { noteCategory: noteCategory || null }),
-      },
-      include: {
-        reporter: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const updateData: any = {};
+    if (content !== undefined) updateData.content = content.trim();
+    if (type !== undefined && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(type)) {
+      updateData.type = type as DepositionNoteType;
+    }
+    if (audioTimestamp !== undefined) {
+      updateData.audio_timestamp = audioTimestamp ? parseFloat(audioTimestamp) : null;
+    }
+    if (noteCategory !== undefined) {
+      updateData.note_category = noteCategory || null;
+    }
+
+    const { data: updatedNote, error: updateError } = await supabase
+      .from('deposition_notes')
+      .update(updateData)
+      .eq('id', noteId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('Note update error:', updateError);
+      return error('UPDATE_ERROR', 'Failed to update note', 500);
+    }
+
+    // Get reporter info
+    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+    const adminClient = getSupabaseAdminClient();
+    const { data: reporterData } = await adminClient.auth.admin.getUserById(updatedNote.reporter_id);
+    
+    const reporter = reporterData?.user ? {
+      id: reporterData.user.id,
+      firstName: reporterData.user.user_metadata?.firstName || '',
+      lastName: reporterData.user.user_metadata?.lastName || '',
+      email: reporterData.user.email || '',
+    } : null;
 
     return success({
-      note: updatedNote,
+      note: {
+        ...updatedNote,
+        jobId: updatedNote.job_id,
+        reporterId: updatedNote.reporter_id,
+        audioTimestamp: updatedNote.audio_timestamp,
+        noteCategory: updatedNote.note_category,
+        isLocked: updatedNote.is_locked,
+        createdAt: updatedNote.created_at,
+        reporter,
+      },
       message: 'Note updated successfully',
     });
   } catch (err) {
@@ -183,39 +240,53 @@ export async function DELETE(
     // Only reporters can delete notes
     requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
 
-    const note = await prisma.depositionNote.findUnique({
-      where: { id: noteId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            status: true,
-            createdById: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    
+    // Get note
+    const { data: note, error: noteError } = await supabase
+      .from('deposition_notes')
+      .select('id, job_id, reporter_id, is_locked')
+      .eq('id', noteId)
+      .eq('job_id', jobId)
+      .single();
 
-    if (!note || note.jobId !== jobId) {
+    if (noteError || !note) {
       return error('NOT_FOUND', 'Note not found', 404);
     }
 
+    // Get job status
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, status')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return error('NOT_FOUND', 'Job not found', 404);
+    }
+
     // Only note creator can delete (or admin)
-    if (note.reporterId !== user.id && user.role !== UserRole.ADMIN) {
+    if (note.reporter_id !== user.id && user.role !== UserRole.ADMIN) {
       return error('FORBIDDEN', 'You can only delete your own notes', 403);
     }
 
     // Check if note is locked
-    if (note.isLocked) {
+    if (note.is_locked) {
       return error('FORBIDDEN', 'This note is locked', 403);
     }
 
     // Assert transcript is not finalized
-    assertEditableBeforeFinal(note.job.status);
+    assertEditableBeforeFinal(job.status);
 
-    await prisma.depositionNote.delete({
-      where: { id: noteId },
-    });
+    const { error: deleteError } = await supabase
+      .from('deposition_notes')
+      .delete()
+      .eq('id', noteId);
+
+    if (deleteError) {
+      console.error('Note delete error:', deleteError);
+      return error('DELETE_ERROR', 'Failed to delete note', 500);
+    }
 
     return success({ message: 'Note deleted successfully' });
   } catch (err) {

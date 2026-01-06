@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // CRON JOB PROCESSOR API ROUTE
 // =============================================================================
 // Called by Vercel Cron or external scheduler to process queued jobs
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   
   try {
     // Process up to 10 jobs per invocation
-    const results = await processJobs(10);
+    const results = await processJobs();
     
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
@@ -84,3 +84,5 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return GET(request);
 }
+
+

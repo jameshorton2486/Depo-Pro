@@ -7,9 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { transitionStatus } from '@/lib/transcripts/status-service';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -55,18 +54,28 @@ export async function PATCH(
     }
 
     // Fetch updated transcript
-    const transcript = await db.transcription.findUnique({
-      where: { id: transcriptId },
-      select: {
-        id: true,
-        status: true,
-        updatedAt: true,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: transcript, error: transcriptError } = await supabase
+      .from('transcriptions')
+      .select('id, status, updated_at')
+      .eq('id', transcriptId)
+      .single();
+
+    if (transcriptError) {
+      console.error('Error fetching transcript:', transcriptError);
+      return NextResponse.json(
+        { error: 'Failed to fetch transcript' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       message: 'Status updated successfully',
-      transcript,
+      transcript: {
+        id: transcript.id,
+        status: transcript.status,
+        updatedAt: transcript.updated_at,
+      },
     });
   } catch (error) {
     console.error('Error updating transcript status:', error);

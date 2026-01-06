@@ -5,36 +5,40 @@
 // =============================================================================
 
 import { NextRequest } from 'next/server';
-import { db as prisma } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, isTranscriptFinalized } from '@/lib/auth/permissions';
-import { UserRole, JobStatus, DepositionNoteType } from '@prisma/client';
+import type { UserRole, JobStatus, DepositionNoteType } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 
 const LOCKED_STATUSES: JobStatus[] = [JobStatus.REVIEW_COMPLETE, JobStatus.COMPLETED];
 
 async function checkReporterJobAccess(reporterId: string, jobId: string): Promise<boolean> {
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
-    select: {
-      createdById: true,
-      calendarEvent: {
-        select: {
-          assignedReporterId: true,
-        },
-      },
-    },
-  });
+  const supabase = await createSupabaseServerClient();
+  const { data: job } = await supabase
+    .from('jobs')
+    .select('id, created_by_id')
+    .eq('id', jobId)
+    .single();
+  
   if (!job) return false;
-  return job.createdById === reporterId || job.calendarEvent?.assignedReporterId === reporterId;
+  
+  // Check calendar event assignment
+  const { data: calendarEvent } = await supabase
+    .from('calendar_events')
+    .select('assigned_reporter_id')
+    .eq('job_id', jobId)
+    .single();
+  
+  return job.created_by_id === reporterId || calendarEvent?.assigned_reporter_id === reporterId;
 }
 
-async function canViewNotes(user: { id: string; role: UserRole }, job: any): Promise<boolean> {
+async function canViewNotes(user: { id: string; role: UserRole }, job: any, assignments: any[]): Promise<boolean> {
   if (user.role === UserRole.ADMIN) return true;
-  if (user.role === UserRole.REPORTER && job.createdById === user.id) return true;
+  if (user.role === UserRole.REPORTER && job.created_by_id === user.id) return true;
   if (user.role === UserRole.REPORTER) return await checkReporterJobAccess(user.id, job.id);
   if (user.role === UserRole.SCOPIST) {
-    return job.assignments.some((a: any) => a.scopistId === user.id && a.status !== 'DECLINED');
+    return assignments.some((a: any) => a.scopist_id === user.id && a.status !== 'DECLINED');
   }
   return false; // ATTORNEY - NO ACCESS
 }
@@ -61,66 +65,85 @@ export async function GET(
     }
 
     // Fetch job to check access and status
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        status: true,
-        createdById: true,
-        assignments: {
-          select: {
-            scopistId: true,
-            status: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, status, created_by_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
-    const hasAccess = await canViewNotes(user, job);
+    // Get assignments
+    const { data: assignments } = await supabase
+      .from('job_assignments')
+      .select('scopist_id, status')
+      .eq('job_id', jobId);
+
+    const hasAccess = await canViewNotes(user, job, assignments || []);
     if (!hasAccess) {
       return error('FORBIDDEN', 'You do not have permission to view notes', 403);
     }
 
-    const whereClause: any = { jobId };
+    // Build query
+    let notesQuery = supabase
+      .from('deposition_notes')
+      .select('*')
+      .eq('job_id', jobId);
     
     // Scopists can ONLY see PROPER_NOUN type notes (for reference during review)
     // Even if they request GENERAL_NOTE or ALL, restrict to PROPER_NOUN
     if (user.role === UserRole.SCOPIST) {
-      whereClause.type = DepositionNoteType.PROPER_NOUN;
+      notesQuery = notesQuery.eq('type', DepositionNoteType.PROPER_NOUN);
     } else if (typeFilter && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(typeFilter)) {
       // Reporters and Admins can filter by type if requested
-      whereClause.type = typeFilter as DepositionNoteType;
+      notesQuery = notesQuery.eq('type', typeFilter);
     }
 
-    const notes = await prisma.depositionNote.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'asc' },
-      include: {
-        reporter: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const { data: notes, error: notesError } = await notesQuery
+      .order('created_at', { ascending: true });
+
+    if (notesError) {
+      console.error('Notes fetch error:', notesError);
+      return error('FETCH_ERROR', 'Failed to fetch notes', 500);
+    }
+
+    // Get reporter info for each note
+    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+    const adminClient = getSupabaseAdminClient();
+    const notesWithReporter = await Promise.all((notes || []).map(async (note: any) => {
+      const { data: reporterData } = await adminClient.auth.admin.getUserById(note.reporter_id);
+      const reporter = reporterData?.user ? {
+        id: reporterData.user.id,
+        firstName: reporterData.user.user_metadata?.firstName || '',
+        lastName: reporterData.user.user_metadata?.lastName || '',
+        email: reporterData.user.email || '',
+      } : null;
+
+      return {
+        ...note,
+        jobId: note.job_id,
+        reporterId: note.reporter_id,
+        audioTimestamp: note.audio_timestamp,
+        noteCategory: note.note_category,
+        isLocked: note.is_locked,
+        createdAt: note.created_at,
+        reporter,
+      };
+    }));
 
     const isJobFinalized = isTranscriptFinalized(job.status);
 
     // Return in expected format
     return success({
-      notes: notes.map(note => ({
+      notes: notesWithReporter.map(note => ({
         ...note,
         isLocked: note.isLocked || isJobFinalized,
       })),
       meta: {
-        total: notes.length,
+        total: notesWithReporter.length,
         jobStatus: job.status,
         isJobFinalized,
         typeFilter: typeFilter || 'ALL',
@@ -144,30 +167,19 @@ export async function POST(
     requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
 
     // Check if transcript is finalized (via Job status)
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        status: true,
-        createdById: true,
-        transcripts: {
-          select: {
-            id: true,
-          },
-          take: 1,
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, status, created_by_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
     // Verify job access
-    if (user.role === UserRole.REPORTER && job.createdById !== user.id) {
+    if (user.role === UserRole.REPORTER && job.created_by_id !== user.id) {
       const hasAccess = await checkReporterJobAccess(user.id, jobId);
       if (!hasAccess) {
         return error('FORBIDDEN', 'No access to this job', 403);
@@ -189,30 +201,48 @@ export async function POST(
       ? (type as DepositionNoteType) 
       : DepositionNoteType.PROPER_NOUN;
 
-    const note = await prisma.depositionNote.create({
-      data: {
-        jobId,
-        reporterId: user.id,
+    const { data: note, error: noteError } = await supabase
+      .from('deposition_notes')
+      .insert({
+        job_id: jobId,
+        reporter_id: user.id,
         content: content.trim(),
         type: noteType,
-        audioTimestamp: audioTimestamp ? parseFloat(audioTimestamp) : null,
-        noteCategory: noteCategory?.trim() || null,
-        isLocked: false,
-      },
-      include: {
-        reporter: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+        audio_timestamp: audioTimestamp ? parseFloat(audioTimestamp) : null,
+        note_category: noteCategory?.trim() || null,
+        is_locked: false,
+      })
+      .select()
+      .single();
+
+    if (noteError) {
+      console.error('Note creation error:', noteError);
+      return error('CREATE_ERROR', 'Failed to create note', 500);
+    }
+
+    // Get reporter info
+    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+    const adminClient = getSupabaseAdminClient();
+    const { data: reporterData } = await adminClient.auth.admin.getUserById(note.reporter_id);
+    
+    const reporter = reporterData?.user ? {
+      id: reporterData.user.id,
+      firstName: reporterData.user.user_metadata?.firstName || '',
+      lastName: reporterData.user.user_metadata?.lastName || '',
+      email: reporterData.user.email || '',
+    } : null;
 
     return success({
-      note,
+      note: {
+        ...note,
+        jobId: note.job_id,
+        reporterId: note.reporter_id,
+        audioTimestamp: note.audio_timestamp,
+        noteCategory: note.note_category,
+        isLocked: note.is_locked,
+        createdAt: note.created_at,
+        reporter,
+      },
       message: 'Note created',
     });
   } catch (err) {

@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // JOB QUEUE API ROUTE
 // =============================================================================
 // API endpoints for job queue management
@@ -9,9 +9,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { UserRole } from '@/lib/enums';
-import { 
-  enqueueJob, 
-  getJobStatus, 
+import {
+  enqueueJob,
+  getJobStatus,
   getQueueStats,
 } from '@/lib/jobs/queue';
 import { JobType } from '@/lib/jobs/types';
@@ -38,38 +38,38 @@ const enqueueJobSchema = z.object({
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  
+
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
     );
   }
-  
+
   // Only admins and certain roles can enqueue jobs directly
-  if (![UserRole.ADMIN, UserRole.REPORTER].includes(session.user.role as UserRole)) {
+  if (![UserRole.ADMIN, UserRole.COURT_REPORTER].includes(session.user.role as UserRole)) {
     return NextResponse.json(
       { error: 'Forbidden' },
       { status: 403 }
     );
   }
-  
+
   try {
     const body = await request.json();
-    const { type, payload, options } = enqueueJobSchema.parse(body);
-    
-    const job = await enqueueJob(type, payload, options);
-    
+    const { type, payload, _options } = enqueueJobSchema.parse(body);
+
+    const job = await enqueueJob(type, payload);
+
     return NextResponse.json({
       success: true,
       job: {
-        id: job.id,
-        type: job.type,
-        status: job.status,
-        createdAt: job.createdAt,
+        id: job,
+        type: type,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
       },
     }, { status: 201 });
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     console.error('Failed to enqueue job:', error);
     return NextResponse.json(
       { error: 'Failed to enqueue job' },
@@ -92,32 +92,32 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  
+
   if (!session?.user) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
     );
   }
-  
+
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get('jobId');
-  
+
   try {
     // If jobId provided, get specific job status
     if (jobId) {
       const job = await getJobStatus(jobId);
-      
+
       if (!job) {
         return NextResponse.json(
           { error: 'Job not found' },
           { status: 404 }
         );
       }
-      
+
       return NextResponse.json({ job });
     }
-    
+
     // Otherwise, return queue statistics (admin only)
     if (session.user.role !== UserRole.ADMIN) {
       return NextResponse.json(
@@ -125,11 +125,11 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     const stats = await getQueueStats();
-    
+
     return NextResponse.json({ stats });
-    
+
   } catch (error) {
     console.error('Failed to get queue info:', error);
     return NextResponse.json(

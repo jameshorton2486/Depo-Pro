@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { hasRouteAccess } from '@/lib/permissions/route-access';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 export type CalendarView = 'jobs' | 'availability' | 'assignments';
 

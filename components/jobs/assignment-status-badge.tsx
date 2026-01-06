@@ -2,7 +2,7 @@
 // ASSIGNMENT STATUS BADGE COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-import { AssignmentStatus } from '@prisma/client';
+import { AssignmentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 interface AssignmentStatusBadgeProps {

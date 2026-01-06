@@ -5,7 +5,7 @@
 // Phase 3C-2: Role-aware export restrictions
 // =============================================================================
 
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 export type ExportFormat = 'docx' | 'pdf' | 'zip' | 'txt' | 'gdocs';
 

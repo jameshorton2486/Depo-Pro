@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ============================================================
 // BOOKING REQUEST API ROUTES
 // Path: app/api/calendar/booking-requests/route.ts
@@ -6,7 +7,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { z } from 'zod';
 
 // ------------------------------------------------------------
@@ -190,3 +190,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
   }
 }
+

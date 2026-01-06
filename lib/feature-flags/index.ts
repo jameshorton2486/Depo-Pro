@@ -5,7 +5,7 @@
 // Phase 3D-4: Lightweight feature flags
 // =============================================================================
 
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 export interface FeatureFlag {
   id: string;

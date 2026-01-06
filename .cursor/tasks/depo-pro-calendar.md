@@ -9,7 +9,7 @@ This is an authoritative build task. Follow it step-by-step. Do not improvise.
 - Do NOT refactor unrelated code
 - Do NOT rename enums, models, or database fields
 - Do NOT add new features beyond what's specified
-- Do NOT change Prisma schema beyond what's provided
+- ❌ Prisma is deprecated. Do not introduce Prisma or ORM dependencies. Use Supabase directly.
 - Do NOT introduce new dependencies
 - Do NOT modify logic outside explicitly listed files
 

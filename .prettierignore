@@ -21,9 +21,6 @@ next-env.d.ts
 *.log
 logs/
 
-# Database
-prisma/migrations/
-
 # IDE
 .vscode/
 .idea/

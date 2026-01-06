@@ -40,15 +40,12 @@ yarn-error.log*
 .env*.local
 
 # =============================================================================
-# Database / Prisma
+# Database
 # =============================================================================
-prisma/dev.db
 *.db
 *.db-journal
 *.db-shm
 *.db-wal
-prisma/migrations/**/migration.sql.bak
-prisma/migrations/*_*/
 
 # =============================================================================
 # Temporary / Backup Files

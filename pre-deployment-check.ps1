@@ -90,8 +90,7 @@ Write-Host "`n📁 Checking Project Structure..." -ForegroundColor Cyan
 $requiredFiles = @(
     "package.json",
     "next.config.ts",
-    "tsconfig.json",
-    "prisma/schema.prisma"
+    "tsconfig.json"
 )
 
 foreach ($file in $requiredFiles) {
@@ -132,8 +131,7 @@ Write-Host "`n🔧 Checking Required Tools..." -ForegroundColor Cyan
 $tools = @(
     @{Name="node"; DisplayName="Node.js"},
     @{Name="npm"; DisplayName="npm"},
-    @{Name="git"; DisplayName="Git"},
-    @{Name="prisma"; DisplayName="Prisma CLI"}
+    @{Name="git"; DisplayName="Git"}
 )
 
 foreach ($tool in $tools) {
@@ -247,28 +245,7 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 # ───────────────────────────────────────────────────────────────
-# 7. PRISMA CHECK
-# ───────────────────────────────────────────────────────────────
-
-Write-Host "`n🗄️  Checking Prisma Setup..." -ForegroundColor Cyan
-
-if (Test-Path "node_modules/@prisma/client") {
-    Write-Host "  ✅ Prisma Client generated" -ForegroundColor Green
-} else {
-    Write-Host "  ⚠️  Prisma Client not generated" -ForegroundColor Yellow
-    Write-Host "     Run 'npx prisma generate'" -ForegroundColor Gray
-    $script:warningsFound++
-}
-
-if (Test-Path "prisma/schema.prisma") {
-    Write-Host "  ✅ Prisma schema exists" -ForegroundColor Green
-} else {
-    Write-Host "  ❌ Prisma schema missing" -ForegroundColor Red
-    $script:issuesFound++
-}
-
-# ───────────────────────────────────────────────────────────────
-# 8. SUMMARY
+# 7. SUMMARY
 # ───────────────────────────────────────────────────────────────
 
 Write-Host "

@@ -1,10 +1,10 @@
+﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY EXHIBITS API
 // ═══════════════════════════════════════════════════════════════
 // API routes for exhibit management (attorney unified view)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
 import {
   requireAuth,
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   try {
     // Require authentication
     const user = await requireAuth(request);
-    if (user instanceof NextResponse) return user;
+    if (user && typeof user === "object" && "status" in user) return user;
 
     // Only attorneys and admins can access
     if (user.role !== Role.ATTORNEY && user.role !== Role.ADMIN) {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // SECURITY: Enforce case access
     const accessCheck = await requireAttorneyCaseAccess(user.id, caseId);
-    if (accessCheck instanceof NextResponse) return accessCheck;
+    if (accessCheck && typeof accessCheck === "object" && "status" in accessCheck) return accessCheck;
 
     // Verify case exists
     const caseRecord = await db.case.findUnique({
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
   try {
     // Require authentication
     const user = await requireAuth(request);
-    if (user instanceof NextResponse) return user;
+    if (user && typeof user === "object" && "status" in user) return user;
 
     if (user.role !== Role.ATTORNEY && user.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -137,10 +137,10 @@ export async function POST(request: NextRequest) {
 
     // SECURITY: Enforce case access and upload permission
     const caseAccess = await requireAttorneyCaseAccess(user.id, caseId);
-    if (caseAccess instanceof NextResponse) return caseAccess;
+    if (caseAccess && typeof caseAccess === "object" && "status" in caseAccess) return caseAccess;
 
     const uploadPermission = await requireExhibitUpload(user.id, caseId, depositionId);
-    if (uploadPermission instanceof NextResponse) return uploadPermission;
+    if (uploadPermission && typeof uploadPermission === "object" && "status" in uploadPermission) return uploadPermission;
 
     // Verify case exists
     const caseRecord = await db.case.findUnique({
@@ -252,4 +252,8 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+
+
+
 

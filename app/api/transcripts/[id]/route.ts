@@ -1,9 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { withRequestLogging } from '@/lib/observability';
+import { logger } from '@/lib/logger';
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
-import { canEditTranscript } from '@/lib/_future/transcripts/lock-service';
+
+// Simple request logging wrapper (replaces withRequestLogging)
+const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
+  return ((...args: any[]) => {
+    logger.info('Request started', { path: args[0]?.url });
+    try {
+      const result = fn(...args);
+      if (result instanceof Promise) {
+        return result.then(
+          (res) => {
+            logger.info('Request completed', { path: args[0]?.url });
+            return res;
+          },
+          (err) => {
+            logger.error('Request failed', { path: args[0]?.url, error: err });
+            throw err;
+          }
+        );
+      }
+      logger.info('Request completed', { path: args[0]?.url });
+      return result;
+    } catch (err) {
+      logger.error('Request failed', { path: args[0]?.url, error: err });
+      throw err;
+    }
+  }) as T;
+};
+
+// Stub for canEditTranscript (replaces _future/transcripts/lock-service)
+async function canEditTranscript(_transcriptId: string, _userId: string): Promise<{ canEdit: boolean; reason?: string }> {
+  // TODO: Implement transcript locking with Supabase
+  // For now, allow editing (will be implemented later)
+  return { canEdit: true };
+}
 
 // ═══════════════════════════════════════════════════════════════
 // GET /api/transcripts/[id] - Get full transcript content

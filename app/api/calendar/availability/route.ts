@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ============================================================
 // REPORTER AVAILABILITY API ROUTES
 // Path: app/api/calendar/availability/route.ts
@@ -6,7 +7,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { z } from 'zod';
 
 // ------------------------------------------------------------
@@ -342,3 +342,4 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete availability' }, { status: 500 });
   }
 }
+

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AddNoteSchema } from '@/lib/calendar/validations';
 import { canAddNotes } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
@@ -60,12 +59,14 @@ export async function POST(
     const { content, isInternal } = validationResult.data;
 
     // 4. Verify Event Exists
-    const event = await db.calendarEvent.findUnique({
-      where: { id: eventId },
-      select: { id: true, status: true, notes: true, internalNotes: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: event, error: eventError } = await supabase
+      .from('calendar_events')
+      .select('id, status, notes, internal_notes')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -73,50 +74,55 @@ export async function POST(
     }
 
     // 5. Get user info for note attribution
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { firstName: true, lastName: true },
-    });
+    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+    const adminClient = getSupabaseAdminClient();
+    const { data: userData } = await adminClient.auth.admin.getUserById(userId);
 
-    const userDisplayName = user 
-      ? `${user.firstName} ${user.lastName}`
+    const firstName = userData?.user?.user_metadata?.firstName || '';
+    const lastName = userData?.user?.user_metadata?.lastName || '';
+    const userDisplayName = firstName && lastName 
+      ? `${firstName} ${lastName}`
       : 'Unknown User';
     const timestamp = new Date().toISOString();
     const noteEntry = `[${timestamp}] ${userDisplayName}: ${content}`;
 
-    // 6. Update Event with Note in Transaction
-    const _result = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-      const noteField = isInternal ? 'internalNotes' : 'notes';
-      const currentNotes = event[noteField] || '';
-      const updatedNotes = currentNotes 
-        ? `${currentNotes}\n\n${noteEntry}`
-        : noteEntry;
+    // 6. Update Event with Note
+    const noteField = isInternal ? 'internal_notes' : 'notes';
+    const currentNotes = event[noteField] || '';
+    const updatedNotes = currentNotes 
+      ? `${currentNotes}\n\n${noteEntry}`
+      : noteEntry;
 
-      const updatedEvent = await tx.calendarEvent.update({
-        where: { id: eventId },
-        data: {
-          [noteField]: updatedNotes,
-          updatedAt: new Date(),
-        },
-      });
+    const { error: updateError } = await supabase
+      .from('calendar_events')
+      .update({
+        [noteField]: updatedNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', eventId);
 
-      // Audit log
-      await createAuditLog({
-        eventId: eventId,
-        action: 'NOTE_ADDED',
-        performedById: userId,
-        newValue: {
-          noteField,
-          isInternal,
-          contentPreview: content.slice(0, 100),
-        },
-        metadata: {
-          userDisplayName,
-          timestamp,
-        },
-      }, tx);
+    if (updateError) {
+      console.error('Event update error:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update event', code: 'UPDATE_ERROR' },
+        { status: 500 }
+      );
+    }
 
-      return updatedEvent;
+    // Audit log (without transaction parameter)
+    await createAuditLog({
+      eventId: eventId,
+      action: 'NOTE_ADDED',
+      performedById: userId,
+      newValue: {
+        noteField: isInternal ? 'internalNotes' : 'notes',
+        isInternal,
+        contentPreview: content.slice(0, 100),
+      },
+      metadata: {
+        userDisplayName,
+        timestamp,
+      },
     });
 
     return NextResponse.json({
@@ -171,16 +177,14 @@ export async function GET(
     // Only certain roles can see internal notes
     const canSeeInternal = ['ADMIN', 'REPORTER', 'AGENCY_ADMIN'].includes(userRole);
 
-    const event = await db.calendarEvent.findUnique({
-      where: { id: eventId },
-      select: { 
-        id: true, 
-        notes: true, 
-        internalNotes: true,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: event, error: eventError } = await supabase
+      .from('calendar_events')
+      .select('id, notes, internal_notes')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }

@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { CalendarViewToggle } from './calendar-view-toggle';
 import { CalendarView } from './calendar-view';
 import { getAllowedCalendarViews, type CalendarView as ViewType } from '@/lib/calendar/use-allowed-calendar-views';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 export interface CalendarShellProps {
   userRole: UserRole;

@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 // Rate limiting store (in production, use Redis)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();

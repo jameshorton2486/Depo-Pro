@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.1: ATTORNEY PROFILE API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7,7 +8,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { z } from 'zod';
 
 // Validation schema for attorney profile
@@ -213,3 +213,4 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+

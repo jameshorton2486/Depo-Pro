@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // EXPORTS LIST PAGE
 // app/exports/page.tsx
@@ -7,7 +8,6 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import Link from 'next/link';
 import { Download, FileText } from 'lucide-react';
 
@@ -66,7 +66,7 @@ export default async function ExportsPage() {
           </div>
         ) : (
           <div className="divide-y">
-            {transcripts.map((job) => (
+            {transcripts.map((job: any) => (
               <div
                 key={job.id}
                 className="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors"
@@ -107,3 +107,5 @@ export default async function ExportsPage() {
     </div>
   );
 }
+
+

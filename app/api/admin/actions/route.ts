@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // ADMIN ACTIONS API
 // app/api/admin/actions/route.ts
@@ -7,7 +8,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { subDays } from 'date-fns';
 
 // RouteContext interface removed - not used
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Transform to ActionLogEntry format
-    const transformed = actions.map((log) => {
+    const transformed = actions.map((log: any) => {
       const metadata = (log.metadata as any) || {};
       
       return {
@@ -121,3 +121,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+

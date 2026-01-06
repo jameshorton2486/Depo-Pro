@@ -2,13 +2,11 @@
 // Background job processor for transcription
 
 import { Job } from 'bullmq';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { transcribeAudio, transcribeFromUrl } from '@/lib/transcription';
 import { downloadFile } from '@/lib/storage';
 import type { TranscriptionJobData } from '@/types/deepgram';
-import { Logger } from '@/lib/observability';
-
-const logger = new Logger('TranscriptionWorker');
+import { logger } from '@/lib/logger';
 
 // ============================================
 // Now using shared TranscriptionJobData from @/types/deepgram
@@ -35,10 +33,11 @@ export async function processTranscriptionJob(
 
   try {
     // Update job status to TRANSCRIBING
-    await db.job.update({
-      where: { id: jobId },
-      data: { status: 'TRANSCRIBING' },
-    });
+    const supabase = await createSupabaseServerClient();
+    await supabase
+      .from('jobs')
+      .update({ status: 'TRANSCRIBING' })
+      .eq('id', jobId);
 
     // Get proper noun keywords from all sources:
     // 1. DepositionNote (PROPER_NOUN type)
@@ -102,44 +101,51 @@ export async function processTranscriptionJob(
     const speakerAnalysis = null;
 
     // Check if transcript exists for this job
-    const existingTranscript = await db.transcription.findFirst({
-      where: { jobId },
-    });
+    const { data: existingTranscripts } = await supabase
+      .from('transcriptions')
+      .select('id')
+      .eq('job_id', jobId)
+      .limit(1)
+      .single();
 
     const transcriptData = {
-      fullTranscript: result.transcript,
-      deepgramRawJson: JSON.stringify(result.rawResponse),
+      full_transcript: result.transcript,
+      deepgram_raw_json: JSON.stringify(result.rawResponse),
       words: result.words as any,
       utterances: result.utterances as any,
-      flaggedSegments: result.flaggedSegments as any,
-      speakerAnalysis: speakerAnalysis ? (JSON.stringify(speakerAnalysis) as any) : undefined,
+      flagged_segments: result.flaggedSegments as any,
+      speaker_analysis: speakerAnalysis ? (JSON.stringify(speakerAnalysis) as any) : undefined,
       duration: result.metadata.duration,
-      wordCount: result.words.length,
-      flaggedWordCount: result.qualityReport.lowConfidenceCount + result.qualityReport.inaudibleCount,
-      averageConfidence: result.qualityReport.overallConfidence,
-      speakerCount: new Set(result.utterances.map(u => u.speaker)).size,
-      modelUsed: modelType,
+      word_count: result.words.length,
+      flagged_word_count: result.qualityReport.lowConfidenceCount + result.qualityReport.inaudibleCount,
+      average_confidence: result.qualityReport.overallConfidence,
+      speaker_count: new Set(result.utterances.map(u => u.speaker)).size,
+      model_used: modelType,
       status: 'COMPLETED' as const,
     };
 
     let transcriptionId: string;
-    if (existingTranscript) {
+    if (existingTranscripts) {
       // Update existing transcript
-      await db.transcription.update({
-        where: { id: existingTranscript.id },
-        data: transcriptData,
-      });
-      transcriptionId = existingTranscript.id;
+      const { data: updated } = await supabase
+        .from('transcriptions')
+        .update(transcriptData)
+        .eq('id', existingTranscripts.id)
+        .select('id')
+        .single();
+      transcriptionId = updated?.id || existingTranscripts.id;
     } else {
       // Create new transcript
-      const newTranscript = await db.transcription.create({
-        data: {
+      const { data: newTranscript } = await supabase
+        .from('transcriptions')
+        .insert({
           ...transcriptData,
-          jobId,
+          job_id: jobId,
           version: 1,
-        },
-      });
-      transcriptionId = newTranscript.id;
+        })
+        .select('id')
+        .single();
+      transcriptionId = newTranscript?.id || '';
     }
 
     // Persist confidence statistics (Phase 2.4: Pipeline Orchestration)
@@ -161,13 +167,13 @@ export async function processTranscriptionJob(
 
     // Update job status based on quality
     const finalStatus = result.qualityReport.needsReview ? 'AI_REVIEWING' : 'READY_FOR_EDIT';
-    await db.job.update({
-      where: { id: jobId },
-      data: {
+    await supabase
+      .from('jobs')
+      .update({
         status: finalStatus,
-        transcriptionCompletedAt: new Date(),
-      },
-    });
+        transcription_completed_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
 
     logger.info(`Job ${jobId} transcription completed successfully (status: ${finalStatus})`, { jobId, finalStatus });
 
@@ -176,13 +182,14 @@ export async function processTranscriptionJob(
 
     // Update job status to FAILED (not CANCELLED - this is a real failure)
     try {
-      await db.job.update({
-        where: { id: jobId },
-        data: {
+      const supabase = await createSupabaseServerClient();
+      await supabase
+        .from('jobs')
+        .update({
           status: 'CANCELLED',
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        },
-      });
+          error_message: error instanceof Error ? error.message : 'Unknown error',
+        })
+        .eq('id', jobId);
     } catch (updateError) {
       logger.error('Failed to update job status', updateError as Error, { jobId });
     }

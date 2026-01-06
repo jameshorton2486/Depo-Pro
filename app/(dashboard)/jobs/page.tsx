@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════
 // JOBS LIST PAGE
 // ═══════════════════════════════════════════════════════════════
 
@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,73 +117,166 @@ async function JobsList({
   search?: string;
   page: number;
 }) {
-  // Build where clause based on role
-  const where: Record<string, unknown> = {};
-
-  if (user.role === 'REPORTER') {
-    where.createdById = user.id;
-  } else if (user.role === 'SCOPIST') {
-    where.assignments = {
-      some: {
-        scopistId: user.id,
-      },
-    };
-  }
-
-  // Add filters
-  if (status) {
-    where.status = status;
-  }
-
-  if (search) {
-    where.OR = [
-      { title: { contains: search, mode: 'insensitive' } },
-      { caseName: { contains: search, mode: 'insensitive' } },
-      { caseNumber: { contains: search, mode: 'insensitive' } },
-    ];
-  }
-
+  const supabase = await createSupabaseServerClient();
   const limit = 20;
   const skip = (page - 1) * limit;
 
-  const [jobs, total] = await Promise.all([
-    db.job.findMany({
-      where,
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-        assignments: {
-          include: {
-            scopist: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-        _count: {
-          select: {
-            files: true,
-            transcripts: true,
-          },
-        },
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-      skip,
-      take: limit,
-    }),
-    db.job.count({ where }),
+  // Build query based on role
+  let jobsQuery = supabase
+    .from('jobs')
+    .select(`
+      id,
+      title,
+      case_name,
+      case_number,
+      status,
+      deposition_date,
+      updated_at,
+      created_by_id,
+      job_assignments(
+        scopist_id,
+        job_assignments_scopist:job_assignments!inner(scopist_id)
+      )
+    `, { count: 'exact' });
+
+  // Role-based filtering
+  if (user.role === 'REPORTER') {
+    jobsQuery = jobsQuery.eq('created_by_id', user.id);
+  } else if (user.role === 'SCOPIST') {
+    // Get job IDs where this scopist is assigned
+    const { data: assignments } = await supabase
+      .from('job_assignments')
+      .select('job_id')
+      .eq('scopist_id', user.id);
+    
+    const assignedJobIds = assignments?.map(a => a.job_id) || [];
+    if (assignedJobIds.length === 0) {
+      // No assignments, return empty
+      return (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No jobs found</h3>
+            <p className="text-muted-foreground">
+              No jobs have been assigned to you yet.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+    jobsQuery = jobsQuery.in('id', assignedJobIds);
+  }
+
+  // Status filter
+  if (status) {
+    jobsQuery = jobsQuery.eq('status', status);
+  }
+
+  // Search filter (Supabase text search)
+  if (search) {
+    jobsQuery = jobsQuery.or(`title.ilike.%${search}%,case_name.ilike.%${search}%,case_number.ilike.%${search}%`);
+  }
+
+  // Pagination and ordering
+  jobsQuery = jobsQuery
+    .order('updated_at', { ascending: false })
+    .range(skip, skip + limit - 1);
+
+  const { data: jobsData, count: total, error } = await jobsQuery;
+
+  if (error) {
+    console.error('Jobs query error:', error);
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-red-500">Error loading jobs: {error.message}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Get file and transcript counts for each job
+  const jobIds = jobsData?.map(j => j.id) || [];
+  const [filesCounts, transcriptsCounts] = await Promise.all([
+    jobIds.length > 0 ? supabase
+      .from('job_files')
+      .select('job_id')
+      .in('job_id', jobIds) : Promise.resolve({ data: [] }),
+    jobIds.length > 0 ? supabase
+      .from('transcriptions')
+      .select('job_id')
+      .in('job_id', jobIds) : Promise.resolve({ data: [] }),
   ]);
+
+  // Get created_by user info (from Supabase Auth)
+  const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+  const adminClient = getSupabaseAdminClient();
+  const createdByIds = [...new Set(jobsData?.map(j => j.created_by_id).filter(Boolean) || [])];
+  const createdByUsers: Record<string, any> = {};
+  
+  for (const userId of createdByIds) {
+    const { data: userData } = await adminClient.auth.admin.getUserById(userId);
+    if (userData?.user) {
+      createdByUsers[userId] = {
+        id: userData.user.id,
+        firstName: userData.user.user_metadata?.firstName || '',
+        lastName: userData.user.user_metadata?.lastName || '',
+        email: userData.user.email || '',
+      };
+    }
+  }
+
+  // Get scopist info for assignments
+  const scopistIds = [...new Set(
+    jobsData?.flatMap(j => 
+      (j.job_assignments as any[])?.map(a => a.scopist_id).filter(Boolean) || []
+    ) || []
+  )];
+  const scopistUsers: Record<string, any> = {};
+  
+  for (const userId of scopistIds) {
+    const { data: userData } = await adminClient.auth.admin.getUserById(userId);
+    if (userData?.user) {
+      scopistUsers[userId] = {
+        id: userData.user.id,
+        firstName: userData.user.user_metadata?.firstName || '',
+        lastName: userData.user.user_metadata?.lastName || '',
+      };
+    }
+  }
+
+  // Transform to expected format
+  const jobs = (jobsData || []).map((job: any) => {
+    const fileCount = filesCounts.data?.filter(f => f.job_id === job.id).length || 0;
+    const transcriptCount = transcriptsCounts.data?.filter(t => t.job_id === job.id).length || 0;
+    
+    return {
+      id: job.id,
+      title: job.title,
+      caseName: job.case_name,
+      caseNumber: job.case_number,
+      status: job.status,
+      depositionDate: job.deposition_date,
+      updatedAt: job.updated_at,
+      createdBy: createdByUsers[job.created_by_id] || {
+        id: job.created_by_id,
+        firstName: '',
+        lastName: '',
+        email: '',
+      },
+      assignments: (job.job_assignments || []).map((a: any) => ({
+        scopist: scopistUsers[a.scopist_id] || {
+          id: a.scopist_id,
+          firstName: '',
+          lastName: '',
+        },
+      })),
+      _count: {
+        files: fileCount,
+        transcripts: transcriptCount,
+      },
+    };
+  });
 
   if (jobs.length === 0) {
     return (
@@ -259,7 +352,7 @@ async function JobsList({
       </div>
 
       {/* Pagination */}
-      {total > limit && (
+      {(total ?? 0) > limit && (
         <div className="flex items-center justify-center gap-2 pt-4">
           {page > 1 && (
             <Link href={`/jobs?page=${page - 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}>
@@ -267,9 +360,9 @@ async function JobsList({
             </Link>
           )}
           <span className="text-sm text-muted-foreground">
-            Page {page} of {Math.ceil(total / limit)}
+            Page {page} of {Math.ceil((total ?? 0) / limit)}
           </span>
-          {page < Math.ceil(total / limit) && (
+          {page < Math.ceil((total ?? 0) / limit) && (
             <Link href={`/jobs?page=${page + 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}>
               <Button variant="outline">Next</Button>
             </Link>
@@ -300,3 +393,4 @@ function JobsListSkeleton() {
     </div>
   );
 }
+

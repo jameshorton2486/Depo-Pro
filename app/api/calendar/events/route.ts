@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ============================================================
 // CALENDAR EVENTS API ROUTE
 // Path: app/api/calendar/events/route.ts
@@ -5,9 +6,35 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { z } from 'zod';
-import { logger, withRequestLogging } from '@/lib/observability';
+import { logger } from '@/lib/logger';
+
+// Simple request logging wrapper (replaces withRequestLogging)
+const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
+  return ((...args: any[]) => {
+    logger.info('Request started', { path: args[0]?.url });
+    try {
+      const result = fn(...args);
+      if (result instanceof Promise) {
+        return result.then(
+          (res) => {
+            logger.info('Request completed', { path: args[0]?.url });
+            return res;
+          },
+          (err) => {
+            logger.error('Request failed', err);
+            throw err;
+          }
+        );
+      }
+      logger.info('Request completed', { path: args[0]?.url });
+      return result;
+    } catch (err) {
+      logger.error('Request failed', err);
+      throw err;
+    }
+  }) as T;
+};
 import { checkRateLimit } from '@/lib/security';
 import { revalidatePath } from 'next/cache';
 import { EventType } from '@/lib/constants';
@@ -287,7 +314,7 @@ async function postEventsHandler(request: NextRequest) {
         startTime,
         endTime
       );
-      conflicts = conflictWarnings.map((c) => ({
+      conflicts = (Array.isArray(conflictWarnings) ? conflictWarnings : conflictWarnings.conflicts || []).map((c: any) => ({
         eventId: c.eventId,
         eventTitle: c.eventTitle,
         message: c.message,
@@ -417,3 +444,9 @@ async function _checkReporterConflicts(
     },
   });
 }
+
+
+
+
+
+

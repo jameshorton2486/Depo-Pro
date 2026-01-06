@@ -1,32 +1,29 @@
 // lib/supabase/middleware-helper.ts
 // ═══════════════════════════════════════════════════════════════
-// MIDDLEWARE HELPER - Get user with profile from database
+// MIDDLEWARE HELPER - Get user from Supabase Auth
 // ═══════════════════════════════════════════════════════════════
-// Gets authenticated user and their profile from database
-// SECURITY: Never trusts user_metadata for role - always checks database
+// Gets authenticated user with role from user_metadata
+// Supabase-only: No database lookups, uses user_metadata.role as single source of truth
 
 import { NextRequest } from 'next/server';
 import { createSupabaseMiddlewareClient } from './middleware';
 import { getSupabaseAdminClient } from './admin';
-// ⚠️ EDGE RUNTIME: Use dynamic import to avoid pulling Node APIs into Edge
-// db.ts imports observability.ts which uses process.uptime() (Node-only)
+import type { Role } from '@/lib/permissions/route-access';
 
 export interface MiddlewareUser {
   id: string;
   email: string;
-  role: string; // From database profile, NOT user_metadata
+  role: Role; // From Supabase user_metadata.role
 }
 
 /**
- * Get authenticated user with profile from database
+ * Get authenticated user from Supabase session
  * 
- * SECURITY: This function:
- * 1. Gets user from Supabase session (verified)
- * 2. Fetches profile from database (authoritative source for role)
- * 3. NEVER trusts user_metadata for role (prevents escalation)
+ * Uses user_metadata.role as the single source of truth for roles
+ * No database lookups - fully Edge-compatible
  * 
  * @param request - Next.js request
- * @returns User with role from database, or null if not authenticated
+ * @returns User with role from user_metadata, or null if not authenticated
  */
 export async function getSupabaseUserWithProfile(
   request: NextRequest
@@ -41,29 +38,18 @@ export async function getSupabaseUserWithProfile(
       return { user: null, error: authError?.message || 'Not authenticated' };
     }
 
-    // CRITICAL: Get role from database, NOT from user_metadata
-    // This prevents role escalation attacks
-    // Use dynamic import to avoid Edge Runtime issues
-    const { db } = await import('@/lib/db');
-    const profile = await db.user.findUnique({
-      where: { id: supabaseUser.id },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-      },
-    });
-
-    if (!profile) {
-      // Profile doesn't exist - user needs to complete registration
-      return { user: null, error: 'Profile not found' };
+    if (!supabaseUser.email) {
+      return { user: null, error: 'User missing email' };
     }
+
+    // Get role from user_metadata (single source of truth)
+    const role = (supabaseUser.user_metadata?.role as Role) || 'REPORTER';
 
     return {
       user: {
-        id: profile.id,
-        email: profile.email,
-        role: profile.role, // From database - authoritative
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        role: role,
       },
       error: null,
     };
@@ -79,7 +65,7 @@ export async function getSupabaseUserWithProfile(
  * Use this when you have a Bearer token instead of cookies
  * 
  * @param token - Access token from Authorization header
- * @returns User with profile or null
+ * @returns User with role from user_metadata or null
  */
 export async function getUserByToken(
   token: string
@@ -94,27 +80,18 @@ export async function getUserByToken(
       return { user: null, error: authError?.message || 'Invalid token' };
     }
 
-    // Get role from database
-    // Use dynamic import to avoid Edge Runtime issues
-    const { db } = await import('@/lib/db');
-    const profile = await db.user.findUnique({
-      where: { id: supabaseUser.id },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-      },
-    });
-
-    if (!profile) {
-      return { user: null, error: 'Profile not found' };
+    if (!supabaseUser.email) {
+      return { user: null, error: 'User missing email' };
     }
+
+    // Get role from user_metadata (single source of truth)
+    const role = (supabaseUser.user_metadata?.role as Role) || 'REPORTER';
 
     return {
       user: {
-        id: profile.id,
-        email: profile.email,
-        role: profile.role,
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        role: role,
       },
       error: null,
     };

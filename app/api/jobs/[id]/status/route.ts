@@ -3,8 +3,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { JobStatus } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { JobStatus } from '@/types/database';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -29,20 +29,14 @@ export async function GET(
     const user = session.user as { id: string; role: string };
 
     // Get job with transcription
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      include: {
-        transcription: {
-          select: {
-            id: true,
-            status: true,
-            wordCount: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, status, created_by_id, scopist_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }
@@ -52,8 +46,8 @@ export async function GET(
     // Check access
     if (
       user.role !== 'ADMIN' &&
-      job.createdById !== user.id &&
-      job.scopistId !== user.id
+      job.created_by_id !== user.id &&
+      job.scopist_id !== user.id
     ) {
       return NextResponse.json(
         { error: 'Forbidden' },
@@ -61,14 +55,21 @@ export async function GET(
       );
     }
 
+    // Get transcription if exists
+    const { data: transcription } = await supabase
+      .from('transcriptions')
+      .select('id, status, word_count')
+      .eq('job_id', jobId)
+      .single();
+
     // Determine status and progress
     let status: string = job.status;
     let progress: number | undefined;
     let transcriptId: string | undefined;
 
-    if (job.transcription) {
-      status = job.transcription.status as string;
-      transcriptId = job.transcription.id;
+    if (transcription) {
+      status = transcription.status as string;
+      transcriptId = transcription.id;
       
       // Estimate progress based on status
       const statusProgress: Record<string, number> = {
@@ -149,24 +150,27 @@ export async function PATCH(
     }
 
     // Get job to check permissions
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      include: {
-        assignments: {
-          where: {
-            scopistId: session.user.id,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, created_by_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
+    // Check for assignments
+    const { data: assignments } = await supabase
+      .from('job_assignments')
+      .select('scopist_id')
+      .eq('job_id', jobId)
+      .eq('scopist_id', session.user.id);
+
     // Check permissions
-    const isOwner = job.createdById === session.user.id;
-    const isAssignedScopist = job.assignments.length > 0;
+    const isOwner = job.created_by_id === session.user.id;
+    const isAssignedScopist = (assignments?.length || 0) > 0;
     const isAdmin = session.user.role === 'ADMIN';
 
     if (!isOwner && !isAssignedScopist && !isAdmin) {
@@ -174,14 +178,24 @@ export async function PATCH(
     }
 
     // Update job status
-    const updatedJob = await db.job.update({
-      where: { id: jobId },
-      data: {
-        status: status as JobStatus,
-        updatedAt: new Date(),
-        ...(status === 'COMPLETED' && { completedAt: new Date() }),
-      },
-    });
+    const updateData: any = {
+      status: status as JobStatus,
+      updated_at: new Date().toISOString(),
+    };
+    if (status === 'COMPLETED') {
+      updateData.completed_at = new Date().toISOString();
+    }
+
+    const { data: updatedJob, error: updateError } = await supabase
+      .from('jobs')
+      .update(updateData)
+      .eq('id', jobId)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
 
     return NextResponse.json({
       success: true,

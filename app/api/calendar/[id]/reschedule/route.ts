@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { RescheduleEventSchema } from '@/lib/calendar/validations';
 import { canReschedule } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
@@ -54,14 +53,14 @@ export async function PATCH(
     } = validationResult.data;
 
     // 3. Fetch Event
-    const event = await db.calendarEvent.findUnique({
-      where: { id: eventId },
-      include: {
-        assignedReporter: { select: { id: true, firstName: true, lastName: true, email: true } },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: event, error: eventError } = await supabase
+      .from('calendar_events')
+      .select('id, status, start_time, end_time, created_by_id, firm_id, assigned_reporter_id')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -84,13 +83,14 @@ export async function PATCH(
     }
 
     // Additional check: Attorneys can only reschedule their firm's events
-    if ((userRole === 'ATTORNEY' || userRole === 'FIRM_ADMIN') && event.firmId) {
-      const userFirm = await db.user.findUnique({
-        where: { id: userId },
-        select: { firmId: true },
-      });
+    if ((userRole === 'ATTORNEY' || userRole === 'FIRM_ADMIN') && event.firm_id) {
+      const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+      const adminClient = getSupabaseAdminClient();
+      const { data: userData } = await adminClient.auth.admin.getUserById(userId);
       
-      if (userFirm?.firmId !== event.firmId) {
+      const userFirmId = userData?.user?.user_metadata?.firmId || null;
+      
+      if (userFirmId !== event.firm_id) {
         return NextResponse.json(
           { 
             error: 'Permission denied', 
@@ -115,31 +115,21 @@ export async function PATCH(
     }
 
     // 6. Check for Conflicts (if reporter assigned)
-    if (event.assignedReporterId) {
-      const conflict = await db.calendarEvent.findFirst({
-        where: {
-          assignedReporterId: event.assignedReporterId,
-          id: { not: eventId },
-          status: { notIn: ['CANCELLED'] },
-          OR: [
-            {
-              startTime: { lte: new Date(scheduledStart) },
-              endTime: { gt: new Date(scheduledStart) },
-            },
-            {
-              startTime: { lt: new Date(scheduledEnd) },
-              endTime: { gte: new Date(scheduledEnd) },
-            },
-            {
-              startTime: { gte: new Date(scheduledStart) },
-              endTime: { lte: new Date(scheduledEnd) },
-            },
-          ],
-        },
-        select: { id: true, title: true, startTime: true },
-      });
+    if (event.assigned_reporter_id) {
+      const scheduledStartDate = new Date(scheduledStart);
+      const scheduledEndDate = new Date(scheduledEnd);
 
-      if (conflict) {
+      // Check for overlapping events
+      const { data: conflicts } = await supabase
+        .from('calendar_events')
+        .select('id, title, start_time')
+        .eq('assigned_reporter_id', event.assigned_reporter_id)
+        .neq('id', eventId)
+        .neq('status', 'CANCELLED')
+        .or(`start_time.lte.${scheduledStartDate.toISOString()},end_time.gt.${scheduledStartDate.toISOString()},start_time.lt.${scheduledEndDate.toISOString()},end_time.gte.${scheduledEndDate.toISOString()},start_time.gte.${scheduledStartDate.toISOString()},end_time.lte.${scheduledEndDate.toISOString()}`);
+
+      if (conflicts && conflicts.length > 0) {
+        const conflict = conflicts[0];
         return NextResponse.json(
           { 
             error: 'Schedule conflict', 
@@ -148,7 +138,7 @@ export async function PATCH(
             conflict: {
               eventId: conflict.id,
               title: conflict.title,
-              time: conflict.startTime,
+              time: conflict.start_time,
             },
           },
           { status: 409 }
@@ -157,49 +147,55 @@ export async function PATCH(
     }
 
     // 7. Build Update Data
-    const updateData: Record<string, unknown> = {
-      startTime: new Date(scheduledStart),
-      endTime: new Date(scheduledEnd),
+    const updateData: any = {
+      start_time: new Date(scheduledStart).toISOString(),
+      end_time: new Date(scheduledEnd).toISOString(),
       status: event.status === 'CONFIRMED' ? 'SCHEDULED' : event.status, // Reset to scheduled if was confirmed
-      updatedAt: new Date(),
+      updated_at: new Date().toISOString(),
     };
 
     if (updateLocation && newLocation) {
-      updateData.isRemote = newLocation.isRemote;
+      updateData.is_remote = newLocation.isRemote;
       updateData.location = newLocation.address || null;
-      updateData.meetingLink = newLocation.zoomUrl || null;
+      updateData.meeting_link = newLocation.zoomUrl || null;
     }
 
-    // 8. Update in Transaction
-    const result = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-      const updatedEvent = await tx.calendarEvent.update({
-        where: { id: eventId },
-        data: updateData,
-      });
+    // 8. Update Event
+    const { data: result, error: updateError } = await supabase
+      .from('calendar_events')
+      .update(updateData)
+      .eq('id', eventId)
+      .select()
+      .single();
 
-      // Audit log
-      await createAuditLog({
-        eventId: eventId,
-        action: 'EVENT_RESCHEDULED',
-        performedById: userId,
-        previousValue: {
-          startTime: event.startTime,
-          endTime: event.endTime,
-          status: event.status,
-        },
-        newValue: {
-          startTime: updateData.startTime,
-          endTime: updateData.endTime,
-          status: updateData.status,
-        },
-        metadata: {
-          reason,
-          notifyParties,
-          updateLocation,
-        },
-      }, tx);
+    if (updateError) {
+      console.error('Event update error:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update event', code: 'UPDATE_ERROR' },
+        { status: 500 }
+      );
+    }
 
-      return updatedEvent;
+    // Audit log (without transaction parameter)
+    await createAuditLog({
+      eventId: eventId,
+      action: 'EVENT_RESCHEDULED',
+      performedById: userId,
+      previousValue: {
+        startTime: event.start_time,
+        endTime: event.end_time,
+        status: event.status,
+      },
+      newValue: {
+        startTime: updateData.start_time,
+        endTime: updateData.end_time,
+        status: updateData.status,
+      },
+      metadata: {
+        reason,
+        notifyParties,
+        updateLocation,
+      },
     });
 
     // 9. Send Notifications
@@ -210,8 +206,8 @@ export async function PATCH(
       message: 'Event rescheduled successfully',
       event: {
         id: result.id,
-        startTime: result.startTime,
-        endTime: result.endTime,
+        startTime: result.start_time,
+        endTime: result.end_time,
         status: result.status,
       },
     });

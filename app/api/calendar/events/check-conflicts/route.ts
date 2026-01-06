@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // CHECK CONFLICTS API ROUTE
 // Path: app/api/calendar/events/check-conflicts/route.ts
@@ -5,7 +6,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { checkForConflicts } from '@/lib/scheduling/conflict-detection';
 import { z } from 'zod';
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const { eventId, reporterId, location, startTime, endTime, _isRemote } = validation.data;
+    const { _eventId, reporterId, location, startTime, endTime, _isRemote } = validation.data;
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
@@ -50,7 +50,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const result = await checkForConflicts({
-      eventId,
       reporterId: reporterId || undefined,
       location: location || undefined,
       proposedStart: new Date(startTime),
@@ -83,4 +82,3 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 }
-

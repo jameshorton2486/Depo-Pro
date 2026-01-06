@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.3: ATTORNEY CASES API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7,8 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/types/database';
 
 // GET /api/attorney/cases
 // Returns paginated list of cases the attorney has access to
@@ -279,3 +279,4 @@ export async function GET(request: NextRequest) {
 
 // GET /api/attorney/cases/[id]
 // Get single case detail (separate file: app/api/attorney/cases/[id]/route.ts)
+

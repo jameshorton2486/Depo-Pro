@@ -1,7 +1,7 @@
 // app/(dashboard)/admin/page.tsx
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   Users,
   Briefcase,
@@ -30,26 +30,34 @@ export default async function AdminDashboard() {
   }
 
   // Fetch admin stats
-  const [totalUsers, totalJobs, totalFirms, activeJobs, recentJobs] = await Promise.all([
-    prisma.user.count(),
-    prisma.job.count(),
-    prisma.firm.count(),
-    prisma.job.count({
-      where: {
-        status: { in: ['CREATED', 'FILES_UPLOADED', 'TRANSCRIBING', 'AI_REVIEWING', 'READY_FOR_EDIT', 'ASSIGNED', 'IN_EDIT'] },
-      },
-    }),
-    prisma.job.findMany({
-      orderBy: { updatedAt: 'desc' },
-      take: 10,
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        updatedAt: true,
-      },
-    }),
+  const supabase = await createSupabaseServerClient();
+  const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+  const adminClient = getSupabaseAdminClient();
+  
+  // Get user count from Supabase Auth (not users table)
+  const { data: usersData } = await adminClient.auth.admin.listUsers();
+  const totalUsers = usersData?.users?.length || 0;
+  
+  const [jobsResult, firmsResult, activeJobsResult, recentJobsResult] = await Promise.all([
+    supabase.from('jobs').select('id', { count: 'exact', head: true }),
+    supabase.from('firms').select('id', { count: 'exact', head: true }),
+    supabase.from('jobs')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['CREATED', 'FILES_UPLOADED', 'TRANSCRIBING', 'AI_REVIEWING', 'READY_FOR_EDIT', 'ASSIGNED', 'IN_EDIT']),
+    supabase.from('jobs')
+      .select('id, title, status, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(10),
   ]);
+  const totalJobs = jobsResult.count || 0;
+  const totalFirms = firmsResult.count || 0;
+  const activeJobs = activeJobsResult.count || 0;
+  const recentJobs = (recentJobsResult.data || []).map((job: any) => ({
+    id: job.id,
+    title: job.title,
+    status: job.status,
+    updatedAt: job.updated_at,
+  }));
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

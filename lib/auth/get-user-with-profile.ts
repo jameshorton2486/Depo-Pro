@@ -9,8 +9,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ensureUserProfile } from './profile-guard';
-import { db } from '@/lib/db';
 
 /**
  * Get authenticated Supabase user and ensure profile exists
@@ -73,17 +73,30 @@ export async function getUserWithProfile(request: Request | { headers: Headers }
  * @returns User profile or null if not found
  */
 export async function getUserProfile(supabaseUserId: string) {
-  return db.user.findUnique({
-    where: { id: supabaseUserId },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      firstName: true,
-      lastName: true,
-      agencyName: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, email, role, first_name, last_name, agency_name, phone, created_at, updated_at')
+    .eq('id', supabaseUserId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null; // Not found
+    throw error;
+  }
+
+  if (!data) return null;
+
+  // Convert snake_case to camelCase
+  return {
+    id: data.id,
+    email: data.email,
+    role: data.role,
+    firstName: data.first_name,
+    lastName: data.last_name,
+    agencyName: data.agency_name,
+    phone: data.phone,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }

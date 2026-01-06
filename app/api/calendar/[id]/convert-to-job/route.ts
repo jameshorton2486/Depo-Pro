@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ConvertToJobSchema } from '@/lib/calendar/validations';
 import { canConvertToJob } from '@/lib/calendar/permissions';
 
@@ -57,17 +56,15 @@ export async function POST(
 
     const { includeTranscription, assignToScopist, scopistId, priority, notes } = validationResult.data;
 
-    // 4. Fetch Event with Relations
-    const event = await db.calendarEvent.findUnique({
-      where: { id: eventId },
-      include: {
-        assignedReporter: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-      },
-    });
+    // 4. Fetch Event
+    const supabase = await createSupabaseServerClient();
+    const { data: event, error: eventError } = await supabase
+      .from('calendar_events')
+      .select('id, title, start_time, location, meeting_link, status, job_id, assigned_reporter_id, firm_id, agency_id')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -75,12 +72,12 @@ export async function POST(
     }
 
     // 5. Check if Already Converted
-    if (event.jobId) {
+    if (event.job_id) {
       return NextResponse.json(
         { 
           error: 'Event already converted', 
           code: 'ALREADY_CONVERTED',
-          jobId: event.jobId
+          jobId: event.job_id
         },
         { status: 409 }
       );
@@ -95,7 +92,7 @@ export async function POST(
     }
 
     // 7. Validate Reporter Assignment
-    if (!event.assignedReporterId) {
+    if (!event.assigned_reporter_id) {
       return NextResponse.json(
         { 
           error: 'Reporter must be assigned before converting to job', 
@@ -105,68 +102,88 @@ export async function POST(
       );
     }
 
-    // 8. Create Job in Transaction
-    const result = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Create the job
-      const job = await tx.job.create({
-        data: {
-          title: event.title,
-          caseName: event.title, // Required field, use title as default
-          depositionDate: event.startTime,
-          location: event.location || null,
-          zoomLink: event.meetingLink || null,
-          status: 'CREATED',
-          
-          // Relationships
-          createdById: userId,
-          firmId: event.firmId,
-          agencyId: event.agencyId || null,
-          assignedToId: event.assignedReporterId || null,
-          
-          // Scopist assignment if requested
-          ...(assignToScopist && scopistId && {
-            scopistId: scopistId,
-          }),
-          
-          // Notes
-          ...(notes && {
-            internalNotes: notes,
-          }),
-        },
-      });
+    // 8. Create Job (Supabase doesn't support transactions, so we do sequential operations)
+    const jobData: any = {
+      title: event.title,
+      case_name: event.title, // Required field, use title as default
+      deposition_date: event.start_time,
+      location: event.location || null,
+      zoom_link: event.meeting_link || null,
+      status: 'CREATED',
+      created_by_id: userId,
+      firm_id: event.firm_id,
+      agency_id: event.agency_id || null,
+      assigned_to_id: event.assigned_reporter_id || null,
+    };
 
-      // Update the calendar event
-      await tx.calendarEvent.update({
-        where: { id: eventId },
-        data: {
+    if (assignToScopist && scopistId) {
+      jobData.scopist_id = scopistId;
+    }
+
+    if (notes) {
+      jobData.internal_notes = notes;
+    }
+
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .insert(jobData)
+      .select()
+      .single();
+
+    if (jobError) {
+      console.error('Job creation error:', jobError);
+      return NextResponse.json(
+        { error: 'Failed to create job', code: 'JOB_CREATION_ERROR' },
+        { status: 500 }
+      );
+    }
+
+    // Update the calendar event
+    const { error: updateError } = await supabase
+      .from('calendar_events')
+      .update({
+        job_id: job.id,
+        status: 'CONVERTED',
+        confirmed_at: new Date().toISOString(),
+      })
+      .eq('id', eventId);
+
+    if (updateError) {
+      console.error('Event update error:', updateError);
+      // Try to rollback job creation (best effort)
+      await supabase.from('jobs').delete().eq('id', job.id);
+      return NextResponse.json(
+        { error: 'Failed to update event', code: 'EVENT_UPDATE_ERROR' },
+        { status: 500 }
+      );
+    }
+
+    // Create audit log
+    const { error: auditError } = await supabase
+      .from('audit_logs')
+      .insert({
+        actor_user_id: userId,
+        action: 'CALENDAR_CONVERT_TO_JOB',
+        target_type: 'CalendarEvent',
+        target_id: eventId,
+        metadata: {
           jobId: job.id,
-          status: 'CONVERTED' as any, // Type assertion needed until Prisma client regenerates
-          confirmedAt: new Date(),
-        },
-      });
-
-      // Create audit log using generic AuditLog
-      await tx.auditLog.create({
-        data: {
-          actorUserId: userId,
-          action: 'CALENDAR_CONVERT_TO_JOB',
-          targetType: 'CalendarEvent',
-          targetId: eventId,
-          metadata: {
-            jobId: job.id,
-            eventSnapshot: {
-              title: event.title,
-              startTime: event.startTime.toISOString(),
-            },
-            priority,
-            includeTranscription,
-            assignToScopist,
+          eventSnapshot: {
+            title: event.title,
+            startTime: event.start_time,
           },
+          priority,
+          includeTranscription,
+          assignToScopist,
         },
       });
 
-      return job;
-    });
+    if (auditError) {
+      console.error('Audit log error:', auditError);
+      // Non-fatal, continue
+    }
+
+    const result = job;
 
     // 9. Return Success
     return NextResponse.json({

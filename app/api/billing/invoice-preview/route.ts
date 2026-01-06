@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // INVOICE PREVIEW API
 // =============================================================================
 // Location: app/api/billing/invoice-preview/route.ts
@@ -30,23 +30,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Optional query parameters for estimates
-    const estimatedDurationMinutes = searchParams.get('estimatedDurationMinutes')
+    const __estimatedDurationMinutes = searchParams.get('estimatedDurationMinutes')
       ? parseFloat(searchParams.get('estimatedDurationMinutes')!)
       : undefined;
-    
-    const estimatedWordCount = searchParams.get('estimatedWordCount')
+
+    const __estimatedWordCount = searchParams.get('estimatedWordCount')
       ? parseInt(searchParams.get('estimatedWordCount')!, 10)
       : undefined;
-    
-    const estimatedFlaggedWords = searchParams.get('estimatedFlaggedWords')
+
+    const __estimatedFlaggedWords = searchParams.get('estimatedFlaggedWords')
       ? parseInt(searchParams.get('estimatedFlaggedWords')!, 10)
       : undefined;
 
-    const preview = await generateInvoicePreview(jobId, {
-      estimatedDurationMinutes,
-      estimatedWordCount,
-      estimatedFlaggedWords,
-    });
+    const preview = await generateInvoicePreview(jobId);
 
     if (!preview) {
       return NextResponse.json(

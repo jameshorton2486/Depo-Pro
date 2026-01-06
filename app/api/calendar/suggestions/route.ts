@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ============================================================
 // SCHEDULING SUGGESTIONS API
 // File: app/api/calendar/suggestions/route.ts
@@ -5,7 +6,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { FEATURES } from '@/lib/feature-flags';
 import { UserRole } from '@/lib/enums/roles';
 import { z } from 'zod';
@@ -155,4 +155,5 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 });
   }
 }
+
 

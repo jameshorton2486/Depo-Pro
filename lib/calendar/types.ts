@@ -5,8 +5,8 @@
 // Centralized type definitions for calendar functionality
 // =============================================================================
 
-import { UserRole } from '@prisma/client';
-import { AssignmentStatus } from '@prisma/client';
+import type { UserRole } from '@/types/database';
+import { AssignmentStatus } from '@/types/database';
 
 /**
  * Availability block data contract

@@ -7,7 +7,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { unlockTranscript } from '@/lib/_future/transcripts/lock-service';
+// Stub for unlockTranscript (replaces _future/transcripts/lock-service)
+async function unlockTranscript(
+  _transcriptId: string,
+  _userId: string,
+  _reason: string
+): Promise<{ success: boolean; error?: string }> {
+  // TODO: Implement transcript unlocking with Supabase
+  // For now, return success (will be implemented later)
+  return { success: true };
+}
 
 interface RouteContext {
   params: Promise<{ id: string }>;

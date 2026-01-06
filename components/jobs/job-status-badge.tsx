@@ -2,7 +2,7 @@
 // JOB STATUS BADGE COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-import { JobStatus } from '@prisma/client';
+import type { JobStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 interface JobStatusBadgeProps {

@@ -8,8 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { ProperNounCategory } from '@prisma/client';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import type { ProperNounCategory } from '@/types/database';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -32,47 +32,58 @@ export async function GET(
     const { id: jobId } = await context.params;
 
     // Find the job and verify access
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        firmId: true,
-        csrRecord: {
-          select: {
-            id: true,
-            properNouns: {
-              orderBy: [
-                { priority: 'desc' },
-                { createdAt: 'desc' },
-              ],
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, created_by_id, firm_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     // Check access: admin, job owner, or same firm
     const user = session.user as any;
+    const userFirmId = user.firmId || null;
     const hasAccess =
       user.role === 'ADMIN' ||
-      job.createdById === user.id ||
-      (job.firmId && job.firmId === user.firmId);
+      job.created_by_id === user.id ||
+      (job.firm_id && job.firm_id === userFirmId);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Return proper nouns (or empty array if no CSRRecord)
-    const properNouns = job.csrRecord?.properNouns || [];
+    // Get CSR record
+    const { data: csrRecord } = await supabase
+      .from('csr_records')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+
+    // Get proper nouns if CSR record exists
+    let properNouns: any[] = [];
+    if (csrRecord) {
+      const { data: nouns } = await supabase
+        .from('csr_proper_nouns')
+        .select('*')
+        .eq('csr_record_id', csrRecord.id)
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false });
+      
+      properNouns = nouns || [];
+    }
 
     return NextResponse.json({
-      properNouns,
-      csrRecordId: job.csrRecord?.id || null,
+      properNouns: properNouns.map(noun => ({
+        ...noun,
+        csrRecordId: noun.csr_record_id,
+        phoneticHint: noun.phonetic_hint,
+        useInTranscription: noun.use_in_transcription,
+        createdAt: noun.created_at,
+      })),
+      csrRecordId: csrRecord?.id || null,
       count: properNouns.length,
     });
 
@@ -140,74 +151,78 @@ export async function POST(
     }
 
     // Find the job and verify access
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        firmId: true,
-        csrRecord: {
-          select: { id: true },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, created_by_id, firm_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     // Check access
     const user = session.user as any;
+    const userFirmId = user.firmId || null;
     const hasAccess =
       user.role === 'ADMIN' ||
-      job.createdById === user.id ||
-      (job.firmId && job.firmId === user.firmId);
+      job.created_by_id === user.id ||
+      (job.firm_id && job.firm_id === userFirmId);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Ensure CSRRecord exists, create if not
-    let csrRecordId = job.csrRecord?.id;
+    // Get or create CSRRecord
+    let { data: csrRecord } = await supabase
+      .from('csr_records')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
 
-    if (!csrRecordId) {
+    if (!csrRecord) {
       // Need to fetch more job data to create CSRRecord
-      const fullJob = await db.job.findUnique({
-        where: { id: jobId },
-        select: {
-          depositionDate: true,
-          caseName: true,
-          caseNumber: true,
-          location: true,
-        },
-      });
+      const { data: fullJob, error: fullJobError } = await supabase
+        .from('jobs')
+        .select('deposition_date, case_name, case_number, location')
+        .eq('id', jobId)
+        .single();
 
-      if (!fullJob) {
+      if (fullJobError || !fullJob) {
         return NextResponse.json({ error: 'Job not found' }, { status: 404 });
       }
 
       // Create a CSRRecord with required fields from job
-      const newCsrRecord = await db.cSRRecord.create({
-        data: {
-          jobId: jobId,
-          depositionDate: fullJob.depositionDate,
-          caseCaption: fullJob.caseName || 'Untitled Case',
-          causeNumber: fullJob.caseNumber,
-          locationAddress: fullJob.location,
-        },
-      });
-      csrRecordId = newCsrRecord.id;
+      const { data: newCsrRecord, error: createError } = await supabase
+        .from('csr_records')
+        .insert({
+          job_id: jobId,
+          deposition_date: fullJob.deposition_date,
+          case_caption: fullJob.case_name || 'Untitled Case',
+          cause_number: fullJob.case_number,
+          location_address: fullJob.location,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('CSR record creation error:', createError);
+        return NextResponse.json(
+          { error: 'Failed to create CSR record' },
+          { status: 500 }
+        );
+      }
+      csrRecord = newCsrRecord;
     }
 
     // Check for duplicate
-    const existing = await db.cSRProperNoun.findUnique({
-      where: {
-        csrRecordId_value: {
-          csrRecordId,
-          value: value.trim(),
-        },
-      },
-    });
+    const { data: existing } = await supabase
+      .from('csr_proper_nouns')
+      .select('id')
+      .eq('csr_record_id', csrRecord.id)
+      .eq('value', value.trim())
+      .single();
 
     if (existing) {
       return NextResponse.json(
@@ -217,21 +232,37 @@ export async function POST(
     }
 
     // Create the proper noun
-    const properNoun = await db.cSRProperNoun.create({
-      data: {
-        csrRecordId,
+    const { data: properNoun, error: nounError } = await supabase
+      .from('csr_proper_nouns')
+      .insert({
+        csr_record_id: csrRecord.id,
         value: value.trim(),
         category: category as ProperNounCategory,
-        phoneticHint: phoneticHint?.trim() || null,
+        phonetic_hint: phoneticHint?.trim() || null,
         source: source || 'manual_entry',
-        useInTranscription,
+        use_in_transcription: useInTranscription,
         priority,
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (nounError) {
+      console.error('Proper noun creation error:', nounError);
+      return NextResponse.json(
+        { error: 'Failed to create proper noun' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      properNoun,
+      properNoun: {
+        ...properNoun,
+        csrRecordId: properNoun.csr_record_id,
+        phoneticHint: properNoun.phonetic_hint,
+        useInTranscription: properNoun.use_in_transcription,
+        createdAt: properNoun.created_at,
+      },
     }, { status: 201 });
 
   } catch (error) {
@@ -269,48 +300,59 @@ export async function DELETE(
     }
 
     // Find the job and verify access
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        firmId: true,
-        csrRecord: {
-          select: { id: true },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, created_by_id, firm_id')
+      .eq('id', jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     // Check access
     const user = session.user as any;
+    const userFirmId = user.firmId || null;
     const hasAccess =
       user.role === 'ADMIN' ||
-      job.createdById === user.id ||
-      (job.firmId && job.firmId === user.firmId);
+      job.created_by_id === user.id ||
+      (job.firm_id && job.firm_id === userFirmId);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    if (!job.csrRecord) {
+    // Get CSR record
+    const { data: csrRecord } = await supabase
+      .from('csr_records')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+
+    if (!csrRecord) {
       return NextResponse.json({ error: 'No CSR record for this job' }, { status: 404 });
     }
 
     // Delete the proper nouns
-    const result = await db.cSRProperNoun.deleteMany({
-      where: {
-        id: { in: ids },
-        csrRecordId: job.csrRecord.id,
-      },
-    });
+    const { data: deleted, error: deleteError } = await supabase
+      .from('csr_proper_nouns')
+      .delete()
+      .in('id', ids)
+      .eq('csr_record_id', csrRecord.id)
+      .select();
+
+    if (deleteError) {
+      console.error('Delete error:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete proper nouns' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      deleted: result.count,
+      deleted: deleted?.length || 0,
     });
 
   } catch (error) {

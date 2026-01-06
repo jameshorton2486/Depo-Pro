@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // CONTACT API
 // app/api/contact/route.ts
@@ -7,7 +8,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { db } from '@/lib/db';
 
 // Simple in-memory rate limiting (5 requests per hour per IP)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -96,3 +96,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

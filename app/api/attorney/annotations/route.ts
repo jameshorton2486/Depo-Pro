@@ -1,10 +1,10 @@
+﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY ANNOTATIONS API
 // ═══════════════════════════════════════════════════════════════
 // API routes for transcript annotations (issue codes)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
 import { requireAuth, requireTranscriptAnnotation } from '@/lib/permissions/api-guards';
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     // Require authentication
     const user = await requireAuth(request);
-    if (user instanceof NextResponse) return user;
+    if (user && typeof user === "object" && "status" in user) return user;
 
     if (user.role !== Role.ATTORNEY && user.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
   try {
     // Require authentication
     const user = await requireAuth(request);
-    if (user instanceof NextResponse) return user;
+    if (user && typeof user === "object" && "status" in user) return user;
 
     if (user.role !== Role.ATTORNEY && user.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     // SECURITY: Enforce transcript annotation permission
     const annotationCheck = await requireTranscriptAnnotation(user.id, transcriptId);
-    if (annotationCheck instanceof NextResponse) return annotationCheck;
+    if (annotationCheck && typeof annotationCheck === "object" && "status" in annotationCheck) return annotationCheck;
 
     // Verify transcript exists
     const transcript = await db.attorneyTranscript.findUnique({
@@ -157,4 +157,8 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+
+
+
 

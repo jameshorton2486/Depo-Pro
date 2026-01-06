@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // AUDIT EXPORT API ROUTE
 // =============================================================================
@@ -9,7 +10,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { UserRole } from '@/lib/enums';
-import { db } from '@/lib/db';
 import {
   createAuditLog,
   AuditAction,
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         start: params.startDate,
         end: params.endDate,
       },
-      data: logs.map(log => ({
+      data: logs.map((log: any) => ({
         id: log.id,
         timestamp: log.createdAt,
         actor: log.user ? {
@@ -201,7 +201,7 @@ function convertToCSV(logs: any[], includeMetadata: boolean): string {
     headers.push('metadata');
   }
   
-  const rows = logs.map(log => {
+  const rows = logs.map((log: any) => {
     const row = [
       log.id,
       log.createdAt.toISOString(),
@@ -231,3 +231,5 @@ function escapeCSV(value: string): string {
   }
   return value;
 }
+
+

@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   // Use standalone output to prevent Windows FS rename bug for error pages
   output: 'standalone',
 
+  // Note: NEXT_PUBLIC_* variables are automatically exposed to the client
+  // No need to explicitly list them in env: {} - Next.js handles this automatically
+
   // Experimental optimizations
   experimental: {
     optimizePackageImports: [],
@@ -33,13 +36,13 @@ const nextConfig: NextConfig = {
       'utf-8-validate': 'commonjs utf-8-validate',
       bufferutil: 'commonjs bufferutil',
     });
-    
+
     // Ignore missing optional dependencies
     config.resolve.fallback = {
       ...config.resolve.fallback,
       '@dolbyio/media-apis': false,
     };
-    
+
     return config;
   },
 

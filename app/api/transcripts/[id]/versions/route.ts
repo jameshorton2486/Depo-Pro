@@ -7,7 +7,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getVersions } from '@/lib/_future/transcripts/version-service';
+// Stub for getVersions (replaces _future/transcripts/version-service)
+async function getVersions(_transcriptId: string): Promise<any[]> {
+  // TODO: Implement version history with Supabase
+  // For now, return empty array (will be implemented later)
+  return [];
+}
 
 interface RouteContext {
   params: Promise<{ id: string }>;

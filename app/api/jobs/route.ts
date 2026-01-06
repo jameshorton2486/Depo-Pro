@@ -6,8 +6,8 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { listJobs, createJob } from '@/lib/supabase/queries/jobs';
 
 /**
  * GET /api/jobs
@@ -15,51 +15,40 @@ import { db } from '@/lib/db';
  */
 export async function GET(_request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createSupabaseServerClient();
+    
+    // Validate auth using getUser() (not getSession())
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!session?.user) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = session.user as { id: string; role: string };
+    // Get user role from metadata
+    const userRole = (user.user_metadata?.role as string) || 'REPORTER';
+    const userId = user.id;
 
-    // Build where clause based on role
-    const where: any = {};
+    // List jobs using query function
+    const { jobs, count } = await listJobs(supabase, userId, userRole, { limit: 50 });
 
-    if (user.role === 'REPORTER') {
-      where.createdById = user.id;
-    } else if (user.role === 'SCOPIST') {
-      where.scopistId = user.id;
-    }
-    // Admin can see all
+    // Map snake_case to camelCase for response
+    const transformedJobs = jobs.map((job: any) => ({
+      id: job.id,
+      title: job.title,
+      caseName: job.case_name,
+      caseNumber: job.case_number,
+      depositionDate: job.deposition_date,
+      location: job.location,
+      status: job.status,
+      createdById: job.created_by_id,
+      firmId: job.firm_id,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      createdBy: job.createdBy || null,
+      assignments: job.assignments || [],
+    }));
 
-    const jobs = await db.job.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: {
-        createdBy: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-        assignments: {
-          where: { status: 'ACCEPTED' },
-          include: {
-            scopist: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-          take: 1,
-        },
-      },
-    });
-
-    return NextResponse.json({ jobs });
+    return NextResponse.json({ jobs: transformedJobs, count });
   } catch (error) {
     console.error('Error fetching jobs:', error);
     return NextResponse.json(
@@ -75,16 +64,21 @@ export async function GET(_request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const supabase = await createSupabaseServerClient();
+    
+    // Validate auth using getUser() (not getSession())
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!session?.user) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = session.user as { id: string; role: string };
+    // Get user role from metadata
+    const userRole = (user.user_metadata?.role as string) || 'REPORTER';
+    const userId = user.id;
 
     // Only reporters and admins can create jobs
-    if (user.role !== 'REPORTER' && user.role !== 'COURT_REPORTER' && user.role !== 'ADMIN') {
+    if (userRole !== 'REPORTER' && userRole !== 'COURT_REPORTER' && userRole !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -92,68 +86,37 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { caseName, title, depositionDate } = body;
+    const { caseName, title, depositionDate, caseNumber, deponentName, location, notes } = body;
 
-    // Get user's firm ID (required for job creation)
-    const userRecord = await db.user.findUnique({
-      where: { id: user.id },
-      select: { firmId: true },
-    });
-
-    if (!userRecord?.firmId) {
+    // Validate required fields
+    if (!caseName && !title) {
       return NextResponse.json(
-        { error: 'User must be associated with a firm' },
+        { error: 'caseName or title is required' },
         { status: 400 }
       );
     }
 
-    // Use job creation service if available, otherwise create directly
-    try {
-      const { createJob } = await import('@/lib/services/job-creation-service');
-      
-      const result = await createJob({
-        caseName: caseName || title,
-        title: title || caseName,
-        depositionDate: depositionDate ? new Date(depositionDate) : new Date(),
-        firmId: userRecord.firmId,
-        createdById: user.id,
-      });
+    // Get user's firm ID from user_metadata (can be null)
+    const firmId = (user.user_metadata?.firmId as string) || null;
 
-      if (!result.success) {
-        return NextResponse.json(
-          { error: result.error },
-          { status: 400 }
-        );
-      }
+    // Create job using query function
+    const job = await createJob(supabase, {
+      title: title || caseName,
+      caseName: caseName || title,
+      caseNumber: caseNumber || null,
+      depositionDate: depositionDate ? new Date(depositionDate).toISOString() : new Date().toISOString(),
+      firmId,
+      createdById: userId,
+      deponentName: deponentName || null,
+      location: location || null,
+      notes: notes || null,
+    });
 
-      const job = await db.job.findUnique({
-        where: { id: result.jobId! },
-      });
-
-      return NextResponse.json({
-        id: job!.id,
-        success: true,
-        message: 'Job created successfully',
-      });
-    } catch (_err) {
-      // Fallback to direct creation if service not available
-      const job = await db.job.create({
-        data: {
-          caseName: caseName || title,
-          title: title || caseName,
-          depositionDate: depositionDate ? new Date(depositionDate) : new Date(),
-          status: 'CREATED',
-          createdById: user.id,
-          firmId: userRecord.firmId,
-        },
-      });
-
-      return NextResponse.json({
-        id: job.id,
-        success: true,
-        message: 'Job created successfully',
-      });
-    }
+    return NextResponse.json({
+      id: job.id,
+      success: true,
+      message: 'Job created successfully',
+    });
   } catch (error) {
     console.error('Error creating job:', error);
     return NextResponse.json(
@@ -162,3 +125,8 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+
+
+
+

@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User } from '@prisma/client';
+import { User } from '@/types/database';
 
 interface AssignScopistDialogProps {
   jobId: string;

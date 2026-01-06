@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════
 // NEXTAUTH CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
 // NextAuth.js v5 configuration with Credentials provider
@@ -49,7 +49,7 @@ export const authConfig: NextAuthConfig = {
             console.warn('[Auth] Login attempt with invalid credentials format');
             // Log failed login attempt
             await createAuditLog({
-              actorUserId: null,
+              actorUserId: undefined,
               firmId: null,
               action: AuditAction.LOGIN_FAILED,
               targetType: AuditTargetType.USER,
@@ -71,7 +71,7 @@ export const authConfig: NextAuthConfig = {
 
           console.warn('[Auth] Legacy credentials login is disabled.');
           await createAuditLog({
-            actorUserId: null,
+            actorUserId: undefined,
             firmId: null,
             action: AuditAction.LOGIN_FAILED,
             targetType: AuditTargetType.USER,
@@ -163,3 +163,4 @@ export const authConfig: NextAuthConfig = {
 };
 
 export const authOptions = authConfig;
+

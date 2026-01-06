@@ -6,7 +6,7 @@
 // Used by: middleware, navigation, API guards, audit scripts
 // =============================================================================
 
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 
 // =============================================================================
 // TYPES
@@ -36,6 +36,8 @@ export const PUBLIC_ROUTES: string[] = [
   '/forgot-password',
   '/reset-password',
   '/update-password',
+  '/auth/callback',
+  '/auth/confirm',
   '/about',
   '/features',
   '/pricing',
@@ -43,9 +45,6 @@ export const PUBLIC_ROUTES: string[] = [
   '/contact',
   '/api/auth',
   '/api/health',
-  // Auth callback routes (PKCE and email confirmation)
-  '/auth/callback',
-  '/auth/confirm',
 ];
 
 // =============================================================================
@@ -269,3 +268,6 @@ export function getRequiredRoles(path: string): Role[] | null {
 
   return null;
 }
+
+// Valid roles from types/database.ts UserRole type
+export const VALID_ROLES: Role[] = ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'PARALEGAL', 'AGENCY', 'AGENCY_ADMIN', 'FIRM_ADMIN'] as Role[];

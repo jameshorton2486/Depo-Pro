@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.2: ATTORNEY DASHBOARD API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7,7 +8,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 
 // GET /api/attorney/dashboard
 // Returns dashboard data for the authenticated attorney
@@ -259,3 +259,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

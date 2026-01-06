@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { TranscriptList } from '@/components/attorney/transcript-list';
 import { redirect } from 'next/navigation';
 
@@ -14,31 +14,86 @@ export default async function AttorneyTranscriptsPage() {
     redirect('/login');
   }
 
-  // Fetch transcripts shared with current attorney
-  // We use TranscriptShare model from Phase 3
-  const sharedTranscripts = await db.transcriptShare.findMany({
-    where: {
-      AND: [
-        { recipientEmail: session.user.email },
-        {
-          OR: [
-            { expiresAt: { gt: new Date() } },
-            { expiresAt: null }
-          ],
-        },
-      ],
-      status: 'ACTIVE',
+  // Fetch transcripts shared with current attorney using Supabase
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+  
+  const { data: sharedTranscriptsData, error } = await supabase
+    .from('transcript_shares')
+    .select(`
+      id,
+      recipient_email,
+      expires_at,
+      status,
+      access_level,
+      created_at,
+      transcript_id,
+      shared_by_id,
+      transcript:transcriptions!inner(
+        id,
+        job_id,
+        jobs!inner(
+          id,
+          case_name,
+          case_number,
+          deposition_date
+        )
+      )
+    `)
+    .eq('recipient_email', session.user.email)
+    .eq('status', 'ACTIVE')
+    .or(`expires_at.gt.${now},expires_at.is.null`)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching shared transcripts:', error);
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <p className="text-red-500">Error loading transcripts: {error.message}</p>
+      </div>
+    );
+  }
+
+  // Get shared_by user info
+  const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
+  const adminClient = getSupabaseAdminClient();
+  const sharedByIds = [...new Set((sharedTranscriptsData || []).map(s => s.shared_by_id).filter(Boolean))];
+  const sharedByUsers: Record<string, any> = {};
+  
+  for (const userId of sharedByIds) {
+    const { data: userData } = await adminClient.auth.admin.getUserById(userId);
+    if (userData?.user) {
+      sharedByUsers[userId] = {
+        firstName: userData.user.user_metadata?.firstName || '',
+        lastName: userData.user.user_metadata?.lastName || '',
+        email: userData.user.email || '',
+      };
+    }
+  }
+
+  const sharedTranscripts = (sharedTranscriptsData || []).map((share: any) => ({
+    id: share.id,
+    recipientEmail: share.recipient_email,
+    expiresAt: share.expires_at,
+    status: share.status,
+    accessLevel: share.access_level,
+    createdAt: share.created_at,
+    transcript: share.transcript ? {
+      id: share.transcript.id,
+      job: share.transcript.jobs ? {
+        id: share.transcript.jobs.id,
+        caseName: share.transcript.jobs.case_name,
+        caseNumber: share.transcript.jobs.case_number,
+        depositionDate: share.transcript.jobs.deposition_date,
+        witnessName: null, // Not available in current schema
+      } : null,
+    } : null,
+    sharedBy: sharedByUsers[share.shared_by_id] || {
+      firstName: '',
+      lastName: '',
+      email: '',
     },
-    include: {
-      transcript: {
-        include: {
-          job: true
-        }
-      },
-      sharedBy: true
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  }));
 
   // Map to common format for the list component
   const formattedTranscripts = sharedTranscripts.map((share: any) => ({

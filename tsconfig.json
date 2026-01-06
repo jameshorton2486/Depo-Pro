@@ -41,7 +41,6 @@
     "src",
     "scripts",
     "tests",
-    "prisma",
     "archive",
     "work_files",
     "lib/_future",

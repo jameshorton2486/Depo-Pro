@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════
 // RX QUEUE LIST
 // app/api/rx-queue/route.ts
 //
@@ -12,7 +12,7 @@ import { AudioEnhancementService } from '@/lib/services/audio-enhancement-servic
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -23,12 +23,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | undefined;
+    const _status = searchParams.get('status') as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | undefined;
     const firmId = searchParams.get('firmId') || undefined;
 
-    const queue = await AudioEnhancementService.getRxQueue({
-      status,
-    });
+    const queue = await AudioEnhancementService.getRxQueue();
 
     // Filter by firm if specified (for non-admin users)
     const filteredQueue = firmId

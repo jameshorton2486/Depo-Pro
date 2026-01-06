@@ -13,11 +13,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Shield, Globe } from 'lucide-react';
-import { UserRole } from '@prisma/client';
+import type { Role } from '@/lib/permissions/route-access';
 
 interface Route {
   path: string;
-  roles: UserRole[];
+  roles: Role[];
   type: 'page' | 'api';
 }
 
@@ -32,16 +32,12 @@ export function PermissionAuditTable({ routes }: PermissionAuditTableProps) {
 
   // Role summary cards
   const roleSummary = useMemo(() => {
-    const summary: Partial<Record<UserRole, { pages: number; apis: number }>> = {
-      ADMIN: { pages: 0, apis: 0 },
-      REPORTER: { pages: 0, apis: 0 },
-      SCOPIST: { pages: 0, apis: 0 },
-      ATTORNEY: { pages: 0, apis: 0 },
-      AGENCY: { pages: 0, apis: 0 },
-      PARALEGAL: { pages: 0, apis: 0 },
-      AGENCY_ADMIN: { pages: 0, apis: 0 },
-      FIRM_ADMIN: { pages: 0, apis: 0 },
-    };
+    // Initialize summary with all valid roles from Prisma UserRole enum
+    const summary: Partial<Record<Role, { pages: number; apis: number }>> = {};
+    const validRoles: Role[] = ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'PARALEGAL', 'AGENCY', 'AGENCY_ADMIN', 'FIRM_ADMIN'];
+    validRoles.forEach((role) => {
+      summary[role] = { pages: 0, apis: 0 };
+    });
 
     routes.forEach((route) => {
       route.roles.forEach((role) => {
@@ -68,7 +64,7 @@ export function PermissionAuditTable({ routes }: PermissionAuditTableProps) {
       }
 
       // Role filter
-      if (roleFilter !== 'all' && !route.roles.includes(roleFilter as UserRole)) {
+      if (roleFilter !== 'all' && !route.roles.includes(roleFilter as Role)) {
         return false;
       }
 
@@ -85,7 +81,7 @@ export function PermissionAuditTable({ routes }: PermissionAuditTableProps) {
     <div className="space-y-6">
       {/* Role Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        {(Object.entries(roleSummary) as Array<[UserRole, { pages: number; apis: number }]>).map(
+        {(Object.entries(roleSummary) as Array<[Role, { pages: number; apis: number }]>).map(
           ([role, counts]) => (
             <Card
               key={role}

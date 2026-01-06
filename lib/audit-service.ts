@@ -1,42 +1,24 @@
-// =============================================================================
-// AUDIT LOGGING SERVICE (COMPLIANCE-GRADE)
-// =============================================================================
-// Append-only, immutable audit trail for legal defensibility
-// 
-// RULES:
-// - Audit logs are NEVER deleted or modified
-// - All sensitive actions MUST be logged
-// - No PII in metadata (use IDs only)
-// - Queryable by firm for compliance
-// =============================================================================
+﻿/**
+ * Audit Service - Supabase Implementation
+ * Provides comprehensive audit logging for security and compliance
+ */
 
-import { db as prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
+import { createSupabaseServiceClient } from '@/lib/supabase/server';
 
-// =============================================================================
-// AUDIT ACTIONS (Exhaustive List)
-// =============================================================================
-
+// Audit action types as const object for runtime use
 export const AuditAction = {
   // Authentication
-  LOGIN_SUCCESS: 'LOGIN_SUCCESS',
-  LOGIN_FAILED: 'LOGIN_FAILED',
+  LOGIN: 'LOGIN',
   LOGOUT: 'LOGOUT',
+  LOGIN_FAILED: 'LOGIN_FAILED',
   PASSWORD_CHANGED: 'PASSWORD_CHANGED',
-  PASSWORD_RESET_REQUESTED: 'PASSWORD_RESET_REQUESTED',
-  PASSWORD_RESET_COMPLETED: 'PASSWORD_RESET_COMPLETED',
-  SESSION_EXPIRED: 'SESSION_EXPIRED',
   
-  // User Management
-  USER_CREATED: 'USER_CREATED',
-  USER_UPDATED: 'USER_UPDATED',
-  USER_DELETED: 'USER_DELETED',
-  USER_DEACTIVATED: 'USER_DEACTIVATED',
-  USER_REACTIVATED: 'USER_REACTIVATED',
-  ROLE_CHANGED: 'ROLE_CHANGED',
-  USER_INVITED: 'USER_INVITED',
+  // Access control
+  ACCESS_DENIED: 'ACCESS_DENIED',
+  ADMIN_ACCESS: 'ADMIN_ACCESS',
+  SUSPICIOUS_ACTIVITY: 'SUSPICIOUS_ACTIVITY',
   
-  // Job Actions
+  // Job operations
   JOB_CREATED: 'JOB_CREATED',
   JOB_UPDATED: 'JOB_UPDATED',
   JOB_DELETED: 'JOB_DELETED',
@@ -44,353 +26,107 @@ export const AuditAction = {
   JOB_ASSIGNED: 'JOB_ASSIGNED',
   JOB_UNASSIGNED: 'JOB_UNASSIGNED',
   
-  // Transcript Actions
+  // Transcript operations
   TRANSCRIPT_CREATED: 'TRANSCRIPT_CREATED',
+  TRANSCRIPT_UPDATED: 'TRANSCRIPT_UPDATED',
   TRANSCRIPT_VIEWED: 'TRANSCRIPT_VIEWED',
-  TRANSCRIPT_EDITED: 'TRANSCRIPT_EDITED',
   TRANSCRIPT_EXPORTED: 'TRANSCRIPT_EXPORTED',
   TRANSCRIPT_DELETED: 'TRANSCRIPT_DELETED',
   
-  // AI & Transcription
-  TRANSCRIPTION_STARTED: 'TRANSCRIPTION_STARTED',
-  TRANSCRIPTION_COMPLETED: 'TRANSCRIPTION_COMPLETED',
-  TRANSCRIPTION_FAILED: 'TRANSCRIPTION_FAILED',
-  AI_CORRECTION_MADE: 'AI_CORRECTION_MADE',
-  AI_CORRECTION_APPROVED: 'AI_CORRECTION_APPROVED',
-  AI_CORRECTION_REJECTED: 'AI_CORRECTION_REJECTED',
-  
-  // Sharing & Access
+  // Share operations
   SHARE_CREATED: 'SHARE_CREATED',
   SHARE_REVOKED: 'SHARE_REVOKED',
-  SHARE_ACCESSED: 'SHARE_ACCESSED',
-  SHARE_EXPIRED: 'SHARE_EXPIRED',
-  ACCESS_DENIED: 'ACCESS_DENIED',
   
-  // Annotations
-  HIGHLIGHT_CREATED: 'HIGHLIGHT_CREATED',
-  HIGHLIGHT_DELETED: 'HIGHLIGHT_DELETED',
-  ANNOTATION_CREATED: 'ANNOTATION_CREATED',
-  ANNOTATION_UPDATED: 'ANNOTATION_UPDATED',
-  ANNOTATION_DELETED: 'ANNOTATION_DELETED',
-  BOOKMARK_CREATED: 'BOOKMARK_CREATED',
-  BOOKMARK_DELETED: 'BOOKMARK_DELETED',
+  // Calendar operations
+  EVENT_CREATED: 'EVENT_CREATED',
+  EVENT_UPDATED: 'EVENT_UPDATED',
+  EVENT_DELETED: 'EVENT_DELETED',
+  EVENT_RESCHEDULED: 'EVENT_RESCHEDULED',
+  REPORTER_ASSIGNED: 'REPORTER_ASSIGNED',
+  REPORTER_UNASSIGNED: 'REPORTER_UNASSIGNED',
+  NOTE_ADDED: 'NOTE_ADDED',
   
-  // Admin Actions
-  ADMIN_ACCESS: 'ADMIN_ACCESS',
-  FIRM_SETTINGS_CHANGED: 'FIRM_SETTINGS_CHANGED',
-  SYSTEM_CONFIG_CHANGED: 'SYSTEM_CONFIG_CHANGED',
+  // Data operations
   DATA_EXPORT_REQUESTED: 'DATA_EXPORT_REQUESTED',
-  DATA_DELETION_REQUESTED: 'DATA_DELETION_REQUESTED',
+  DATA_IMPORTED: 'DATA_IMPORTED',
   
-  // Security Events
-  SUSPICIOUS_ACTIVITY: 'SUSPICIOUS_ACTIVITY',
-  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
-  PERMISSION_ESCALATION_ATTEMPT: 'PERMISSION_ESCALATION_ATTEMPT',
+  // User operations
+  USER_CREATED: 'USER_CREATED',
+  USER_UPDATED: 'USER_UPDATED',
+  USER_DELETED: 'USER_DELETED',
+  ROLE_CHANGED: 'ROLE_CHANGED',
 } as const;
 
-export type AuditActionType = typeof AuditAction[keyof typeof AuditAction];
+export type AuditAction = typeof AuditAction[keyof typeof AuditAction];
 
-// =============================================================================
-// TARGET TYPES
-// =============================================================================
-
+// Audit target types
 export const AuditTargetType = {
-  USER: 'User',
-  JOB: 'Job',
-  TRANSCRIPT: 'Transcript',
-  TRANSCRIPT_SHARE: 'TranscriptShare',
-  FIRM: 'Firm',
-  EXHIBIT: 'Exhibit',
-  CALENDAR_EVENT: 'CalendarEvent',
-  HIGHLIGHT: 'Highlight',
-  ANNOTATION: 'Annotation',
-  BOOKMARK: 'Bookmark',
-  SYSTEM: 'System',
+  USER: 'USER',
+  JOB: 'JOB',
+  TRANSCRIPT: 'TRANSCRIPT',
+  TRANSCRIPT_SHARE: 'TRANSCRIPT_SHARE',
+  FILE: 'FILE',
+  FIRM: 'FIRM',
+  CALENDAR_EVENT: 'CALENDAR_EVENT',
+  SYSTEM: 'SYSTEM',
+  ASSIGNMENT: 'ASSIGNMENT',
 } as const;
 
-export type AuditTargetTypeValue = typeof AuditTargetType[keyof typeof AuditTargetType];
+export type AuditTargetType = typeof AuditTargetType[keyof typeof AuditTargetType];
 
-// =============================================================================
-// AUDIT LOG INPUT
-// =============================================================================
-
-export interface AuditLogInput {
-  actorUserId?: string | null;  // null for system actions
-  firmId?: string | null;       // null for cross-firm admin actions
-  action: AuditActionType;
-  targetType: AuditTargetTypeValue;
-  targetId: string;
-  metadata?: AuditMetadata;
-  ipAddress?: string;
-  userAgent?: string;
-}
-
-// =============================================================================
-// METADATA TYPES (NO PII!)
-// =============================================================================
-
-export interface AuditMetadata {
-  // Generic change tracking
-  previousValue?: string;
-  newValue?: string;
-  changedFields?: string[];
-  
-  // Status changes
-  fromStatus?: string;
-  toStatus?: string;
-  
-  // Role changes
-  fromRole?: string;
-  toRole?: string;
-  
-  // Share details (IDs only, no emails)
-  shareId?: string;
-  accessLevel?: string;
-  recipientType?: string;
-  
-  // Export details
-  exportFormat?: string;
-  
-  // Error context
-  errorCode?: string;
-  errorMessage?: string;
-  
-  // Request context
-  requestId?: string;
-  endpoint?: string;
-  method?: string;
-  
-  // Additional context (must not contain PII)
-  [key: string]: unknown;
-}
-
-// =============================================================================
-// CORE AUDIT FUNCTION
-// =============================================================================
-
-/**
- * Create an immutable audit log entry
- * This function is fire-and-forget to avoid blocking main operations
- */
-export async function createAuditLog(input: AuditLogInput): Promise<void> {
-  // Validate: No PII in metadata
-  if (input.metadata) {
-    validateNoPII(input.metadata);
-  }
-  
-  try {
-    await prisma.auditLog.create({
-      data: {
-        actorUserId: input.actorUserId,
-        firmId: input.firmId,
-        action: input.action,
-        targetType: input.targetType,
-        targetId: input.targetId,
-        metadata: sanitizeMetadata(input.metadata) as any,
-        ipAddress: input.ipAddress,
-        userAgent: truncateUserAgent(input.userAgent),
-      },
-    });
-    
-    logger.debug('Audit log created', {
-      action: input.action,
-      targetType: input.targetType,
-      targetId: input.targetId,
-    });
-  } catch (error) {
-    // CRITICAL: Never fail silently, but don't throw
-    logger.error('Failed to create audit log', error as Error, {
-      action: input.action,
-      targetType: input.targetType,
-      targetId: input.targetId,
-    });
-  }
-}
-
-// =============================================================================
-// REQUEST-SCOPED AUDIT LOGGER
-// =============================================================================
-
-export interface AuditContext {
+// Main params interface - accepts both userId and actorUserId for compatibility
+export interface CreateAuditLogParams {
+  // Accept either userId or actorUserId (actorUserId is preferred)
+  userId?: string;
   actorUserId?: string;
-  firmId?: string;
+  firmId?: string | null;
+  action: AuditAction | string;
+  targetType: AuditTargetType | string;
+  targetId: string;
+  metadata?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
-  requestId?: string;
 }
 
 /**
- * Create an audit logger bound to a request context
+ * Create an audit log entry
  */
-export function createAuditLogger(context: AuditContext) {
-  return {
-    log: (
-      action: AuditActionType,
-      targetType: AuditTargetTypeValue,
-      targetId: string,
-      metadata?: AuditMetadata
-    ) => {
-      createAuditLog({
-        actorUserId: context.actorUserId,
-        firmId: context.firmId,
-        action,
-        targetType,
-        targetId,
-        metadata: {
-          ...metadata,
-          requestId: context.requestId,
-        },
-        ipAddress: context.ipAddress,
-        userAgent: context.userAgent,
-      });
-    },
+export async function createAuditLog(params: CreateAuditLogParams): Promise<void> {
+  try {
+    const supabase = await createSupabaseServiceClient();
     
-    // Convenience methods
-    logView: (targetType: AuditTargetTypeValue, targetId: string) => {
-      createAuditLog({
-        ...context,
-        action: AuditAction.TRANSCRIPT_VIEWED,
-        targetType,
-        targetId,
-      });
-    },
+    // Accept either userId or actorUserId
+    const userId = params.actorUserId || params.userId;
     
-    logCreate: (targetType: AuditTargetTypeValue, targetId: string, metadata?: AuditMetadata) => {
-      const actionMap: Partial<Record<AuditTargetTypeValue, AuditActionType>> = {
-        Job: AuditAction.JOB_CREATED,
-        Transcript: AuditAction.TRANSCRIPT_CREATED,
-        TranscriptShare: AuditAction.SHARE_CREATED,
-        Highlight: AuditAction.HIGHLIGHT_CREATED,
-        Annotation: AuditAction.ANNOTATION_CREATED,
-        Bookmark: AuditAction.BOOKMARK_CREATED,
-        User: AuditAction.USER_CREATED,
-      };
-      
-      createAuditLog({
-        ...context,
-        action: actionMap[targetType] || AuditAction.JOB_CREATED,
-        targetType,
-        targetId,
-        metadata,
-      });
-    },
-    
-    logDelete: (targetType: AuditTargetTypeValue, targetId: string) => {
-      const actionMap: Partial<Record<AuditTargetTypeValue, AuditActionType>> = {
-        Job: AuditAction.JOB_DELETED,
-        Transcript: AuditAction.TRANSCRIPT_DELETED,
-        TranscriptShare: AuditAction.SHARE_REVOKED,
-        Highlight: AuditAction.HIGHLIGHT_DELETED,
-        Annotation: AuditAction.ANNOTATION_DELETED,
-        Bookmark: AuditAction.BOOKMARK_DELETED,
-        User: AuditAction.USER_DELETED,
-      };
-      
-      createAuditLog({
-        ...context,
-        action: actionMap[targetType] || AuditAction.JOB_DELETED,
-        targetType,
-        targetId,
-      });
-    },
-    
-    logSecurityEvent: (action: AuditActionType, details: AuditMetadata) => {
-      createAuditLog({
-        ...context,
-        action,
-        targetType: AuditTargetType.SYSTEM,
-        targetId: 'security',
-        metadata: details,
-      });
-    },
-  };
-}
+    const { error } = await supabase.from('audit_logs').insert({
+      actor_user_id: userId || null,
+      firm_id: params.firmId || null,
+      action: params.action,
+      target_type: params.targetType,
+      target_id: params.targetId,
+      metadata: params.metadata || {},
+      ip_address: params.ipAddress || null,
+      user_agent: params.userAgent || null,
+      created_at: new Date().toISOString(),
+    });
 
-// =============================================================================
-// EXTRACT CONTEXT FROM REQUEST
-// =============================================================================
-
-export function extractAuditContext(
-  request: Request,
-  userId?: string,
-  firmId?: string
-): AuditContext {
-  return {
-    actorUserId: userId,
-    firmId,
-    ipAddress: getClientIP(request),
-    userAgent: request.headers.get('user-agent') || undefined,
-    requestId: request.headers.get('x-request-id') || crypto.randomUUID(),
-  };
-}
-
-function getClientIP(request: Request): string | undefined {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    undefined
-  );
-}
-
-// =============================================================================
-// VALIDATION & SANITIZATION
-// =============================================================================
-
-const PII_PATTERNS = [
-  /\b[\w._%+-]+@[\w.-]+\.[a-zA-Z]{2,}\b/gi,  // Email
-  /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g,          // Phone
-  /\b\d{3}[-]?\d{2}[-]?\d{4}\b/g,            // SSN
-  /\b\d{16}\b/g,                              // Credit card (basic)
-];
-
-function validateNoPII(metadata: AuditMetadata): void {
-  const jsonStr = JSON.stringify(metadata);
-  
-  for (const pattern of PII_PATTERNS) {
-    if (pattern.test(jsonStr)) {
-      logger.warn('Potential PII detected in audit metadata', {
-        pattern: pattern.source,
-      });
-      // In strict mode, you might throw here
+    if (error) {
+      console.error('[Audit] Failed to create audit log:', error);
     }
+  } catch (err) {
+    // Audit logging should never throw - just log the error
+    console.error('[Audit] Error creating audit log:', err);
   }
 }
 
-function sanitizeMetadata(metadata?: AuditMetadata): Record<string, unknown> {
-  if (!metadata) return {};
-  
-  // Remove any null/undefined values
-  const sanitized: Record<string, unknown> = {};
-  
-  for (const [key, value] of Object.entries(metadata)) {
-    if (value !== null && value !== undefined) {
-      // Truncate long strings
-      if (typeof value === 'string' && value.length > 1000) {
-        sanitized[key] = value.substring(0, 1000) + '...[truncated]';
-      } else {
-        sanitized[key] = value;
-      }
-    }
-  }
-  
-  return sanitized;
-}
-
-function truncateUserAgent(userAgent?: string): string | undefined {
-  if (!userAgent) return undefined;
-  return userAgent.substring(0, 500);
-}
-
-// =============================================================================
-// QUERY HELPERS
-// =============================================================================
-
+// Query interface for audit logs
 export interface AuditLogQuery {
   firmId?: string;
+  userId?: string;
   actorUserId?: string;
-  targetType?: AuditTargetTypeValue;
+  action?: AuditAction | string;
+  targetType?: AuditTargetType | string;
   targetId?: string;
-  action?: AuditActionType;
   startDate?: Date;
   endDate?: Date;
   limit?: number;
@@ -398,96 +134,68 @@ export interface AuditLogQuery {
 }
 
 /**
- * Query audit logs (firm-scoped by default)
+ * Query audit logs with filters
  */
-export async function queryAuditLogs(query: AuditLogQuery) {
-  const {
-    firmId,
-    actorUserId,
-    targetType,
-    targetId,
-    action,
-    startDate,
-    endDate,
-    limit = 100,
-    offset = 0,
-  } = query;
-  
-  const where: Record<string, unknown> = {};
-  
-  if (firmId) where.firmId = firmId;
-  if (actorUserId) where.actorUserId = actorUserId;
-  if (targetType) where.targetType = targetType;
-  if (targetId) where.targetId = targetId;
-  if (action) where.action = action;
-  
-  if (startDate || endDate) {
-    where.createdAt = {};
-    if (startDate) (where.createdAt as Record<string, Date>).gte = startDate;
-    if (endDate) (where.createdAt as Record<string, Date>).lte = endDate;
+export async function queryAuditLogs(query: AuditLogQuery = {}): Promise<{
+  logs: Array<Record<string, unknown>>;
+  total: number;
+  limit: number;
+  offset: number;
+}> {
+  try {
+    const supabase = await createSupabaseServiceClient();
+    
+    let dbQuery = supabase
+      .from('audit_logs')
+      .select('*', { count: 'exact' });
+
+    // Apply filters
+    if (query.firmId) dbQuery = dbQuery.eq('firm_id', query.firmId);
+    if (query.userId || query.actorUserId) {
+      dbQuery = dbQuery.eq('actor_user_id', query.actorUserId || query.userId);
+    }
+    if (query.action) dbQuery = dbQuery.eq('action', query.action);
+    if (query.targetType) dbQuery = dbQuery.eq('target_type', query.targetType);
+    if (query.targetId) dbQuery = dbQuery.eq('target_id', query.targetId);
+    if (query.startDate) dbQuery = dbQuery.gte('created_at', query.startDate.toISOString());
+    if (query.endDate) dbQuery = dbQuery.lte('created_at', query.endDate.toISOString());
+
+    // Pagination
+    const limit = query.limit || 50;
+    const offset = query.offset || 0;
+    dbQuery = dbQuery.range(offset, offset + limit - 1);
+    dbQuery = dbQuery.order('created_at', { ascending: false });
+
+    const { data, error, count } = await dbQuery;
+
+    if (error) {
+      console.error('[Audit] Query failed:', error);
+      return { logs: [], total: 0, limit, offset };
+    }
+
+    return {
+      logs: data || [],
+      total: count || 0,
+      limit,
+      offset,
+    };
+  } catch (err) {
+    console.error('[Audit] Error querying audit logs:', err);
+    return { logs: [], total: 0, limit: query.limit || 50, offset: query.offset || 0 };
   }
-  
-  const [logs, total] = await Promise.all([
-    prisma.auditLog.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    }),
-    prisma.auditLog.count({ where }),
-  ]);
-  
-  return { logs, total, limit, offset };
 }
 
 /**
  * Get audit history for a specific entity
  */
 export async function getEntityAuditHistory(
-  targetType: AuditTargetTypeValue,
+  targetType: AuditTargetType | string,
   targetId: string,
   limit = 50
-) {
-  return prisma.auditLog.findMany({
-    where: { targetType, targetId },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
-  });
+): Promise<Array<Record<string, unknown>>> {
+  const result = await queryAuditLogs({ targetType, targetId, limit });
+  return result.logs;
 }
 
-/**
- * Get user activity audit
- */
-export async function getUserActivityAudit(
-  userId: string,
-  firmId: string,
-  limit = 100
-) {
-  return prisma.auditLog.findMany({
-    where: {
-      actorUserId: userId,
-      firmId,
-    },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
-}
+// Re-export for backward compatibility
+export { createAuditLog as logAuditEvent };

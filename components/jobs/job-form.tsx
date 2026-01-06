@@ -1,4 +1,4 @@
-// ═══════════════════════════════════════════════════════════════
+﻿// ═══════════════════════════════════════════════════════════════
 // JOB FORM COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { JobStatus } from '@prisma/client';
+import { JobStatus } from '@/types/database';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -311,3 +311,4 @@ export function JobForm({ initialData, mode }: JobFormProps) {
     </form>
   );
 }
+

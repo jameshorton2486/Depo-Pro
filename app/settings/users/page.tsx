@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // USER MANAGEMENT PAGE
 // app/settings/users/page.tsx
@@ -7,7 +8,6 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 export default async function UsersSettingsPage() {
@@ -57,7 +57,7 @@ export default async function UsersSettingsPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {users.map((u) => (
+            {users.map((u: any) => (
               <tr key={u.id} className="hover:bg-gray-50">
                 <td className="p-4">
                   {u.firstName} {u.lastName}
@@ -93,3 +93,5 @@ export default async function UsersSettingsPage() {
     </div>
   );
 }
+
+

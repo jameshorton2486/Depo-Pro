@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY TRANSCRIPTS API
 // ═══════════════════════════════════════════════════════════════
@@ -5,7 +6,6 @@
 
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
 
 /**
@@ -101,4 +101,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
 

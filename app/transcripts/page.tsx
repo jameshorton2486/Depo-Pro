@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // =============================================================================
 // TRANSCRIPTS LIST PAGE
 // app/transcripts/page.tsx
@@ -7,7 +8,6 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import Link from 'next/link';
 
 interface PageProps {
@@ -131,7 +131,7 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {jobs.map((job) => (
+                {jobs.map((job: any) => (
                   <tr key={job.id} className="hover:bg-gray-50">
                     <td className="p-4">
                       <Link
@@ -199,3 +199,5 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
     </div>
   );
 }
+
+

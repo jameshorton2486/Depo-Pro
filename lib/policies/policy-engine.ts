@@ -5,7 +5,7 @@
 // Phase 4A-1: Policy-driven permissions that augment route-access.ts
 // =============================================================================
 
-import { UserRole } from '@prisma/client';
+import type { UserRole } from '@/types/database';
 import { hasRouteAccess } from '@/lib/permissions/route-access';
 
 export type PolicyAction = 'allow' | 'deny' | 'require_reason';

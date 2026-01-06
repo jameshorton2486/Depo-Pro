@@ -1,10 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { JobStatus } from '@prisma/client';
+import type { JobStatus } from '@/types/database';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptionQueue } from '@/lib/queue/transcription-queue';
-import { logger, withRequestLogging } from '@/lib/observability';
+import { logger } from '@/lib/logger';
+
+// Simple request logging wrapper (replaces withRequestLogging)
+const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
+  return ((...args: any[]) => {
+    logger.info('Request started', { path: args[0]?.url });
+    try {
+      const result = fn(...args);
+      if (result instanceof Promise) {
+        return result.then(
+          (res) => {
+            logger.info('Request completed', { path: args[0]?.url });
+            return res;
+          },
+          (err) => {
+            logger.error('Request failed', err);
+            throw err;
+          }
+        );
+      }
+      logger.info('Request completed', { path: args[0]?.url });
+      return result;
+    } catch (err) {
+      logger.error('Request failed', err);
+      throw err;
+    }
+  }) as T;
+};
 import { checkRateLimit } from '@/lib/security';
 
 // Build-time guard
@@ -48,15 +75,18 @@ async function postTranscribeStartHandler(request: NextRequest) {
     });
 
     // Verify job exists and user has access
-    const job = await prisma.job.findUnique({
-      where: { id: validated.jobId },
-    });
+    const supabase = await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('Job')
+      .select('id, created_by_id')
+      .eq('id', validated.jobId)
+      .single();
 
-    if (!job) {
+    if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (job.createdById !== session.user.id && session.user.role !== 'ADMIN') {
+    if (job.created_by_id !== session.user.id && session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -71,12 +101,13 @@ async function postTranscribeStartHandler(request: NextRequest) {
     }
 
     // Update job status
-    await prisma.job.update({
-      where: { id: validated.jobId },
-      data: {
-        status: JobStatus.FILES_UPLOADED,
-      },
-    });
+    await supabase
+      .from('Job')
+      .update({
+        status: 'FILES_UPLOADED' as JobStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', validated.jobId);
 
     // Add to queue
     await queue.add('transcribe', {
@@ -115,3 +146,6 @@ async function postTranscribeStartHandler(request: NextRequest) {
 }
 
 export const POST = withRequestLogging(postTranscribeStartHandler);
+
+
+

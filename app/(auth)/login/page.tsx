@@ -36,17 +36,32 @@ export default function LoginPage() {
       setError(null);
 
       const supabase = getSupabaseBrowserClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
 
       if (signInError) {
-        setError('Invalid email or password. Please try again.');
+        // Provide more specific error messages
+        if (signInError.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please try again.');
+        } else if (signInError.message.includes('Email not confirmed')) {
+          setError('Please check your email and confirm your account before logging in.');
+        } else {
+          setError(signInError.message || 'Login failed. Please try again.');
+        }
+        console.error('Login error:', signInError);
+        return;
+      }
+
+      // Verify session was created
+      if (!signInData.session) {
+        setError('Login succeeded but no session was created. Please try again.');
         return;
       }
 
       // Redirect to dashboard on success
+      // The @supabase/ssr client automatically handles cookie setting
       router.push('/dashboard');
       router.refresh();
     } catch (err) {

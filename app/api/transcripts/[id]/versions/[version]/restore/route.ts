@@ -7,7 +7,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { restoreVersion } from '@/lib/_future/transcripts/version-service';
+// Stub for restoreVersion (replaces _future/transcripts/version-service)
+async function restoreVersion(
+  _transcriptId: string,
+  _versionId: string,
+  _userId: string
+): Promise<{ success: boolean; error?: string }> {
+  // TODO: Implement version restoration with Supabase
+  // For now, return error (will be implemented later)
+  return { success: false, error: 'Version restoration not yet implemented' };
+}
 
 interface RouteContext {
   params: Promise<{ id: string; version: string }>;

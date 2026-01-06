@@ -9,7 +9,7 @@ When executing approved engineering plans or making changes to this codebase, fo
 - **Refactor unrelated code** - Only modify files explicitly listed in the task
 - **Rename enums, models, or database fields** - These are stable and should not change
 - **Add new features** - Stick to the specified scope
-- **Change Prisma schema** - Schema changes require separate approval
+- **Introduce Prisma or ORM dependencies** - ❌ Prisma is deprecated. Do not introduce Prisma or ORM dependencies. Use Supabase directly.
 - **Introduce new dependencies** - Use existing dependencies only
 - **Modify logic outside explicitly listed files** - Stay within scope
 - **Call `dotenv.config()`** - Next.js handles env loading automatically

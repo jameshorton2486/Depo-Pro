@@ -1,3 +1,4 @@
+﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // CASE INTAKE API ROUTE (V2 - Comprehensive)
 // app/api/cases/intake/route.ts
@@ -10,7 +11,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { extractTextFromPDFBuffer, detectDocumentType, cleanExtractedText } from '@/lib/extraction/pdf-extractor';
 import { extractFromDocuments, getDeepgramKeywords, ComprehensiveExtractedData } from '@/lib/extraction/document-extractor';
-import { db } from '@/lib/db';
 
 export const maxDuration = 120; // Allow up to 2 minutes for complex documents
 
@@ -381,3 +381,4 @@ function mapTermCategory(category: string): 'PERSON_NAME' | 'COMPANY_NAME' | 'PL
   };
   return categoryMap[category] || 'CASE_SPECIFIC';
 }
+

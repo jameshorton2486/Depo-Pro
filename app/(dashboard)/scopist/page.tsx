@@ -1,7 +1,7 @@
 // app/(dashboard)/scopist/page.tsx
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
   Briefcase,
@@ -29,59 +29,108 @@ export default async function ScopistDashboard() {
     redirect('/dashboard');
   }
 
-  // Fetch stats and assigned jobs
-  const [activeJobs, pendingReview, completedThisMonth, totalCompleted, assignedJobs] = await Promise.all([
-    // Active jobs (assigned to me, not completed)
-    prisma.jobAssignment.count({
-      where: {
-        scopistId: user.id,
-        status: { not: 'SUBMITTED' },
-      },
-    }),
-    // Pending review (AI complete, assigned to me)
-    prisma.job.count({
-      where: {
-        assignments: { some: { scopistId: user.id } },
-        status: { in: ['READY_FOR_EDIT', 'ASSIGNED'] },
-      },
-    }),
-    // Completed this month
-    prisma.jobAssignment.count({
-      where: {
-        scopistId: user.id,
-        status: 'SUBMITTED',
-        submittedAt: { gte: startOfMonth(new Date()) },
-      },
-    }),
-    // Total completed
-    prisma.jobAssignment.count({
-      where: {
-        scopistId: user.id,
-        status: 'SUBMITTED',
-      },
-    }),
-    // Assigned jobs with details
-    prisma.job.findMany({
-      where: {
-        assignments: { some: { scopistId: user.id } },
-        status: { in: ['READY_FOR_EDIT', 'ASSIGNED', 'IN_EDIT'] },
-      },
-      include: {
-        transcription: {
-          select: {
-            flaggedSegments: true,
-            flaggedWordCount: true,
-          },
-        },
-        assignments: {
-          where: { scopistId: user.id },
-          select: { status: true },
-        },
-      },
-      orderBy: { updatedAt: 'desc' },
-      take: 10,
-    }),
-  ]);
+  // Fetch stats and assigned jobs using Supabase
+  const supabase = await createSupabaseServerClient();
+  const startOfMonthDate = startOfMonth(new Date()).toISOString();
+  
+  // Get assignments for this scopist
+  const { data: assignments } = await supabase
+    .from('job_assignments')
+    .select('job_id, status, submitted_at')
+    .eq('scopist_id', user.id);
+  
+  const assignmentJobIds = assignments?.map(a => a.job_id) || [];
+  
+  // Active jobs (assigned to me, not completed)
+  const activeJobsCount = assignments?.filter(a => a.status !== 'SUBMITTED').length || 0;
+  
+  // Pending review (AI complete, assigned to me)
+  const { count: pendingReviewCount } = await supabase
+    .from('jobs')
+    .select('id', { count: 'exact', head: true })
+    .in('id', assignmentJobIds)
+    .in('status', ['READY_FOR_EDIT', 'ASSIGNED']);
+  
+  // Completed this month
+  const completedThisMonthCount = assignments?.filter(a => 
+    a.status === 'SUBMITTED' && 
+    a.submitted_at && 
+    new Date(a.submitted_at) >= new Date(startOfMonthDate)
+  ).length || 0;
+  
+  // Total completed
+  const totalCompletedCount = assignments?.filter(a => a.status === 'SUBMITTED').length || 0;
+  
+  // Assigned jobs with details
+  // Get jobs first, then fetch related data separately (Supabase doesn't support complex nested filters)
+  let assignedJobs: any[] = [];
+  
+  if (assignmentJobIds.length > 0) {
+    const { data: assignedJobsData } = await supabase
+      .from('jobs')
+      .select('id, title, case_name, status, updated_at')
+      .in('id', assignmentJobIds)
+      .in('status', ['READY_FOR_EDIT', 'ASSIGNED', 'IN_EDIT'])
+      .order('updated_at', { ascending: false })
+      .limit(10);
+
+    // Get transcriptions for these jobs
+    const assignedJobIdsForTranscripts = assignedJobsData?.map(j => j.id) || [];
+    const [transcriptionsResult, assignmentsResult] = await Promise.all([
+      assignedJobIdsForTranscripts.length > 0
+        ? supabase
+            .from('transcriptions')
+            .select('id, job_id, flagged_segments, flagged_word_count')
+            .in('job_id', assignedJobIdsForTranscripts)
+        : Promise.resolve({ data: [] }),
+      assignedJobIdsForTranscripts.length > 0
+        ? supabase
+            .from('job_assignments')
+            .select('job_id, status')
+            .in('job_id', assignedJobIdsForTranscripts)
+            .eq('scopist_id', user.id)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Combine data
+    const transcriptionsByJobId: Record<string, any> = {};
+    (transcriptionsResult.data || []).forEach(t => {
+      if (!transcriptionsByJobId[t.job_id]) {
+        transcriptionsByJobId[t.job_id] = [];
+      }
+      transcriptionsByJobId[t.job_id].push(t);
+    });
+
+    const assignmentsByJobId: Record<string, any[]> = {};
+    (assignmentsResult.data || []).forEach(a => {
+      if (!assignmentsByJobId[a.job_id]) {
+        assignmentsByJobId[a.job_id] = [];
+      }
+      assignmentsByJobId[a.job_id].push(a);
+    });
+
+    // Transform assigned jobs to match expected format
+    assignedJobs = (assignedJobsData || []).map((job: any) => {
+      const transcription = transcriptionsByJobId[job.id]?.[0];
+      return {
+        id: job.id,
+        title: job.title,
+        caseName: job.case_name,
+        status: job.status,
+        updatedAt: job.updated_at,
+        transcription: transcription ? {
+          flaggedSegments: transcription.flagged_segments,
+          flaggedWordCount: transcription.flagged_word_count,
+        } : null,
+        assignments: (assignmentsByJobId[job.id] || []).map((a: any) => ({ status: a.status })),
+      };
+    });
+  }
+  
+  const activeJobs = activeJobsCount;
+  const pendingReview = pendingReviewCount || 0;
+  const completedThisMonth = completedThisMonthCount;
+  const totalCompleted = totalCompletedCount;
 
   // Calculate progress for each job
   const jobsWithProgress = assignedJobs.map((job) => {

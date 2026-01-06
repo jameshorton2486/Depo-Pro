@@ -1,10 +1,10 @@
+﻿import { db } from '@/lib/db';
 // ============================================================
 // GET AVAILABLE REPORTERS API
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { canPerformAction } from '@/lib/rbac';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
 
-    const formattedReporters = reporters.map((r) => ({
+    const formattedReporters = reporters.map((r: any) => ({
       id: r.id,
       name: `${r.firstName} ${r.lastName}`,
       firstName: r.firstName,
@@ -77,4 +77,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
+
+
 

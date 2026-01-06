@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // USAGE API ROUTE
 // =============================================================================
 // Get usage statistics and limits for a firm
@@ -9,7 +9,7 @@ import { auth } from '@/lib/auth';
 import {
   getUsageSummary,
   getFirmUsage as _getFirmUsage,
-  PricingTier,
+  _PricingTier,
 } from '@/lib/cost-control-service';
 
 // =============================================================================
@@ -18,30 +18,30 @@ import {
 
 export async function GET(_request: NextRequest) {
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
     );
   }
-  
+
   const firmId = (session.user as any).firmId;
-  
+
   if (!firmId) {
     return NextResponse.json(
       { error: 'Firm context required' },
       { status: 403 }
     );
   }
-  
+
   try {
     // Get firm's pricing tier (default to FREE for now)
     // In production, this would come from a subscription/billing system
-    const tier: PricingTier = 'FREE';
-    
-    const summary = await getUsageSummary(firmId, tier);
-    
+    const tier = 'free' as const;
+
+    const summary = await getUsageSummary(firmId);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -54,7 +54,7 @@ export async function GET(_request: NextRequest) {
         warnings: summary.warnings,
       },
     });
-    
+
   } catch (error) {
     console.error('Usage query error:', error);
     return NextResponse.json(
