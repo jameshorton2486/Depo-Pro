@@ -9,7 +9,7 @@ import { auth } from '@/lib/auth';
 import {
   getUsageSummary,
   getFirmUsage as _getFirmUsage,
-  PricingTier,
+  PricingTier as _PricingTier,
 } from '@/lib/cost-control-service';
 
 // =============================================================================

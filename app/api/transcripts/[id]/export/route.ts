@@ -1,7 +1,8 @@
 // app/api/transcripts/[id]/export/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript } from '@/lib/export';
 import { ExportOptions, ExportMetadata } from '@/types/transcript';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
@@ -52,35 +53,17 @@ export async function GET(
     const lineNumbering = searchParams.get('lineNumbers') !== 'false';
 
     // Fetch transcript with job details
-    const transcription = await prisma.transcription.findUnique({
-      where: { id: transcriptId },
-      include: {
-        job: {
-          include: {
-            createdBy: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
-            firm: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcription = await getTranscriptForExport(supabase, transcriptId);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
     // Check permissions
-    const isOwner = transcription.job.createdById === user.id;
+    const isOwner = transcription.job.created_by_id === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = transcription.job.firmId === user.firmId;
+    const isSameFirm = transcription.job.firm_id === user.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -104,18 +87,15 @@ export async function GET(
       );
     }
 
-    if (!transcription.fullTranscript) {
+    if (!transcription.full_transcript) {
       return NextResponse.json({ error: 'No transcript text available' }, { status: 400 });
     }
 
     // Apply edits before export (Phase 7 requirement)
-    let exportText = transcription.fullTranscript;
+    let exportText = transcription.full_transcript || '';
 
     // Fetch all edits for this transcription
-    const edits = await prisma.transcriptionEdit.findMany({
-      where: { transcriptionId: transcriptId },
-      orderBy: { createdAt: 'asc' },
-    });
+    const edits = await getTranscriptEdits(supabase, transcriptId);
 
     // If there are edits, apply them to the words array
     if (edits.length > 0 && transcription.words) {
@@ -129,21 +109,21 @@ export async function GET(
         // Apply corrections from TranscriptionEdit records
         // Edit metadata contains wordIndex and wordId
         edits.forEach(edit => {
-          if (edit.editedText && edit.metadata) {
+          if (edit.edited_text && edit.metadata) {
             const metadata = edit.metadata as { wordIndex?: number; wordId?: string };
             const wordIndex = metadata.wordIndex;
 
             if (wordIndex !== undefined && wordIndex !== null && words[wordIndex]) {
-              words[wordIndex].word = edit.editedText;
-              words[wordIndex].correctedWord = edit.editedText;
+              words[wordIndex].word = edit.edited_text;
+              words[wordIndex].correctedWord = edit.edited_text;
               words[wordIndex].isEdited = true;
             }
           }
         });
 
         // Also check flaggedSegments for correctedWord values (may have been updated directly)
-        if (transcription.flaggedSegments) {
-          const flaggedSegments = JSON.parse(transcription.flaggedSegments as string) as Array<{
+        if (transcription.flagged_segments) {
+          const flaggedSegments = JSON.parse(transcription.flagged_segments as string) as Array<{
             wordIndex: number;
             correctedWord?: string;
             word: string;
@@ -167,10 +147,10 @@ export async function GET(
         console.error('Error applying edits to export:', error);
         // Fall back to original transcript if edit application fails
       }
-    } else if (transcription.flaggedSegments) {
+    } else if (transcription.flagged_segments) {
       // Even without TranscriptionEdit records, check flaggedSegments for corrections
       try {
-        const flaggedSegments = JSON.parse(transcription.flaggedSegments as string) as Array<{
+        const flaggedSegments = JSON.parse(transcription.flagged_segments as string) as Array<{
           wordIndex: number;
           correctedWord?: string;
           word: string;
@@ -196,11 +176,11 @@ export async function GET(
 
     // Build metadata
     const metadata: ExportMetadata = {
-      caseName: transcription.job.title,
-      caseNumber: transcription.job.caseNumber || undefined,
-      depositionDate: transcription.job.depositionDate || new Date(),
+      caseName: transcription.job.title || '',
+      caseNumber: transcription.job.case_number || undefined,
+      depositionDate: transcription.job.deposition_date ? new Date(transcription.job.deposition_date) : new Date(),
       deponentName: transcription.job.title || 'Unknown',
-      courtReporterName: transcription.job.createdBy.firstName && transcription.job.createdBy.lastName
+      courtReporterName: transcription.job.createdBy?.firstName && transcription.job.createdBy?.lastName
         ? `${transcription.job.createdBy.firstName} ${transcription.job.createdBy.lastName}`
         : undefined,
       firmName: transcription.job.firm?.name || undefined,
@@ -238,7 +218,7 @@ export async function GET(
     // Phase 3C-3: Log export to audit trail
     await createAuditLog({
       actorUserId: user.id,
-      firmId: transcription.job.firmId || undefined,
+      firmId: transcription.job.firm_id || undefined,
       action: AuditAction.TRANSCRIPT_EXPORTED,
       targetType: AuditTargetType.TRANSCRIPT,
       targetId: transcriptId,

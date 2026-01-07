@@ -9,7 +9,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { transitionStatus } from '@/lib/transcripts/status-service';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { UserRole } from '@/types/database';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -32,7 +31,7 @@ export async function PATCH(
 
     const { id: transcriptId } = await context.params;
     const body = await request.json();
-    const { status, reason } = body;
+    const { status, reason: _reason } = body;
 
     if (!status) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });

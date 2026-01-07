@@ -30,7 +30,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: eventId } = await context.params;
+    const { id: _eventId } = await context.params;
     const body = await request.json();
     const validation = undoSchema.safeParse(body);
 

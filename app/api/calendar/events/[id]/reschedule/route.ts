@@ -43,7 +43,7 @@ export async function POST(
       );
     }
 
-    const { startTime, endTime,  overrideReason } = validation.data;
+    const { startTime, endTime, overrideReason: _overrideReason } = validation.data;
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },

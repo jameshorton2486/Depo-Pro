@@ -38,7 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const { eventId: _eventId, reporterId, location, startTime, endTime, _isRemote } = validation.data;
+    const { eventId: _eventId, reporterId, location: _location, startTime, endTime, _isRemote } = validation.data;
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
