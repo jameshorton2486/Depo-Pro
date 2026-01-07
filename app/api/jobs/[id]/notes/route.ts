@@ -10,16 +10,15 @@ import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, isTranscriptFinalized } from '@/lib/auth/permissions';
 import { UserRole, JobStatus, DepositionNoteType } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
+import { listNotesForJob, createNote } from '@/lib/supabase/queries/notes';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getUserById } from '@/lib/supabase/queries/users';
 
 const LOCKED_STATUSES: JobStatus[] = [JobStatus.REVIEW_COMPLETE, JobStatus.COMPLETED];
 
 async function checkReporterJobAccess(reporterId: string, jobId: string): Promise<boolean> {
   const supabase = await createSupabaseServerClient();
-  const { data: job } = await supabase
-    .from('jobs')
-    .select('id, created_by_id')
-    .eq('id', jobId)
-    .single();
+  const job = await getJobById(supabase, jobId);
   
   if (!job) return false;
   
@@ -28,9 +27,9 @@ async function checkReporterJobAccess(reporterId: string, jobId: string): Promis
     .from('calendar_events')
     .select('assigned_reporter_id')
     .eq('job_id', jobId)
-    .single();
+    .maybeSingle();
   
-  return job.created_by_id === reporterId || calendarEvent?.assigned_reporter_id === reporterId;
+  return (job as any).created_by_id === reporterId || calendarEvent?.assigned_reporter_id === reporterId;
 }
 
 async function canViewNotes(user: { id: string; role: UserRole }, job: any, assignments: any[]): Promise<boolean> {
@@ -64,62 +63,51 @@ export async function GET(
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
-    // Fetch job to check access and status
+    // Fetch job to check access and status using query module
     const supabase = await createSupabaseServerClient();
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, status, created_by_id')
-      .eq('id', jobId)
-      .single();
+    const job = await getJobById(supabase, jobId);
 
-    if (jobError || !job) {
+    if (!job) {
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
-    // Get assignments
+    // Get assignments for access check (job_assignments query could be moved to jobs.ts later)
     const { data: assignments } = await supabase
       .from('job_assignments')
       .select('scopist_id, status')
       .eq('job_id', jobId);
 
-    const hasAccess = await canViewNotes(user, job, assignments || []);
+    const hasAccess = await canViewNotes(user, job as any, assignments || []);
     if (!hasAccess) {
       return error('FORBIDDEN', 'You do not have permission to view notes', 403);
     }
 
-    // Build query
-    let notesQuery = supabase
-      .from('deposition_notes')
-      .select('*')
-      .eq('job_id', jobId);
-    
+    // Determine type filter
+    let noteType: string | undefined;
     // Scopists can ONLY see PROPER_NOUN type notes (for reference during review)
     // Even if they request GENERAL_NOTE or ALL, restrict to PROPER_NOUN
     if (user.role === UserRole.SCOPIST) {
-      notesQuery = notesQuery.eq('type', DepositionNoteType.PROPER_NOUN);
+      noteType = DepositionNoteType.PROPER_NOUN;
     } else if (typeFilter && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(typeFilter)) {
       // Reporters and Admins can filter by type if requested
-      notesQuery = notesQuery.eq('type', typeFilter);
+      noteType = typeFilter;
     }
 
-    const { data: notes, error: notesError } = await notesQuery
-      .order('created_at', { ascending: true });
+    // Fetch notes using query module
+    const notes = await listNotesForJob(supabase, jobId, {
+      type: noteType,
+      orderBy: 'created_at',
+      orderDirection: 'asc',
+    });
 
-    if (notesError) {
-      console.error('Notes fetch error:', notesError);
-      return error('FETCH_ERROR', 'Failed to fetch notes', 500);
-    }
-
-    // Get reporter info for each note
-    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
-    const adminClient = getSupabaseAdminClient();
-    const notesWithReporter = await Promise.all((notes || []).map(async (note: any) => {
-      const { data: reporterData } = await adminClient.auth.admin.getUserById(note.reporter_id);
-      const reporter = reporterData?.user ? {
-        id: reporterData.user.id,
-        firstName: reporterData.user.user_metadata?.firstName || '',
-        lastName: reporterData.user.user_metadata?.lastName || '',
-        email: reporterData.user.email || '',
+    // Get reporter info for each note using query module
+    const notesWithReporter = await Promise.all(notes.map(async (note: any) => {
+      const reporterUser = await getUserById(supabase, note.reporter_id);
+      const reporter = reporterUser ? {
+        id: reporterUser.id,
+        firstName: reporterUser.user_metadata?.firstName || '',
+        lastName: reporterUser.user_metadata?.lastName || '',
+        email: reporterUser.email || '',
       } : null;
 
       return {
@@ -134,7 +122,7 @@ export async function GET(
       };
     }));
 
-    const isJobFinalized = isTranscriptFinalized(job.status);
+    const isJobFinalized = isTranscriptFinalized((job as any).status);
 
     // Return in expected format
     return success({
@@ -144,7 +132,7 @@ export async function GET(
       })),
       meta: {
         total: notesWithReporter.length,
-        jobStatus: job.status,
+        jobStatus: (job as any).status,
         isJobFinalized,
         typeFilter: typeFilter || 'ALL',
       },
@@ -168,25 +156,21 @@ export async function POST(
 
     // Check if transcript is finalized (via Job status)
     const supabase = await createSupabaseServerClient();
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, status, created_by_id')
-      .eq('id', jobId)
-      .single();
+    const job = await getJobById(supabase, jobId);
 
-    if (jobError || !job) {
+    if (!job) {
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
     // Verify job access
-    if (user.role === 'REPORTER' && job.created_by_id !== user.id) {
+    if (user.role === 'REPORTER' && (job as any).created_by_id !== user.id) {
       const hasAccess = await checkReporterJobAccess(user.id, jobId);
       if (!hasAccess) {
         return error('FORBIDDEN', 'No access to this job', 403);
       }
     }
 
-    if (LOCKED_STATUSES.includes(job.status)) {
+    if (LOCKED_STATUSES.includes((job as any).status as JobStatus)) {
       return error('FORBIDDEN', 'Cannot add notes to finalized job', 403);
     }
 
@@ -201,46 +185,35 @@ export async function POST(
       ? (type as string) 
       : 'PROPER_NOUN';
 
-    const { data: note, error: noteError } = await supabase
-      .from('deposition_notes')
-      .insert({
-        job_id: jobId,
-        reporter_id: user.id,
-        content: content.trim(),
-        type: noteType,
-        audio_timestamp: audioTimestamp ? parseFloat(audioTimestamp) : null,
-        note_category: noteCategory?.trim() || null,
-        is_locked: false,
-      })
-      .select()
-      .single();
+    // Create note using query module
+    const note = await createNote(supabase, {
+      job_id: jobId,
+      reporter_id: user.id,
+      content: content.trim(),
+      type: noteType,
+      audio_timestamp: audioTimestamp ? parseFloat(audioTimestamp) : null,
+      note_category: noteCategory?.trim() || null,
+    });
 
-    if (noteError) {
-      console.error('Note creation error:', noteError);
-      return error('CREATE_ERROR', 'Failed to create note', 500);
-    }
-
-    // Get reporter info
-    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
-    const adminClient = getSupabaseAdminClient();
-    const { data: reporterData } = await adminClient.auth.admin.getUserById(note.reporter_id);
+    // Get reporter info using query module
+    const reporterUser = await getUserById(supabase, note.reporter_id);
     
-    const reporter = reporterData?.user ? {
-      id: reporterData.user.id,
-      firstName: reporterData.user.user_metadata?.firstName || '',
-      lastName: reporterData.user.user_metadata?.lastName || '',
-      email: reporterData.user.email || '',
+    const reporter = reporterUser ? {
+      id: reporterUser.id,
+      firstName: reporterUser.user_metadata?.firstName || '',
+      lastName: reporterUser.user_metadata?.lastName || '',
+      email: reporterUser.email || '',
     } : null;
 
     return success({
       note: {
         ...note,
-        jobId: note.job_id,
-        reporterId: note.reporter_id,
-        audioTimestamp: note.audio_timestamp,
-        noteCategory: note.note_category,
-        isLocked: note.is_locked,
-        createdAt: note.created_at,
+        jobId: (note as any).job_id,
+        reporterId: (note as any).reporter_id,
+        audioTimestamp: (note as any).audio_timestamp,
+        noteCategory: (note as any).note_category,
+        isLocked: (note as any).is_locked || false,
+        createdAt: (note as any).created_at,
         reporter,
       },
       message: 'Note created',

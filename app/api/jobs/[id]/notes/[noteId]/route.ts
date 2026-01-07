@@ -11,6 +11,9 @@ import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, assertEditableBeforeFinal } from '@/lib/auth/permissions';
 import { UserRole, DepositionNoteType as _DepositionNoteType } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
+import { getNoteById, updateNote, deleteNote } from '@/lib/supabase/queries/notes';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getUserById } from '@/lib/supabase/queries/users';
 
 // GET /api/jobs/[id]/notes/[noteId] - Get single note
 export async function GET(
@@ -32,30 +35,21 @@ export async function GET(
 
     const supabase = await createSupabaseServerClient();
     
-    // Get note with job info
-    const { data: note, error: noteError } = await supabase
-      .from('deposition_notes')
-      .select('id, job_id, reporter_id, content, type, audio_timestamp, note_category, is_locked, created_at')
-      .eq('id', noteId)
-      .eq('job_id', jobId)
-      .single();
+    // Get note using query module
+    const note = await getNoteById(supabase, noteId, jobId);
 
-    if (noteError || !note) {
+    if (!note) {
       return error('NOT_FOUND', 'Note not found', 404);
     }
 
-    // Get job to check access
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, status, created_by_id')
-      .eq('id', jobId)
-      .single();
+    // Get job to check access using query module
+    const job = await getJobById(supabase, jobId);
 
-    if (jobError || !job) {
+    if (!job) {
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
-    // Check assignments for scopist
+    // Check assignments for scopist (job_assignments query could be moved to jobs.ts later)
     if (user.role === UserRole.SCOPIST) {
       const { data: assignments } = await supabase
         .from('job_assignments')
@@ -66,35 +60,33 @@ export async function GET(
       if (!assignments || assignments.length === 0) {
         return error('FORBIDDEN', 'You are not assigned to this job', 403);
       }
-    } else if (user.role === 'REPORTER' && job.created_by_id !== user.id) {
+    } else if (user.role === 'REPORTER' && (job as any).created_by_id !== user.id) {
       return error('FORBIDDEN', 'You can only access notes for your own jobs', 403);
     }
 
-    // Get reporter info
-    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
-    const adminClient = getSupabaseAdminClient();
-    const { data: reporterData } = await adminClient.auth.admin.getUserById(note.reporter_id);
+    // Get reporter info using query module
+    const reporterUser = await getUserById(supabase, (note as any).reporter_id);
     
-    const reporter = reporterData?.user ? {
-      id: reporterData.user.id,
-      firstName: reporterData.user.user_metadata?.firstName || '',
-      lastName: reporterData.user.user_metadata?.lastName || '',
-      email: reporterData.user.email || '',
+    const reporter = reporterUser ? {
+      id: reporterUser.id,
+      firstName: reporterUser.user_metadata?.firstName || '',
+      lastName: reporterUser.user_metadata?.lastName || '',
+      email: reporterUser.email || '',
     } : null;
 
     return success({ 
       note: {
         ...note,
-        jobId: note.job_id,
-        reporterId: note.reporter_id,
-        audioTimestamp: note.audio_timestamp,
-        noteCategory: note.note_category,
-        isLocked: note.is_locked,
-        createdAt: note.created_at,
+        jobId: (note as any).job_id,
+        reporterId: (note as any).reporter_id,
+        audioTimestamp: (note as any).audio_timestamp,
+        noteCategory: (note as any).note_category,
+        isLocked: (note as any).is_locked,
+        createdAt: (note as any).created_at,
         job: {
-          id: job.id,
-          status: job.status,
-          createdById: job.created_by_id,
+          id: (job as any).id,
+          status: (job as any).status,
+          createdById: (job as any).created_by_id,
         },
         reporter,
       }
@@ -118,41 +110,32 @@ export async function PATCH(
 
     const supabase = await createSupabaseServerClient();
     
-    // Get note
-    const { data: note, error: noteError } = await supabase
-      .from('deposition_notes')
-      .select('id, job_id, reporter_id, is_locked')
-      .eq('id', noteId)
-      .eq('job_id', jobId)
-      .single();
+    // Get note using query module
+    const note = await getNoteById(supabase, noteId, jobId);
 
-    if (noteError || !note) {
+    if (!note) {
       return error('NOT_FOUND', 'Note not found', 404);
     }
 
-    // Get job status
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, status')
-      .eq('id', jobId)
-      .single();
+    // Get job status using query module
+    const job = await getJobById(supabase, jobId);
 
-    if (jobError || !job) {
+    if (!job) {
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
     // Only note creator can edit (or admin)
-    if (note.reporter_id !== user.id && user.role !== UserRole.ADMIN) {
+    if ((note as any).reporter_id !== user.id && user.role !== UserRole.ADMIN) {
       return error('FORBIDDEN', 'You can only edit your own notes', 403);
     }
 
     // Check if note is already locked
-    if (note.is_locked) {
+    if ((note as any).is_locked) {
       return error('FORBIDDEN', 'This note is locked', 403);
     }
 
     // Assert transcript is not finalized
-    assertEditableBeforeFinal(job.status);
+    assertEditableBeforeFinal((job as any).status);
 
     const body = await req.json();
     const { content, type, audioTimestamp, noteCategory } = body;
@@ -163,7 +146,12 @@ export async function PATCH(
       }
     }
 
-    const updateData: any = {};
+    const updateData: {
+      content?: string;
+      type?: string;
+      audio_timestamp?: number | null;
+      note_category?: string | null;
+    } = {};
     if (content !== undefined) updateData.content = content.trim();
     if (type !== undefined && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(type)) {
       updateData.type = type as string;
@@ -175,39 +163,28 @@ export async function PATCH(
       updateData.note_category = noteCategory || null;
     }
 
-    const { data: updatedNote, error: updateError } = await supabase
-      .from('deposition_notes')
-      .update(updateData)
-      .eq('id', noteId)
-      .select()
-      .single();
+    // Update note using query module
+    const updatedNote = await updateNote(supabase, noteId, jobId, updateData);
 
-    if (updateError) {
-      console.error('Note update error:', updateError);
-      return error('UPDATE_ERROR', 'Failed to update note', 500);
-    }
-
-    // Get reporter info
-    const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
-    const adminClient = getSupabaseAdminClient();
-    const { data: reporterData } = await adminClient.auth.admin.getUserById(updatedNote.reporter_id);
+    // Get reporter info using query module
+    const reporterUser = await getUserById(supabase, (updatedNote as any).reporter_id);
     
-    const reporter = reporterData?.user ? {
-      id: reporterData.user.id,
-      firstName: reporterData.user.user_metadata?.firstName || '',
-      lastName: reporterData.user.user_metadata?.lastName || '',
-      email: reporterData.user.email || '',
+    const reporter = reporterUser ? {
+      id: reporterUser.id,
+      firstName: reporterUser.user_metadata?.firstName || '',
+      lastName: reporterUser.user_metadata?.lastName || '',
+      email: reporterUser.email || '',
     } : null;
 
     return success({
       note: {
         ...updatedNote,
-        jobId: updatedNote.job_id,
-        reporterId: updatedNote.reporter_id,
-        audioTimestamp: updatedNote.audio_timestamp,
-        noteCategory: updatedNote.note_category,
-        isLocked: updatedNote.is_locked,
-        createdAt: updatedNote.created_at,
+        jobId: (updatedNote as any).job_id,
+        reporterId: (updatedNote as any).reporter_id,
+        audioTimestamp: (updatedNote as any).audio_timestamp,
+        noteCategory: (updatedNote as any).note_category,
+        isLocked: (updatedNote as any).is_locked || false,
+        createdAt: (updatedNote as any).created_at,
         reporter,
       },
       message: 'Note updated successfully',
@@ -242,51 +219,35 @@ export async function DELETE(
 
     const supabase = await createSupabaseServerClient();
     
-    // Get note
-    const { data: note, error: noteError } = await supabase
-      .from('deposition_notes')
-      .select('id, job_id, reporter_id, is_locked')
-      .eq('id', noteId)
-      .eq('job_id', jobId)
-      .single();
+    // Get note using query module
+    const note = await getNoteById(supabase, noteId, jobId);
 
-    if (noteError || !note) {
+    if (!note) {
       return error('NOT_FOUND', 'Note not found', 404);
     }
 
-    // Get job status
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, status')
-      .eq('id', jobId)
-      .single();
+    // Get job status using query module
+    const job = await getJobById(supabase, jobId);
 
-    if (jobError || !job) {
+    if (!job) {
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
     // Only note creator can delete (or admin)
-    if (note.reporter_id !== user.id && user.role !== UserRole.ADMIN) {
+    if ((note as any).reporter_id !== user.id && user.role !== UserRole.ADMIN) {
       return error('FORBIDDEN', 'You can only delete your own notes', 403);
     }
 
     // Check if note is locked
-    if (note.is_locked) {
+    if ((note as any).is_locked) {
       return error('FORBIDDEN', 'This note is locked', 403);
     }
 
     // Assert transcript is not finalized
-    assertEditableBeforeFinal(job.status);
+    assertEditableBeforeFinal((job as any).status);
 
-    const { error: deleteError } = await supabase
-      .from('deposition_notes')
-      .delete()
-      .eq('id', noteId);
-
-    if (deleteError) {
-      console.error('Note delete error:', deleteError);
-      return error('DELETE_ERROR', 'Failed to delete note', 500);
-    }
+    // Delete note using query module
+    await deleteNote(supabase, noteId, jobId);
 
     return success({ message: 'Note deleted successfully' });
   } catch (err) {

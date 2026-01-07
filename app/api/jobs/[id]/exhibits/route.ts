@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireReporterDepositionAccess } from '@/lib/permissions/api-guards';
 import {
   uploadExhibitOriginal,
@@ -11,6 +11,8 @@ import {
   getFileTypeFromMime,
 } from '@/lib/exhibits/storage';
 import { stampExhibitPdf } from '@/lib/exhibits/pdf-stamper';
+import { listExhibitsByJob, createExhibit } from '@/lib/supabase/queries/exhibits';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 
 // GET /api/jobs/[id]/exhibits - List all exhibits for a job
 export async function GET(
@@ -27,18 +29,9 @@ export async function GET(
     const { id: jobId } = await params;
     const user = session.user as { id: string; role: string };
 
-    // Verify job exists and user has access
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        firmId: true,
-        assignments: {
-          select: { scopistId: true },
-        },
-      },
-    });
+    // Verify job exists and user has access using query module
+    const supabase = await createSupabaseServerClient();
+    const job = await getJobById(supabase, jobId);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -49,18 +42,20 @@ export async function GET(
       const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
     } else if (user.role !== 'ADMIN') {
-      // Allow scopists assigned to the job
-      const hasScopistAccess = job.assignments.some((a: any) => a.scopistId === user.id);
-      if (!hasScopistAccess) {
+      // Allow scopists assigned to the job (job_assignments query could be moved to jobs.ts later)
+      const { data: assignments } = await supabase
+        .from('job_assignments')
+        .select('scopist_id')
+        .eq('job_id', jobId)
+        .eq('scopist_id', user.id);
+      
+      if (!assignments || assignments.length === 0) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
 
-    // Fetch exhibits
-    const exhibits = await db.exhibit.findMany({
-      where: { jobId },
-      orderBy: { exhibitNumber: 'asc' },
-    });
+    // Fetch exhibits using query module
+    const exhibits = await listExhibitsByJob(supabase, jobId);
 
     return NextResponse.json({ exhibits });
   } catch (error) {
@@ -87,25 +82,9 @@ export async function POST(
     const { id: jobId } = await params;
     const user = session.user as { id: string; role: string };
 
-    // Get job with case details for stamping
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        firmId: true,
-        caseId: true,
-        caseName: true,
-        title: true,
-        depositionDate: true,
-        createdBy: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
+    // Get job with case details for stamping using query module
+    const supabase = await createSupabaseServerClient();
+    const job = await getJobById(supabase, jobId);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -142,13 +121,11 @@ export async function POST(
     }
 
     // Get current max exhibit number for this job
-    const maxExhibit = await db.exhibit.findFirst({
-      where: { jobId },
-      orderBy: { exhibitNumber: 'desc' },
-      select: { exhibitNumber: true },
-    });
-
-    const nextExhibitNumber = (maxExhibit?.exhibitNumber ?? 0) + 1;
+    const existingExhibits = await listExhibitsByJob(supabase, jobId);
+    const maxExhibitNumber = existingExhibits.length > 0
+      ? Math.max(...existingExhibits.map(e => (e as any).exhibit_number || 0))
+      : 0;
+    const nextExhibitNumber = maxExhibitNumber + 1;
 
     // Process each file
     const createdExhibits = [];
@@ -169,7 +146,7 @@ export async function POST(
       let stampedUpload = null;
 
       // Stamp PDF if requested
-      if (applyStamp && fileType === 'PDF' && job.caseName && job.title) {
+      if (applyStamp && fileType === 'PDF' && (job as any).case_name && (job as any).title) {
         try {
           // Read file as buffer
           const arrayBuffer = await file.arrayBuffer();
@@ -179,9 +156,9 @@ export async function POST(
           const stampedBuffer = await stampExhibitPdf({
             pdfBuffer,
             exhibitNumber,
-            caseName: job.caseName,
-            deponentName: job.title,
-            depositionDate: job.depositionDate || new Date(),
+            caseName: (job as any).case_name,
+            deponentName: (job as any).title,
+            depositionDate: (job as any).deposition_date ? new Date((job as any).deposition_date) : new Date(),
           });
 
           // Upload stamped version
@@ -196,24 +173,22 @@ export async function POST(
         }
       }
 
-      // Create database record
-      const exhibit = await db.exhibit.create({
-        data: {
-          caseId: job.caseId || job.firmId || '', // Required - get from job
-          jobId,
-          exhibitLabel: `Exhibit ${exhibitNumber}`, // Required
-          exhibitNumber,
-          description,
-          originalFileUrl: originalUpload.url,
-          stampedFileUrl: stampedUpload?.url || null,
-          fileType,
-          mimeType: file.type,
-          fileName: file.name,
-          fileSize: file.size,
-          stamped: !!stampedUpload,
-          uploadedByRole: user.role as any, // Required
-          createdById: user.id,
-        },
+      // Create database record using query module
+      const exhibit = await createExhibit(supabase, {
+        case_id: (job as any).case_id || (job as any).firm_id || '', // Required - get from job
+        job_id: jobId,
+        exhibit_label: `Exhibit ${exhibitNumber}`, // Required
+        exhibit_number: exhibitNumber,
+        description,
+        original_file_url: originalUpload.url,
+        stamped_file_url: stampedUpload?.url || null,
+        file_type: fileType,
+        mime_type: file.type,
+        file_name: file.name,
+        file_size: file.size,
+        stamped: !!stampedUpload,
+        uploaded_by_role: user.role, // Required
+        created_by_id: user.id,
       });
 
       createdExhibits.push(exhibit);

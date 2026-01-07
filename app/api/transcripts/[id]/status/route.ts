@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { transitionStatus } from '@/lib/transcripts/status-service';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptById } from '@/lib/supabase/queries/transcripts';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -51,28 +52,23 @@ export async function PATCH(
       );
     }
 
-    // Fetch updated transcript
+    // Fetch updated transcript via query layer
     const supabase = await createSupabaseServerClient();
-    const { data: transcript, error: transcriptError } = await supabase
-      .from('transcriptions')
-      .select('id, status, updated_at')
-      .eq('id', transcriptId)
-      .single();
+    const transcript = await getTranscriptById(supabase, transcriptId);
 
-    if (transcriptError) {
-      console.error('Error fetching transcript:', transcriptError);
+    if (!transcript) {
       return NextResponse.json(
-        { error: 'Failed to fetch transcript' },
-        { status: 500 }
+        { error: 'Transcript not found' },
+        { status: 404 }
       );
     }
 
     return NextResponse.json({
       message: 'Status updated successfully',
       transcript: {
-        id: transcript.id,
-        status: transcript.status,
-        updatedAt: transcript.updated_at,
+        id: (transcript as any).id,
+        status: (transcript as any).status,
+        updatedAt: (transcript as any).updated_at,
       },
     });
   } catch (error) {
