@@ -8,19 +8,24 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { extractTextFromPDFBuffer, detectDocumentType, cleanExtractedText } from '@/lib/extraction/pdf-extractor';
 import { extractFromDocuments, getDeepgramKeywords } from '@/lib/extraction/document-extractor';
 import { createCaseWithInitialJob } from '@/lib/supabase/queries/cases';
 import { logger } from '@/lib/logger';
+import { audit } from '@/lib/audit';
 
+export const runtime = 'nodejs';
 export const maxDuration = 120; // Allow up to 2 minutes for complex documents
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
+    // Check authentication using Supabase (RLS-enforced)
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      logger.warn('[cases] Unauthorized access attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -116,7 +121,8 @@ export async function POST(request: NextRequest) {
     let savedIds: { caseId?: string; jobId?: string } | null = null;
 
     if (autoCreateCase || autoCreateJob) {
-      const firmId = (session.user as any).firmId;
+      // Get firmId from user metadata (RLS will enforce access)
+      const firmId = (user.user_metadata?.firmId as string) || null;
       
       if (autoCreateCase && !firmId) {
         return NextResponse.json(
@@ -222,7 +228,7 @@ export async function POST(request: NextRequest) {
 
       const result = await createCaseWithInitialJob({
         firmId: firmId || '',
-        createdById: session.user.id,
+        createdById: user.id,
         caseNumber: extractedData.caseNumber || undefined,
         caseStyle: extractedData.caseStyle || undefined,
         shortTitle: extractedData.shortTitle || undefined,
@@ -248,6 +254,21 @@ export async function POST(request: NextRequest) {
       }
 
       savedIds = result.data || null;
+
+      // Audit log case/job creation
+      if (savedIds?.caseId) {
+        await audit.caseCreated(savedIds.caseId, {
+          caseNumber: extractedData.caseNumber,
+          autoCreateJob,
+          jobId: savedIds.jobId,
+        });
+      }
+      if (savedIds?.jobId && !autoCreateCase) {
+        // If job created without case
+        await audit.jobCreated(savedIds.jobId, {
+          caseNumber: extractedData.caseNumber,
+        });
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════

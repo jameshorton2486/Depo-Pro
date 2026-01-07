@@ -8,7 +8,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { transitionStatus } from '@/lib/transcripts/status-service';
+import { transitionTranscriptStatus } from '@/lib/services/transcript-status';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptById } from '@/lib/supabase/queries/transcripts';
 
@@ -40,15 +40,15 @@ export async function PATCH(
     }
 
     // Transition status
-    const result = await transitionStatus(
+    const result = await transitionTranscriptStatus(
       transcriptId,
       status,
-      session.user.id
+      session.user.role as string
     );
 
     if (!result.success) {
       return NextResponse.json(
-        { error: (result as any).error },
+        { error: result.error || 'Failed to transition status' },
         { status: 400 }
       );
     }

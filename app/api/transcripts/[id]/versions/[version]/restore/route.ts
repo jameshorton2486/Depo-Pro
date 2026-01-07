@@ -12,7 +12,8 @@ import { auth } from '@/lib/auth';
 async function restoreVersion(
   _transcriptId: string,
   _versionId: string,
-  _userId: string
+  _userId: string,
+  _reason?: string
 ): Promise<{ success: boolean; error?: string }> {
   // TODO: Implement version restoration with Supabase
   // For now, return error (will be implemented later)
@@ -60,7 +61,8 @@ export async function POST(
     const result = await restoreVersion(
       transcriptId,
       versionNumber.toString(),
-      session.user.id
+      session.user.id,
+      undefined // reason parameter
     );
 
     return NextResponse.json({

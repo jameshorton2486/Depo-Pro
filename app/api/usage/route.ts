@@ -10,7 +10,6 @@ import { auth } from '@/lib/auth';
 import {
   getUsageSummary,
   getFirmUsage as _getFirmUsage,
-  PricingTier as _PricingTier,
 } from '@/lib/cost-control-service';
 
 // =============================================================================
@@ -47,12 +46,12 @@ export async function GET(_request: NextRequest) {
       success: true,
       data: {
         tier,
-        period: (summary as any).period,
-        usage: (summary as any).usage,
+        currentPeriod: summary.currentPeriod,
+        usage: summary.currentPeriod,
         limits: summary.limits,
-        percentages: (summary as any).percentages,
-        estimatedCost: (summary as any).estimatedCost,
-        warnings: (summary as any).warnings,
+        percentages: summary.percentUsed,
+        estimatedCost: 0, // TODO: Calculate from usage
+        warnings: [], // TODO: Generate warnings from usage
       },
     });
 

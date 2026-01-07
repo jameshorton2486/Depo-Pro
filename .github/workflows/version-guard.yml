@@ -22,9 +22,21 @@ jobs:
 
           echo "Detected Next.js version: $NEXT_VERSION"
 
-          if [[ "$NEXT_VERSION" == *"16"* || "$NEXT_VERSION" == *"canary"* || "$NEXT_VERSION" == *"latest"* ]]; then
-            echo "❌ Next.js 16 or non-pinned version detected. Depo-Pro must remain on Next.js 15."
+          # Remove version prefix for comparison
+          CLEAN_VERSION=$(echo "$NEXT_VERSION" | sed 's/[\^~]//g')
+
+          # Block unstable versions
+          if [[ "$NEXT_VERSION" == *"canary"* || "$NEXT_VERSION" == *"latest"* || "$NEXT_VERSION" == *"beta"* ]]; then
+            echo "❌ Unstable Next.js version detected. Depo-Pro must use stable version 15.0.3"
             exit 1
           fi
 
-          echo "✅ Next.js version is acceptable: $NEXT_VERSION"
+          # Must be exactly 15.0.3
+          if [ "$CLEAN_VERSION" != "15.0.3" ]; then
+            echo "❌ Next.js version mismatch. Depo-Pro must use Next.js 15.0.3 exactly"
+            echo "   Detected: $NEXT_VERSION"
+            echo "   Required: 15.0.3"
+            exit 1
+          fi
+
+          echo "✅ Next.js version OK (15.0.3): $NEXT_VERSION"

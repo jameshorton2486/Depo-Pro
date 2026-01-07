@@ -93,7 +93,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     }).catch(() => {}); // Fire and forget
 
     // Dispatch webhook
-    await dispatchShareCreated(share.id, share.transcriptId);
+    await dispatchShareCreated(share.id, transcriptId);
 
     return NextResponse.json(share, { status: 201 });
 

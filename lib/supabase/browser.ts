@@ -34,17 +34,28 @@ export function createSupabaseBrowserClient(): SupabaseClient {
   }
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('[Supabase Client] Missing environment variables:', {
+    const errorDetails = {
       hasUrl: !!supabaseUrl,
       hasKey: !!supabaseAnonKey,
       urlLength: supabaseUrl?.length || 0,
       keyLength: supabaseAnonKey?.length || 0,
       allEnvKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE')),
-    });
-    throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. ' +
-      'Make sure .env.local exists and dev server was restarted.'
-    );
+    };
+    
+    console.error('[Supabase Client] Missing environment variables:', errorDetails);
+    
+    // Provide actionable error message
+    let errorMessage = 'Missing Supabase environment variables. ';
+    if (!supabaseUrl && !supabaseAnonKey) {
+      errorMessage += 'Both NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are missing. ';
+    } else if (!supabaseUrl) {
+      errorMessage += 'NEXT_PUBLIC_SUPABASE_URL is missing. ';
+    } else {
+      errorMessage += 'NEXT_PUBLIC_SUPABASE_ANON_KEY is missing. ';
+    }
+    errorMessage += 'Run "npm run check:env" to diagnose, or check .env.local and restart the dev server.';
+    
+    throw new Error(errorMessage);
   }
 
   // Check for quotes in the values (common mistake)

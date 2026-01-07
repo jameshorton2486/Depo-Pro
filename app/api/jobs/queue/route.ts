@@ -9,7 +9,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { UserRole } from '@/lib/enums';
+import { UserRole } from '@/types/database';
 import {
   enqueueJob,
   getJobStatus,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Only admins and certain roles can enqueue jobs directly
-  if (!['ADMIN', 'REPORTER'].includes(session.user.role as string)) {
+  if (!['ADMIN', 'REPORTER', 'COURT_REPORTER'].includes(session.user.role as string)) {
     return NextResponse.json(
       { error: 'Forbidden' },
       { status: 403 }

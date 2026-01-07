@@ -12,7 +12,11 @@ export default [
       'dist/**',
       'node_modules/**',
       'scripts/**',
+      '**/*.config.ts',
       'tests/**',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      'vitest.config.ts',
       '.backup-*/**',
       'backup/**',
       'archive/**',
@@ -24,6 +28,7 @@ export default [
       '**/*.config.mjs',
       // Non-MVP / Legacy files
       'test-env.js',
+      'test-env-browser.js',
       'verify-supabase.js',
       'verify-db.js',
       'test-supabase-connection.js',
@@ -100,4 +105,36 @@ export default [
       ],
     },
   },
+
+  // ---------------------------------------------------------------------------
+  // SERVER-SIDE CODE OVERRIDES - Allow process.env and console in server code
+  // ---------------------------------------------------------------------------
+  {
+    files: ['lib/**/*.ts', 'lib/**/*.tsx'],
+    rules: {
+      'no-restricted-globals': 'off',
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['app/api/**/*.ts', 'app/api/**/*.tsx'],
+    rules: {
+      'no-restricted-globals': 'off',
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['app/(auth)/**/*.tsx', 'app/(auth)/**/*.ts'],
+    rules: {
+      'no-restricted-globals': 'off',
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['components/**/*.tsx', 'components/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
 ];
+

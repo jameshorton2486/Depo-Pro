@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Version Guard Script
- * Prevents accidental Next.js 16 upgrades
+ * Enforces Next.js 15.0.3 (locked version)
  * Run: node scripts/check-next-version.js
  */
 
@@ -18,14 +18,26 @@ if (!version) {
   process.exit(1);
 }
 
-if (
-  version.includes('16') ||
-  version.includes('canary') ||
-  version.includes('latest')
-) {
-  console.error('❌ Next.js 16 or unstable version detected:', version);
-  console.error('   Depo-Pro must remain on Next.js 15.x');
+// Remove any version prefix (^, ~, etc.) for comparison
+const cleanVersion = version.replace(/[\^~]/, '');
+
+// Exact version check - must be 15.0.3
+if (cleanVersion !== '15.0.3') {
+  console.error('❌ Next.js version mismatch detected:', version);
+  console.error('   Depo-Pro must use Next.js 15.0.3 exactly');
+  console.error('   Update package.json: "next": "15.0.3"');
   process.exit(1);
 }
 
-console.log('✅ Next.js version OK:', version);
+// Also check for unstable versions
+if (
+  version.includes('canary') ||
+  version.includes('latest') ||
+  version.includes('beta')
+) {
+  console.error('❌ Unstable Next.js version detected:', version);
+  console.error('   Depo-Pro must use stable version 15.0.3');
+  process.exit(1);
+}
+
+console.log('✅ Next.js version OK (15.0.3):', version);

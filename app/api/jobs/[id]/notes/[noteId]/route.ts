@@ -9,7 +9,8 @@ import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, assertEditableBeforeFinal } from '@/lib/auth/permissions';
-import { UserRole, DepositionNoteType as _DepositionNoteType } from '@/types/database';
+// UserRole type not needed as value import
+import { UserRole } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 import { getNoteById, updateNote, deleteNote } from '@/lib/supabase/queries/notes';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
@@ -29,7 +30,7 @@ export async function GET(
     const { id: jobId, noteId } = await params;
 
     // Only REPORTER and SCOPIST can read notes
-    if (!requireAnyRole(user.role, ['REPORTER', 'SCOPIST'])) {
+    if (!requireAnyRole(user.role, ['REPORTER', UserRole.SCOPIST])) {
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
@@ -211,7 +212,7 @@ export async function DELETE(
     const { id: jobId, noteId } = await params;
 
     // Only reporters can delete notes
-    requireRole(user.role, ['REPORTER', 'ADMIN']);
+    requireRole(user.role, ['REPORTER', UserRole.ADMIN]);
 
     const supabase = await createSupabaseServerClient();
     

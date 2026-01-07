@@ -1,11 +1,18 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// FLAGGED WORDS API ENDPOINT
+// app/api/jobs/[id]/flagged-words/route.ts
+// 
+// Provides low-confidence words for scopist review panel
+// ═══════════════════════════════════════════════════════════════════════════
+
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-const CONFIDENCE_THRESHOLD = 0.85;
+export const runtime = 'nodejs';
 
-export interface FlaggedWord {
+interface FlaggedWord {
   id: string;
   word: string;
   confidence: number;
@@ -17,15 +24,19 @@ export interface FlaggedWord {
   correctedTo?: string;
 }
 
-function checkAccess(user: { id: string; role: string }, job: any): boolean {
-  if (user.role === 'ADMIN') return true;
-  if (user.role === 'REPORTER' && job.createdById === user.id) return true;
-  if (user.role === 'SCOPIST') {
-    return job.assignments.some((a: any) => a.scopistId === user.id && a.status !== 'DECLINED');
-  }
-  return false;
+interface FlaggedSegment {
+  text?: string;
+  word?: string;
+  confidence: number;
+  start: number;
+  end: number;
+  speaker?: number;
+  context?: string;
+  words?: Array<{ word: string; start: number; end: number; confidence: number }>;
 }
 
+// GET /api/jobs/[id]/flagged-words
+// Returns flagged low-confidence words for scopist review
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,113 +48,299 @@ export async function GET(
     }
 
     const { id: jobId } = await params;
-    const user = session.user as { id: string; role: string };
+    const { searchParams } = new URL(request.url);
+    const filter = searchParams.get('filter') || 'pending';
+    const sortBy = searchParams.get('sort') || 'confidence';
 
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        createdById: true,
-        assignments: { 
-          select: { 
-            scopistId: true, 
-            status: true 
-          } 
+    const supabase = await createSupabaseServerClient();
+
+    // Verify user has access to this job
+    const { data: job, error: jobError } = await supabase
+      .from('Job')
+      .select('id, created_by_id, firm_id')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    // Check access (owner, admin, or same firm)
+    const isOwner = job.created_by_id === session.user.id;
+    const isAdmin = session.user.role === 'ADMIN';
+    const sameFirm = job.firm_id === (session.user as any).firmId;
+    
+    if (!isOwner && !isAdmin && !sameFirm) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Get transcription with flagged segments
+    const { data: transcription, error: transcriptionError } = await supabase
+      .from('Transcription')
+      .select('id, flagged_segments, status')
+      .eq('job_id', jobId)
+      .single();
+
+    if (transcriptionError || !transcription) {
+      // No transcription yet - return empty
+      return NextResponse.json({
+        flaggedWords: [],
+        stats: {
+          total: 0,
+          pending: 0,
+          reviewed: 0,
+          averageConfidence: null,
         },
-      },
-    });
-
-    if (!job) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      });
     }
 
-    // Permission: Reporter (own), Scopist (assigned), Admin
-    const canAccess = checkAccess(user, job);
-    if (!canAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    // Parse flagged segments (could be stored as JSON or JSONB)
+    const segments: FlaggedSegment[] = Array.isArray(transcription.flagged_segments)
+      ? transcription.flagged_segments
+      : [];
 
-    const transcription = await db.transcription.findUnique({
-      where: { jobId },
-      select: {
-        words: true,
-        averageConfidence: true,
-        edits: { 
-          select: { 
-            originalText: true, 
-            editedText: true, 
-            position: true 
-          } 
+    if (segments.length === 0) {
+      return NextResponse.json({
+        flaggedWords: [],
+        stats: {
+          total: 0,
+          pending: 0,
+          reviewed: 0,
+          averageConfidence: null,
         },
-      },
-    });
-
-    if (!transcription) {
-      return NextResponse.json({ error: 'No transcription' }, { status: 404 });
+      });
     }
 
-    const words = (transcription.words as any[]) || [];
-    const flaggedWords: FlaggedWord[] = [];
+    // Get existing edits to determine reviewed status
+    const { data: edits } = await supabase
+      .from('TranscriptionEdit')
+      .select('word_index, edited_text, edit_type')
+      .eq('transcription_id', transcription.id);
 
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      const confidence = word.confidence ?? 1;
-
-      if (confidence < CONFIDENCE_THRESHOLD) {
-        const contextStart = Math.max(0, i - 3);
-        const contextEnd = Math.min(words.length, i + 4);
-        const context = words.slice(contextStart, contextEnd)
-          .map((w: any) => w.punctuated_word || w.word || w.punctuatedWord || '')
-          .join(' ');
-
-        const edit = transcription.edits.find(
-          (e: any) => Math.abs((e.position || 0) - (word.start || 0)) < 0.1
-        );
-
-        flaggedWords.push({
-          id: `${jobId}-${i}`,
-          word: word.punctuated_word || word.word || word.punctuatedWord || '',
-          confidence: Math.round(confidence * 100) / 100,
-          start: word.start || 0,
-          end: word.end || 0,
-          speaker: word.speaker,
-          context,
-          isReviewed: !!edit,
-          correctedTo: edit?.editedText || undefined,
+    const editMap = new Map<number, { editedText: string | null; editType: string }>();
+    (edits || []).forEach((edit) => {
+      if (edit.word_index !== null) {
+        editMap.set(edit.word_index, {
+          editedText: edit.edited_text,
+          editType: edit.edit_type,
         });
       }
-    }
+    });
 
-    const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter');
-    const sortBy = searchParams.get('sort');
+    // Transform flagged segments into flagged words
+    let flaggedWords: FlaggedWord[] = segments.map((segment, index) => {
+      const edit = editMap.get(index);
+      return {
+        id: `${transcription.id}-${index}`,
+        word: segment.text || segment.word || 'Unknown',
+        confidence: segment.confidence,
+        start: segment.start,
+        end: segment.end,
+        speaker: segment.speaker,
+        context: segment.context || segment.text || '',
+        isReviewed: editMap.has(index),
+        correctedTo: edit?.editedText || undefined,
+      };
+    });
 
-    let result = flaggedWords;
+    // Apply filter
     if (filter === 'pending') {
-      result = result.filter(w => !w.isReviewed);
+      flaggedWords = flaggedWords.filter((w) => !w.isReviewed);
     } else if (filter === 'reviewed') {
-      result = result.filter(w => w.isReviewed);
+      flaggedWords = flaggedWords.filter((w) => w.isReviewed);
     }
 
-    if (sortBy === 'confidence') {
-      result.sort((a, b) => a.confidence - b.confidence);
-    } else if (sortBy === 'speaker') {
-      result.sort((a, b) => (a.speaker || 0) - (b.speaker || 0));
+    // Apply sort
+    switch (sortBy) {
+      case 'confidence':
+        flaggedWords.sort((a, b) => a.confidence - b.confidence);
+        break;
+      case 'time':
+        flaggedWords.sort((a, b) => a.start - b.start);
+        break;
+      case 'speaker':
+        flaggedWords.sort((a, b) => (a.speaker || 0) - (b.speaker || 0));
+        break;
     }
-    // Default sort by time (start)
+
+    // Calculate stats
+    const total = segments.length;
+    const reviewed = editMap.size;
+    const pending = total - reviewed;
+    const avgConfidence =
+      segments.length > 0
+        ? segments.reduce((sum, s) => sum + s.confidence, 0) / segments.length
+        : null;
 
     return NextResponse.json({
-      flaggedWords: result,
+      flaggedWords,
       stats: {
-        total: flaggedWords.length,
-        pending: flaggedWords.filter(w => !w.isReviewed).length,
-        reviewed: flaggedWords.filter(w => w.isReviewed).length,
-        averageConfidence: transcription.averageConfidence,
+        total,
+        pending,
+        reviewed,
+        averageConfidence: avgConfidence,
       },
-      threshold: CONFIDENCE_THRESHOLD,
     });
   } catch (error) {
-    console.error('Error fetching flagged words:', error);
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    console.error('Flagged words GET error:', error);
+    return NextResponse.json(
+      { error: 'Failed to load flagged words' },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/jobs/[id]/flagged-words
+// Update a flagged word (mark as reviewed, correct text)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: jobId } = await params;
+    const body = await request.json();
+    const { wordId, correctedText } = body;
+
+    if (!wordId) {
+      return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
+    }
+
+    const supabase = await createSupabaseServerClient();
+
+    // Verify user has access to this job
+    const { data: job, error: jobError } = await supabase
+      .from('Job')
+      .select('id, created_by_id, firm_id')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    // Check edit access (scopist, reporter owner, or admin)
+    const isOwner = job.created_by_id === session.user.id;
+    const isAdmin = session.user.role === 'ADMIN';
+    const isScopist = session.user.role === 'SCOPIST';
+    
+    if (!isOwner && !isAdmin && !isScopist) {
+      return NextResponse.json({ error: 'Unauthorized to edit' }, { status: 403 });
+    }
+
+    // Get transcription
+    const { data: transcription, error: transcriptionError } = await supabase
+      .from('Transcription')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+
+    if (transcriptionError || !transcription) {
+      return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
+    }
+
+    // Extract word index from wordId (format: transcriptionId-index)
+    const parts = wordId.split('-');
+    const wordIndex = parseInt(parts[parts.length - 1], 10);
+
+    if (isNaN(wordIndex)) {
+      return NextResponse.json({ error: 'Invalid wordId format' }, { status: 400 });
+    }
+
+    // Upsert the edit
+    const { error: upsertError } = await supabase
+      .from('TranscriptionEdit')
+      .upsert(
+        {
+          transcription_id: transcription.id,
+          word_index: wordIndex,
+          edited_text: correctedText || null,
+          edit_type: 'WORD_CORRECTION',
+          editor_id: session.user.id,
+          editor_role: session.user.role,
+          created_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'transcription_id,word_index',
+        }
+      );
+
+    if (upsertError) {
+      console.error('Upsert error:', upsertError);
+      throw upsertError;
+    }
+
+    return NextResponse.json({
+      success: true,
+      wordId,
+      correctedText,
+      reviewedBy: session.user.id,
+    });
+  } catch (error) {
+    console.error('Flagged words PATCH error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update flagged word' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/jobs/[id]/flagged-words
+// Remove a word edit (un-review)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: jobId } = await params;
+    const { searchParams } = new URL(request.url);
+    const wordId = searchParams.get('wordId');
+
+    if (!wordId) {
+      return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
+    }
+
+    const supabase = await createSupabaseServerClient();
+
+    // Get transcription
+    const { data: transcription } = await supabase
+      .from('Transcription')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+
+    if (!transcription) {
+      return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
+    }
+
+    // Extract word index
+    const parts = wordId.split('-');
+    const wordIndex = parseInt(parts[parts.length - 1], 10);
+
+    // Delete the edit
+    const { error: deleteError } = await supabase
+      .from('TranscriptionEdit')
+      .delete()
+      .eq('transcription_id', transcription.id)
+      .eq('word_index', wordIndex);
+
+    if (deleteError) throw deleteError;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Flagged words DELETE error:', error);
+    return NextResponse.json(
+      { error: 'Failed to remove edit' },
+      { status: 500 }
+    );
   }
 }

@@ -83,7 +83,7 @@ export async function POST(
 
     // Check for audio file
     const audioFile = job.files.find(
-      (f: any) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/') || f.mimeType?.startsWith('video/'),
+      (f: { type?: string; mimeType?: string }) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/') || f.mimeType?.startsWith('video/'),
     );
 
     if (!audioFile) {

@@ -8,7 +8,8 @@ import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, isTranscriptFinalized } from '@/lib/auth/permissions';
-import { UserRole, JobStatus, DepositionNoteType } from '@/types/database';
+// UserRole type not needed as value import
+import { UserRole, DepositionNoteType, JobStatus } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 import { listNotesForJob, createNote } from '@/lib/supabase/queries/notes';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
@@ -56,7 +57,7 @@ export async function GET(
 
     // Only REPORTER and SCOPIST can read notes
     // Attorneys are explicitly blocked
-    if (!requireAnyRole(user.role, ['REPORTER', 'SCOPIST'])) {
+    if (!requireAnyRole(user.role, ['REPORTER', UserRole.SCOPIST])) {
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 

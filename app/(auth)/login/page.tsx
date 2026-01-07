@@ -35,7 +35,47 @@ export default function LoginPage() {
       setIsLoading(true);
       setError(null);
 
-      const supabase = getSupabaseBrowserClient();
+      // Validate environment variables before attempting login
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        setError('Configuration error: Missing Supabase credentials. Please check your .env.local file and restart the dev server.');
+        console.error('Missing Supabase environment variables:', {
+          hasUrl: !!supabaseUrl,
+          hasKey: !!supabaseAnonKey,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check for common issues with env vars
+      if (supabaseUrl.trim() === '' || supabaseAnonKey.trim() === '') {
+        setError('Configuration error: Supabase credentials are empty. Please check your .env.local file.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check for quotes (common mistake)
+      if (supabaseUrl.startsWith('"') || supabaseUrl.endsWith('"') || 
+          supabaseAnonKey.startsWith('"') || supabaseAnonKey.endsWith('"')) {
+        setError('Configuration error: Environment variables contain quotes. Remove quotes from .env.local and restart the dev server.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Create Supabase client with error handling
+      let supabase;
+      try {
+        supabase = getSupabaseBrowserClient();
+      } catch (clientError) {
+        const errorMessage = clientError instanceof Error ? clientError.message : 'Unknown error';
+        setError(`Configuration error: ${errorMessage}`);
+        console.error('Failed to create Supabase client:', clientError);
+        setIsLoading(false);
+        return;
+      }
+
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -43,8 +83,13 @@ export default function LoginPage() {
 
       if (signInError) {
         // Provide more specific error messages
-        if (signInError.message.includes('Invalid login credentials')) {
-          setError('Invalid email or password. Please try again.');
+        if (signInError.message.includes('Invalid login credentials') || signInError.message.includes('Invalid API key')) {
+          if (signInError.message.includes('Invalid API key')) {
+            setError('Configuration error: Invalid API key. Please check your environment variables and restart the dev server.');
+            console.error('Invalid API key error - check NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local');
+          } else {
+            setError('Invalid email or password. Please try again.');
+          }
         } else if (signInError.message.includes('Email not confirmed')) {
           setError('Please check your email and confirm your account before logging in.');
         } else {

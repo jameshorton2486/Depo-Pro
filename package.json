@@ -14,6 +14,7 @@
         "check": "npm run lint && npm run typecheck && npm run build",
         "check:all": "npm run format:check && npm run lint && npm run typecheck && npm run build",
         "check:version": "node scripts/check-next-version.js",
+        "check:env": "node scripts/check-env-vars.js",
         "prepare": "husky",
         "db:setup-urls": "powershell -ExecutionPolicy Bypass -File scripts/setup-database-urls.ps1",
         "db:validate-urls": "powershell -ExecutionPolicy Bypass -File scripts/validate-database-urls.ps1",
@@ -22,7 +23,12 @@
         "list-users": "tsx scripts/list-users.ts",
         "test-auth": "tsx scripts/test-supabase-auth.ts",
         "diagnose-auth": "tsx scripts/diagnose-auth.ts",
-        "test": "jest",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:headed": "playwright test --headed",
         "check:enums": "tsx scripts/check-enum-usage.ts",
         "verify:prod": "tsx scripts/verify-production.ts",
         "check:permissions": "tsx scripts/check-permission-drift.ts",
@@ -93,7 +99,7 @@
         "ioredis": "^5.8.2",
         "lodash": "^4.17.21",
         "lucide-react": "^0.553.0",
-        "next": "^16.1.1",
+        "next": "15.0.3",
         "next-auth": "^5.0.0-beta.30",
         "next-themes": "^0.4.6",
         "pdf-lib": "^1.17.1",
@@ -144,6 +150,8 @@
         "tailwindcss": "^3.4.1",
         "tsx": "^4.20.6",
         "typescript": "^5",
-        "typescript-eslint": "^8.50.1"
+        "typescript-eslint": "^8.50.1",
+        "vitest": "^2.1.8",
+        "@vitest/coverage-v8": "^2.1.8"
     }
 }

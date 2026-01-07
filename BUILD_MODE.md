@@ -1,7 +1,7 @@
 # Depo-Pro Build Mode Checklist
 
 ## BEFORE BUILDING
-- [ ] Next.js version pinned to 15.x (`npm run check:version` or `node scripts/check-next-version.js`)
+- [ ] Next.js version pinned to 16.x (`npm run check:version` or `node scripts/check-next-version.js`)
 - [ ] CI version guard passing (`.github/workflows/version-guard.yml`)
 - [ ] `npm run lint` passes
 - [ ] `npm run typecheck` passes
@@ -38,8 +38,9 @@
 - [ ] All error paths logged with structured logger
 
 ## VERSION SAFETY
-- [ ] Never upgrade Next.js beyond 15.x
-- [ ] Never use `latest`, `canary`, or `^16` in package.json
+- [ ] Never upgrade Next.js beyond 16.x
+- [ ] Never use `latest`, `canary`, `beta`, or `^17` in package.json
+- [ ] Current stable version: 16.1.1
 - [ ] Version guard script passes locally
 - [ ] CI version guard workflow enabled
 

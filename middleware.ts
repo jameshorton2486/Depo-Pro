@@ -4,6 +4,8 @@
 // Single source of truth for authentication and route protection
 // ═══════════════════════════════════════════════════════════════
 
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isPublicRoute, hasRouteAccess } from '@/lib/permissions/route-access';
@@ -69,9 +71,10 @@ export async function middleware(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Middleware auth error:', error);
+    console.warn('[middleware] Auth error:', error);
     // On error, redirect to login
     const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 }

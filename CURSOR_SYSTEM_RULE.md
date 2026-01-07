@@ -9,10 +9,10 @@ You are working on the Depo-Pro codebase, a Next.js 15 legal transcription SaaS 
 ## GLOBAL RULES (MANDATORY)
 
 ### Version Safety
-- **Depo-Pro must remain on Next.js 15.x**
-- Never upgrade to Next.js 16, canary, or experimental builds
-- Never use `latest`, `canary`, or `^16` in package.json
-- If package.json shows Next.js 16, this is an error that must be fixed
+- **Depo-Pro must remain on Next.js 16.x**
+- Never upgrade to Next.js 17+, canary, or experimental builds
+- Never use `latest`, `canary`, `beta`, or `^17` in package.json
+- Current version: 16.1.1 (stable)
 
 ### Code Changes
 - **Do not refactor unrelated code**

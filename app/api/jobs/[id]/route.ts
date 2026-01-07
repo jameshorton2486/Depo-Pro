@@ -32,7 +32,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
             return res;
           },
           (err) => {
-            logger.error('Request failed', err as Error);
+            logger.error('Request failed', err instanceof Error ? err : new Error(String(err)), { path: args[0]?.url });
             throw err;
           }
         );
@@ -40,7 +40,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
       logger.info('Request completed', { path: args[0]?.url });
       return result;
     } catch (err) {
-      logger.error('Request failed', err as Error);
+      logger.error('Request failed', err instanceof Error ? err : new Error(String(err)), { path: args[0]?.url });
       throw err;
     }
   }) as T;
@@ -315,7 +315,7 @@ export const PATCH = withRequestLogging(async (
     
     if (!transitionResult.success) {
       return NextResponse.json(
-        { error: (transitionResult as any).error },
+        { error: 'Failed to transition job status' },
         { status: 400 },
       );
     }

@@ -1,175 +1,153 @@
-# 🔐 Login Troubleshooting Guide
+# Login "Invalid API Key" - Troubleshooting Guide
 
-## ✅ Your Setup is Already Correct
+## Quick Fix Checklist
 
-Your Supabase authentication is **properly configured**:
-- ✅ `@supabase/ssr` is installed (v0.8.0)
-- ✅ Canonical clients use proper cookie handling
-- ✅ Middleware uses `createSupabaseMiddlewareClient` (correct pattern)
-- ✅ Login page uses `getSupabaseBrowserClient()` (correct pattern)
+1. ✅ **Run diagnostic:** `npm run check:env`
+2. ✅ **Verify .env.local exists** in project root
+3. ✅ **Check for quotes** around values (should NOT have quotes)
+4. ✅ **Restart dev server** after changing .env.local
+5. ✅ **Verify Supabase project** is active (not paused)
 
-## Common Login Issues & Fixes
+## Step-by-Step Fix
 
-### Issue 1: "Invalid email or password"
+### Step 1: Run Environment Check
+```bash
+npm run check:env
+```
 
-**Possible causes:**
-1. User doesn't exist in Supabase Auth
-2. Wrong password
-3. Email not confirmed (if email confirmation is enabled)
+This will tell you exactly what's wrong with your environment variables.
 
-**Fix:**
-1. Check Supabase Dashboard → Authentication → Users
-2. Verify user exists and email is confirmed
-3. Try resetting password via `/forgot-password`
+### Step 2: Verify .env.local File
 
-### Issue 2: Login succeeds but redirects back to login
+Create or edit `.env.local` in the project root:
 
-**Possible causes:**
-1. Middleware not reading cookies correctly
-2. Profile doesn't exist in database
-3. Session cookies not being set
+```bash
+# ✅ CORRECT FORMAT (no quotes, no spaces)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdXItcHJvamVjdC1pZCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNjE2MjM5MDIyLCJleHAiOjE5MzE4MTUwMjJ9.your-signature-here
+```
 
-**Fix:**
-1. Check browser DevTools → Application → Cookies
-2. Look for cookies starting with `sb-` (Supabase cookies)
-3. Verify profile exists: `npm run list-users`
-4. Clear cookies and try again
+**Common Mistakes:**
+```bash
+# ❌ WRONG - Has quotes
+NEXT_PUBLIC_SUPABASE_URL="https://..."
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
 
-### Issue 3: "User not found" after login
+# ❌ WRONG - Has trailing spaces
+NEXT_PUBLIC_SUPABASE_URL=https://... 
 
-**Possible causes:**
-1. Profile wasn't created in database
-2. Profile guard failed
+# ❌ WRONG - Using service role key (never use this in client!)
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...service_role...
 
-**Fix:**
-1. Check if profile exists: `npm run list-users`
-2. If missing, the profile should auto-create on first API call
-3. Try accessing `/dashboard` after login (triggers profile creation)
+# ✅ CORRECT - No quotes, no spaces
+NEXT_PUBLIC_SUPABASE_URL=https://...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+```
 
-### Issue 4: Cookies not being set
+### Step 3: Get Correct Values from Supabase
 
-**Possible causes:**
-1. Browser blocking cookies
-2. Incorrect domain/path settings
-3. HTTPS required but using HTTP
+1. Go to [Supabase Dashboard](https://app.supabase.com)
+2. Select your project
+3. Go to **Settings** → **API**
+4. Copy:
+   - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY` (NOT service_role!)
 
-**Fix:**
-1. Check browser console for cookie errors
-2. Verify Supabase Site URL matches your domain
-3. Check Supabase Dashboard → Settings → Auth → Site URL
+### Step 4: Restart Dev Server
+
+**Critical:** After changing `.env.local`, you MUST restart:
+
+```bash
+# Stop the server (Ctrl+C)
+# Then restart:
+npm run dev
+```
+
+### Step 5: Verify in Browser Console
+
+Open browser console on login page and run:
+
+```javascript
+console.log({
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  keyLength: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length,
+  keyStartsWith: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 10)
+});
+```
+
+Expected output:
+- `url`: Should show your Supabase URL
+- `hasKey`: Should be `true`
+- `keyLength`: Should be ~200+ characters
+- `keyStartsWith`: Should be `"eyJhbGciOi"`
+
+## Error Messages Explained
+
+| Error Message | Meaning | Fix |
+|--------------|---------|-----|
+| "Missing Supabase credentials" | Env vars not set | Create .env.local |
+| "Environment variables contain quotes" | Values have quotes | Remove quotes from .env.local |
+| "Invalid API key" | Key is wrong or env vars not loaded | Check .env.local, restart server |
+| "Invalid login credentials" | API key is OK, but email/password wrong | Check user credentials |
+
+## Still Not Working?
+
+### Check 1: Supabase Project Status
+- Is your Supabase project **active** (not paused)?
+- Did you select the **correct project** in the dashboard?
+
+### Check 2: Key Type
+- Are you using the **anon/public key** (not service_role)?
+- Service role key should NEVER be in client-side code
+
+### Check 3: Dev Server
+- Did you **restart** the dev server after changing .env.local?
+- Try stopping completely and starting fresh
+
+### Check 4: File Location
+- Is `.env.local` in the **project root** (same level as package.json)?
+- Not in a subdirectory?
+
+### Check 5: Next.js Version
+- Current version: **Next.js 16.1.1** ✅
+- Run `npm run check:version` to verify
+- Run `npm install` if needed
 
 ## Diagnostic Commands
 
 ```bash
-# Test Supabase connection
-npm run diagnose-auth
+# Check environment variables
+npm run check:env
 
-# List all users
-npm run list-users
+# Check Next.js version
+npm run check:version
 
-# Promote user to admin
-EMAIL=your-email@example.com npm run promote-to-admin
+# Verify TypeScript
+npm run typecheck
+
+# Check for lint errors
+npm run lint
 ```
 
-## Browser DevTools Checklist
+## Getting Help
 
-After attempting login, check:
+If none of the above works:
 
-1. **Console Tab:**
-   - Look for JavaScript errors
-   - Check for Supabase client errors
-
-2. **Network Tab:**
-   - Find request to `/auth/v1/token`
-   - Check response status (should be 200)
-   - Check response body for session data
-
-3. **Application Tab → Cookies:**
-   - Look for cookies starting with `sb-`
-   - Verify they have values (not empty)
-   - Check expiration dates
-
-4. **Application Tab → Local Storage:**
-   - Check for Supabase-related keys
-   - Note: `@supabase/ssr` uses cookies, not localStorage
-
-## Supabase Dashboard Checklist
-
-1. **Authentication → Providers:**
-   - ✅ Email provider is **Enabled**
-   - ✅ "Confirm email" can be OFF for testing
-
-2. **Authentication → Users:**
-   - ✅ User exists
-   - ✅ Email is confirmed (if required)
-   - ✅ User is active (not banned)
-
-3. **Settings → API:**
-   - ✅ Project URL is correct
-   - ✅ Anon key matches `.env.local`
-   - ✅ Service role key matches `.env.local`
-
-4. **Settings → Auth:**
-   - ✅ Site URL matches your domain (e.g., `http://localhost:3000`)
-   - ✅ Redirect URLs include your domain
-
-## Quick Test Flow
-
-1. **Create a user:**
+1. **Run diagnostics:**
    ```bash
-   # Go to /register
-   # Fill out form and submit
-   # Check Supabase Dashboard → Users to verify
+   npm run check:env
+   npm run check:version
    ```
 
-2. **Test login:**
-   ```bash
-   # Go to /login
-   # Enter email and password
-   # Check browser DevTools for errors
-   # Verify cookies are set
-   ```
+2. **Check browser console** for detailed error messages
 
-3. **Verify session:**
-   ```bash
-   # After login, check middleware is working
-   # Try accessing /dashboard
-   # Should not redirect to /login
-   ```
+3. **Check terminal** where dev server is running
 
-## Still Not Working?
+4. **Verify Supabase project** is active and accessible
 
-If login still fails after these checks:
+5. **Try creating a test user** to rule out user-specific issues
 
-1. **Run full diagnostic:**
-   ```bash
-   npm run diagnose-auth
-   ```
+---
 
-2. **Check server logs:**
-   - Look for middleware errors
-   - Check for database connection issues
-
-3. **Verify environment:**
-   - All three Supabase env vars are set
-   - Values match Supabase Dashboard exactly
-
-4. **Test with curl:**
-   ```bash
-   # Test Supabase API directly
-   curl -X POST 'https://YOUR_PROJECT.supabase.co/auth/v1/token?grant_type=password' \
-     -H "apikey: YOUR_ANON_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"email":"test@example.com","password":"test123"}'
-   ```
-
-## Your Current Setup (Verified ✅)
-
-- **Browser Client:** `lib/supabase/browser.ts` - Uses `@supabase/ssr` ✅
-- **Server Client:** `lib/supabase/server.ts` - Uses `@supabase/ssr` ✅
-- **Middleware Client:** `lib/supabase/middleware.ts` - Uses `@supabase/ssr` ✅
-- **Admin Client:** `lib/supabase/admin.ts` - Service role ✅
-- **Middleware:** `middleware.ts` - Properly configured ✅
-- **Login Page:** Uses `getSupabaseBrowserClient()` ✅
-
-**No changes needed** - your setup is correct!
+**Remember:** The most common issue is forgetting to restart the dev server after changing `.env.local`!
