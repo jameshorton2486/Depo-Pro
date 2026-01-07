@@ -1,4 +1,4 @@
-﻿import { db } from '@/lib/db';
+import { db } from '@/lib/db';
 // ============================================================
 // CALENDAR EVENTS API ROUTE
 // Path: app/api/calendar/events/route.ts
@@ -22,7 +22,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
             return res;
           },
           (err) => {
-            logger.error('Request failed', err);
+            logger.error('Request failed', err as Error);
             throw err;
           }
         );
@@ -30,7 +30,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
       logger.info('Request completed', { path: args[0]?.url });
       return result;
     } catch (err) {
-      logger.error('Request failed', err);
+      logger.error('Request failed', err as Error);
       throw err;
     }
   }) as T;
@@ -310,9 +310,9 @@ async function postEventsHandler(request: NextRequest) {
     let conflicts: Array<{ eventId: string; eventTitle: string; message: string }> = [];
     if (data.assignedReporterId) {
       const conflictWarnings = await checkConflicts(
-        data.assignedReporterId,
-        startTime,
-        endTime
+        new Date(startTime),
+        new Date(endTime),
+        data.assignedReporterId
       );
       conflicts = (Array.isArray(conflictWarnings) ? conflictWarnings : conflictWarnings.conflicts || []).map((c: any) => ({
         eventId: c.eventId,

@@ -36,8 +36,8 @@ export async function GET(
 
     // Quota check
     if (user.firmId) {
-      const tier = 'FREE'; // TODO: Get from subscription
-      const quotaCheck = await useQuota(user.firmId, 'exports', 1, tier);
+      const _tier = 'FREE'; // TODO: Get from subscription
+      const quotaCheck = await useQuota(user.firmId, 'exports', 1);
       if (!quotaCheck.allowed) {
         return NextResponse.json(
           { error: 'Export quota exceeded', ...quotaCheck },

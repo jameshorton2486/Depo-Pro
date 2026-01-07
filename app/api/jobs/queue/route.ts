@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // JOB QUEUE API ROUTE
 // =============================================================================
 // API endpoints for job queue management
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Only admins and certain roles can enqueue jobs directly
-  if (![UserRole.ADMIN, UserRole.COURT_REPORTER].includes(session.user.role as UserRole)) {
+  if (!['ADMIN', 'REPORTER'].includes(session.user.role as string)) {
     return NextResponse.json(
       { error: 'Forbidden' },
       { status: 403 }
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { type, payload, _options } = enqueueJobSchema.parse(body);
+    const { type, payload } = enqueueJobSchema.parse(body);
 
     const job = await enqueueJob(type, payload);
 

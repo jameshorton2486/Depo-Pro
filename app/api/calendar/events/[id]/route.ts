@@ -140,8 +140,8 @@ async function assertEventAccess(
       assignedReporterId: event.assignedReporterId,
       requestedById: event.requestedById,
       participants: event.participants
-        ?.filter(p => p.userId)
-        .map(p => ({ userId: p.userId! })),
+        ?.filter((p: any) => p.userId)
+        .map((p: any) => ({ userId: p.userId! })),
     },
     requireWriteAccess
   );

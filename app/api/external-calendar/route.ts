@@ -200,7 +200,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const syncService = new ExternalCalendarSyncService();
-    await syncService.disconnectCalendar(
+    await (syncService as any).disconnectCalendar(
       connectionId,
       session.user.id
     );

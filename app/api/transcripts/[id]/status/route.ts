@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { transitionStatus } from '@/lib/transcripts/status-service';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { UserRole } from '@/types/database';
 
 interface RouteContext {
@@ -41,14 +42,12 @@ export async function PATCH(
     const result = await transitionStatus(
       transcriptId,
       status,
-      session.user.id,
-      session.user.role as UserRole,
-      reason
+      session.user.id
     );
 
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error },
+        { error: (result as any).error },
         { status: 400 }
       );
     }

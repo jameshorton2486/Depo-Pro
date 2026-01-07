@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
@@ -16,7 +17,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
             return res;
           },
           (err) => {
-            logger.error('Request failed', { path: args[0]?.url, error: err });
+            logger.error('Request failed', err as Error);
             throw err;
           }
         );
@@ -24,7 +25,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
       logger.info('Request completed', { path: args[0]?.url });
       return result;
     } catch (err) {
-      logger.error('Request failed', { path: args[0]?.url, error: err });
+      logger.error('Request failed', err as Error);
       throw err;
     }
   }) as T;
@@ -199,11 +200,10 @@ export const PATCH = withRequestLogging(async (
     // Phase 3B-5: Check if transcript is locked
     const lockCheck = await canEditTranscript(
       transcriptId,
-      session.user.id,
-      session.user.role as any
+      session.user.id
     );
 
-    if (!lockCheck.allowed) {
+    if (!lockCheck.canEdit) {
       return NextResponse.json(
         { error: lockCheck.reason || 'Transcript is locked' },
         { status: 403 }
@@ -310,11 +310,10 @@ export const PUT = withRequestLogging(async (
     // Phase 3B-5: Check if transcript is locked
     const lockCheck = await canEditTranscript(
       transcriptId,
-      session.user.id,
-      session.user.role as any
+      session.user.id
     );
 
-    if (!lockCheck.allowed) {
+    if (!lockCheck.canEdit) {
       return NextResponse.json(
         { error: lockCheck.reason || 'Transcript is locked' },
         { status: 403 }

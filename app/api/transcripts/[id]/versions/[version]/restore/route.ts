@@ -58,9 +58,8 @@ export async function POST(
 
     const result = await restoreVersion(
       transcriptId,
-      versionNumber,
-      session.user.id,
-      reason
+      versionNumber.toString(),
+      session.user.id
     );
 
     return NextResponse.json({

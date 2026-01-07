@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { ProperNounCategory } from '@/types/database';
+import { ProperNounCategory as _ProperNounCategory } from '@/types/database';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -68,7 +68,7 @@ export async function GET(
       const { data: nouns } = await supabase
         .from('csr_proper_nouns')
         .select('*')
-        .eq('csr_record_id', csrRecord.id)
+        .eq('csr_record_id', csrRecord!.id)
         .order('priority', { ascending: false })
         .order('created_at', { ascending: false });
       
@@ -131,7 +131,7 @@ export async function POST(
     }
 
     // Validate category
-    const validCategories: ProperNounCategory[] = [
+    const validCategories: string[] = [
       'PERSON_NAME',
       'COMPANY_NAME',
       'PLACE_NAME',
@@ -220,7 +220,7 @@ export async function POST(
     const { data: existing } = await supabase
       .from('csr_proper_nouns')
       .select('id')
-      .eq('csr_record_id', csrRecord.id)
+      .eq('csr_record_id', csrRecord!.id)
       .eq('value', value.trim())
       .single();
 
@@ -235,9 +235,9 @@ export async function POST(
     const { data: properNoun, error: nounError } = await supabase
       .from('csr_proper_nouns')
       .insert({
-        csr_record_id: csrRecord.id,
+        csr_record_id: csrRecord!.id,
         value: value.trim(),
-        category: category as ProperNounCategory,
+        category: category as string,
         phonetic_hint: phoneticHint?.trim() || null,
         source: source || 'manual_entry',
         use_in_transcription: useInTranscription,
@@ -339,7 +339,7 @@ export async function DELETE(
       .from('csr_proper_nouns')
       .delete()
       .in('id', ids)
-      .eq('csr_record_id', csrRecord.id)
+      .eq('csr_record_id', csrRecord!.id)
       .select();
 
     if (deleteError) {

@@ -91,7 +91,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const hasAccess =
     session.user.role === 'ADMIN' ||
     job.createdById === session.user.id ||
-    job.assignments.some((a) => a.scopistId === session.user.id);
+    job.assignments.some((a: any) => a.scopistId === session.user.id);
 
   if (!hasAccess) {
     redirect('/dashboard');

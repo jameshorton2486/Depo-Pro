@@ -31,7 +31,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
             return res;
           },
           (err) => {
-            logger.error('Request failed', { path: args[0]?.url, error: err });
+            logger.error('Request failed', err as Error);
             throw err;
           }
         );
@@ -39,7 +39,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
       logger.info('Request completed', { path: args[0]?.url });
       return result;
     } catch (err) {
-      logger.error('Request failed', { path: args[0]?.url, error: err });
+      logger.error('Request failed', err as Error);
       throw err;
     }
   }) as T;
@@ -179,7 +179,7 @@ export const PUT = withRequestLogging(async (
     
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error },
+        { error: (result as any).error },
         { status: 400 },
       );
     }
@@ -314,7 +314,7 @@ export const PATCH = withRequestLogging(async (
     
     if (!transitionResult.success) {
       return NextResponse.json(
-        { error: transitionResult.error },
+        { error: (transitionResult as any).error },
         { status: 400 },
       );
     }

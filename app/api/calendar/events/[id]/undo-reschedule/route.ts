@@ -52,12 +52,7 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const result = await undoReschedule(undoToken, {
-      eventId,
-      userId: user.id,
-      userRole: user.role,
-      firmId: user.firmId || '',
-    });
+    const result = await undoReschedule(undoToken);
 
     if (!result.success) {
       return NextResponse.json(

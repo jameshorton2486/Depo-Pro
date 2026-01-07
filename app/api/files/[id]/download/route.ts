@@ -45,7 +45,7 @@ export async function GET(
     const hasAccess =
       session.user.role === 'ADMIN' ||
       file.job.createdById === session.user.id ||
-      file.job.assignments.some((a) => a.scopistId === session.user.id);
+      file.job.assignments.some((a: any) => a.scopistId === session.user.id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });

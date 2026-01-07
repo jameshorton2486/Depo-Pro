@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, assertEditableBeforeFinal } from '@/lib/auth/permissions';
-import type { UserRole, DepositionNoteType } from '@/types/database';
+import { UserRole, DepositionNoteType as _DepositionNoteType } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 
 // GET /api/jobs/[id]/notes/[noteId] - Get single note
@@ -26,7 +26,7 @@ export async function GET(
     const { id: jobId, noteId } = await params;
 
     // Only REPORTER and SCOPIST can read notes
-    if (!requireAnyRole(user.role, [UserRole.REPORTER, UserRole.SCOPIST])) {
+    if (!requireAnyRole(user.role, ['REPORTER', 'SCOPIST'])) {
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
@@ -66,7 +66,7 @@ export async function GET(
       if (!assignments || assignments.length === 0) {
         return error('FORBIDDEN', 'You are not assigned to this job', 403);
       }
-    } else if (user.role === UserRole.REPORTER && job.created_by_id !== user.id) {
+    } else if (user.role === 'REPORTER' && job.created_by_id !== user.id) {
       return error('FORBIDDEN', 'You can only access notes for your own jobs', 403);
     }
 
@@ -114,7 +114,7 @@ export async function PATCH(
     const { id: jobId, noteId } = await params;
 
     // Only reporters can edit notes
-    requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
+    requireRole(user.role, ['REPORTER', 'ADMIN']);
 
     const supabase = await createSupabaseServerClient();
     
@@ -166,7 +166,7 @@ export async function PATCH(
     const updateData: any = {};
     if (content !== undefined) updateData.content = content.trim();
     if (type !== undefined && ['PROPER_NOUN', 'GENERAL_NOTE'].includes(type)) {
-      updateData.type = type as DepositionNoteType;
+      updateData.type = type as string;
     }
     if (audioTimestamp !== undefined) {
       updateData.audio_timestamp = audioTimestamp ? parseFloat(audioTimestamp) : null;
@@ -238,7 +238,7 @@ export async function DELETE(
     const { id: jobId, noteId } = await params;
 
     // Only reporters can delete notes
-    requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
+    requireRole(user.role, ['REPORTER', 'ADMIN']);
 
     const supabase = await createSupabaseServerClient();
     

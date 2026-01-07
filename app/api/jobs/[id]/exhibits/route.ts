@@ -50,7 +50,7 @@ export async function GET(
       if (accessCheck instanceof NextResponse) return accessCheck;
     } else if (user.role !== 'ADMIN') {
       // Allow scopists assigned to the job
-      const hasScopistAccess = job.assignments.some(a => a.scopistId === user.id);
+      const hasScopistAccess = job.assignments.some((a: any) => a.scopistId === user.id);
       if (!hasScopistAccess) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }

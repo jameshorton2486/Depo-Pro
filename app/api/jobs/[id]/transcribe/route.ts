@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { enqueueJob } from '@/lib/jobs/queue';
-import { JobType, TranscriptionJobPayload } from '@/lib/jobs/types';
+import { JobType, TranscriptionJobPayload as _TranscriptionJobPayload } from '@/lib/jobs/types';
 import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
 import type { AudioProcessingMode } from '@/lib/services/audio-enhancement-service';
@@ -82,7 +82,7 @@ export async function POST(
 
     // Check for audio file
     const audioFile = job.files.find(
-      (f) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/') || f.mimeType?.startsWith('video/'),
+      (f: any) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/') || f.mimeType?.startsWith('video/'),
     );
 
     if (!audioFile) {
@@ -119,13 +119,11 @@ export async function POST(
     // Check processing mode and route accordingly
     if (processingMode === 'MANUAL_RX') {
       // Add job to RX queue instead of starting transcription
-      const queueResult = await AudioEnhancementService.addToRxQueue(
+      const queueResult = await AudioEnhancementService.addToRxQueue({
         jobId,
-        audioFile.storageUrl || audioFile.storagePath,
-        {
-          priority: 'NORMAL',
-        },
-      );
+        audioUrl: audioFile.storageUrl || audioFile.storagePath,
+        priority: 'NORMAL',
+      });
 
       if (!queueResult.success) {
         return NextResponse.json(
@@ -166,7 +164,6 @@ export async function POST(
 
     // Start automated enhancement
     const enhancementResult = await AudioEnhancementService.enhanceWithDolby(
-      jobId,
       audioFile.storageUrl || audioFile.storagePath,
       {},
     );
@@ -194,7 +191,7 @@ export async function POST(
       ? enhancementResult.enhancedFileUrl
       : audioFile.storageUrl || audioFile.storagePath;
 
-    await enqueueJob<TranscriptionJobPayload>(
+    await enqueueJob(
       JobType.TRANSCRIPTION_PROCESS,
       {
         jobId,
@@ -207,11 +204,6 @@ export async function POST(
           punctuate: true,
           modelPreference,
         },
-      },
-      {
-        priority: 1,
-        maxAttempts: 3,
-        idempotencyKey: `transcription:${jobId}`,
       }
     );
 

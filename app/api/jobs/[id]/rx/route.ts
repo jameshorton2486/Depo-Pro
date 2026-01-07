@@ -144,7 +144,7 @@ export async function POST(
     const sessionResult = await createRXSession({
       jobId,
       operatorUserId: session.user.id,
-      operatorNotes: justification,
+      // operatorNotes: justification - removed, not in type,
     });
 
     if (!sessionResult.success) {

@@ -69,8 +69,8 @@ export async function PATCH(
 
     // 4. Permission Check
     if (!canReschedule(userRole as any, userId, { 
-      createdById: event.createdById, 
-      firmId: event.firmId 
+      createdById: event.created_by_id, 
+      firmId: event.firm_id 
     })) {
       return NextResponse.json(
         { 
@@ -178,20 +178,21 @@ export async function PATCH(
 
     // Audit log (without transaction parameter)
     await createAuditLog({
-      eventId: eventId,
+      targetId: eventId,
+      targetType: 'CALENDAR_EVENT',
       action: 'EVENT_RESCHEDULED',
-      performedById: userId,
-      previousValue: {
-        startTime: event.start_time,
-        endTime: event.end_time,
-        status: event.status,
-      },
-      newValue: {
-        startTime: updateData.start_time,
-        endTime: updateData.end_time,
-        status: updateData.status,
-      },
+      actorUserId: userId,
       metadata: {
+        previousValue: {
+          startTime: event.start_time,
+          endTime: event.end_time,
+          status: event.status,
+        },
+        newValue: {
+          startTime: updateData.start_time,
+          endTime: updateData.end_time,
+          status: updateData.status,
+        },
         reason,
         notifyParties,
         updateLocation,

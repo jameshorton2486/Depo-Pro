@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // USAGE API ROUTE
 // =============================================================================
 // Get usage statistics and limits for a firm
@@ -9,7 +9,7 @@ import { auth } from '@/lib/auth';
 import {
   getUsageSummary,
   getFirmUsage as _getFirmUsage,
-  _PricingTier,
+  PricingTier,
 } from '@/lib/cost-control-service';
 
 // =============================================================================
@@ -46,12 +46,12 @@ export async function GET(_request: NextRequest) {
       success: true,
       data: {
         tier,
-        period: summary.period,
-        usage: summary.usage,
+        period: (summary as any).period,
+        usage: (summary as any).usage,
         limits: summary.limits,
-        percentages: summary.percentages,
-        estimatedCost: summary.estimatedCost,
-        warnings: summary.warnings,
+        percentages: (summary as any).percentages,
+        estimatedCost: (summary as any).estimatedCost,
+        warnings: (summary as any).warnings,
       },
     });
 

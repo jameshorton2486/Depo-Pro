@@ -17,8 +17,7 @@ const rescheduleSchema = z.object({
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
   forceOverride: z.boolean().optional().default(false),
-  overrideReason: z.string().optional(),
-});
+  overrideReason: z.string().optional()});
 
 /**
  * POST - Perform reschedule
@@ -44,12 +43,11 @@ export async function POST(
       );
     }
 
-    const { startTime, endTime, forceOverride, overrideReason } = validation.data;
+    const { startTime, endTime,  overrideReason } = validation.data;
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
+      select: { id: true, role: true, firmId: true }});
 
     if (!user?.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
@@ -62,17 +60,14 @@ export async function POST(
       userId: user.id,
       userRole: user.role,
       firmId: user.firmId,
-      forceOverride,
-      overrideReason,
     });
 
     if (!result.success) {
       return NextResponse.json(
         {
           success: false,
-          conflicts: result.conflicts?.conflicts || [],
-          alternativeSlots: (result.conflicts?.suggestedAlternatives || result.conflicts?.alternativeSlots) || [],
-        },
+          conflicts: (result.conflicts as any)?.conflicts || [],
+          alternativeSlots: ((result.conflicts as any)?.suggestedAlternatives || (result.conflicts as any)?.alternativeSlots) || []},
         { status: 409 } // Conflict
       );
     }
@@ -84,8 +79,7 @@ export async function POST(
       previousEndTime: result.event?.previousEnd.toISOString(),
       newStartTime: result.event?.startTime.toISOString(),
       newEndTime: result.event?.endTime.toISOString(),
-      undoToken: result.undoToken,
-    });
+      undoToken: result.undoToken});
 
   } catch (error) {
     console.error('Reschedule error:', error);
@@ -113,8 +107,7 @@ export async function PUT(
     const body = await request.json();
     const validation = z.object({
       startTime: z.string().datetime(),
-      endTime: z.string().datetime(),
-    }).safeParse(body);
+      endTime: z.string().datetime()}).safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
@@ -127,8 +120,7 @@ export async function PUT(
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
+      select: { id: true, role: true, firmId: true }});
 
     if (!user?.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
@@ -140,8 +132,7 @@ export async function PUT(
       newEnd: new Date(endTime),
       userId: user.id,
       userRole: user.role,
-      firmId: user.firmId,
-    });
+      firmId: user.firmId});
 
     return NextResponse.json({
       hasConflicts: result.conflicts.length > 0,
@@ -151,14 +142,12 @@ export async function PUT(
         conflictEventTitle: c.conflictingEventTitle,
         overlapMinutes: c.overlapMinutes,
         severity: c.severity === 'ERROR' ? 'high' : c.severity === 'WARNING' ? 'medium' : 'low',
-        message: c.message,
-      })),
+        message: c.message})),
       alternativeSlots: ((result.suggestedAlternatives || result.alternativeSlots) || []).map((slot: { start: Date; end: Date }, idx: number) => ({
         startTime: slot.start.toISOString(),
         endTime: slot.end.toISOString(),
         availabilityScore: 100 - idx * 10, // Score based on order (first is best)
-      })),
-    });
+      }))});
 
   } catch (error) {
     console.error('Preview reschedule error:', error);

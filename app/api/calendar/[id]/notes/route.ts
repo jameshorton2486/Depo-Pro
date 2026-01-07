@@ -111,15 +111,14 @@ export async function POST(
 
     // Audit log (without transaction parameter)
     await createAuditLog({
-      eventId: eventId,
+      targetId: eventId,
+      targetType: 'CALENDAR_EVENT',
       action: 'NOTE_ADDED',
-      performedById: userId,
-      newValue: {
+      actorUserId: userId,
+      metadata: {
         noteField: isInternal ? 'internalNotes' : 'notes',
         isInternal,
         contentPreview: content.slice(0, 100),
-      },
-      metadata: {
         userDisplayName,
         timestamp,
       },
@@ -193,8 +192,8 @@ export async function GET(
 
     // Parse notes (simple implementation - in production you might want better parsing)
     const publicNotes = event.notes ? [{ content: event.notes, isInternal: false }] : [];
-    const internalNotes = canSeeInternal && event.internalNotes 
-      ? [{ content: event.internalNotes, isInternal: true }]
+    const internalNotes = canSeeInternal && event.internal_notes 
+      ? [{ content: event.internal_notes, isInternal: true }]
       : [];
 
     return NextResponse.json({

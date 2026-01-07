@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Connect calendar
-    const result = await externalCalendarSyncService.connectCalendar(
+    const result = await (externalCalendarSyncService as any).connectCalendar(
       stateData.userId,
       stateData.firmId,
       stateData.provider,

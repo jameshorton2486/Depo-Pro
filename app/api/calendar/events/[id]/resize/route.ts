@@ -64,7 +64,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          conflicts: result.conflicts?.conflicts || [],
+          conflicts: (result.conflicts as any)?.conflicts || [],
         },
         { status: 409 } // Conflict
       );

@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     const caseAccess = await requireAttorneyCaseAccess(user.id, caseId);
     if (caseAccess && typeof caseAccess === "object" && "status" in caseAccess) return caseAccess;
 
-    const uploadPermission = await requireExhibitUpload(user.id, caseId, depositionId);
+    const uploadPermission = await requireExhibitUpload(user.id, caseId);
     if (uploadPermission && typeof uploadPermission === "object" && "status" in uploadPermission) return uploadPermission;
 
     // Verify case exists

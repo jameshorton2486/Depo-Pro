@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       results: results.map(r => ({
         jobId: r.jobId,
         success: r.success,
-        duration: r.duration,
+        duration: (r as any).duration,
         error: r.error,
       })),
     });

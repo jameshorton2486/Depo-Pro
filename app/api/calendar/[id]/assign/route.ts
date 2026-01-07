@@ -190,15 +190,16 @@ export async function POST(
       : 'REPORTER_UNASSIGNED' as const;
 
     await createAuditLog({
-      eventId: eventId,
+      targetId: eventId,
+      targetType: 'CALENDAR_EVENT',
       action: auditAction,
-      performedById: userId,
-      previousValue: { assignedReporterId: previousReporterId },
-      newValue: { assignedReporterId: personnelId },
+      actorUserId: userId,
       metadata: {
         personnelType,
         notifyAssignee,
         notes,
+        previousValue: { assignedReporterId: previousReporterId },
+        newValue: { assignedReporterId: personnelId },
       },
     });
 

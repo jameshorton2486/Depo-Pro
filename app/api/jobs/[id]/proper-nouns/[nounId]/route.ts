@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { ProperNounCategory } from '@/types/database';
+import { ProperNounCategory as _ProperNounCategory } from '@/types/database';
 
 interface RouteContext {
   params: Promise<{ id: string; nounId: string }>;
@@ -164,7 +164,7 @@ export async function PATCH(
     }
 
     if (category !== undefined) {
-      const validCategories: ProperNounCategory[] = [
+      const validCategories: string[] = [
         'PERSON_NAME',
         'COMPANY_NAME',
         'PLACE_NAME',

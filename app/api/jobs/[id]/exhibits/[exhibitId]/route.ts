@@ -45,7 +45,7 @@ export async function GET(
     // Check permissions
     const hasAccess =
       (exhibit.job?.createdById === user.id) ||
-      (exhibit.job?.assignments.some(a => a.scopistId === user.id)) ||
+      (exhibit.job?.assignments.some((a: any) => a.scopistId === user.id)) ||
       user.role === 'ADMIN';
 
     if (!hasAccess) {

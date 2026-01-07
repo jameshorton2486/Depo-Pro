@@ -96,7 +96,7 @@ export async function POST(
     }
 
     // 8. Transaction: Create job + Update event
-    const result = await db.$transaction(async (tx) => {
+    const result = await (db as any).$transaction(async (tx: any) => {
       const job = await tx.job.create({
         data: {
           title: event.title,

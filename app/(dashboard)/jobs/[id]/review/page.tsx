@@ -66,7 +66,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
 
   // Get audio file URL
   const audioFile = job.files.find(
-    (f) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/'),
+    (f: any) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/'),
   );
 
   if (!audioFile) {
