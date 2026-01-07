@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,9 +23,8 @@ const resetPasswordSchema = z.object({
 
 type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
-  const _searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -122,7 +121,15 @@ export default function ResetPasswordPage() {
   };
 
   if (!mounted || !sessionReady) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-12">
+        <Card className="w-full max-w-md">
+          <CardContent className="py-8">
+            <p className="text-center text-slate">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (success) {
@@ -235,5 +242,21 @@ export default function ResetPasswordPage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-12">
+        <Card className="w-full max-w-md">
+          <CardContent className="py-8">
+            <p className="text-center text-slate">Loading...</p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
