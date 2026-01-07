@@ -5,7 +5,8 @@
 // Phase 3D-3: System health endpoint (Admin only)
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getSystemHealth } from '@/lib/monitoring/health-service';
 

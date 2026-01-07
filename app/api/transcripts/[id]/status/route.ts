@@ -5,7 +5,8 @@
 // Phase 3B-1: Status transition endpoint
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { transitionStatus } from '@/lib/transcripts/status-service';
 import { createSupabaseServerClient } from '@/lib/supabase/server';

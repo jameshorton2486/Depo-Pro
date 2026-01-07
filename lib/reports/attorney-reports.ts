@@ -3,9 +3,9 @@
 // ═══════════════════════════════════════════════════════════════
 // Generate trial-ready reports from transcript annotations
 
-import { TranscriptAnnotation } from '@/types/issue-code';
-import { AttorneyTranscript } from '@/types/attorney-transcript';
-import { ExhibitReference } from '@/types/exhibits';
+import type { TranscriptAnnotation } from '@/types/issue-code';
+import type { AttorneyTranscript } from '@/types/attorney-transcript';
+import type { ExhibitReference } from '@/types/exhibits';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableCell, TableRow, WidthType } from 'docx';
 
 export interface ReportEntry {

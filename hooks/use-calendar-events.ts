@@ -3,7 +3,7 @@
 // ============================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { CalendarEventUI, CalendarFilters } from '@/lib/calendar/types';
+import type { CalendarEventUI, CalendarFilters } from '@/lib/calendar/types';
 
 interface UseCalendarEventsOptions {
   startDate: Date;

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { startOfMonth } from 'date-fns';
-import { FlaggedWord } from '@/types/transcript';
+import type { FlaggedWord } from '@/types/transcript';
 
 export default async function ScopistDashboard() {
   const session = await auth();

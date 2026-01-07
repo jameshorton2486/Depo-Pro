@@ -7,7 +7,7 @@
 // Phase 3A-1: Actual view implementations
 // =============================================================================
 
-import { CalendarView as ViewType } from '@/lib/calendar/use-allowed-calendar-views';
+import type { CalendarView as ViewType } from '@/lib/calendar/use-allowed-calendar-views';
 import { JobsCalendarView } from './views/jobs-calendar-view';
 import { AvailabilityEditor } from './availability-editor';
 import { AssignmentCalendar } from './assignment-calendar';

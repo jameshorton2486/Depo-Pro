@@ -3,7 +3,7 @@
 // ============================================
 
 import { useState, useCallback } from 'react';
-import { CalendarEventUI, DrawerState } from '@/lib/calendar/types';
+import type { CalendarEventUI, DrawerState } from '@/lib/calendar/types';
 
 interface UseCalendarDrawerReturn {
   drawerState: DrawerState;

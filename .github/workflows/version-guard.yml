@@ -1,0 +1,30 @@
+name: Version Guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  enforce-next-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check Next.js version
+        run: |
+          NEXT_VERSION=$(node -p "require('./package.json').dependencies?.next || require('./package.json').devDependencies?.next")
+
+          echo "Detected Next.js version: $NEXT_VERSION"
+
+          if [[ "$NEXT_VERSION" == *"16"* || "$NEXT_VERSION" == *"canary"* || "$NEXT_VERSION" == *"latest"* ]]; then
+            echo "❌ Next.js 16 or non-pinned version detected. Depo-Pro must remain on Next.js 15."
+            exit 1
+          fi
+
+          echo "✅ Next.js version is acceptable: $NEXT_VERSION"

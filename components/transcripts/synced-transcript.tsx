@@ -12,7 +12,7 @@
 
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import { WordSpan } from './word-span';
-import { ReviewWord } from '@/types/review';
+import type { ReviewWord } from '@/types/review';
 
 // Configurable: Break paragraphs on pauses longer than this (seconds)
 const PARAGRAPH_PAUSE_SECONDS = 2;

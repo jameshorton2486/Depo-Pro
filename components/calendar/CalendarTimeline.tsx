@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarEventUI } from './calendar.types';
+import type { CalendarEventUI } from './calendar.types';
 import { CalendarEventCard } from './CalendarEventCard';
 
 // ============================================

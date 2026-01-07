@@ -2,7 +2,7 @@
 // REVIEW TYPES - Shared TypeScript types for transcript review
 // ═══════════════════════════════════════════════════════════════
 
-import { TranscriptWord } from './deepgram';
+import type { TranscriptWord } from './deepgram';
 
 // Review workflow state (for resume and dashboard progress)
 export type ReviewState = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';

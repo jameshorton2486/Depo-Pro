@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import { Session } from 'next-auth';
+import type { Session } from 'next-auth';
 import { Menu, Bell } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';

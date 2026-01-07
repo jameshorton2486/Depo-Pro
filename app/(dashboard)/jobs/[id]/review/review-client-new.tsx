@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { WaveformPlayer } from '@/components/audio/waveform-player';
-import { SyncedTranscriptViewer, TranscriptSegment, TranscriptWord } from '@/components/transcripts/synced-transcript-viewer';
+import type { TranscriptSegment, TranscriptWord } from '@/components/transcripts/synced-transcript-viewer';
+import { SyncedTranscriptViewer } from '@/components/transcripts/synced-transcript-viewer';
 import { LowConfidencePanel } from '@/components/transcripts/low-confidence-panel';
 import { TranscriptSkeleton } from '@/components/transcripts/transcript-skeleton';
 import { toast } from 'sonner';

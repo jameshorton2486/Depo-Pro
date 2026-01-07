@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 // Path: app/api/calendar/events/check-conflicts/route.ts
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { checkForConflicts } from '@/lib/scheduling/conflict-detection';
 import { z } from 'zod';

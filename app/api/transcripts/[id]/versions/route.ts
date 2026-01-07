@@ -5,7 +5,8 @@
 // Phase 4B-1: Get version history for a transcript
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 // Stub for getVersions (replaces _future/transcripts/version-service)
 async function getVersions(_transcriptId: string): Promise<any[]> {

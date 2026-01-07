@@ -2,7 +2,8 @@
 // ASSIGN REPORTER TO JOB API
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { logAudit } from '@/lib/audit';

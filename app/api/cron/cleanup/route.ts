@@ -2,7 +2,8 @@
 // app/api/cron/cleanup/route.ts
 // Daily cleanup job for old files and failed jobs
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 
 // Verify cron secret to prevent unauthorized access
 const CRON_SECRET = process.env.CRON_SECRET;

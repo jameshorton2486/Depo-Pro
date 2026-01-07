@@ -5,7 +5,8 @@
 // Real types exist in lib/external-calendar/types.ts
 // =============================================================================
 
-import { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
+import type { ExternalCalendarProvider} from '@/lib/enums';
+import { ExternalCalendarSyncMode } from '@/lib/enums';
 import type { ExternalEvent as ExternalEventType, SyncResult as SyncResultType, SyncError as SyncErrorType } from '../types';
 
 /**

@@ -5,7 +5,7 @@
 // Gets authenticated user with role from user_metadata
 // Supabase-only: No database lookups, uses user_metadata.role as single source of truth
 
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createSupabaseMiddlewareClient } from './middleware';
 import { getSupabaseAdminClient } from './admin';
 import type { Role } from '@/lib/permissions/route-access';

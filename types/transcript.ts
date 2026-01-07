@@ -1,7 +1,7 @@
 // types/transcript.ts
 // Type definitions for transcription system
 
-import { SpeakerType } from '@/lib/transcription/config';
+import type { SpeakerType } from '@/lib/transcription/config';
 
 // Word with timestamp and confidence from Deepgram
 export interface TranscriptWord {

@@ -3,7 +3,7 @@
 // ============================================
 
 import { useState, useMemo } from 'react';
-import { CalendarFilters } from '@/lib/calendar/types';
+import type { CalendarFilters } from '@/lib/calendar/types';
 
 interface UseCalendarFiltersReturn {
   filters: CalendarFilters;

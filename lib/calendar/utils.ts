@@ -13,7 +13,7 @@ import {
   format,
   differenceInDays,
 } from 'date-fns';
-import { CalendarEventUI, DayEvents } from './types';
+import type { CalendarEventUI, DayEvents } from './types';
 
 /**
  * Get date range for a month (start of first week to end of last week)

@@ -1,10 +1,10 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
-import type { JobStatus } from '@/types/database';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptionQueue } from '@/lib/queue/transcription-queue';
 import { logger } from '@/lib/logger';
+import { getJobForTranscription, markJobFilesUploaded } from '@/lib/supabase/queries/transcription';
 
 // Simple request logging wrapper (replaces withRequestLogging)
 const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
@@ -74,15 +74,10 @@ async function postTranscribeStartHandler(request: NextRequest) {
       options: validated.options,
     });
 
-    // Verify job exists and user has access
-    const supabase = await createSupabaseServerClient();
-    const { data: job, error: jobError } = await supabase
-      .from('Job')
-      .select('id, created_by_id')
-      .eq('id', validated.jobId)
-      .single();
+    // Verify job exists and user has access via query layer
+    const job = await getJobForTranscription(validated.jobId);
 
-    if (jobError || !job) {
+    if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
@@ -100,14 +95,8 @@ async function postTranscribeStartHandler(request: NextRequest) {
       );
     }
 
-    // Update job status
-    await supabase
-      .from('Job')
-      .update({
-        status: 'FILES_UPLOADED' as JobStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', validated.jobId);
+    // Update job status via query layer (behavior preserved: errors are not surfaced)
+    await markJobFilesUploaded(validated.jobId);
 
     // Add to queue
     await queue.add('transcribe', {

@@ -15,7 +15,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FlaggedWordWithContext } from '@/types/review';
+import type { FlaggedWordWithContext } from '@/types/review';
 
 interface FlaggedWordCardProps {
   flaggedWord: FlaggedWordWithContext;

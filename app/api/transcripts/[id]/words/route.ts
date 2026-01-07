@@ -5,11 +5,12 @@
 // GET: Retrieve current review progress
 // Access: Court reporters (own jobs) and assigned scopists
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Role, JobStatus } from '@/lib/constants';
-import { ReviewState } from '@/types/review';
+import type { ReviewState } from '@/types/review';
 import { isTranscriptLocked, getLockStatus } from '@/lib/transcript-locking';
 
 // Threshold bounds

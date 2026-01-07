@@ -5,7 +5,7 @@
 // Phase 3A-4: Simple conflict detection for availability blocks
 // =============================================================================
 
-import { AvailabilityBlock } from './types';
+import type { AvailabilityBlock } from './types';
 
 /**
  * Check if a time range conflicts with any availability blocks

@@ -5,7 +5,7 @@
 // Defines event type categories for unified calendar view
 // =============================================================================
 
-import { CalendarEventUI } from '@/components/calendar/calendar.types';
+import type { CalendarEventUI } from '@/components/calendar/calendar.types';
 
 export type EventTypeFilter = 'all' | 'jobs' | 'availability' | 'assignments';
 

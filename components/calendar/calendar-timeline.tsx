@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarEventUI, UserRole } from '@/lib/calendar/types';
+import type { CalendarEventUI, UserRole } from '@/lib/calendar/types';
 import { formatDateHeading, sortEventsByTime, groupEventsByDate } from '@/lib/calendar/utils';
 import { CalendarEventCard } from './calendar-event-card';
 

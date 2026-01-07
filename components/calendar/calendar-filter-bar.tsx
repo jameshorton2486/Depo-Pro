@@ -7,7 +7,8 @@
 // Toggle bar for filtering calendar events by type
 // =============================================================================
 
-import { EventTypeFilter, EVENT_TYPE_CONFIG } from '@/lib/calendar/event-types';
+import type { EventTypeFilter} from '@/lib/calendar/event-types';
+import { EVENT_TYPE_CONFIG } from '@/lib/calendar/event-types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

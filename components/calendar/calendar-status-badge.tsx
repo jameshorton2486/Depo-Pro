@@ -1,6 +1,6 @@
 'use client';
 
-import { EventStatus } from '@/lib/calendar/types';
+import type { EventStatus } from '@/lib/calendar/types';
 import { EVENT_STATUS_CONFIG } from '@/lib/calendar/constants';
 import { cn } from '@/lib/utils';
 

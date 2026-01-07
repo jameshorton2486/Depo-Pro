@@ -5,7 +5,8 @@
 // Task 2.3.3 - Attorney Booking Request Workflow
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
 

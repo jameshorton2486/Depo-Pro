@@ -42,14 +42,14 @@ import { CalendarFilterBar } from './calendar-filter-bar';
 // Old CalendarShell - kept for backward compatibility
 // New implementation is in calendar-shell.tsx
 // import { CalendarViewToggle, type CalendarContentView } from './calendar-view-toggle';
-import {
+import type {
   CalendarEventUI,
   CalendarViewType,
   CalendarShellProps,
   CalendarEventStatus,
 } from './calendar.types';
 import { detectConflicts } from '@/lib/calendar/calendar-utils';
-import { EventTypeFilter } from '@/lib/calendar/event-types';
+import type { EventTypeFilter } from '@/lib/calendar/event-types';
 import { filterEventsByRole } from '@/lib/calendar/event-filters';
 
 // ============================================

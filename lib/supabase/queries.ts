@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 // Common database query patterns to replace Prisma
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 // Note: Using types/database.ts instead of generated Supabase types
 // For full type safety, generate types with: npx supabase gen types typescript
 

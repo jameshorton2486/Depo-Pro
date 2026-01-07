@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ConvertToJobSchema } from '@/lib/calendar/validations';
 import { canConvertToJob } from '@/lib/calendar/permissions';
+import { getCalendarEventById, convertEventToJob } from '@/lib/supabase/queries/calendar';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { createAuditLog } from '@/lib/calendar/audit';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // POST /api/calendar/[id]/convert-to-job
@@ -56,15 +60,10 @@ export async function POST(
 
     const { includeTranscription, assignToScopist, scopistId, priority, notes } = validationResult.data;
 
-    // 4. Fetch Event
-    const supabase = await createSupabaseServerClient();
-    const { data: event, error: eventError } = await supabase
-      .from('calendar_events')
-      .select('id, title, start_time, location, meeting_link, status, job_id, assigned_reporter_id, firm_id, agency_id')
-      .eq('id', eventId)
-      .single();
+    // 4. Fetch Event via query layer
+    const event = await getCalendarEventById(eventId);
 
-    if (eventError || !event) {
+    if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -102,102 +101,92 @@ export async function POST(
       );
     }
 
-    // 8. Create Job (Supabase doesn't support transactions, so we do sequential operations)
-    const jobData: any = {
-      title: event.title,
-      case_name: event.title, // Required field, use title as default
+    // 8. Convert Event to Job via query layer
+    const convertResult = await convertEventToJob(eventId, {
+      title: event.title || 'Untitled Job',
+      case_name: event.title || 'Untitled Case',
+      case_number: event.case_number || null,
       deposition_date: event.start_time,
       location: event.location || null,
       zoom_link: event.meeting_link || null,
-      status: 'CREATED',
       created_by_id: userId,
-      firm_id: event.firm_id,
+      firm_id: event.firm_id || '',
       agency_id: event.agency_id || null,
       assigned_to_id: event.assigned_reporter_id || null,
-    };
+      scopist_id: assignToScopist && scopistId ? scopistId : null,
+      internal_notes: notes || null,
+    });
 
-    if (assignToScopist && scopistId) {
-      jobData.scopist_id = scopistId;
-    }
-
-    if (notes) {
-      jobData.internal_notes = notes;
-    }
-
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .insert(jobData)
-      .select()
-      .single();
-
-    if (jobError) {
-      console.error('Job creation error:', jobError);
+    if (!convertResult.success) {
+      if (convertResult.jobId) {
+        // Already converted
+        return NextResponse.json(
+          {
+            error: 'Event already converted',
+            code: 'ALREADY_CONVERTED',
+            jobId: convertResult.jobId,
+          },
+          { status: 409 }
+        );
+      }
+      logger.error('Failed to convert event to job', new Error(convertResult.error || 'Unknown error'), { eventId });
       return NextResponse.json(
-        { error: 'Failed to create job', code: 'JOB_CREATION_ERROR' },
-        { status: 500 }
-      );
-    }
-
-    // Update the calendar event
-    const { error: updateError } = await supabase
-      .from('calendar_events')
-      .update({
-        job_id: job.id,
-        status: 'CONVERTED',
-        confirmed_at: new Date().toISOString(),
-      })
-      .eq('id', eventId);
-
-    if (updateError) {
-      console.error('Event update error:', updateError);
-      // Try to rollback job creation (best effort)
-      await supabase.from('jobs').delete().eq('id', job.id);
-      return NextResponse.json(
-        { error: 'Failed to update event', code: 'EVENT_UPDATE_ERROR' },
+        { error: convertResult.error || 'Failed to convert event to job', code: 'CONVERSION_ERROR' },
         { status: 500 }
       );
     }
 
     // Create audit log
-    const { error: auditError } = await supabase
-      .from('audit_logs')
-      .insert({
-        actor_user_id: userId,
-        action: 'CALENDAR_CONVERT_TO_JOB',
-        target_type: 'CalendarEvent',
-        target_id: eventId,
-        metadata: {
-          jobId: job.id,
-          eventSnapshot: {
-            title: event.title,
-            startTime: event.start_time,
-          },
-          priority,
-          includeTranscription,
-          assignToScopist,
+    await createAuditLog({
+      targetId: eventId,
+      targetType: 'CALENDAR_EVENT',
+      action: 'CALENDAR_CONVERT_TO_JOB',
+      actorUserId: userId,
+      metadata: {
+        jobId: convertResult.jobId,
+        eventSnapshot: {
+          title: event.title,
+          startTime: event.start_time,
         },
-      });
+        priority,
+        includeTranscription,
+        assignToScopist,
+      },
+    });
 
-    if (auditError) {
-      console.error('Audit log error:', auditError);
-      // Non-fatal, continue
+    // Get created job for response via query layer
+    if (!convertResult.jobId) {
+      return NextResponse.json(
+        { error: 'Job ID not returned from conversion', code: 'FETCH_ERROR' },
+        { status: 500 }
+      );
     }
 
-    const result = job;
+    const { createSupabaseServerClient } = await import('@/lib/supabase/server');
+    const supabase = await createSupabaseServerClient();
+    const result = await getJobById(supabase, convertResult.jobId);
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Failed to fetch created job', code: 'FETCH_ERROR' },
+        { status: 500 }
+      );
+    }
 
     // 9. Return Success
     return NextResponse.json({
       success: true,
       job: {
         id: result.id,
-        title: result.title,
+        title: result.title || result.case_name || 'Untitled Job',
         status: result.status,
       },
       message: 'Event successfully converted to job',
     });
 
   } catch (error) {
-    console.error('[ConvertToJob] Error:', error);
+    const { id: eventId } = await params;
+    logger.error('[ConvertToJob] Error', error instanceof Error ? error : new Error(String(error)), { eventId });
     
     return NextResponse.json(
       { 

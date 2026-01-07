@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 // All database access for files goes through these functions
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Get file by ID

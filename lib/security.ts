@@ -3,7 +3,7 @@
  * Phase 5: Production Hardening
  */
 
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import type { UserRole } from '@/types/database';
 

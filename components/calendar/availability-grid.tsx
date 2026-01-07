@@ -9,8 +9,9 @@
 // =============================================================================
 
 import { useState } from 'react';
-import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
-import { AvailabilityBlock } from '@/lib/calendar/types';
+import type { DragEndEvent} from '@dnd-kit/core';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import type { AvailabilityBlock } from '@/lib/calendar/types';
 import { findOverlaps } from '@/lib/calendar/availability-utils';
 import { hasConflict } from '@/lib/calendar/conflict-utils';
 import { AvailabilityBlockComponent } from './availability-block';

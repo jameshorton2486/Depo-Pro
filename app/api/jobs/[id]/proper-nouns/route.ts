@@ -6,12 +6,14 @@
 // Used by the Live Notes Capture feature during depositions
 // ═══════════════════════════════════════════════════════════════
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ProperNounCategory as _ProperNounCategory } from '@/types/database';
-import { getProperNounsByJob, createProperNoun } from '@/lib/supabase/queries/proper-nouns';
+import { getProperNounsByJob, createProperNoun, getOrCreateCsrRecordId, bulkDeleteProperNouns } from '@/lib/supabase/queries/proper-nouns';
 import { getJobById } from '@/lib/supabase/queries/jobs';
+import { logger } from '@/lib/logger';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -56,12 +58,8 @@ export async function GET(
     // Get proper nouns using query module (handles CSR record creation if needed)
     const properNouns = await getProperNounsByJob(supabase, jobId);
     
-    // Get CSR record ID for response (query module creates it if needed)
-    const { data: csrRecord } = await supabase
-      .from('csr_records')
-      .select('id')
-      .eq('job_id', jobId)
-      .maybeSingle();
+    // Get CSR record ID for response via query layer
+    const csrRecordId = await getOrCreateCsrRecordId(jobId);
 
     return NextResponse.json({
       properNouns: properNouns.map(noun => ({
@@ -71,12 +69,13 @@ export async function GET(
         useInTranscription: noun.use_in_transcription,
         createdAt: noun.created_at,
       })),
-      csrRecordId: csrRecord?.id || null,
+      csrRecordId,
       count: properNouns.length,
     });
 
   } catch (error) {
-    console.error('Error fetching proper nouns:', error);
+    const { id: jobId } = await context.params;
+    logger.error('Error fetching proper nouns', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to fetch proper nouns' },
       { status: 500 },
@@ -186,14 +185,16 @@ export async function POST(
           { status: 409 },
         );
       }
-      console.error('Error creating proper noun:', error);
+      const { id: jobId } = await context.params;
+      logger.error('Error creating proper noun', error instanceof Error ? error : new Error(String(error)), { jobId });
       return NextResponse.json(
         { error: 'Failed to create proper noun' },
         { status: 500 },
       );
     }
   } catch (error) {
-    console.error('Error creating proper noun:', error);
+    const { id: jobId } = await context.params;
+    logger.error('Error creating proper noun', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to create proper noun' },
       { status: 500 },
@@ -246,40 +247,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get CSR record (needed for bulk delete - could be moved to query module)
-    const { data: csrRecord } = await supabase
-      .from('csr_records')
-      .select('id')
-      .eq('job_id', jobId)
-      .maybeSingle();
+    // Bulk delete proper nouns via query layer
+    const deleteResult = await bulkDeleteProperNouns(jobId, ids);
 
-    if (!csrRecord) {
-      return NextResponse.json({ error: 'No CSR record for this job' }, { status: 404 });
-    }
-
-    // Delete the proper nouns (bulk delete - could be added to query module)
-    const { data: deleted, error: deleteError } = await supabase
-      .from('csr_proper_nouns')
-      .delete()
-      .in('id', ids)
-      .eq('csr_record_id', csrRecord.id)
-      .select();
-
-    if (deleteError) {
-      console.error('Delete error:', deleteError);
+    if (!deleteResult.success) {
+      logger.error('Bulk delete error', new Error(deleteResult.error || 'Unknown error'), { jobId, ids });
       return NextResponse.json(
-        { error: 'Failed to delete proper nouns' },
+        { error: deleteResult.error || 'Failed to delete proper nouns' },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      deleted: deleted?.length || 0,
+      deleted: deleteResult.deletedCount || 0,
     });
 
   } catch (error) {
-    console.error('Error deleting proper nouns:', error);
+    const { id: jobId } = await context.params;
+    logger.error('Error deleting proper nouns', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to delete proper nouns' },
       { status: 500 },

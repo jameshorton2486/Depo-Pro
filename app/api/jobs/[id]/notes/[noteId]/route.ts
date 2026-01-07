@@ -5,14 +5,14 @@
 // DELETE /api/jobs/[id]/notes/[noteId] - Delete note
 // =============================================================================
 
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, assertEditableBeforeFinal } from '@/lib/auth/permissions';
 import { UserRole, DepositionNoteType as _DepositionNoteType } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 import { getNoteById, updateNote, deleteNote } from '@/lib/supabase/queries/notes';
-import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
 
 // GET /api/jobs/[id]/notes/[noteId] - Get single note
@@ -49,15 +49,11 @@ export async function GET(
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
-    // Check assignments for scopist (job_assignments query could be moved to jobs.ts later)
+    // Check assignments for scopist via query layer
     if (user.role === UserRole.SCOPIST) {
-      const { data: assignments } = await supabase
-        .from('job_assignments')
-        .select('scopist_id')
-        .eq('job_id', jobId)
-        .eq('scopist_id', user.id);
+      const isAssigned = await isUserAssignedToJob(jobId, user.id);
       
-      if (!assignments || assignments.length === 0) {
+      if (!isAssigned) {
         return error('FORBIDDEN', 'You are not assigned to this job', 403);
       }
     } else if (user.role === 'REPORTER' && (job as any).created_by_id !== user.id) {

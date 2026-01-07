@@ -6,7 +6,8 @@
 // Handle contact form submissions with rate limiting
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 
 // Simple in-memory rate limiting (5 requests per hour per IP)

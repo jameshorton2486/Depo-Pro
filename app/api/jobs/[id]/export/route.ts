@@ -3,10 +3,12 @@
 // Universal Export API Route - Supports all export formats
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { exportDocument, ExportFormat, ExportOptions, TranscriptContent } from '@/lib/export/export-service';
+import type { ExportFormat, ExportOptions, TranscriptContent } from '@/lib/export/export-service';
+import { exportDocument } from '@/lib/export/export-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;

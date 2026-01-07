@@ -8,7 +8,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { Role } from '@/lib/constants';
 import { redirect } from 'next/navigation';
 import { AttorneyNavbar } from '@/components/layouts/attorney-navbar';
-import { Session } from 'next-auth';
+import type { Session } from 'next-auth';
 
 export default async function AttorneyLayout({
   children,

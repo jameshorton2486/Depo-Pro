@@ -60,7 +60,21 @@ export default [
   // Custom overrides
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
+      // 🔴 Build safety - Prevent console.log in production
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      
+      // 🔒 Runtime safety - Prevent Edge runtime misuse
+      'no-restricted-globals': [
+        'error',
+        {
+          name: 'process',
+          message: 'process is not allowed in Edge runtime. Use export const runtime = "nodejs" if you need Node APIs.',
+        },
+      ],
+      
+      // 🧠 Type discipline - Keep any usage explicit (currently off, but can be enabled)
+      '@typescript-eslint/no-explicit-any': 'off', // TODO: Enable after Phase 5 cleanup
+      
       // STABILIZATION: Strict unused-vars enforcement
       // Variables/parameters prefixed with _ are allowed (intentionally unused)
       // All other unused vars/params are errors
@@ -72,7 +86,18 @@ export default [
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+      
+      // 🧹 Cleanliness
       'prefer-const': 'error',
+      
+      // 🔒 Consistent imports - Prefer type imports for types
+      '@typescript-eslint/consistent-type-imports': [
+        'warn',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'separate-type-imports',
+        },
+      ],
     },
   },
 ];

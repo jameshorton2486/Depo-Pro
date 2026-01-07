@@ -1,7 +1,8 @@
 // app/api/jobs/[id]/exhibits/[exhibitId]/route.ts
 // API routes for individual exhibit operations
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { deleteExhibitFiles } from '@/lib/exhibits/storage';

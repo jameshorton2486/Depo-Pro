@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // CASE INTAKE API ROUTE (V2 - Comprehensive)
 // app/api/cases/intake/route.ts
@@ -7,10 +6,13 @@
 // Tolerates partial extraction - never fails on missing fields
 // ═══════════════════════════════════════════════════════════════
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { extractTextFromPDFBuffer, detectDocumentType, cleanExtractedText } from '@/lib/extraction/pdf-extractor';
-import { extractFromDocuments, getDeepgramKeywords, ComprehensiveExtractedData } from '@/lib/extraction/document-extractor';
+import { extractFromDocuments, getDeepgramKeywords } from '@/lib/extraction/document-extractor';
+import { createCaseWithInitialJob } from '@/lib/supabase/queries/cases';
+import { logger } from '@/lib/logger';
 
 export const maxDuration = 120; // Allow up to 2 minutes for complex documents
 
@@ -114,13 +116,138 @@ export async function POST(request: NextRequest) {
     let savedIds: { caseId?: string; jobId?: string } | null = null;
 
     if (autoCreateCase || autoCreateJob) {
-      savedIds = await saveExtractedData(
-        extractedData,
-        session.user.id,
-        (session.user as any).firmId || undefined,
-        autoCreateCase,
-        autoCreateJob,
-      );
+      const firmId = (session.user as any).firmId;
+      
+      if (autoCreateCase && !firmId) {
+        return NextResponse.json(
+          { error: 'firmId is required to create a case' },
+          { status: 400 }
+        );
+      }
+
+      // Prepare job data in snake_case for Supabase
+      const jobData: Record<string, unknown> = {};
+      
+      if (autoCreateJob) {
+        // Case info (duplicated for jobs without cases)
+        if (extractedData.caseStyle) jobData.case_name = extractedData.caseStyle;
+        if (extractedData.caseNumber) jobData.case_number = extractedData.caseNumber;
+        if (extractedData.court?.name) jobData.court_name = extractedData.court.name;
+
+        // Deponent
+        if (extractedData.deponent?.name) jobData.deponent_name = extractedData.deponent.name;
+        if (extractedData.deponent?.role) jobData.deponent_role = extractedData.deponent.role;
+        if (extractedData.deponent?.company) jobData.deponent_company = extractedData.deponent.company;
+        if (extractedData.deponent?.capacity) jobData.deponent_capacity = extractedData.deponent.capacity;
+
+        // Scheduling
+        if (extractedData.scheduling?.date) {
+          jobData.deposition_date = new Date(extractedData.scheduling.date).toISOString();
+        }
+        if (extractedData.scheduling?.scheduledTime) jobData.scheduled_start_time = extractedData.scheduling.scheduledTime;
+        if (extractedData.scheduling?.timeZone) jobData.time_zone = extractedData.scheduling.timeZone;
+
+        // Location
+        if (extractedData.location?.name) jobData.location_name = extractedData.location.name;
+        if (extractedData.location?.address) jobData.location_address = extractedData.location.address;
+        if (extractedData.location?.address2) jobData.location_address2 = extractedData.location.address2;
+        if (extractedData.location?.city) jobData.location_city = extractedData.location.city;
+        if (extractedData.location?.state) jobData.location_state = extractedData.location.state;
+        if (extractedData.location?.zip) jobData.location_zip = extractedData.location.zip;
+        if (extractedData.location?.zoomLink) jobData.zoom_link = extractedData.location.zoomLink;
+        if (extractedData.location?.conferenceRoom !== undefined) jobData.conference_room = extractedData.location.conferenceRoom;
+
+        // Court reporting
+        if (extractedData.courtReporting?.firmName) jobData.court_reporting_firm = extractedData.courtReporting.firmName;
+        if (extractedData.courtReporting?.isCertifiedShorthand !== undefined) {
+          jobData.certified_shorthand = extractedData.courtReporting.isCertifiedShorthand;
+        }
+
+        // Recording
+        jobData.is_videotaped = extractedData.recording?.isVideotaped || false;
+        jobData.is_stenographic = extractedData.recording?.isStenographic ?? true;
+        if (extractedData.recording?.videographerName) jobData.videographer_name = extractedData.recording.videographerName;
+        if (extractedData.recording?.videographerCompany) jobData.videographer_company = extractedData.recording.videographerCompany;
+
+        // Interpreter
+        jobData.has_interpreter = extractedData.interpreter?.hasInterpreter || false;
+        if (extractedData.interpreter?.name) jobData.interpreter_name = extractedData.interpreter.name;
+        if (extractedData.interpreter?.language) jobData.interpreter_language = extractedData.interpreter.language;
+
+        // Transcript options
+        if (extractedData.transcriptOptions?.readAndSign !== undefined) {
+          jobData.read_and_sign = extractedData.transcriptOptions.readAndSign;
+        }
+        if (extractedData.transcriptOptions?.signatureWaived !== undefined) {
+          jobData.signature_waived = extractedData.transcriptOptions.signatureWaived;
+        }
+
+        // Exhibits (stored as JSON)
+        if (extractedData.exhibits) jobData.exhibits = extractedData.exhibits;
+        if (extractedData.exhibitStats?.totalCount !== undefined) {
+          jobData.exhibit_count = extractedData.exhibitStats.totalCount;
+        }
+        if (extractedData.exhibitStats?.blackAndWhite !== undefined) {
+          jobData.exhibits_bw = extractedData.exhibitStats.blackAndWhite;
+        }
+        if (extractedData.exhibitStats?.color !== undefined) {
+          jobData.exhibits_color = extractedData.exhibitStats.color;
+        }
+
+        // Insurance/EUO
+        jobData.is_euo = extractedData.insurance?.isEUO || false;
+        if (extractedData.insurance?.insuredName) jobData.insured_name = extractedData.insurance.insuredName;
+        if (extractedData.insurance?.insurerName) jobData.insurer_name = extractedData.insurance.insurerName;
+        if (extractedData.insurance?.claimNumber) jobData.claim_number = extractedData.insurance.claimNumber;
+        if (extractedData.insurance?.policyNumber) jobData.policy_number = extractedData.insurance.policyNumber;
+        if (extractedData.insurance?.dateOfLoss) {
+          jobData.date_of_loss = new Date(extractedData.insurance.dateOfLoss).toISOString();
+        }
+
+        // Billing
+        if (extractedData.billing?.orderedByName) jobData.ordered_by_name = extractedData.billing.orderedByName;
+        if (extractedData.billing?.orderedByFirm) jobData.ordered_by_firm = extractedData.billing.orderedByFirm;
+        if (extractedData.billing?.travelMiles !== undefined) jobData.travel_miles = extractedData.billing.travelMiles;
+        if (extractedData.billing?.parkingFee !== undefined) jobData.parking_fee = extractedData.billing.parkingFee;
+        jobData.rush_order = extractedData.billing?.isRush || false;
+
+        // Special instructions
+        if (extractedData.specialInstructions) jobData.special_instructions = extractedData.specialInstructions;
+        if (extractedData.notes) jobData.notes = extractedData.notes;
+
+        // Status
+        jobData.status = 'CREATED';
+        if (extractedData.needsReview !== undefined) jobData.needs_review = extractedData.needsReview;
+      }
+
+      const result = await createCaseWithInitialJob({
+        firmId: firmId || '',
+        createdById: session.user.id,
+        caseNumber: extractedData.caseNumber || undefined,
+        caseStyle: extractedData.caseStyle || undefined,
+        shortTitle: extractedData.shortTitle || undefined,
+        courtName: extractedData.court?.name || undefined,
+        courtType: extractedData.court?.type || undefined,
+        county: extractedData.court?.county || undefined,
+        state: extractedData.court?.state || undefined,
+        judgeAssigned: extractedData.court?.judge || undefined,
+        plaintiffs: extractedData.plaintiffs,
+        defendants: extractedData.defendants,
+        otherParties: extractedData.otherParties,
+        attorneys: extractedData.attorneys,
+        extractedTerms: extractedData.extractedTerms,
+        createJob: autoCreateJob,
+        jobData: autoCreateJob ? jobData : undefined,
+      });
+
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.error || 'Failed to save extracted data' },
+          { status: 500 }
+        );
+      }
+
+      savedIds = result.data || null;
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -156,7 +283,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Case intake error:', error);
+    logger.error('Case intake error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json({
       error: 'Failed to process documents',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -164,221 +291,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SAVE EXTRACTED DATA TO DATABASE
-// Tolerates partial data - never fails on missing fields
-// ═══════════════════════════════════════════════════════════════
-
-async function saveExtractedData(
-  data: ComprehensiveExtractedData,
-  userId: string,
-  firmId: string | undefined,
-  createCase: boolean,
-  createJob: boolean,
-): Promise<{ caseId?: string; jobId?: string }> {
-  const result: { caseId?: string; jobId?: string } = {};
-
-  // Create Case if requested
-  if (createCase) {
-    if (!firmId) {
-      throw new Error('firmId is required to create a case');
-    }
-
-    const newCase = await db.case.create({
-      data: {
-        firmId,
-        createdById: userId,
-
-        // Use defaults for missing required fields
-        caseNumber: data.caseNumber || `TEMP-${Date.now()}`,
-        caseStyle: data.caseStyle || 'Unknown Case',
-        shortTitle: data.shortTitle,
-
-        // Court info (all optional)
-        courtName: data.court?.name,
-        courtType: data.court?.type,
-        county: data.court?.county,
-        state: data.court?.state || 'Texas',
-        judgeAssigned: data.court?.judge,
-
-        // Parties
-        plaintiffs: data.plaintiffs || [],
-        defendants: data.defendants || [],
-        otherParties: data.otherParties || [],
-
-        // Status
-        status: 'ACTIVE',
-      },
-    });
-    result.caseId = newCase.id;
-
-    // Create attorney records
-    if (data.attorneys?.length) {
-      for (const att of data.attorneys) {
-        await db.caseAttorney.create({
-          data: {
-            caseId: newCase.id,
-            name: att.name,
-            barNumber: att.barNumber,
-            firm: att.firm,
-            role: mapAttorneyRole(att.role),
-            representing: att.representing,
-            email: att.email,
-            phone: att.phone,
-            fax: att.fax,
-            address: att.address,
-            city: att.city,
-            state: att.state,
-            zipCode: att.zip,
-            deliveryFormat: att.deliveryFormat,
-            deliveryPriority: att.deliveryPriority,
-          },
-        });
-      }
-    }
-
-    // Create extracted terms for Deepgram
-    if (data.extractedTerms?.length) {
-      const termData = data.extractedTerms.map(term => ({
-        caseId: newCase.id,
-        term: term.term,
-        normalizedTerm: term.normalizedTerm,
-        category: mapTermCategory(term.category),
-        source: term.source,
-        useInTranscription: true,
-      }));
-
-      // Use createMany with skipDuplicates
-      await db.caseExtractedTerm.createMany({
-        data: termData,
-        skipDuplicates: true,
-      });
-    }
-  }
-
-  // Create Job if requested
-  if (createJob) {
-    const jobData: any = {
-      ...(firmId && { firmId }),
-      createdById: userId,
-
-      // Link to case if created
-      caseId: result.caseId || null,
-
-      // Case info (duplicated for jobs without cases)
-      caseName: data.caseStyle,
-      caseNumber: data.caseNumber,
-      courtName: data.court?.name,
-
-      // Deponent
-      deponentName: data.deponent?.name,
-      deponentRole: data.deponent?.role,
-      deponentCompany: data.deponent?.company,
-      deponentCapacity: data.deponent?.capacity,
-
-      // Scheduling
-      depositionDate: data.scheduling?.date ? new Date(data.scheduling.date) : null,
-      scheduledStartTime: data.scheduling?.scheduledTime,
-      timeZone: data.scheduling?.timeZone,
-
-      // Location
-      locationName: data.location?.name,
-      locationAddress: data.location?.address,
-      locationAddress2: data.location?.address2,
-      locationCity: data.location?.city,
-      locationState: data.location?.state,
-      locationZip: data.location?.zip,
-      zoomLink: data.location?.zoomLink,
-      conferenceRoom: data.location?.conferenceRoom,
-
-      // Court reporting
-      courtReportingFirm: data.courtReporting?.firmName,
-      certifiedShorthand: data.courtReporting?.isCertifiedShorthand,
-
-      // Recording
-      isVideotaped: data.recording?.isVideotaped || false,
-      isStenographic: data.recording?.isStenographic ?? true,
-      videographerName: data.recording?.videographerName,
-      videographerCompany: data.recording?.videographerCompany,
-
-      // Interpreter
-      hasInterpreter: data.interpreter?.hasInterpreter || false,
-      interpreterName: data.interpreter?.name,
-      interpreterLanguage: data.interpreter?.language,
-
-      // Transcript options
-      readAndSign: data.transcriptOptions?.readAndSign,
-      signatureWaived: data.transcriptOptions?.signatureWaived,
-
-      // Exhibits
-      exhibits: data.exhibits || [],
-      exhibitCount: data.exhibitStats?.totalCount,
-      exhibitsBW: data.exhibitStats?.blackAndWhite,
-      exhibitsColor: data.exhibitStats?.color,
-
-      // Insurance/EUO
-      isEUO: data.insurance?.isEUO || false,
-      insuredName: data.insurance?.insuredName,
-      insurerName: data.insurance?.insurerName,
-      claimNumber: data.insurance?.claimNumber,
-      policyNumber: data.insurance?.policyNumber,
-      dateOfLoss: data.insurance?.dateOfLoss ? new Date(data.insurance.dateOfLoss) : null,
-
-      // Billing
-      orderedByName: data.billing?.orderedByName,
-      orderedByFirm: data.billing?.orderedByFirm,
-      travelMiles: data.billing?.travelMiles,
-      parkingFee: data.billing?.parkingFee,
-      rushOrder: data.billing?.isRush || false,
-
-      // Special instructions
-      specialInstructions: data.specialInstructions,
-      notes: data.notes,
-
-      // Status
-      status: 'CREATED',
-      needsReview: data.needsReview,
-    };
-
-    const newJob = await db.job.create({ data: jobData });
-    result.jobId = newJob.id;
-
-    // Note: Deposition topics and job dictionary terms would be stored in Job.notes or Job.internalNotes as JSON
-    // These models don't exist in the current schema
-  }
-
-  return result;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ═══════════════════════════════════════════════════════════════
-
-function mapAttorneyRole(role: string): 'PLAINTIFF_COUNSEL' | 'DEFENSE_COUNSEL' | 'ORDERING_ATTORNEY' | 'COPY_ATTORNEY' | 'OTHER' {
-  const roleMap: Record<string, 'PLAINTIFF_COUNSEL' | 'DEFENSE_COUNSEL' | 'ORDERING_ATTORNEY' | 'COPY_ATTORNEY' | 'OTHER'> = {
-    'ordering': 'ORDERING_ATTORNEY',
-    'copy': 'COPY_ATTORNEY',
-    'plaintiff': 'PLAINTIFF_COUNSEL',
-    'defense': 'DEFENSE_COUNSEL',
-    'other': 'OTHER',
-  };
-  return roleMap[role] || 'OTHER';
-}
-
-function mapTermCategory(category: string): 'PERSON_NAME' | 'COMPANY_NAME' | 'PLACE_NAME' | 'LEGAL_TERM' | 'MEDICAL_TERM' | 'TECHNICAL_TERM' | 'CASE_SPECIFIC' {
-  const categoryMap: Record<string, 'PERSON_NAME' | 'COMPANY_NAME' | 'PLACE_NAME' | 'LEGAL_TERM' | 'MEDICAL_TERM' | 'TECHNICAL_TERM' | 'CASE_SPECIFIC'> = {
-    'person_name': 'PERSON_NAME',
-    'company_name': 'COMPANY_NAME',
-    'place_name': 'PLACE_NAME',
-    'legal_term': 'LEGAL_TERM',
-    'medical_term': 'MEDICAL_TERM',
-    'technical_term': 'TECHNICAL_TERM',
-    'case_specific': 'CASE_SPECIFIC',
-    'attorney_name': 'PERSON_NAME',
-    'witness_name': 'PERSON_NAME',
-    'product_name': 'CASE_SPECIFIC',
-    'vehicle_info': 'CASE_SPECIFIC',
-  };
-  return categoryMap[category] || 'CASE_SPECIFIC';
-}
 

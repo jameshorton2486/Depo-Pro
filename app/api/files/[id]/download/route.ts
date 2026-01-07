@@ -2,7 +2,8 @@
 // FILE DOWNLOAD API ENDPOINT
 // ═══════════════════════════════════════════════════════════════
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { downloadFile } from '@/lib/storage';

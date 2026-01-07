@@ -4,10 +4,12 @@
 // app/api/external-calendar/google/callback/route.ts
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { ExternalCalendarProvider } from '@/lib/enums';
+import type { ExternalCalendarProvider } from '@/lib/enums';
 import { externalCalendarSyncService } from '@/lib/external-calendar/sync-service';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Connect calendar
-    const result = await (externalCalendarSyncService as any).connectCalendar(
+    const result = await externalCalendarSyncService.connectCalendar(
       stateData.userId,
       stateData.firmId,
       stateData.provider,
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!result.success) {
-      console.error('Failed to connect calendar:', result.error);
+      logger.error('Failed to connect calendar', new Error(result.error || 'connection_failed'), { userId: stateData.userId, provider: stateData.provider });
       return NextResponse.redirect(
         new URL(`/settings/calendar?error=${encodeURIComponent(result.error || 'connection_failed')}`, request.url)
       );
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
       new URL('/settings/calendar?success=connected', request.url)
     );
   } catch (error) {
-    console.error('Error in Google OAuth callback:', error);
+    logger.error('Error in Google OAuth callback', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.redirect(
       new URL('/settings/calendar?error=internal_error', request.url)
     );

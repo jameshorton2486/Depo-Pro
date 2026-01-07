@@ -9,7 +9,8 @@
 // User must have connected Google account via OAuth
 // =============================================================================
 
-import { google, docs_v1 } from 'googleapis';
+import type { docs_v1 } from 'googleapis';
+import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 
 // =============================================================================

@@ -32,9 +32,10 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-import {
+import type {
   LocationType,
-  DeponentRole,
+  DeponentRole} from './calendar.types';
+import {
   LOCATION_TYPE_LABELS,
   DEPONENT_ROLE_LABELS,
 } from './calendar.types';

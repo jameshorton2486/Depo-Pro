@@ -2,7 +2,7 @@
 // Calendar Permissions - Phase 2
 // ============================================
 
-import { UserRole, RolePermissions, CalendarAction, ActionAvailability, CalendarEventUI } from './types';
+import type { UserRole, RolePermissions, CalendarAction, ActionAvailability, CalendarEventUI } from './types';
 
 // ============================================
 // ROLE PERMISSION DEFINITIONS

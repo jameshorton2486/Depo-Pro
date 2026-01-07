@@ -7,7 +7,7 @@
  * INSTALLATION: npm install @deepgram/sdk
  */
 
-import { PrerecordedSchema, SyncPrerecordedResponse } from '@deepgram/sdk';
+import type { PrerecordedSchema, SyncPrerecordedResponse } from '@deepgram/sdk';
 import { getDeepgramClient, LEGAL_TRANSCRIPTION_OPTIONS, LEGAL_VOCABULARY } from './deepgram/client';
 import type {
   TranscriptionResult,

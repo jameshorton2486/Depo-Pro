@@ -2,7 +2,7 @@
 // ASSIGNMENT STATUS BADGE COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-import { AssignmentStatus } from '@/types/database';
+import type { AssignmentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 interface AssignmentStatusBadgeProps {

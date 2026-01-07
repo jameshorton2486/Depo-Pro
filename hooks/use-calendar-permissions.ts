@@ -3,7 +3,7 @@
 // ============================================
 
 import { useMemo, useCallback } from 'react';
-import { UserRole, CalendarAction, CalendarEventUI, RolePermissions, PermissionCheckResult } from '@/lib/calendar/types';
+import type { UserRole, CalendarAction, CalendarEventUI, RolePermissions, PermissionCheckResult } from '@/lib/calendar/types';
 import { ROLE_PERMISSIONS, getActionAvailability } from '@/lib/calendar/permissions';
 
 interface UseCalendarPermissionsReturn {

@@ -8,7 +8,7 @@ import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
-import { TranscriptSegment } from '@/components/transcripts/synced-transcript-viewer';
+import type { TranscriptSegment } from '@/components/transcripts/synced-transcript-viewer';
 import { ReviewClientNew } from './review-client-new';
 
 interface ReviewPageProps {

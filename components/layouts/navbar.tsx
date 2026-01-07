@@ -10,7 +10,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Role } from '@/lib/constants';
-import { Session } from 'next-auth';
+import type { Session } from 'next-auth';
 import {
   DropdownMenu,
   DropdownMenuContent,

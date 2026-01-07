@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { UserRole } from '@/types/database';
-import { AssignmentStatus } from '@/types/database';
+import type { AssignmentStatus } from '@/types/database';
 
 /**
  * Availability block data contract

@@ -1,4 +1,4 @@
-﻿// lib/external-calendar/sync-service.ts
+// lib/external-calendar/sync-service.ts
 // STUB: External calendar sync service
 
 export class ExternalCalendarSyncService {
@@ -15,6 +15,11 @@ export class ExternalCalendarSyncService {
   async handleCallback(__code: string, __state: string) {
     console.log('[STUB] ExternalCalendarSyncService.handleCallback called');
     return { success: false };
+  }
+
+  async connectCalendar(__userId: string, __firmId: string, __provider: string, __code: string) {
+    console.log('[STUB] ExternalCalendarSyncService.connectCalendar called');
+    return { success: false, error: 'External calendar sync not implemented' };
   }
 }
 

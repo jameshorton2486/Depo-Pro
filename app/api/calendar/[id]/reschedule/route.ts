@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { RescheduleEventSchema } from '@/lib/calendar/validations';
 import { canReschedule } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
+import { getCalendarEventById, rescheduleCalendarEvent } from '@/lib/supabase/queries/calendar';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // PATCH /api/calendar/[id]/reschedule
@@ -52,15 +54,10 @@ export async function PATCH(
       newLocation 
     } = validationResult.data;
 
-    // 3. Fetch Event
-    const supabase = await createSupabaseServerClient();
-    const { data: event, error: eventError } = await supabase
-      .from('calendar_events')
-      .select('id, status, start_time, end_time, created_by_id, firm_id, assigned_reporter_id')
-      .eq('id', eventId)
-      .single();
+    // 3. Fetch Event via query layer
+    const event = await getCalendarEventById(eventId);
 
-    if (eventError || !event) {
+    if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -114,64 +111,42 @@ export async function PATCH(
       );
     }
 
-    // 6. Check for Conflicts (if reporter assigned)
-    if (event.assigned_reporter_id) {
-      const scheduledStartDate = new Date(scheduledStart);
-      const scheduledEndDate = new Date(scheduledEnd);
+    // 6. Reschedule Event via query layer (includes conflict checking)
+    const rescheduleResult = await rescheduleCalendarEvent(
+      eventId,
+      scheduledStart,
+      scheduledEnd,
+      {
+        updateLocation: updateLocation || false,
+        location: newLocation?.address || null,
+        isRemote: newLocation?.isRemote || false,
+        meetingLink: newLocation?.zoomUrl || null,
+      }
+    );
 
-      // Check for overlapping events
-      const { data: conflicts } = await supabase
-        .from('calendar_events')
-        .select('id, title, start_time')
-        .eq('assigned_reporter_id', event.assigned_reporter_id)
-        .neq('id', eventId)
-        .neq('status', 'CANCELLED')
-        .or(`start_time.lte.${scheduledStartDate.toISOString()},end_time.gt.${scheduledStartDate.toISOString()},start_time.lt.${scheduledEndDate.toISOString()},end_time.gte.${scheduledEndDate.toISOString()},start_time.gte.${scheduledStartDate.toISOString()},end_time.lte.${scheduledEndDate.toISOString()}`);
-
-      if (conflicts && conflicts.length > 0) {
-        const conflict = conflicts[0];
+    if (!rescheduleResult.success) {
+      if (rescheduleResult.conflict) {
         return NextResponse.json(
-          { 
-            error: 'Schedule conflict', 
+          {
+            error: 'Schedule conflict',
             code: 'CONFLICT',
             message: 'Reporter has a conflicting event at this time.',
-            conflict: {
-              eventId: conflict.id,
-              title: conflict.title,
-              time: conflict.start_time,
-            },
+            conflict: rescheduleResult.conflict,
           },
           { status: 409 }
         );
       }
-    }
-
-    // 7. Build Update Data
-    const updateData: any = {
-      start_time: new Date(scheduledStart).toISOString(),
-      end_time: new Date(scheduledEnd).toISOString(),
-      status: event.status === 'CONFIRMED' ? 'SCHEDULED' : event.status, // Reset to scheduled if was confirmed
-      updated_at: new Date().toISOString(),
-    };
-
-    if (updateLocation && newLocation) {
-      updateData.is_remote = newLocation.isRemote;
-      updateData.location = newLocation.address || null;
-      updateData.meeting_link = newLocation.zoomUrl || null;
-    }
-
-    // 8. Update Event
-    const { data: result, error: updateError } = await supabase
-      .from('calendar_events')
-      .update(updateData)
-      .eq('id', eventId)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('Event update error:', updateError);
       return NextResponse.json(
-        { error: 'Failed to update event', code: 'UPDATE_ERROR' },
+        { error: rescheduleResult.error || 'Failed to reschedule event', code: 'UPDATE_ERROR' },
+        { status: 500 }
+      );
+    }
+
+    // Get updated event for response
+    const result = await getCalendarEventById(eventId);
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Failed to fetch updated event', code: 'FETCH_ERROR' },
         { status: 500 }
       );
     }
@@ -189,9 +164,9 @@ export async function PATCH(
           status: event.status,
         },
         newValue: {
-          startTime: updateData.start_time,
-          endTime: updateData.end_time,
-          status: updateData.status,
+          startTime: scheduledStart,
+          endTime: scheduledEnd,
+          status: result.status,
         },
         reason,
         notifyParties,
@@ -214,7 +189,8 @@ export async function PATCH(
     });
 
   } catch (error) {
-    console.error('[RescheduleEvent] Error:', error);
+    const { id: eventId } = await params;
+    logger.error('[RescheduleEvent] Error', error instanceof Error ? error : new Error(String(error)), { eventId });
     
     return NextResponse.json(
       { 

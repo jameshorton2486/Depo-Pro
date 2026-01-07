@@ -1,10 +1,11 @@
 // app/api/transcripts/[id]/export/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript } from '@/lib/export';
-import { ExportOptions, ExportMetadata } from '@/types/transcript';
+import type { ExportOptions, ExportMetadata } from '@/types/transcript';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 import { useQuota } from '@/lib/cost-control-service';
 import { canExportFormat, canUseProfile } from '@/lib/export/permissions';

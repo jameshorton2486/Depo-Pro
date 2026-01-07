@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { X, Link as LinkIcon, FileText } from 'lucide-react';
-import { Exhibit } from '@/types/exhibits';
+import type { Exhibit } from '@/types/exhibits';
 
 interface ExhibitLinkerProps {
   annotationId: string;

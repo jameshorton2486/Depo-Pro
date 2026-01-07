@@ -14,12 +14,14 @@ export {
   deleteJob,
   listJobs,
   createJob,
+  isUserAssignedToJob,
 } from './jobs';
 
 // Cases
 export {
   listCases,
   getCaseById,
+  createCaseWithInitialJob,
 } from './cases';
 
 export type { CaseFilter, CaseSort } from './cases';
@@ -52,6 +54,7 @@ export {
 export {
   listCalendarEvents,
   getCalendarEventById,
+  getCalendarEventByJobId,
   createCalendarEvent,
   updateCalendarEvent,
   deleteCalendarEvent,
@@ -74,7 +77,15 @@ export {
 export * from './users';
 
 // Proper Nouns
-export * from './proper-nouns';
+export {
+  getProperNounsByJob,
+  getProperNounById,
+  createProperNoun,
+  updateProperNoun,
+  deleteProperNoun,
+  getOrCreateCsrRecordId,
+  bulkDeleteProperNouns,
+} from './proper-nouns';
 
 // Exhibits
 export * from './exhibits';

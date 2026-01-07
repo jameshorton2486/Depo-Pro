@@ -3,10 +3,10 @@
 // ═══════════════════════════════════════════════════════════════
 // NextAuth.js v5 configuration with Credentials provider
 
-import { NextAuthConfig } from 'next-auth';
+import type { NextAuthConfig } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { loginSchema } from '@/lib/validations/user';
-import { Role } from '@/lib/constants';
+import type { Role } from '@/lib/constants';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 
 /**

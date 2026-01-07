@@ -1,12 +1,14 @@
 // app/api/jobs/[id]/status/route.ts
 // API route for getting and updating job status
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { JobStatus } from '@/types/database';
-import { getJobById, updateJobStatus, updateJob } from '@/lib/supabase/queries/jobs';
+import { getJobById, updateJobStatus, updateJob, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
+import { logger } from '@/lib/logger';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -89,7 +91,8 @@ export async function GET(
       transcriptId,
     });
   } catch (error) {
-    console.error('Error fetching job status:', error);
+    const { id: jobId } = await context.params;
+    logger.error('Error fetching job status', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to fetch status' },
       { status: 500 }
@@ -151,16 +154,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check for assignments (job_assignments query could be moved to jobs.ts later)
-    const { data: assignments } = await supabase
-      .from('job_assignments')
-      .select('scopist_id')
-      .eq('job_id', jobId)
-      .eq('scopist_id', session.user.id);
-
-    // Check permissions
+    // Check permissions via query layer
     const isOwner = (job as any).created_by_id === session.user.id;
-    const isAssignedScopist = (assignments?.length || 0) > 0;
+    const isAssignedScopist = await isUserAssignedToJob(jobId, session.user.id);
     const isAdmin = session.user.role === 'ADMIN';
 
     if (!isOwner && !isAssignedScopist && !isAdmin) {
@@ -184,7 +180,8 @@ export async function PATCH(
       job: updatedJob,
     });
   } catch (error) {
-    console.error('Job status update error:', error);
+    const { id: jobId } = await context.params;
+    logger.error('Job status update error', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to update job status' },
       { status: 500 },

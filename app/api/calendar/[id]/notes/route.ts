@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AddNoteSchema } from '@/lib/calendar/validations';
 import { canAddNotes } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
+import { getCalendarEventNotes, addNoteToCalendarEvent } from '@/lib/supabase/queries/calendar';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // POST /api/calendar/[id]/notes
@@ -58,56 +60,28 @@ export async function POST(
 
     const { content, isInternal } = validationResult.data;
 
-    // 4. Verify Event Exists
-    const supabase = await createSupabaseServerClient();
-    const { data: event, error: eventError } = await supabase
-      .from('calendar_events')
-      .select('id, status, notes, internal_notes')
-      .eq('id', eventId)
-      .single();
+    // 4. Add note via query layer
+    const result = await addNoteToCalendarEvent(eventId, content, isInternal, userId);
 
-    if (eventError || !event) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
-        { status: 404 }
+        { error: result.error || 'Failed to add note', code: 'UPDATE_ERROR' },
+        { status: 500 }
       );
     }
 
-    // 5. Get user info for note attribution
+    // Get user info for response
     const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
     const adminClient = getSupabaseAdminClient();
     const { data: userData } = await adminClient.auth.admin.getUserById(userId);
 
     const firstName = userData?.user?.user_metadata?.firstName || '';
     const lastName = userData?.user?.user_metadata?.lastName || '';
-    const userDisplayName = firstName && lastName 
+    const userDisplayName = firstName && lastName
       ? `${firstName} ${lastName}`
       : 'Unknown User';
+
     const timestamp = new Date().toISOString();
-    const noteEntry = `[${timestamp}] ${userDisplayName}: ${content}`;
-
-    // 6. Update Event with Note
-    const noteField = isInternal ? 'internal_notes' : 'notes';
-    const currentNotes = event[noteField] || '';
-    const updatedNotes = currentNotes 
-      ? `${currentNotes}\n\n${noteEntry}`
-      : noteEntry;
-
-    const { error: updateError } = await supabase
-      .from('calendar_events')
-      .update({
-        [noteField]: updatedNotes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', eventId);
-
-    if (updateError) {
-      console.error('Event update error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update event', code: 'UPDATE_ERROR' },
-        { status: 500 }
-      );
-    }
 
     // Audit log (without transaction parameter)
     await createAuditLog({
@@ -139,7 +113,8 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('[AddNote] Error:', error);
+    const { id: eventId } = await params;
+    logger.error('[AddNote] Error', error instanceof Error ? error : new Error(String(error)), { eventId });
     
     return NextResponse.json(
       { 
@@ -176,14 +151,10 @@ export async function GET(
     // Only certain roles can see internal notes
     const canSeeInternal = ['ADMIN', 'REPORTER', 'AGENCY_ADMIN'].includes(userRole);
 
-    const supabase = await createSupabaseServerClient();
-    const { data: event, error: eventError } = await supabase
-      .from('calendar_events')
-      .select('id, notes, internal_notes')
-      .eq('id', eventId)
-      .single();
+    // Get notes via query layer
+    const notesData = await getCalendarEventNotes(eventId, canSeeInternal);
 
-    if (eventError || !event) {
+    if (!notesData) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -191,9 +162,9 @@ export async function GET(
     }
 
     // Parse notes (simple implementation - in production you might want better parsing)
-    const publicNotes = event.notes ? [{ content: event.notes, isInternal: false }] : [];
-    const internalNotes = canSeeInternal && event.internal_notes 
-      ? [{ content: event.internal_notes, isInternal: true }]
+    const publicNotes = notesData.notes ? [{ content: notesData.notes, isInternal: false }] : [];
+    const internalNotes = canSeeInternal && notesData.internalNotes
+      ? [{ content: notesData.internalNotes, isInternal: true }]
       : [];
 
     return NextResponse.json({
@@ -201,7 +172,8 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('[GetNotes] Error:', error);
+    const { id: eventId } = await params;
+    logger.error('[GetNotes] Error', error instanceof Error ? error : new Error(String(error)), { eventId });
     
     return NextResponse.json(
       { error: 'Internal server error', code: 'SERVER_ERROR' },

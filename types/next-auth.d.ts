@@ -3,8 +3,8 @@
 // ═══════════════════════════════════════════════════════════════
 // Extend NextAuth types to include custom user properties
 
-import { DefaultSession } from 'next-auth';
-import { Role } from '@/lib/constants';
+import type { DefaultSession } from 'next-auth';
+import type { Role } from '@/lib/constants';
 
 /**
  * Extend the built-in session types

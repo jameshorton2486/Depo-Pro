@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import Link from 'next/link';
-import { Job, User } from '@/types/database';
+import type { Job, User } from '@/types/database';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { JobStatusBadge } from './job-status-badge';
 import { Calendar, MapPin, User as UserIcon, FileText } from 'lucide-react';

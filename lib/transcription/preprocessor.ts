@@ -4,7 +4,7 @@
  */
 
 import _ffmpeg from 'fluent-ffmpeg';
-import { AudioMetadata, PreprocessingResult } from '@/types/deepgram';
+import type { AudioMetadata, PreprocessingResult } from '@/types/deepgram';
 
 /**
  * Analyze audio file quality

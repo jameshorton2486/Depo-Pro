@@ -5,7 +5,8 @@
 // Handles email confirmation links from Supabase
 // Verifies email and redirects to login
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {

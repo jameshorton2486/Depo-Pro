@@ -3,7 +3,7 @@
  * Updated to match real @deepgram/sdk responses
  */
 
-import { SyncPrerecordedResponse } from '@deepgram/sdk';
+import type { SyncPrerecordedResponse } from '@deepgram/sdk';
 
 // ============================================
 // Transcription Job Types

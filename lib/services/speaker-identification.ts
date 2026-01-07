@@ -1,7 +1,7 @@
 // lib/services/speaker-identification.ts
 // AI-powered speaker identification from first 20 lines
 
-import { TranscriptUtterance } from '@/types/transcript';
+import type { TranscriptUtterance } from '@/types/transcript';
 import {
   ATTORNEY_PHRASES,
   REPORTER_PHRASES,

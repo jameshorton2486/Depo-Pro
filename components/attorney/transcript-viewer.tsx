@@ -3,8 +3,8 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AttorneyTranscript } from '@/types/attorney-transcript';
-import { TranscriptAnnotation } from '@/types/issue-code';
+import type { AttorneyTranscript } from '@/types/attorney-transcript';
+import type { TranscriptAnnotation } from '@/types/issue-code';
 import {
   ChevronLeft,
   Search,

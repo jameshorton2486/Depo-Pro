@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 // All database access for exhibits goes through these functions
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Get exhibit by ID

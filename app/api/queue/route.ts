@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { enqueueJob, getJobStatus, type JobData } from '@/lib/jobs';
 import { logger } from '@/lib/logger';

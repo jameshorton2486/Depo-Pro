@@ -1,7 +1,8 @@
 // components/transcripts/model-selector.tsx
 'use client';
 
-import { MODEL_DESCRIPTIONS, DeepgramModelType } from '@/lib/transcription/config';
+import type { DeepgramModelType } from '@/lib/transcription/config';
+import { MODEL_DESCRIPTIONS } from '@/lib/transcription/config';
 import { Check, Sparkles } from 'lucide-react';
 
 interface ModelSelectorProps {

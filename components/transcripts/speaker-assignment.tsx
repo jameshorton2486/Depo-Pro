@@ -3,9 +3,10 @@
 
 import { useState } from 'react';
 import { Plus, Trash2, Volume2 } from 'lucide-react';
-import { SPEAKER_TYPES, SpeakerType } from '@/lib/transcription/config';
-import { SpeakerAssignment } from '@/types/transcript';
-import { SpeakerGuess } from '@/lib/services/speaker-identification';
+import type { SpeakerType } from '@/lib/transcription/config';
+import { SPEAKER_TYPES } from '@/lib/transcription/config';
+import type { SpeakerAssignment } from '@/types/transcript';
+import type { SpeakerGuess } from '@/lib/services/speaker-identification';
 
 interface SpeakerAssignmentProps {
   detectedSpeakers: number[];  // Speaker IDs from Deepgram

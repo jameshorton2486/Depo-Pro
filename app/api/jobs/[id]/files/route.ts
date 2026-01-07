@@ -2,7 +2,8 @@
 // FILE UPLOAD API ENDPOINT
 // ═══════════════════════════════════════════════════════════════
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { FileType } from '@/types/database';
@@ -11,7 +12,10 @@ import { mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { listFilesForJob, createFile } from '@/lib/supabase/queries/files';
-import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
+import { logger } from '@/lib/logger';
+
+export const runtime = 'nodejs'; // Required for fs/path usage
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
@@ -57,18 +61,12 @@ export async function POST(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check assignments (job_assignments query could be moved to jobs.ts later)
-    const { data: assignments } = await supabase
-      .from('job_assignments')
-      .select('scopist_id')
-      .eq('job_id', jobId)
-      .eq('scopist_id', session.user.id);
-
-    // 🔒 Security: Verify access rights
+    // 🔒 Security: Verify access rights via query layer
+    const isAssigned = await isUserAssignedToJob(jobId, session.user.id);
     const hasAccess =
       session.user.role === 'ADMIN' ||
       (job as any).created_by_id === session.user.id ||
-      (assignments?.length || 0) > 0;
+      isAssigned;
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -126,7 +124,8 @@ export async function POST(
 
     return NextResponse.json({ file: uploadedFile }, { status: 201 });
   } catch (error) {
-    console.error('File upload error:', error);
+    const { id: jobId } = await params;
+    logger.error('File upload error', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to upload file' },
       { status: 500 },
@@ -154,18 +153,12 @@ export async function GET(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check assignments (job_assignments query could be moved to jobs.ts later)
-    const { data: assignments } = await supabase
-      .from('job_assignments')
-      .select('scopist_id')
-      .eq('job_id', jobId)
-      .eq('scopist_id', session.user.id);
-
-    // 🔒 Security: Verify access rights
+    // 🔒 Security: Verify access rights via query layer
+    const isAssigned = await isUserAssignedToJob(jobId, session.user.id);
     const hasAccess =
       session.user.role === 'ADMIN' ||
       (job as any).created_by_id === session.user.id ||
-      (assignments?.length || 0) > 0;
+      isAssigned;
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -176,7 +169,8 @@ export async function GET(
 
     return NextResponse.json({ files }, { status: 200 });
   } catch (error) {
-    console.error('Fetch files error:', error);
+    const { id: jobId } = await params;
+    logger.error('Fetch files error', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to fetch files' },
       { status: 500 },

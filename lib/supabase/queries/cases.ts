@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════════════════════════
 // All database access for cases goes through these functions
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export interface CaseFilter {
   firm_id?: string;
@@ -228,4 +229,215 @@ export async function getCaseById(
   }
 
   return case_;
+}
+
+/**
+ * Create a case with initial job and related records
+ * Used by the case intake route
+ */
+export async function createCaseWithInitialJob(
+  input: {
+    // Case data
+    firmId: string;
+    createdById: string;
+    caseNumber?: string | null;
+    caseStyle?: string | null;
+    shortTitle?: string | null;
+    courtName?: string | null;
+    courtType?: string | null;
+    county?: string | null;
+    state?: string | null;
+    judgeAssigned?: string | null;
+    plaintiffs?: Array<{ name: string; type: string; role?: string }>;
+    defendants?: Array<{ name: string; type: string; role?: string }>;
+    otherParties?: Array<{ name: string; type: string; role: string }>;
+    attorneys?: Array<{
+      name: string;
+      barNumber?: string | null;
+      firm?: string | null;
+      role: string;
+      representing?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      fax?: string | null;
+      address?: string | null;
+      city?: string | null;
+      state?: string | null;
+      zip?: string | null;
+      deliveryFormat?: string | null;
+      deliveryPriority?: string | null;
+    }>;
+    extractedTerms?: Array<{
+      term: string;
+      normalizedTerm: string;
+      category: string;
+      source: string;
+    }>;
+    // Job data (if createJob is true)
+    createJob?: boolean;
+    jobData?: Record<string, unknown>;
+  }
+): Promise<{ success: boolean; data?: { caseId: string; jobId?: string }; error?: string }> {
+  const supabase = await createSupabaseServerClient();
+  
+  try {
+    let caseId: string | undefined;
+
+    // Create case if requested
+    if (input.caseNumber || input.caseStyle) {
+      const caseData: Record<string, unknown> = {
+        firm_id: input.firmId,
+        created_by_id: input.createdById,
+        case_number: input.caseNumber || `TEMP-${Date.now()}`,
+        case_style: input.caseStyle || 'Unknown Case',
+        short_title: input.shortTitle || null,
+        court_name: input.courtName || null,
+        court_type: input.courtType || null,
+        county: input.county || null,
+        state: input.state || 'Texas',
+        judge_assigned: input.judgeAssigned || null,
+        plaintiffs: input.plaintiffs || [],
+        defendants: input.defendants || [],
+        other_parties: input.otherParties || [],
+        status: 'ACTIVE',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: newCase, error: caseError } = await supabase
+        .from('cases')
+        .insert(caseData)
+        .select('id')
+        .single();
+
+      if (caseError) {
+        return { success: false, error: caseError.message };
+      }
+
+      caseId = newCase.id;
+
+      // Create attorney records
+      if (input.attorneys && input.attorneys.length > 0) {
+        const attorneyData = input.attorneys.map(att => ({
+          case_id: caseId,
+          name: att.name,
+          bar_number: att.barNumber || null,
+          firm: att.firm || null,
+          role: mapAttorneyRole(att.role),
+          representing: att.representing || null,
+          email: att.email || null,
+          phone: att.phone || null,
+          fax: att.fax || null,
+          address: att.address || null,
+          city: att.city || null,
+          state: att.state || null,
+          zip_code: att.zip || null,
+          delivery_format: att.deliveryFormat || null,
+          delivery_priority: att.deliveryPriority || null,
+        }));
+
+        const { error: attorneyError } = await supabase
+          .from('case_attorneys')
+          .insert(attorneyData);
+
+        if (attorneyError) {
+          // Log but don't fail - attorneys are optional
+          console.warn('Failed to create case attorneys:', attorneyError);
+        }
+      }
+
+      // Create extracted terms
+      if (input.extractedTerms && input.extractedTerms.length > 0) {
+        const termData = input.extractedTerms.map(term => ({
+          case_id: caseId,
+          term: term.term,
+          normalized_term: term.normalizedTerm,
+          category: mapTermCategory(term.category),
+          source: term.source,
+          use_in_transcription: true,
+        }));
+
+        // Use insert with ignore duplicates
+        const { error: termError } = await supabase
+          .from('case_extracted_terms')
+          .insert(termData);
+
+        if (termError) {
+          // Log but don't fail - terms are optional
+          console.warn('Failed to create extracted terms:', termError);
+        }
+      }
+    }
+
+    // Create job if requested
+    let jobId: string | undefined;
+    if (input.createJob && input.jobData) {
+      const { data: newJob, error: jobError } = await supabase
+        .from('jobs')
+        .insert({
+          ...input.jobData,
+          case_id: caseId || null,
+          created_by_id: input.createdById,
+          firm_id: input.firmId,
+          status: 'CREATED',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (jobError) {
+        return { success: false, error: jobError.message };
+      }
+
+      jobId = newJob.id;
+    }
+
+    return {
+      success: true,
+      data: {
+        caseId: caseId || '',
+        jobId,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Helper: Map attorney role string to enum
+ */
+function mapAttorneyRole(role: string): 'PLAINTIFF_COUNSEL' | 'DEFENSE_COUNSEL' | 'ORDERING_ATTORNEY' | 'COPY_ATTORNEY' | 'OTHER' {
+  const roleMap: Record<string, 'PLAINTIFF_COUNSEL' | 'DEFENSE_COUNSEL' | 'ORDERING_ATTORNEY' | 'COPY_ATTORNEY' | 'OTHER'> = {
+    'ordering': 'ORDERING_ATTORNEY',
+    'copy': 'COPY_ATTORNEY',
+    'plaintiff': 'PLAINTIFF_COUNSEL',
+    'defense': 'DEFENSE_COUNSEL',
+    'other': 'OTHER',
+  };
+  return roleMap[role.toLowerCase()] || 'OTHER';
+}
+
+/**
+ * Helper: Map term category string to enum
+ */
+function mapTermCategory(category: string): 'PERSON_NAME' | 'COMPANY_NAME' | 'PLACE_NAME' | 'LEGAL_TERM' | 'MEDICAL_TERM' | 'TECHNICAL_TERM' | 'CASE_SPECIFIC' {
+  const categoryMap: Record<string, 'PERSON_NAME' | 'COMPANY_NAME' | 'PLACE_NAME' | 'LEGAL_TERM' | 'MEDICAL_TERM' | 'TECHNICAL_TERM' | 'CASE_SPECIFIC'> = {
+    'person_name': 'PERSON_NAME',
+    'company_name': 'COMPANY_NAME',
+    'place_name': 'PLACE_NAME',
+    'legal_term': 'LEGAL_TERM',
+    'medical_term': 'MEDICAL_TERM',
+    'technical_term': 'TECHNICAL_TERM',
+    'case_specific': 'CASE_SPECIFIC',
+    'attorney_name': 'PERSON_NAME',
+    'witness_name': 'PERSON_NAME',
+    'product_name': 'CASE_SPECIFIC',
+    'vehicle_info': 'CASE_SPECIFIC',
+  };
+  return categoryMap[category.toLowerCase()] || 'CASE_SPECIFIC';
 }

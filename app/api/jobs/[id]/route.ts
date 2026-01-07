@@ -5,7 +5,8 @@
 // PUT    /api/jobs/[id] - Update job (🔒 firmId filtered)
 // DELETE /api/jobs/[id] - Delete job (🔒 firmId filtered)
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import type { JobStatus } from '@/types/database';
 import { logger } from '@/lib/logger';
 import { createSupabaseServerClient } from '@/lib/supabase/server';

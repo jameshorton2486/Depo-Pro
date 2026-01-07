@@ -1,7 +1,8 @@
 // app/api/jobs/[id]/exhibits/route.ts
 // API routes for exhibit management (list and create)
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireReporterDepositionAccess } from '@/lib/permissions/api-guards';
@@ -12,7 +13,8 @@ import {
 } from '@/lib/exhibits/storage';
 import { stampExhibitPdf } from '@/lib/exhibits/pdf-stamper';
 import { listExhibitsByJob, createExhibit } from '@/lib/supabase/queries/exhibits';
-import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
+import { logger } from '@/lib/logger';
 
 // GET /api/jobs/[id]/exhibits - List all exhibits for a job
 export async function GET(
@@ -42,14 +44,10 @@ export async function GET(
       const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
     } else if (user.role !== 'ADMIN') {
-      // Allow scopists assigned to the job (job_assignments query could be moved to jobs.ts later)
-      const { data: assignments } = await supabase
-        .from('job_assignments')
-        .select('scopist_id')
-        .eq('job_id', jobId)
-        .eq('scopist_id', user.id);
+      // Allow scopists assigned to the job via query layer
+      const isAssigned = await isUserAssignedToJob(jobId, user.id);
       
-      if (!assignments || assignments.length === 0) {
+      if (!isAssigned) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
@@ -199,7 +197,8 @@ export async function POST(
       message: `Successfully uploaded ${createdExhibits.length} exhibit(s)`,
     });
   } catch (error) {
-    console.error('Error uploading exhibits:', error);
+    const { id: jobId } = await params;
+    logger.error('Error uploading exhibits', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to upload exhibits' },
       { status: 500 },

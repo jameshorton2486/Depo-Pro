@@ -5,7 +5,7 @@
 // Phase 3A-2: Helper functions for availability management
 // =============================================================================
 
-import { AvailabilityBlock } from './types';
+import type { AvailabilityBlock } from './types';
 
 /**
  * Check if two availability blocks overlap

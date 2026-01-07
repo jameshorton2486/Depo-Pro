@@ -5,9 +5,10 @@
 // Role-aware event filtering for calendar view
 // =============================================================================
 
-import { CalendarEventUI } from '@/components/calendar/calendar.types';
+import type { CalendarEventUI } from '@/components/calendar/calendar.types';
 import type { UserRole } from '@/types/database';
-import { filterEventsByType, EventTypeFilter } from './event-types';
+import type { EventTypeFilter } from './event-types';
+import { filterEventsByType } from './event-types';
 
 export interface EventFilterOptions {
   typeFilter: EventTypeFilter;

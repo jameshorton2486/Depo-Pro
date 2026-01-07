@@ -5,7 +5,7 @@
 // User queries that don't require admin access
 // For admin operations, use lib/supabase/queries/admin.ts
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 /**

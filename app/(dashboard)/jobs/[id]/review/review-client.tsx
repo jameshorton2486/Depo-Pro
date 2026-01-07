@@ -11,9 +11,10 @@ import { SyncedTranscript } from '@/components/transcripts/synced-transcript';
 import { LowConfidencePanel } from '@/components/transcripts/low-confidence-panel';
 import { ConfidenceThresholdControl } from '@/components/transcripts/confidence-threshold-control';
 import { ReviewProgress } from '@/components/transcripts/review-progress';
-import { AudioPlayer, AudioPlayerRef } from '@/components/transcripts/audio-player';
+import type { AudioPlayerRef } from '@/components/transcripts/audio-player';
+import { AudioPlayer } from '@/components/transcripts/audio-player';
 import { useKeyboardShortcuts, REVIEW_SHORTCUTS } from '@/hooks/use-keyboard-shortcuts';
-import {
+import type {
   ReviewWord,
   FlaggedWordWithContext,
   ReviewSession,

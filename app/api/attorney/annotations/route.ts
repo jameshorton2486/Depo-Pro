@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════════════════════════
 // API routes for transcript annotations (issue codes)
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { Role } from '@/lib/constants';
 import { requireAuth, requireTranscriptAnnotation } from '@/lib/permissions/api-guards';
 

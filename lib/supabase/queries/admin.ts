@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 // All database access for admin operations goes through these functions
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 /**

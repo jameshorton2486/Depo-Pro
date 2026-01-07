@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { ExternalCalendarProvider } from '@/lib/enums';
-import {
+import type {
   ExternalCalendarProviderInterface,
   ExternalEvent,
   ExternalCalendar,

@@ -4,9 +4,10 @@
 // ═══════════════════════════════════════════════════════════════
 // All database access for jobs goes through these functions
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Job as _Job, JobFile as _JobFile, Transcript as _Transcript, JobAssignment as _JobAssignment } from '@/types/database';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 /**
  * Get job by ID with optional includes
@@ -235,6 +236,29 @@ export async function getJobWithAssignments(
     ...job,
     assignments: assignments || [],
   };
+}
+
+/**
+ * Check if a user is assigned to a job as a scopist
+ */
+export async function isUserAssignedToJob(
+  jobId: string,
+  userId: string
+): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  
+  const { data, error } = await supabase
+    .from('job_assignments')
+    .select('id')
+    .eq('job_id', jobId)
+    .eq('scopist_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    return false;
+  }
+
+  return !!data;
 }
 
 /**

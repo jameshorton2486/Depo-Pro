@@ -4,7 +4,8 @@
 // lib/external-calendar/providers/types.ts
 // =============================================================================
 
-import { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
+import type { ExternalCalendarProvider} from '@/lib/enums';
+import { ExternalCalendarSyncMode } from '@/lib/enums';
 
 // =============================================================================
 // EXTERNAL EVENT TYPES

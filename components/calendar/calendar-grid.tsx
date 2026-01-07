@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { CalendarEventUI, UserRole } from '@/lib/calendar/types';
+import type { CalendarEventUI, UserRole } from '@/lib/calendar/types';
 import { getCalendarDays } from '@/lib/calendar/utils';
 import { CalendarDayCell } from './calendar-day-cell';
 

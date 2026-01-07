@@ -4,7 +4,7 @@
 // ============================================
 
 import { format, parseISO } from 'date-fns';
-import { CalendarEventStatus, CalendarEventUI } from '@/components/calendar/calendar.types';
+import type { CalendarEventStatus, CalendarEventUI } from '@/components/calendar/calendar.types';
 
 /**
  * Format event time for display

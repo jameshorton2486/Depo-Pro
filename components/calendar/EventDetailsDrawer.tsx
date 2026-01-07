@@ -20,8 +20,9 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import type {
+  EventDetailsPanelProps} from './calendar.types';
 import {
-  EventDetailsPanelProps,
   STATUS_COLORS,
   LOCATION_TYPE_LABELS,
   DEPONENT_ROLE_LABELS,

@@ -5,9 +5,10 @@
 // app/api/external-calendar/route.ts
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
+import type { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
 import { FEATURES } from '@/lib/feature-flags';
 import { ExternalCalendarSyncService } from '@/lib/external-calendar/sync-service';
 

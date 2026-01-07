@@ -13,6 +13,7 @@
         "typecheck": "tsc --noEmit",
         "check": "npm run lint && npm run typecheck && npm run build",
         "check:all": "npm run format:check && npm run lint && npm run typecheck && npm run build",
+        "check:version": "node scripts/check-next-version.js",
         "prepare": "husky",
         "db:setup-urls": "powershell -ExecutionPolicy Bypass -File scripts/setup-database-urls.ps1",
         "db:validate-urls": "powershell -ExecutionPolicy Bypass -File scripts/validate-database-urls.ps1",

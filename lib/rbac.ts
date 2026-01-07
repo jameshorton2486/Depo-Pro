@@ -3,7 +3,7 @@
 // Path: lib/rbac.ts
 // ============================================================
 
-import { Role } from '@/lib/constants';
+import type { Role } from '@/lib/constants';
 
 /**
  * Phase 3 Permission Matrix

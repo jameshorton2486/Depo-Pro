@@ -8,7 +8,7 @@
 // Phase 3A-1: No role checks in UI
 // =============================================================================
 
-import { CalendarView } from '@/lib/calendar/use-allowed-calendar-views';
+import type { CalendarView } from '@/lib/calendar/use-allowed-calendar-views';
 
 interface CalendarViewToggleProps {
   allowedViews: CalendarView[];

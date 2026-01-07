@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AssignPersonnelSchema } from '@/lib/calendar/validations';
 import { canAssignPersonnel } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
+import { getCalendarEventById, updateCalendarEvent } from '@/lib/supabase/queries/calendar';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // POST /api/calendar/[id]/assign
@@ -71,15 +73,10 @@ export async function POST(
       );
     }
 
-    // 4. Fetch Event
-    const supabase = await createSupabaseServerClient();
-    const { data: event, error: eventError } = await supabase
-      .from('calendar_events')
-      .select('id, status, assigned_reporter_id, firm_id, agency_id, internal_notes')
-      .eq('id', eventId)
-      .single();
+    // 4. Fetch Event via query layer
+    const event = await getCalendarEventById(eventId);
 
-    if (eventError || !event) {
+    if (!event) {
       return NextResponse.json(
         { error: 'Event not found', code: 'EVENT_NOT_FOUND' },
         { status: 404 }
@@ -143,25 +140,25 @@ export async function POST(
     // 7. Store previous value for audit
     const previousReporterId = event.assigned_reporter_id;
 
-    // 8. Update Event (Supabase doesn't support transactions, so we do sequential updates)
-    const updateData: any = {
+    // 8. Update Event via query layer
+    const updateData: {
+      assigned_reporter_id?: string | null;
+      internal_notes?: string | null;
+    } = {
       assigned_reporter_id: personnelId,
-      updated_at: new Date().toISOString(),
     };
 
     if (notes) {
-      updateData.internal_notes = event.internal_notes 
-        ? `${event.internal_notes}\n\nAssignment note: ${notes}`
+      const existingNotes = event.internal_notes as string | null | undefined;
+      updateData.internal_notes = existingNotes
+        ? `${existingNotes}\n\nAssignment note: ${notes}`
         : `Assignment note: ${notes}`;
     }
 
-    const { error: updateError } = await supabase
-      .from('calendar_events')
-      .update(updateData)
-      .eq('id', eventId);
-
-    if (updateError) {
-      console.error('Event update error:', updateError);
+    try {
+      await updateCalendarEvent(eventId, updateData);
+    } catch (updateError) {
+      logger.error('Event update error', updateError instanceof Error ? updateError : new Error(String(updateError)), { eventId });
       return NextResponse.json(
         { error: 'Failed to update event', code: 'UPDATE_ERROR' },
         { status: 500 }
@@ -233,7 +230,8 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('[AssignPersonnel] Error:', error);
+    const { id: eventId } = await params;
+    logger.error('AssignPersonnel error', error instanceof Error ? error : new Error(String(error)), { eventId });
     
     return NextResponse.json(
       { 

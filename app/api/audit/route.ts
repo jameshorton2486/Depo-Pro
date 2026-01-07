@@ -7,16 +7,18 @@
 // GET /api/audit/export - Export audit logs (admin only)
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { UserRole } from '@/lib/enums';
+import type {
+  AuditLogQuery} from '@/lib/audit-service';
 import {
   queryAuditLogs,
   getEntityAuditHistory as _getEntityAuditHistory,
   createAuditLog,
   AuditAction,
-  AuditTargetType,
-  AuditLogQuery,
+  AuditTargetType
 } from '@/lib/audit-service';
 import { z } from 'zod';
 

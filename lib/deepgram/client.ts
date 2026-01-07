@@ -5,7 +5,8 @@
  * INSTALLATION: npm install @deepgram/sdk
  */
 
-import { createClient, DeepgramClient, PrerecordedSchema } from '@deepgram/sdk';
+import type { DeepgramClient, PrerecordedSchema } from '@deepgram/sdk';
+import { createClient } from '@deepgram/sdk';
 import { env } from '@/lib/env';  // Use centralized env
 
 // Singleton Deepgram client

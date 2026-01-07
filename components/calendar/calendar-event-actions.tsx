@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarEventUI, CalendarAction, UserRole } from '@/lib/calendar/types';
+import type { CalendarEventUI, CalendarAction, UserRole } from '@/lib/calendar/types';
 import { getActionAvailability } from '@/lib/calendar/permissions';
 import { CALENDAR_ACTIONS } from '@/lib/calendar/constants';
 import { Button } from '@/components/ui/button';

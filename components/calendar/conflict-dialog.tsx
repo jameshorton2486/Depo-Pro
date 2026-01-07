@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, Clock, MapPin, UserX, CheckCircle } from 'lucide-react';
-import { ConflictType } from '@/lib/enums';
+import type { ConflictType } from '@/lib/enums';
 
 export interface Conflict {
   type: ConflictType | string;

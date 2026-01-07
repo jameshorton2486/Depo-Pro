@@ -1,7 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
-import { CalendarEventUI } from '@/lib/calendar/types';
+import type { CalendarEventUI } from '@/lib/calendar/types';
 import { CalendarEventCard } from './calendar-event-card';
 import { MAX_VISIBLE_EVENTS_PER_DAY } from '@/lib/calendar/constants';
 

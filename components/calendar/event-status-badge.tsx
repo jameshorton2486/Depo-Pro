@@ -2,7 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Lock, Calendar, CheckCircle, XCircle } from 'lucide-react';
-import { CalendarEventStatus } from '@/lib/enums';
+import type { CalendarEventStatus } from '@/lib/enums';
 
 interface EventStatusBadgeProps {
   status: CalendarEventStatus;

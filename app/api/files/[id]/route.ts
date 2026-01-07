@@ -2,11 +2,15 @@
 // FILE DELETE API ENDPOINT
 // ═══════════════════════════════════════════════════════════════
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
+import { logger } from '@/lib/logger';
+
+export const runtime = 'nodejs'; // Required for fs/path usage
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
@@ -58,7 +62,7 @@ export async function DELETE(
       const filePath = join(UPLOAD_DIR, file.fileName);
       await unlink(filePath);
     } catch (error) {
-      console.error('Failed to delete file from filesystem:', error);
+      logger.error('Failed to delete file from filesystem', error instanceof Error ? error : new Error(String(error)), { fileId });
       // Continue with database deletion even if file doesn't exist
     }
 
@@ -69,7 +73,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error('File deletion error:', error);
+    const { id: fileId } = await params;
+    logger.error('File deletion error', error instanceof Error ? error : new Error(String(error)), { fileId });
     return NextResponse.json(
       { error: 'Failed to delete file' },
       { status: 500 },
@@ -124,7 +129,8 @@ export async function GET(
     // 📥 Return file metadata
     return NextResponse.json({ file }, { status: 200 });
   } catch (error) {
-    console.error('Fetch file error:', error);
+    const { id: fileId } = await params;
+    logger.error('Fetch file error', error instanceof Error ? error : new Error(String(error)), { fileId });
     return NextResponse.json(
       { error: 'Failed to fetch file' },
       { status: 500 },

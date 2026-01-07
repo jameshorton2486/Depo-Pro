@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════════════════════════
 // All database access for proper nouns goes through these functions
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 /**
  * Get proper nouns for a job (via CSR record)
@@ -281,5 +282,88 @@ export async function deleteProperNoun(
 
   if (error) {
     throw error;
+  }
+}
+
+/**
+ * Get CSR record ID for a job (creates if doesn't exist)
+ */
+export async function getOrCreateCsrRecordId(jobId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  
+  let { data: csrRecord } = await supabase
+    .from('csr_records')
+    .select('id')
+    .eq('job_id', jobId)
+    .maybeSingle();
+
+  if (!csrRecord) {
+    // Get job details to create CSR record
+    const { data: job } = await supabase
+      .from('jobs')
+      .select('id, deposition_date, case_name, case_number, location')
+      .eq('id', jobId)
+      .single();
+
+    if (!job) {
+      return null;
+    }
+
+    // Create CSR record
+    const { data: newCsrRecord, error: createError } = await supabase
+      .from('csr_records')
+      .insert({
+        job_id: jobId,
+        deposition_date: job.deposition_date,
+        case_caption: job.case_name || 'Untitled Case',
+        cause_number: job.case_number,
+        location_address: job.location,
+      })
+      .select('id')
+      .single();
+
+    if (createError) {
+      return null;
+    }
+
+    csrRecord = newCsrRecord;
+  }
+
+  return csrRecord.id;
+}
+
+/**
+ * Bulk delete proper nouns
+ */
+export async function bulkDeleteProperNouns(
+  jobId: string,
+  nounIds: string[]
+): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+  const supabase = await createSupabaseServerClient();
+  
+  try {
+    const csrRecordId = await getOrCreateCsrRecordId(jobId);
+    
+    if (!csrRecordId) {
+      return { success: false, error: 'CSR record not found for this job' };
+    }
+
+    const { data: deleted, error: deleteError } = await supabase
+      .from('csr_proper_nouns')
+      .delete()
+      .in('id', nounIds)
+      .eq('csr_record_id', csrRecordId)
+      .select();
+
+    if (deleteError) {
+      return { success: false, error: deleteError.message };
+    }
+
+    return { success: true, deletedCount: deleted?.length || 0 };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 }

@@ -3,7 +3,8 @@
 // Path: app/api/calendar/events/[id]/undo-reschedule/route.ts
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { undoReschedule } from '@/lib/scheduling/scheduling-service';

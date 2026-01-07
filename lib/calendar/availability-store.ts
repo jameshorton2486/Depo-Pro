@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { useEffect, useState } from 'react';
-import { AvailabilityBlock } from './types';
+import type { AvailabilityBlock } from './types';
 
 export function useAvailability(userId: string) {
   const [blocks, setBlocks] = useState<AvailabilityBlock[]>([]);

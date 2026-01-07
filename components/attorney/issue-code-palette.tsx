@@ -5,7 +5,8 @@
 
 'use client';
 
-import { IssueCode, getAllIssueCodes } from '@/types/issue-code';
+import type { IssueCode} from '@/types/issue-code';
+import { getAllIssueCodes } from '@/types/issue-code';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 

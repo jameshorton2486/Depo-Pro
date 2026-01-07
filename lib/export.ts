@@ -13,7 +13,7 @@ import {
 } from 'docx';
 import PDFDocument from 'pdfkit';
 import { format } from 'date-fns';
-import { ExportOptions, ExportMetadata } from '@/types/transcript';
+import type { ExportOptions, ExportMetadata } from '@/types/transcript';
 
 // Legal formatting constants
 const LINES_PER_PAGE = 25;

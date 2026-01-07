@@ -4,7 +4,8 @@
 
 'use client';
 
-import { useForm, SubmitHandler } from 'react-hook-form';
+import type { SubmitHandler } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createJobSchema, AudioProcessingMode } from '@/lib/validations/job';
 import { type CreateJobInput } from '@/lib/validations/job';

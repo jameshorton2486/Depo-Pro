@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarEventUI } from '@/lib/calendar/types';
+import type { CalendarEventUI } from '@/lib/calendar/types';
 import { REQUIREMENT_FLAGS } from '@/lib/calendar/constants';
 import { cn } from '@/lib/utils';
 import * as Icons from 'lucide-react';

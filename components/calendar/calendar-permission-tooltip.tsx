@@ -1,7 +1,7 @@
 'use client';
 
-import { ReactNode } from 'react';
-import { CalendarAction, ActionAvailability, UserRole } from '@/lib/calendar/types';
+import type { ReactNode } from 'react';
+import type { CalendarAction, ActionAvailability, UserRole } from '@/lib/calendar/types';
 import { ACTION_DISABLED_REASONS, ACTION_PERMISSION_REASONS } from '@/lib/calendar/permissions';
 
 interface CalendarPermissionTooltipProps {

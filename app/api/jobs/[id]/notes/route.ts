@@ -4,15 +4,16 @@
 // POST /api/jobs/[id]/notes - Create note
 // =============================================================================
 
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, isTranscriptFinalized } from '@/lib/auth/permissions';
 import { UserRole, JobStatus, DepositionNoteType } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 import { listNotesForJob, createNote } from '@/lib/supabase/queries/notes';
-import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
+import { getCalendarEventByJobId } from '@/lib/supabase/queries/calendar';
 
 const LOCKED_STATUSES: JobStatus[] = [JobStatus.REVIEW_COMPLETE, JobStatus.COMPLETED];
 
@@ -22,12 +23,8 @@ async function checkReporterJobAccess(reporterId: string, jobId: string): Promis
   
   if (!job) return false;
   
-  // Check calendar event assignment
-  const { data: calendarEvent } = await supabase
-    .from('calendar_events')
-    .select('assigned_reporter_id')
-    .eq('job_id', jobId)
-    .maybeSingle();
+  // Check calendar event assignment via query layer
+  const calendarEvent = await getCalendarEventByJobId(jobId);
   
   return (job as any).created_by_id === reporterId || calendarEvent?.assigned_reporter_id === reporterId;
 }
@@ -71,13 +68,11 @@ export async function GET(
       return error('NOT_FOUND', 'Job not found', 404);
     }
 
-    // Get assignments for access check (job_assignments query could be moved to jobs.ts later)
-    const { data: assignments } = await supabase
-      .from('job_assignments')
-      .select('scopist_id, status')
-      .eq('job_id', jobId);
+    // Get assignments for access check via query layer
+    const isAssigned = await isUserAssignedToJob(jobId, user.id);
+    const assignments = isAssigned ? [{ scopist_id: user.id, status: 'ACCEPTED' }] : [];
 
-    const hasAccess = await canViewNotes(user, job as any, assignments || []);
+    const hasAccess = await canViewNotes(user, job as any, assignments);
     if (!hasAccess) {
       return error('FORBIDDEN', 'You do not have permission to view notes', 403);
     }

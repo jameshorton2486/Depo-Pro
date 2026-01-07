@@ -6,7 +6,7 @@
 import NextAuth from 'next-auth';
 import { NextResponse } from 'next/server';
 import { authConfig } from '@/lib/auth-options';
-import { Role } from '@/lib/constants';
+import type { Role } from '@/lib/constants';
 import { redirect } from 'next/navigation';
 
 // Initialize NextAuth with our config

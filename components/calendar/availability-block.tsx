@@ -8,7 +8,7 @@
 // =============================================================================
 
 import { useDraggable } from '@dnd-kit/core';
-import { AvailabilityBlock } from '@/lib/calendar/types';
+import type { AvailabilityBlock } from '@/lib/calendar/types';
 import { formatTimeRange } from '@/lib/calendar/availability-utils';
 import { Button } from '@/components/ui/button';
 import { Trash2, AlertTriangle, GripVertical } from 'lucide-react';

@@ -11,7 +11,8 @@
 // 4. Copy signing secret to STRIPE_WEBHOOK_SECRET
 // =============================================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest} from 'next/server';
+import { NextResponse } from 'next/server';
 import { processWebhookRequest } from '@/lib/services/webhook-verification-service';
 
 // =============================================================================

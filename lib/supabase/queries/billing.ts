@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 // All database access for billing and invoices goes through these functions
 
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Get invoice by ID

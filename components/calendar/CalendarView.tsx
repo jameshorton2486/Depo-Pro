@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { Calendar, dateFnsLocalizer, Views, SlotInfo } from 'react-big-calendar';
+import type { SlotInfo } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
 
-import {
+import type {
   CalendarEventUI,
   CalendarViewType,
   CalendarViewProps,

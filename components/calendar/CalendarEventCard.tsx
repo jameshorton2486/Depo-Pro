@@ -1,7 +1,8 @@
 'use client';
 
 import { Video, MapPin, Phone, Users, Globe, AlertCircle, AlertTriangle } from 'lucide-react';
-import { CalendarEventUI, LocationType, STATUS_COLORS } from './calendar.types';
+import type { CalendarEventUI, LocationType} from './calendar.types';
+import { STATUS_COLORS } from './calendar.types';
 import { getEventTypeColor } from '@/lib/calendar/event-types';
 import { cn } from '@/lib/utils';
 

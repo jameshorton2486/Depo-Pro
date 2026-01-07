@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User } from '@/types/database';
+import type { User } from '@/types/database';
 
 interface AssignScopistDialogProps {
   jobId: string;
