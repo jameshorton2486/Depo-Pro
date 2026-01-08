@@ -8,7 +8,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -110,7 +110,9 @@ interface DashboardData {
 }
 
 export default function AttorneyDashboardPage() {
-  const { data: session, status } = useSession();
+  const { user, profile, isLoading } = useAuth();
+  const session = user && profile ? { user: { id: user.id, email: user.email || '', role: profile.role, name: profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name || profile.last_name || null } } : null;
+  const status = isLoading ? 'loading' : session ? 'authenticated' : 'unauthenticated';
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);

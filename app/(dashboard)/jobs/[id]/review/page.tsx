@@ -5,7 +5,7 @@
 // Loads: Job data, transcription, audio file URL, saved session
 
 import { notFound, redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { db } from '@/lib/db';
 import { Role } from '@/lib/constants';
 import type { TranscriptSegment } from '@/components/transcripts/synced-transcript-viewer';

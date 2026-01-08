@@ -3,7 +3,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { JobStatus } from '@/types/database';
 import { getJobById, updateJobStatus, updateJob, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';

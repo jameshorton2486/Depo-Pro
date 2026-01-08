@@ -61,6 +61,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 });
     }
 
+    // Check for conflicts (events that overlap with the new event)
+    // Overlap condition: new_start < existing_end AND new_end > existing_start
+    const { data: conflicts } = await supabase
+      .from('calendar_events')
+      .select('id, title, start_time, end_time')
+      .eq('user_id', user.id)
+      .lt('start_time', endTime.toISOString())
+      .gt('end_time', startTime.toISOString());
+
+    if (conflicts && conflicts.length > 0) {
+      logger.warn('[calendar] Time conflict detected', { conflicts, userId: user.id });
+      return NextResponse.json(
+        { 
+          error: 'Time conflict detected',
+          conflicts: conflicts.map(c => ({
+            id: c.id,
+            title: c.title,
+            start: c.start_time,
+            end: c.end_time,
+          }))
+        },
+        { status: 409 }
+      );
+    }
+
     // Insert event (RLS will enforce user_id and firm_id)
     const { data: insertedEvent, error: insertError } = await supabase
       .from('calendar_events')

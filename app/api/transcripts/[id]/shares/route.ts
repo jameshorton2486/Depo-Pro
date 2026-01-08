@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { db } from '@/lib/db';
 import { dispatchShareCreated } from '@/lib/webhooks';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';

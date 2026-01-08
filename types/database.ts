@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // DATABASE TYPES FOR SUPABASE
 // ═══════════════════════════════════════════════════════════════════════════
 // TypeScript types matching Supabase database schema
@@ -268,15 +268,16 @@ export interface Transcription {
 export interface TranscriptionEdit {
   id: string;
   transcription_id: string;
-  editor_id: string;
-  editor_email: string | null;
-  editor_role: UserRole | null;
-  edit_type: EditType;
+  word_index: number;
   original_text: string | null;
   edited_text: string | null;
-  position: number | null;
-  metadata: Record<string, unknown> | null;
+  edit_type: 'WORD_CORRECTION' | 'SPEAKER_CHANGE' | 'PUNCTUATION' | 'DELETE' | 'correction' | 'accept' | 'reject' | 'flag';
+  confidence_before: number | null;
+  editor_id: string;
+  editor_role: string;
+  reviewed_at: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface JobAssignment {

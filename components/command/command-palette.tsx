@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/hooks/use-auth";
 import {
   CommandDialog,
   CommandEmpty,
@@ -49,7 +49,8 @@ interface CommandPaletteProps {
 export function CommandPalette({ open: controlledOpen, onOpenChange: controlledOnOpenChange }: CommandPaletteProps) {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
-  const { data: session } = useSession();
+  const { user, profile } = useAuth();
+  const session = user && profile ? { user: { id: user.id, email: user.email || '', role: profile.role, name: profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name || profile.last_name || null } } : null;
   const role = (session?.user?.role as UserRole) || "REPORTER";
 
   // Use controlled state if provided, otherwise use internal state

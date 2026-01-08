@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { db } from '@/lib/db';
 import { notFound, redirect } from 'next/navigation';
 import { TranscriptViewer } from '@/components/attorney/transcript-viewer';

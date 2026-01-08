@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 // ProperNounCategory not needed as value - using string validation
 import { getProperNounById, updateProperNoun, deleteProperNoun } from '@/lib/supabase/queries/proper-nouns';

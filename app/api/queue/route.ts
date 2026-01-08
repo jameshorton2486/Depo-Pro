@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { enqueueJob, getJobStatus, type JobData } from '@/lib/jobs';
 import { logger } from '@/lib/logger';
 
@@ -11,7 +11,7 @@ import { logger } from '@/lib/logger';
 export async function POST(request: NextRequest) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,10 +28,10 @@ export async function POST(request: NextRequest) {
     // Enqueue the job
     const job = await enqueueJob({
       ...body,
-      userId: session.user.id,
+      userId: session.id,
     });
 
-    logger.info(`Job enqueued - jobId: ${job.id}, type: ${body.type}, userId: ${session.user.id}`);
+    logger.info(`Job enqueued - jobId: ${job.id}, type: ${body.type}, userId: ${session.id}`);
 
     return NextResponse.json({
       success: true,
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

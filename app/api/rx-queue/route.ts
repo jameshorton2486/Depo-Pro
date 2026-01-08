@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // RX QUEUE LIST
 // app/api/rx-queue/route.ts
 //
@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
 
 export async function GET(request: NextRequest) {

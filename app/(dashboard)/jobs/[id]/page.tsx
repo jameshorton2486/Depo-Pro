@@ -4,7 +4,7 @@
 
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { AssignmentManagement } from '@/components/jobs/assignment-management';
@@ -32,7 +32,7 @@ interface JobDetailPageProps {
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const session = await getCurrentUser();
 
-  if (!session || !session.user) {
+  if (!session) {
     redirect('/login');
   }
 
@@ -89,17 +89,17 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   // 🔒 Security: Verify access rights
   const hasAccess =
-    session.user.role === 'ADMIN' ||
-    job.createdById === session.user.id ||
-    job.assignments.some((a: any) => a.scopistId === session.user.id);
+    session.role === 'ADMIN' ||
+    job.createdById === session.id ||
+    job.assignments.some((a: any) => a.scopistId === session.id);
 
   if (!hasAccess) {
     redirect('/dashboard');
   }
 
   const canEdit =
-    session.user.role === 'ADMIN' ||
-    job.createdById === session.user.id;
+    session.role === 'ADMIN' ||
+    job.createdById === session.id;
 
   const canAssign = canEdit;
 
@@ -218,18 +218,18 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         assignments={job.assignments}
         availableScopists={availableScopists}
         canAssign={canAssign}
-        currentUserId={session.user.id}
+        currentUserId={session.id}
       />
 
       {/* Live Notes Capture (Reporter Only) */}
-      {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') && (
+      {(session.role === 'REPORTER' || session.role === 'ADMIN') && (
         <div className="mt-6">
           <LiveNotesCapture jobId={job.id} />
         </div>
       )}
 
       {/* Proper Nouns & Spellings (Reporter Only) */}
-      {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') && (
+      {(session.role === 'REPORTER' || session.role === 'ADMIN') && (
         <div className="mt-6">
           <ReporterProperNounsPanel
             jobId={job.id}

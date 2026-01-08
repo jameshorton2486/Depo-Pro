@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { redirect, notFound } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { JobForm } from '@/components/jobs/job-form';
 
@@ -16,7 +16,7 @@ interface EditJobPageProps {
 export default async function EditJobPage({ params }: EditJobPageProps) {
   const session = await getCurrentUser();
 
-  if (!session || !session.user) {
+  if (!session) {
     redirect('/login');
   }
 
@@ -45,8 +45,8 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
 
   // 🔒 Security: Only reporter or admin can edit
   const canEdit =
-    session.user.role === 'ADMIN' ||
-    job.createdById === session.user.id;
+    session.role === 'ADMIN' ||
+    job.createdById === session.id;
 
   if (!canEdit) {
     redirect('/dashboard');

@@ -4,15 +4,89 @@
  */
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+export type AuditAction =
+  | 'USER_LOGIN' | 'USER_LOGOUT' | 'USER_LOGIN_FAILED'
+  | 'JOB_CREATED' | 'JOB_UPDATED' | 'JOB_DELETED' | 'JOB_ASSIGNED'
+  | 'TRANSCRIPTION_STARTED' | 'TRANSCRIPTION_COMPLETED' | 'TRANSCRIPTION_FAILED'
+  | 'FILE_UPLOADED' | 'FILE_DOWNLOADED' | 'FILE_DELETED'
+  | 'TRANSCRIPT_EXPORTED' | 'TRANSCRIPT_VIEWED' | 'TRANSCRIPT_EDITED' | 'TRANSCRIPT_DELETED'
+  | 'UNAUTHORIZED_ACCESS_ATTEMPT' | 'RATE_LIMIT_EXCEEDED'
+  | 'CASE_CREATED' | 'CASE_UPDATED' | 'CASE_DELETED'
+  | 'CALENDAR_EVENT_CREATED' | 'CALENDAR_EVENT_UPDATED' | 'CALENDAR_EVENT_DELETED';
+
+export interface AuditLogEntry {
+  userId?: string;
+  action: AuditAction | string;
+  resourceType: string;
+  resourceId?: string;
+  oldValue?: Record<string, unknown>;
+  newValue?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+}
 
 export interface AuditLogOptions {
   entity?: string;
   entityId?: string;
   metadata?: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+/**
+ * Create comprehensive audit log entry
+ */
+export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
+  try {
+    // Use service role for audit logs (bypasses RLS)
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Get user's firm_id if userId is provided
+    let firmId: string | undefined;
+    if (entry.userId) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('firm_id')
+        .eq('id', entry.userId)
+        .single();
+      firmId = profile?.firm_id;
+    }
+
+    // Insert audit log (non-blocking)
+    void Promise.resolve(
+      supabase
+        .from('audit_logs')
+        .insert({
+          user_id: entry.userId || null,
+          action: entry.action,
+          resource_type: entry.resourceType,
+          resource_id: entry.resourceId || null,
+          old_value: entry.oldValue || null,
+          new_value: entry.newValue || null,
+          metadata: entry.metadata || {},
+          ip_address: entry.ipAddress || null,
+          user_agent: entry.userAgent || null,
+          firm_id: firmId || null,
+          created_at: new Date().toISOString(),
+        })
+    ).catch((error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn('[audit] Failed to log action', { action: entry.action, error: errorMessage });
+    });
+  } catch (error) {
+    console.warn('[audit] Audit logging error', { action: entry.action, error });
+  }
 }
 
 /**
  * Log an audit event (non-blocking, fire-and-forget)
+ * Backward compatible wrapper
  */
 export async function auditLog(
   action: string,
@@ -40,8 +114,10 @@ export async function auditLog(
           entity: options?.entity,
           entity_id: options?.entityId,
           metadata: options?.metadata || {},
+          ip_address: options?.ipAddress || null,
+          user_agent: options?.userAgent || null,
         })
-    )      .catch((error: unknown) => {
+    ).catch((error: unknown) => {
         // Log error but don't throw (audit failures shouldn't break the app)
         const errorMessage = error instanceof Error ? error.message : String(error);
          
@@ -76,6 +152,9 @@ export const audit = {
   calendarEventUpdated: (eventId: string, metadata?: Record<string, unknown>) =>
     auditLog('calendar_event.updated', { entity: 'calendar_event', entityId: eventId, metadata }),
   
+  calendarEventDeleted: (eventId: string, metadata?: Record<string, unknown>) =>
+    auditLog('calendar_event.deleted', { entity: 'calendar_event', entityId: eventId, metadata }),
+  
   fileUploaded: (fileId: string, metadata?: Record<string, unknown>) =>
     auditLog('file.uploaded', { entity: 'file', entityId: fileId, metadata }),
   
@@ -103,6 +182,12 @@ export const audit = {
   
   revisionApplied: (revisionId: string, transcriptId: string, metadata?: Record<string, unknown>) =>
     auditLog('transcript_revision.applied', { entity: 'transcript_revision', entityId: revisionId, metadata: { ...metadata, transcriptId } }),
+  
+  transcriptionCompleted: (transcriptId: string, metadata?: Record<string, unknown>) =>
+    auditLog('transcription.completed', { entity: 'transcription', entityId: transcriptId, metadata }),
+  
+  transcriptionFailed: (jobId: string, metadata?: Record<string, unknown>) =>
+    auditLog('transcription.failed', { entity: 'job', entityId: jobId, metadata }),
 };
 
 /**

@@ -3,18 +3,18 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { JobForm } from '@/components/jobs/job-form';
 
 export default async function NewJobPage() {
   const session = await getCurrentUser();
 
-  if (!session || !session.user) {
+  if (!session) {
     redirect('/login');
   }
 
   // Scopists cannot create jobs
-  if (session.user.role === 'SCOPIST') {
+  if (session.role === 'SCOPIST') {
     redirect('/dashboard');
   }
 

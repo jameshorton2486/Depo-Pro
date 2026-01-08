@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { SessionProvider } from 'next-auth/react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { CommandPalette } from '@/components/command/command-palette';
@@ -29,11 +28,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SessionProvider>
-            {children}
-            <Toaster position="top-right" richColors />
-            <CommandPalette />
-          </SessionProvider>
+          {children}
+          <Toaster position="top-right" richColors />
+          <CommandPalette />
         </ThemeProvider>
       </body>
     </html>

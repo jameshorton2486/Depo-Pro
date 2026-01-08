@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -113,7 +113,7 @@ export async function GET(
 
     // Get existing edits to determine reviewed status
     const { data: edits } = await supabase
-      .from('TranscriptionEdit')
+      .from('transcription_edits')
       .select('word_index, edited_text, edit_type')
       .eq('transcription_id', transcription.id);
 
@@ -253,7 +253,7 @@ export async function PATCH(
 
     // Upsert the edit
     const { error: upsertError } = await supabase
-      .from('TranscriptionEdit')
+      .from('transcription_edits')
       .upsert(
         {
           transcription_id: transcription.id,
@@ -328,7 +328,7 @@ export async function DELETE(
 
     // Delete the edit
     const { error: deleteError } = await supabase
-      .from('TranscriptionEdit')
+      .from('transcription_edits')
       .delete()
       .eq('transcription_id', transcription.id)
       .eq('word_index', wordIndex);

@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { transitionTranscriptStatus } from '@/lib/services/transcript-status';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptById } from '@/lib/supabase/queries/transcripts';

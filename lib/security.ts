@@ -4,7 +4,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getUserWithProfile } from '@/lib/auth-supabase';
 import type { UserRole } from '@/types/database';
 
 // Rate limiting store (in production, use Redis)
@@ -83,15 +83,27 @@ export function cleanupRateLimits() {
 
 /**
  * Authentication guard for API routes
+ * Returns user with profile or throws error
  */
 export async function requireAuth(_request?: NextRequest) {
-  const session = await auth();
+  const userWithProfile = await getUserWithProfile();
 
-  if (!session?.user) {
+  if (!userWithProfile || !userWithProfile.user) {
     throw new Error('UNAUTHENTICATED');
   }
 
-  return session;
+  // Return in NextAuth-compatible format for backward compatibility
+  return {
+    user: {
+      id: userWithProfile.user.id,
+      email: userWithProfile.user.email || '',
+      role: (userWithProfile.profile?.role as UserRole) || 'REPORTER',
+      name: userWithProfile.profile?.first_name && userWithProfile.profile?.last_name
+        ? `${userWithProfile.profile.first_name} ${userWithProfile.profile.last_name}`
+        : userWithProfile.profile?.first_name || userWithProfile.profile?.last_name || null,
+      firmId: userWithProfile.profile?.firm_id || null,
+    },
+  };
 }
 
 /**
@@ -191,10 +203,8 @@ export function validateFileUpload(
 export function validateEnvironment() {
   const required = [
     'DATABASE_URL',
-    'NEXTAUTH_SECRET',
-    'NEXTAUTH_URL',
-    'SUPABASE_URL',
-    'SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
     'DEEPGRAM_API_KEY',
   ];
@@ -207,8 +217,7 @@ export function validateEnvironment() {
 
   // Validate URLs
   try {
-    new URL(process.env.NEXTAUTH_URL!);
-    new URL(process.env.SUPABASE_URL!);
+    new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
   } catch {
     throw new Error('Invalid URL format in environment variables');
   }

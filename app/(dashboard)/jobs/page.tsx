@@ -1,11 +1,11 @@
-﻿// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // JOBS LIST PAGE
 // ═══════════════════════════════════════════════════════════════
 
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,14 +26,12 @@ interface JobsPageProps {
 export default async function JobsPage({ searchParams }: JobsPageProps) {
   const session = await getCurrentUser();
 
-  if (!session || !session.user) {
+  if (!session) {
     redirect('/login');
   }
 
-  const user = session.user;
-
   // Scopists cannot create jobs
-  const canCreateJobs = user.role !== 'SCOPIST';
+  const canCreateJobs = session.role !== 'SCOPIST';
 
   const params = await searchParams;
   const status = params.status as string | undefined;
@@ -100,7 +98,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       </form>
 
       <Suspense fallback={<JobsListSkeleton />}>
-        <JobsList user={user} status={status} search={search} page={page} />
+        <JobsList user={session} status={status} search={search} page={page} />
       </Suspense>
     </div>
   );

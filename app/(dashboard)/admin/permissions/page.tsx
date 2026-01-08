@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { ROUTE_ACCESS, API_ACCESS } from '@/lib/permissions/route-access';
 import { PermissionAuditTable } from '@/components/_future/admin/permission-audit-table';
 
@@ -18,7 +18,7 @@ export const metadata = {
 export default async function PermissionsPage() {
   const session = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!session) {
     redirect('/login');
   }
 

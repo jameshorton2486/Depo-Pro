@@ -1,7 +1,7 @@
-﻿import { db } from '@/lib/db';
+import { db } from '@/lib/db';
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 
 // ============================================
 // GET /api/users/reporters - List reporters for assignment

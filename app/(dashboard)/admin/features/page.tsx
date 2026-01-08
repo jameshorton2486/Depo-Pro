@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { FeatureFlagsManager } from '@/components/_future/admin/feature-flags-manager';
 
 export const metadata = {
@@ -17,7 +17,7 @@ export const metadata = {
 export default async function FeaturesPage() {
   const session = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!session) {
     redirect('/login');
   }
 

@@ -17,7 +17,7 @@ import type {
   DateSelectArg,
   EventDropArg,
 } from '@fullcalendar/core';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { CalendarEventModal } from './calendar-event-modal';
 import { CalendarEventDetail } from './calendar-event-detail';
@@ -130,7 +130,7 @@ export function DepoCalendar({
   initialView = 'dayGridMonth',
   reporters = [],
 }: DepoCalendarProps) {
-  const { data: session } = useSession();
+  const { session } = useAuth();
   const _router = useRouter();
   const calendarRef = useRef<FullCalendar>(null);
   const { showRescheduleUndo } = useRescheduleUndo();

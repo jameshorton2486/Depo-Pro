@@ -26,7 +26,11 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   
   // Reporter
-  reporter: process.env.CI ? 'html' : 'list',
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'playwright-results.json' }],
+  ],
   
   // Shared settings
   use: {
@@ -47,8 +51,8 @@ export default defineConfig({
       use: { ...devices['Desktop Firefox'] },
     },
     {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      name: 'mobile',
+      use: { ...devices['iPhone 13'] },
     },
   ],
 

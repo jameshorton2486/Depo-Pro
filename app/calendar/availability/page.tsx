@@ -8,19 +8,19 @@
 'use client';
 
 import { redirect } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 import { AvailabilityEditor } from '@/components/calendar/availability-editor';
 import { useEffect, useState } from 'react';
 
 export default function AvailabilityPage() {
-  const { data: session, status } = useSession();
+  const { user, profile, isLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (status === 'loading' || !mounted) {
+  if (isLoading || !mounted) {
     return (
       <div className="p-6">
         <div className="animate-pulse">Loading...</div>
@@ -28,15 +28,14 @@ export default function AvailabilityPage() {
     );
   }
 
-  if (!session?.user) {
+  if (!user) {
     redirect('/login');
     return null;
   }
 
-  const user = session.user as { id: string; role: string };
-
   // Only reporters and scopists can set availability
-  if (user.role !== 'REPORTER' && user.role !== 'SCOPIST' && user.role !== 'ADMIN' && user.role !== 'COURT_REPORTER') {
+  const userRole = profile?.role || 'REPORTER';
+  if (userRole !== 'REPORTER' && userRole !== 'SCOPIST' && userRole !== 'ADMIN') {
     redirect('/dashboard');
     return null;
   }

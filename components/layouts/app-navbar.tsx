@@ -8,9 +8,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
-import type { Session } from 'next-auth';
 import { Menu, Bell } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -41,13 +40,39 @@ import {
 } from '@/lib/navigation';
 
 interface AppNavbarProps {
-  user: Session['user'];
+  user?: {
+    id: string;
+    email: string;
+    name?: string | null;
+    role: string;
+  };
 }
 
-export function AppNavbar({ user }: AppNavbarProps) {
+export function AppNavbar({ user: userProp }: AppNavbarProps) {
   const pathname = usePathname();
+  const { user: authUser, profile, signOut } = useAuth();
+  
+  // Use prop if provided, otherwise use auth hook
+  const user = userProp || (authUser && profile ? {
+    id: authUser.id,
+    email: authUser.email || '',
+    name: profile.first_name && profile.last_name 
+      ? `${profile.first_name} ${profile.last_name}` 
+      : profile.first_name || profile.last_name || null,
+    role: profile.role,
+  } : null);
+
+  // Don't render if no user
+  if (!user) {
+    return null;
+  }
+
   const role = (user.role as UserRole) || 'REPORTER';
   const navItems = getNavigationItemsForRole(role);
+  
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -151,7 +176,7 @@ export function AppNavbar({ user }: AppNavbarProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
-                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  onClick={handleSignOut}
                 >
                   Sign Out
                 </DropdownMenuItem>

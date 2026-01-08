@@ -1,34 +1,41 @@
 // =============================================================================
 // SESSION HELPERS
-// Wrapper around auth to match user's expected interface
+// Wrapper around Supabase auth to match user's expected interface
+// Returns NextAuth-compatible format: { user: {...} }
 // =============================================================================
 
-import { getCurrentUser as getAuthUser } from '@/lib/auth';
+import { getUserWithProfile } from '@/lib/auth-supabase';
 import type { UserRole } from '@/types/database';
 
+// Session user format (flat structure for easier access)
 export interface SessionUser {
   id: string;
   email: string;
   role: UserRole;
   name?: string | null;
+  firmId?: string | null;
 }
 
 /**
  * Get current authenticated user
  * Returns null if not authenticated
+ * Returns flat user object: { id, email, role, name, firmId }
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const session = await getAuthUser();
-  
-  if (!session?.user) {
+  const userWithProfile = await getUserWithProfile();
+
+  if (!userWithProfile || !userWithProfile.user) {
     return null;
   }
 
   return {
-    id: session.user.id,
-    email: session.user.email!,
-    role: session.user.role as UserRole,
-    name: session.user.name || null,
+    id: userWithProfile.user.id,
+    email: userWithProfile.user.email || '',
+    role: (userWithProfile.profile?.role as UserRole) || 'REPORTER',
+    name: userWithProfile.profile?.first_name && userWithProfile.profile?.last_name
+      ? `${userWithProfile.profile.first_name} ${userWithProfile.profile.last_name}`
+      : userWithProfile.profile?.first_name || userWithProfile.profile?.last_name || null,
+    firmId: userWithProfile.profile?.firm_id || null,
   };
 }
 
@@ -38,10 +45,10 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
  */
 export async function requireCurrentUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
-  
+
   if (!user) {
     throw new Error('UNAUTHENTICATED');
   }
-  
+
   return user;
 }

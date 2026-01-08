@@ -7,10 +7,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Role } from '@/lib/constants';
-import type { Session } from 'next-auth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,16 +19,42 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getInitials } from '@/lib/utils';
 import { CommandTrigger } from '@/components/command';
+import { useAuth } from '@/hooks/use-auth';
 
 interface NavbarProps {
-  user: Session['user'];
+  user?: {
+    id: string;
+    email: string;
+    name?: string | null;
+    role: Role;
+  };
 }
 
-export function Navbar({ user }: NavbarProps) {
+export function Navbar({ user: userProp }: NavbarProps) {
   const pathname = usePathname();
+  const { user: authUser, profile, signOut } = useAuth();
+  
+  // Use prop if provided, otherwise use auth hook
+  const user = userProp || (authUser && profile ? {
+    id: authUser.id,
+    email: authUser.email || '',
+    name: profile.first_name && profile.last_name 
+      ? `${profile.first_name} ${profile.last_name}` 
+      : profile.first_name || profile.last_name || null,
+    role: profile.role as Role,
+  } : null);
+
+  // Don't render if no user
+  if (!user) {
+    return null;
+  }
 
   const isActive = (path: string) => {
     return pathname === path || pathname.startsWith(`${path}/`);
+  };
+  
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -182,7 +206,7 @@ export function Navbar({ user }: NavbarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-600 cursor-pointer"
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={handleSignOut}
             >
               Sign Out
             </DropdownMenuItem>

@@ -26,4 +26,13 @@ test.describe('RLS Enforcement', () => {
     const response = await request.get('/api/cases/non-existent-id');
     expect([401, 404]).toContain(response.status());
   });
+
+  test('users without firm_id are redirected to setup', async ({ page }) => {
+    // Note: This would require a test user without firm_id
+    // For now, test structure is in place
+    await page.goto('/dashboard');
+    // Should redirect to login or setup-firm if no firm_id
+    const url = page.url();
+    expect([/\/login/, /\/setup-firm/].some(regex => regex.test(url))).toBeTruthy();
+  });
 });

@@ -8,7 +8,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -148,7 +148,7 @@ const STEPS = [
 ];
 
 export default function AttorneyOnboardingPage() {
-  const { data: _session, status } = useSession();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -180,10 +180,10 @@ export default function AttorneyOnboardingPage() {
   const watchedData = watch();
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!isLoading && !user) {
       router.push('/login');
     }
-  }, [status, router]);
+  }, [isLoading, user, router]);
 
   useEffect(() => {
     setValue('practiceAreas', selectedPracticeAreas);
@@ -249,7 +249,7 @@ export default function AttorneyOnboardingPage() {
 
   const progress = (currentStep / STEPS.length) * 100;
 
-  if (status === 'loading') {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />

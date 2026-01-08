@@ -2,19 +2,18 @@
 // AUTH HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════
 // Utility functions for authentication and authorization
+// Now using Supabase auth with NextAuth-compatible interface
 
-import NextAuth from 'next-auth';
 import { NextResponse } from 'next/server';
-import { authConfig } from '@/lib/auth-options';
+import { getUserWithProfile } from '@/lib/auth-supabase';
 import type { Role } from '@/lib/constants';
+import type { UserRole } from '@/types/database';
 import { redirect } from 'next/navigation';
-
-// Initialize NextAuth with our config
-export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
 
 /**
  * Get the current authenticated user's session
  * Returns null if not authenticated
+ * Returns NextAuth-compatible format: { user: { id, email, role, name, firmId } }
  *
  * @example
  * ```ts
@@ -26,23 +25,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
  */
 export async function getCurrentUser() {
   try {
-    return await auth();
-  } catch (error) {
-    // Handle JWT decryption errors (e.g., after secret rotation)
-    // If the session token can't be decrypted, treat as logged out
-    if (
-      error instanceof Error &&
-      (error.message.includes('decryption') ||
-       error.message.includes('no matching decryption secret') ||
-       error.name === 'JWTSessionError')
-    ) {
-      // Session token is invalid (likely from old secret), treat as logged out
+    const userWithProfile = await getUserWithProfile();
+
+    if (!userWithProfile || !userWithProfile.user) {
       return null;
     }
-    // Re-throw other errors
-    throw error;
+
+    // Return in NextAuth-compatible format
+    return {
+      user: {
+        id: userWithProfile.user.id,
+        email: userWithProfile.user.email || '',
+        role: (userWithProfile.profile?.role as UserRole) || 'REPORTER',
+        name: userWithProfile.profile?.first_name && userWithProfile.profile?.last_name
+          ? `${userWithProfile.profile.first_name} ${userWithProfile.profile.last_name}`
+          : userWithProfile.profile?.first_name || userWithProfile.profile?.last_name || null,
+        firmId: userWithProfile.profile?.firm_id || null,
+      }
+    };
+  } catch (error) {
+    console.error('[auth] Error getting current user:', error);
+    return null;
   }
 }
+
+// Export auth as an alias for backward compatibility
+export const auth = getCurrentUser;
+
+// Export stub handlers for NextAuth compatibility (not used with Supabase)
+export const handlers = {
+  GET: async () => NextResponse.json({ error: 'NextAuth not configured - using Supabase' }, { status: 404 }),
+  POST: async () => NextResponse.json({ error: 'NextAuth not configured - using Supabase' }, { status: 404 }),
+};
 
 /**
  * Require authentication - redirects to login if not authenticated
@@ -142,13 +156,13 @@ export async function hasAnyRole(roles: Role[]): Promise<boolean> {
 /**
  * Require role for API routes - returns JSON error instead of redirect
  * Use this in API routes
- * 
+ *
  * NOTE: This function intentionally returns NextResponse on failure
  * to simplify API route usage. Do NOT refactor to throw.
- * 
+ *
  * @param roles - Array of allowed roles
  * @returns Session object or NextResponse error
- * 
+ *
  * @example
  * ```ts
  * const session = await requireRoleApi([Role.ADMIN, Role.REPORTER]);
@@ -160,26 +174,26 @@ export async function requireRoleApi(
   roles: Role[]
 ): Promise<{ user: { id: string; email: string; role: Role } } | NextResponse> {
   const session = await getCurrentUser();
-  
+
   if (!session || !session.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
+
   if (!roles.includes(session.user.role as Role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-  
+
   return session as { user: { id: string; email: string; role: Role } };
 }
 
 /**
  * Check if session has one of the allowed roles
  * Utility for inline checks
- * 
+ *
  * @param session - Session object (can be null)
  * @param roles - Array of allowed roles
  * @returns true if session has one of the roles
- * 
+ *
  * @example
  * ```ts
  * const session = await getCurrentUser();
@@ -194,11 +208,11 @@ export function isAuthorized(session: any, roles: Role[]): boolean {
 
 /**
  * Type guard to narrow session type after role check
- * 
+ *
  * @param session - Session object
  * @param role - Role to check
  * @returns true if session has the role
- * 
+ *
  * @example
  * ```ts
  * const session = await getCurrentUser();

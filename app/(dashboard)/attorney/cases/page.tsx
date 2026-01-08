@@ -8,7 +8,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -126,7 +126,7 @@ const ATTORNEY_ROLES = ['PLAINTIFF', 'DEFENDANT', 'CO_COUNSEL', 'OBSERVER'];
 const US_STATES = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'];
 
 export default function AttorneyCasesPage() {
-  const { data: _session, status: sessionStatus } = useSession();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -167,15 +167,15 @@ export default function AttorneyCasesPage() {
   );
 
   useEffect(() => {
-    if (sessionStatus === 'unauthenticated') {
+    if (!user) {
       router.push('/login');
       return;
     }
 
-    if (sessionStatus === 'authenticated') {
+    if (user) {
       fetchCases();
     }
-  }, [sessionStatus, filters, sortBy, sortOrder, currentPage]);
+  }, [isLoading, filters, sortBy, sortOrder, currentPage]);
 
   const fetchCases = async () => {
     try {
@@ -260,7 +260,7 @@ export default function AttorneyCasesPage() {
     }
   };
 
-  if (sessionStatus === 'loading') {
+  if (isLoading) {
     return <CasesListSkeleton />;
   }
 

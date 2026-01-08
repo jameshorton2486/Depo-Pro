@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { FileText, Flag, BarChart3, Settings, LogOut, FolderOpen } from 'lucide-react';
-import { signOut } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 import { CommandTrigger } from '@/components/command';
 
 interface AttorneyNavbarProps {
@@ -21,8 +21,15 @@ interface AttorneyNavbarProps {
   };
 }
 
-export function AttorneyNavbar({ user }: AttorneyNavbarProps) {
+export function AttorneyNavbar({ user: userProp }: AttorneyNavbarProps) {
   const pathname = usePathname();
+  const { signOut } = useAuth();
+  
+  const user = userProp;
+  
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   const navItems = [
     { href: '/attorney/dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -71,7 +78,7 @@ export function AttorneyNavbar({ user }: AttorneyNavbarProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={handleSignOut}
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />

@@ -1,6 +1,6 @@
 // app/(dashboard)/admin/rx-queue/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { RxQueueManager } from '@/components/billing/rx-queue-manager';
 
 export default async function RxQueuePage() {

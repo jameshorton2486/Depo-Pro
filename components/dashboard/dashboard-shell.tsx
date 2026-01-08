@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { signOut } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 
 interface NavItem {
   label: string;
@@ -56,6 +56,11 @@ interface DashboardShellProps {
 export function DashboardShell({ children, user }: DashboardShellProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { signOut } = useAuth();
+  
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   const filteredNavItems = navItems.filter(
     (item) => !item.roles || item.roles.includes(user.role)
@@ -209,7 +214,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
               <button
                 onClick={() => {
                   setSidebarOpen(false);
-                  signOut();
+                  handleSignOut();
                 }}
                 className="block py-2 text-sm text-danger hover:text-danger/80"
               >

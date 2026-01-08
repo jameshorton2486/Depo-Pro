@@ -3,7 +3,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { db } from '@/lib/db';
 import { enqueueJob } from '@/lib/jobs/queue';
 import { JobType, TranscriptionJobPayload as _TranscriptionJobPayload } from '@/lib/jobs/types';

@@ -1,25 +1,33 @@
+import { defineConfig } from 'vitest/config';
 import path from 'path';
 
-// @ts-expect-error - vitest types may not be installed yet
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
 export default defineConfig({
   test: {
+    environment: 'jsdom',
     globals: true,
-    environment: 'node',
-    include: ['**/*.test.ts', '**/*.test.tsx'],
-    exclude: ['node_modules', '.next', 'dist'],
+    setupFiles: ['./tests/setup.ts'],
+    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
+    exclude: ['tests/e2e/**/*', 'node_modules', '.next', 'dist'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/',
+        'tests/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/types/**',
         '.next/',
         'dist/',
-        '**/*.test.ts',
-        '**/*.test.tsx',
-        '**/__tests__/**',
       ],
+      thresholds: {
+        statements: 60,
+        branches: 50,
+        functions: 60,
+        lines: 60,
+      },
     },
+    testTimeout: 10000,
   },
   resolve: {
     alias: {

@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { TranscriptList } from '@/components/attorney/transcript-list';
 import { redirect } from 'next/navigation';

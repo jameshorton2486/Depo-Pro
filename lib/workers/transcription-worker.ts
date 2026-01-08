@@ -21,6 +21,7 @@ export async function processTranscriptionJob(
 ): Promise<void> {
   // Handle both BullMQ Job and plain data object
   const data = 'data' in job ? job.data : job;
+  const startTime = Date.now();
 
   const {
     jobId,
@@ -30,13 +31,19 @@ export async function processTranscriptionJob(
   } = data;
 
   logger.info(`Processing transcription for job ${jobId}`, { jobId, audioFileName, modelType });
-
+  
   try {
     // Update job status to TRANSCRIBING
     const supabase = await createSupabaseServerClient();
+    const attemptsMade = (job as { attemptsMade?: number }).attemptsMade || 0;
+    
     await supabase
       .from('jobs')
-      .update({ status: 'TRANSCRIBING' })
+      .update({ 
+        status: 'TRANSCRIBING',
+        processing_started_at: new Date().toISOString(),
+        job_attempts: attemptsMade + 1,
+      })
       .eq('id', jobId);
 
     // Get proper noun keywords from all sources:
@@ -127,16 +134,21 @@ export async function processTranscriptionJob(
     let transcriptionId: string;
     if (existingTranscripts) {
       // Update existing transcript
-      const { data: updated } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from('transcriptions')
         .update(transcriptData)
         .eq('id', existingTranscripts.id)
         .select('id')
         .single();
-      transcriptionId = updated?.id || existingTranscripts.id;
+      
+      if (updateError || !updated) {
+        throw new Error(`Failed to update transcription: ${updateError?.message || 'Unknown error'}`);
+      }
+      
+      transcriptionId = updated.id;
     } else {
       // Create new transcript
-      const { data: newTranscript } = await supabase
+      const { data: newTranscript, error: insertError } = await supabase
         .from('transcriptions')
         .insert({
           ...transcriptData,
@@ -145,7 +157,12 @@ export async function processTranscriptionJob(
         })
         .select('id')
         .single();
-      transcriptionId = newTranscript?.id || '';
+      
+      if (insertError || !newTranscript) {
+        throw new Error(`Failed to create transcription: ${insertError?.message || 'Unknown error'}`);
+      }
+      
+      transcriptionId = newTranscript.id;
     }
 
     // Persist confidence statistics (Phase 2.4: Pipeline Orchestration)
@@ -161,37 +178,91 @@ export async function processTranscriptionJob(
       await persistConfidenceStats(jobId, transcriptionId, wordData);
       logger.info(`Confidence stats persisted for job ${jobId}`, { jobId, transcriptionId });
     } catch (statsError) {
-      logger.error(`Failed to persist confidence stats for job ${jobId}`, statsError as Error, { jobId });
+      logger.error(
+        `Failed to persist confidence stats for job ${jobId}`,
+        statsError instanceof Error ? statsError : new Error(String(statsError)),
+        { jobId }
+      );
       // Don't fail the transcription if stats persistence fails
     }
 
     // Update job status based on quality
+    const processingTime = Date.now() - startTime;
     const finalStatus = result.qualityReport.needsReview ? 'AI_REVIEWING' : 'READY_FOR_EDIT';
     await supabase
       .from('jobs')
       .update({
         status: finalStatus,
         transcription_completed_at: new Date().toISOString(),
+        processing_completed_at: new Date().toISOString(),
+        transcription_duration_ms: processingTime,
+        audio_duration_seconds: result.metadata.duration,
+        job_attempts: (job as { attemptsMade?: number }).attemptsMade || 1,
       })
       .eq('id', jobId);
 
     logger.info(`Job ${jobId} transcription completed successfully (status: ${finalStatus})`, { jobId, finalStatus });
 
+    // Create audit log for successful transcription
+    try {
+      const { audit } = await import('@/lib/audit');
+      await audit.transcriptionCompleted(transcriptionId, {
+        jobId,
+        wordCount: result.words.length,
+        flaggedCount: result.flaggedSegments.length,
+        durationMs: processingTime,
+        model: modelType,
+      });
+    } catch (auditError) {
+      logger.warn(`Failed to audit log transcription completion for job ${jobId}`, { 
+        error: auditError instanceof Error ? auditError.message : String(auditError),
+        jobId 
+      });
+      // Don't fail the transcription if audit logging fails
+    }
+
   } catch (error) {
-    logger.error(`❌ Transcription failed for job ${jobId}`, error as Error, { jobId });
+    logger.error(
+      `❌ Transcription failed for job ${jobId}`,
+      error instanceof Error ? error : new Error(String(error)),
+      { jobId }
+    );
 
     // Update job status to FAILED (not CANCELLED - this is a real failure)
     try {
       const supabase = await createSupabaseServerClient();
+      const attemptsMade = (job as { attemptsMade?: number }).attemptsMade || 0;
+      
       await supabase
         .from('jobs')
         .update({
           status: 'CANCELLED',
           error_message: error instanceof Error ? error.message : 'Unknown error',
+          last_error_code: 'TRANSCRIPTION_FAILED',
+          last_error_message: error instanceof Error ? error.message : 'Unknown error',
+          job_attempts: attemptsMade + 1,
         })
         .eq('id', jobId);
+
+      // Create audit log for failed transcription
+      try {
+        const { audit } = await import('@/lib/audit');
+        await audit.transcriptionFailed(jobId, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          attempts: attemptsMade + 1,
+        });
+      } catch (auditError) {
+        logger.warn(`Failed to audit log transcription failure for job ${jobId}`, { 
+          error: auditError instanceof Error ? auditError.message : String(auditError),
+          jobId 
+        });
+      }
     } catch (updateError) {
-      logger.error('Failed to update job status', updateError as Error, { jobId });
+      logger.error(
+        'Failed to update job status',
+        updateError instanceof Error ? updateError : new Error(String(updateError)),
+        { jobId }
+      );
     }
 
     // Re-throw to ensure error is logged

@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Dialog,
   DialogContent,
@@ -132,7 +132,7 @@ export function CalendarEventDetail({
   onUpdate,
   canEdit,
 }: CalendarEventDetailProps) {
-  const { data: session } = useSession();
+  const { session } = useAuth();
   const [isConfirming, setIsConfirming] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);

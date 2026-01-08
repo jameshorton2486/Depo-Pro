@@ -1,6 +1,6 @@
 // app/(dashboard)/scopist/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {

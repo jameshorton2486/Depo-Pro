@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { z } from 'zod';
 import { getTranscriptionQueue } from '@/lib/queue/transcription-queue';
 import { logger } from '@/lib/logger';

@@ -4,7 +4,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { downloadFile } from '@/lib/storage';
 
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -44,9 +44,9 @@ export async function GET(
 
     // 🔒 Security: Verify access rights
     const hasAccess =
-      session.user.role === 'ADMIN' ||
-      file.job.createdById === session.user.id ||
-      file.job.assignments.some((a: any) => a.scopistId === session.user.id);
+      session.role === 'ADMIN' ||
+      file.job.createdById === session.id ||
+      file.job.assignments.some((a: any) => a.scopistId === session.id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });

@@ -1,11 +1,11 @@
-﻿import { db } from '@/lib/db';
+import { db } from '@/lib/db';
 // ============================================================
 // GET AVAILABLE REPORTERS API
 // ============================================================
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-compat';
 import { canPerformAction } from '@/lib/rbac';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {

@@ -12,7 +12,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import {
   evaluateRXEligibilityForJob,
   requestRXAdminApprovalForJob,
@@ -33,7 +33,7 @@ export async function GET(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -42,7 +42,7 @@ export async function GET(
     // Check eligibility
     const eligibility = await evaluateRXEligibilityForJob(
       jobId,
-      session.user.id,
+      session.id,
       false, // userRequested - this is just a check
       false  // adminOverride
     );
@@ -72,13 +72,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getCurrentUser();
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Only reporters and admins can request RX
-    if (session.user.role !== 'REPORTER' && session.user.role !== 'ADMIN') {
+    if (user.role !== 'REPORTER' && user.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Only reporters and admins can request RX processing' },
         { status: 403 }
@@ -93,7 +93,7 @@ export async function POST(
     const validation = await validateProcessingModeChange(
       jobId,
       'MANUAL_RX',
-      session.user.id
+      user.id
     );
 
     if (!validation.allowed) {
@@ -106,7 +106,7 @@ export async function POST(
     // Check eligibility
     const eligibility = await evaluateRXEligibilityForJob(
       jobId,
-      session.user.id,
+      user.id,
       true, // userRequested
       false // adminOverride
     );
@@ -116,7 +116,7 @@ export async function POST(
         // Request admin approval
         const approvalRequest = await requestRXAdminApprovalForJob(
           jobId,
-          session.user.id,
+          user.id,
           justification || 'User requested RX processing'
         );
 
@@ -144,7 +144,7 @@ export async function POST(
     // Create RX session
     const sessionResult = await createRXSession({
       jobId,
-      operatorUserId: session.user.id,
+      operatorUserId: user.id,
     });
 
     if (!sessionResult.success) {

@@ -10,11 +10,11 @@
 import { useAvailability } from '@/lib/calendar/availability-store';
 import { AvailabilityGrid } from './availability-grid';
 import { Loader2 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/use-auth';
 
 export function AvailabilityEditor() {
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  const { user } = useAuth();
+  const userId = user?.id;
 
   if (!userId) {
     return (
