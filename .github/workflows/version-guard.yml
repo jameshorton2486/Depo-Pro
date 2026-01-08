@@ -16,27 +16,20 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Check Next.js version
+      - name: Preflight Diagnostics
         run: |
+          echo "=== Version Guard Diagnostics ==="
+          echo "Node version: $(node --version)"
           NEXT_VERSION=$(node -p "require('./package.json').dependencies?.next || require('./package.json').devDependencies?.next")
-
-          echo "Detected Next.js version: $NEXT_VERSION"
-
-          # Remove version prefix for comparison
-          CLEAN_VERSION=$(echo "$NEXT_VERSION" | sed 's/[\^~]//g')
-
-          # Block unstable versions
-          if [[ "$NEXT_VERSION" == *"canary"* || "$NEXT_VERSION" == *"latest"* || "$NEXT_VERSION" == *"beta"* ]]; then
-            echo "❌ Unstable Next.js version detected. Depo-Pro must use stable version 15.0.3"
-            exit 1
+          echo "Declared Next.js: $NEXT_VERSION"
+          if [ -f package-lock.json ]; then
+            LOCKFILE_HASH=$(sha256sum package-lock.json | cut -d' ' -f1)
+            echo "Lockfile hash: ${LOCKFILE_HASH:0:16}..."
           fi
+          echo ""
 
-          # Must be exactly 15.0.3
-          if [ "$CLEAN_VERSION" != "15.0.3" ]; then
-            echo "❌ Next.js version mismatch. Depo-Pro must use Next.js 15.0.3 exactly"
-            echo "   Detected: $NEXT_VERSION"
-            echo "   Required: 15.0.3"
-            exit 1
-          fi
+      - name: Install dependencies
+        run: npm ci
 
-          echo "✅ Next.js version OK (15.0.3): $NEXT_VERSION"
+      - name: Check Next.js version (enforcement)
+        run: npm run check:version

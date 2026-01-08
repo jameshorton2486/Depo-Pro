@@ -4,8 +4,9 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getFileWithJob, deleteFile } from '@/lib/supabase/queries/files';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { logger } from '@/lib/logger';
@@ -20,29 +21,15 @@ export async function DELETE(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: fileId } = await params;
 
     // 🔍 Fetch file with job info
-    const file = await db.jobFile.findUnique({
-      where: { id: fileId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            createdById: true,
-            assignments: {
-              select: {
-                scopistId: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const file = await getFileWithJob(supabase, fileId);
 
     if (!file) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
@@ -50,8 +37,8 @@ export async function DELETE(
 
     // 🔒 Security: Only uploader, reporter, or admin can delete
     const canDelete =
-      session.user.role === 'ADMIN' ||
-      file.job.createdById === session.user.id;
+      session.role === 'ADMIN' ||
+      file.job.createdById === session.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -59,7 +46,7 @@ export async function DELETE(
 
     // 🗑️ Delete file from filesystem
     try {
-      const filePath = join(UPLOAD_DIR, file.fileName);
+      const filePath = join(UPLOAD_DIR, file.file_name);
       await unlink(filePath);
     } catch (error) {
       logger.error('Failed to delete file from filesystem', error instanceof Error ? error : new Error(String(error)), { fileId });
@@ -67,9 +54,7 @@ export async function DELETE(
     }
 
     // 💿 Delete file record from database
-    await db.jobFile.delete({
-      where: { id: fileId },
-    });
+    await deleteFile(supabase, fileId);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
@@ -88,29 +73,15 @@ export async function GET(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: fileId } = await params;
 
     // 🔍 Fetch file with access check
-    const file = await db.jobFile.findUnique({
-      where: { id: fileId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            createdById: true,
-            assignments: {
-              select: {
-                scopistId: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const file = await getFileWithJob(supabase, fileId);
 
     if (!file) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
@@ -118,9 +89,9 @@ export async function GET(
 
     // 🔒 Security: Verify access rights
     const hasAccess =
-      session.user.role === 'ADMIN' ||
-      file.job.createdById === session.user.id ||
-      file.job.assignments.some((a: any) => a.scopistId === session.user.id);
+      session.role === 'ADMIN' ||
+      file.job.createdById === session.id ||
+      file.job.assignments.some((a: any) => a.scopistId === session.id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });

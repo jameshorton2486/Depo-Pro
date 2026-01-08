@@ -4,7 +4,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { FileType } from '@/types/database';
 import { uploadFile } from '@/lib/storage';
@@ -47,7 +47,7 @@ export async function POST(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -62,10 +62,10 @@ export async function POST(
     }
 
     // 🔒 Security: Verify access rights via query layer
-    const isAssigned = await isUserAssignedToJob(jobId, session.user.id);
+    const isAssigned = await isUserAssignedToJob(jobId, session.id);
     const hasAccess =
-      session.user.role === 'ADMIN' ||
-      (job as any).created_by_id === session.user.id ||
+      session.role === 'ADMIN' ||
+      (job as any).created_by_id === session.id ||
       isAssigned;
 
     if (!hasAccess) {
@@ -139,7 +139,7 @@ export async function GET(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session?.user) {
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -154,10 +154,10 @@ export async function GET(
     }
 
     // 🔒 Security: Verify access rights via query layer
-    const isAssigned = await isUserAssignedToJob(jobId, session.user.id);
+    const isAssigned = await isUserAssignedToJob(jobId, session.id);
     const hasAccess =
-      session.user.role === 'ADMIN' ||
-      (job as any).created_by_id === session.user.id ||
+      session.role === 'ADMIN' ||
+      (job as any).created_by_id === session.id ||
       isAssigned;
 
     if (!hasAccess) {

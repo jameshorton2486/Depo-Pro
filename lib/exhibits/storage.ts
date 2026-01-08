@@ -1,13 +1,27 @@
 // lib/exhibits/storage.ts
 // Storage helpers for exhibit file management
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Lazy Supabase client initialization (BUILD-SAFE)
+let supabaseInstance: SupabaseClient | null = null;
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+function getSupabaseClient(): SupabaseClient {
+  if (supabaseInstance) return supabaseInstance;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error(
+      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. ' +
+      'Storage client requires these environment variables.'
+    );
+  }
+
+  supabaseInstance = createClient(supabaseUrl, supabaseServiceKey);
+  return supabaseInstance;
+}
 
 // Bucket configuration
 const BUCKET_NAME = 'depo-files'; // Use existing bucket
@@ -26,6 +40,7 @@ export async function uploadExhibitOriginal(params: {
   file: File;
   filename: string;
 }): Promise<UploadResult> {
+  const supabase = getSupabaseClient();
   const { jobId, file, filename } = params;
 
   // Sanitize filename
@@ -66,6 +81,7 @@ export async function uploadExhibitStamped(params: {
   buffer: Buffer;
   filename: string;
 }): Promise<UploadResult> {
+  const supabase = getSupabaseClient();
   const { jobId, buffer, filename } = params;
 
   // Sanitize filename and add stamped prefix
@@ -99,6 +115,7 @@ export async function uploadExhibitStamped(params: {
  * Generates a signed URL for private file access
  */
 export async function getExhibitSignedUrl(path: string): Promise<string> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
     .createSignedUrl(path, 3600); // 1 hour expiry
@@ -116,6 +133,7 @@ export async function getExhibitSignedUrl(path: string): Promise<string> {
 export async function deleteExhibitFiles(paths: string[]): Promise<void> {
   if (paths.length === 0) return;
 
+  const supabase = getSupabaseClient();
   const { error } = await supabase.storage
     .from(BUCKET_NAME)
     .remove(paths);
@@ -129,6 +147,7 @@ export async function deleteExhibitFiles(paths: string[]): Promise<void> {
  * Downloads a file from storage as a Buffer
  */
 export async function downloadExhibitFile(path: string): Promise<Buffer> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
     .download(path);
