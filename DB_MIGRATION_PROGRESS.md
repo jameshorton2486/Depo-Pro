@@ -20,15 +20,22 @@ Migrating from `lib/db.ts` Prisma-compatible wrapper to Supabase query modules i
 
 ## Query Module Enhancements
 
-### ✅ Enhanced `lib/supabase/queries/files.ts`
+### ✅ Enhanced Query Modules
+
+**`lib/supabase/queries/files.ts`**
 - Added `getFileWithJob()` - Returns file with job.id, job.createdById, and job.assignments[]
 - Includes camelCase aliases for backward compatibility (fileName, storagePath, mimeType)
+
+**`lib/supabase/queries/transcripts.ts`**
+- Added `getTranscriptWithTokensAndJob()` - Returns transcript with tokens (ordered), job details, files, and assignments
+- Enhanced `createTranscript()` - Supports both `content` and `full_transcript` fields
+- Enhanced `updateTranscript()` - Supports both `content` and `full_transcript` fields, plus `content_json`
 
 ---
 
 ## Migration Status
 
-### ✅ Completed (2 files)
+### ✅ Completed (3 files)
 
 1. **`app/api/files/[id]/route.ts`** ✅
    - Migrated DELETE handler: `db.jobFile.findUnique()` → `getFileWithJob()`
@@ -39,6 +46,12 @@ Migrating from `lib/db.ts` Prisma-compatible wrapper to Supabase query modules i
 2. **`app/api/files/[id]/download/route.ts`** ✅
    - Migrated: `db.jobFile.findUnique()` → `getFileWithJob()`
    - Field names: `file.storagePath` → `file.storage_path`, `file.mimeType` → `file.mime_type`
+
+3. **`app/api/transcripts/[id]/route.ts`** ✅
+   - Migrated GET handler: `db.transcript.findUnique()` → `getTranscriptWithTokensAndJob()`
+   - Migrated POST handler: `db.transcript.findFirst()` → `getTranscriptWithTokensAndJob()`, `db.transcript.create()` → `createTranscript()`
+   - Migrated PATCH handler: `db.transcript.findUnique()` → `getTranscriptWithTokensAndJob()`, `db.transcript.update()` → `updateTranscript()`
+   - Enhanced query module: Added `getTranscriptWithTokensAndJob()` function
 
 ### 🟡 In Progress
 
@@ -182,4 +195,6 @@ npm run build
 
 ---
 
-**Progress:** 2/80 files (2.5%) ✅
+**Progress:** 3/80 files (3.75%) ✅
+
+**Latest:** `app/api/transcripts/[id]/route.ts` fully migrated - all 3 handlers (GET, POST, PUT) now use query modules

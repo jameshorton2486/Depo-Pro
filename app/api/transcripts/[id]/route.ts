@@ -1,6 +1,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptWithTokensAndJob, createTranscript, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { logger } from '@/lib/logger';
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
@@ -58,45 +59,8 @@ export const GET = withRequestLogging(async (
     }
 
     // Get full transcript with content
-    const transcript = await db.transcript.findUnique({
-      where: {
-        id: transcriptId,
-      },
-      include: {
-        tokens: {
-          orderBy: {
-            index: 'asc',
-          },
-        },
-        job: {
-          select: {
-            id: true,
-            caseNumber: true,
-            depositionDate: true,
-            status: true,
-            createdById: true,
-            firmId: true,
-            files: {
-              where: {
-                type: 'AUDIO',
-              },
-              select: {
-                storageUrl: true,
-              },
-              take: 1,
-            },
-            assignments: {
-              where: {
-                scopistId: session.user.id,
-                status: {
-                  in: ['ACCEPTED', 'IN_PROGRESS', 'SUBMITTED'],
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
@@ -179,23 +143,16 @@ export const PATCH = withRequestLogging(async (
     }
 
     // Verify transcript exists and user has access
-    const existingTranscript = await db.transcript.findFirst({
-      where: {
-        id: transcriptId,
-        job: {
-          createdById: session.user.id,
-        },
-      },
-      select: {
-        id: true,
-        jobId: true,
-        version: true,
-        versionNumber: true,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const existingTranscript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
 
     if (!existingTranscript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
+    }
+
+    // Check if user is the creator
+    if (existingTranscript.job.createdById !== session.user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Phase 3B-5: Check if transcript is locked
@@ -212,33 +169,32 @@ export const PATCH = withRequestLogging(async (
     }
 
     // Create new version
-    const newTranscript = await db.transcript.create({
-      data: {
-        jobId: existingTranscript.jobId,
-        content,
-        contentJson: {
-          type: 'doc',
-          content: [
-            {
-              type: 'paragraph',
-              content: [
-                {
-                  type: 'text',
-                  text: content,
-                },
-              ],
-            },
-          ],
-        },
-        version: `${existingTranscript.versionNumber + 1}.0-manual`,
-        versionNumber: existingTranscript.versionNumber + 1,
-        createdBy: session.user.id,
+    const versionNumber = (existingTranscript.version_number || existingTranscript.versionNumber || 0) + 1;
+    const newTranscript = await createTranscript(supabase, {
+      job_id: existingTranscript.job_id,
+      status: existingTranscript.status || 'DRAFT',
+      full_transcript: content,
+      content_json: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: content,
+              },
+            ],
+          },
+        ],
       },
+      word_count: content.split(/\s+/).length,
+      created_by_id: session.user.id,
     });
 
     return NextResponse.json({
       id: newTranscript.id,
-      version: newTranscript.version,
+      version: newTranscript.version || `${versionNumber}.0-manual`,
       message: 'Transcript updated successfully',
     },
       { status: 200 },
@@ -278,24 +234,8 @@ export const PUT = withRequestLogging(async (
     }
 
     // Verify access
-    const transcript = await db.transcript.findUnique({
-      where: { id: transcriptId },
-      include: {
-        job: {
-          select: {
-            createdById: true,
-            assignments: {
-              where: {
-                scopistId: session.user.id,
-                status: {
-                  in: ['ACCEPTED', 'IN_PROGRESS', 'SUBMITTED'],
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
@@ -322,12 +262,9 @@ export const PUT = withRequestLogging(async (
     }
 
     // Update transcript
-    const updatedTranscript = await db.transcript.update({
-      where: { id: transcriptId },
-      data: {
-        content: content || undefined,
-        contentJson: contentJson || undefined,
-      },
+    const updatedTranscript = await updateTranscript(supabase, transcriptId, {
+      full_transcript: content || undefined,
+      content_json: contentJson || undefined,
     });
 
     return NextResponse.json({

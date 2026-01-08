@@ -115,6 +115,96 @@ export async function getTranscriptById(
 }
 
 /**
+ * Get transcript with tokens and job information
+ * Returns transcript with tokens (ordered by index), job details, and assignments
+ */
+export async function getTranscriptWithTokensAndJob(
+  supabase: SupabaseClient,
+  transcriptId: string,
+  userId: string
+) {
+  // Get transcript
+  const { data: transcript, error: transcriptError } = await supabase
+    .from('transcriptions')
+    .select('*')
+    .eq('id', transcriptId)
+    .single();
+
+  if (transcriptError) {
+    if (transcriptError.code === 'PGRST116') {
+      return null;
+    }
+    throw transcriptError;
+  }
+
+  if (!transcript) return null;
+
+  // Get tokens (ordered by index)
+  const { data: tokens, error: tokensError } = await supabase
+    .from('transcript_tokens')
+    .select('*')
+    .eq('transcription_id', transcriptId)
+    .order('index', { ascending: true });
+
+  if (tokensError) {
+    throw tokensError;
+  }
+
+  // Get job with selected fields
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, case_number, deposition_date, status, created_by_id, firm_id')
+    .eq('id', transcript.job_id)
+    .single();
+
+  if (jobError) {
+    throw jobError;
+  }
+
+  // Get audio files (type = 'AUDIO', limit 1)
+  const { data: audioFiles } = await supabase
+    .from('job_files')
+    .select('storage_url')
+    .eq('job_id', transcript.job_id)
+    .eq('type', 'AUDIO')
+    .limit(1);
+
+  // Get assignments for this user
+  const { data: assignments } = await supabase
+    .from('job_assignments')
+    .select('scopist_id, status')
+    .eq('job_id', transcript.job_id)
+    .eq('scopist_id', userId)
+    .in('status', ['ACCEPTED', 'IN_PROGRESS', 'SUBMITTED']);
+
+  // Transform to match Prisma-style structure (camelCase)
+  return {
+    ...transcript,
+    content: transcript.full_transcript || transcript.content,
+    contentJson: transcript.content_json || transcript.contentJson,
+    version: transcript.version || 1,
+    versionNumber: transcript.version_number || transcript.versionNumber,
+    createdAt: transcript.created_at || transcript.createdAt,
+    tokens: tokens || [],
+    job: {
+      id: job.id,
+      caseNumber: job.case_number,
+      depositionDate: job.deposition_date,
+      status: job.status,
+      createdById: job.created_by_id,
+      firmId: job.firm_id,
+      files: (audioFiles || []).map((f: any) => ({
+        storageUrl: f.storage_url,
+      })),
+      assignments: (assignments || []).map((a: any) => ({
+        scopistId: a.scopist_id,
+        status: a.status,
+      })),
+    },
+  };
+}
+
+/**
  * Get transcript by job ID
  */
 export async function getTranscriptByJobId(
@@ -141,15 +231,27 @@ export async function createTranscript(
   supabase: SupabaseClient,
   transcriptData: {
     job_id: string;
-    status: string;
+    status?: string;
     full_transcript?: string | null;
+    content?: string | null;
+    content_json?: any;
     word_count?: number;
     created_by_id: string;
   }
 ) {
+  // Use full_transcript if provided, otherwise content
+  const insertData = {
+    job_id: transcriptData.job_id,
+    status: transcriptData.status || 'DRAFT',
+    full_transcript: transcriptData.full_transcript || transcriptData.content || null,
+    content_json: transcriptData.content_json || null,
+    word_count: transcriptData.word_count || null,
+    created_by_id: transcriptData.created_by_id,
+  };
+
   const { data, error } = await supabase
     .from('transcriptions')
-    .insert(transcriptData)
+    .insert(insertData)
     .select()
     .single();
 
@@ -168,14 +270,23 @@ export async function updateTranscript(
   transcriptId: string,
   updates: {
     full_transcript?: string | null;
+    content?: string | null;
+    content_json?: any;
     word_count?: number;
     flagged_word_count?: number;
     status?: string;
   }
 ) {
+  // Map content to full_transcript if provided
+  const updateData: any = { ...updates };
+  if (updates.content !== undefined) {
+    updateData.full_transcript = updates.content;
+    delete updateData.content;
+  }
+
   const { data, error } = await supabase
     .from('transcriptions')
-    .update(updates)
+    .update(updateData)
     .eq('id', transcriptId)
     .select()
     .single();
