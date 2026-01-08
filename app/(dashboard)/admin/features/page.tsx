@@ -21,7 +21,7 @@ export default async function FeaturesPage() {
     redirect('/login');
   }
 
-  if (session.user.role !== 'ADMIN') {
+  if (session.role !== 'ADMIN') {
     redirect('/dashboard');
   }
 

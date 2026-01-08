@@ -21,17 +21,17 @@ export default async function AttorneyLayout({
   }
 
   // Enforce ATTORNEY role (admins can also access)
-  if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+  if (session.role !== Role.ATTORNEY && session.role !== Role.ADMIN) {
     redirect('/dashboard?error=unauthorized');
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <AttorneyNavbar user={{
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name || session.user.email,
-        role: session.user.role,
+        id: session.id,
+        email: session.email,
+        name: session.name || session.email,
+        role: session.role,
       }} />
       <main className="container mx-auto px-4 py-8">
         {children}
