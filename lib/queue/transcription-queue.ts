@@ -1,70 +1,54 @@
 // =============================================================================
 // TRANSCRIPTION QUEUE
-// lib/queue/transcription-queue.ts
-//
-// Build-safe BullMQ queue for transcription jobs
-// Uses lazy initialization to prevent connection during build
 // =============================================================================
 
 import { Queue } from 'bullmq';
+import type { JobsOptions } from 'bullmq';
+import { getQueueConnection } from './connection';
 import type { TranscriptionJobData } from '@/types/deepgram';
 
-// Singleton queue instance
-let queue: Queue<TranscriptionJobData> | null = null;
+let queueInstance: Queue<TranscriptionJobData> | null = null;
 
-/**
- * Check if we're in build phase
- */
-function isBuildPhase(): boolean {
-  return process.env.NEXT_PHASE === 'phase-production-build';
-}
+const defaultJobOptions: JobsOptions = {
+  attempts: 3,
+  backoff: {
+    type: 'exponential',
+    delay: 2000,
+  },
+  removeOnComplete: {
+    age: 24 * 60 * 60,
+    count: 1000,
+  },
+  removeOnFail: {
+    age: 7 * 24 * 60 * 60,
+  },
+};
 
 /**
  * Get transcription queue (lazy initialization)
- * Returns null during build phase or if Redis is unavailable
+ * Returns null if REDIS_URL is not configured
  */
 export function getTranscriptionQueue(): Queue<TranscriptionJobData> | null {
-  // Never initialize during build
-  if (isBuildPhase()) {
-    return null;
+  if (queueInstance) {
+    return queueInstance;
   }
 
-  // Return existing queue
-  if (queue) {
-    return queue;
-  }
-
-  // Get Redis URL
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    console.warn('⚠️ Redis not available - transcription queue disabled');
+    console.warn('⚠️ REDIS_URL not configured - transcription queue disabled');
     return null;
   }
 
-  // Create queue
   try {
-    queue = new Queue<TranscriptionJobData>('transcription', {
-      connection: {
-        url: redisUrl,
-      },
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
-        removeOnComplete: {
-          age: 24 * 3600, // Keep for 24 hours
-          count: 1000,
-        },
-        removeOnFail: {
-          age: 7 * 24 * 3600, // Keep for 7 days
-        },
-      },
-    });
+    queueInstance = new Queue<TranscriptionJobData>(
+      'transcription',
+      {
+        connection: getQueueConnection(),
+        defaultJobOptions,
+      }
+    );
 
-    console.log('✅ Transcription queue initialized');
-    return queue;
+    return queueInstance;
   } catch (error) {
     console.error('❌ Failed to create transcription queue:', error);
     return null;
@@ -72,27 +56,14 @@ export function getTranscriptionQueue(): Queue<TranscriptionJobData> | null {
 }
 
 /**
- * Legacy export for backward compatibility
- * Creates a proxy that lazily initializes the queue
+ * Direct export for convenience (lazy initialized via getter)
  */
 export const transcriptionQueue = new Proxy({} as Queue<TranscriptionJobData>, {
   get(_, prop) {
     const q = getTranscriptionQueue();
     if (!q) {
-      // Return no-op functions for common methods during build
-      if (prop === 'add') {
-        return async () => {
-          console.warn('⚠️ Queue not available - job not added');
-          return null;
-        };
-      }
-      if (prop === 'on') {
-        return () => {};
-      }
-      throw new Error('Transcription queue not available');
+      throw new Error('Transcription queue not available - REDIS_URL not configured');
     }
     return (q as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
-
-export default transcriptionQueue;

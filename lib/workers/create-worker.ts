@@ -1,9 +1,9 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// TRANSCRIPTION WORKER CREATOR
-// Creates BullMQ Worker instance for processing transcription jobs
-// ═══════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// WORKER FACTORY
+// =============================================================================
 
 import { Worker } from 'bullmq';
+import { getQueueConnection } from '@/lib/queue/connection';
 import { processTranscriptionJob } from './transcription-worker';
 import type { TranscriptionJobData } from '@/types/deepgram';
 import { logger } from '@/lib/logger';
@@ -12,15 +12,7 @@ import { logger } from '@/lib/logger';
  * Create and start transcription worker
  * This should be called from a separate worker process (e.g., npm run worker)
  */
-export function createTranscriptionWorker(redisUrl?: string): Worker<TranscriptionJobData> | null {
-  // Get Redis URL
-  const connectionUrl = redisUrl || process.env.REDIS_URL;
-
-  if (!connectionUrl) {
-    logger.warn('[Worker] Redis not available - worker cannot start');
-    return null;
-  }
-
+export function createTranscriptionWorker(): Worker<TranscriptionJobData> | null {
   try {
     const worker = new Worker<TranscriptionJobData>(
       'transcription',
@@ -28,9 +20,7 @@ export function createTranscriptionWorker(redisUrl?: string): Worker<Transcripti
         return await processTranscriptionJob(job);
       },
       {
-        connection: {
-          url: connectionUrl,
-        },
+        connection: getQueueConnection(),
         concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10),
         limiter: {
           max: parseInt(process.env.WORKER_MAX_JOBS_PER_MINUTE || '10', 10),

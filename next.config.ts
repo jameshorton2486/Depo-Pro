@@ -13,11 +13,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [],
   },
 
-  // Turbopack configuration (Next.js 16+)
-  // Add empty config to allow webpack config to coexist
-  turbopack: {},
-
-  // Prevent Windows FS rename bug for error pages
+    // Prevent Windows FS rename bug for error pages
   generateBuildId: async () => {
     return 'windows-build';
   },
@@ -73,3 +69,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+

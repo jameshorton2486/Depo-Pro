@@ -66,7 +66,9 @@ export default function LoginPage() {
     }
 
     // Supabase handles cookies automatically
-    router.replace('/dashboard');
+    const params = new URLSearchParams(window.location.search);
+    const callbackUrl = params.get('callbackUrl') || '/dashboard';
+    router.replace(callbackUrl);
   };
 
   return (

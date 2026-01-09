@@ -99,34 +99,24 @@ export async function checkRedisHealth(): Promise<ComponentHealth> {
       };
     }
     
-    // Try to use existing Redis connection if available
+    // Check if queue can be initialized (tests connection config)
     try {
-      const { getRedis } = await import('@/lib/redis');
-      const connection = getRedis();
+      const { getTranscriptionQueue } = await import('@/lib/queue/transcription-queue');
+      const queue = getTranscriptionQueue();
       
-      if (connection) {
-        // Try to ping - ioredis has ping() method
-        try {
-          await connection.ping();
-          return {
-            status: 'up',
-            latency_ms: Date.now() - start,
-            last_check: new Date().toISOString(),
-          };
-        } catch (pingError) {
-          return {
-            status: 'down',
-            latency_ms: Date.now() - start,
-            message: pingError instanceof Error ? pingError.message : 'Redis ping failed',
-            last_check: new Date().toISOString(),
-          };
-        }
+      if (queue) {
+        // Queue successfully initialized - connection config is valid
+        return {
+          status: 'up',
+          latency_ms: Date.now() - start,
+          last_check: new Date().toISOString(),
+        };
       } else {
-        // Connection not available but URL is configured (might be starting up)
+        // Connection config exists but queue couldn't be created
         return {
           status: 'degraded',
           latency_ms: Date.now() - start,
-          message: 'Redis URL configured but connection not available',
+          message: 'REDIS_URL configured but queue initialization failed',
           last_check: new Date().toISOString(),
         };
       }
