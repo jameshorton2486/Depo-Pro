@@ -1,7 +1,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 
 interface RouteContext {
   params: Promise<{ jobId: string }>;
@@ -25,24 +27,20 @@ export async function GET(
 
     const { jobId } = await context.params;
 
+    const supabase = await createSupabaseServerClient();
+
     // Verify job exists and get transcript ID
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      include: {
-        transcription: {
-          select: { id: true },
-        },
-        createdBy: {
-          select: { id: true },
-        },
-      },
+    const job = await getJobById(supabase, jobId, {
+      includeTranscripts: true,
     });
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (!job.transcription) {
+    const transcript = await getTranscriptByJobId(supabase, jobId);
+
+    if (!transcript) {
       return NextResponse.json(
         { error: 'Transcript not found for this job' },
         { status: 404 }
@@ -51,16 +49,16 @@ export async function GET(
 
     // Check access
     const user = session.user as { id: string; role: string };
-    const isCreator = job.createdById === user.id;
+    const isCreator = (job as any).created_by_id === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isScopist = job.scopistId === user.id;
+    const isScopist = (job as any).scopist_id === user.id;
 
     if (!isCreator && !isAdmin && !isScopist) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Redirect to the main export API with DOCX format
-    const exportUrl = `/api/transcripts/${job.transcription.id}/export?format=docx&lineNumbers=true`;
+    const exportUrl = `/api/transcripts/${transcript.id}/export?format=docx&lineNumbers=true`;
     return NextResponse.redirect(new URL(exportUrl, request.url));
   } catch (error) {
     console.error('Error in DOCX export route:', error);

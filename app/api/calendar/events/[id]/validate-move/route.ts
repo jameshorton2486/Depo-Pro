@@ -6,7 +6,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
+import { getCalendarEventById } from '@/lib/supabase/queries/calendar';
 // import { dragDropValidator } from '@/lib/calendar/drag-drop-hardening';
 // Phase 5 feature - using validation service instead
 import { z } from 'zod';
@@ -36,31 +38,25 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, firmId: true, role: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
     
-    if (!user?.firmId) {
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+      role: userData.user_metadata?.role || 'REPORTER',
+    };
     
     const { id: eventId } = await params;
     
     // Verify event exists and belongs to firm
-    const event = await db.calendarEvent.findFirst({
-      where: {
-        id: eventId,
-        firmId: user.firmId,
-      },
-      select: {
-        id: true,
-        startTime: true,
-        endTime: true,
-      },
-    });
+    const event = await getCalendarEventById(eventId);
     
-    if (!event) {
+    if (!event || event.firm_id !== user.firmId) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     
@@ -82,8 +78,8 @@ export async function POST(
       userId: user.id,
       userRole: user.role,
       firmId: user.firmId,
-      originalStart: event.startTime,
-      originalEnd: event.endTime,
+      originalStart: new Date(event.start_time),
+      originalEnd: new Date(event.end_time),
       proposedStart: new Date(proposedStart),
       proposedEnd: new Date(proposedEnd),
       actionType: actionType as 'drag' | 'resize' | 'drop',

@@ -1,7 +1,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { sendEmail, jobAssignedEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 
@@ -21,55 +23,51 @@ export async function POST(
 
     const { id: assignmentId } = await params;
 
+    const supabase = await createSupabaseServerClient();
+
     // Get assignment details with related data
-    const assignment = await db.jobAssignment.findFirst({
-      where: {
-        id: assignmentId,
-        job: {
-          createdById: session.user.id, // Only reporter can send notifications
-        },
-      },
-      include: {
-        scopist: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-        job: {
-          select: {
-            caseNumber: true,
-            depositionDate: true,
-            createdBy: {
-              select: {
-                firstName: true,
-                lastName: true,
-              },
-            },
-          },
-        },
-      },
+    const assignment = await db.assignment.findUnique({
+      where: { id: assignmentId },
+      include: { job: true },
     });
 
     if (!assignment) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
+    const job = assignment.job as any;
+
+    // Verify job creator matches session user
+    if (job?.created_by_id !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const reporterData = await getUserById(supabase, job?.created_by_id || '');
+
+    if (!reporterData) {
+      return NextResponse.json({ error: 'Reporter not found' }, { status: 404 });
+    }
+
+    // Get scopist data
+    const scopistData = await getUserById(supabase, assignment.scopist_id);
+    if (!scopistData) {
+      return NextResponse.json({ error: 'Scopist not found' }, { status: 404 });
+    }
+
     // Send email notification
     const emailOptions = jobAssignedEmail({
-      scopistName: `${assignment.scopist.firstName} ${assignment.scopist.lastName}`,
-      scopistEmail: assignment.scopist.email,
-      reporterName: `${assignment.job.createdBy.firstName} ${assignment.job.createdBy.lastName}`,
-      caseNumber: assignment.job.caseNumber || 'N/A',
-      depositionDate: assignment.job.depositionDate || undefined,
-      notes: assignment.scopistNotes || undefined,
+      scopistName: `${scopistData.user_metadata?.firstName || ''} ${scopistData.user_metadata?.lastName || ''}`,
+      scopistEmail: scopistData.email || '',
+      reporterName: `${reporterData.user_metadata?.firstName || ''} ${reporterData.user_metadata?.lastName || ''}`,
+      caseNumber: (job as any).case_number || (job as any).caseNumber || 'N/A',
+      depositionDate: (job as any).deposition_date || (job as any).depositionDate || undefined,
+      notes: assignment.scopist_notes || undefined,
     });
 
     const result = await sendEmail(emailOptions);
 
     if (result.success) {
-      logger.info(`Assignment notification sent - assignmentId: ${assignmentId}, to: ${assignment.scopist.email}`);
+      logger.info(`Assignment notification sent - assignmentId: ${assignmentId}, to: ${scopistData.email}`);
 
       return NextResponse.json({
         success: true,

@@ -1,0 +1,48 @@
+
+> depo-pro@0.1.0 typecheck
+> tsc --noEmit
+
+app/api/assignments/[id]/notify/route.ts(28,30): error TS2552: Cannot find name 'getAssignmentById'. Did you mean 'assignmentId'?
+app/api/assignments/[id]/notify/route.ts(40,23): error TS2304: Cannot find name 'getJobById'.
+app/api/assignments/[id]/route.ts(34,30): error TS2304: Cannot find name 'getAssignmentById'.
+app/api/assignments/[id]/route.ts(72,37): error TS2552: Cannot find name 'updateJobAssignment'. Did you mean 'updatedAssignment'?
+app/api/assignments/[id]/route.ts(114,30): error TS2304: Cannot find name 'getAssignmentById'.
+app/api/assignments/[id]/route.ts(129,11): error TS2304: Cannot find name 'deleteJobAssignment'.
+app/api/attorney/annotations/route.ts(55,33): error TS2304: Cannot find name 'getUserById'.
+app/api/attorney/annotations/route.ts(132,30): error TS2304: Cannot find name 'db'.
+app/api/attorney/annotations/route.ts(144,30): error TS2304: Cannot find name 'db'.
+app/api/attorney/transcripts/route.ts(28,31): error TS2304: Cannot find name 'db'.
+lib/queue/connection.ts(26,7): error TS2322: Type 'Redis' is not assignable to type 'ConnectionOptions'.
+  Type 'Redis' is not assignable to type 'ClusterOptions | Redis | Cluster'.
+    Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/Redis").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/Redis").default'.
+      Types of property 'options' are incompatible.
+        Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/redis/RedisOptions").RedisOptions' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/redis/RedisOptions").RedisOptions'.
+          Type 'RedisOptions' is not assignable to type 'CommonRedisOptions'.
+            Types of property 'Connector' are incompatible.
+              Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/ConnectorConstructor").default | undefined' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/ConnectorConstructor").default | undefined'.
+                Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/ConnectorConstructor").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/ConnectorConstructor").default'.
+                  Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/AbstractConnector").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/AbstractConnector").default'.
+                    Property 'connecting' is protected but type 'AbstractConnector' is not a class derived from 'AbstractConnector'.
+lib/queue/transcription-queue.ts(49,7): error TS2322: Type 'Redis' is not assignable to type 'ConnectionOptions'.
+  Type 'Redis' is not assignable to type 'ClusterOptions | Redis | Cluster'.
+    Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/Redis").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/Redis").default'.
+      Types of property 'options' are incompatible.
+        Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/redis/RedisOptions").RedisOptions' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/redis/RedisOptions").RedisOptions'.
+          Type 'RedisOptions' is not assignable to type 'CommonRedisOptions'.
+            Types of property 'Connector' are incompatible.
+              Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/ConnectorConstructor").default | undefined' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/ConnectorConstructor").default | undefined'.
+                Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/ConnectorConstructor").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/ConnectorConstructor").default'.
+                  Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/AbstractConnector").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/AbstractConnector").default'.
+                    Property 'connecting' is protected but type 'AbstractConnector' is not a class derived from 'AbstractConnector'.
+lib/workers/create-worker.ts(33,9): error TS2322: Type 'Redis | { url: string; }' is not assignable to type 'ConnectionOptions'.
+  Type 'Redis' is not assignable to type 'ConnectionOptions'.
+    Type 'Redis' is not assignable to type 'ClusterOptions | Redis | Cluster'.
+      Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/Redis").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/Redis").default'.
+        Types of property 'options' are incompatible.
+          Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/redis/RedisOptions").RedisOptions' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/redis/RedisOptions").RedisOptions'.
+            Type 'RedisOptions' is not assignable to type 'CommonRedisOptions'.
+              Types of property 'Connector' are incompatible.
+                Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/ConnectorConstructor").default | undefined' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/ConnectorConstructor").default | undefined'.
+                  Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/ConnectorConstructor").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/ConnectorConstructor").default'.
+                    Type 'import("C:/Users/james/depo-pro/node_modules/ioredis/built/connectors/AbstractConnector").default' is not assignable to type 'import("C:/Users/james/depo-pro/node_modules/bullmq/node_modules/ioredis/built/connectors/AbstractConnector").default'.
+                      Property 'connecting' is protected but type 'AbstractConnector' is not a class derived from 'AbstractConnector'.

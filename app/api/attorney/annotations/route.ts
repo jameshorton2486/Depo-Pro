@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY ANNOTATIONS API
 // ═══════════════════════════════════════════════════════════════
@@ -6,6 +5,9 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptAnnotations, createTranscriptAnnotation } from '@/lib/supabase/queries/transcripts';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { Role } from '@/lib/constants';
 import { requireAuth, requireTranscriptAnnotation } from '@/lib/permissions/api-guards';
 
@@ -26,35 +28,50 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const transcriptId = searchParams.get('transcriptId');
 
-    const where: any = {};
+    const supabase = await createSupabaseServerClient();
+    
+    let annotations;
     if (transcriptId) {
-      where.transcriptId = transcriptId;
+      annotations = await getTranscriptAnnotations(supabase, transcriptId);
+    } else {
+      // Get all annotations (would need a different query function)
+      const { data, error } = await supabase
+        .from('transcript_annotations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      annotations = data || [];
     }
+    
+    // Enrich with transcript and createdBy info
+    const enrichedAnnotations = await Promise.all(
+      annotations.map(async (annotation: any) => {
+        const { data: transcript } = await supabase
+          .from('attorney_transcripts')
+          .select('id, name, deponent')
+          .eq('id', annotation.transcription_id)
+          .maybeSingle();
+        
+        const createdBy = await getUserById(supabase, annotation.created_by_id);
+        
+        return {
+          ...annotation,
+          transcript: transcript ? {
+            id: transcript.id,
+            name: transcript.name,
+            deponent: transcript.deponent,
+          } : null,
+          createdBy: createdBy ? {
+            id: createdBy.id,
+            firstName: createdBy.user_metadata?.firstName || '',
+            lastName: createdBy.user_metadata?.lastName || '',
+          } : null,
+        };
+      })
+    );
 
-    const annotations = await db.transcriptAnnotation.findMany({
-      where,
-      include: {
-        transcript: {
-          select: {
-            id: true,
-            name: true,
-            deponent: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    return NextResponse.json({ annotations });
+    return NextResponse.json({ annotations: enrichedAnnotations });
   } catch (error) {
     console.error('Error fetching annotations:', error);
     return NextResponse.json(
@@ -112,44 +129,53 @@ export async function POST(request: NextRequest) {
     const annotationCheck = await requireTranscriptAnnotation(user.id, transcriptId);
     if (annotationCheck && typeof annotationCheck === "object" && "status" in annotationCheck) return annotationCheck;
 
-    // Verify transcript exists
-    const transcript = await db.attorneyTranscript.findUnique({
-      where: { id: transcriptId },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!transcript) {
+    // Verify transcript exists
+    const { data: transcript, error: transcriptError } = await supabase
+      .from('attorney_transcripts')
+      .select('id, uploaded_by_id')
+      .eq('id', transcriptId)
+      .maybeSingle();
+
+    if (transcriptError || !transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    if (transcript.uploadedById !== user.id && user.role !== Role.ADMIN) {
+    if (transcript.uploaded_by_id !== user.id && user.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const annotation = await db.transcriptAnnotation.create({
-      data: {
-        transcriptId,
-        issueCode,
-        issueLabel,
-        issueColor,
-        pageStart,
-        lineStart,
-        pageEnd,
-        lineEnd,
-        note: note || null,
-        createdById: user.id,
-      },
-      include: {
-        transcript: {
-          select: {
-            id: true,
-            name: true,
-            deponent: true,
-          },
-        },
-      },
+    const annotation = await createTranscriptAnnotation(supabase, {
+      transcription_id: transcriptId,
+      issue_code: issueCode,
+      issue_label: issueLabel,
+      issue_color: issueColor,
+      page_start: pageStart,
+      line_start: lineStart,
+      page_end: pageEnd,
+      line_end: lineEnd,
+      note: note || null,
+      created_by_id: user.id,
     });
 
-    return NextResponse.json({ annotation }, { status: 201 });
+    // Get transcript details for response
+    const { data: transcriptDetails } = await supabase
+      .from('attorney_transcripts')
+      .select('id, name, deponent')
+      .eq('id', transcriptId)
+      .single();
+
+    return NextResponse.json({ 
+      annotation: {
+        ...annotation,
+        transcript: transcriptDetails ? {
+          id: transcriptDetails.id,
+          name: transcriptDetails.name,
+          deponent: transcriptDetails.deponent,
+        } : null,
+      }
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating annotation:', error);
     return NextResponse.json(

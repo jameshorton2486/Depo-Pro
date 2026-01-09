@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // =============================================================================
 // CONTACT API
 // app/api/contact/route.ts
@@ -9,6 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createAuditLog } from '@/lib/supabase/queries/audit';
 
 // Simple in-memory rate limiting (5 requests per hour per IP)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -61,19 +62,20 @@ export async function POST(request: NextRequest) {
 
     // For v1.0, log to database (could also send email)
     // In production, you'd integrate with an email service
-    await db.auditLog.create({
-      data: {
-        action: 'CONTACT_FORM_SUBMITTED',
-        targetType: 'Contact',
-        targetId: 'form',
-        actorUserId: null,
-        metadata: {
-          name,
-          email,
-          message: message.substring(0, 500), // Limit length
-          timestamp: new Date().toISOString(),
-        },
+    const supabase = await createSupabaseServerClient();
+    await createAuditLog(supabase, {
+      actor_user_id: 'system', // Contact form doesn't have a user
+      firm_id: null,
+      action: 'CONTACT_FORM_SUBMITTED',
+      target_type: 'Contact',
+      target_id: 'form',
+      metadata: {
+        name,
+        email,
+        message: message.substring(0, 500), // Limit length
+        timestamp: new Date().toISOString(),
       },
+      ip_address: ip,
     }).catch(() => {
       // Fire and forget - don't block on logging
     });

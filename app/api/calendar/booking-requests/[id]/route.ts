@@ -7,7 +7,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
+import { createCalendarEvent, getCalendarEventById, updateCalendarEvent } from '@/lib/supabase/queries/calendar';
 import { z } from 'zod';
 
 // ------------------------------------------------------------
@@ -41,47 +43,78 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const bookingRequest = await db.bookingRequest.findFirst({
-      where: {
-        id: id,
-        firmId: user.firmId,
-      },
-      include: {
-        requestedBy: {
-          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
-        },
-        respondedBy: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-        calendarEvent: {
-          include: {
-            assignedReporter: {
-              select: { id: true, firstName: true, lastName: true, email: true },
-            },
-          },
-        },
-      },
-    });
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
-    if (!bookingRequest) {
+    const { data: bookingRequest, error: requestError } = await supabase
+      .from('booking_requests')
+      .select('*')
+      .eq('id', id)
+      .eq('firm_id', user.firmId)
+      .maybeSingle();
+
+    if (requestError || !bookingRequest) {
       return NextResponse.json({ error: 'Booking request not found' }, { status: 404 });
     }
 
     // Attorneys can only see their own
-    if (user.role === 'ATTORNEY' && bookingRequest.requestedById !== user.id) {
+    if (user.role === 'ATTORNEY' && bookingRequest.requested_by_id !== user.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    return NextResponse.json({ request: bookingRequest });
+    // Enrich with related data
+    const requestedBy = await getUserById(supabase, bookingRequest.requested_by_id);
+    const respondedBy = bookingRequest.responded_by_id 
+      ? await getUserById(supabase, bookingRequest.responded_by_id)
+      : null;
+    
+    let calendarEvent = null;
+    if (bookingRequest.calendar_event_id) {
+      calendarEvent = await getCalendarEventById(bookingRequest.calendar_event_id);
+      if (calendarEvent?.assigned_reporter_id) {
+        const reporter = await getUserById(supabase, calendarEvent.assigned_reporter_id);
+        if (reporter) {
+          calendarEvent = {
+            ...calendarEvent,
+            assignedReporter: {
+              id: reporter.id,
+              firstName: reporter.user_metadata?.firstName || '',
+              lastName: reporter.user_metadata?.lastName || '',
+              email: reporter.email || '',
+            },
+          };
+        }
+      }
+    }
+
+    return NextResponse.json({ 
+      request: {
+        ...bookingRequest,
+        requestedBy: requestedBy ? {
+          id: requestedBy.id,
+          firstName: requestedBy.user_metadata?.firstName || '',
+          lastName: requestedBy.user_metadata?.lastName || '',
+          email: requestedBy.email || '',
+          phone: requestedBy.user_metadata?.phone || null,
+        } : null,
+        respondedBy: respondedBy ? {
+          id: respondedBy.id,
+          firstName: respondedBy.user_metadata?.firstName || '',
+          lastName: respondedBy.user_metadata?.lastName || '',
+        } : null,
+        calendarEvent,
+      }
+    });
 
   } catch (error) {
     console.error('Booking request GET [id] error:', error);
@@ -105,24 +138,28 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    // Find existing request
-    const existing = await db.bookingRequest.findFirst({
-      where: {
-        id: id,
-        firmId: user.firmId,
-      },
-    });
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
-    if (!existing) {
+    // Find existing request
+    const { data: existing, error: existingError } = await supabase
+      .from('booking_requests')
+      .select('*')
+      .eq('id', id)
+      .eq('firm_id', user.firmId)
+      .maybeSingle();
+
+    if (existingError || !existing) {
       return NextResponse.json({ error: 'Booking request not found' }, { status: 404 });
     }
 
@@ -145,35 +182,22 @@ export async function PATCH(
 
         const eventDate = data.confirmedDate 
           ? new Date(data.confirmedDate) 
-          : existing.preferredDate;
+          : new Date(existing.preferred_date);
 
         // Calculate end time based on duration
         const endTime = new Date(eventDate);
-        endTime.setMinutes(endTime.getMinutes() + existing.estimatedDuration);
+        endTime.setMinutes(endTime.getMinutes() + existing.estimated_duration);
 
         // Check for conflicts if reporter assigned
         if (data.assignedReporterId) {
-          const conflicts = await db.calendarEvent.findFirst({
-            where: {
-              firmId: user.firmId,
-              assignedReporterId: data.assignedReporterId,
-              status: { notIn: ['CANCELLED', 'COMPLETED'] },
-              OR: [
-                {
-                  AND: [
-                    { startTime: { lte: eventDate } },
-                    { endTime: { gt: eventDate } },
-                  ],
-                },
-                {
-                  AND: [
-                    { startTime: { lt: endTime } },
-                    { endTime: { gte: endTime } },
-                  ],
-                },
-              ],
-            },
-          });
+          const { data: conflicts } = await supabase
+            .from('calendar_events')
+            .select('id, title, start_time')
+            .eq('firm_id', user.firmId)
+            .eq('assigned_reporter_id', data.assignedReporterId)
+            .not('status', 'in', '(CANCELLED,COMPLETED)')
+            .or(`and(start_time.lte.${eventDate.toISOString()},end_time.gt.${eventDate.toISOString()}),and(start_time.lt.${endTime.toISOString()},end_time.gte.${endTime.toISOString()})`)
+            .maybeSingle();
 
           if (conflicts) {
             return NextResponse.json({
@@ -181,45 +205,42 @@ export async function PATCH(
               conflict: {
                 id: conflicts.id,
                 title: conflicts.title,
-                start: conflicts.startTime,
+                start: conflicts.start_time,
               },
             }, { status: 409 });
           }
         }
 
         // Create calendar event
-        const calendarEvent = await db.calendarEvent.create({
-          data: {
-            firmId: user.firmId,
-            title: `${existing.caseName} - ${existing.deponentName}`,
-            eventType: existing.eventType,
-            status: data.assignedReporterId ? 'SCHEDULED' : 'REQUESTED',
-            startTime: eventDate,
-            endTime: endTime,
-            timezone: 'America/Chicago',
-            location: existing.location,
-            isRemote: existing.isRemote,
-            assignedReporterId: data.assignedReporterId,
-            requestedById: existing.requestedById,
-            scheduledById: user.id,
-            notes: existing.specialNotes,
-            createdById: user.id,
-          },
+        const calendarEvent = await createCalendarEvent(supabase, {
+          firm_id: user.firmId as string,
+          title: `${existing.case_name} - ${existing.deponent_name}`,
+          event_type: existing.event_type,
+          status: data.assignedReporterId ? 'SCHEDULED' : 'REQUESTED',
+          start_time: eventDate.toISOString(),
+          end_time: endTime.toISOString(),
+          location: existing.location || null,
+          notes: existing.special_notes || null,
+          assigned_reporter_id: data.assignedReporterId || null,
+          created_by_id: user.id,
         });
 
         // Update booking request
-        const updatedRequest = await db.bookingRequest.update({
-          where: { id: id },
-          data: {
+        const { data: updatedRequest, error: updateError } = await supabase
+          .from('booking_requests')
+          .update({
             status: 'APPROVED',
-            calendarEventId: calendarEvent.id,
-            respondedById: user.id,
-            respondedAt: new Date(),
-          },
-          include: {
-            calendarEvent: true,
-          },
-        });
+            calendar_event_id: calendarEvent.id,
+            responded_by_id: user.id,
+            responded_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw updateError;
+        }
 
         // TODO: Notify attorney of approval
         // await notifyAttorneyOfApproval(updatedRequest);
@@ -243,15 +264,21 @@ export async function PATCH(
           return NextResponse.json({ error: 'Rejection reason is required' }, { status: 400 });
         }
 
-        const updatedRequest = await db.bookingRequest.update({
-          where: { id: id },
-          data: {
+        const { data: updatedRequest, error: updateError } = await supabase
+          .from('booking_requests')
+          .update({
             status: 'REJECTED',
-            rejectionReason: data.rejectionReason,
-            respondedById: user.id,
-            respondedAt: new Date(),
-          },
-        });
+            rejection_reason: data.rejectionReason,
+            responded_by_id: user.id,
+            responded_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw updateError;
+        }
 
         // TODO: Notify attorney of rejection
         // await notifyAttorneyOfRejection(updatedRequest);
@@ -271,26 +298,29 @@ export async function PATCH(
           return NextResponse.json({ error: 'Cannot cancel this request' }, { status: 403 });
         }
 
-        if (existing.status === 'APPROVED' && existing.calendarEventId) {
+        if (existing.status === 'APPROVED' && existing.calendar_event_id) {
           // Also cancel the calendar event
-          await db.calendarEvent.update({
-            where: { id: existing.calendarEventId },
-            data: {
-              status: 'CANCELLED',
-              cancellationReason: 'Booking request cancelled',
-              cancelledAt: new Date(),
-            },
+          await updateCalendarEvent(existing.calendar_event_id, {
+            status: 'CANCELLED',
+            cancellation_reason: 'Booking request cancelled',
+            cancelled_at: new Date().toISOString(),
           });
         }
 
-        const updatedRequest = await db.bookingRequest.update({
-          where: { id: id },
-          data: {
+        const { data: updatedRequest, error: updateError } = await supabase
+          .from('booking_requests')
+          .update({
             status: 'CANCELLED',
-            respondedById: user.id,
-            respondedAt: new Date(),
-          },
-        });
+            responded_by_id: user.id,
+            responded_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw updateError;
+        }
 
         return NextResponse.json({
           message: 'Request cancelled',
@@ -310,19 +340,25 @@ export async function PATCH(
           return NextResponse.json({ error: 'Proposed date is required' }, { status: 400 });
         }
 
-        const updatedRequest = await db.bookingRequest.update({
-          where: { id: id },
-          data: {
+        const { data: updatedRequest, error: updateError } = await supabase
+          .from('booking_requests')
+          .update({
             status: 'MODIFIED',
-            preferredDate: new Date(data.proposedDate), // Update to agency's proposed date
-            respondedById: user.id,
-            respondedAt: new Date(),
+            preferred_date: new Date(data.proposedDate).toISOString(), // Update to agency's proposed date
+            responded_by_id: user.id,
+            responded_at: new Date().toISOString(),
             // Store original date in notes
-            specialNotes: existing.specialNotes 
-              ? `${existing.specialNotes}\n\nOriginal requested date: ${existing.preferredDate.toISOString()}`
-              : `Original requested date: ${existing.preferredDate.toISOString()}`,
-          },
-        });
+            special_notes: existing.special_notes 
+              ? `${existing.special_notes}\n\nOriginal requested date: ${existing.preferred_date}`
+              : `Original requested date: ${existing.preferred_date}`,
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw updateError;
+        }
 
         // TODO: Notify attorney of proposed change
         // await notifyAttorneyOfModification(updatedRequest, data.proposedDate);
@@ -362,28 +398,32 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const existing = await db.bookingRequest.findFirst({
-      where: {
-        id: id,
-        firmId: user.firmId,
-      },
-    });
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
-    if (!existing) {
+    const { data: existing, error: existingError } = await supabase
+      .from('booking_requests')
+      .select('*')
+      .eq('id', id)
+      .eq('firm_id', user.firmId)
+      .maybeSingle();
+
+    if (existingError || !existing) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
 
     // Only requesting attorney or admin can delete
-    if (existing.requestedById !== user.id && user.role !== 'ADMIN') {
+    if (existing.requested_by_id !== user.id && user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -394,9 +434,14 @@ export async function DELETE(
       }, { status: 400 });
     }
 
-    await db.bookingRequest.delete({
-      where: { id: id },
-    });
+    const { error: deleteError } = await supabase
+      .from('booking_requests')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     return NextResponse.json({
       message: 'Request deleted',

@@ -6,7 +6,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { undoReschedule } from '@/lib/scheduling/scheduling-service';
 import { z } from 'zod';
 
@@ -44,12 +45,10 @@ export async function POST(
 
     const { undoToken } = validation.data;
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 

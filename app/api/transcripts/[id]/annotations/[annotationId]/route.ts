@@ -8,7 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptAnnotations, updateTranscriptAnnotation, deleteTranscriptAnnotation } from '@/lib/supabase/queries/transcripts';
 
 interface RouteContext {
   params: Promise<{ id: string; annotationId: string }>;
@@ -34,25 +35,17 @@ export async function PATCH(
     const { resolved: _resolved, content } = body;
 
     // Verify annotation exists and belongs to transcript
-    const annotation = await db.transcriptAnnotation.findFirst({
-      where: {
-        id: annotationId,
-        transcriptId, // May need mapping
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const annotations = await getTranscriptAnnotations(supabase, transcriptId);
+    const annotation = annotations.find((a: any) => a.id === annotationId);
 
     if (!annotation) {
       return NextResponse.json({ error: 'Annotation not found' }, { status: 404 });
     }
 
     // Update annotation
-    const updated = await db.transcriptAnnotation.update({
-      where: { id: annotationId },
-      data: {
-        note: content || undefined,
-        // Note: TranscriptAnnotation doesn't have resolved field
-        // In a full implementation, we'd add this to the schema
-      },
+    const updated = await updateTranscriptAnnotation(supabase, annotationId, {
+      note: content || null,
     });
 
     return NextResponse.json({
@@ -86,22 +79,16 @@ export async function DELETE(
     const { id: transcriptId, annotationId } = await context.params;
 
     // Verify annotation exists and user has permission
-    const annotation = await db.transcriptAnnotation.findFirst({
-      where: {
-        id: annotationId,
-        transcriptId, // May need mapping
-        createdById: session.user.id, // Only creator can delete
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const annotations = await getTranscriptAnnotations(supabase, transcriptId);
+    const annotation = annotations.find((a: any) => a.id === annotationId && a.created_by_id === session.user.id);
 
     if (!annotation) {
       return NextResponse.json({ error: 'Annotation not found' }, { status: 404 });
     }
 
     // Delete annotation
-    await db.transcriptAnnotation.delete({
-      where: { id: annotationId },
-    });
+    await deleteTranscriptAnnotation(supabase, annotationId);
 
     return NextResponse.json({
       message: 'Annotation deleted',

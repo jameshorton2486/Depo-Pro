@@ -7,7 +7,9 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { updateJobStatus } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId, createTranscript, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { logger } from '@/lib/logger';
 import { verifyWebhookRequest } from '@/lib/webhooks/sign';
 import { JobStatus } from '@/lib/enums';
@@ -22,30 +24,30 @@ export async function POST(
   { params }: { params: Promise<{ provider: string }> }
 ) {
   const { provider } = await params;
-  
+
   logger.info('Webhook received', { provider });
-  
+
   try {
     const body = await request.text();
-    
+
     // Route to appropriate handler
     switch (provider) {
       case 'deepgram':
         return handleDeepgramWebhook(body, request.headers);
-      
+
       case 'stripe':
         return handleStripeWebhook(body, request.headers);
-      
+
       default:
         return NextResponse.json(
           { error: 'Unknown webhook provider' },
           { status: 400 }
         );
     }
-    
+
   } catch (error) {
     logger.error('Webhook processing failed', error as Error, { provider });
-    
+
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
@@ -63,7 +65,7 @@ async function handleDeepgramWebhook(
 ): Promise<NextResponse> {
   // Verify signature if configured
   const deepgramSecret = process.env.DEEPGRAM_WEBHOOK_SECRET;
-  
+
   if (deepgramSecret) {
     const result = verifyWebhookRequest(body, headers, deepgramSecret);
     if (!result.valid) {
@@ -74,12 +76,12 @@ async function handleDeepgramWebhook(
       );
     }
   }
-  
+
   const payload = JSON.parse(body);
-  
+
   // Extract job ID from metadata
   const jobId = payload.metadata?.jobId;
-  
+
   if (!jobId) {
     logger.warn('Deepgram webhook missing jobId');
     return NextResponse.json(
@@ -87,14 +89,14 @@ async function handleDeepgramWebhook(
       { status: 400 }
     );
   }
-  
+
   // Handle different event types
   const eventType = payload.type || 'transcription.completed';
-  
+
   switch (eventType) {
     case 'transcription.completed': {
       const results = payload.results;
-      
+
       if (!results?.channels?.[0]?.alternatives?.[0]) {
         logger.error('Invalid Deepgram response structure', undefined, { jobId });
         return NextResponse.json(
@@ -102,66 +104,68 @@ async function handleDeepgramWebhook(
           { status: 400 }
         );
       }
-      
+
       const transcript = results.channels[0].alternatives[0];
       const words = transcript.words || [];
-      
-      // Update transcription data in database
-      await db.transcription.upsert({
-        where: { jobId },
-        create: {
-          jobId,
-          fullTranscript: transcript.transcript,
-          wordCount: words.length,
-          averageConfidence: transcript.confidence,
-          words: words as any,
-          utterances: (results.utterances || []) as any,
-          status: 'COMPLETED',
-        },
-        update: {
-          fullTranscript: transcript.transcript,
-          wordCount: words.length,
-          averageConfidence: transcript.confidence,
-          words: words as any,
-          utterances: (results.utterances || []) as any,
-          status: 'COMPLETED',
-        },
-      });
-      
+
+      const supabase = await createSupabaseServerClient();
+
+      // Check if transcript exists for this job
+      const existingTranscript = await getTranscriptByJobId(supabase, jobId);
+
+      const transcriptData = {
+        job_id: jobId,
+        full_transcript: transcript.transcript,
+        word_count: words.length,
+        average_confidence: transcript.confidence,
+        words: words as any,
+        utterances: (results.utterances || []) as any,
+        status: 'COMPLETED',
+      };
+
+      // Upsert transcription
+      if (existingTranscript) {
+        await updateTranscript(supabase, existingTranscript.id, transcriptData);
+      } else {
+        await createTranscript(supabase, {
+          ...transcriptData,
+          created_by_id: existingTranscript?.created_by_id || '', // Would need job creator
+        });
+      }
+
       // Update job status
-      await db.job.update({
-        where: { id: jobId },
-        data: { status: JobStatus.READY_FOR_EDIT },
-      });
-      
+      await updateJobStatus(supabase, jobId, JobStatus.READY_FOR_EDIT);
+
       // Invalidate caches
       invalidateDashboardCache();
-      
+
       logger.info('Deepgram transcription completed', {
         jobId,
         wordCount: words.length,
         confidence: transcript.confidence,
       });
-      
+
       break;
     }
-    
+
     case 'transcription.failed': {
-      await db.job.update({
-        where: { id: jobId },
-        data: { status: JobStatus.CANCELLED },
-      });
-      
-      await db.transcription.update({
-        where: { jobId },
-        data: { status: 'ERROR' },
-      }).catch(() => {});
-      
+      const supabase = await createSupabaseServerClient();
+
+      await updateJobStatus(supabase, jobId, JobStatus.CANCELLED);
+
+      // Update transcript status if exists
+      const existingTranscript = await getTranscriptByJobId(supabase, jobId);
+      if (existingTranscript) {
+        await updateTranscript(supabase, existingTranscript.id, {
+          status: 'ERROR',
+        }).catch(() => {});
+      }
+
       logger.error('Deepgram transcription failed', new Error(String(payload.error)), { jobId });
       break;
     }
   }
-  
+
   return NextResponse.json({ received: true });
 }
 
@@ -175,17 +179,17 @@ async function handleStripeWebhook(
 ): Promise<NextResponse> {
   // Verify Stripe signature
   const stripeSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  
+
   if (!stripeSecret) {
     return NextResponse.json(
       { error: 'Stripe not configured' },
       { status: 500 }
     );
   }
-  
+
   logger.info('Stripe webhook received (not implemented)', {
     type: 'stripe.webhook',
   });
-  
+
   return NextResponse.json({ received: true });
 }

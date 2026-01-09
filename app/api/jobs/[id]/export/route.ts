@@ -6,7 +6,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import type { ExportFormat, ExportOptions, TranscriptContent } from '@/lib/export/export-service';
 import { exportDocument } from '@/lib/export/export-service';
 
@@ -31,32 +33,11 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const format = (searchParams.get('format') || 'docx') as ExportFormat;
 
-    // Fetch job with transcript and related data
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        caseName: true,
-        caseNumber: true,
-        depositionDate: true,
-        title: true,
-        createdById: true,
-        firmId: true,
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        transcription: {
-          select: {
-            id: true,
-            fullTranscript: true,
-            words: true,
-          },
-        },
-      },
+    const supabase = await createSupabaseServerClient();
+
+    // Fetch job
+    const job = await getJobById(supabase, jobId, {
+      includeCreatedBy: true,
     });
 
     if (!job) {
@@ -64,17 +45,27 @@ export async function GET(
     }
 
     // Check permissions
-    const isOwner = job.createdById === user.id;
+    const isOwner = (job as any).created_by_id === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = job.firmId === user.firmId;
+    const jobFirmId = (job as any).firm_id || (job as any).firmId;
+    const isSameFirm = jobFirmId === user.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (!job.transcription?.fullTranscript) {
+    // Get transcript
+    const transcription = await getTranscriptByJobId(supabase, jobId);
+
+    if (!transcription || !transcription.full_transcript) {
       return NextResponse.json({ error: 'No transcript available for export' }, { status: 400 });
     }
+
+    // Get reporter info
+    const createdBy = (job as any).createdBy;
+    const reporterName = createdBy
+      ? `${createdBy.firstName || ''} ${createdBy.lastName || ''}`.trim() || undefined
+      : undefined;
 
     // Build export options
     const options: ExportOptions = {
@@ -82,21 +73,19 @@ export async function GET(
       includeLineNumbers: true,
       includePageNumbers: true,
       includeSpeakerLabels: true,
-      caseName: job.caseName || undefined,
-      caseNumber: job.caseNumber || undefined,
-      deponentName: job.title || undefined, // Use title as deponent name fallback
-      depositionDate: job.depositionDate || undefined,
-      reporterName: job.createdBy
-        ? `${job.createdBy.firstName || ''} ${job.createdBy.lastName || ''}`.trim() || undefined
-        : undefined,
+      caseName: (job as any).case_name || (job as any).caseName || undefined,
+      caseNumber: (job as any).case_number || (job as any).caseNumber || undefined,
+      deponentName: (job as any).title || undefined,
+      depositionDate: (job as any).deposition_date || (job as any).depositionDate || undefined,
+      reporterName,
     };
 
     // Build transcript content
     const content: TranscriptContent = {
-      fullText: job.transcription.fullTranscript,
-      words: job.transcription.words ? (typeof job.transcription.words === 'string' 
-        ? JSON.parse(job.transcription.words) 
-        : job.transcription.words) : undefined,
+      fullText: transcription.full_transcript,
+      words: transcription.words ? (typeof transcription.words === 'string'
+        ? JSON.parse(transcription.words)
+        : transcription.words) : undefined,
     };
 
     // Handle Google Docs export separately (requires OAuth)
@@ -154,31 +143,9 @@ export async function POST(
     const format = (body.format || 'docx') as ExportFormat;
 
     // Fetch job (same as GET)
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        id: true,
-        caseName: true,
-        caseNumber: true,
-        depositionDate: true,
-        title: true,
-        createdById: true,
-        firmId: true,
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-        transcription: {
-          select: {
-            id: true,
-            fullTranscript: true,
-            words: true,
-          },
-        },
-      },
+    const supabase = await createSupabaseServerClient();
+    const job = await getJobById(supabase, jobId, {
+      includeCreatedBy: true,
     });
 
     if (!job) {
@@ -186,17 +153,27 @@ export async function POST(
     }
 
     // Check permissions
-    const isOwner = job.createdById === user.id;
+    const isOwner = (job as any).created_by_id === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = job.firmId === user.firmId;
+    const jobFirmId = (job as any).firm_id || (job as any).firmId;
+    const isSameFirm = jobFirmId === user.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (!job.transcription?.fullTranscript) {
+    // Get transcript
+    const transcription = await getTranscriptByJobId(supabase, jobId);
+
+    if (!transcription || !((transcription as any).full_transcript || (transcription as any).fullTranscript)) {
       return NextResponse.json({ error: 'No transcript available for export' }, { status: 400 });
     }
+
+    // Get reporter info
+    const createdBy = (job as any).createdBy;
+    const reporterName = createdBy
+      ? `${createdBy.firstName || ''} ${createdBy.lastName || ''}`.trim() || undefined
+      : undefined;
 
     // Build export options from request body (override defaults)
     const options: ExportOptions = {
@@ -207,23 +184,22 @@ export async function POST(
       includeTimestamps: body.includeTimestamps === true,
       linesPerPage: body.linesPerPage || 25,
       lineNumberInterval: body.lineNumberInterval || 5,
-      caseName: body.caseName || job.caseName || undefined,
-      caseNumber: body.caseNumber || job.caseNumber || undefined,
-      deponentName: body.deponentName || job.title || undefined,
-      depositionDate: body.depositionDate ? new Date(body.depositionDate) : job.depositionDate || undefined,
-      reporterName: body.reporterName || (job.createdBy
-        ? `${job.createdBy.firstName || ''} ${job.createdBy.lastName || ''}`.trim() || undefined
-        : undefined),
+      caseName: body.caseName || (job as any).case_name || (job as any).caseName || undefined,
+      caseNumber: body.caseNumber || (job as any).case_number || (job as any).caseNumber || undefined,
+      deponentName: body.deponentName || (job as any).title || undefined,
+      depositionDate: body.depositionDate ? new Date(body.depositionDate) : ((job as any).deposition_date ? new Date((job as any).deposition_date) : (job as any).depositionDate || undefined),
+      reporterName: body.reporterName || reporterName,
       googleFolderId: body.googleFolderId || undefined,
       googleDocTitle: body.googleDocTitle || undefined,
     };
 
     // Build transcript content
+    const fullTranscript = (transcription as any).full_transcript || (transcription as any).fullTranscript || (transcription as any).content;
     const content: TranscriptContent = {
-      fullText: job.transcription.fullTranscript,
-      words: job.transcription.words ? (typeof job.transcription.words === 'string' 
-        ? JSON.parse(job.transcription.words) 
-        : job.transcription.words) : undefined,
+      fullText: fullTranscript,
+      words: (transcription as any).words ? (typeof (transcription as any).words === 'string'
+        ? JSON.parse((transcription as any).words)
+        : (transcription as any).words) : undefined,
     };
 
     // Handle Google Docs export

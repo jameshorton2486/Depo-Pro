@@ -9,7 +9,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobForAccessCheck } from '@/lib/supabase/queries/jobs';
+import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
 import { assignScopistSchema } from '@/lib/validations/job';
 import { logAudit } from '@/lib/audit';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
@@ -52,17 +54,21 @@ export async function POST(
     const { id: jobId } = await params;
 
     // 2. GET USER WITH FIRM CONTEXT (Tenant Isolation)
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user) {
+    if (!userData) {
       return NextResponse.json(
         { error: 'User not found', code: 'USER_NOT_FOUND' },
         { status: 403 }
       );
     }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role as string,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
+    };
 
     if (!user.firmId) {
       return NextResponse.json(
@@ -81,19 +87,7 @@ export async function POST(
     }
 
     // 4. FETCH JOB WITH TENANT ISOLATION
-    const job = await db.job.findFirst({
-      where: {
-        id: jobId,
-        firmId: user.firmId, // CRITICAL: Tenant boundary check
-      },
-      select: {
-        id: true,
-        createdById: true,
-        firmId: true,
-        caseName: true,
-        status: true,
-      },
-    });
+    const job = await getJobForAccessCheck(supabase, jobId);
 
     if (!job) {
       return NextResponse.json(
@@ -108,7 +102,7 @@ export async function POST(
     const canAssign =
       user.role === 'ADMIN' ||
       user.role === 'AGENCY' ||
-      job.createdById === user.id;
+      (job as any).created_by_id === user.id;
 
     if (!canAssign) {
       return NextResponse.json(
@@ -132,35 +126,31 @@ export async function POST(
 
     // 7. SCOPIST VALIDATION WITH TENANT ISOLATION
     // Scopist must exist, have SCOPIST role, AND belong to the same firm
-    const scopist = await db.user.findFirst({
-      where: {
-        id: validatedData.scopistId,
-        firmId: user.firmId, // CRITICAL: Same tenant check
-        role: 'SCOPIST',
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-      },
-    });
+    const scopists = await getUsersByRole(supabase, 'SCOPIST', user.firmId);
+    const scopistData = scopists.find(s => s.id === validatedData.scopistId);
 
-    if (!scopist) {
+    if (!scopistData) {
       return NextResponse.json(
         { error: 'Invalid scopist: User not found, not a scopist, or not in your firm', code: 'INVALID_SCOPIST' },
         { status: 400 }
       );
     }
 
+    const scopist = {
+      id: scopistData.id,
+      firstName: scopistData.user_metadata?.firstName || '',
+      lastName: scopistData.user_metadata?.lastName || '',
+      email: scopistData.email || '',
+      role: scopistData.user_metadata?.role as string,
+    };
+
     // 8. CHECK FOR EXISTING ASSIGNMENT
-    const existingAssignment = await db.jobAssignment.findFirst({
-      where: {
-        jobId,
-        scopistId: validatedData.scopistId,
-      },
-    });
+    const { data: existingAssignment } = await supabase
+      .from('job_assignment')
+      .select()
+      .eq('job_id', jobId)
+      .eq('scopist_id', validatedData.scopistId)
+      .maybeSingle();
 
     if (existingAssignment) {
       return NextResponse.json(
@@ -170,24 +160,23 @@ export async function POST(
     }
 
     // 9. CREATE ASSIGNMENT
-    const assignment = await db.jobAssignment.create({
-      data: {
-        jobId,
-        scopistId: validatedData.scopistId,
+    const { data: assignment, error: assignError } = await supabase
+      .from('job_assignment')
+      .insert({
+        job_id: jobId,
+        scopist_id: validatedData.scopistId,
         status: 'INVITED',
-        scopistNotes: validatedData.notes,
-      },
-      include: {
-        scopist: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+        scopist_notes: validatedData.notes || null,
+      })
+      .select()
+      .single();
+
+    if (assignError || !assignment) {
+      return NextResponse.json(
+        { error: 'Failed to create assignment', code: 'INTERNAL_ERROR' },
+        { status: 500 }
+      );
+    }
 
     // 10. AUDIT LOG - MANDATORY
     await logAudit({
@@ -201,7 +190,7 @@ export async function POST(
         scopistId: scopist.id,
         scopistName: `${scopist.firstName} ${scopist.lastName}`,
         scopistEmail: scopist.email,
-        jobCaseName: job.caseName,
+        jobCaseName: (job as any).case_name || (job as any).caseName || '',
         notes: validatedData.notes,
       },
     });
@@ -211,7 +200,12 @@ export async function POST(
     return NextResponse.json(
       {
         message: 'Scopist assigned successfully',
-        assignment,
+        assignment: {
+          ...assignment,
+          jobId: assignment.job_id,
+          scopistId: assignment.scopist_id,
+          scopistNotes: assignment.scopist_notes,
+        },
       },
       { status: 201 }
     );
@@ -263,12 +257,23 @@ export async function DELETE(
     }
 
     // 2. GET USER WITH FIRM CONTEXT
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user?.firmId) {
+    if (!userData) {
+      return NextResponse.json(
+        { error: 'User not found', code: 'USER_NOT_FOUND' },
+        { status: 403 }
+      );
+    }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role as string,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
+    };
+
+    if (!user.firmId) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }
@@ -284,12 +289,7 @@ export async function DELETE(
     }
 
     // 4. FETCH JOB WITH TENANT ISOLATION
-    const job = await db.job.findFirst({
-      where: {
-        id: jobId,
-        firmId: user.firmId, // TENANT ISOLATION
-      },
-    });
+    const job = await getJobForAccessCheck(supabase, jobId);
 
     if (!job) {
       return NextResponse.json(
@@ -299,17 +299,12 @@ export async function DELETE(
     }
 
     // 5. FIND AND DELETE ASSIGNMENT
-    const assignment = await db.jobAssignment.findFirst({
-      where: {
-        jobId,
-        scopistId,
-      },
-      include: {
-        scopist: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-      },
-    });
+    const { data: assignment } = await supabase
+      .from('job_assignment')
+      .select()
+      .eq('job_id', jobId)
+      .eq('scopist_id', scopistId)
+      .maybeSingle();
 
     if (!assignment) {
       return NextResponse.json(
@@ -318,9 +313,17 @@ export async function DELETE(
       );
     }
 
-    await db.jobAssignment.delete({
-      where: { id: assignment.id },
-    });
+    const { error: deleteError } = await supabase
+      .from('job_assignment')
+      .delete()
+      .eq('id', assignment.id);
+
+    if (deleteError) {
+      return NextResponse.json(
+        { error: 'Failed to delete assignment', code: 'INTERNAL_ERROR' },
+        { status: 500 }
+      );
+    }
 
     // 6. AUDIT LOG - MANDATORY
     await logAudit({
@@ -331,7 +334,7 @@ export async function DELETE(
       details: {
         action: 'SCOPIST_UNASSIGNED',
         assignmentId: assignment.id,
-        scopistId: assignment.scopistId,
+        scopistId: assignment.scopist_id,
         scopistName: assignment.scopist
           ? `${assignment.scopist.firstName} ${assignment.scopist.lastName}`
           : 'Unknown',

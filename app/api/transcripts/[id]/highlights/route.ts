@@ -1,7 +1,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptHighlights } from '@/lib/supabase/queries/transcripts';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -10,52 +11,54 @@ interface Props {
 export async function POST(request: NextRequest, { params }: Props) {
   const { id } = await params;
   const session = await auth();
-  
+
   if (!session?.user?.id || !session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const supabase = await createSupabaseServerClient();
+
   // Verify access
-  const share = await db.transcriptShare.findFirst({
-    where: {
-      transcriptId: id,
-      recipientEmail: session.user.email,
-      status: 'ACTIVE',
-      OR: [
-        { expiresAt: { gt: new Date() } },
-        { expiresAt: null }
-      ],
-      accessLevel: { in: ['COMMENT', 'EDIT'] },
-    },
-  });
+  const { data: share } = await supabase
+    .from('transcript_share')
+    .select()
+    .eq('transcript_id', id)
+    .eq('recipient_email', session.user.email)
+    .eq('status', 'ACTIVE')
+    .in('access_level', ['COMMENT', 'EDIT'])
+    .maybeSingle();
 
-  const directAccess = await db.transcriptAccess.findUnique({
-    where: {
-      transcriptId_userId: {
-        transcriptId: id,
-        userId: session.user.id
-      }
-    }
-  });
+  const { data: directAccess } = await supabase
+    .from('transcript_access')
+    .select()
+    .eq('transcript_id', id)
+    .eq('user_id', session.user.id)
+    .maybeSingle();
 
-  if (!share && (!directAccess || directAccess.accessLevel === 'VIEW')) {
+  if (!share && (!directAccess || (directAccess as any).access_level === 'VIEW')) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
   const body = await request.json();
   const { startIndex, endIndex, color, highlightedText, note } = body;
 
-  const highlight = await db.transcriptHighlight.create({
-    data: {
-      transcriptId: id,
-      userId: session.user.id,
-      startIndex,
-      endIndex,
+  const { data: highlight, error } = await supabase
+    .from('transcript_highlight')
+    .insert({
+      transcript_id: id,
+      user_id: session.user.id,
+      start_index: startIndex,
+      end_index: endIndex,
       color,
-      highlightedText,
+      highlighted_text: highlightedText,
       note,
-    },
-  });
+    })
+    .select()
+    .single();
+
+  if (error || !highlight) {
+    return NextResponse.json({ error: 'Failed to create highlight' }, { status: 500 });
+  }
 
   return NextResponse.json(highlight);
 }
@@ -63,18 +66,13 @@ export async function POST(request: NextRequest, { params }: Props) {
 export async function GET(_request: NextRequest, { params }: Props) {
   const { id } = await params;
   const session = await auth();
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const highlights = await db.transcriptHighlight.findMany({
-    where: {
-      transcriptId: id,
-      userId: session.user.id,
-    },
-    orderBy: { startIndex: 'asc' },
-  });
+  const supabase = await createSupabaseServerClient();
+  const highlights = await getTranscriptHighlights(supabase, id, session.user.id);
 
   return NextResponse.json(highlights);
 }

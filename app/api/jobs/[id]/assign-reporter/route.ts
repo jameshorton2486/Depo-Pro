@@ -5,7 +5,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById, updateJob } from '@/lib/supabase/queries/jobs';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { logAudit } from '@/lib/audit';
 import { canAssignReporter } from '@/lib/rbac';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
@@ -39,52 +41,71 @@ export async function POST(
 
     const { reporterId } = validation.data;
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true, firstName: true, lastName: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user?.firmId) {
+    if (!userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 403 });
+    }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role as string,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
+      firstName: userData.user_metadata?.firstName || '',
+      lastName: userData.user_metadata?.lastName || '',
+    };
+
+    if (!user.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: { id: true, title: true, firmId: true, assignedToId: true },
-    });
+    const job = await getJobById(supabase, jobId);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (!canAssignReporter(user.role, user.firmId, job.firmId ?? '', user.id, reporterId)) {
+    const jobFirmId = (job as any).firm_id || (job as any).firmId;
+    if (!canAssignReporter(user.role, user.firmId, jobFirmId ?? '', user.id, reporterId)) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
-    const reporter = await db.user.findUnique({
-      where: { id: reporterId },
-      select: { id: true, role: true, firmId: true, firstName: true, lastName: true, email: true },
-    });
+    const reporterData = await getUserById(supabase, reporterId);
 
-    if (!reporter || reporter.role !== 'REPORTER') {
+    if (!reporterData || reporterData.user_metadata?.role !== 'REPORTER') {
       return NextResponse.json({ error: 'Invalid reporter' }, { status: 400 });
     }
 
-    if (reporter.firmId !== job.firmId) {
+    const reporterFirmId = reporterData.user_metadata?.firmId || reporterData.user_metadata?.firm_id;
+    if (reporterFirmId !== jobFirmId) {
       return NextResponse.json({ error: 'Reporter firm mismatch' }, { status: 403 });
     }
 
-    const previousAssignedToId = job.assignedToId;
+    const reporter = {
+      id: reporterData.id,
+      role: reporterData.user_metadata?.role as string,
+      firmId: reporterFirmId,
+      firstName: reporterData.user_metadata?.firstName || '',
+      lastName: reporterData.user_metadata?.lastName || '',
+      email: reporterData.email || '',
+    };
 
-    const updatedJob = await db.job.update({
-      where: { id: jobId },
-      data: { assignedToId: reporterId },
+    const previousAssignedToId = (job as any).assigned_to_id || (job as any).assignedToId;
+
+    const updatedJob = await updateJob(supabase, jobId, {
+      assigned_to_id: reporterId,
     });
 
-    await db.calendarEvent.updateMany({
-      where: { jobId: jobId },
-      data: { assignedReporterId: reporterId },
-    });
+    // Update calendar events
+    const { error: calendarError } = await supabase
+      .from('calendar_events')
+      .update({ assigned_reporter_id: reporterId })
+      .eq('job_id', jobId);
+
+    if (calendarError) {
+      console.error('Error updating calendar events:', calendarError);
+    }
 
     await logAudit({
       userId: session.user.id,
@@ -122,39 +143,51 @@ export async function DELETE(
 
     const { id: jobId } = await context.params;
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true, firstName: true, lastName: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user?.firmId || !['ADMIN', 'AGENCY'].includes(user.role)) {
+    if (!userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 403 });
+    }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role as string,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
+      firstName: userData.user_metadata?.firstName || '',
+      lastName: userData.user_metadata?.lastName || '',
+    };
+
+    if (!user.firmId || !['ADMIN', 'AGENCY'].includes(user.role)) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: { id: true, firmId: true, assignedToId: true },
-    });
+    const job = await getJobById(supabase, jobId);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (user.role !== 'ADMIN' && user.firmId !== job.firmId) {
+    const jobFirmId = (job as any).firm_id || (job as any).firmId;
+    if (user.role !== 'ADMIN' && user.firmId !== jobFirmId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    const previousReporterId = job.assignedToId;
+    const previousReporterId = (job as any).assigned_to_id || (job as any).assignedToId;
 
-    await db.job.update({
-      where: { id: jobId },
-      data: { assignedToId: null },
+    await updateJob(supabase, jobId, {
+      assigned_to_id: null,
     });
 
-    await db.calendarEvent.updateMany({
-      where: { jobId: jobId },
-      data: { assignedReporterId: null },
-    });
+    // Update calendar events
+    const { error: calendarError } = await supabase
+      .from('calendar_events')
+      .update({ assigned_reporter_id: null })
+      .eq('job_id', jobId);
+
+    if (calendarError) {
+      console.error('Error updating calendar events:', calendarError);
+    }
 
     await logAudit({
       userId: session.user.id,

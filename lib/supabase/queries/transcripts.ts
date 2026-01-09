@@ -44,7 +44,7 @@ export async function getTranscriptForExport(
   // Get createdBy user via Admin API
   const adminClient = getSupabaseAdminClient();
   const { data: userData } = await adminClient.auth.admin.getUserById(job.created_by_id);
-  
+
   const createdBy = userData?.user ? {
     firstName: userData.user.user_metadata?.firstName || '',
     lastName: userData.user.user_metadata?.lastName || '',
@@ -274,6 +274,7 @@ export async function updateTranscript(
     content_json?: any;
     word_count?: number;
     flagged_word_count?: number;
+    flagged_segments?: any;
     status?: string;
   }
 ) {
@@ -466,4 +467,242 @@ export async function createTranscriptShare(
   }
 
   return data;
+}
+
+/**
+ * Get transcript notes for a user
+ */
+export async function getTranscriptNotes(
+  supabase: SupabaseClient,
+  transcriptId: string,
+  userId: string
+) {
+  const { data, error } = await supabase
+    .from('transcript_notes')
+    .select('*')
+    .eq('transcription_id', transcriptId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Create transcript note
+ */
+export async function createTranscriptNote(
+  supabase: SupabaseClient,
+  noteData: {
+    transcription_id: string;
+    user_id: string;
+    content: string;
+    line_number?: number | null;
+    page_number?: number | null;
+  }
+) {
+  const { data, error } = await supabase
+    .from('transcript_notes')
+    .insert(noteData)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get transcript highlights for a user
+ */
+export async function getTranscriptHighlights(
+  supabase: SupabaseClient,
+  transcriptId: string,
+  userId: string
+) {
+  const { data, error } = await supabase
+    .from('transcript_highlights')
+    .select('*')
+    .eq('transcription_id', transcriptId)
+    .eq('user_id', userId)
+    .order('start_index', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Create transcript highlight
+ */
+export async function createTranscriptHighlight(
+  supabase: SupabaseClient,
+  highlightData: {
+    transcription_id: string;
+    user_id: string;
+    start_index: number;
+    end_index: number;
+    color?: string | null;
+    highlighted_text?: string | null;
+    note?: string | null;
+  }
+) {
+  const { data, error } = await supabase
+    .from('transcript_highlights')
+    .insert(highlightData)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get transcript bookmarks for a user
+ */
+export async function getTranscriptBookmarks(
+  supabase: SupabaseClient,
+  transcriptId: string,
+  userId: string
+) {
+  const { data, error } = await supabase
+    .from('transcript_bookmarks')
+    .select('*')
+    .eq('transcription_id', transcriptId)
+    .eq('user_id', userId)
+    .order('line_number', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Create transcript bookmark
+ */
+export async function createTranscriptBookmark(
+  supabase: SupabaseClient,
+  bookmarkData: {
+    transcription_id: string;
+    user_id: string;
+    line_number: number;
+    label?: string | null;
+  }
+) {
+  const { data, error } = await supabase
+    .from('transcript_bookmarks')
+    .insert(bookmarkData)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Get transcript annotations
+ */
+export async function getTranscriptAnnotations(
+  supabase: SupabaseClient,
+  transcriptId: string
+) {
+  const { data, error } = await supabase
+    .from('transcript_annotations')
+    .select('*')
+    .eq('transcription_id', transcriptId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Create transcript annotation
+ */
+export async function createTranscriptAnnotation(
+  supabase: SupabaseClient,
+  annotationData: {
+    transcription_id: string;
+    issue_code: string;
+    issue_label: string;
+    issue_color: string;
+    page_start?: number | null;
+    line_start?: number | null;
+    page_end?: number | null;
+    line_end?: number | null;
+    note?: string | null;
+    created_by_id: string;
+  }
+) {
+  const { data, error } = await supabase
+    .from('transcript_annotations')
+    .insert(annotationData)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Update transcript annotation
+ */
+export async function updateTranscriptAnnotation(
+  supabase: SupabaseClient,
+  annotationId: string,
+  updates: {
+    note?: string | null;
+    resolved?: boolean;
+  }
+) {
+  const { data, error } = await supabase
+    .from('transcript_annotations')
+    .update(updates)
+    .eq('id', annotationId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+/**
+ * Delete transcript annotation
+ */
+export async function deleteTranscriptAnnotation(
+  supabase: SupabaseClient,
+  annotationId: string
+) {
+  const { error } = await supabase
+    .from('transcript_annotations')
+    .delete()
+    .eq('id', annotationId);
+
+  if (error) {
+    throw error;
+  }
 }

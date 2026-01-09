@@ -8,7 +8,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import PDFDocument from 'pdfkit';
 
 interface RouteContext {
@@ -27,19 +27,34 @@ export async function GET(
 
     const { id } = await context.params;
 
-    const invoice = await db.invoice.findUnique({
-      where: { id },
-      include: {
-        lineItems: true,
-        billingAccount: {
-          include: { firm: true },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    
+    const { data: invoice, error: invoiceError } = await supabase
+      .from('invoices')
+      .select(`
+        *,
+        invoice_line_items (*),
+        billing_accounts (
+          *,
+          firms (*)
+        )
+      `)
+      .eq('id', id)
+      .maybeSingle();
 
-    if (!invoice) {
+    if (invoiceError || !invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
+
+    // Transform to match expected format
+    const transformedInvoice = {
+      ...invoice,
+      lineItems: invoice.invoice_line_items || [],
+      billingAccount: invoice.billing_accounts ? {
+        ...invoice.billing_accounts,
+        firm: invoice.billing_accounts.firms,
+      } : null,
+    };
 
     // Generate PDF
     const doc = new PDFDocument({ margin: 50 });
@@ -100,7 +115,7 @@ export async function GET(
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${invoice.invoiceNumber}.pdf"`,
+        'Content-Disposition': `attachment; filename="${transformedInvoice.invoice_number}.pdf"`,
       },
     });
   } catch (error) {

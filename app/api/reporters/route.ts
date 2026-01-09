@@ -1,4 +1,3 @@
-import { db } from '@/lib/db';
 // ============================================================
 // GET AVAILABLE REPORTERS API
 // ============================================================
@@ -6,6 +5,8 @@ import { db } from '@/lib/db';
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
 import { canPerformAction } from '@/lib/rbac';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -15,12 +16,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user?.firmId) {
+    if (!userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 403 });
+    }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role as string,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
+    };
+
+    if (!user.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
@@ -32,44 +41,39 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const search = searchParams.get('search') || '';
     const effectiveFirmId = user.role === 'ADMIN' ? (searchParams.get('firmId') || user.firmId) : user.firmId;
 
-    const whereClause: any = {
-      role: 'REPORTER',
-      firmId: effectiveFirmId,
-    };
+    // Get reporters by role and firm
+    let reporters = await getUsersByRole(supabase, 'REPORTER', effectiveFirmId || undefined);
 
+    // Apply search filter if provided
     if (search) {
-      whereClause.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-      ];
+      const searchLower = search.toLowerCase();
+      reporters = reporters.filter((r: any) => {
+        const firstName = (r.user_metadata?.firstName || '').toLowerCase();
+        const lastName = (r.user_metadata?.lastName || '').toLowerCase();
+        const email = (r.email || '').toLowerCase();
+        return firstName.includes(searchLower) || lastName.includes(searchLower) || email.includes(searchLower);
+      });
     }
 
-    const reporters = await db.user.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        csrNumber: true,
-        availability: true,
-      },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-    });
-
-    const formattedReporters = reporters.map((r: any) => ({
-      id: r.id,
-      name: `${r.firstName} ${r.lastName}`,
-      firstName: r.firstName,
-      lastName: r.lastName,
-      email: r.email,
-      phone: r.phone,
-      csrNumber: r.csrNumber,
-      availability: r.availability,
-      activeAssignments: 0,
-    }));
+    // Format and sort
+    const formattedReporters = reporters
+      .map((r: any) => ({
+        id: r.id,
+        name: `${r.user_metadata?.firstName || ''} ${r.user_metadata?.lastName || ''}`.trim(),
+        firstName: r.user_metadata?.firstName || '',
+        lastName: r.user_metadata?.lastName || '',
+        email: r.email || '',
+        phone: r.user_metadata?.phone || null,
+        csrNumber: r.user_metadata?.csrNumber || r.user_metadata?.csr_number || null,
+        availability: r.user_metadata?.availability || null,
+        activeAssignments: 0,
+      }))
+      .sort((a, b) => {
+        if (a.lastName !== b.lastName) {
+          return a.lastName.localeCompare(b.lastName);
+        }
+        return a.firstName.localeCompare(b.firstName);
+      });
 
     return NextResponse.json({ reporters: formattedReporters, total: formattedReporters.length });
 

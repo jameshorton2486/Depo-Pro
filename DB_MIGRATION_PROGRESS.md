@@ -30,13 +30,18 @@ Migrating from `lib/db.ts` Prisma-compatible wrapper to Supabase query modules i
 - Added `getTranscriptWithTokensAndJob()` - Returns transcript with tokens (ordered), job details, files, and assignments
 - Enhanced `createTranscript()` - Supports both `content` and `full_transcript` fields
 - Enhanced `updateTranscript()` - Supports both `content` and `full_transcript` fields, plus `content_json`
+- Added `getTranscriptNotes()` / `createTranscriptNote()` - For transcript notes
+- Added `getTranscriptHighlights()` / `createTranscriptHighlight()` - For highlights
+- Added `getTranscriptBookmarks()` / `createTranscriptBookmark()` - For bookmarks
+- Added `getTranscriptAnnotations()` / `createTranscriptAnnotation()` / `updateTranscriptAnnotation()` / `deleteTranscriptAnnotation()` - For annotations
 
 ---
 
 ## Migration Status
 
-### ✅ Completed (3 files)
+### ✅ Completed (23 files)
 
+**Files Domain (2 files)**
 1. **`app/api/files/[id]/route.ts`** ✅
    - Migrated DELETE handler: `db.jobFile.findUnique()` → `getFileWithJob()`
    - Migrated GET handler: `db.jobFile.findUnique()` → `getFileWithJob()`
@@ -47,11 +52,100 @@ Migrating from `lib/db.ts` Prisma-compatible wrapper to Supabase query modules i
    - Migrated: `db.jobFile.findUnique()` → `getFileWithJob()`
    - Field names: `file.storagePath` → `file.storage_path`, `file.mimeType` → `file.mime_type`
 
+**Transcripts Domain (11 files)**
 3. **`app/api/transcripts/[id]/route.ts`** ✅
    - Migrated GET handler: `db.transcript.findUnique()` → `getTranscriptWithTokensAndJob()`
    - Migrated POST handler: `db.transcript.findFirst()` → `getTranscriptWithTokensAndJob()`, `db.transcript.create()` → `createTranscript()`
    - Migrated PATCH handler: `db.transcript.findUnique()` → `getTranscriptWithTokensAndJob()`, `db.transcript.update()` → `updateTranscript()`
-   - Enhanced query module: Added `getTranscriptWithTokensAndJob()` function
+
+4. **`app/api/transcripts/[id]/notes/route.ts`** ✅
+   - Migrated POST: `db.transcriptNote.create()` → `createTranscriptNote()`
+   - Migrated GET: `db.transcriptNote.findMany()` → `getTranscriptNotes()`
+
+5. **`app/api/transcripts/[id]/highlights/route.ts`** ✅
+   - Migrated POST: `db.transcriptHighlight.create()` → `createTranscriptHighlight()`
+   - Migrated GET: `db.transcriptHighlight.findMany()` → `getTranscriptHighlights()`
+
+6. **`app/api/transcripts/[id]/bookmarks/route.ts`** ✅
+   - Migrated POST: `db.transcriptBookmark.create()` → `createTranscriptBookmark()`
+   - Migrated GET: `db.transcriptBookmark.findMany()` → `getTranscriptBookmarks()`
+
+7. **`app/api/transcripts/[id]/shares/route.ts`** ✅
+   - Migrated POST: `db.transcript.findUnique()` → `getTranscriptWithTokensAndJob()`, `db.transcriptShare.create()` → `createTranscriptShare()`
+   - Migrated GET: `db.transcriptShare.findMany()` → `getTranscriptShares()`
+
+8. **`app/api/transcripts/[id]/annotations/route.ts`** ✅
+   - Migrated POST: `db.transcription.findUnique()` → `getTranscriptById()`, `db.transcriptAnnotation.create()` → `createTranscriptAnnotation()`
+   - Migrated GET: `db.transcriptAnnotation.findMany()` → `getTranscriptAnnotations()`
+
+9. **`app/api/transcripts/[id]/annotations/[annotationId]/route.ts`** ✅
+   - Migrated PATCH: `db.transcriptAnnotation.findFirst()` → `getTranscriptAnnotations()`, `db.transcriptAnnotation.update()` → `updateTranscriptAnnotation()`
+   - Migrated DELETE: `db.transcriptAnnotation.findFirst()` → `getTranscriptAnnotations()`, `db.transcriptAnnotation.delete()` → `deleteTranscriptAnnotation()`
+
+10. **`app/api/transcripts/[id]/finalize/route.ts`** ✅
+    - Migrated: `db.job.findUnique()` → `getJobById()`, `db.transcription.findUnique()` → `getTranscriptById()`, `db.transcription.update()` → `updateTranscriptStatus()`
+
+11. **`app/api/transcripts/[id]/exports/route.ts`** ✅
+    - Migrated: `db.transcript.findUnique()` → `getTranscriptWithTokensAndJob()`, `db.auditLog.findMany()` → direct Supabase query
+
+12. **`app/api/transcripts/[id]/words/route.ts`** ✅
+    - Migrated: `db.transcription.findUnique()` → `getTranscriptWithTokensAndJob()`, `db.transcription.update()` → `updateTranscript()`, `db.transcriptionEdit.createMany()` → direct Supabase insert, `db.job.update()` → `updateJobStatus()`
+
+13. **`app/api/transcripts/[id]/corrections/route.ts`** ✅
+    - Migrated: `db.transcriptReviewSession.findUnique()` → review session from `flagged_segments`, `db.transcription.findUnique()` → `getTranscriptWithTokensAndJob()`, `db.transcription.update()` → `updateTranscript()`, `db.transcriptReviewSession.upsert()` → stored in `flagged_segments`, `db.transcriptionEdit.create()` → direct Supabase insert
+
+**Jobs Domain (10 files)**
+14. **`app/api/jobs/[id]/assign/route.ts`** ✅
+    - Migrated POST: `db.user.findUnique()` → `getUserById()`, `db.job.findFirst()` → `getJobForAccessCheck()`, `db.user.findFirst()` → `getUsersByRole()`, `db.jobAssignment.findFirst()` → `getAssignmentByJobAndScopist()`, `db.jobAssignment.create()` → `createJobAssignment()`
+    - Migrated DELETE: `db.user.findUnique()` → `getUserById()`, `db.job.findFirst()` → `getJobForAccessCheck()`, `db.jobAssignment.findFirst()` → `getAssignmentByJobAndScopist()`, `db.jobAssignment.delete()` → `deleteJobAssignment()`
+
+15. **`app/api/jobs/[id]/assign-reporter/route.ts`** ✅
+    - Migrated POST: `db.user.findUnique()` → `getUserById()`, `db.job.findUnique()` → `getJobById()`, `db.job.update()` → `updateJob()`, `db.calendarEvent.updateMany()` → direct Supabase update
+    - Migrated DELETE: `db.user.findUnique()` → `getUserById()`, `db.job.findUnique()` → `getJobById()`, `db.job.update()` → `updateJob()`, `db.calendarEvent.updateMany()` → direct Supabase update
+
+16. **`app/api/jobs/[id]/status/route.ts`** ✅
+    - Already migrated (uses query modules)
+
+17. **`app/api/jobs/[id]/notes/route.ts`** ✅
+    - Already migrated (uses query modules)
+
+18. **`app/api/jobs/[id]/notes/[noteId]/route.ts`** ✅
+    - Already migrated (uses query modules)
+
+19. **`app/api/jobs/route.ts`** ✅
+    - Already migrated (uses query modules)
+
+20. **`app/api/jobs/queue/route.ts`** ✅
+    - No db imports (uses queue functions)
+
+21. **`app/api/jobs/[id]/transcribe/route.ts`** ✅
+    - Migrated: `db.job.findUnique()` → `getJobById()`, `db.job.update()` → `updateJobStatus()` / `updateJob()`
+
+22. **`app/api/jobs/[id]/export/route.ts`** ✅
+    - Migrated: `db.job.findUnique()` → `getJobById()`, `getTranscriptByJobId()`, `getUserById()`
+
+23. **`app/api/jobs/[id]/invoice/route.ts`** ✅
+    - Migrated: `db.job.findFirst()` → `getJobById()`
+
+24. **`app/api/jobs/[id]/exhibits/[exhibitId]/route.ts`** ✅
+    - Migrated GET: `db.exhibit.findUnique()` → direct Supabase query, `db.job.findUnique()` → `getJobById()`
+    - Migrated PATCH: `db.exhibit.findUnique()` → direct Supabase query, `db.exhibit.update()` → direct Supabase update
+    - Migrated DELETE: `db.exhibit.findUnique()` → direct Supabase query, `db.exhibit.delete()` → direct Supabase delete
+
+**Assignments Domain (2 files)**
+25. **`app/api/assignments/[id]/route.ts`** ✅
+    - Migrated PATCH: `db.jobAssignment.findUnique()` → `getAssignmentById()`, `db.jobAssignment.update()` → `updateJobAssignment()`
+    - Migrated DELETE: `db.jobAssignment.findUnique()` → `getAssignmentById()`, `db.jobAssignment.delete()` → `deleteJobAssignment()`
+
+26. **`app/api/assignments/[id]/notify/route.ts`** ✅
+    - Migrated: `db.jobAssignment.findFirst()` → `getAssignmentById()`, `getJobById()`, `getUserById()`
+
+**Users Domain (2 files)**
+27. **`app/api/users/reporters/route.ts`** ✅
+    - Migrated: `db.user.findMany()` → `getUsersByRole()`
+
+28. **`app/api/reporters/route.ts`** ✅
+    - Migrated: `db.user.findUnique()` → `getUserById()`, `db.user.findMany()` → `getUsersByRole()`
 
 ### 🟡 In Progress
 
@@ -195,6 +289,20 @@ npm run build
 
 ---
 
-**Progress:** 3/80 files (3.75%) ✅
+**Progress:** 23/80 files (28.75%) ✅
 
-**Latest:** `app/api/transcripts/[id]/route.ts` fully migrated - all 3 handlers (GET, POST, PUT) now use query modules
+**Latest Batch 1:** Migrated 10 transcript-related files:
+1. `app/api/transcripts/[id]/notes/route.ts` ✅
+2. `app/api/transcripts/[id]/highlights/route.ts` ✅
+3. `app/api/transcripts/[id]/bookmarks/route.ts` ✅
+4. `app/api/transcripts/[id]/shares/route.ts` ✅
+5. `app/api/transcripts/[id]/annotations/route.ts` ✅
+6. `app/api/transcripts/[id]/annotations/[annotationId]/route.ts` ✅
+7. `app/api/transcripts/[id]/finalize/route.ts` ✅
+8. `app/api/transcripts/[id]/exports/route.ts` ✅
+9. `app/api/transcripts/[id]/words/route.ts` ✅
+10. `app/api/transcripts/[id]/corrections/route.ts` ✅
+
+**Query Module Enhancements:**
+- Added 8 new functions for notes, highlights, bookmarks, annotations
+- Enhanced updateTranscript to support words and flagged_segments JSONB fields

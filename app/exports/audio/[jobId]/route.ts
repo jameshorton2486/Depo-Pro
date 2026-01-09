@@ -1,7 +1,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { listFilesForJob } from '@/lib/supabase/queries/files';
 
 interface RouteContext {
   params: Promise<{ jobId: string }>;
@@ -24,26 +26,10 @@ export async function GET(
 
     const { jobId } = await context.params;
 
+    const supabase = await createSupabaseServerClient();
+
     // Verify job exists
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      include: {
-        createdBy: {
-          select: { id: true },
-        },
-        files: {
-          where: {
-            type: 'AUDIO',
-          },
-          select: {
-            id: true,
-            storageUrl: true,
-            fileName: true,
-          },
-          take: 1,
-        },
-      },
-    });
+    const job = await getJobById(supabase, jobId);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -51,22 +37,26 @@ export async function GET(
 
     // Check access
     const user = session.user as { id: string; role: string };
-    const isCreator = job.createdById === user.id;
+    const isCreator = (job as any).created_by_id === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isScopist = job.scopistId === user.id;
+    const isScopist = (job as any).scopist_id === user.id;
 
     if (!isCreator && !isAdmin && !isScopist) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (!job.files || job.files.length === 0) {
+    // Get audio files
+    const files = await listFilesForJob(supabase, jobId);
+    const audioFiles = files.filter((f: any) => f.type === 'AUDIO');
+
+    if (!audioFiles || audioFiles.length === 0) {
       return NextResponse.json(
         { error: 'Audio file not found for this job' },
         { status: 404 }
       );
     }
 
-    const audioFile = job.files[0];
+    const audioFile = audioFiles[0];
 
     // Redirect to file download endpoint
     return NextResponse.redirect(new URL(`/api/files/${audioFile.id}/download`, request.url));

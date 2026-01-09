@@ -29,15 +29,9 @@ export async function PATCH(
     const { id } = await params;
 
     // Get assignment with job details
-    const assignment = await db.jobAssignment.findUnique({
+    const assignment = await db.assignment.findUnique({
       where: { id },
-      include: {
-        job: {
-          select: {
-            createdById: true,
-          },
-        },
-      },
+      include: { job: true },
     });
 
     if (!assignment) {
@@ -45,10 +39,11 @@ export async function PATCH(
     }
 
     // 🔒 Security: Scopist can update their own assignments, reporter/admin can update any
+    const job = assignment.job as any;
     const canUpdate =
       session.user.role === 'ADMIN' ||
-      assignment.scopistId === session.user.id ||
-      assignment.job.createdById === session.user.id;
+      assignment.scopist_id === session.user.id ||
+      (job?.created_by_id === session.user.id);
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -58,37 +53,33 @@ export async function PATCH(
     const validatedData = updateAssignmentSchema.parse(body);
 
     // Update assignment with timestamps
-    const updateData: Record<string, unknown> = {
+    const updateData: {
+      status?: string;
+      notes?: string | null;
+      responded_at?: Date | null;
+      submitted_at?: Date | null;
+    } = {
       status: validatedData.status,
-      notes: validatedData.notes,
+      notes: validatedData.notes || null,
+      responded_at: assignment.responded_at,
+      submitted_at: assignment.submitted_at,
     };
 
-    if (validatedData.status === 'ACCEPTED' && !assignment.respondedAt) {
-      updateData.respondedAt = new Date();
+    if (validatedData.status === 'ACCEPTED' && !assignment.responded_at) {
+      updateData.responded_at = new Date();
     }
 
-    if (validatedData.status === 'SUBMITTED' && !assignment.submittedAt) {
-      updateData.submittedAt = new Date();
+    if (validatedData.status === 'SUBMITTED' && !assignment.submitted_at) {
+      updateData.submitted_at = new Date();
     }
 
-    const updatedAssignment = await db.jobAssignment.update({
+    const updatedAssignment = await db.assignment.update({
       where: { id },
-      data: updateData,
-      include: {
-        scopist: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-        job: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
+      data: {
+        status: validatedData.status,
+        notes: validatedData.notes || null,
+        responded_at: updateData.responded_at,
+        submitted_at: updateData.submitted_at,
       },
     });
 
@@ -130,15 +121,9 @@ export async function DELETE(
     const { id } = await params;
 
     // Get assignment with job details
-    const assignment = await db.jobAssignment.findUnique({
+    const assignment = await db.assignment.findUnique({
       where: { id },
-      include: {
-        job: {
-          select: {
-            createdById: true,
-          },
-        },
-      },
+      include: { job: true },
     });
 
     if (!assignment) {
@@ -146,17 +131,16 @@ export async function DELETE(
     }
 
     // 🔒 Security: Only reporter or admin can delete assignments
+    const job = assignment.job as any;
     const canDelete =
       session.user.role === 'ADMIN' ||
-      assignment.job.createdById === session.user.id;
+      (job?.created_by_id === session.user.id);
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await db.jobAssignment.delete({
-      where: { id },
-    });
+    await db.assignment.delete({ where: { id } });
 
     logger.info(`Assignment deleted: ${id} by user ${session.user.id}`);
 

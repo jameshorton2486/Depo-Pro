@@ -4,7 +4,8 @@
 
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { Role } from '@/lib/constants';
 
 /**
@@ -28,35 +29,45 @@ export async function GET(
 
     const { id } = await params;
 
-    const transcript = await db.attorneyTranscript.findUnique({
-      where: { id },
-      include: {
-        annotations: {
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-        uploadedBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!transcript) {
+    const { data: transcript, error: transcriptError } = await supabase
+      .from('attorney_transcripts')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (transcriptError || !transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
     // Check access (only creator or admin)
-    if (transcript.uploadedById !== session.user.id && session.user.role !== Role.ADMIN) {
+    if (transcript.uploaded_by_id !== session.user.id && session.user.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json({ transcript });
+    // Get annotations
+    const { data: annotations } = await supabase
+      .from('transcript_annotations')
+      .select('*')
+      .eq('transcription_id', id)
+      .order('created_at', { ascending: false });
+
+    // Get uploaded by info
+    const uploadedBy = await getUserById(supabase, transcript.uploaded_by_id);
+
+    return NextResponse.json({
+      transcript: {
+        ...transcript,
+        annotations: annotations || [],
+        uploadedBy: uploadedBy ? {
+          id: uploadedBy.id,
+          firstName: uploadedBy.user_metadata?.firstName || '',
+          lastName: uploadedBy.user_metadata?.lastName || '',
+          email: uploadedBy.email || '',
+        } : null,
+      },
+    });
   } catch (error) {
     console.error('Error fetching transcript:', error);
     return NextResponse.json(
@@ -65,4 +76,3 @@ export async function GET(
     );
   }
 }
-

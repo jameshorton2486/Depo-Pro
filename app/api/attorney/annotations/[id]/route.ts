@@ -4,7 +4,8 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { deleteTranscriptAnnotation } from '@/lib/supabase/queries/transcripts';
 import { Role } from '@/lib/constants';
 import { requireAuth, requireTranscriptAnnotation } from '@/lib/permissions/api-guards';
 
@@ -27,30 +28,29 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Get annotation to check ownership and transcript access
-    const annotation = await db.transcriptAnnotation.findUnique({
-      where: { id },
-      include: {
-        transcript: true,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!annotation) {
+    // Get annotation to check ownership and transcript access
+    const { data: annotation, error: annotationError } = await supabase
+      .from('transcript_annotations')
+      .select('id, transcription_id, created_by_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (annotationError || !annotation) {
       return NextResponse.json({ error: 'Annotation not found' }, { status: 404 });
     }
 
     // SECURITY: Verify user has access to transcript
-    const transcriptCheck = await requireTranscriptAnnotation(user.id, annotation.transcriptId);
+    const transcriptCheck = await requireTranscriptAnnotation(user.id, annotation.transcription_id);
     if (transcriptCheck instanceof NextResponse) return transcriptCheck;
 
     // Check ownership (only creator or admin can delete)
-    if (annotation.createdById !== user.id && user.role !== Role.ADMIN) {
+    if (annotation.created_by_id !== user.id && user.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await db.transcriptAnnotation.delete({
-      where: { id },
-    });
+    await deleteTranscriptAnnotation(supabase, id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

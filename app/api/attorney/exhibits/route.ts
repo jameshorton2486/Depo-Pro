@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY EXHIBITS API
 // ═══════════════════════════════════════════════════════════════
@@ -6,6 +5,11 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCaseById } from '@/lib/supabase/queries/cases';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { listExhibitsByCase, listExhibitsByJob, createExhibit } from '@/lib/supabase/queries/exhibits';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { Role } from '@/lib/constants';
 import {
   requireAuth,
@@ -42,62 +46,69 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const supabase = await createSupabaseServerClient();
+
     // SECURITY: Enforce case access
     const accessCheck = await requireAttorneyCaseAccess(user.id, caseId);
     if (accessCheck && typeof accessCheck === "object" && "status" in accessCheck) return accessCheck;
 
     // Verify case exists
-    const caseRecord = await db.case.findUnique({
-      where: { id: caseId },
-      select: { id: true, firmId: true },
-    });
+    const caseRecord = await getCaseById(supabase, caseId, user.id);
 
     if (!caseRecord) {
       return NextResponse.json({ error: 'Case not found' }, { status: 404 });
     }
 
-    // Build where clause
-    const where: any = { caseId };
+    // Fetch exhibits
+    let exhibits;
     if (depositionId) {
-      where.jobId = depositionId;
+      exhibits = await listExhibitsByJob(supabase, depositionId);
+    } else {
+      exhibits = await listExhibitsByCase(supabase, caseId);
     }
 
-    // Fetch exhibits
-    const exhibits = await db.exhibit.findMany({
-      where,
-      include: {
-        job: {
-          select: {
-            id: true,
-            title: true,
-            caseName: true,
-            depositionDate: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-          },
-        },
-        case: {
-          select: {
-            id: true,
-            caseNumber: true,
-            caseStyle: true,
-          },
-        },
-      },
-      orderBy: [
-        { jobId: 'asc' }, // Group by deposition
-        { exhibitNumber: 'asc' }, // Then by exhibit number
-        { exhibitLabel: 'asc' }, // Then by label
-      ],
+    // Enrich with related data
+    const enrichedExhibits = await Promise.all(
+      exhibits.map(async (exhibit: any) => {
+        const job = exhibit.job_id ? await getJobById(supabase, exhibit.job_id) : null;
+        const createdBy = await getUserById(supabase, exhibit.created_by_id);
+        const caseData = await getCaseById(supabase, exhibit.case_id, user.id);
+
+        return {
+          ...exhibit,
+          job: job ? {
+            id: job.id,
+            title: (job as any).title,
+            caseName: (job as any).case_name,
+            depositionDate: (job as any).deposition_date,
+          } : null,
+          createdBy: createdBy ? {
+            id: createdBy.id,
+            firstName: createdBy.user_metadata?.firstName || '',
+            lastName: createdBy.user_metadata?.lastName || '',
+            role: createdBy.user_metadata?.role || '',
+          } : null,
+          case: caseData ? {
+            id: caseData.id,
+            caseNumber: (caseData as any).case_number,
+            caseStyle: (caseData as any).case_style,
+          } : null,
+        };
+      })
+    );
+
+    // Sort: by job_id, then exhibit_number, then exhibit_label
+    enrichedExhibits.sort((a: any, b: any) => {
+      if (a.job?.id !== b.job?.id) {
+        return (a.job?.id || '').localeCompare(b.job?.id || '');
+      }
+      if (a.exhibit_number !== b.exhibit_number) {
+        return (a.exhibit_number || 0) - (b.exhibit_number || 0);
+      }
+      return (a.exhibit_label || '').localeCompare(b.exhibit_label || '');
     });
 
-    return NextResponse.json({ exhibits });
+    return NextResponse.json({ exhibits: enrichedExhibits });
   } catch (error) {
     console.error('Error fetching exhibits:', error);
     return NextResponse.json(
@@ -136,6 +147,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supabase = await createSupabaseServerClient();
+
     // SECURITY: Enforce case access and upload permission
     const caseAccess = await requireAttorneyCaseAccess(user.id, caseId);
     if (caseAccess && typeof caseAccess === "object" && "status" in caseAccess) return caseAccess;
@@ -144,10 +157,7 @@ export async function POST(request: NextRequest) {
     if (uploadPermission && typeof uploadPermission === "object" && "status" in uploadPermission) return uploadPermission;
 
     // Verify case exists
-    const caseRecord = await db.case.findUnique({
-      where: { id: caseId },
-      select: { id: true, firmId: true },
-    });
+    const caseRecord = await getCaseById(supabase, caseId, user.id);
 
     if (!caseRecord) {
       return NextResponse.json({ error: 'Case not found' }, { status: 404 });
@@ -155,16 +165,14 @@ export async function POST(request: NextRequest) {
 
     // If depositionId provided, verify it exists and belongs to case
     if (depositionId) {
-      const job = await db.job.findUnique({
-        where: { id: depositionId },
-        select: { id: true, caseId: true },
-      });
+      const job = await getJobById(supabase, depositionId);
 
       if (!job) {
         return NextResponse.json({ error: 'Deposition not found' }, { status: 404 });
       }
 
-      if (job.caseId !== caseId) {
+      const jobCaseId = (job as any).case_id || (job as any).caseId;
+      if (jobCaseId !== caseId) {
         return NextResponse.json(
           { error: 'Deposition does not belong to this case' },
           { status: 400 },
@@ -194,57 +202,55 @@ export async function POST(request: NextRequest) {
     const fileType = file.type.startsWith('image/') ? 'IMAGE' : file.type.includes('pdf') ? 'PDF' : 'DOCX';
 
     // Get next exhibit number for this case+deposition combination
-    const existingExhibits = await db.exhibit.findMany({
-      where: {
-        caseId,
-        jobId: depositionId || null,
-      },
-      select: { exhibitNumber: true },
-      orderBy: { exhibitNumber: 'desc' },
-      take: 1,
-    });
+    const existingExhibits = depositionId
+      ? await listExhibitsByJob(supabase, depositionId)
+      : await listExhibitsByCase(supabase, caseId);
 
-    const nextExhibitNumber = existingExhibits.length > 0 && existingExhibits[0].exhibitNumber
-      ? existingExhibits[0].exhibitNumber + 1
+    const sortedExhibits = existingExhibits
+      .map((e: any) => e.exhibit_number || e.exhibitNumber || 0)
+      .sort((a: number, b: number) => b - a);
+
+    const nextExhibitNumber = sortedExhibits.length > 0 && sortedExhibits[0]
+      ? sortedExhibits[0] + 1
       : 1;
 
     // Create exhibit record
-    const exhibit = await db.exhibit.create({
-      data: {
-        caseId,
-        jobId: depositionId || null,
-        exhibitLabel,
-        exhibitNumber: nextExhibitNumber,
-        description,
-        originalFileUrl: fileUrl,
-        fileType,
-        mimeType: file.type,
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedByRole: user.role as any,
-        createdById: user.id,
-        stamped: false,
-      },
-      include: {
-        job: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-        case: {
-          select: {
-            id: true,
-            caseNumber: true,
-          },
-        },
-      },
+    const exhibit = await createExhibit(supabase, {
+      case_id: caseId,
+      job_id: depositionId || '',
+      exhibit_label: exhibitLabel,
+      exhibit_number: nextExhibitNumber,
+      description,
+      original_file_url: fileUrl,
+      file_type: fileType,
+      mime_type: file.type,
+      file_name: file.name,
+      file_size: file.size,
+      stamped: false,
+      uploaded_by_role: user.role,
+      created_by_id: user.id,
     });
+
+    // Get job and case info for response
+    const job = depositionId ? await getJobById(supabase, depositionId) : null;
+    const caseData = await getCaseById(supabase, caseId, user.id);
+
+    const enrichedExhibit = {
+      ...exhibit,
+      job: job ? {
+        id: job.id,
+        title: (job as any).title,
+      } : null,
+      case: caseData ? {
+        id: caseData.id,
+        caseNumber: (caseData as any).case_number,
+      } : null,
+    };
 
     // TODO: Add audit log entry
     // await db.auditLog.create({ ... });
 
-    return NextResponse.json({ exhibit }, { status: 201 });
+    return NextResponse.json({ exhibit: enrichedExhibit }, { status: 201 });
   } catch (error) {
     console.error('Error uploading exhibit:', error);
     return NextResponse.json(

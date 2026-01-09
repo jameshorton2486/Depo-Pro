@@ -6,7 +6,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getExhibitById } from '@/lib/supabase/queries/exhibits';
 import { Role } from '@/lib/constants';
 
 /**
@@ -39,66 +40,60 @@ export async function POST(
       );
     }
 
-    // Verify annotation exists and user has access
-    const annotation = await db.transcriptAnnotation.findUnique({
-      where: { id: annotationId },
-      include: {
-        transcript: {
-          select: {
-            id: true,
-            uploadedById: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!annotation) {
+    // Verify annotation exists and user has access
+    const { data: annotation, error: annotationError } = await supabase
+      .from('transcript_annotations')
+      .select('id, transcription_id')
+      .eq('id', annotationId)
+      .maybeSingle();
+
+    if (annotationError || !annotation) {
       return NextResponse.json({ error: 'Annotation not found' }, { status: 404 });
     }
 
-    // Verify all exhibits exist and belong to the same case
-    const exhibits = await db.exhibit.findMany({
-      where: {
-        id: { in: exhibitIds },
-      },
-      select: {
-        id: true,
-        caseId: true,
-      },
-    });
+    // Verify all exhibits exist
+    const exhibits = await Promise.all(
+      exhibitIds.map(async (exhibitId) => {
+        const exhibit = await getExhibitById(supabase, exhibitId);
+        return exhibit ? { id: exhibit.id, case_id: exhibit.case_id } : null;
+      })
+    );
 
-    if (exhibits.length !== exhibitIds.length) {
+    const validExhibits = exhibits.filter(e => e !== null);
+    if (validExhibits.length !== exhibitIds.length) {
       return NextResponse.json(
         { error: 'One or more exhibits not found' },
         { status: 404 },
       );
     }
 
-    // Verify all exhibits belong to the same case as the transcript
-    // (We need to get the caseId from the transcript's case)
-    const _transcript = await db.attorneyTranscript.findUnique({
-      where: { id: annotation.transcriptId },
-      select: {
-        id: true,
-        uploadedById: true,
-      },
-    });
-
     // Create links (skip if already exists)
     const links = [];
     for (const exhibitId of exhibitIds) {
       try {
-        const link = await db.transcriptAnnotationExhibit.create({
-          data: {
-            annotationId,
-            exhibitId,
-            createdById: session.user.id,
-          },
-        });
-        links.push(link);
+        const { data: link, error: linkError } = await supabase
+          .from('exhibit_annotation_links')
+          .insert({
+            annotation_id: annotationId,
+            exhibit_id: exhibitId,
+            created_by_id: session.user.id,
+          })
+          .select()
+          .single();
+
+        if (linkError) {
+          // Skip if unique constraint violation (already linked)
+          if (!linkError.message?.includes('duplicate') && !linkError.code?.includes('23505')) {
+            throw linkError;
+          }
+        } else if (link) {
+          links.push(link);
+        }
       } catch (error: any) {
         // Skip if unique constraint violation (already linked)
-        if (!error.message?.includes('Unique constraint')) {
+        if (!error.message?.includes('duplicate') && !error.code?.includes('23505')) {
           throw error;
         }
       }
@@ -144,22 +139,29 @@ export async function DELETE(
       );
     }
 
-    // Verify annotation exists
-    const annotation = await db.transcriptAnnotation.findUnique({
-      where: { id: annotationId },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!annotation) {
+    // Verify annotation exists
+    const { data: annotation, error: annotationError } = await supabase
+      .from('transcript_annotations')
+      .select('id')
+      .eq('id', annotationId)
+      .maybeSingle();
+
+    if (annotationError || !annotation) {
       return NextResponse.json({ error: 'Annotation not found' }, { status: 404 });
     }
 
     // Delete link
-    await db.transcriptAnnotationExhibit.deleteMany({
-      where: {
-        annotationId,
-        exhibitId,
-      },
-    });
+    const { error: deleteError } = await supabase
+      .from('exhibit_annotation_links')
+      .delete()
+      .eq('annotation_id', annotationId)
+      .eq('exhibit_id', exhibitId);
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -170,4 +172,3 @@ export async function DELETE(
     );
   }
 }
-

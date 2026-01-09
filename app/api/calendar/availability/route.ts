@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ============================================================
 // REPORTER AVAILABILITY API ROUTES
 // Path: app/api/calendar/availability/route.ts
@@ -8,6 +7,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { z } from 'zod';
 
 // ------------------------------------------------------------
@@ -52,14 +53,18 @@ export async function GET(request: NextRequest) {
       type: searchParams.get('type') || undefined,
     });
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
     // Role-based access control: ADMIN and REPORTER can access availability
     // This matches the page-level permissions for /calendar/availability
@@ -68,73 +73,88 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
-    // Build where clause
-    const whereClause: any = {
-      firmId: user.firmId,
-    };
+    // Build query
+    let availabilityQuery = supabase
+      .from('reporter_availability')
+      .select('*')
+      .eq('firm_id', user.firmId);
 
     // Role-based filtering
     if (user.role === 'REPORTER') {
       // Reporters can only see their own availability
-      whereClause.reporterId = user.id;
+      availabilityQuery = availabilityQuery.eq('reporter_id', user.id);
     } else if (query.reporterId) {
       // Agency/Admin can filter by specific reporter
-      whereClause.reporterId = query.reporterId;
+      availabilityQuery = availabilityQuery.eq('reporter_id', query.reporterId);
     }
 
-    // Date range filter
+    // Date range filter - events that overlap with the query range
+    // We'll filter for events where start_time <= query.end AND end_time >= query.start
     if (query.start && query.end) {
-      whereClause.OR = [
-        {
-          startTime: { gte: new Date(query.start), lte: new Date(query.end) },
-        },
-        {
-          endTime: { gte: new Date(query.start), lte: new Date(query.end) },
-        },
-      ];
+      const startISO = new Date(query.start).toISOString();
+      const endISO = new Date(query.end).toISOString();
+      // Events that overlap: start before query end AND end after query start
+      availabilityQuery = availabilityQuery
+        .lte('start_time', endISO)
+        .gte('end_time', startISO);
     }
 
     // Type filter
     if (query.type) {
-      whereClause.type = query.type;
+      availabilityQuery = availabilityQuery.eq('type', query.type);
     }
 
-    const availability = await db.reporterAvailability.findMany({
-      where: whereClause,
-      include: {
-        reporter: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-      },
-      orderBy: { startTime: 'asc' },
-    });
+    availabilityQuery = availabilityQuery.order('start_time', { ascending: true });
 
-    // Transform for calendar display
-    const slots = availability.map((slot: any) => ({
-      id: slot.id,
-      title: slot.type === 'AVAILABLE' 
-        ? 'Available' 
-        : slot.type === 'UNAVAILABLE' 
-        ? 'Unavailable' 
-        : 'Tentative',
-      start: slot.startTime.toISOString(),
-      end: slot.endTime.toISOString(),
-      backgroundColor: slot.type === 'AVAILABLE' 
-        ? 'hsl(142, 76%, 36%)'  // green-600
-        : slot.type === 'UNAVAILABLE' 
-        ? 'hsl(0, 84%, 60%)'     // red-500
-        : 'hsl(45, 93%, 47%)',  // yellow-500
-      borderColor: 'transparent',
-      display: 'background', // Shows as background highlight
-      extendedProps: {
-        type: slot.type,
-        reporterId: slot.reporterId,
-        reporterName: slot.reporter ? `${slot.reporter.firstName} ${slot.reporter.lastName}` : 'Unknown',
-        notes: slot.notes,
-        isRecurring: slot.isRecurring,
-        recurrenceRule: slot.recurrenceRule,
-      },
-    }));
+    const { data: availability, error: availabilityError } = await availabilityQuery;
+
+    if (availabilityError) {
+      throw availabilityError;
+    }
+
+    // Enrich with reporter info
+    const slots = await Promise.all(
+      (availability || []).map(async (slot: any) => {
+        let reporter = null;
+        if (slot.reporter_id) {
+          const reporterData = await getUserById(supabase, slot.reporter_id);
+          if (reporterData) {
+            reporter = {
+              id: reporterData.id,
+              firstName: reporterData.user_metadata?.firstName || '',
+              lastName: reporterData.user_metadata?.lastName || '',
+              email: reporterData.email || '',
+            };
+          }
+        }
+
+        return {
+          id: slot.id,
+          title: slot.type === 'AVAILABLE' 
+            ? 'Available' 
+            : slot.type === 'UNAVAILABLE' 
+            ? 'Unavailable' 
+            : 'Tentative',
+          start: slot.start_time,
+          end: slot.end_time,
+          backgroundColor: slot.type === 'AVAILABLE' 
+            ? 'hsl(142, 76%, 36%)'  // green-600
+            : slot.type === 'UNAVAILABLE' 
+            ? 'hsl(0, 84%, 60%)'     // red-500
+            : 'hsl(45, 93%, 47%)',  // yellow-500
+          borderColor: 'transparent',
+          display: 'background', // Shows as background highlight
+          extendedProps: {
+            type: slot.type,
+            reporterId: slot.reporter_id,
+            reporterName: reporter ? `${reporter.firstName} ${reporter.lastName}` : 'Unknown',
+            notes: slot.notes,
+            isRecurring: slot.is_recurring,
+            recurrenceRule: slot.recurrence_rule,
+          },
+        };
+      })
+    );
 
     return NextResponse.json({
       availability: slots,
@@ -162,14 +182,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
     // Role-based access control: ADMIN, REPORTER, and AGENCY can create availability
     // Reporters create their own, Admin/Agency can create for any reporter
@@ -186,15 +210,11 @@ export async function POST(request: NextRequest) {
     
     if (['ADMIN', 'AGENCY'].includes(user.role) && body.reporterId) {
       // Verify reporter exists in same firm
-      const reporter = await db.user.findFirst({
-        where: {
-          id: body.reporterId,
-          firmId: user.firmId,
-          role: 'REPORTER',
-        },
-      });
+      const reporterData = await getUserById(supabase, body.reporterId);
       
-      if (!reporter) {
+      if (!reporterData || 
+          (reporterData.user_metadata?.firmId !== user.firmId && reporterData.user_metadata?.firm_id !== user.firmId) ||
+          reporterData.user_metadata?.role !== 'REPORTER') {
         return NextResponse.json({ error: 'Reporter not found' }, { status: 404 });
       }
       
@@ -212,68 +232,64 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for overlapping availability of same type
-    const overlapping = await db.reporterAvailability.findFirst({
-      where: {
-        reporterId,
-        type: data.type,
-        OR: [
-          {
-            AND: [
-              { startTime: { lte: startTime } },
-              { endTime: { gt: startTime } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { lt: endTime } },
-              { endTime: { gte: endTime } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { gte: startTime } },
-              { endTime: { lte: endTime } },
-            ],
-          },
-        ],
-      },
-    });
+    const { data: overlapping, error: overlapError } = await supabase
+      .from('reporter_availability')
+      .select('id, start_time, end_time')
+      .eq('reporter_id', reporterId)
+      .eq('type', data.type)
+      .or(`start_time.lte.${startTime.toISOString()},end_time.gt.${startTime.toISOString()},start_time.lt.${endTime.toISOString()},end_time.gte.${endTime.toISOString()},start_time.gte.${startTime.toISOString()},end_time.lte.${endTime.toISOString()}`)
+      .maybeSingle();
+
+    if (overlapError && overlapError.code !== 'PGRST116') {
+      throw overlapError;
+    }
 
     if (overlapping) {
       return NextResponse.json({ 
         error: 'Overlapping availability slot exists',
         existingSlot: {
           id: overlapping.id,
-          start: overlapping.startTime,
-          end: overlapping.endTime,
+          start: overlapping.start_time,
+          end: overlapping.end_time,
         },
       }, { status: 409 });
     }
 
     // Create the availability slot
-    const availability = await db.reporterAvailability.create({
-      data: {
-        reporterId,
-        firmId: user.firmId,
-        startTime,
-        endTime,
+    const { data: availability, error: createError } = await supabase
+      .from('reporter_availability')
+      .insert({
+        reporter_id: reporterId,
+        firm_id: user.firmId,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
         timezone: data.timezone,
         type: data.type,
-        isRecurring: data.isRecurring,
-        recurrenceRule: data.recurrenceRule,
-        recurrenceEnd: data.recurrenceEnd ? new Date(data.recurrenceEnd) : null,
-        notes: data.notes,
-      },
-      include: {
-        reporter: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-      },
-    });
+        is_recurring: data.isRecurring,
+        recurrence_rule: data.recurrenceRule || null,
+        recurrence_end: data.recurrenceEnd ? new Date(data.recurrenceEnd).toISOString() : null,
+        notes: data.notes || null,
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
+
+    // Get reporter info
+    const reporter = await getUserById(supabase, reporterId);
 
     return NextResponse.json({
       message: 'Availability created',
-      availability,
+      availability: {
+        ...availability,
+        reporter: reporter ? {
+          id: reporter.id,
+          firstName: reporter.user_metadata?.firstName || '',
+          lastName: reporter.user_metadata?.lastName || '',
+        } : null,
+      },
     }, { status: 201 });
 
   } catch (error) {
@@ -297,14 +313,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
     const { searchParams } = new URL(request.url);
     const start = searchParams.get('start');
@@ -316,26 +336,29 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Build delete filter
-    const whereClause: any = {
-      firmId: user.firmId,
-      startTime: { gte: new Date(start) },
-      endTime: { lte: new Date(end) },
-    };
+    let deleteQuery = supabase
+      .from('reporter_availability')
+      .delete()
+      .eq('firm_id', user.firmId)
+      .gte('start_time', new Date(start).toISOString())
+      .lte('end_time', new Date(end).toISOString());
 
     // Reporters can only delete their own
     if (user.role === 'REPORTER') {
-      whereClause.reporterId = user.id;
+      deleteQuery = deleteQuery.eq('reporter_id', user.id);
     } else if (reporterId) {
-      whereClause.reporterId = reporterId;
+      deleteQuery = deleteQuery.eq('reporter_id', reporterId);
     }
 
-    const result = await db.reporterAvailability.deleteMany({
-      where: whereClause,
-    });
+    const { count, error: deleteError } = await deleteQuery;
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     return NextResponse.json({
-      message: `Deleted ${result.count} availability slots`,
-      count: result.count,
+      message: `Deleted ${count || 0} availability slots`,
+      count: count || 0,
     });
 
   } catch (error) {

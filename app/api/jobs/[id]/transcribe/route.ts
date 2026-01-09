@@ -4,7 +4,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById, updateJobStatus, updateJob } from '@/lib/supabase/queries/jobs';
+import { listFilesForJob } from '@/lib/supabase/queries/files';
 import { enqueueJob } from '@/lib/jobs/queue';
 import { JobType, TranscriptionJobPayload as _TranscriptionJobPayload } from '@/lib/jobs/types';
 import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
@@ -46,26 +48,11 @@ export async function POST(
     // Get request body for model selection (optional)
     const body = await request.json().catch(() => ({}));
 
-    // Fetch job with files
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      include: {
-        files: {
-          where: {
-            OR: [
-              { type: 'AUDIO' },
-              { mimeType: { startsWith: 'audio/' } },
-              { mimeType: { startsWith: 'video/' } },
-            ],
-          },
-        },
-        case: {
-          select: {
-            id: true,
-            firmId: true,
-          },
-        },
-      },
+    const supabase = await createSupabaseServerClient();
+
+    // Fetch job
+    const job = await getJobById(supabase, jobId, {
+      includeFiles: true,
     });
 
     if (!job) {
@@ -73,17 +60,21 @@ export async function POST(
     }
 
     // Check permissions
-    const isOwner = job.createdById === user.id;
+    const isOwner = (job as any).created_by_id === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = (job.firmId && job.firmId === user.firmId) || (job.case?.firmId && job.case?.firmId === user.firmId);
+    const jobFirmId = (job as any).firm_id || (job as any).firmId;
+    const isSameFirm = jobFirmId && jobFirmId === user.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Get files for job
+    const files = await listFilesForJob(supabase, jobId);
+
     // Check for audio file
-    const audioFile = job.files.find(
-      (f: { type?: string; mimeType?: string }) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/') || f.mimeType?.startsWith('video/'),
+    const audioFile = files.find(
+      (f: any) => f.type === 'AUDIO' || f.mime_type?.startsWith('audio/') || f.mime_type?.startsWith('video/'),
     );
 
     if (!audioFile) {
@@ -93,8 +84,9 @@ export async function POST(
       );
     }
 
+    const jobStatus = (job as any).status;
     // Check if already processing
-    if (job.status === 'TRANSCRIBING' || job.status === 'AI_REVIEWING') {
+    if (jobStatus === 'TRANSCRIBING' || jobStatus === 'AI_REVIEWING') {
       return NextResponse.json(
         { error: 'Transcription already in progress' },
         { status: 409 },
@@ -104,10 +96,11 @@ export async function POST(
     // Get processing mode from job's internalNotes
     let processingMode: AudioProcessingMode = 'AUTOMATED';
     let modelTier: 'STANDARD' | 'ENHANCED' = 'STANDARD';
-    
-    if (job.internalNotes) {
+
+    const internalNotes = (job as any).internal_notes || (job as any).internalNotes;
+    if (internalNotes) {
       try {
-        const notes = JSON.parse(job.internalNotes);
+        const notes = typeof internalNotes === 'string' ? JSON.parse(internalNotes) : internalNotes;
         if (notes.processingMode) {
           processingMode = notes.processingMode.mode || 'AUTOMATED';
           modelTier = notes.processingMode.modelTier || 'STANDARD';
@@ -122,7 +115,7 @@ export async function POST(
       // Add job to RX queue instead of starting transcription
       const queueResult = await AudioEnhancementService.addToRxQueue({
         jobId,
-        audioUrl: audioFile.storageUrl || audioFile.storagePath,
+        audioUrl: audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath,
         priority: 'NORMAL',
       });
 
@@ -134,16 +127,13 @@ export async function POST(
       }
 
       // Update job status
-      await db.job.update({
-        where: { id: jobId },
-        data: {
-          status: 'ENHANCING_AUDIO',
-          internalNotes: JSON.stringify({
-            ...(job.internalNotes ? JSON.parse(job.internalNotes) : {}),
-            rxQueueAdded: true,
-            rxQueuePosition: queueResult.queuePosition,
-          }),
-        },
+      await updateJob(supabase, jobId, {
+        status: 'ENHANCING_AUDIO',
+        internal_notes: JSON.stringify({
+          ...(internalNotes ? (typeof internalNotes === 'string' ? JSON.parse(internalNotes) : internalNotes) : {}),
+          rxQueueAdded: true,
+          rxQueuePosition: queueResult.queuePosition,
+        }),
       });
 
       return NextResponse.json({
@@ -156,16 +146,11 @@ export async function POST(
 
     // Automated mode: proceed with Dolby enhancement and transcription
     // Update job status to ENHANCING_AUDIO (will be updated to TRANSCRIBING after enhancement)
-    await db.job.update({
-      where: { id: jobId },
-      data: {
-        status: 'ENHANCING_AUDIO',
-      },
-    });
+    await updateJobStatus(supabase, jobId, 'ENHANCING_AUDIO');
 
     // Start automated enhancement
     const enhancementResult = await AudioEnhancementService.enhanceWithDolby(
-      audioFile.storageUrl || audioFile.storagePath,
+      audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath,
       {},
     );
 
@@ -175,29 +160,24 @@ export async function POST(
     }
 
     // Determine model preference based on tier
-    const modelPreference = modelTier === 'ENHANCED' 
-      ? 'nova-2-medical' 
+    const modelPreference = modelTier === 'ENHANCED'
+      ? 'nova-2-medical'
       : body.modelPreference || 'nova-3';
 
     // Update job status to TRANSCRIBING
-    await db.job.update({
-      where: { id: jobId },
-      data: {
-        status: 'TRANSCRIBING',
-      },
-    });
+    await updateJobStatus(supabase, jobId, 'TRANSCRIBING');
 
     // Enqueue transcription job with enhanced audio URL (or original if enhancement failed)
     const audioUrlForTranscription = enhancementResult.success && enhancementResult.enhancedFileUrl
       ? enhancementResult.enhancedFileUrl
-      : audioFile.storageUrl || audioFile.storagePath;
+      : audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath;
 
     await enqueueJob(
       JobType.TRANSCRIPTION_PROCESS,
       {
         jobId,
         audioFileUrl: audioUrlForTranscription,
-        firmId: job.firmId || job.case?.firmId || '',
+        firmId: jobFirmId || '',
         userId: user.id,
         options: {
           language: 'en',

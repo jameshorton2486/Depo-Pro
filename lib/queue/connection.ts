@@ -5,24 +5,23 @@
 
 import { Queue } from 'bullmq';
 import type { TranscriptionJobData } from '@/types/deepgram';
-import { getRedis } from '@/lib/redis';
 
 let transcriptionQueue: Queue<TranscriptionJobData> | null = null;
 
-export function getRedisConnection() {
-  // Use existing getRedis function from lib/redis.ts
-  return getRedis();
-}
-
 export function getTranscriptionQueue(): Queue<TranscriptionJobData> | null {
   if (transcriptionQueue) return transcriptionQueue;
-  
-  const connection = getRedisConnection();
-  if (!connection) return null;
-  
+
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    console.warn('⚠️ REDIS_URL not configured - queue features disabled');
+    return null;
+  }
+
   try {
     transcriptionQueue = new Queue<TranscriptionJobData>('transcription', {
-      connection,
+      connection: {
+        url: redisUrl,
+      },
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -38,7 +37,7 @@ export function getTranscriptionQueue(): Queue<TranscriptionJobData> | null {
         },
       },
     });
-    
+
     console.log('[Queue] Transcription queue initialized');
     return transcriptionQueue;
   } catch (error) {
@@ -63,7 +62,7 @@ export async function addTranscriptionJob(data: {
     console.warn('[Queue] Cannot add job - queue not available');
     return null;
   }
-  
+
   try {
     const job = await queue.add('transcribe', {
       ...data,
@@ -74,7 +73,7 @@ export async function addTranscriptionJob(data: {
       priority: data.priority || 0,
       jobId: data.jobId, // Use job ID to prevent duplicates
     });
-    
+
     console.log(`[Queue] Added transcription job: ${job.id}`);
     return job.id || null;
   } catch (error) {
@@ -86,7 +85,7 @@ export async function addTranscriptionJob(data: {
 export async function getQueueMetrics() {
   const queue = getTranscriptionQueue();
   if (!queue) return null;
-  
+
   try {
     const [waiting, active, completed, failed] = await Promise.all([
       queue.getWaitingCount(),
@@ -94,7 +93,7 @@ export async function getQueueMetrics() {
       queue.getCompletedCount(),
       queue.getFailedCount(),
     ]);
-    
+
     return { waiting, active, completed, failed };
   } catch (error) {
     console.error('[Queue] Failed to get metrics:', error);
@@ -107,5 +106,4 @@ export async function closeConnections() {
     await transcriptionQueue.close();
     transcriptionQueue = null;
   }
-  // Redis connection is managed by lib/redis.ts
 }

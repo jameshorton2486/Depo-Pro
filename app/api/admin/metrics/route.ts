@@ -8,20 +8,20 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     await requireAdmin();
-    
+
     const supabase = await createSupabaseServerClient();
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Get job statistics
     const { data: jobStats } = await supabase
-      .from('Job')
+      .from('jobs')
       .select('status, created_at')
       .gte('created_at', thirtyDaysAgo.toISOString());
 
     // Get transcription statistics
     const { data: transcriptionStats } = await supabase
-      .from('Transcription')
+      .from('transcriptions')
       .select('status, confidence_score, created_at')
       .gte('created_at', thirtyDaysAgo.toISOString());
 
@@ -49,7 +49,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     };
 
-    logger.info('[metrics] Admin metrics fetched', { 
+    logger.info('[metrics] Admin metrics fetched', {
       jobCount: metrics.jobs.total,
       transcriptionCount: metrics.transcriptions.total,
       userCount: metrics.users.total,

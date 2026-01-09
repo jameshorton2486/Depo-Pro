@@ -8,7 +8,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
+import { listAuditLogs } from '@/lib/supabase/queries/audit';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -35,42 +37,44 @@ export async function GET(
 
     const { id: userId } = await context.params;
 
+    const supabase = await createSupabaseServerClient();
+
     // Get role change audit logs
-    const changes = await db.auditLog.findMany({
-      where: {
-        targetType: 'User',
-        targetId: userId,
-        action: 'USER_ROLE_CHANGED',
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 50,
+    const { logs } = await listAuditLogs(supabase, {
+      target_type: 'User',
+      target_id: userId,
+      action: 'USER_ROLE_CHANGED',
+    }, {
+      limit: 50,
     });
 
+    // Enrich with actor info
+    const enrichedChanges = await Promise.all(
+      logs.map(async (log: any) => {
+        let actor = { firstName: 'System', lastName: '' };
+        if (log.actor_user_id && log.actor_user_id !== 'system') {
+          const userData = await getUserById(supabase, log.actor_user_id);
+          if (userData) {
+            actor = {
+              firstName: userData.user_metadata?.firstName || '',
+              lastName: userData.user_metadata?.lastName || '',
+            };
+          }
+        }
+        
+        return {
+          id: log.id,
+          action: log.action,
+          actorUserId: log.actor_user_id,
+          actor,
+          metadata: log.metadata || {},
+          createdAt: log.created_at,
+        };
+      })
+    );
+
     return NextResponse.json({
-      changes: changes.map((log) => ({
-        id: log.id,
-        action: log.action,
-        actorUserId: log.actorUserId,
-        actor: log.user
-          ? {
-              firstName: log.user.firstName,
-              lastName: log.user.lastName,
-            }
-          : { firstName: 'System', lastName: '' },
-        metadata: (log.metadata as any) || {},
-        createdAt: log.createdAt,
-      })),
+      changes: enrichedChanges,
     });
   } catch (error) {
     console.error('Error fetching role history:', error);

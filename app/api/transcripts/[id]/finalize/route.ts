@@ -8,7 +8,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptByJobId, getTranscriptById, updateTranscriptStatus } from '@/lib/supabase/queries/transcripts';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -32,32 +34,21 @@ export async function POST(
     const { id } = await context.params;
     const user = session.user as { id: string; role: string };
 
+    const supabase = await createSupabaseServerClient();
+    
     // Try to find by job ID first (since pages use jobId)
-    let job = await db.job.findUnique({
-      where: { id },
-      include: {
-        transcription: true,
-      },
-    });
+    let transcript = await getTranscriptByJobId(supabase, id);
+    let job = await getJobById(supabase, id);
 
     // If not found by job ID, try finding by transcript ID
-    if (!job) {
-      const transcription = await db.transcription.findUnique({
-        where: { id },
-        include: {
-          job: true,
-        },
-      });
-      
-      if (transcription && transcription.job) {
-        job = {
-          ...transcription.job,
-          transcription,
-        } as any;
+    if (!transcript) {
+      transcript = await getTranscriptById(supabase, id);
+      if (transcript) {
+        job = await getJobById(supabase, transcript.job_id);
       }
     }
 
-    if (!job || !job.transcription) {
+    if (!transcript || !job) {
       return NextResponse.json(
         { error: 'Transcript not found' },
         { status: 404 }
@@ -67,8 +58,8 @@ export async function POST(
     // Check access
     if (
       user.role !== 'ADMIN' &&
-      job.createdById !== user.id &&
-      job.scopistId !== user.id
+      job.created_by_id !== user.id &&
+      (job as any).scopist_id !== user.id
     ) {
       return NextResponse.json(
         { error: 'Forbidden' },
@@ -77,7 +68,7 @@ export async function POST(
     }
 
     // Check if already finalized
-    if (job.transcription.status === 'COMPLETED') {
+    if (transcript.status === 'COMPLETED') {
       return NextResponse.json(
         { error: 'Transcript already finalized' },
         { status: 400 }
@@ -85,16 +76,7 @@ export async function POST(
     }
 
     // Finalize the transcript
-    // Update transcription status to COMPLETED (which represents finalized)
-    await db.transcription.update({
-      where: { id: job.transcription.id },
-      data: {
-        status: 'COMPLETED',
-        lockedAt: new Date(),
-        lockedBy: user.id,
-        lockReason: 'Finalized by user',
-      },
-    });
+    await updateTranscriptStatus(supabase, transcript.id, 'COMPLETED');
 
     return NextResponse.json({
       success: true,

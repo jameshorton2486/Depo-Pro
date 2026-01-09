@@ -7,7 +7,6 @@
 // =============================================================================
 
 import { Queue } from 'bullmq';
-import { getRedis } from '@/lib/redis';
 import type { TranscriptionJobData } from '@/types/deepgram';
 
 // Singleton queue instance
@@ -35,9 +34,9 @@ export function getTranscriptionQueue(): Queue<TranscriptionJobData> | null {
     return queue;
   }
 
-  // Get Redis connection
-  const redis = getRedis();
-  if (!redis) {
+  // Get Redis URL
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
     console.warn('⚠️ Redis not available - transcription queue disabled');
     return null;
   }
@@ -45,7 +44,9 @@ export function getTranscriptionQueue(): Queue<TranscriptionJobData> | null {
   // Create queue
   try {
     queue = new Queue<TranscriptionJobData>('transcription', {
-      connection: redis,
+      connection: {
+        url: redisUrl,
+      },
       defaultJobOptions: {
         attempts: 3,
         backoff: {

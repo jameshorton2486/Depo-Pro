@@ -1,7 +1,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 import {
   generateInvoiceNumber,
   calculateJobPrice,
@@ -29,16 +30,18 @@ export async function POST(
     const body = await request.json();
     const { generatePDF = false } = body;
 
+    const supabase = await createSupabaseServerClient();
+
     // Get job details
-    const job = await db.job.findFirst({
-      where: {
-        id: jobId,
-        createdById: session.user.id,
-      },
-    });
+    const job = await getJobById(supabase, jobId);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    // Verify user is the creator
+    if ((job as any).created_by_id !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Calculate pricing
@@ -54,7 +57,7 @@ export async function POST(
     const invoiceData: InvoiceData = {
       invoiceNumber,
       jobId,
-      caseNumber: job.caseNumber || undefined,
+      caseNumber: (job as any).case_number || (job as any).caseNumber || undefined,
       clientName: undefined,
       clientContact: undefined,
       items,

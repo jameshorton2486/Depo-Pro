@@ -6,7 +6,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
+import { getCalendarEventById, convertEventToJob } from '@/lib/supabase/queries/calendar';
 import { logAudit } from '@/lib/audit';
 import { canConvertEventToJob } from '@/lib/rbac';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
@@ -39,27 +41,26 @@ export async function POST(
     }
 
     // 3. Fetch user with firm info
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true, firstName: true, lastName: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }
       );
     }
 
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+      firstName: userData.user_metadata?.firstName || '',
+      lastName: userData.user_metadata?.lastName || '',
+    };
+
     // 4. Fetch calendar event
-    const event = await db.calendarEvent.findUnique({
-      where: { id: eventId },
-      include: {
-        job: true,
-        firm: { select: { id: true, name: true } },
-        assignedReporter: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
+    const event = await getCalendarEventById(eventId);
 
     if (!event) {
       return NextResponse.json(
@@ -69,7 +70,7 @@ export async function POST(
     }
 
     // 5. Authorization check
-    if (!canConvertEventToJob(user.role, user.firmId, event.firmId)) {
+    if (!canConvertEventToJob(user.role, user.firmId as string, event.firm_id)) {
       return NextResponse.json(
         { error: 'You do not have permission to convert this event', code: 'FORBIDDEN' },
         { status: 403 }
@@ -77,56 +78,62 @@ export async function POST(
     }
 
     // 6. Idempotency check
-    if (event.jobId || event.job || event.status === 'CONVERTED') {
+    if (event.job_id || event.status === 'CONVERTED') {
       return NextResponse.json(
         { 
           error: 'This event has already been converted to a job',
           code: 'ALREADY_CONVERTED',
-          jobId: event.jobId,
+          jobId: event.job_id,
         },
         { status: 409 }
       );
     }
 
     // 7. Validation
-    if (!event.title || !event.startTime) {
+    if (!event.title || !event.start_time) {
       return NextResponse.json(
         { error: 'Event is missing required fields', code: 'VALIDATION_ERROR' },
         { status: 400 }
       );
     }
 
-    // 8. Transaction: Create job + Update event
-    const result = await (db as any).$transaction(async (tx: any) => {
-      const job = await tx.job.create({
-        data: {
-          title: event.title,
-          caseName: event.title,
-          caseNumber: null,
-          depositionDate: event.startTime,
-          location: event.location,
-          zoomLink: event.meetingLink,
-          status: 'CREATED',
-          createdById: session.user.id,
-          firmId: event.firmId,
-          notes: event.notes,
-        },
-      });
-
-      const updatedEvent = await tx.calendarEvent.update({
-        where: { id: eventId },
-        data: {
-          jobId: job.id,
-          status: 'CONVERTED',
-        },
-        include: {
-          assignedReporter: { select: { id: true, firstName: true, lastName: true } },
-          job: { select: { id: true, title: true, status: true } },
-        },
-      });
-
-      return { job, event: updatedEvent };
+    // 8. Convert event to job using query module function
+    const convertResult = await convertEventToJob(eventId, {
+      title: event.title,
+      case_name: event.title,
+      case_number: null,
+      deposition_date: new Date(event.start_time).toISOString(),
+      location: event.location || null,
+      zoom_link: event.meeting_link || null,
+      created_by_id: session.user.id,
+      firm_id: event.firm_id,
+      agency_id: event.agency_id || null,
+      assigned_to_id: event.assigned_reporter_id || null,
+      scopist_id: null,
+      internal_notes: event.notes || null,
     });
+
+    if (!convertResult.success || !convertResult.jobId) {
+      return NextResponse.json(
+        { error: convertResult.error || 'Failed to convert event', code: 'CONVERSION_ERROR' },
+        { status: 500 }
+      );
+    }
+
+    // Get the created job
+    const { data: job } = await supabase
+      .from('jobs')
+      .select('id, title, status')
+      .eq('id', convertResult.jobId)
+      .single();
+
+    // Get updated event
+    const updatedEvent = await getCalendarEventById(eventId);
+
+    const result = {
+      job: job || { id: convertResult.jobId, title: event.title, status: 'CREATED' },
+      event: updatedEvent,
+    };
 
     // 9. Audit log
     await logAudit({
@@ -159,9 +166,9 @@ export async function POST(
         status: result.job.status,
       },
       event: {
-        id: result.event.id,
-        status: result.event.status,
-        jobId: result.event.jobId,
+        id: result.event?.id,
+        status: result.event?.status,
+        jobId: result.event?.job_id,
       },
     });
 

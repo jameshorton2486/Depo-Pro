@@ -1,7 +1,8 @@
-import { db } from '@/lib/db';
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUsersByRole } from '@/lib/supabase/queries/users';
 
 // ============================================
 // GET /api/users/reporters - List reporters for assignment
@@ -18,37 +19,39 @@ export async function GET(request: NextRequest) {
     const firmId = searchParams.get('firmId');
     const agencyId = searchParams.get('agencyId');
 
-    // Build where clause
-    const where: Record<string, unknown> = {
-      role: 'COURT_REPORTER',
-      isActive: true,
-    };
+    const supabase = await createSupabaseServerClient();
 
-    // Filter by firm if provided
-    if (firmId) {
-      where.firmId = firmId;
-    }
+    // Get reporters by role
+    let reporters = await getUsersByRole(supabase, 'COURT_REPORTER', firmId || undefined);
 
-    // Filter by agency if provided
+    // Filter by agency if provided (would need agencyId in user_metadata)
     if (agencyId) {
-      where.agencyId = agencyId;
+      reporters = reporters.filter(
+        (r: any) => r.user_metadata?.agencyId === agencyId || r.user_metadata?.agency_id === agencyId
+      );
     }
 
-    const reporters = await db.user.findMany({
-      where,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-      },
-      orderBy: [
-        { lastName: 'asc' },
-        { firstName: 'asc' },
-      ],
-    });
+    // Filter active users (if isActive is in metadata)
+    reporters = reporters.filter(
+      (r: any) => r.user_metadata?.isActive !== false
+    );
 
-    return NextResponse.json({ reporters });
+    // Sort and format
+    const formattedReporters = reporters
+      .map((r: any) => ({
+        id: r.id,
+        firstName: r.user_metadata?.firstName || '',
+        lastName: r.user_metadata?.lastName || '',
+        email: r.email || '',
+      }))
+      .sort((a, b) => {
+        if (a.lastName !== b.lastName) {
+          return a.lastName.localeCompare(b.lastName);
+        }
+        return a.firstName.localeCompare(b.firstName);
+      });
+
+    return NextResponse.json({ reporters: formattedReporters });
   } catch (error) {
     console.error('Reporters GET error:', error);
     return NextResponse.json(

@@ -8,7 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptById, getTranscriptAnnotations, createTranscriptAnnotation } from '@/lib/supabase/queries/transcripts';
 import { z } from 'zod';
 
 interface RouteContext {
@@ -43,35 +44,25 @@ export async function POST(
     const data = createAnnotationSchema.parse(body);
 
     // Verify transcript exists and user has access
-    const transcript = await db.transcription.findUnique({
-      where: { id: transcriptId },
-      select: { id: true, status: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcript = await getTranscriptById(supabase, transcriptId);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    // Check if transcript is finalized (annotations are immutable after finalization)
-    // For now, we'll use the existing TranscriptAnnotation model which is for AttorneyTranscript
-    // We may need to create a new model for Transcription annotations
-
     // Create annotation
-    // Note: This uses the existing TranscriptAnnotation model structure
-    // In a full implementation, we'd create a new model for Transcription annotations
-    const annotation = await db.transcriptAnnotation.create({
-      data: {
-        transcriptId, // This may need to map to AttorneyTranscript
-        issueCode: data.type.toUpperCase(),
-        issueLabel: data.type === 'comment' ? 'Comment' : data.type === 'flag' ? 'Flag' : 'Correction',
-        issueColor: data.type === 'comment' ? 'blue' : data.type === 'flag' ? 'red' : 'yellow',
-        pageStart: data.segmentStart || 0,
-        lineStart: data.wordIndex || 0,
-        pageEnd: data.segmentEnd || data.segmentStart || 0,
-        lineEnd: data.wordIndex || 0,
-        note: data.content,
-        createdById: session.user.id,
-      },
+    const annotation = await createTranscriptAnnotation(supabase, {
+      transcription_id: transcriptId,
+      issue_code: data.type.toUpperCase(),
+      issue_label: data.type === 'comment' ? 'Comment' : data.type === 'flag' ? 'Flag' : 'Correction',
+      issue_color: data.type === 'comment' ? 'blue' : data.type === 'flag' ? 'red' : 'yellow',
+      page_start: data.segmentStart || null,
+      line_start: data.wordIndex || null,
+      page_end: data.segmentEnd || data.segmentStart || null,
+      line_end: data.wordIndex || null,
+      note: data.content || null,
+      created_by_id: session.user.id,
     });
 
     return NextResponse.json({
@@ -111,25 +102,8 @@ export async function GET(
     const { id: transcriptId } = await context.params;
 
     // Get annotations
-    // Note: This queries TranscriptAnnotation which may be for AttorneyTranscript
-    // In a full implementation, we'd query a Transcription-specific annotation model
-    const annotations = await db.transcriptAnnotation.findMany({
-      where: {
-        transcriptId, // May need to map to correct transcript type
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const annotations = await getTranscriptAnnotations(supabase, transcriptId);
 
     return NextResponse.json({
       annotations,

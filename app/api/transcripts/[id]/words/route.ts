@@ -8,7 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { Role, JobStatus } from '@/lib/constants';
 import type { ReviewState } from '@/types/review';
 import { isTranscriptLocked, getLockStatus } from '@/lib/transcript-locking';
@@ -64,38 +65,18 @@ export async function PATCH(
     const confidenceThreshold = normalizeThreshold(rawThreshold);
 
     // Fetch transcription with job
-    const transcription = await db.transcription.findUnique({
-      where: { id: transcriptionId },
-      select: {
-        id: true,
-        lockedAt: true,
-        lockedBy: true,
-        lockReason: true,
-        status: true,
-        words: true,
-        flaggedSegments: true,
-        flaggedWordCount: true,
-        job: {
-          include: {
-            assignments: {
-              where: {
-                scopistId: session.user.id,
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
     }
 
     // Check lock status - CRITICAL: Prevent edits to locked transcripts
-    if (isTranscriptLocked(transcription)) {
-      const lockStatus = getLockStatus(transcription);
+    if (isTranscriptLocked(transcription as any)) {
+      const lockStatus = getLockStatus(transcription as any);
       return NextResponse.json(
-        { 
+        {
           error: 'Transcript is locked',
           code: 'TRANSCRIPT_LOCKED',
           details: {
@@ -103,7 +84,7 @@ export async function PATCH(
             lockedAt: lockStatus.lockedAt,
             message: 'This transcript has been finalized. Edits are tracked separately.',
           }
-        }, 
+        },
         { status: 403 }
       );
     }
@@ -118,7 +99,8 @@ export async function PATCH(
     }
 
     // Get current words array (transcription is already fetched above)
-    const currentWords = (transcription.words as any[]) || [];
+    // Note: words are stored in transcript_tokens or in a JSONB column
+    const currentWords = (transcription.words as any[]) || (transcription.tokens as any[]) || [];
 
     // Apply corrections to words array
     const updatedWords = currentWords.map((word, index) => {
@@ -144,22 +126,28 @@ export async function PATCH(
     });
 
     // Create TranscriptionEdit records for corrections
-    const newEditRecords = corrections.map((c) => ({
-      transcriptionId,
-      editorId: session.user.id,
-      editorEmail: session.user.email || null,
-      editorRole: session.user.role || null,
-      editType: 'WORD_CORRECTION' as const,
-      originalText: currentWords[c.wordIndex]?.word || '',
-      editedText: c.correctedWord,
-      position: currentWords[c.wordIndex]?.start || 0,
-      metadata: { wordIndex: c.wordIndex },
-    }));
+    if (corrections.length > 0) {
+      const newEditRecords = corrections.map((c) => ({
+        transcription_id: transcriptionId,
+        editor_id: session.user.id,
+        editor_email: session.user.email || null,
+        editor_role: session.user.role || null,
+        edit_type: 'WORD_CORRECTION',
+        original_text: currentWords[c.wordIndex]?.word || '',
+        edited_text: c.correctedWord,
+        position: currentWords[c.wordIndex]?.start || 0,
+        metadata: { wordIndex: c.wordIndex },
+      }));
 
-    if (newEditRecords.length > 0) {
-      await db.transcriptionEdit.createMany({
-        data: newEditRecords,
-      });
+      // Insert edits in batch
+      const { error: editError } = await supabase
+        .from('transcription_edits')
+        .insert(newEditRecords);
+
+      if (editError) {
+        console.error('Error creating transcription edits:', editError);
+        // Continue anyway - edits are logged but not critical
+      }
     }
 
     // Calculate progress stats
@@ -202,46 +190,42 @@ export async function PATCH(
     };
 
     // Get current flaggedSegments or create empty object
-    const currentFlaggedSegments = (transcription.flaggedSegments as Record<string, any>) || {};
+    const currentFlaggedSegments = (transcription.flagged_segments as Record<string, any>) || {};
 
     // Update transcription (only words and review data, not base text)
-    await db.transcription.update({
-      where: { id: transcriptionId },
-      data: {
-        words: updatedWords,
-        flaggedWordCount: remainingCount,
-        flaggedSegments: {
-          ...currentFlaggedSegments,
-          reviewSession,
-        },
-      },
+    // Store review session in flagged_segments for resume functionality
+    await updateTranscript(supabase, transcriptionId, {
+      content_json: updatedWords as any,
+      flagged_word_count: remainingCount,
+      flagged_segments: {
+        ...currentFlaggedSegments,
+        reviewSession,
+      } as any,
     });
 
     // If marking complete, update job status
     if (complete && reviewState === 'COMPLETED') {
+      const { updateJobStatus } = await import('@/lib/supabase/queries/jobs');
       const newStatus = isAssignedScopist
         ? JobStatus.SCOPIST_COMPLETE
         : JobStatus.REVIEW_COMPLETE;
 
-      await db.job.update({
-        where: { id: transcription.job.id },
-        data: {
-          status: newStatus,
-        },
-      });
+      await updateJobStatus(supabase, transcription.job.id, newStatus);
 
       // Update assignment if scopist
       if (isAssignedScopist) {
-        await db.jobAssignment.updateMany({
-          where: {
-            jobId: transcription.job.id,
-            scopistId: session.user.id,
-          },
-          data: {
+        const { error: assignmentError } = await supabase
+          .from('job_assignments')
+          .update({
             status: 'SUBMITTED',
-            submittedAt: new Date(),
-          },
-        });
+            submitted_at: new Date().toISOString(),
+          })
+          .eq('job_id', transcription.job.id)
+          .eq('scopist_id', session.user.id);
+
+        if (assignmentError) {
+          console.error('Error updating assignment:', assignmentError);
+        }
       }
     }
 
@@ -278,22 +262,8 @@ export async function GET(
     }
 
     // Fetch transcription with job
-    const transcription = await db.transcription.findUnique({
-      where: { id: transcriptionId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            createdById: true,
-            assignments: {
-              where: {
-                scopistId: session.user.id,
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
@@ -309,11 +279,11 @@ export async function GET(
     }
 
     // Get saved session from flaggedSegments
-    const flaggedSegments = transcription.flaggedSegments as Record<string, any>;
+    const flaggedSegments = (transcription.flagged_segments as Record<string, any>) || {};
     const reviewSession = flaggedSegments?.reviewSession || null;
 
     // Calculate current progress stats
-    const words = (transcription.words as any[]) || [];
+    const words = (transcription.words as any[]) || (transcription.tokens as any[]) || [];
     const threshold = reviewSession?.confidenceThreshold || DEFAULT_THRESHOLD;
 
     const totalFlagged = words.filter((w) => w.confidence < threshold).length;
@@ -325,7 +295,7 @@ export async function GET(
     return NextResponse.json({
       transcriptionId: transcription.id,
       wordCount: words.length,
-      flaggedWordCount: transcription.flaggedWordCount,
+      flaggedWordCount: transcription.flagged_word_count || transcription.flaggedWordCount || 0,
       reviewSession,
       totalFlagged,
       reviewedCount: reviewedFlagged,

@@ -6,7 +6,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { resizeEvent } from '@/lib/scheduling/scheduling-service';
 import { z } from 'zod';
 
@@ -44,21 +45,25 @@ export async function POST(
 
     const { endTime } = validation.data;
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
     const result = await resizeEvent({
       eventId,
       newEnd: new Date(endTime),
       userId: user.id,
       userRole: user.role,
-      firmId: user.firmId,
+      firmId: user.firmId as string,
     });
 
     if (!result.success) {

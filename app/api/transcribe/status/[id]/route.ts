@@ -1,7 +1,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 
 export async function GET(
   request: NextRequest,
@@ -15,16 +17,11 @@ export async function GET(
 
     const { id: jobId } = await params;
 
+    const supabase = await createSupabaseServerClient();
+
     // Check access to job
-    const job = await db.job.findUnique({
-      where: { id: jobId },
-      select: {
-        createdById: true,
-        assignments: {
-          where: { scopist: { id: session.user.id } },
-          select: { id: true },
-        },
-      },
+    const job = await getJobById(supabase, jobId, {
+      includeAssignments: true,
     });
 
     if (!job) {
@@ -33,25 +30,15 @@ export async function GET(
 
     const hasAccess =
       session.user.role === 'ADMIN' ||
-      job.createdById === session.user.id ||
-      job.assignments.length > 0;
+      (job as any).created_by_id === session.user.id ||
+      await isUserAssignedToJob(jobId, session.user.id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Query transcription status
-    const transcription = await db.transcriptionJob.findFirst({
-      where: { jobId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        status: true,
-        errorMessage: true,
-        createdAt: true,
-        completedAt: true,
-      },
-    });
+    // Query transcription status - get transcript for this job
+    const transcription = await getTranscriptByJobId(supabase, jobId);
 
     if (!transcription) {
       return NextResponse.json(
@@ -60,7 +47,14 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(transcription);
+    // Map to expected format
+    return NextResponse.json({
+      id: transcription.id,
+      status: transcription.status || 'PENDING',
+      errorMessage: null, // Would need error tracking column
+      createdAt: transcription.created_at,
+      completedAt: transcription.completed_at || null,
+    });
   } catch (error) {
     console.error('Status check error:', error);
     return NextResponse.json(

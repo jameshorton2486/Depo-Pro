@@ -7,7 +7,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { Role } from '@/lib/constants';
 
 export async function GET(
@@ -22,18 +23,24 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch existing review session
-    const reviewSession = await db.transcriptReviewSession.findUnique({
-      where: {
-        transcriptionId_userId: {
-          transcriptionId,
-          userId: session.user.id,
-        },
-      },
-    });
+    // Fetch existing review session from transcript's flagged_segments
+    const supabase = await createSupabaseServerClient();
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
+
+    if (!transcript) {
+      return NextResponse.json({
+        exists: false,
+        reviewedIndices: [],
+        corrections: {},
+      });
+    }
+
+    // Get review session from flagged_segments
+    const flaggedSegments = (transcript.flagged_segments as Record<string, any>) || {};
+    const reviewSession = flaggedSegments?.reviewSession || null;
 
     if (!reviewSession) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         exists: false,
         reviewedIndices: [],
         corrections: {},
@@ -42,9 +49,9 @@ export async function GET(
 
     return NextResponse.json({
       exists: true,
-      reviewedIndices: reviewSession.reviewedIndices,
-      corrections: reviewSession.corrections,
-      updatedAt: reviewSession.updatedAt,
+      reviewedIndices: reviewSession.reviewedIndices || [],
+      corrections: reviewSession.corrections || {},
+      updatedAt: reviewSession.lastSavedAt || transcript.updated_at,
     });
   } catch (_error) {
     console.error('Error loading review session:', _error);
@@ -75,20 +82,8 @@ export async function POST(
     } = body;
 
     // Fetch transcription with job
-    const transcription = await db.transcription.findUnique({
-      where: { id: transcriptionId },
-      include: {
-        job: {
-          include: {
-            assignments: {
-              where: {
-                scopistId: session.user.id,
-              },
-            },
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
@@ -106,12 +101,12 @@ export async function POST(
     // Check for optimistic locking conflict
     if (expectedUpdatedAt) {
       const expectedDate = new Date(expectedUpdatedAt);
-      const actualDate = transcription.updatedAt;
-      
+      const actualDate = new Date(transcription.updated_at || transcription.updatedAt);
+
       // Allow 1 second tolerance for timing differences
       if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
         return NextResponse.json(
-          { 
+          {
             error: 'Conflict detected',
             code: 'CONFLICT',
             message: 'Transcript was modified by another user. Please refresh and try again.',
@@ -123,7 +118,7 @@ export async function POST(
     }
 
     // Get current words array
-    const currentWords = (transcription.words as any[]) || [];
+    const currentWords = (transcription.words as any[]) || (transcription.tokens as any[]) || [];
 
     // Apply corrections
     const correctionsMap = new Map(corrections);
@@ -158,65 +153,60 @@ export async function POST(
     ).length;
 
     // Get current flaggedSegments or create empty object
-    const currentFlaggedSegments = (transcription.flaggedSegments as Record<string, any>) || {};
+    const currentFlaggedSegments = (transcription.flagged_segments as Record<string, any>) || {};
 
-    // Update transcription
-    await db.transcription.update({
-      where: { id: transcriptionId },
-      data: {
-        words: updatedWords,
-        flaggedWordCount: remainingFlagged,
-        flaggedSegments: {
-          ...currentFlaggedSegments,
-          lastSavedAt: new Date().toISOString(),
-          correctionsCount: corrections.length,
-          reviewedCount: reviewedWordIndices.length,
-        },
-      },
-    });
+    // Build review session data and merge into flagged_segments
+    const reviewSession = {
+      transcriptionId,
+      userId: session.user.id,
+      reviewedIndices: reviewedWordIndices,
+      corrections: Object.fromEntries(corrections) as Record<string, string>,
+      lastSavedAt: new Date().toISOString(),
+    };
 
-    // Persist review session
-    await db.transcriptReviewSession.upsert({
-      where: {
-        transcriptionId_userId: {
-          transcriptionId,
-          userId: session.user.id,
-        },
-      },
-      create: {
-        transcriptionId,
-        userId: session.user.id,
-        reviewedIndices: reviewedWordIndices,
-        corrections: Object.fromEntries(corrections) as Record<string, string>,
-      },
-      update: {
-        reviewedIndices: reviewedWordIndices,
-        corrections: Object.fromEntries(corrections) as Record<string, string>,
-      },
+    // Update transcription with review session stored in flagged_segments
+    await updateTranscript(supabase, transcriptionId, {
+      content_json: updatedWords as any,
+      flagged_word_count: remainingFlagged,
+      flagged_segments: {
+        ...currentFlaggedSegments,
+        reviewSession,
+      } as any,
     });
 
     // Create audit log entries for corrections
     if (corrections.length > 0) {
-      for (const [wordIndex, correctedWord] of corrections) {
-        const originalWord = currentWords[wordIndex];
-        if (originalWord && originalWord.word !== correctedWord) {
-          await db.transcriptionEdit.create({
-            data: {
-              transcriptionId,
-              editorId: session.user.id,
-              editorEmail: session.user.email || undefined,
-              editorRole: session.user.role as any,
-              editType: 'WORD_CORRECTION',
-              originalText: originalWord.word,
-              editedText: correctedWord,
-              position: originalWord.start || 0,
-              metadata: {
-                wordIndex,
-                confidence: originalWord.confidence,
-                timestamp: new Date().toISOString(),
-              },
+      const editRecords = corrections
+        .filter(([wordIndex, correctedWord]: [number, string]) => {
+          const originalWord = currentWords[wordIndex];
+          return originalWord && originalWord.word !== correctedWord;
+        })
+        .map(([wordIndex, correctedWord]: [number, string]) => {
+          const originalWord = currentWords[wordIndex];
+          return {
+            transcription_id: transcriptionId,
+            editor_id: session.user.id,
+            editor_email: session.user.email || null,
+            editor_role: session.user.role || null,
+            edit_type: 'WORD_CORRECTION',
+            original_text: originalWord?.word || '',
+            edited_text: correctedWord,
+            position: originalWord?.start || 0,
+            metadata: {
+              wordIndex,
+              confidence: originalWord?.confidence,
+              timestamp: new Date().toISOString(),
             },
-          });
+          };
+        });
+
+      if (editRecords.length > 0) {
+        const { error: editError } = await supabase
+          .from('transcription_edits')
+          .insert(editRecords);
+
+        if (editError) {
+          console.error('Error creating transcription edits:', editError);
         }
       }
     }

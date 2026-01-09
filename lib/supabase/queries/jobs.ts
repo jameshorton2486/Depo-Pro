@@ -246,7 +246,7 @@ export async function isUserAssignedToJob(
   userId: string
 ): Promise<boolean> {
   const supabase = await createSupabaseServerClient();
-  
+
   const { data, error } = await supabase
     .from('job_assignments')
     .select('id')
@@ -374,7 +374,7 @@ export async function listJobs(
       const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
       const adminClient = getSupabaseAdminClient();
       const { data: userData } = await adminClient.auth.admin.getUserById(job.created_by_id);
-      
+
       if (userData?.user) {
         result.createdBy = {
           id: userData.user.id,
@@ -394,7 +394,7 @@ export async function listJobs(
       if (assignments && assignments.length > 0) {
         const assignment = assignments[0];
         const { data: scopistData } = await adminClient.auth.admin.getUserById(assignment.scopist_id);
-        
+
         result.assignments = [{
           id: assignment.id,
           status: assignment.status,
@@ -454,4 +454,105 @@ export async function createJob(
 
   if (error) throw error;
   return data;
+}
+// ═══════════════════════════════════════════════════════════════
+// JOB ASSIGNMENT FUNCTIONS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Get assignment by ID
+ */
+export async function getAssignmentById(
+  supabase: SupabaseClient,
+  assignmentId: string
+) {
+  const { data, error } = await supabase
+    .from('job_assignments')
+    .select('*')
+    .eq('id', assignmentId)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Get assignment by job and scopist
+ */
+export async function getAssignmentByJobAndScopist(
+  supabase: SupabaseClient,
+  jobId: string,
+  scopistId: string
+) {
+  const { data, error } = await supabase
+    .from('job_assignments')
+    .select('*')
+    .eq('job_id', jobId)
+    .eq('scopist_id', scopistId)
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Create job assignment
+ */
+export async function createJobAssignment(
+  supabase: SupabaseClient,
+  data: {
+    job_id: string;
+    scopist_id: string;
+    status: string;
+    scopist_notes?: string | null;
+  }
+) {
+  const { data: result, error } = await supabase
+    .from('job_assignments')
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return result;
+}
+
+/**
+ * Update job assignment
+ */
+export async function updateJobAssignment(
+  supabase: SupabaseClient,
+  assignmentId: string,
+  updates: Record<string, any>
+) {
+  const { data, error } = await supabase
+    .from('job_assignments')
+    .update(updates)
+    .eq('id', assignmentId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Delete job assignment
+ */
+export async function deleteJobAssignment(
+  supabase: SupabaseClient,
+  assignmentId: string
+) {
+  const { error } = await supabase
+    .from('job_assignments')
+    .delete()
+    .eq('id', assignmentId);
+
+  if (error) throw error;
 }

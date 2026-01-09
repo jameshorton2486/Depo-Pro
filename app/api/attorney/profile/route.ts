@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.1: ATTORNEY PROFILE API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -9,6 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { z } from 'zod';
 
 // Validation schema for attorney profile
@@ -36,32 +37,36 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      include: {
-        attorneyProfile: true,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user) {
+    if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (user.role !== 'ATTORNEY') {
+    const userRole = userData.user_metadata?.role as string;
+    if (userRole !== 'ATTORNEY') {
       return NextResponse.json({ error: 'Attorney access required' }, { status: 403 });
     }
 
+    // Get attorney profile
+    const { data: attorneyProfile } = await supabase
+      .from('attorney_profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
     return NextResponse.json({
       user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
+        id: userData.id,
+        firstName: userData.user_metadata?.firstName || '',
+        lastName: userData.user_metadata?.lastName || '',
+        email: userData.email || '',
+        phone: userData.user_metadata?.phone || null,
+        role: userRole,
       },
-      profile: user.attorneyProfile,
-      isProfileComplete: !!user.attorneyProfile?.barNumber,
+      profile: attorneyProfile,
+      isProfileComplete: !!attorneyProfile?.bar_number,
     });
   } catch (error) {
     console.error('Get attorney profile error:', error);
@@ -82,21 +87,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      include: { attorneyProfile: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user) {
+    if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (user.role !== 'ATTORNEY') {
+    const userRole = userData.user_metadata?.role as string;
+    if (userRole !== 'ATTORNEY') {
       return NextResponse.json({ error: 'Attorney access required' }, { status: 403 });
     }
 
     // Check if profile already exists
-    if (user.attorneyProfile) {
+    const { data: existingProfile } = await supabase
+      .from('attorney_profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    if (existingProfile) {
       return NextResponse.json(
         { error: 'Profile already exists. Use PATCH to update.' },
         { status: 400 }
@@ -116,22 +126,28 @@ export async function POST(request: NextRequest) {
     const data = validation.data;
 
     // Create the profile
-    const profile = await db.attorneyProfile.create({
-      data: {
-        userId: user.id,
-        barNumber: data.barNumber,
-        barState: data.barState,
-        firmName: data.firmName,
-        firmAddress: data.firmAddress,
-        firmPhone: data.firmPhone,
-        practiceAreas: data.practiceAreas,
-        defaultExportFormat: data.defaultExportFormat,
-        emailNotifications: data.emailNotifications,
-        smsNotifications: data.smsNotifications,
-        billingEmail: data.billingEmail,
-        billingAddress: data.billingAddress,
-      },
-    });
+    const { data: profile, error: profileError } = await supabase
+      .from('attorney_profiles')
+      .insert({
+        user_id: session.user.id,
+        bar_number: data.barNumber || null,
+        bar_state: data.barState || null,
+        firm_name: data.firmName || null,
+        firm_address: data.firmAddress || null,
+        firm_phone: data.firmPhone || null,
+        practice_areas: data.practiceAreas || [],
+        default_export_format: data.defaultExportFormat || 'PDF',
+        email_notifications: data.emailNotifications !== false,
+        sms_notifications: data.smsNotifications || false,
+        billing_email: data.billingEmail || null,
+        billing_address: data.billingAddress || null,
+      })
+      .select()
+      .single();
+
+    if (profileError) {
+      throw profileError;
+    }
 
     return NextResponse.json({
       profile,
@@ -156,16 +172,26 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      include: { attorneyProfile: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
 
-    if (!user || user.role !== 'ATTORNEY') {
+    if (!userData) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const userRole = userData.user_metadata?.role as string;
+    if (userRole !== 'ATTORNEY') {
       return NextResponse.json({ error: 'Attorney access required' }, { status: 403 });
     }
 
-    if (!user.attorneyProfile) {
+    // Check if profile exists
+    const { data: existingProfile } = await supabase
+      .from('attorney_profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    if (!existingProfile) {
       return NextResponse.json(
         { error: 'Profile not found. Use POST to create.' },
         { status: 404 }
@@ -184,23 +210,31 @@ export async function PATCH(request: NextRequest) {
 
     const data = validation.data;
 
+    // Build update object
+    const updates: Record<string, any> = {};
+    if (data.barNumber !== undefined) updates.bar_number = data.barNumber;
+    if (data.barState !== undefined) updates.bar_state = data.barState;
+    if (data.firmName !== undefined) updates.firm_name = data.firmName;
+    if (data.firmAddress !== undefined) updates.firm_address = data.firmAddress;
+    if (data.firmPhone !== undefined) updates.firm_phone = data.firmPhone;
+    if (data.practiceAreas !== undefined) updates.practice_areas = data.practiceAreas;
+    if (data.defaultExportFormat !== undefined) updates.default_export_format = data.defaultExportFormat;
+    if (data.emailNotifications !== undefined) updates.email_notifications = data.emailNotifications;
+    if (data.smsNotifications !== undefined) updates.sms_notifications = data.smsNotifications;
+    if (data.billingEmail !== undefined) updates.billing_email = data.billingEmail;
+    if (data.billingAddress !== undefined) updates.billing_address = data.billingAddress;
+
     // Update the profile
-    const profile = await db.attorneyProfile.update({
-      where: { userId: user.id },
-      data: {
-        ...(data.barNumber !== undefined && { barNumber: data.barNumber }),
-        ...(data.barState !== undefined && { barState: data.barState }),
-        ...(data.firmName !== undefined && { firmName: data.firmName }),
-        ...(data.firmAddress !== undefined && { firmAddress: data.firmAddress }),
-        ...(data.firmPhone !== undefined && { firmPhone: data.firmPhone }),
-        ...(data.practiceAreas !== undefined && { practiceAreas: data.practiceAreas }),
-        ...(data.defaultExportFormat !== undefined && { defaultExportFormat: data.defaultExportFormat }),
-        ...(data.emailNotifications !== undefined && { emailNotifications: data.emailNotifications }),
-        ...(data.smsNotifications !== undefined && { smsNotifications: data.smsNotifications }),
-        ...(data.billingEmail !== undefined && { billingEmail: data.billingEmail }),
-        ...(data.billingAddress !== undefined && { billingAddress: data.billingAddress }),
-      },
-    });
+    const { data: profile, error: updateError } = await supabase
+      .from('attorney_profiles')
+      .update(updates)
+      .eq('user_id', session.user.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
 
     return NextResponse.json({
       profile,

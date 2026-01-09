@@ -4,7 +4,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 import { deleteExhibitFiles } from '@/lib/exhibits/storage';
 
 // GET /api/jobs/[id]/exhibits/[exhibitId] - Get single exhibit
@@ -22,41 +23,40 @@ export async function GET(
     const { id: jobId, exhibitId } = await params;
     const user = session.user as { id: string; role: string };
 
-    // Fetch exhibit with job for permission check
-    const exhibit = await db.exhibit.findUnique({
-      where: { id: exhibitId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            createdById: true,
-            firmId: true,
-            assignments: {
-              select: { scopistId: true },
-            },
-          },
-        },
-      },
+    const supabase = await createSupabaseServerClient();
+
+    // Fetch exhibit
+    const { data: exhibit, error: exhibitError } = await supabase
+      .from('exhibits')
+      .select('*')
+      .eq('id', exhibitId)
+      .eq('job_id', jobId)
+      .single();
+
+    if (exhibitError || !exhibit) {
+      return NextResponse.json({ error: 'Exhibit not found' }, { status: 404 });
+    }
+
+    // Get job for permission check
+    const job = await getJobById(supabase, jobId, {
+      includeAssignments: true,
     });
 
-    if (!exhibit || exhibit.jobId !== jobId) {
-      return NextResponse.json({ error: 'Exhibit not found' }, { status: 404 });
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     // Check permissions
     const hasAccess =
-      (exhibit.job?.createdById === user.id) ||
-      (exhibit.job?.assignments.some((a: any) => a.scopistId === user.id)) ||
+      (job as any).created_by_id === user.id ||
+      ((job as any).assignments && (job as any).assignments.some((a: any) => a.scopist_id === user.id)) ||
       user.role === 'ADMIN';
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Remove job relation from response
-    const { job: _job, ...exhibitData } = exhibit;
-
-    return NextResponse.json({ exhibit: exhibitData });
+    return NextResponse.json({ exhibit });
   } catch (error) {
     console.error('Error fetching exhibit:', error);
     return NextResponse.json(
@@ -92,27 +92,30 @@ export async function PATCH(
       );
     }
 
-    // Fetch exhibit with job for permission check
-    const exhibit = await db.exhibit.findUnique({
-      where: { id: exhibitId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            createdById: true,
-            firmId: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!exhibit || exhibit.jobId !== jobId) {
+    // Fetch exhibit
+    const { data: exhibit, error: exhibitError } = await supabase
+      .from('exhibits')
+      .select('*')
+      .eq('id', exhibitId)
+      .eq('job_id', jobId)
+      .single();
+
+    if (exhibitError || !exhibit) {
       return NextResponse.json({ error: 'Exhibit not found' }, { status: 404 });
+    }
+
+    // Get job for permission check
+    const job = await getJobById(supabase, jobId);
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     // Check permissions (only reporter who created job, or admin can edit)
     const canEdit =
-      exhibit.job?.createdById === user.id ||
+      (job as any).created_by_id === user.id ||
       user.role === 'ADMIN';
 
     if (!canEdit) {
@@ -120,10 +123,16 @@ export async function PATCH(
     }
 
     // Update exhibit
-    const updatedExhibit = await db.exhibit.update({
-      where: { id: exhibitId },
-      data: { description },
-    });
+    const { data: updatedExhibit, error: updateError } = await supabase
+      .from('exhibits')
+      .update({ description })
+      .eq('id', exhibitId)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
 
     return NextResponse.json({ exhibit: updatedExhibit });
   } catch (error) {
@@ -150,28 +159,31 @@ export async function DELETE(
     const { id: jobId, exhibitId } = await params;
     const user = session.user as { id: string; role: string };
 
-    // Fetch exhibit with job for permission check
-    const exhibit = await db.exhibit.findUnique({
-      where: { id: exhibitId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            createdById: true,
-            firmId: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!exhibit || exhibit.jobId !== jobId) {
+    // Fetch exhibit
+    const { data: exhibit, error: exhibitError } = await supabase
+      .from('exhibits')
+      .select('*')
+      .eq('id', exhibitId)
+      .eq('job_id', jobId)
+      .single();
+
+    if (exhibitError || !exhibit) {
       return NextResponse.json({ error: 'Exhibit not found' }, { status: 404 });
+    }
+
+    // Get job for permission check
+    const job = await getJobById(supabase, jobId);
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
     // Check permissions (only reporter who created job, admin, or creator can delete)
     const canDelete =
-      exhibit.job?.createdById === user.id ||
-      exhibit.createdById === user.id ||
+      (job as any).created_by_id === user.id ||
+      exhibit.created_by_id === user.id ||
       user.role === 'ADMIN';
 
     if (!canDelete) {
@@ -182,17 +194,19 @@ export async function DELETE(
     const pathsToDelete: string[] = [];
 
     // Extract path from originalFileUrl (Supabase storage path)
-    if (exhibit.originalFileUrl) {
+    const originalFileUrl = exhibit.original_file_url || exhibit.originalFileUrl;
+    if (originalFileUrl) {
       // Extract path from Supabase URL format: https://.../storage/v1/object/public/bucket/path
-      const urlMatch = exhibit.originalFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+      const urlMatch = originalFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
       if (urlMatch) {
         pathsToDelete.push(urlMatch[1]);
       }
     }
 
     // Extract path from stampedFileUrl if exists
-    if (exhibit.stampedFileUrl) {
-      const urlMatch = exhibit.stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+    const stampedFileUrl = exhibit.stamped_file_url || exhibit.stampedFileUrl;
+    if (stampedFileUrl) {
+      const urlMatch = stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
       if (urlMatch) {
         pathsToDelete.push(urlMatch[1]);
       }
@@ -209,9 +223,14 @@ export async function DELETE(
     }
 
     // Delete from database
-    await db.exhibit.delete({
-      where: { id: exhibitId },
-    });
+    const { error: deleteError } = await supabase
+      .from('exhibits')
+      .delete()
+      .eq('id', exhibitId);
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     return NextResponse.json({
       success: true,

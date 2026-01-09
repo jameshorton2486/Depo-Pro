@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // FLAGGED WORDS API ENDPOINT
 // app/api/jobs/[id]/flagged-words/route.ts
-// 
+//
 // Provides low-confidence words for scopist review panel
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -56,7 +56,7 @@ export async function GET(
 
     // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
-      .from('Job')
+      .from('jobs')
       .select('id, created_by_id, firm_id')
       .eq('id', jobId)
       .single();
@@ -69,14 +69,14 @@ export async function GET(
     const isOwner = job.created_by_id === session.user.id;
     const isAdmin = session.user.role === 'ADMIN';
     const sameFirm = job.firm_id === (session.user as any).firmId;
-    
+
     if (!isOwner && !isAdmin && !sameFirm) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Get transcription with flagged segments
     const { data: transcription, error: transcriptionError } = await supabase
-      .from('Transcription')
+      .from('transcriptions')
       .select('id, flagged_segments, status')
       .eq('job_id', jobId)
       .single();
@@ -214,7 +214,7 @@ export async function PATCH(
 
     // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
-      .from('Job')
+      .from('jobs')
       .select('id, created_by_id, firm_id')
       .eq('id', jobId)
       .single();
@@ -227,14 +227,14 @@ export async function PATCH(
     const isOwner = job.created_by_id === session.user.id;
     const isAdmin = session.user.role === 'ADMIN';
     const isScopist = session.user.role === 'SCOPIST';
-    
+
     if (!isOwner && !isAdmin && !isScopist) {
       return NextResponse.json({ error: 'Unauthorized to edit' }, { status: 403 });
     }
 
     // Get transcription
     const { data: transcription, error: transcriptionError } = await supabase
-      .from('Transcription')
+      .from('transcriptions')
       .select('id')
       .eq('job_id', jobId)
       .single();
@@ -313,7 +313,7 @@ export async function DELETE(
 
     // Get transcription
     const { data: transcription } = await supabase
-      .from('Transcription')
+      .from('transcriptions')
       .select('id')
       .eq('job_id', jobId)
       .single();

@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // =============================================================================
 // ADMIN ACTIONS API
 // app/api/admin/actions/route.ts
@@ -9,6 +8,9 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
+import { listAuditLogs } from '@/lib/supabase/queries/audit';
 import { subDays } from 'date-fns';
 
 // RouteContext interface removed - not used
@@ -47,69 +49,67 @@ export async function GET(request: NextRequest) {
     const days = range === '1d' ? 1 : range === '7d' ? 7 : range === '30d' ? 30 : 90;
     const since = subDays(new Date(), days);
 
-    // Build where clause
-    const where: any = {
-      action: {
-        in: SENSITIVE_ACTIONS,
-      },
-      createdAt: {
-        gte: since,
-      },
-    };
+    const supabase = await createSupabaseServerClient();
 
+    // Query all logs in date range (we'll filter by action after)
+    // Since listAuditLogs only supports single action, we'll query without action filter
+    // and filter in memory
+    const { logs } = await listAuditLogs(supabase, {
+      startDate: since,
+    }, {
+      limit: 1000, // Get more to filter down
+    });
+
+    // Filter by action
+    let filteredLogs = logs;
     if (filter !== 'all') {
-      where.action = filter;
+      filteredLogs = filteredLogs.filter((log: any) => log.action === filter);
+    } else {
+      filteredLogs = filteredLogs.filter((log: any) => SENSITIVE_ACTIONS.includes(log.action));
     }
 
-    // Get actions
-    const actions = await db.auditLog.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 100,
-    });
+    // Limit to 100 after filtering
+    filteredLogs = filteredLogs.slice(0, 100);
 
-    // Transform to ActionLogEntry format
-    const transformed = actions.map((log: any) => {
-      const metadata = (log.metadata as any) || {};
-      
-      return {
-        id: log.id,
-        action: log.action,
-        performedBy: log.user
-          ? {
-              id: log.user.id,
-              firstName: log.user.firstName,
-              lastName: log.user.lastName,
-              email: log.user.email,
-            }
-          : {
-              id: 'system',
-              firstName: 'System',
-              lastName: '',
-              email: '',
-            },
-        target: {
-          type: log.targetType,
-          id: log.targetId,
-          name: metadata.name || log.targetId,
-        },
-        timestamp: log.createdAt.toISOString(),
-        metadata,
-        reason: metadata.reason,
-      };
-    });
+    // Enrich with user info
+    const transformed = await Promise.all(
+      filteredLogs.map(async (log: any) => {
+        const metadata = log.metadata || {};
+        
+        let performedBy = {
+          id: 'system',
+          firstName: 'System',
+          lastName: '',
+          email: '',
+        };
+        
+        if (log.actor_user_id && log.actor_user_id !== 'system') {
+          const userData = await getUserById(supabase, log.actor_user_id);
+          if (userData) {
+            performedBy = {
+              id: userData.id,
+              firstName: userData.user_metadata?.firstName || '',
+              lastName: userData.user_metadata?.lastName || '',
+              email: userData.email || '',
+            };
+          }
+        }
+        
+        return {
+          id: log.id,
+          action: log.action,
+          performedBy,
+          target: {
+            type: log.target_type,
+            id: log.target_id,
+            name: metadata.name || log.target_id,
+          },
+          timestamp: log.created_at,
+          metadata,
+          reason: metadata.reason,
+        };
+      })
+    );
 
     return NextResponse.json({
       actions: transformed,

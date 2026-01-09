@@ -8,7 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptWithTokensAndJob, getTranscriptShares, createTranscriptShare } from '@/lib/supabase/queries/transcripts';
 import { dispatchShareCreated } from '@/lib/webhooks';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 import { z } from 'zod';
@@ -33,18 +34,8 @@ export async function POST(request: NextRequest, { params }: Props) {
     }
 
     // Verify transcript exists and user has access
-    const transcript = await db.transcript.findUnique({
-      where: { id: transcriptId },
-      include: {
-        job: {
-          select: {
-            id: true,
-            firmId: true,
-            createdById: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
@@ -64,16 +55,10 @@ export async function POST(request: NextRequest, { params }: Props) {
     const validatedData = createShareSchema.parse(body);
 
     // Create the share
-    const share = await db.transcriptShare.create({
-      data: {
-        transcriptId,
-        sharedById: session.user.id,
-        recipientEmail: validatedData.recipientEmail,
-        accessLevel: validatedData.accessLevel,
-        expiresAt: validatedData.expiresAt ? new Date(validatedData.expiresAt) : null,
-        status: 'ACTIVE',
-        shareType: 'USER',
-      },
+    const share = await createTranscriptShare(supabase, transcriptId, {
+      email: validatedData.recipientEmail,
+      expires_at: validatedData.expiresAt || null,
+      created_by_id: session.user.id,
     });
 
     // Log share creation
@@ -115,20 +100,8 @@ export async function GET(_request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const shares = await db.transcriptShare.findMany({
-      where: { transcriptId },
-      include: {
-        sharedBy: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const supabase = await createSupabaseServerClient();
+    const shares = await getTranscriptShares(supabase, transcriptId);
 
     return NextResponse.json(shares);
   } catch (error) {

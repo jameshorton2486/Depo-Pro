@@ -8,7 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getTranscriptWithTokensAndJob } from '@/lib/supabase/queries/transcripts';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -32,18 +33,8 @@ export async function GET(
     const { id: transcriptId } = await context.params;
 
     // Verify transcript exists and user has access
-    const transcript = await db.transcript.findUnique({
-      where: { id: transcriptId },
-      select: {
-        id: true,
-        job: {
-          select: {
-            createdById: true,
-            firmId: true,
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
@@ -57,41 +48,27 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get export history
-    // Note: We'll use AuditLog to track exports for now
-    // In a full implementation, we'd create an ExportLog model
-    const exports = await db.auditLog.findMany({
-      where: {
-        targetType: 'Transcription',
-        targetId: transcriptId,
-        action: {
-          contains: 'EXPORT',
-        },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 50,
-    });
+    // Get export history from audit logs
+    const { data: exports, error } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('target_type', 'Transcription')
+      .eq('target_id', transcriptId)
+      .ilike('action', '%EXPORT%')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      throw error;
+    }
 
     return NextResponse.json({
-      exports: exports.map((log) => ({
+      exports: (exports || []).map((log: any) => ({
         id: log.id,
-        userId: log.actorUserId,
-        user: log.user,
-        format: (log.metadata as any)?.format || 'unknown',
-        profileId: (log.metadata as any)?.profileId,
-        createdAt: log.createdAt,
+        userId: log.actor_user_id,
+        format: log.metadata?.format || 'unknown',
+        profileId: log.metadata?.profileId,
+        createdAt: log.created_at,
       })),
     });
   } catch (error) {

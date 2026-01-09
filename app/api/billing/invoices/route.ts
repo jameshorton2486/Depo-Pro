@@ -6,7 +6,7 @@
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isBillingEnabled } from "@/lib/feature-flags";
 
 // GET /api/billing/invoices - List invoices for current firm
@@ -23,22 +23,41 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const invoices = await db.invoice.findMany({
-      where: {
-        billingAccount: {
-          firmId: session.user.firmId,
-        },
-      },
-      include: {
-        lineItems: {
-          orderBy: { id: "asc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
+    const supabase = await createSupabaseServerClient();
+    
+    // Get billing account for firm
+    const { data: billingAccount } = await supabase
+      .from('billing_accounts')
+      .select('id')
+      .eq('firm_id', session.user.firmId)
+      .maybeSingle();
 
-    return NextResponse.json({ data: invoices, success: true });
+    if (!billingAccount) {
+      return NextResponse.json({ data: [], success: true });
+    }
+
+    // Get invoices with line items
+    const { data: invoices, error: invoicesError } = await supabase
+      .from('invoices')
+      .select(`
+        *,
+        invoice_line_items (*)
+      `)
+      .eq('billing_account_id', billingAccount.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (invoicesError) {
+      throw invoicesError;
+    }
+
+    // Transform to match expected format
+    const transformedInvoices = (invoices || []).map((invoice: any) => ({
+      ...invoice,
+      lineItems: (invoice.invoice_line_items || []).sort((a: any, b: any) => a.id.localeCompare(b.id)),
+    }));
+
+    return NextResponse.json({ data: transformedInvoices, success: true });
   } catch (error) {
     console.error("[API] Error fetching invoices:", error);
     return NextResponse.json(

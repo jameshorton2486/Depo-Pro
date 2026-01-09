@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ============================================================
 // SCHEDULING SUGGESTIONS API
 // File: app/api/calendar/suggestions/route.ts
@@ -7,6 +6,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { FEATURES } from '@/lib/feature-flags';
 import { UserRole } from '@/lib/enums/roles';
 import { z } from 'zod';
@@ -48,14 +49,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, firmId: true, role: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
     
-    if (!user?.firmId) {
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+      role: userData.user_metadata?.role || 'REPORTER',
+    };
     
     // Basic role check (ADMIN, AGENCY can view)
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.AGENCY) {
@@ -80,7 +85,7 @@ export async function POST(request: NextRequest) {
     
     // Build context
     const _context = {
-      firmId: user.firmId,
+      firmId: user.firmId as string,
       eventType: data.eventType,
       requestedStart: data.requestedStart ? new Date(data.requestedStart) : undefined,
       requestedEnd: data.requestedEnd ? new Date(data.requestedEnd) : undefined,
@@ -129,14 +134,18 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, firmId: true, role: true },
-    });
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
     
-    if (!user?.firmId) {
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+      role: userData.user_metadata?.role || 'REPORTER',
+    };
     
     // Basic role check (ADMIN, AGENCY can view)
     if (user.role !== UserRole.ADMIN && user.role !== UserRole.AGENCY) {

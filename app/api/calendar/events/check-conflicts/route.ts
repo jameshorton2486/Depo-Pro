@@ -1,4 +1,3 @@
-import { db } from '@/lib/db';
 // =============================================================================
 // CHECK CONFLICTS API ROUTE
 // Path: app/api/calendar/events/check-conflicts/route.ts
@@ -7,6 +6,8 @@ import { db } from '@/lib/db';
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { checkForConflicts } from '@/lib/scheduling/conflict-detection';
 import { z } from 'zod';
 
@@ -41,20 +42,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { eventId: _eventId, reporterId, location: _location, startTime, endTime, _isRemote } = validation.data;
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
     const result = await checkForConflicts({
       reporterId: reporterId || undefined,
       startTime: new Date(startTime),
       endTime: new Date(endTime),
-      firmId: user.firmId,
+      firmId: user.firmId as string,
     });
 
     return NextResponse.json({

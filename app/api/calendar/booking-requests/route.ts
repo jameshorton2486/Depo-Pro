@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ============================================================
 // BOOKING REQUEST API ROUTES
 // Path: app/api/calendar/booking-requests/route.ts
@@ -8,6 +7,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 import { z } from 'zod';
 
 // ------------------------------------------------------------
@@ -56,51 +57,84 @@ export async function GET(request: NextRequest) {
       requestedById: searchParams.get('requestedById') || undefined,
     });
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    // Build where clause based on role
-    const whereClause: any = {
-      firmId: user.firmId,
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
+
+    // Build query
+    let requestsQuery = supabase
+      .from('booking_requests')
+      .select('*')
+      .eq('firm_id', user.firmId);
 
     // Attorneys only see their own requests
     if (user.role === 'ATTORNEY') {
-      whereClause.requestedById = user.id;
+      requestsQuery = requestsQuery.eq('requested_by_id', user.id);
     } else if (query.requestedById) {
-      whereClause.requestedById = query.requestedById;
+      requestsQuery = requestsQuery.eq('requested_by_id', query.requestedById);
     }
 
     // Status filter
     if (query.status) {
-      whereClause.status = query.status;
+      requestsQuery = requestsQuery.eq('status', query.status);
     }
 
-    const requests = await db.bookingRequest.findMany({
-      where: whereClause,
-      include: {
-        requestedBy: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        respondedBy: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-        calendarEvent: {
-          select: { id: true, title: true, startTime: true, status: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    requestsQuery = requestsQuery.order('created_at', { ascending: false });
+
+    const { data: requests, error: requestsError } = await requestsQuery;
+
+    if (requestsError) {
+      throw requestsError;
+    }
+
+    // Enrich with related data
+    const enrichedRequests = await Promise.all(
+      (requests || []).map(async (request: any) => {
+        const requestedBy = await getUserById(supabase, request.requested_by_id);
+        const respondedBy = request.responded_by_id 
+          ? await getUserById(supabase, request.responded_by_id)
+          : null;
+        
+        let calendarEvent = null;
+        if (request.calendar_event_id) {
+          const { data: event } = await supabase
+            .from('calendar_events')
+            .select('id, title, start_time, status')
+            .eq('id', request.calendar_event_id)
+            .maybeSingle();
+          calendarEvent = event;
+        }
+
+        return {
+          ...request,
+          requestedBy: requestedBy ? {
+            id: requestedBy.id,
+            firstName: requestedBy.user_metadata?.firstName || '',
+            lastName: requestedBy.user_metadata?.lastName || '',
+            email: requestedBy.email || '',
+          } : null,
+          respondedBy: respondedBy ? {
+            id: respondedBy.id,
+            firstName: respondedBy.user_metadata?.firstName || '',
+            lastName: respondedBy.user_metadata?.lastName || '',
+          } : null,
+          calendarEvent,
+        };
+      })
+    );
 
     return NextResponse.json({
-      requests,
-      total: requests.length,
+      requests: enrichedRequests,
+      total: enrichedRequests.length,
     });
 
   } catch (error) {
@@ -121,14 +155,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
+
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
     // Typically attorneys create requests, but agency can too
     if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
@@ -146,41 +184,53 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the booking request
-    const bookingRequest = await db.bookingRequest.create({
-      data: {
-        firmId: user.firmId,
-        requestedById: user.id,
-        caseName: data.caseName,
-        caseNumber: data.caseNumber,
-        preferredDate: new Date(data.preferredDate),
-        alternateDate1: data.alternateDate1 ? new Date(data.alternateDate1) : null,
-        alternateDate2: data.alternateDate2 ? new Date(data.alternateDate2) : null,
-        estimatedDuration: data.estimatedDuration,
-        eventType: data.eventType,
-        location: data.location,
-        isRemote: data.isRemote,
-        deponentName: data.deponentName,
-        deponentContact: data.deponentContact,
-        needsInterpreter: data.needsInterpreter,
-        interpreterLanguage: data.interpreterLanguage,
-        needsVideographer: data.needsVideographer,
-        needsRealtime: data.needsRealtime,
-        specialNotes: data.specialNotes,
+    const { data: bookingRequest, error: createError } = await supabase
+      .from('booking_requests')
+      .insert({
+        firm_id: user.firmId,
+        requested_by_id: user.id,
+        case_name: data.caseName,
+        case_number: data.caseNumber || null,
+        preferred_date: new Date(data.preferredDate).toISOString(),
+        alternate_date_1: data.alternateDate1 ? new Date(data.alternateDate1).toISOString() : null,
+        alternate_date_2: data.alternateDate2 ? new Date(data.alternateDate2).toISOString() : null,
+        estimated_duration: data.estimatedDuration,
+        event_type: data.eventType,
+        location: data.location || null,
+        is_remote: data.isRemote,
+        deponent_name: data.deponentName,
+        deponent_contact: data.deponentContact || null,
+        needs_interpreter: data.needsInterpreter,
+        interpreter_language: data.interpreterLanguage || null,
+        needs_videographer: data.needsVideographer,
+        needs_realtime: data.needsRealtime,
+        special_notes: data.specialNotes || null,
         status: 'PENDING',
-      },
-      include: {
-        requestedBy: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
+
+    // Get requested by info
+    const requestedBy = await getUserById(supabase, user.id);
 
     // TODO: Notify agency of new booking request
     // await notifyAgencyOfNewRequest(bookingRequest);
 
     return NextResponse.json({
       message: 'Booking request submitted',
-      request: bookingRequest,
+      request: {
+        ...bookingRequest,
+        requestedBy: requestedBy ? {
+          id: requestedBy.id,
+          firstName: requestedBy.user_metadata?.firstName || '',
+          lastName: requestedBy.user_metadata?.lastName || '',
+          email: requestedBy.email || '',
+        } : null,
+      },
     }, { status: 201 });
 
   } catch (error) {

@@ -1,9 +1,9 @@
-﻿import { db } from '@/lib/db';
 // app/api/cron/cleanup/route.ts
 // Daily cleanup job for old files and failed jobs
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 // Verify cron secret to prevent unauthorized access
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -26,18 +26,24 @@ export async function GET(request: NextRequest) {
     // Reset jobs stuck in PROCESSING for more than 1 hour
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-    const stuckJobs = await db.job.updateMany({
-      where: {
-        status: 'TRANSCRIBING',
-        updatedAt: { lt: oneHourAgo },
-      },
-      data: {
+    const supabase = await createSupabaseServerClient();
+    
+    const { data: stuckJobs, error: stuckJobsError } = await supabase
+      .from('jobs')
+      .update({
         status: 'CANCELLED',
-        errorMessage: 'Job timed out during processing',
-      },
-    });
+        error_message: 'Job timed out during processing',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('status', 'TRANSCRIBING')
+      .lt('updated_at', oneHourAgo.toISOString())
+      .select('id');
 
-    results.failedJobsReset = stuckJobs.count;
+    if (stuckJobsError) {
+      throw stuckJobsError;
+    }
+
+    results.failedJobsReset = stuckJobs?.length || 0;
 
     // Log cleanup results
     console.log('Cleanup job completed:', results);

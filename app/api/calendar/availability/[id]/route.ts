@@ -8,7 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getUserById } from '@/lib/supabase/queries/users';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -26,38 +27,48 @@ export async function DELETE(
     }
 
     const { id } = await context.params;
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, firmId: true },
-    });
-
-    if (!user?.firmId) {
+    const supabase = await createSupabaseServerClient();
+    const userData = await getUserById(supabase, session.user.id);
+    
+    if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    // Find the availability slot
-    const availability = await db.reporterAvailability.findUnique({
-      where: { id },
-      select: { reporterId: true, firmId: true },
-    });
+    const user = {
+      id: userData.id,
+      role: userData.user_metadata?.role || 'REPORTER',
+      firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
+    };
 
-    if (!availability) {
+    // Find the availability slot
+    const { data: availability, error: availabilityError } = await supabase
+      .from('reporter_availability')
+      .select('reporter_id, firm_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (availabilityError || !availability) {
       return NextResponse.json({ error: 'Availability not found' }, { status: 404 });
     }
 
     // Check permissions: Reporters can only delete their own, Admins/Agency can delete any
-    if (user.role === 'REPORTER' && availability.reporterId !== user.id) {
+    if (user.role === 'REPORTER' && availability.reporter_id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (availability.firmId !== user.firmId) {
+    if (availability.firm_id !== user.firmId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Delete the availability slot
-    await db.reporterAvailability.delete({
-      where: { id },
-    });
+    const { error: deleteError } = await supabase
+      .from('reporter_availability')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      throw deleteError;
+    }
 
     return NextResponse.json({
       message: 'Availability deleted successfully',

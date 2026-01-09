@@ -4,7 +4,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { Worker } from 'bullmq';
-import { getRedis } from '@/lib/redis';
 import { processTranscriptionJob } from './transcription-worker';
 import type { TranscriptionJobData } from '@/types/deepgram';
 import { logger } from '@/lib/logger';
@@ -14,10 +13,10 @@ import { logger } from '@/lib/logger';
  * This should be called from a separate worker process (e.g., npm run worker)
  */
 export function createTranscriptionWorker(redisUrl?: string): Worker<TranscriptionJobData> | null {
-  // Get Redis connection
-  const connection = redisUrl ? { url: redisUrl } : getRedis();
-  
-  if (!connection) {
+  // Get Redis URL
+  const connectionUrl = redisUrl || process.env.REDIS_URL;
+
+  if (!connectionUrl) {
     logger.warn('[Worker] Redis not available - worker cannot start');
     return null;
   }
@@ -29,7 +28,9 @@ export function createTranscriptionWorker(redisUrl?: string): Worker<Transcripti
         return await processTranscriptionJob(job);
       },
       {
-        connection: typeof connection === 'object' && 'url' in connection ? connection : connection,
+        connection: {
+          url: connectionUrl,
+        },
         concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10),
         limiter: {
           max: parseInt(process.env.WORKER_MAX_JOBS_PER_MINUTE || '10', 10),

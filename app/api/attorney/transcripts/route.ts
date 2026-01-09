@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY TRANSCRIPTS API
 // ═══════════════════════════════════════════════════════════════
@@ -6,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Role } from '@/lib/constants';
 
 /**
@@ -25,23 +25,36 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const transcripts = await db.attorneyTranscript.findMany({
-      where: {
-        uploadedById: session.user.id,
-      },
-      orderBy: {
-        uploadedAt: 'desc',
-      },
-      include: {
-        annotations: {
-          orderBy: {
-            createdAt: 'desc',
-          },
-        },
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    return NextResponse.json({ transcripts });
+    // Get transcripts
+    const { data: transcripts, error: transcriptsError } = await supabase
+      .from('attorney_transcripts')
+      .select('*')
+      .eq('uploaded_by_id', session.user.id)
+      .order('uploaded_at', { ascending: false });
+
+    if (transcriptsError) {
+      throw transcriptsError;
+    }
+
+    // Get annotations for each transcript
+    const transcriptsWithAnnotations = await Promise.all(
+      (transcripts || []).map(async (transcript) => {
+        const { data: annotations } = await supabase
+          .from('transcript_annotations')
+          .select('*')
+          .eq('transcription_id', transcript.id)
+          .order('created_at', { ascending: false });
+
+        return {
+          ...transcript,
+          annotations: annotations || [],
+        };
+      })
+    );
+
+    return NextResponse.json({ transcripts: transcriptsWithAnnotations });
   } catch (error) {
     console.error('Error fetching transcripts:', error);
     return NextResponse.json(
@@ -78,19 +91,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const transcript = await db.attorneyTranscript.create({
-      data: {
+    const supabase = await createSupabaseServerClient();
+
+    const { data: transcript, error: transcriptError } = await supabase
+      .from('attorney_transcripts')
+      .insert({
         name,
         deponent,
-        caseName: caseName || null,
-        depositionDate: depositionDate ? new Date(depositionDate) : null,
-        transcriptData,
-        totalPages,
-        totalLines,
-        uploadedById: session.user.id,
+        case_name: caseName || null,
+        deposition_date: depositionDate ? new Date(depositionDate).toISOString() : null,
+        transcript_data: transcriptData,
+        total_pages: totalPages,
+        total_lines: totalLines,
+        uploaded_by_id: session.user.id,
         status: 'NOT_REVIEWED',
-      },
-    });
+      })
+      .select()
+      .single();
+
+    if (transcriptError) {
+      throw transcriptError;
+    }
 
     return NextResponse.json({ transcript }, { status: 201 });
   } catch (error) {
@@ -101,5 +122,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-

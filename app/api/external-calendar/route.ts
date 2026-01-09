@@ -1,4 +1,3 @@
-﻿import { db } from '@/lib/db';
 // =============================================================================
 // STEP 4: EXTERNAL CALENDAR API ROUTES
 // =============================================================================
@@ -8,6 +7,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
 import { FEATURES } from '@/lib/feature-flags';
 import { ExternalCalendarSyncService } from '@/lib/external-calendar/sync-service';
@@ -31,25 +31,32 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    const connections = await db.externalCalendarConnection.findMany({
-      where: {
-        userId: session.user.id,
-        firmId: session.user.firmId,
-      },
-      select: {
-        id: true,
-        provider: true,
-        syncMode: true,
-        calendarName: true,
-        isEnabled: true,
-        lastSyncedAt: true,
-        lastSyncError: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const supabase = await createSupabaseServerClient();
+    
+    const { data: connections, error: connectionsError } = await supabase
+      .from('external_calendar_connections')
+      .select('id, provider, sync_mode, calendar_name, is_enabled, last_synced_at, last_sync_error, created_at')
+      .eq('user_id', session.user.id)
+      .eq('firm_id', session.user.firmId)
+      .order('created_at', { ascending: false });
 
-    return NextResponse.json({ connections });
+    if (connectionsError) {
+      throw connectionsError;
+    }
+
+    // Transform to match expected format
+    const transformedConnections = (connections || []).map((conn: any) => ({
+      id: conn.id,
+      provider: conn.provider,
+      syncMode: conn.sync_mode,
+      calendarName: conn.calendar_name,
+      isEnabled: conn.is_enabled,
+      lastSyncedAt: conn.last_synced_at,
+      lastSyncError: conn.last_sync_error,
+      createdAt: conn.created_at,
+    }));
+
+    return NextResponse.json({ connections: transformedConnections });
   } catch (error) {
     console.error('Error fetching external calendars:', error);
     return NextResponse.json(
@@ -119,38 +126,48 @@ export async function PATCH(request: NextRequest) {
       isEnabled?: boolean;
     };
 
-    // Verify ownership
-    const connection = await db.externalCalendarConnection.findFirst({
-      where: {
-        id: connectionId,
-        userId: session.user.id,
-        firmId: session.user.firmId,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!connection) {
+    // Verify ownership
+    const { data: connection, error: connectionError } = await supabase
+      .from('external_calendar_connections')
+      .select('id')
+      .eq('id', connectionId)
+      .eq('user_id', session.user.id)
+      .eq('firm_id', session.user.firmId)
+      .maybeSingle();
+
+    if (connectionError || !connection) {
       return NextResponse.json(
         { error: 'Connection not found', code: 'NOT_FOUND' },
         { status: 404 }
       );
     }
 
-    const updated = await db.externalCalendarConnection.update({
-      where: { id: connectionId },
-      data: {
-        ...(syncMode !== undefined && { syncMode }),
-        ...(isEnabled !== undefined && { isEnabled }),
-      },
-      select: {
-        id: true,
-        provider: true,
-        syncMode: true,
-        isEnabled: true,
-        lastSyncedAt: true,
-      },
-    });
+    const updateData: any = {};
+    if (syncMode !== undefined) updateData.sync_mode = syncMode;
+    if (isEnabled !== undefined) updateData.is_enabled = isEnabled;
 
-    return NextResponse.json({ connection: updated });
+    const { data: updated, error: updateError } = await supabase
+      .from('external_calendar_connections')
+      .update(updateData)
+      .eq('id', connectionId)
+      .select('id, provider, sync_mode, is_enabled, last_synced_at')
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    const transformedUpdated = {
+      id: updated.id,
+      provider: updated.provider,
+      syncMode: updated.sync_mode,
+      isEnabled: updated.is_enabled,
+      lastSyncedAt: updated.last_synced_at,
+    };
+
+    return NextResponse.json({ connection: transformedUpdated });
   } catch (error) {
     console.error('Error updating connection:', error);
     return NextResponse.json(
@@ -184,16 +201,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verify ownership
-    const connection = await db.externalCalendarConnection.findFirst({
-      where: {
-        id: connectionId,
-        userId: session.user.id,
-        firmId: session.user.firmId,
-      },
-    });
+    const supabase = await createSupabaseServerClient();
 
-    if (!connection) {
+    // Verify ownership
+    const { data: connection, error: connectionError } = await supabase
+      .from('external_calendar_connections')
+      .select('id')
+      .eq('id', connectionId)
+      .eq('user_id', session.user.id)
+      .eq('firm_id', session.user.firmId)
+      .maybeSingle();
+
+    if (connectionError || !connection) {
       return NextResponse.json(
         { error: 'Connection not found', code: 'NOT_FOUND' },
         { status: 404 }
