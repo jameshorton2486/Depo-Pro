@@ -32,9 +32,9 @@ export async function checkSupabaseHealth(): Promise<ComponentHealth> {
   try {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.from('profiles').select('id').limit(1);
-    
+
     if (error) throw error;
-    
+
     return {
       status: 'up',
       latency_ms: Date.now() - start,
@@ -54,7 +54,7 @@ export async function checkDeepgramHealth(): Promise<ComponentHealth> {
   const start = Date.now();
   try {
     const apiKey = process.env.DEEPGRAM_API_KEY;
-    
+
     if (!apiKey) {
       return {
         status: 'down',
@@ -62,7 +62,7 @@ export async function checkDeepgramHealth(): Promise<ComponentHealth> {
         last_check: new Date().toISOString(),
       };
     }
-    
+
     // Just verify the key format - don't make actual API call
     if (apiKey.length < 20) {
       return {
@@ -71,7 +71,7 @@ export async function checkDeepgramHealth(): Promise<ComponentHealth> {
         last_check: new Date().toISOString(),
       };
     }
-    
+
     return {
       status: 'up',
       latency_ms: Date.now() - start,
@@ -90,7 +90,7 @@ export async function checkRedisHealth(): Promise<ComponentHealth> {
   const start = Date.now();
   try {
     const redisUrl = process.env.REDIS_URL;
-    
+
     if (!redisUrl) {
       return {
         status: 'degraded',
@@ -98,12 +98,12 @@ export async function checkRedisHealth(): Promise<ComponentHealth> {
         last_check: new Date().toISOString(),
       };
     }
-    
+
     // Check if queue can be initialized (tests connection config)
     try {
       const { getTranscriptionQueue } = await import('@/lib/queue/transcription-queue');
       const queue = getTranscriptionQueue();
-      
+
       if (queue) {
         // Queue successfully initialized - connection config is valid
         return {
@@ -143,13 +143,13 @@ export async function getHealthStatus(): Promise<HealthStatus> {
     checkDeepgramHealth(),
     checkRedisHealth(),
   ]);
-  
+
   const checks = { supabase, deepgram, redis };
-  
+
   // Determine overall status
   const statuses = Object.values(checks).map(c => c.status);
   let overallStatus: 'healthy' | 'degraded' | 'unhealthy';
-  
+
   if (statuses.every(s => s === 'up')) {
     overallStatus = 'healthy';
   } else if (statuses.some(s => s === 'down')) {
@@ -157,7 +157,7 @@ export async function getHealthStatus(): Promise<HealthStatus> {
   } else {
     overallStatus = 'degraded';
   }
-  
+
   return {
     status: overallStatus,
     timestamp: new Date().toISOString(),

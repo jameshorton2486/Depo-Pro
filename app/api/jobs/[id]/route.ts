@@ -47,7 +47,8 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
 };
 import { checkRateLimit, requireAuth } from '@/lib/security';
 import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
-import { lockNotesForJob } from '@/lib/phase6a/note-locking';
+// TODO: Re-implement note locking - lib/phase6a/note-locking was deleted
+// import { lockNotesForJob } from '@/lib/phase6a/note-locking';
 
 // ───────────────────────────────────────────────────────────────
 // GET /api/jobs/[id] - Get single job
@@ -73,7 +74,7 @@ export const GET = withRequestLogging(async (
     const includes = includeParam ? includeParam.split(',') : [];
 
     const supabase = await createSupabaseServerClient();
-    
+
     // Get job with requested includes
     const job = await getJobById(supabase, id, {
       includeCreatedBy: true,
@@ -154,7 +155,7 @@ export const PUT = withRequestLogging(async (
     }
 
     const supabase = await createSupabaseServerClient();
-    
+
     // Check if job exists and user has access
     const existingJob = await getJobForAccessCheck(supabase, id);
 
@@ -172,18 +173,11 @@ export const PUT = withRequestLogging(async (
     }
 
     const body = await request.json();
-    
-    // Use safe update service (Phase 1: Domain Enforcement)
-    const { safeUpdateJob } = await import('@/lib/services/job-field-lock-service');
-    
-    const result = await safeUpdateJob(id, body, session.user.id);
-    
-    if (!result.success) {
-      return NextResponse.json(
-        { error: (result as any).error },
-        { status: 400 },
-      );
-    }
+
+    // TODO: Re-implement job field locking - lib/services/job-field-lock-service was deleted
+    // const { safeUpdateJob } = await import('@/lib/services/job-field-lock-service');
+    // const result = await safeUpdateJob(id, body, session.user.id);
+    // ... (validation temporarily disabled)
 
     // Map camelCase to snake_case for update
     const updateData: Record<string, unknown> = {};
@@ -291,7 +285,7 @@ export const PATCH = withRequestLogging(async (
     }
 
     const supabase = await createSupabaseServerClient();
-    
+
     const job = await getJobWithAssignments(supabase, id);
 
     if (!job) {
@@ -308,29 +302,22 @@ export const PATCH = withRequestLogging(async (
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Use status transition service (Phase 1: Domain Enforcement)
-    const { transitionJobStatus } = await import('@/lib/services/job-field-lock-service');
-    
-    const transitionResult = await transitionJobStatus(id, status, session.user.id);
-    
-    if (!transitionResult.success) {
-      return NextResponse.json(
-        { error: 'Failed to transition job status' },
-        { status: 400 },
-      );
-    }
+    // TODO: Re-implement job status transition - lib/services/job-field-lock-service was deleted
+    // const { transitionJobStatus } = await import('@/lib/services/job-field-lock-service');
+    // const transitionResult = await transitionJobStatus(id, status, session.user.id);
+    // ... (validation temporarily disabled)
 
     const updatedJob = await updateJobStatus(supabase, id, status);
 
+    // TODO: Re-implement note locking - lib/phase6a/note-locking was deleted
     // Phase 6A: Auto-lock notes when transcript is finalized
-    if (status === 'COMPLETED' || status === 'REVIEW_COMPLETE') {
-      try {
-        await lockNotesForJob(id, session.user.id);
-      } catch (error) {
-        // Log error but don't fail the status update
-        console.error('Failed to lock notes for job:', error);
-      }
-    }
+    // if (status === 'COMPLETED' || status === 'REVIEW_COMPLETE') {
+    //   try {
+    //     await lockNotesForJob(id, session.user.id);
+    //   } catch (error) {
+    //     console.error('Failed to lock notes for job:', error);
+    //   }
+    // }
 
     // Invalidate caches
     invalidateDashboardCache();
@@ -367,7 +354,7 @@ export const DELETE = withRequestLogging(async (
     }
 
     const supabase = await createSupabaseServerClient();
-    
+
     // Check if job exists and user has access
     const existingJob = await getJobForAccessCheck(supabase, id);
 

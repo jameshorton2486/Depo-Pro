@@ -31,15 +31,15 @@ export async function processTranscriptionJob(
   } = data;
 
   logger.info(`Processing transcription for job ${jobId}`, { jobId, audioFileName, modelType });
-  
+
   try {
     // Update job status to TRANSCRIBING
     const supabase = await createSupabaseServerClient();
     const attemptsMade = (job as { attemptsMade?: number }).attemptsMade || 0;
-    
+
     await supabase
       .from('jobs')
-      .update({ 
+      .update({
         status: 'TRANSCRIBING',
         processing_started_at: new Date().toISOString(),
         job_attempts: attemptsMade + 1,
@@ -53,14 +53,14 @@ export async function processTranscriptionJob(
     const { buildKeywordsForJob } = await import('@/lib/transcription/buildKeywords');
     const keywordConfigs = await buildKeywordsForJob(jobId);
     const properNounKeywords = keywordConfigs.map(k => k.word);
-    
+
     logger.info(`[Keywords] Found ${properNounKeywords.length} proper noun keywords for job ${jobId}`, {
       jobId,
       keywordCount: properNounKeywords.length,
       sampleKeywords: properNounKeywords.slice(0, 5),
       sources: 'DepositionNote, CSRProperNoun, CaseExtractedTerm',
     });
-    
+
     // Use keywords directly (no additional firm dictionary needed - all sources included above)
     const customKeyterms: string[] = [...properNounKeywords];
 
@@ -140,11 +140,11 @@ export async function processTranscriptionJob(
         .eq('id', existingTranscripts.id)
         .select('id')
         .single();
-      
+
       if (updateError || !updated) {
         throw new Error(`Failed to update transcription: ${updateError?.message || 'Unknown error'}`);
       }
-      
+
       transcriptionId = updated.id;
     } else {
       // Create new transcript
@@ -157,34 +157,35 @@ export async function processTranscriptionJob(
         })
         .select('id')
         .single();
-      
+
       if (insertError || !newTranscript) {
         throw new Error(`Failed to create transcription: ${insertError?.message || 'Unknown error'}`);
       }
-      
+
       transcriptionId = newTranscript.id;
     }
 
+    // TODO: Re-implement confidence statistics persistence - lib/services/confidence-analysis-service was deleted
     // Persist confidence statistics (Phase 2.4: Pipeline Orchestration)
-    try {
-      const { persistConfidenceStats } = await import('@/lib/services/confidence-analysis-service');
-      const wordData = result.words.map((w: any) => ({
-        word: w.word || '',
-        confidence: w.confidence || 0,
-        speaker: w.speaker,
-        start: w.start || 0,
-        end: w.end || 0,
-      }));
-      await persistConfidenceStats(jobId, transcriptionId, wordData);
-      logger.info(`Confidence stats persisted for job ${jobId}`, { jobId, transcriptionId });
-    } catch (statsError) {
-      logger.error(
-        `Failed to persist confidence stats for job ${jobId}`,
-        statsError instanceof Error ? statsError : new Error(String(statsError)),
-        { jobId }
-      );
-      // Don't fail the transcription if stats persistence fails
-    }
+    // try {
+    //   const { persistConfidenceStats } = await import('@/lib/services/confidence-analysis-service');
+    //   const wordData = result.words.map((w: any) => ({
+    //     word: w.word || '',
+    //     confidence: w.confidence || 0,
+    //     speaker: w.speaker,
+    //     start: w.start || 0,
+    //     end: w.end || 0,
+    //   }));
+    //   await persistConfidenceStats(jobId, transcriptionId, wordData);
+    //   logger.info(`Confidence stats persisted for job ${jobId}`, { jobId, transcriptionId });
+    // } catch (statsError) {
+    //   logger.error(
+    //     `Failed to persist confidence stats for job ${jobId}`,
+    //     statsError instanceof Error ? statsError : new Error(String(statsError)),
+    //     { jobId }
+    //   );
+    //   // Don't fail the transcription if stats persistence fails
+    // }
 
     // Update job status based on quality
     const processingTime = Date.now() - startTime;
@@ -214,9 +215,9 @@ export async function processTranscriptionJob(
         model: modelType,
       });
     } catch (auditError) {
-      logger.warn(`Failed to audit log transcription completion for job ${jobId}`, { 
+      logger.warn(`Failed to audit log transcription completion for job ${jobId}`, {
         error: auditError instanceof Error ? auditError.message : String(auditError),
-        jobId 
+        jobId
       });
       // Don't fail the transcription if audit logging fails
     }
@@ -232,7 +233,7 @@ export async function processTranscriptionJob(
     try {
       const supabase = await createSupabaseServerClient();
       const attemptsMade = (job as { attemptsMade?: number }).attemptsMade || 0;
-      
+
       await supabase
         .from('jobs')
         .update({
@@ -252,9 +253,9 @@ export async function processTranscriptionJob(
           attempts: attemptsMade + 1,
         });
       } catch (auditError) {
-        logger.warn(`Failed to audit log transcription failure for job ${jobId}`, { 
+        logger.warn(`Failed to audit log transcription failure for job ${jobId}`, {
           error: auditError instanceof Error ? auditError.message : String(auditError),
-          jobId 
+          jobId
         });
       }
     } catch (updateError) {

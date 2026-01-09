@@ -7,7 +7,6 @@
 
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
-import { FeatureFlagsManager } from '@/components/_future/admin/feature-flags-manager';
 
 export const metadata = {
   title: 'Feature Flags | Depo-Pro',
@@ -34,7 +33,11 @@ export default async function FeaturesPage() {
         </p>
       </div>
 
-      <FeatureFlagsManager />
+      <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+        <p className="text-gray-500">
+          Feature flags management is coming soon.
+        </p>
+      </div>
     </div>
   );
 }

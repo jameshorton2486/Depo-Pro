@@ -8,7 +8,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { ROUTE_ACCESS, API_ACCESS } from '@/lib/permissions/route-access';
-import { PermissionAuditTable } from '@/components/_future/admin/permission-audit-table';
 
 export const metadata = {
   title: 'Permission Audit | Depo-Pro',
@@ -49,7 +48,19 @@ export default async function PermissionsPage() {
         </p>
       </div>
 
-      <PermissionAuditTable routes={allRoutes} />
+      <div className="bg-white rounded-lg border border-gray-200 p-8">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            Route Permissions Summary
+          </h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Total routes: {allRoutes.length}
+          </p>
+        </div>
+        <div className="text-sm text-gray-500">
+          Permission audit table is coming soon.
+        </div>
+      </div>
     </div>
   );
 }

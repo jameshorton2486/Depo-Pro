@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // TODO: Re-implement document extraction - lib/extraction/document-extractor was deleted
     // const extraction = await extractFromDocuments(documents);
-    
+
     // For now, return error indicating feature needs re-implementation
     return NextResponse.json({
       success: false,
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     if (autoCreateCase || autoCreateJob) {
       // Get firmId from user metadata (RLS will enforce access)
       const firmId = (user.user_metadata?.firmId as string) || null;
-      
+
       if (autoCreateCase && !firmId) {
         return NextResponse.json(
           { error: 'firmId is required to create a case' },
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
 
       // Prepare job data in snake_case for Supabase
       const jobData: Record<string, unknown> = {};
-      
+
       if (autoCreateJob) {
         // Case info (duplicated for jobs without cases)
         if (extractedData.caseStyle) jobData.case_name = extractedData.caseStyle;
