@@ -1,9 +1,0 @@
-
-> depo-pro@0.1.0 typecheck
-> tsc --noEmit
-
-app/api/jobs/[id]/transcribe/route.ts(138,7): error TS1135: Argument expression expected.
-app/api/jobs/[id]/transcribe/route.ts(138,8): error TS1128: Declaration or statement expected.
-app/api/jobs/[id]/transcribe/route.ts(150,5): error TS1472: 'catch' or 'finally' expected.
-app/api/jobs/[id]/transcribe/route.ts(201,5): error TS1005: 'try' expected.
-app/api/jobs/[id]/transcribe/route.ts(208,1): error TS1128: Declaration or statement expected.

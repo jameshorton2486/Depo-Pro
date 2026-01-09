@@ -9,11 +9,13 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { extractTextFromPDFBuffer, detectDocumentType, cleanExtractedText } from '@/lib/extraction/pdf-extractor';
-import { extractFromDocuments, getDeepgramKeywords } from '@/lib/extraction/document-extractor';
-import { createCaseWithInitialJob } from '@/lib/supabase/queries/cases';
+// TODO: Re-implement PDF/document extraction functionality
+// These modules were removed during cleanup but are still needed:
+// - lib/extraction/pdf-extractor.ts
+// - lib/extraction/document-extractor.ts
+import { createCaseWithInitialJob as _createCaseWithInitialJob } from '@/lib/supabase/queries/cases';
 import { logger } from '@/lib/logger';
-import { audit } from '@/lib/audit';
+import { audit as _audit } from '@/lib/audit';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120; // Allow up to 2 minutes for complex documents
@@ -32,8 +34,8 @@ export async function POST(request: NextRequest) {
     // Parse form data
     const formData = await request.formData();
     const files = formData.getAll('files') as File[];
-    const autoCreateJob = formData.get('autoCreateJob') === 'true';
-    const autoCreateCase = formData.get('autoCreateCase') === 'true';
+    const _autoCreateJob = formData.get('autoCreateJob') === 'true';
+    const _autoCreateCase = formData.get('autoCreateCase') === 'true';
 
     if (!files.length) {
       return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
@@ -51,28 +53,18 @@ export async function POST(request: NextRequest) {
       const fileName = file.name;
       const mimeType = file.type;
 
-      // Handle PDFs
+      // TODO: Re-implement PDF extraction - lib/extraction/pdf-extractor was deleted
       if (mimeType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        const result = await extractTextFromPDFBuffer(buffer);
-
-        if (result.success && result.text.trim()) {
-          const cleanedText = cleanExtractedText(result.text);
-          const docType = detectDocumentType(fileName, cleanedText);
-
-          documents.push({
-            text: cleanedText,
-            fileName,
-            type: docType,
-          });
-        } else {
-          warnings.push(`Could not extract text from ${fileName} - may be scanned/image PDF`);
-        }
+        warnings.push(`PDF extraction temporarily disabled - file: ${fileName}`);
+        // const buffer = Buffer.from(await file.arrayBuffer());
+        // const result = await extractTextFromPDFBuffer(buffer);
+        // ... (commented out until re-implementation)
       }
-      // Handle text files
+      // Handle text files (simple case - no extraction needed)
       else if (mimeType.startsWith('text/') || fileName.endsWith('.txt')) {
         const text = await file.text();
-        const docType = detectDocumentType(fileName, text);
+        // TODO: Re-implement detectDocumentType - lib/extraction/pdf-extractor was deleted
+        const docType = 'DOCUMENT'; // Placeholder
 
         documents.push({
           text,
@@ -102,22 +94,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const extraction = await extractFromDocuments(documents);
-
-    if (!extraction.success || !extraction.data) {
-      return NextResponse.json({
-        success: false,
-        error: extraction.error || 'Extraction failed',
-        warnings,
-      }, { status: 500 });
-    }
-
-    const extractedData = extraction.data;
+    // TODO: Re-implement document extraction - lib/extraction/document-extractor was deleted
+    // const extraction = await extractFromDocuments(documents);
+    
+    // For now, return error indicating feature needs re-implementation
+    return NextResponse.json({
+      success: false,
+      error: 'Document extraction feature temporarily disabled. Extraction services need to be re-implemented.',
+      warnings,
+    }, { status: 501 }); // 501 Not Implemented
 
     // ═══════════════════════════════════════════════════════════════
+    // TODO: Re-implement extraction feature - code below is unreachable
     // STEP 3: Optionally create Case and Job records
     // ═══════════════════════════════════════════════════════════════
 
+    // COMMENTED OUT: Code below uses extractedData which is not available
+    // until extraction services are re-implemented
+    /*
     let savedIds: { caseId?: string; jobId?: string } | null = null;
 
     if (autoCreateCase || autoCreateJob) {
@@ -286,22 +280,23 @@ export async function POST(request: NextRequest) {
       reviewReasons: extractedData.reviewReasons,
 
       // Keywords ready for Deepgram
-      deepgramKeywords: getDeepgramKeywords(extractedData),
-      keywordCount: extractedData.extractedTerms?.length || 0,
+      // deepgramKeywords: getDeepgramKeywords(extractedData),
+      // keywordCount: extractedData.extractedTerms?.length || 0,
 
       // Document tracking
-      documentsProcessed: documents.map(d => ({
-        fileName: d.fileName,
-        type: d.type,
-      })),
+      // documentsProcessed: documents.map(d => ({
+      //   fileName: d.fileName,
+      //   type: d.type,
+      // })),
 
       // Saved records (if created)
-      savedIds,
+      // savedIds,
 
       // Warnings
-      warnings: warnings.length > 0 ? warnings : undefined,
-      audioFilesDetected: audioFiles.length,
+      // warnings: warnings.length > 0 ? warnings : undefined,
+      // audioFilesDetected: audioFiles.length,
     });
+    */
 
   } catch (error) {
     logger.error('Case intake error', error instanceof Error ? error : new Error(String(error)));
@@ -311,5 +306,7 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
+
 
 
