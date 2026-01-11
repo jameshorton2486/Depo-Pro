@@ -4,6 +4,8 @@
 // Protected layout for all dashboard routes
 // Uses role-aware sidebar navigation
 
+export const dynamic = 'force-dynamic';
+
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { SidebarLayout } from '@/components/layouts/app-sidebar';

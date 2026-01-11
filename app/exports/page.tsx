@@ -13,6 +13,8 @@ import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import Link from 'next/link';
 import { Download, FileText } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ExportsPage() {
   const session = await auth();
 
@@ -74,7 +76,7 @@ export default async function ExportsPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Exports</h1>
-      
+
       <div className="bg-white rounded-lg shadow">
         {validTranscripts.length === 0 ? (
           <div className="p-8 text-center text-gray-500">

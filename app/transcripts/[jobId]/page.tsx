@@ -1,3 +1,4 @@
+// Migrated from Prisma to Supabase queries — PASS 2A
 // =============================================================================
 // TRANSCRIPT VIEW PAGE
 // app/transcripts/[jobId]/page.tsx
@@ -7,7 +8,9 @@
 
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import Link from 'next/link';
 import { Download, Edit, Lock, CheckCircle } from 'lucide-react';
 
@@ -25,63 +28,37 @@ export default async function TranscriptViewPage({ params }: PageProps) {
   const { jobId } = await params;
   const user = session.user as { id: string; role: string };
 
-  // Fetch transcript with job
-  const job = await db.job.findUnique({
-    where: { id: jobId },
-    include: {
-      transcription: {
-        select: {
-          id: true,
-          fullTranscript: true,
-          status: true,
-          wordCount: true,
-          flaggedWordCount: true,
-        },
-      },
-      createdBy: {
-        select: {
-          firstName: true,
-          lastName: true,
-        },
-      },
-      assignments: {
-        where: { status: 'ACCEPTED' },
-        include: {
-          scopist: {
-            select: {
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-        take: 1,
-      },
-    },
+  const supabase = await createSupabaseServerClient();
+
+  // Fetch job with includes
+  const job = await getJobById(supabase, jobId, {
+    includeCreatedBy: true,
+    includeAssignments: true,
   });
 
   if (!job) {
     notFound();
   }
 
+  // Get transcription
+  const transcription = await getTranscriptByJobId(supabase, jobId);
+
   // Check access
   if (
     user.role !== 'ADMIN' &&
     user.role !== 'ATTORNEY' &&
-    job.createdById !== user.id &&
-    job.scopistId !== user.id
+    job.created_by_id !== user.id &&
+    !(job.assignments || []).some((a: any) => a.scopist_id === user.id)
   ) {
     redirect('/unauthorized');
   }
 
-  const transcript = job.transcription;
+  const transcript = transcription;
   const canEdit =
     user.role === 'ADMIN' ||
-    (user.role === 'REPORTER' && job.createdById === user.id) ||
-    (user.role === 'SCOPIST' && job.scopistId === user.id);
-  const canReview =
-    user.role === 'ADMIN' ||
-    (user.role === 'REPORTER' && job.createdById === user.id) ||
-    (user.role === 'SCOPIST' && job.scopistId === user.id);
+    (user.role === 'REPORTER' && job.created_by_id === user.id) ||
+    (user.role === 'SCOPIST' && (job.assignments || []).some((a: any) => a.scopist_id === user.id));
+  const canReview = canEdit;
   const isFinalized = transcript?.status === 'COMPLETED';
 
   return (
@@ -89,13 +66,13 @@ export default async function TranscriptViewPage({ params }: PageProps) {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold">{job.caseName || job.title}</h1>
+          <h1 className="text-2xl font-bold">{job.case_name || job.title}</h1>
           <p className="text-gray-600 mt-1">
             {job.createdBy && (
-              <>Reporter: {job.createdBy.firstName} {job.createdBy.lastName}</>
+              <>Reporter: {job.createdBy.firstName || ''} {job.createdBy.lastName || ''}</>
             )}
-            {job.assignments?.[0]?.scopist && (
-              <> • Scopist: {job.assignments[0].scopist.firstName} {job.assignments[0].scopist.lastName}</>
+            {(job.assignments || []).length > 0 && job.assignments[0].scopist && (
+              <> • Scopist: {job.assignments[0].scopist.firstName || ''} {job.assignments[0].scopist.lastName || ''}</>
             )}
           </p>
         </div>
@@ -150,17 +127,17 @@ export default async function TranscriptViewPage({ params }: PageProps) {
             <h2 className="text-lg font-semibold mb-2">Transcript</h2>
             <div className="text-sm text-gray-600 space-y-1">
               <p>Status: <span className="font-medium">{transcript.status}</span></p>
-              {transcript.wordCount && (
-                <p>Word Count: {transcript.wordCount.toLocaleString()}</p>
+              {transcript.word_count && (
+                <p>Word Count: {transcript.word_count.toLocaleString()}</p>
               )}
-              {transcript.flaggedWordCount && (
-                <p>Flagged Words: {transcript.flaggedWordCount}</p>
+              {transcript.flagged_word_count && (
+                <p>Flagged Words: {transcript.flagged_word_count}</p>
               )}
             </div>
           </div>
           <div className="prose max-w-none">
             <pre className="whitespace-pre-wrap font-mono text-sm bg-gray-50 p-4 rounded">
-              {transcript.fullTranscript || 'No transcript content available.'}
+              {transcript.full_transcript || transcript.content || 'No transcript content available.'}
             </pre>
           </div>
         </div>

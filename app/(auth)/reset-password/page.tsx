@@ -14,6 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { parseAuthError } from '@/lib/supabase/parse-auth-error';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,8 +27,15 @@ import { AlertCircle, CheckCircle } from 'lucide-react';
 // -----------------------------------------------------------------------------
 
 const resetPasswordSchema = z.object({
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string(),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password must be less than 100 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    ),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
@@ -59,18 +67,41 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
     setError(null);
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: data.password,
-    });
+    console.group('[Password Update] Attempt');
+    console.log('Timestamp:', new Date().toISOString());
+    console.groupEnd();
 
-    if (updateError) {
-      setError(updateError.message || 'Failed to reset password.');
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: data.password,
+      });
+
+      if (updateError) {
+        const parsed = parseAuthError(updateError);
+        
+        console.group('[Password Update] Failed');
+        console.error('Error:', parsed.technicalDetails);
+        console.error('Code:', parsed.code);
+        console.groupEnd();
+        
+        setError(parsed.userMessage);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('[Password Update] Success');
+      setSuccess(true);
       setIsLoading(false);
-      return;
+    } catch (err) {
+      const parsed = parseAuthError(err);
+      
+      console.group('[Password Update] Exception');
+      console.error('Error:', parsed.technicalDetails);
+      console.groupEnd();
+      
+      setError(parsed.userMessage);
+      setIsLoading(false);
     }
-
-    setSuccess(true);
-    setIsLoading(false);
   };
 
   // ---------------------------------------------------------------------------

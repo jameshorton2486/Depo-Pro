@@ -16,6 +16,8 @@ import { ActionConsole } from '@/components/admin/action-console';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboard() {
   const session = await auth();
 
@@ -33,11 +35,11 @@ export default async function AdminDashboard() {
   const supabase = await createSupabaseServerClient();
   const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
   const adminClient = getSupabaseAdminClient();
-  
+
   // Get user count from Supabase Auth (not users table)
   const { data: usersData } = await adminClient.auth.admin.listUsers();
   const totalUsers = usersData?.users?.length || 0;
-  
+
   const [jobsResult, firmsResult, activeJobsResult, recentJobsResult] = await Promise.all([
     supabase.from('jobs').select('id', { count: 'exact', head: true }),
     supabase.from('firms').select('id', { count: 'exact', head: true }),

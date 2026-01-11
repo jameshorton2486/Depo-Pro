@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { JobForm } from '@/components/jobs/job-form';
 
+export const dynamic = 'force-dynamic';
+
 export default async function NewJobPage() {
   const session = await getCurrentUser();
 

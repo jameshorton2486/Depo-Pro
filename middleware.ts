@@ -13,6 +13,8 @@
 // ❌ No business rules
 // =============================================================================
 
+export const runtime = 'nodejs';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createSupabaseMiddlewareClient } from '@/lib/supabase/middleware';
@@ -27,6 +29,7 @@ const PUBLIC_ROUTES = [
   '/register',
   '/forgot-password',
   '/reset-password',
+  '/auth/callback',
 ];
 
 const AUTH_REDIRECT_ROUTES = ['/login', '/register'];

@@ -9,6 +9,8 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { ROUTE_ACCESS, API_ACCESS } from '@/lib/permissions/route-access';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Permission Audit | Depo-Pro',
   description: 'View all route permissions and access control',

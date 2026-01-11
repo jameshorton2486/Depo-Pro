@@ -1,11 +1,15 @@
+// Migrated from Prisma to Supabase queries — PASS 2A
 // ═══════════════════════════════════════════════════════════════
 // EDIT JOB PAGE
 // ═══════════════════════════════════════════════════════════════
 
 import { redirect, notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 import { JobForm } from '@/components/jobs/job-form';
+
+export const dynamic = 'force-dynamic';
 
 interface EditJobPageProps {
   params: Promise<{
@@ -22,21 +26,10 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
 
   const { id } = await params;
 
-  const job = await db.job.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      title: true,
-      caseName: true,
-      caseNumber: true,
-      depositionDate: true,
-      location: true,
-      zoomLink: true,
-      status: true,
-      notes: true,
-      internalNotes: true,
-      createdById: true,
-    },
+  const supabase = await createSupabaseServerClient();
+
+  const job = await getJobById(supabase, id, {
+    includeCreatedBy: false,
   });
 
   if (!job) {
@@ -46,7 +39,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
   // 🔒 Security: Only reporter or admin can edit
   const canEdit =
     session.role === 'ADMIN' ||
-    job.createdById === session.id;
+    job.created_by_id === session.id;
 
   if (!canEdit) {
     redirect('/dashboard');
@@ -54,14 +47,16 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
 
   // Convert depositionDate to datetime-local format for the input
   const initialData = {
-    ...job,
-    depositionDate: job.depositionDate ? new Date(job.depositionDate).toISOString().slice(0, 16) : '',
-    caseName: job.caseName || '',
-    caseNumber: job.caseNumber || '',
+    id: job.id,
+    title: job.title || '',
+    caseName: job.case_name || '',
+    caseNumber: job.case_number || '',
+    depositionDate: job.deposition_date ? new Date(job.deposition_date).toISOString().slice(0, 16) : '',
     location: job.location || '',
-    zoomLink: job.zoomLink || '',
+    zoomLink: job.zoom_link || '',
+    status: job.status,
     notes: job.notes || '',
-    internalNotes: job.internalNotes || '',
+    internalNotes: job.internal_notes || '',
   };
 
   return (

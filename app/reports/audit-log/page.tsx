@@ -1,4 +1,4 @@
-﻿import { db } from '@/lib/db';
+// Migrated from Prisma to Supabase queries — PASS 2A
 // =============================================================================
 // AUDIT LOG PAGE
 // app/reports/audit-log/page.tsx
@@ -8,6 +8,11 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { listAuditLogs } from '@/lib/supabase/queries/audit';
+import { getUserById } from '@/lib/supabase/queries/users';
+
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<{
@@ -33,29 +38,46 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
   const page = parseInt(params.page || '1');
   const action = params.action;
 
-  const where: any = {};
-  if (action) {
-    where.action = action;
-  }
+  const supabase = await createSupabaseServerClient();
 
-  const [logs, total] = await Promise.all([
-    db.auditLog.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * 50,
-      take: 50,
-      include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    }),
-    db.auditLog.count({ where }),
-  ]);
+  const { logs: logsData, totalCount } = await listAuditLogs(
+    supabase,
+    action ? { action } : undefined,
+    {
+      limit: 50,
+      offset: (page - 1) * 50,
+    }
+  );
+
+  // Enrich logs with user data
+  const logs = await Promise.all(
+    logsData.map(async (log: any) => {
+      let userData = null;
+      if (log.actor_user_id) {
+        try {
+          const user = await getUserById(supabase, log.actor_user_id);
+          if (user) {
+            userData = {
+              firstName: user.user_metadata?.firstName || '',
+              lastName: user.user_metadata?.lastName || '',
+              email: user.email || '',
+            };
+          }
+        } catch {
+          // User not found, continue without user data
+        }
+      }
+      return {
+        ...log,
+        user: userData,
+        createdAt: log.created_at || log.createdAt,
+        targetType: log.target_type || log.targetType,
+        targetId: log.target_id || log.targetId,
+      };
+    })
+  );
+
+  const total = totalCount || 0;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -114,7 +136,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
                   </span>
                 </td>
                 <td className="p-4 text-sm text-gray-600">
-                  {log.targetType}: {log.targetId}
+                  {log.targetType || log.target_type}: {log.targetId || log.target_id}
                 </td>
                 <td className="p-4 text-sm text-gray-500">
                   {log.metadata && Object.keys(log.metadata).length > 0

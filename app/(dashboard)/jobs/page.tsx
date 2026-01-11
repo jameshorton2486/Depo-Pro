@@ -15,6 +15,8 @@ import { Plus, Search, Calendar, FileText, Clock } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 interface JobsPageProps {
   searchParams: Promise<{
     status?: string;
@@ -146,7 +148,7 @@ async function JobsList({
       .from('job_assignments')
       .select('job_id')
       .eq('scopist_id', user.id);
-    
+
     const assignedJobIds = assignments?.map(a => a.job_id) || [];
     if (assignedJobIds.length === 0) {
       // No assignments, return empty
@@ -211,7 +213,7 @@ async function JobsList({
   const adminClient = getSupabaseAdminClient();
   const createdByIds = [...new Set(jobsData?.map(j => j.created_by_id).filter(Boolean) || [])];
   const createdByUsers: Record<string, any> = {};
-  
+
   for (const userId of createdByIds) {
     const { data: userData } = await adminClient.auth.admin.getUserById(userId);
     if (userData?.user) {
@@ -226,12 +228,12 @@ async function JobsList({
 
   // Get scopist info for assignments
   const scopistIds = [...new Set(
-    jobsData?.flatMap(j => 
+    jobsData?.flatMap(j =>
       (j.job_assignments as any[])?.map(a => a.scopist_id).filter(Boolean) || []
     ) || []
   )];
   const scopistUsers: Record<string, any> = {};
-  
+
   for (const userId of scopistIds) {
     const { data: userData } = await adminClient.auth.admin.getUserById(userId);
     if (userData?.user) {
@@ -247,7 +249,7 @@ async function JobsList({
   const jobs = (jobsData || []).map((job: any) => {
     const fileCount = filesCounts.data?.filter(f => f.job_id === job.id).length || 0;
     const transcriptCount = transcriptsCounts.data?.filter(t => t.job_id === job.id).length || 0;
-    
+
     return {
       id: job.id,
       title: job.title,

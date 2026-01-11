@@ -1,4 +1,4 @@
-﻿import { db } from '@/lib/db';
+// Migrated from Prisma to Supabase queries — PASS 2A
 // =============================================================================
 // TRANSCRIPTS LIST PAGE
 // app/transcripts/page.tsx
@@ -8,7 +8,12 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { listJobs } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import Link from 'next/link';
+
+export const dynamic = 'force-dynamic';
 
 interface PageProps {
   searchParams: Promise<{
@@ -32,51 +37,45 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
   const status = params.status;
   const search = params.search;
 
-  // Build where clause based on role
-  const where: any = {};
+  const supabase = await createSupabaseServerClient();
 
-  if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
-    where.createdById = user.id;
-  } else if (user.role === 'SCOPIST') {
-    where.scopistId = user.id;
-  }
-  // Admin and Attorney can see all
+  // List jobs with role-based filtering
+  const { jobs: jobsList } = await listJobs(supabase, user.id, user.role, {
+    limit: 100, // Get more than needed for filtering
+  });
 
+  // Filter by status and search if provided
+  let filteredJobs = jobsList;
   if (status) {
-    where.status = status;
+    filteredJobs = filteredJobs.filter((j: any) => j.status === status);
   }
-
   if (search) {
-    where.OR = [
-      { caseName: { contains: search, mode: 'insensitive' } },
-      { title: { contains: search, mode: 'insensitive' } },
-    ];
+    const searchLower = search.toLowerCase();
+    filteredJobs = filteredJobs.filter((j: any) =>
+      (j.case_name || '').toLowerCase().includes(searchLower) ||
+      (j.title || '').toLowerCase().includes(searchLower)
+    );
   }
 
-  const [jobs, total] = await Promise.all([
-    db.job.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * 20,
-      take: 20,
-      include: {
-        transcription: {
-          select: {
-            id: true,
-            status: true,
-            wordCount: true,
-          },
-        },
-        createdBy: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    }),
-    db.job.count({ where }),
-  ]);
+  // Paginate
+  const total = filteredJobs.length;
+  const jobs = filteredJobs.slice((page - 1) * 20, page * 20);
+
+  // Enrich with transcription data
+  const jobsWithTranscripts = await Promise.all(
+    jobs.map(async (job: any) => {
+      const transcription = await getTranscriptByJobId(supabase, job.id);
+      return {
+        ...job,
+        transcription: transcription ? {
+          id: transcription.id,
+          status: transcription.status,
+          wordCount: transcription.word_count || 0,
+        } : null,
+        createdBy: job.createdBy || null,
+      };
+    })
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -114,7 +113,7 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
 
       {/* Transcripts Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        {jobs.length === 0 ? (
+        {jobsWithTranscripts.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             <p>No transcripts found.</p>
           </div>
@@ -131,14 +130,14 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {jobs.map((job: any) => (
+                {jobsWithTranscripts.map((job: any) => (
                   <tr key={job.id} className="hover:bg-gray-50">
                     <td className="p-4">
                       <Link
                         href={`/transcripts/${job.id}`}
                         className="font-medium text-indigo-600 hover:underline"
                       >
-                        {job.caseName || job.title}
+                        {job.case_name || job.title}
                       </Link>
                     </td>
                     <td className="p-4">
@@ -148,13 +147,13 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="p-4 text-sm text-gray-600">
                       {job.createdBy
-                        ? `${job.createdBy.firstName} ${job.createdBy.lastName}`
+                        ? `${job.createdBy.firstName || ''} ${job.createdBy.lastName || ''}`
                         : 'Unknown'}
                     </td>
                     <td className="p-4 text-sm text-gray-600">
-                      {job.depositionDate
-                        ? new Date(job.depositionDate).toLocaleDateString()
-                        : new Date(job.createdAt).toLocaleDateString()}
+                      {job.deposition_date
+                        ? new Date(job.deposition_date).toLocaleDateString()
+                        : new Date(job.created_at).toLocaleDateString()}
                     </td>
                     <td className="p-4">
                       <Link

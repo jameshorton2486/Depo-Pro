@@ -1,4 +1,4 @@
-﻿import { db } from '@/lib/db';
+// Migrated from Prisma to Supabase queries — PASS 2A
 // =============================================================================
 // USER MANAGEMENT PAGE
 // app/settings/users/page.tsx
@@ -8,7 +8,11 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { listUsers } from '@/lib/supabase/queries/admin';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default async function UsersSettingsPage() {
   const session = await auth();
@@ -23,17 +27,18 @@ export default async function UsersSettingsPage() {
     redirect('/unauthorized');
   }
 
-  const users = await db.user.findMany({
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      role: true,
-      createdAt: true,
-    },
-  });
+  const supabase = await createSupabaseServerClient();
+  const usersList = await listUsers(supabase);
+
+  // Map to expected format
+  const users = usersList.map((u) => ({
+    id: u.id,
+    firstName: u.user_metadata?.firstName || '',
+    lastName: u.user_metadata?.lastName || '',
+    email: u.email || '',
+    role: u.user_metadata?.role || 'REPORTER',
+    createdAt: u.created_at || new Date().toISOString(),
+  })).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

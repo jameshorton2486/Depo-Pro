@@ -63,6 +63,8 @@ export default function RegisterPage() {
       email: data.email,
       password: data.password,
       options: {
+        // Email confirmation redirect URL
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?type=signup`,
         // Metadata is NON-AUTHORITATIVE
         // Used only for onboarding review
         data: {

@@ -9,6 +9,8 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { CalendarShell } from '@/components/calendar/calendar-shell';
 
+export const dynamic = 'force-dynamic';
+
 export default async function CalendarMonthPage() {
   const session = await auth();
 
@@ -21,7 +23,7 @@ export default async function CalendarMonthPage() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Calendar</h1>
-      <CalendarShell 
+      <CalendarShell
         userRole={user.role as any}
       />
     </div>

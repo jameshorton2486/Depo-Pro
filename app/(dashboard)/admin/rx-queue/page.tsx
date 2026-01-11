@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth-compat';
 import { RxQueueManager } from '@/components/billing/rx-queue-manager';
 
+export const dynamic = 'force-dynamic';
+
 export default async function RxQueuePage() {
   const session = await auth();
 

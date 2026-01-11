@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 interface ConfirmDepositionPageProps {
   params: Promise<{ id: string }>;
 }
@@ -43,7 +45,7 @@ export default async function ConfirmDepositionPage({ params }: ConfirmDepositio
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
         <p className="text-yellow-800 text-sm">
-          <strong>Note:</strong> Full deposition confirmation workflow is coming in a future release. 
+          <strong>Note:</strong> Full deposition confirmation workflow is coming in a future release.
           For now, please confirm the job details from the job page.
         </p>
       </div>

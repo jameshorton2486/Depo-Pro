@@ -9,6 +9,8 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth-compat';
 import { ActionConsole } from '@/components/admin/action-console';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminActionsPage() {
   const session = await auth();
 

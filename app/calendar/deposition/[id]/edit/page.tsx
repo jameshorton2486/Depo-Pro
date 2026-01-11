@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import Link from 'next/link';
 import { Calendar, ArrowLeft } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 interface EditDepositionPageProps {
   params: Promise<{ id: string }>;
 }
@@ -43,7 +45,7 @@ export default async function EditDepositionPage({ params }: EditDepositionPageP
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
         <p className="text-yellow-800 text-sm">
-          <strong>Note:</strong> Full deposition editing is coming in a future release. 
+          <strong>Note:</strong> Full deposition editing is coming in a future release.
           For now, please edit the job details from the job page.
         </p>
       </div>

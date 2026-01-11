@@ -1,3 +1,4 @@
+// Migrated from Prisma to Supabase queries — PASS 2A
 // ═══════════════════════════════════════════════════════════════
 // ASSIGNMENT API ROUTE - /api/assignments/[id]
 // ═══════════════════════════════════════════════════════════════
@@ -7,7 +8,8 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getAssignmentById, getJobById, updateJobAssignment, deleteJobAssignment } from '@/lib/supabase/queries/jobs';
 import { updateAssignmentSchema } from '@/lib/validations/job';
 import { logger } from '@/lib/logger';
 
@@ -28,22 +30,29 @@ export async function PATCH(
 
     const { id } = await params;
 
-    // Get assignment with job details
-    const assignment = await db.assignment.findUnique({
-      where: { id },
-      include: { job: true },
-    });
+    const supabase = await createSupabaseServerClient();
+
+    // Get assignment
+    const assignment = await getAssignmentById(supabase, id);
 
     if (!assignment) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
+    // Get job to check permissions
+    const job = await getJobById(supabase, assignment.job_id, {
+      includeCreatedBy: false,
+    });
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
     // 🔒 Security: Scopist can update their own assignments, reporter/admin can update any
-    const job = assignment.job as any;
     const canUpdate =
       session.user.role === 'ADMIN' ||
       assignment.scopist_id === session.user.id ||
-      (job?.created_by_id === session.user.id);
+      job.created_by_id === session.user.id;
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -53,35 +62,20 @@ export async function PATCH(
     const validatedData = updateAssignmentSchema.parse(body);
 
     // Update assignment with timestamps
-    const updateData: {
-      status?: string;
-      notes?: string | null;
-      responded_at?: Date | null;
-      submitted_at?: Date | null;
-    } = {
+    const updateData: Record<string, unknown> = {
       status: validatedData.status,
       notes: validatedData.notes || null,
-      responded_at: assignment.responded_at,
-      submitted_at: assignment.submitted_at,
     };
 
     if (validatedData.status === 'ACCEPTED' && !assignment.responded_at) {
-      updateData.responded_at = new Date();
+      updateData.responded_at = new Date().toISOString();
     }
 
     if (validatedData.status === 'SUBMITTED' && !assignment.submitted_at) {
-      updateData.submitted_at = new Date();
+      updateData.submitted_at = new Date().toISOString();
     }
 
-    const updatedAssignment = await db.assignment.update({
-      where: { id },
-      data: {
-        status: validatedData.status,
-        notes: validatedData.notes || null,
-        responded_at: updateData.responded_at,
-        submitted_at: updateData.submitted_at,
-      },
-    });
+    const updatedAssignment = await updateJobAssignment(supabase, id, updateData);
 
     logger.info(`Assignment updated: ${id} to ${validatedData.status} by user ${session.user.id}`);
 
@@ -120,27 +114,34 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Get assignment with job details
-    const assignment = await db.assignment.findUnique({
-      where: { id },
-      include: { job: true },
-    });
+    const supabase = await createSupabaseServerClient();
+
+    // Get assignment
+    const assignment = await getAssignmentById(supabase, id);
 
     if (!assignment) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
+    // Get job to check permissions
+    const job = await getJobById(supabase, assignment.job_id, {
+      includeCreatedBy: false,
+    });
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
     // 🔒 Security: Only reporter or admin can delete assignments
-    const job = assignment.job as any;
     const canDelete =
       session.user.role === 'ADMIN' ||
-      (job?.created_by_id === session.user.id);
+      job.created_by_id === session.user.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await db.assignment.delete({ where: { id } });
+    await deleteJobAssignment(supabase, id);
 
     logger.info(`Assignment deleted: ${id} by user ${session.user.id}`);
 

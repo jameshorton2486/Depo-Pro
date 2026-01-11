@@ -1,91 +1,18 @@
 // lib/supabase/browser.ts
-// ═══════════════════════════════════════════════════════════════
-// BROWSER CLIENT - For Client Components only
-// Uses anon key, handles session via cookies with @supabase/ssr
-// ═══════════════════════════════════════════════════════════════
-
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// Singleton instance
-let browserClient: SupabaseClient | null = null;
+const SUPABASE_URL = 'https://ildhcfspbmhuemzgvzyx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsZGhjZnNwYm1odWVtemd2enl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNTMwMzgsImV4cCI6MjA3ODYyOTAzOH0.X9ugAI2BWea4WHRNQBP6UrKXXyxokKJqtpZciX2owcM';
 
-/**
- * Create a Supabase client for use in the browser (Client Components)
- * Uses the anon key - safe to expose to the client
- */
-export function createSupabaseBrowserClient(): SupabaseClient {
-  // Next.js 16: Environment variables are available at runtime in client components
-  // These are injected at build time and are safe to use (they're public anyway)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  // Debug logging (remove in production)
-  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-    console.log('[Supabase Client] Environment check:', {
-      hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseAnonKey,
-      urlPreview: supabaseUrl?.substring(0, 40) + '...',
-      keyPreview: supabaseAnonKey?.substring(0, 30) + '...',
-      keyStartsWith: supabaseAnonKey?.substring(0, 10),
-    });
-  }
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    const errorDetails = {
-      hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseAnonKey,
-      urlLength: supabaseUrl?.length || 0,
-      keyLength: supabaseAnonKey?.length || 0,
-      allEnvKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE')),
-    };
-    
-    console.error('[Supabase Client] Missing environment variables:', errorDetails);
-    
-    // Provide actionable error message
-    let errorMessage = 'Missing Supabase environment variables. ';
-    if (!supabaseUrl && !supabaseAnonKey) {
-      errorMessage += 'Both NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are missing. ';
-    } else if (!supabaseUrl) {
-      errorMessage += 'NEXT_PUBLIC_SUPABASE_URL is missing. ';
-    } else {
-      errorMessage += 'NEXT_PUBLIC_SUPABASE_ANON_KEY is missing. ';
-    }
-    errorMessage += 'Run "npm run check:env" to diagnose, or check .env.local and restart the dev server.';
-    
-    throw new Error(errorMessage);
-  }
-
-  // Check for quotes in the values (common mistake)
-  if (supabaseUrl.startsWith('"') || supabaseUrl.endsWith('"')) {
-    console.error('[Supabase Client] URL has quotes! Remove quotes from .env.local');
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL contains quotes. Remove quotes from .env.local');
-  }
-  if (supabaseAnonKey.startsWith('"') || supabaseAnonKey.endsWith('"')) {
-    console.error('[Supabase Client] Anon key has quotes! Remove quotes from .env.local');
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY contains quotes. Remove quotes from .env.local');
-  }
-
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
-}
-
-/**
- * Get the singleton Supabase browser client
- * Recommended for most client-side use cases to avoid creating multiple instances
- */
 export function getSupabaseBrowserClient(): SupabaseClient {
-  // Always recreate in development to pick up env var changes
-  if (process.env.NODE_ENV === 'development') {
-    browserClient = null;
-  }
-  
-  if (!browserClient) {
-    browserClient = createSupabaseBrowserClient();
-  }
-  return browserClient;
+  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-// Default export for convenience
+export function createSupabaseBrowserClient(): SupabaseClient {
+  return getSupabaseBrowserClient();
+}
+
 export default getSupabaseBrowserClient;

@@ -1,3 +1,4 @@
+// Migrated from Prisma to Supabase queries — PASS 2A
 // ═══════════════════════════════════════════════════════════════
 // JOB DETAIL PAGE
 // ═══════════════════════════════════════════════════════════════
@@ -5,7 +6,9 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth/session';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getUsersByRole } from '@/lib/supabase/queries/users';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { AssignmentManagement } from '@/components/jobs/assignment-management';
 import { FileUpload } from '@/components/jobs/file-upload';
@@ -23,6 +26,8 @@ import {
   Trash2,
 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 interface JobDetailPageProps {
   params: Promise<{
     id: string;
@@ -38,49 +43,23 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   const { id } = await params;
 
-  // Fetch available scopists for assignment
-  const availableScopists = await db.user.findMany({
-    where: {
-      role: 'SCOPIST',
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-    },
-  });
+  const supabase = await createSupabaseServerClient();
 
-  const job = await db.job.findUnique({
-    where: { id },
-    include: {
-      createdBy: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-      files: {
-        orderBy: {
-          createdAt: 'desc',
-        },
-      },
-      transcriptionJobs: true,
-      assignments: {
-        include: {
-          scopist: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-            },
-          },
-        },
-      },
-    },
+  // Fetch available scopists for assignment
+  const scopistUsers = await getUsersByRole(supabase, 'SCOPIST');
+  const availableScopists = scopistUsers.map((user) => ({
+    id: user.id,
+    firstName: user.user_metadata?.firstName || '',
+    lastName: user.user_metadata?.lastName || '',
+    email: user.email || '',
+  }));
+
+  // Fetch job with all includes
+  const job = await getJobById(supabase, id, {
+    includeCreatedBy: true,
+    includeFiles: true,
+    includeAssignments: true,
+    includeTranscripts: true,
   });
 
   if (!job) {
@@ -99,7 +78,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   const canEdit =
     session.role === 'ADMIN' ||
-    job.createdById === session.id;
+    job.created_by_id === session.id;
 
   const canAssign = canEdit;
 
@@ -138,10 +117,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             <CardTitle>Case Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {job.caseNumber && (
+            {job.case_number && (
               <div>
                 <p className="text-sm text-muted-foreground">Case Number</p>
-                <p className="font-medium">{job.caseNumber}</p>
+                <p className="font-medium">{job.case_number}</p>
               </div>
             )}
             {job.location && (
@@ -157,7 +136,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
               <p className="text-sm text-muted-foreground">Deposition Date</p>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{job.depositionDate ? formatDate(job.depositionDate, true) : 'TBD'}</p>
+                <p className="font-medium">{job.deposition_date ? formatDate(new Date(job.deposition_date), true) : 'TBD'}</p>
               </div>
             </div>
           </CardContent>
@@ -191,16 +170,16 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       {/* File Upload */}
       <FileUpload
         jobId={job.id}
-        files={job.files.map((file: any) => ({
+        files={(job.files || []).map((file: any) => ({
           id: file.id,
-          filename: file.fileName,
-          originalName: file.fileName,
-          mimeType: file.mimeType,
-          size: file.fileSize,
+          filename: file.file_name || file.filename,
+          originalName: file.file_name || file.filename,
+          mimeType: file.mime_type || file.mimeType,
+          size: file.file_size || file.size,
           fileType: file.type,
-          createdAt: file.createdAt,
+          createdAt: file.created_at || file.createdAt,
           uploadedBy: {
-            id: job.createdById, // Fallback since we don't track uploader per file
+            id: job.created_by_id, // Fallback since we don't track uploader per file
             name: 'System',
             email: '',
           },
@@ -215,7 +194,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       {/* Assignments */}
       <AssignmentManagement
         jobId={job.id}
-        assignments={job.assignments}
+        assignments={job.assignments || []}
         availableScopists={availableScopists}
         canAssign={canAssign}
         currentUserId={session.id}

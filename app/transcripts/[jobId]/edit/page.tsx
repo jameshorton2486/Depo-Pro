@@ -1,3 +1,4 @@
+// Migrated from Prisma to Supabase queries — PASS 2A
 // =============================================================================
 // TRANSCRIPT EDIT PAGE
 // app/transcripts/[jobId]/edit/page.tsx
@@ -7,7 +8,9 @@
 
 import { redirect, notFound } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import Link from 'next/link';
 import { Lock } from 'lucide-react';
 import { TranscriptEditor } from '@/components/transcripts/transcript-editor';
@@ -26,11 +29,10 @@ export default async function TranscriptEditPage({ params }: PageProps) {
   const { jobId } = await params;
   const user = session.user as { id: string; role: string };
 
-  const job = await db.job.findUnique({
-    where: { id: jobId },
-    include: {
-      transcription: true,
-    },
+  const supabase = await createSupabaseServerClient();
+
+  const job = await getJobById(supabase, jobId, {
+    includeAssignments: true,
   });
 
   if (!job) {
@@ -40,13 +42,13 @@ export default async function TranscriptEditPage({ params }: PageProps) {
   // Check access
   if (
     user.role !== 'ADMIN' &&
-    job.createdById !== user.id &&
-    job.scopistId !== user.id
+    job.created_by_id !== user.id &&
+    !(job.assignments || []).some((a: any) => a.scopist_id === user.id)
   ) {
     redirect('/unauthorized');
   }
 
-  const transcript = job.transcription;
+  const transcript = await getTranscriptByJobId(supabase, jobId);
 
   if (!transcript) {
     redirect(`/transcripts/${jobId}`);
@@ -84,7 +86,7 @@ export default async function TranscriptEditPage({ params }: PageProps) {
       </div>
       <TranscriptEditor
         transcriptId={transcript.id}
-        initialContent={transcript.fullTranscript || ''}
+        initialContent={transcript.full_transcript || transcript.content || ''}
         jobId={jobId}
       />
     </div>

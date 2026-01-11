@@ -17,6 +17,8 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
 import { getCachedJobCounts, getCachedRecentJobs } from '@/lib/cache/dashboard';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ReporterDashboard() {
   const session = await auth();
 
@@ -33,10 +35,10 @@ export default async function ReporterDashboard() {
   // Fetch stats using cached queries if firmId is available, otherwise fall back to real-time for personal jobs
   // For reporters, we often want to see personal jobs, but we can use cached firm stats for overview
   const supabase = await createSupabaseServerClient();
-  
+
   const [jobCounts, recentJobsResult] = await Promise.all([
     user.firmId ? getCachedJobCounts(user.firmId) : Promise.resolve({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 }),
-    user.firmId 
+    user.firmId
       ? getCachedRecentJobs(user.firmId, 5)
       : supabase
           .from('jobs')
@@ -47,15 +49,15 @@ export default async function ReporterDashboard() {
   ]);
 
   // Transform recentJobs to match expected format for component
-  const recentJobs = user.firmId 
-    ? recentJobsResult 
+  const recentJobs = user.firmId
+    ? recentJobsResult
     : (Array.isArray(recentJobsResult) ? recentJobsResult : (recentJobsResult?.data || [])).map((job: any) => ({
         id: job.id,
         title: job.title || job.case_name || 'Untitled Job',
         status: job.status,
         updatedAt: job.updated_at,
       }));
-  
+
   const formattedRecentJobs = (Array.isArray(recentJobs) ? recentJobs : []).map((job: any) => ({
     id: job.id,
     title: job.title || job.case_name || 'Untitled Job',

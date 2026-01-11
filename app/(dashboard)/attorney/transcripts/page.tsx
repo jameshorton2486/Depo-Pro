@@ -3,6 +3,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { TranscriptList } from '@/components/attorney/transcript-list';
 import { redirect } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Shared Transcripts | Depo-Pro',
 };
@@ -17,7 +19,7 @@ export default async function AttorneyTranscriptsPage() {
   // Fetch transcripts shared with current attorney using Supabase
   const supabase = await createSupabaseServerClient();
   const now = new Date().toISOString();
-  
+
   const { data: sharedTranscriptsData, error } = await supabase
     .from('transcript_shares')
     .select(`
@@ -59,7 +61,7 @@ export default async function AttorneyTranscriptsPage() {
   const adminClient = getSupabaseAdminClient();
   const sharedByIds = [...new Set((sharedTranscriptsData || []).map(s => s.shared_by_id).filter(Boolean))];
   const sharedByUsers: Record<string, any> = {};
-  
+
   for (const userId of sharedByIds) {
     const { data: userData } = await adminClient.auth.admin.getUserById(userId);
     if (userData?.user) {

@@ -16,6 +16,8 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { startOfMonth } from 'date-fns';
 import type { FlaggedWord } from '@/types/transcript';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ScopistDashboard() {
   const session = await auth();
 
@@ -32,39 +34,39 @@ export default async function ScopistDashboard() {
   // Fetch stats and assigned jobs using Supabase
   const supabase = await createSupabaseServerClient();
   const startOfMonthDate = startOfMonth(new Date()).toISOString();
-  
+
   // Get assignments for this scopist
   const { data: assignments } = await supabase
     .from('job_assignments')
     .select('job_id, status, submitted_at')
     .eq('scopist_id', user.id);
-  
+
   const assignmentJobIds = assignments?.map(a => a.job_id) || [];
-  
+
   // Active jobs (assigned to me, not completed)
   const activeJobsCount = assignments?.filter(a => a.status !== 'SUBMITTED').length || 0;
-  
+
   // Pending review (AI complete, assigned to me)
   const { count: pendingReviewCount } = await supabase
     .from('jobs')
     .select('id', { count: 'exact', head: true })
     .in('id', assignmentJobIds)
     .in('status', ['READY_FOR_EDIT', 'ASSIGNED']);
-  
+
   // Completed this month
-  const completedThisMonthCount = assignments?.filter(a => 
-    a.status === 'SUBMITTED' && 
-    a.submitted_at && 
+  const completedThisMonthCount = assignments?.filter(a =>
+    a.status === 'SUBMITTED' &&
+    a.submitted_at &&
     new Date(a.submitted_at) >= new Date(startOfMonthDate)
   ).length || 0;
-  
+
   // Total completed
   const totalCompletedCount = assignments?.filter(a => a.status === 'SUBMITTED').length || 0;
-  
+
   // Assigned jobs with details
   // Get jobs first, then fetch related data separately (Supabase doesn't support complex nested filters)
   let assignedJobs: any[] = [];
-  
+
   if (assignmentJobIds.length > 0) {
     const { data: assignedJobsData } = await supabase
       .from('jobs')
@@ -126,7 +128,7 @@ export default async function ScopistDashboard() {
       };
     });
   }
-  
+
   const activeJobs = activeJobsCount;
   const pendingReview = pendingReviewCount || 0;
   const completedThisMonth = completedThisMonthCount;

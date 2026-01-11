@@ -8,6 +8,8 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'Feature Flags | Depo-Pro',
   description: 'Manage feature flags and feature access',

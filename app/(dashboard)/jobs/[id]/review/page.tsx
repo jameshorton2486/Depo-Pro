@@ -1,3 +1,4 @@
+// Migrated from Prisma to Supabase queries — PASS 2A
 // ═══════════════════════════════════════════════════════════════
 // REVIEW PAGE - Server component for transcript review
 // ═══════════════════════════════════════════════════════════════
@@ -6,10 +7,14 @@
 
 import { notFound, redirect } from 'next/navigation';
 import { auth } from '@/lib/auth-compat';
-import { db } from '@/lib/db';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { Role } from '@/lib/constants';
 import type { TranscriptSegment } from '@/components/transcripts/synced-transcript-viewer';
 import { ReviewClientNew } from './review-client-new';
+
+export const dynamic = 'force-dynamic';
 
 interface ReviewPageProps {
   params: Promise<{ id: string }>;
@@ -24,25 +29,14 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     redirect('/login');
   }
 
-  // Fetch job with transcription and files
-  const job = await db.job.findUnique({
-    where: { id: jobId },
-    include: {
-      transcription: true,
-      files: true,
-      assignments: {
-        where: {
-          scopistId: session.user.id,
-        },
-      },
-      createdBy: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-        },
-      },
-    },
+  const supabase = await createSupabaseServerClient();
+
+  // Fetch job with includes
+  const job = await getJobById(supabase, jobId, {
+    includeCreatedBy: true,
+    includeFiles: true,
+    includeAssignments: true,
+    includeTranscripts: true,
   });
 
   // Check if job exists
@@ -51,22 +45,24 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   }
 
   // Check access: user must be the creator OR an assigned scopist OR admin
-  const isCreator = job.createdById === session.user.id;
-  const isAssignedScopist = job.assignments.length > 0;
+  const isCreator = job.created_by_id === session.user.id;
+  const isAssignedScopist = (job.assignments || []).some((a: any) => a.scopist_id === session.user.id);
   const isAdmin = session.user.role === Role.ADMIN;
 
   if (!isCreator && !isAssignedScopist && !isAdmin) {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Check if transcription exists
-  if (!job.transcription) {
+  // Get transcription
+  const transcription = await getTranscriptByJobId(supabase, jobId);
+
+  if (!transcription) {
     redirect(`/jobs/${jobId}?error=no_transcription`);
   }
 
-  // Get audio file URL
-  const audioFile = job.files.find(
-    (f: any) => f.type === 'AUDIO' || f.mimeType?.startsWith('audio/'),
+  // Get audio file URL from job files
+  const audioFile = (job.files || []).find(
+    (f: any) => f.type === 'AUDIO' || f.mime_type?.startsWith('audio/'),
   );
 
   if (!audioFile) {
@@ -77,23 +73,23 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   let segments: TranscriptSegment[] = [];
   try {
     // Try to get segments from utterances first
-    if (job.transcription.utterances) {
-      const utterances = Array.isArray(job.transcription.utterances)
-        ? job.transcription.utterances
-        : JSON.parse(job.transcription.utterances as string || '[]');
-      
+    if (transcription.utterances) {
+      const utterances = Array.isArray(transcription.utterances)
+        ? transcription.utterances
+        : JSON.parse(transcription.utterances as string || '[]');
+
       segments = utterances.map((utt: any) => ({
         speaker: utt.speaker || 0,
         words: utt.words || [],
         start: utt.start || 0,
         end: utt.end || 0,
       }));
-    } else if (job.transcription.words) {
+    } else if (transcription.words) {
       // Fallback: create segments from words grouped by speaker
-      const words = Array.isArray(job.transcription.words)
-        ? job.transcription.words
-        : JSON.parse(job.transcription.words as string || '[]');
-      
+      const words = Array.isArray(transcription.words)
+        ? transcription.words
+        : JSON.parse(transcription.words as string || '[]');
+
       // Group words by speaker to create segments
       const segmentsMap = new Map<number, any[]>();
       words.forEach((word: any) => {
@@ -103,7 +99,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
         }
         segmentsMap.get(speaker)!.push(word);
       });
-      
+
       segments = Array.from(segmentsMap.entries()).map(([speaker, wordsArray]) => ({
         speaker,
         words: wordsArray,
@@ -118,11 +114,11 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   return (
     <ReviewClientNew
       jobId={job.id}
-      transcriptionId={job.transcription.id}
-      audioUrl={audioFile.storageUrl}
+      transcriptionId={transcription.id}
+      audioUrl={audioFile.storage_url || audioFile.storageUrl}
       segments={segments}
-      caseName={job.caseName || 'Untitled Case'}
-      deponentName={(job as any).deponentName || undefined}
+      caseName={job.case_name || 'Untitled Case'}
+      deponentName={job.deponent_name || undefined}
     />
   );
 }

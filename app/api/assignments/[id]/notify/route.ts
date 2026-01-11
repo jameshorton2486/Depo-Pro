@@ -1,8 +1,9 @@
+// Migrated from Prisma to Supabase queries — PASS 2A
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { db } from '@/lib/db';
+import { getAssignmentById, getJobById } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { sendEmail, jobAssignedEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
@@ -25,17 +26,21 @@ export async function POST(
 
     const supabase = await createSupabaseServerClient();
 
-    // Get assignment details with related data
-    const assignment = await db.assignment.findUnique({
-      where: { id: assignmentId },
-      include: { job: true },
-    });
+    // Get assignment details
+    const assignment = await getAssignmentById(supabase, assignmentId);
 
     if (!assignment) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
-    const job = assignment.job as any;
+    // Get job details
+    const job = await getJobById(supabase, assignment.job_id, {
+      includeCreatedBy: false,
+    });
+
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
 
     // Verify job creator matches session user
     if (job?.created_by_id !== session.user.id) {
@@ -59,8 +64,8 @@ export async function POST(
       scopistName: `${scopistData.user_metadata?.firstName || ''} ${scopistData.user_metadata?.lastName || ''}`,
       scopistEmail: scopistData.email || '',
       reporterName: `${reporterData.user_metadata?.firstName || ''} ${reporterData.user_metadata?.lastName || ''}`,
-      caseNumber: (job as any).case_number || (job as any).caseNumber || 'N/A',
-      depositionDate: (job as any).deposition_date || (job as any).depositionDate || undefined,
+      caseNumber: job.case_number || 'N/A',
+      depositionDate: job.deposition_date ? new Date(job.deposition_date) : undefined,
       notes: assignment.scopist_notes || undefined,
     });
 

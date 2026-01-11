@@ -13,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { parseAuthError } from '@/lib/supabase/parse-auth-error';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -53,22 +54,54 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
     setError(null);
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      data.email,
-      {
-        redirectTo: `${window.location.origin}/reset-password`,
+    console.group('[Password Reset] Attempt');
+    console.log('Email:', data.email);
+    console.log('Redirect To:', `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?type=recovery`);
+    console.groupEnd();
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        data.email,
+        {
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?type=recovery`,
+        }
+      );
+
+      if (resetError) {
+        const parsed = parseAuthError(resetError);
+        
+        console.group('[Password Reset] Failed');
+        console.error('Error:', parsed.technicalDetails);
+        console.error('Code:', parsed.code);
+        
+        // Check if this is the email configuration issue
+        if (parsed.technicalDetails.includes('recovery email') || 
+            parsed.technicalDetails.includes('sending')) {
+          console.warn('⚠️ This usually means Supabase email is not configured.');
+          console.warn('Fix: Go to Supabase Dashboard → Authentication → Email Templates');
+          console.warn('Enable either built-in Supabase email or configure SMTP.');
+        }
+        console.groupEnd();
+        
+        setError(parsed.userMessage);
+        setIsLoading(false);
+        return;
       }
-    );
 
-    if (resetError) {
-      setError('Unable to send reset email. Please try again later.');
+      console.log('[Password Reset] Email sent successfully');
+      // Always show success to avoid email enumeration
+      setSuccess(true);
       setIsLoading(false);
-      return;
+    } catch (err) {
+      const parsed = parseAuthError(err);
+      
+      console.group('[Password Reset] Exception');
+      console.error('Error:', parsed.technicalDetails);
+      console.groupEnd();
+      
+      setError(parsed.userMessage);
+      setIsLoading(false);
     }
-
-    // Always show success to avoid email enumeration
-    setSuccess(true);
-    setIsLoading(false);
   };
 
   // ---------------------------------------------------------------------------
