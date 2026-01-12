@@ -105,9 +105,9 @@ export function Navbar({ user: userProp }: NavbarProps) {
             {user.role === Role.ATTORNEY && (
               <>
                 <Link
-                  href="/attorney"
+                  href="/attorney-dashboard"
                   className={`text-sm font-medium transition-colors hover:text-[var(--color-primary)] ${
-                    isActive('/attorney') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
+                    isActive('/attorney-dashboard') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
                   }`}
                 >
                   Dashboard

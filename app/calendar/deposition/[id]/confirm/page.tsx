@@ -28,7 +28,7 @@ export default async function ConfirmDepositionPage({ params }: ConfirmDepositio
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
         <Link
-          href="/dashboard/reporter/calendar"
+          href="/calendar"
           className="text-indigo-600 hover:text-indigo-700 flex items-center gap-2 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />

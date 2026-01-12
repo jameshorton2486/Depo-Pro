@@ -228,7 +228,7 @@ const ATTORNEY_NAV: NavigationSchema = [
     section: 'Dashboard',
     icon: LayoutDashboard,
     items: [
-      { id: 'attorney-dashboard', label: 'My Dashboard', href: '/attorney', icon: LayoutDashboard, description: 'Your overview' },
+      { id: 'attorney-dashboard', label: 'My Dashboard', href: '/attorney-dashboard', icon: LayoutDashboard, description: 'Your overview' },
     ],
   },
   {
@@ -461,7 +461,7 @@ export function getBreadcrumbs(role: UserRole, route: string): Array<{ label: st
  * Check if a path is active (compatibility function)
  */
 export function isPathActive(pathname: string, href: string): boolean {
-  if (href === '/dashboard' || href === '/admin' || href === '/attorney') {
+  if (href === '/dashboard' || href === '/admin' || href === '/attorney-dashboard') {
     return pathname === href;
   }
   return pathname === href || pathname.startsWith(`${href}/`);

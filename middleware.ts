@@ -30,6 +30,8 @@ const PUBLIC_ROUTES = [
   '/forgot-password',
   '/reset-password',
   '/auth/callback',
+  '/auth/confirm',
+  '/auth/invite/accept',
 ];
 
 const AUTH_REDIRECT_ROUTES = ['/login', '/register'];

@@ -24,26 +24,26 @@ export interface MiddlewareClientResult {
 
 /**
  * Create a Supabase client for use in Next.js middleware
- * 
+ *
  * Returns both the client and a response object that must be returned
  * from the middleware to properly set cookies.
- * 
+ *
  * @example
  * ```ts
  * export async function middleware(request: NextRequest) {
  *   const { supabase, response } = await createSupabaseMiddlewareClient(request);
  *   const { data: { user } } = await supabase.auth.getUser();
- *   
+ *
  *   if (!user) {
  *     return NextResponse.redirect(new URL('/login', request.url));
  *   }
- *   
+ *
  *   return response; // IMPORTANT: Return this response to set cookies
  * }
  * ```
  */
-const SUPABASE_URL = 'https://ildhcfspbmhuemzgvzyx.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsZGhjZnNwYm1odWVtemd2enl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNTMwMzgsImV4cCI6MjA3ODYyOTAzOH0.X9ugAI2BWea4WHRNQBP6UrKXXyxokKJqtpZciX2owcM';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ildhcfspbmhuemzgvzyx.supabase.co';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsZGhjZnNwYm1odWVtemd2enl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNTMwMzgsImV4cCI6MjA3ODYyOTAzOH0.X9ugAI2BWea4WHRNQBP6UrKXXyxokKJqtpZciX2owcM';
 
 export async function createSupabaseMiddlewareClient(
   request: NextRequest
@@ -66,14 +66,14 @@ export async function createSupabaseMiddlewareClient(
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         );
-        
+
         // Create a new response with the updated cookies
         response = NextResponse.next({
           request: {
             headers: request.headers,
           },
         });
-        
+
         // Set cookies on the response (for the browser)
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options)
@@ -102,7 +102,7 @@ export function getAccessTokenFromRequest(request: NextRequest): string | null {
   const authCookie = cookies.find(
     (cookie) => cookie.name.includes('-auth-token')
   );
-  
+
   if (authCookie) {
     try {
       // The cookie value is a JSON array: [access_token, refresh_token]

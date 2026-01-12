@@ -20,16 +20,22 @@ export default async function DashboardPage() {
   const role = session.user.role;
 
   // Redirect based on role
-  if (role === 'ADMIN') {
-    redirect('/admin');
-  } else if (role === 'REPORTER') {
-    redirect('/dashboard/reporter');
-  } else if (role === 'SCOPIST') {
-    redirect('/dashboard/scopist');
-  } else if (role === 'ATTORNEY') {
-    redirect('/attorney-dashboard');
-  } else {
-    // Default to reporter dashboard
-    redirect('/dashboard/reporter');
+  // Routes are defined in app/(dashboard)/ which creates routes WITHOUT /dashboard prefix
+  switch (role) {
+    case 'ADMIN':
+      redirect('/admin');
+      break;
+    case 'REPORTER':
+      redirect('/reporter');  // Fixed: was /dashboard/reporter
+      break;
+    case 'SCOPIST':
+      redirect('/scopist');   // Fixed: was /dashboard/scopist
+      break;
+    case 'ATTORNEY':
+      redirect('/attorney-dashboard');  // This route exists in app/(attorney)/
+      break;
+    default:
+      // Default to reporter dashboard for unknown roles
+      redirect('/reporter');  // Fixed: was /dashboard/reporter
   }
 }

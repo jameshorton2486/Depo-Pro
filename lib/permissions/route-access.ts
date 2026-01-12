@@ -82,9 +82,6 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   // REPORTER ROUTES
   // ─────────────────────────────────────────────────────────────────────────
   '/reporter': ['ADMIN', 'REPORTER'],
-  '/dashboard/reporter': ['ADMIN', 'REPORTER'],
-  '/dashboard/reporter/calendar': ['ADMIN', 'REPORTER'],
-  '/dashboard/reporter/jobs': ['ADMIN', 'REPORTER'],
   '/jobs': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/jobs/new': ['ADMIN', 'REPORTER'],
   '/calendar': ['ADMIN', 'REPORTER', 'SCOPIST'],
@@ -148,7 +145,7 @@ export const API_ACCESS: Record<string, Role[]> = {
   '/api/transcripts': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/transcripts/edit': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/transcripts/[id]/finalize': ['ADMIN', 'REPORTER'],
-  
+
   // Contact
   '/api/contact': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
 

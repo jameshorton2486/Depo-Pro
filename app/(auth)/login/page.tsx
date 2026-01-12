@@ -34,7 +34,9 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const supabase = getSupabaseBrowserClient();
 
-  const [error, setError] = useState<string | null>(null);
+  // Check for error from URL params (auth callback redirects)
+  const errorParam = searchParams.get('error');
+  const [error, setError] = useState<string | null>(errorParam);
   const [isLoading, setIsLoading] = useState(false);
 
   const {
