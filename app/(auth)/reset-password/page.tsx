@@ -4,9 +4,10 @@
 // RESET PASSWORD PAGE
 // =============================================================================
 // Supabase-only password update after recovery email
+// Includes session verification to prevent AbortError
 // =============================================================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -20,7 +21,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // Validation
@@ -54,6 +55,8 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [hasValidSession, setHasValidSession] = useState(false);
 
   const {
     register,
@@ -63,51 +66,179 @@ export default function ResetPasswordPage() {
     resolver: zodResolver(resetPasswordSchema),
   });
 
+  // ---------------------------------------------------------------------------
+  // Session verification on mount
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    let mounted = true;
+
+    const checkSession = async () => {
+      try {
+        // Small delay to allow cookies to be set after redirect
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+
+        if (sessionError) {
+          setError('Unable to verify your session. Please request a new password reset link.');
+          setHasValidSession(false);
+        } else if (!session) {
+          setError('Your password reset link has expired or is invalid. Please request a new one.');
+          setHasValidSession(false);
+        } else {
+          setHasValidSession(true);
+          setError(null);
+        }
+      } catch {
+        if (!mounted) return;
+        setError('An error occurred. Please request a new password reset link.');
+        setHasValidSession(false);
+      } finally {
+        if (mounted) {
+          setIsCheckingSession(false);
+        }
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth state changes (catches PASSWORD_RECOVERY event)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setHasValidSession(true);
+        setError(null);
+        setIsCheckingSession(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase.auth]);
+
+  // ---------------------------------------------------------------------------
+  // Form submission with retry logic for AbortError
+  // ---------------------------------------------------------------------------
   const onSubmit = async (data: ResetPasswordInput) => {
     setIsLoading(true);
     setError(null);
 
-    console.group('[Password Update] Attempt');
-    console.log('Timestamp:', new Date().toISOString());
-    console.groupEnd();
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-    try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: data.password,
-      });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: data.password,
+        });
 
-      if (updateError) {
-        const parsed = parseAuthError(updateError);
-        
-        console.group('[Password Update] Failed');
-        console.error('Error:', parsed.technicalDetails);
-        console.error('Code:', parsed.code);
-        console.groupEnd();
-        
-        setError(parsed.userMessage);
+        if (updateError) {
+          const parsed = parseAuthError(updateError);
+          
+          // If AbortError, retry
+          if (parsed.technicalDetails.toLowerCase().includes('abort') && attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+          
+          lastError = updateError;
+          break;
+        }
+
+        // Success!
+        setSuccess(true);
         setIsLoading(false);
         return;
-      }
 
-      console.log('[Password Update] Success');
-      setSuccess(true);
-      setIsLoading(false);
-    } catch (err) {
-      const parsed = parseAuthError(err);
-      
-      console.group('[Password Update] Exception');
-      console.error('Error:', parsed.technicalDetails);
-      console.groupEnd();
-      
-      setError(parsed.userMessage);
-      setIsLoading(false);
+      } catch (err) {
+        lastError = err as Error;
+        
+        // If AbortError, retry
+        const errorMessage = (err as Error).message || String(err);
+        if (errorMessage.toLowerCase().includes('abort') && attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        break;
+      }
     }
+
+    // All retries failed
+    const parsed = parseAuthError(lastError);
+    setError(parsed.userMessage || 'Failed to update password. Please try again.');
+    setIsLoading(false);
   };
+
+  // ---------------------------------------------------------------------------
+  // Loading state while checking session
+  // ---------------------------------------------------------------------------
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-4">
+              <Loader2 className="h-12 w-12 text-accent animate-spin" />
+            </div>
+            <CardTitle className="text-h2 font-bold text-ink">
+              Verifying Your Link
+            </CardTitle>
+            <CardDescription className="text-body text-slate">
+              Please wait while we verify your password reset link...
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // No valid session - show error
+  // ---------------------------------------------------------------------------
+  if (!hasValidSession) {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-4">
+              <AlertCircle className="h-12 w-12 text-danger" />
+            </div>
+            <CardTitle className="text-h2 font-bold text-ink">
+              Link Invalid or Expired
+            </CardTitle>
+            <CardDescription className="text-body text-slate">
+              {error || 'Your password reset link has expired or is invalid.'}
+            </CardDescription>
+          </CardHeader>
+
+          <CardFooter className="flex flex-col space-y-4">
+            <Button
+              className="w-full"
+              onClick={() => router.push('/forgot-password')}
+            >
+              Request New Reset Link
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push('/login')}
+            >
+              Return to Sign In
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Success state
   // ---------------------------------------------------------------------------
-
   if (success) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center px-4">
@@ -140,7 +271,6 @@ export default function ResetPasswordPage() {
   // ---------------------------------------------------------------------------
   // Form state
   // ---------------------------------------------------------------------------
-
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
@@ -177,6 +307,9 @@ export default function ResetPasswordPage() {
               {errors.password && (
                 <p className="text-xs text-danger">{errors.password.message}</p>
               )}
+              <p className="text-xs text-slate">
+                Must be 8+ characters with uppercase, lowercase, and a number
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -199,7 +332,14 @@ export default function ResetPasswordPage() {
 
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? 'Updating…' : 'Update Password'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Password'
+              )}
             </Button>
 
             <div className="text-sm text-center text-slate">
