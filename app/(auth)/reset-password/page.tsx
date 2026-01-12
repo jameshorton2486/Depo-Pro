@@ -76,9 +76,9 @@ export default function ResetPasswordPage() {
       try {
         // Small delay to allow cookies to be set after redirect
         await new Promise(resolve => setTimeout(resolve, 500));
-        
+
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+
         if (!mounted) return;
 
         if (sessionError) {
@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
     // Listen for auth state changes (catches PASSWORD_RECOVERY event)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      
+
       if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
         setHasValidSession(true);
         setError(null);
@@ -139,13 +139,21 @@ export default function ResetPasswordPage() {
 
         if (updateError) {
           const parsed = parseAuthError(updateError);
-          
-          // If AbortError, retry
-          if (parsed.technicalDetails.toLowerCase().includes('abort') && attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Check if it's an AbortError or network error (retryable)
+          const isRetryableError =
+            parsed.technicalDetails.toLowerCase().includes('abort') ||
+            parsed.technicalDetails.toLowerCase().includes('network') ||
+            parsed.technicalDetails.toLowerCase().includes('fetch') ||
+            parsed.code === 'network_error';
+
+          if (isRetryableError && attempt < maxRetries) {
+            // Exponential backoff: 1s, 2s, 4s
+            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
+            await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           }
-          
+
           lastError = updateError;
           break;
         }
@@ -157,11 +165,18 @@ export default function ResetPasswordPage() {
 
       } catch (err) {
         lastError = err as Error;
-        
-        // If AbortError, retry
-        const errorMessage = (err as Error).message || String(err);
-        if (errorMessage.toLowerCase().includes('abort') && attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Check if it's an AbortError by name or message
+        const isAbortError =
+          err instanceof Error &&
+          (err.name === 'AbortError' ||
+           err.message.toLowerCase().includes('abort') ||
+           err.message.toLowerCase().includes('timeout'));
+
+        if (isAbortError && attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         break;
