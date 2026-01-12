@@ -346,7 +346,7 @@ export const NAVIGATION: Record<UserRole, NavigationSchema> = {
 /**
  * Assert that all navigation item IDs are globally unique across all role schemas.
  * This prevents React key conflicts and ensures stable navigation state.
- * 
+ *
  * @throws Error if duplicate IDs are detected
  */
 function assertUniqueNavIds(): void {
@@ -401,7 +401,7 @@ export function getNavigationItemsForRole(role: UserRole): NavItem[] {
  */
 export function getAllRoutes(): string[] {
   const routes = new Set<string>();
-  
+
   Object.values(NAVIGATION).forEach((schema) => {
     schema.forEach((section) => {
       section.items.forEach((item) => {
@@ -409,7 +409,7 @@ export function getAllRoutes(): string[] {
       });
     });
   });
-  
+
   return Array.from(routes).sort();
 }
 
@@ -439,7 +439,7 @@ export function findSectionForRoute(role: UserRole, route: string): NavSection |
 export function getBreadcrumbs(role: UserRole, route: string): Array<{ label: string; href: string }> {
   const nav = NAVIGATION[role];
   const breadcrumbs: Array<{ label: string; href: string }> = [];
-  
+
   for (const section of nav) {
     for (const item of section.items) {
       if (item.href === route || route.startsWith(item.href + '/')) {
@@ -449,7 +449,7 @@ export function getBreadcrumbs(role: UserRole, route: string): Array<{ label: st
       }
     }
   }
-  
+
   return breadcrumbs;
 }
 
