@@ -1,26 +1,14 @@
 // lib/exhibits/storage.ts
 // Storage helpers for exhibit file management
+// ⚠️ SERVER-ONLY: Uses service role for storage operations
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import 'server-only';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-// Lazy Supabase client initialization (BUILD-SAFE)
-let supabaseInstance: SupabaseClient | null = null;
-
+// Use admin client for storage operations (bypasses RLS)
 function getSupabaseClient(): SupabaseClient {
-  if (supabaseInstance) return supabaseInstance;
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. ' +
-      'Storage client requires these environment variables.'
-    );
-  }
-
-  supabaseInstance = createClient(supabaseUrl, supabaseServiceKey);
-  return supabaseInstance;
+  return getSupabaseAdmin();
 }
 
 // Bucket configuration

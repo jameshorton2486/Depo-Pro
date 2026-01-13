@@ -4,7 +4,7 @@
 // Returns NextAuth-compatible format: { user: {...} }
 // =============================================================================
 
-import { getUserWithProfile } from '@/lib/auth-supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { UserRole } from '@/types/database';
 
 // Session user format (flat structure for easier access)
@@ -22,20 +22,32 @@ export interface SessionUser {
  * Returns flat user object: { id, email, role, name, firmId }
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const userWithProfile = await getUserWithProfile();
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  if (!userWithProfile || !userWithProfile.user) {
+  if (userError || !user) {
+    return null;
+  }
+
+  // Fetch user profile from users table
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile) {
     return null;
   }
 
   return {
-    id: userWithProfile.user.id,
-    email: userWithProfile.user.email || '',
-    role: (userWithProfile.profile?.role as UserRole) || 'REPORTER',
-    name: userWithProfile.profile?.first_name && userWithProfile.profile?.last_name
-      ? `${userWithProfile.profile.first_name} ${userWithProfile.profile.last_name}`
-      : userWithProfile.profile?.first_name || userWithProfile.profile?.last_name || null,
-    firmId: userWithProfile.profile?.firm_id || null,
+    id: user.id,
+    email: user.email || '',
+    role: (profile.role as UserRole) || 'REPORTER',
+    name: profile.first_name && profile.last_name
+      ? `${profile.first_name} ${profile.last_name}`
+      : profile.first_name || profile.last_name || null,
+    firmId: profile.firm_id || null,
   };
 }
 

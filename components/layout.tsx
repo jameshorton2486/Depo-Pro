@@ -194,20 +194,27 @@ interface BreadcrumbsProps {
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb" className={cn("breadcrumb", className)}>
-      {items.map((item, index) => (
-        <React.Fragment key={item.label}>
-          {index > 0 && (
-            <ChevronIcon className="w-4 h-4 breadcrumb-separator" />
-          )}
-          {item.href && index < items.length - 1 ? (
-            <Link href={item.href} className="breadcrumb-link">
-              {item.label}
-            </Link>
-          ) : (
-            <span className="breadcrumb-current">{item.label}</span>
-          )}
-        </React.Fragment>
-      ))}
+      {items.map((item, index) => {
+        // Generate stable ID for breadcrumb item
+        const itemId = item.href 
+          ? `breadcrumb-${item.href.replace(/\//g, '-').replace(/^-/, '') || 'home'}-${index}`
+          : `breadcrumb-${item.label.toLowerCase().replace(/\s+/g, '-')}-${index}`;
+        
+        return (
+          <React.Fragment key={itemId}>
+            {index > 0 && (
+              <ChevronIcon className="w-4 h-4 breadcrumb-separator" />
+            )}
+            {item.href && index < items.length - 1 ? (
+              <Link href={item.href} className="breadcrumb-link">
+                {item.label}
+              </Link>
+            ) : (
+              <span className="breadcrumb-current">{item.label}</span>
+            )}
+          </React.Fragment>
+        );
+      })}
     </nav>
   );
 }

@@ -3,8 +3,9 @@
  * Tracks who did what, when, and from where — without slowing the app
  */
 
+import 'server-only';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export type AuditAction =
   | 'USER_LOGIN' | 'USER_LOGOUT' | 'USER_LOGIN_FAILED'
@@ -41,11 +42,8 @@ export interface AuditLogOptions {
  */
 export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
   try {
-    // Use service role for audit logs (bypasses RLS)
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Use admin client for audit logs (bypasses RLS)
+    const supabase = getSupabaseAdmin();
 
     // Get user's firm_id if userId is provided
     let firmId: string | undefined;

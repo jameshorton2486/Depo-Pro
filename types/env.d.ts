@@ -11,8 +11,7 @@ declare global {
       SUPABASE_STORAGE_BUCKET: string;
 
       // Auth
-      NEXTAUTH_URL: string;
-      NEXTAUTH_SECRET: string;
+      // NextAuth removed - using Supabase only
       GOOGLE_CLIENT_ID: string;
       GOOGLE_CLIENT_SECRET: string;
       MICROSOFT_CLIENT_ID?: string;

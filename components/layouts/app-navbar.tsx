@@ -50,16 +50,15 @@ interface AppNavbarProps {
 
 export function AppNavbar({ user: userProp }: AppNavbarProps) {
   const pathname = usePathname();
-  const { user: authUser, profile, signOut } = useAuth();
-  
+  const { user: authUser, signOut } = useAuth();
+
   // Use prop if provided, otherwise use auth hook
-  const user = userProp || (authUser && profile ? {
+  // Note: profile data should be fetched separately if needed
+  const user = userProp || (authUser ? {
     id: authUser.id,
     email: authUser.email || '',
-    name: profile.first_name && profile.last_name 
-      ? `${profile.first_name} ${profile.last_name}` 
-      : profile.first_name || profile.last_name || null,
-    role: profile.role,
+    name: null, // Profile data must be fetched separately
+    role: 'REPORTER', // Default role, should be fetched from profile
   } : null);
 
   // Don't render if no user
@@ -69,7 +68,7 @@ export function AppNavbar({ user: userProp }: AppNavbarProps) {
 
   const role = (user.role as UserRole) || 'REPORTER';
   const navItems = getNavigationItemsForRole(role);
-  
+
   const handleSignOut = async () => {
     await signOut();
   };
@@ -80,8 +79,8 @@ export function AppNavbar({ user: userProp }: AppNavbarProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Left: Logo + Nav Links */}
           <div className="flex items-center gap-8">
-            <Link 
-              href="/dashboard" 
+            <Link
+              href="/dashboard"
               className="text-lg font-semibold text-brand-primary"
             >
               Depo-Pro
@@ -127,8 +126,8 @@ export function AppNavbar({ user: userProp }: AppNavbarProps) {
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className="relative h-9 w-9 rounded-full bg-brand-primary-soft text-brand-primary hover:bg-brand-primary hover:text-white"
                 >
                   <span className="text-sm font-medium">
@@ -149,7 +148,7 @@ export function AppNavbar({ user: userProp }: AppNavbarProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                
+
                 {USER_MENU_ITEMS.map((item) => (
                   <DropdownMenuItem key={item.href} asChild>
                     <Link href={item.href} className="cursor-pointer">

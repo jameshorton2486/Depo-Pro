@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { generateBreadcrumbs, pathnameToBreadcrumbs, type BreadcrumbItem } from '@/lib/breadcrumbs';
+import { generateBreadcrumbs, pathnameToBreadcrumbs, normalizeBreadcrumbs, type BreadcrumbItem } from '@/lib/breadcrumbs';
 import { type UserRole } from '@/lib/navigation';
 
 interface BreadcrumbsProps {
@@ -20,13 +20,21 @@ interface BreadcrumbsProps {
 
 /**
  * Main Breadcrumbs component - uses navigation schema for role-aware breadcrumbs
+ * Deduplicates at source before rendering
  */
 export function Breadcrumbs({ role, className, items }: BreadcrumbsProps) {
   const pathname = usePathname();
 
-  // Use custom items if provided, otherwise generate from navigation
-  const breadcrumbItems: BreadcrumbItem[] = items || 
-    generateBreadcrumbs(role, pathname).map(b => ({ label: b.label, href: b.href }));
+  // Generate breadcrumbs (already deduplicated and type-safe)
+  let breadcrumbItems: BreadcrumbItem[];
+  
+  if (items) {
+    // Normalize custom items to ensure type safety and deduplication
+    breadcrumbItems = normalizeBreadcrumbs(items);
+  } else {
+    // Generate from navigation schema (already deduplicated)
+    breadcrumbItems = generateBreadcrumbs(role, pathname);
+  }
 
   // If no breadcrumbs from navigation, fall back to pathname-based
   const finalItems: BreadcrumbItem[] = breadcrumbItems.length > 0 
@@ -47,7 +55,7 @@ export function Breadcrumbs({ role, className, items }: BreadcrumbsProps) {
           const isLast = index === finalItems.length - 1;
 
           return (
-            <li key={item.href || item.label} className="flex items-center">
+            <li key={item.id} className="flex items-center">
               {index > 0 && (
                 <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
               )}
@@ -97,7 +105,7 @@ export function SimpleBreadcrumbs({ items, className }: { items: BreadcrumbItem[
           const isLast = index === items.length - 1;
 
           return (
-            <li key={item.href || item.label} className="flex items-center">
+            <li key={item.id} className="flex items-center">
               {index > 0 && (
                 <ChevronRight className="h-4 w-4 mx-2 text-muted-foreground" />
               )}

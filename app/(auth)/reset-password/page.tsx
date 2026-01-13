@@ -14,8 +14,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { supabase } from '@/lib/supabase/client';
 import { parseAuthError } from '@/lib/supabase/parse-auth-error';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,7 @@ type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const supabase = getSupabaseBrowserClient();
+  // Use canonical browser client
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -105,7 +106,7 @@ export default function ResetPasswordPage() {
     checkSession();
 
     // Listen for auth state changes (catches PASSWORD_RECOVERY event)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (!mounted) return;
 
       if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {

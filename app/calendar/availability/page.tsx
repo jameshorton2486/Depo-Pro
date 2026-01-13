@@ -11,16 +11,52 @@ import { redirect } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { AvailabilityEditor } from '@/components/calendar/availability-editor';
 import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import type { Database } from '@/types/database';
+
+type User = Database['public']['Tables']['users']['Row'];
 
 export default function AvailabilityPage() {
-  const { user, profile, isLoading } = useAuth();
+  const { user, loading } = useAuth();
   const [mounted, setMounted] = useState(false);
+  const [profile, setProfile] = useState<User | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (isLoading || !mounted) {
+  useEffect(() => {
+    if (!user) {
+      setProfileLoading(false);
+      return;
+    }
+
+    async function fetchProfile() {
+      if (!user) {
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        setProfile(data);
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      } finally {
+        setProfileLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, [user]);
+
+  if (loading || !mounted || profileLoading) {
     return (
       <div className="p-6">
         <div className="animate-pulse">Loading...</div>

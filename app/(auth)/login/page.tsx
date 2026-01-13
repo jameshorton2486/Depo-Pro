@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 // =============================================================================
 // LOGIN PAGE
@@ -8,13 +8,14 @@
 // =============================================================================
 
 import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
 import { loginSchema, type LoginInput } from '@/lib/validations/user';
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { supabase } from '@/lib/supabase/client';
+import { parseAuthError } from '@/lib/supabase/parse-auth-error';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,14 +31,16 @@ import {
 
 // Inner component that uses useSearchParams
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = getSupabaseBrowserClient();
+  // Use canonical browser client
 
   // Check for error from URL params (auth callback redirects)
   const errorParam = searchParams.get('error');
   const [error, setError] = useState<string | null>(errorParam);
   const [isLoading, setIsLoading] = useState(false);
+  const [showResendConfirmation, setShowResendConfirmation] = useState(false);
+  const [lastAttemptedEmail, setLastAttemptedEmail] = useState<string | null>(null);
+  const [resendSuccess, setResendSuccess] = useState(false);
 
   const {
     register,
@@ -50,28 +53,83 @@ function LoginForm() {
   const onSubmit = async (data: LoginInput) => {
     setIsLoading(true);
     setError(null);
+    setShowResendConfirmation(false);
+    setResendSuccess(false);
+    setLastAttemptedEmail(data.email);
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    });
+    try {
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      });
 
-    if (signInError) {
-      if (signInError.message.includes('Invalid login credentials')) {
-        setError('Invalid email or password.');
-      } else if (signInError.message.includes('Email not confirmed')) {
-        setError('Please confirm your email address before logging in.');
-      } else {
-        setError(signInError.message || 'Login failed. Please try again.');
+      if (signInError) {
+        const parsed = parseAuthError(signInError);
+
+        // Check if it's an email confirmation error
+        if (signInError.message.includes('Email not confirmed')) {
+          setError(parsed.userMessage);
+          setShowResendConfirmation(true);
+        } else {
+          setError(parsed.userMessage);
+          setShowResendConfirmation(false);
+        }
+
+        setIsLoading(false);
+        return;
       }
 
-      setIsLoading(false);
-      return;
-    }
+      // Verify session was created
+      if (!authData.session) {
+        setError('Login failed: No session created');
+        setIsLoading(false);
+        return;
+      }
 
-    // Supabase handles cookies automatically
-    const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
-    router.replace(callbackUrl);
+      // Supabase handles cookies automatically
+      // Wait a moment for cookies to be set, then redirect
+      const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+
+      // Small delay to ensure cookies are set before redirect
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Use window.location for hard redirect to ensure middleware sees new session
+      window.location.href = callbackUrl;
+    } catch (err) {
+      console.error('[Login] Unexpected error:', err);
+      setError('An unexpected error occurred. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!lastAttemptedEmail) return;
+
+    setIsLoading(true);
+    setError(null);
+    setResendSuccess(false);
+
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: lastAttemptedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (resendError) {
+        const parsed = parseAuthError(resendError);
+        setError(parsed.userMessage);
+      } else {
+        setResendSuccess(true);
+        setShowResendConfirmation(false);
+      }
+    } catch (_err) {
+      setError('Failed to resend confirmation email. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -90,6 +148,30 @@ function LoginForm() {
           {error && (
             <div className="rounded-md bg-danger/10 p-3 text-sm text-danger border border-danger/20">
               {error}
+            </div>
+          )}
+
+          {resendSuccess && (
+            <div className="rounded-md bg-success/10 p-3 text-sm text-success border border-success/20">
+              Confirmation email sent! Please check your inbox and click the link to verify your account.
+            </div>
+          )}
+
+          {showResendConfirmation && !resendSuccess && (
+            <div className="rounded-md bg-warning/10 p-3 border border-warning/20">
+              <p className="text-sm text-warning mb-2">
+                Your email address hasn't been verified yet.
+              </p>
+              <Button
+                type="button"
+                onClick={handleResendConfirmation}
+                variant="outline"
+                size="sm"
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? 'Sending...' : 'Resend Confirmation Email'}
+              </Button>
             </div>
           )}
 

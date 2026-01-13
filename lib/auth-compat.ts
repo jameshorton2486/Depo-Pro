@@ -1,35 +1,46 @@
 // ═══════════════════════════════════════════════════════════════
-// AUTH COMPATIBILITY LAYER
+// AUTH COMPATIBILITY LAYER (DEPRECATED)
 // ═══════════════════════════════════════════════════════════════
-// Provides NextAuth-compatible interface using Supabase
-// This allows gradual migration of API routes
+// ⚠️ DEPRECATED: NextAuth has been removed
+// Use Supabase Auth directly via createSupabaseServerClient() from @/lib/supabase/server
 
-import { getUserWithProfile } from './auth-supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { UserRole } from '@/types/database';
 
 /**
- * Get auth session in NextAuth-compatible format
- * Use this for API routes that haven't been migrated yet
+ * Get auth session (legacy compatibility function)
  * 
- * @deprecated Use getUserWithProfile() from @/lib/auth-supabase instead
+ * @deprecated Use createSupabaseServerClient() from @/lib/supabase/server instead
  */
 export async function auth() {
-  const userWithProfile = await getUserWithProfile();
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  if (!userWithProfile || !userWithProfile.user) {
+  if (userError || !user) {
     return null;
   }
 
-  // Return in NextAuth-compatible format
+  // Fetch user profile from users table
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile) {
+    return null;
+  }
+
+  // Return session format
   return {
     user: {
-      id: userWithProfile.user.id,
-      email: userWithProfile.user.email || '',
-      role: (userWithProfile.profile?.role as UserRole) || 'REPORTER',
-      name: userWithProfile.profile?.first_name && userWithProfile.profile?.last_name
-        ? `${userWithProfile.profile.first_name} ${userWithProfile.profile.last_name}`
-        : userWithProfile.profile?.first_name || userWithProfile.profile?.last_name || null,
-      firmId: userWithProfile.profile?.firm_id || null,
+      id: user.id,
+      email: user.email || '',
+      role: (profile.role as UserRole) || 'REPORTER',
+      name: profile.first_name && profile.last_name
+        ? `${profile.first_name} ${profile.last_name}`
+        : profile.first_name || profile.last_name || null,
+      firmId: profile.firm_id || null,
     },
   };
 }

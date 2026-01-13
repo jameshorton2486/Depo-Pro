@@ -30,21 +30,9 @@ const ENV_VARS: EnvVar[] = [
     description: 'Supabase service role key (server only)',
     validate: (v) => v.length > 100,
   },
-  
-  // Auth - Required
-  {
-    name: 'NEXTAUTH_SECRET',
-    required: true,
-    description: 'NextAuth encryption secret',
-    validate: (v) => v.length >= 32,
-  },
-  {
-    name: 'NEXTAUTH_URL',
-    required: true,
-    description: 'Application URL',
-    validate: (v) => v.startsWith('http'),
-  },
-  
+
+  // Auth - NextAuth removed, using Supabase only
+
   // Deepgram - Required for transcription
   {
     name: 'DEEPGRAM_API_KEY',
@@ -52,7 +40,7 @@ const ENV_VARS: EnvVar[] = [
     description: 'Deepgram transcription API key',
     validate: (v) => v.length > 20,
   },
-  
+
   // Redis - Optional but recommended
   {
     name: 'REDIS_URL',
@@ -60,7 +48,7 @@ const ENV_VARS: EnvVar[] = [
     description: 'Redis connection URL (for job queue)',
     validate: (v) => v.startsWith('redis://') || v.startsWith('rediss://'),
   },
-  
+
   // Anthropic - Optional
   {
     name: 'ANTHROPIC_API_KEY',
@@ -79,10 +67,10 @@ export interface ValidationResult {
 export function validateEnvironment(): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  
+
   for (const envVar of ENV_VARS) {
     const value = process.env[envVar.name];
-    
+
     if (!value) {
       if (envVar.required) {
         errors.push(`Missing required env var: ${envVar.name} - ${envVar.description}`);
@@ -91,12 +79,12 @@ export function validateEnvironment(): ValidationResult {
       }
       continue;
     }
-    
+
     if (envVar.validate && !envVar.validate(value)) {
       errors.push(`Invalid env var: ${envVar.name} - validation failed`);
     }
   }
-  
+
   return {
     valid: errors.length === 0,
     errors,
@@ -106,12 +94,12 @@ export function validateEnvironment(): ValidationResult {
 
 export function assertEnvironment(): void {
   const result = validateEnvironment();
-  
+
   if (result.warnings.length > 0) {
     console.warn('Environment warnings:');
     result.warnings.forEach(w => console.warn(`  ⚠️ ${w}`));
   }
-  
+
   if (!result.valid) {
     console.error('Environment validation failed:');
     result.errors.forEach(e => console.error(`  ❌ ${e}`));

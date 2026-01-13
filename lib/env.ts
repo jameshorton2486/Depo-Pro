@@ -1,11 +1,11 @@
 /**
  * Centralized Environment Configuration
- * 
+ *
  * IMPORTANT:
  * - Do NOT call dotenv.config() anywhere in the app
  * - Next.js loads env files automatically
  * - This file is for validation + access only
- * 
+ *
  * Usage:
  *   import { env } from '@/lib/env';
  *   const apiKey = env.deepgramApiKey;
@@ -17,8 +17,7 @@ import { z } from 'zod';
 const envSchema = z.object({
   // === REQUIRED (app won't start without these) ===
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-  NEXTAUTH_SECRET: z.string().min(1, 'NEXTAUTH_SECRET is required'),
-  NEXTAUTH_URL: z.string().url('NEXTAUTH_URL must be a valid URL'),
+  // NextAuth removed - using Supabase only
   DEEPGRAM_API_KEY: z.string().min(1, 'DEEPGRAM_API_KEY is required'),
 
   // === REQUIRED FOR STORAGE ===
@@ -93,8 +92,7 @@ export function getOptionalEnv(key: string): string | undefined {
 // Specific getters for common use cases
 export const env = {
   get databaseUrl() { return getRequiredEnv('DATABASE_URL'); },
-  get nextAuthSecret() { return getRequiredEnv('NEXTAUTH_SECRET'); },
-  get nextAuthUrl() { return getRequiredEnv('NEXTAUTH_URL'); },
+  // NextAuth removed - using Supabase only
   get deepgramApiKey() { return getRequiredEnv('DEEPGRAM_API_KEY'); },
   get supabaseUrl() { return getOptionalEnv('SUPABASE_URL'); },
   get supabaseAnonKey() { return getOptionalEnv('SUPABASE_ANON_KEY'); },
@@ -108,8 +106,8 @@ export const env = {
   get nodeEnv() { return process.env.NODE_ENV || 'development'; },
   get isDev() { return this.nodeEnv === 'development'; },
   get isProd() { return this.nodeEnv === 'production'; },
-  get lowConfidenceThreshold() { 
-    return parseFloat(process.env.LOW_CONFIDENCE_THRESHOLD || '0.85'); 
+  get lowConfidenceThreshold() {
+    return parseFloat(process.env.LOW_CONFIDENCE_THRESHOLD || '0.85');
   },
   get fileRetentionDays() {
     return parseInt(process.env.FILE_RETENTION_DAYS || '90');

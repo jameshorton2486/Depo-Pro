@@ -1,17 +1,2 @@
-﻿/**
- * Supabase Client Exports
- */
-
-export { 
-  createSupabaseServerClient,
-  createSupabaseServiceClient,
-  getSupabaseServerClient,
-} from './server';
-
-export { 
-  createSupabaseBrowserClient,
-  createBrowserClient,
-} from './client';
-
-// Re-export for convenience
-export { createSupabaseServerClient as createServerClient } from './server';
+export { createSupabaseServerClient } from './server';
+export { getSupabaseBrowserClient } from './browser';

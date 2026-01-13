@@ -4,7 +4,7 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { getUserWithProfile } from '@/lib/auth-supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { UserRole } from '@/types/database';
 
 // Rate limiting store (in production, use Redis)
@@ -86,22 +86,34 @@ export function cleanupRateLimits() {
  * Returns user with profile or throws error
  */
 export async function requireAuth(_request?: NextRequest) {
-  const userWithProfile = await getUserWithProfile();
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  if (!userWithProfile || !userWithProfile.user) {
+  if (userError || !user) {
     throw new Error('UNAUTHENTICATED');
   }
 
-  // Return in NextAuth-compatible format for backward compatibility
+  // Fetch user profile from users table
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile) {
+    throw new Error('UNAUTHENTICATED');
+  }
+
+  // Return user with profile
   return {
     user: {
-      id: userWithProfile.user.id,
-      email: userWithProfile.user.email || '',
-      role: (userWithProfile.profile?.role as UserRole) || 'REPORTER',
-      name: userWithProfile.profile?.first_name && userWithProfile.profile?.last_name
-        ? `${userWithProfile.profile.first_name} ${userWithProfile.profile.last_name}`
-        : userWithProfile.profile?.first_name || userWithProfile.profile?.last_name || null,
-      firmId: userWithProfile.profile?.firm_id || null,
+      id: user.id,
+      email: user.email || '',
+      role: (profile.role as UserRole) || 'REPORTER',
+      name: profile.first_name && profile.last_name
+        ? `${profile.first_name} ${profile.last_name}`
+        : profile.first_name || profile.last_name || null,
+      firmId: profile.firm_id || null,
     },
   };
 }

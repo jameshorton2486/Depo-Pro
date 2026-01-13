@@ -101,7 +101,7 @@ export class GoogleCalendarProvider implements ExternalCalendarProviderInterface
     clientId: process.env.GOOGLE_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     redirectUri: process.env.GOOGLE_REDIRECT_URI || 
-      `${process.env.NEXTAUTH_URL}/api/external-calendar/google/callback`,
+      `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/external-calendar/google/callback`,
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
     revokeUrl: 'https://oauth2.googleapis.com/revoke',

@@ -4,20 +4,56 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
+import type { Database } from '@/types/database';
+
+type User = Database['public']['Tables']['users']['Row'];
 
 export default function ProfileSettingsPage() {
-  const { user: authUser, profile } = useAuth();
+  const { user: authUser, loading } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [profile, setProfile] = useState<User | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authUser) {
+      setProfileLoading(false);
+      return;
+    }
+
+    async function fetchProfile() {
+      if (!authUser) {
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (error) throw error;
+        setProfile(data);
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      } finally {
+        setProfileLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, [authUser]);
 
   const user = authUser && profile ? {
     id: authUser.id,
@@ -27,6 +63,14 @@ export default function ProfileSettingsPage() {
       ? `${profile.first_name} ${profile.last_name}`
       : profile.first_name || profile.last_name || null,
   } : null;
+
+  if (loading || profileLoading) {
+    return (
+      <div className="container py-8">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

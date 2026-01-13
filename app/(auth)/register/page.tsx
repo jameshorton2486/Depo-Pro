@@ -14,7 +14,7 @@ import Link from 'next/link';
 
 import { registerSchema, type RegisterInput } from '@/lib/validations/user';
 import { Role, ROLE_LABELS } from '@/lib/constants';
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { supabase } from '@/lib/supabase/client';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ import {
 import { CheckCircle } from 'lucide-react';
 
 export default function RegisterPage() {
-  const supabase = getSupabaseBrowserClient();
+  // Use canonical browser client
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -64,7 +64,7 @@ export default function RegisterPage() {
       password: data.password,
       options: {
         // Email confirmation redirect URL
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?type=signup`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`,
         // Metadata is NON-AUTHORITATIVE
         // Used only for onboarding review
         data: {

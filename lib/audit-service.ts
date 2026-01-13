@@ -1,9 +1,9 @@
-﻿/**
+/**
  * Audit Service - Supabase Implementation
  * Provides comprehensive audit logging for security and compliance
  */
 
-import { createSupabaseServiceClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 // Audit action types as const object for runtime use
 export const AuditAction = {
@@ -12,12 +12,12 @@ export const AuditAction = {
   LOGOUT: 'LOGOUT',
   LOGIN_FAILED: 'LOGIN_FAILED',
   PASSWORD_CHANGED: 'PASSWORD_CHANGED',
-  
+
   // Access control
   ACCESS_DENIED: 'ACCESS_DENIED',
   ADMIN_ACCESS: 'ADMIN_ACCESS',
   SUSPICIOUS_ACTIVITY: 'SUSPICIOUS_ACTIVITY',
-  
+
   // Job operations
   JOB_CREATED: 'JOB_CREATED',
   JOB_UPDATED: 'JOB_UPDATED',
@@ -25,18 +25,18 @@ export const AuditAction = {
   JOB_STATUS_CHANGED: 'JOB_STATUS_CHANGED',
   JOB_ASSIGNED: 'JOB_ASSIGNED',
   JOB_UNASSIGNED: 'JOB_UNASSIGNED',
-  
+
   // Transcript operations
   TRANSCRIPT_CREATED: 'TRANSCRIPT_CREATED',
   TRANSCRIPT_UPDATED: 'TRANSCRIPT_UPDATED',
   TRANSCRIPT_VIEWED: 'TRANSCRIPT_VIEWED',
   TRANSCRIPT_EXPORTED: 'TRANSCRIPT_EXPORTED',
   TRANSCRIPT_DELETED: 'TRANSCRIPT_DELETED',
-  
+
   // Share operations
   SHARE_CREATED: 'SHARE_CREATED',
   SHARE_REVOKED: 'SHARE_REVOKED',
-  
+
   // Calendar operations
   EVENT_CREATED: 'EVENT_CREATED',
   EVENT_UPDATED: 'EVENT_UPDATED',
@@ -45,11 +45,11 @@ export const AuditAction = {
   REPORTER_ASSIGNED: 'REPORTER_ASSIGNED',
   REPORTER_UNASSIGNED: 'REPORTER_UNASSIGNED',
   NOTE_ADDED: 'NOTE_ADDED',
-  
+
   // Data operations
   DATA_EXPORT_REQUESTED: 'DATA_EXPORT_REQUESTED',
   DATA_IMPORTED: 'DATA_IMPORTED',
-  
+
   // User operations
   USER_CREATED: 'USER_CREATED',
   USER_UPDATED: 'USER_UPDATED',
@@ -93,11 +93,11 @@ export interface CreateAuditLogParams {
  */
 export async function createAuditLog(params: CreateAuditLogParams): Promise<void> {
   try {
-    const supabase = await createSupabaseServiceClient();
-    
+    const supabase = await createSupabaseServerClient();
+
     // Accept either userId or actorUserId
     const userId = params.actorUserId || params.userId;
-    
+
     const { error } = await supabase.from('audit_logs').insert({
       actor_user_id: userId || null,
       firm_id: params.firmId || null,
@@ -143,8 +143,8 @@ export async function queryAuditLogs(query: AuditLogQuery = {}): Promise<{
   offset: number;
 }> {
   try {
-    const supabase = await createSupabaseServiceClient();
-    
+    const supabase = await createSupabaseServerClient();
+
     let dbQuery = supabase
       .from('audit_logs')
       .select('*', { count: 'exact' });

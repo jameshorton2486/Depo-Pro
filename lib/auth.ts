@@ -1,11 +1,18 @@
 // ═══════════════════════════════════════════════════════════════
-// AUTH HELPER FUNCTIONS
+// AUTH HELPER FUNCTIONS (LEGACY - DEPRECATED)
 // ═══════════════════════════════════════════════════════════════
-// Utility functions for authentication and authorization
-// Now using Supabase auth with NextAuth-compatible interface
+// ⚠️ DEPRECATED: This file is kept for backward compatibility only
+// 
+// MIGRATION GUIDE:
+// - Client components: Use useAuth() hook from '@/lib/auth/use-auth'
+// - Server components: Use createSupabaseServerClient() from '@/lib/supabase/server'
+// - API routes: Use createSupabaseServerClient() or getSupabaseAdmin()
+// 
+// This file will be removed in a future version.
+// ═══════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
-import { getUserWithProfile } from '@/lib/auth-supabase';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Role } from '@/lib/constants';
 import type { UserRole } from '@/types/database';
 import { redirect } from 'next/navigation';
@@ -13,7 +20,7 @@ import { redirect } from 'next/navigation';
 /**
  * Get the current authenticated user's session
  * Returns null if not authenticated
- * Returns NextAuth-compatible format: { user: { id, email, role, name, firmId } }
+ * Returns session format: { user: { id, email, role, name, firmId } }
  *
  * @example
  * ```ts
@@ -25,22 +32,34 @@ import { redirect } from 'next/navigation';
  */
 export async function getCurrentUser() {
   try {
-    const userWithProfile = await getUserWithProfile();
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    if (!userWithProfile || !userWithProfile.user) {
+    if (userError || !user) {
       return null;
     }
 
-    // Return in NextAuth-compatible format
+    // Fetch user profile from users table
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return null;
+    }
+
+    // Return session format
     return {
       user: {
-        id: userWithProfile.user.id,
-        email: userWithProfile.user.email || '',
-        role: (userWithProfile.profile?.role as UserRole) || 'REPORTER',
-        name: userWithProfile.profile?.first_name && userWithProfile.profile?.last_name
-          ? `${userWithProfile.profile.first_name} ${userWithProfile.profile.last_name}`
-          : userWithProfile.profile?.first_name || userWithProfile.profile?.last_name || null,
-        firmId: userWithProfile.profile?.firm_id || null,
+        id: user.id,
+        email: user.email || '',
+        role: (profile.role as UserRole) || 'REPORTER',
+        name: profile.first_name && profile.last_name
+          ? `${profile.first_name} ${profile.last_name}`
+          : profile.first_name || profile.last_name || null,
+        firmId: profile.firm_id || null,
       }
     };
   } catch (error) {
@@ -52,11 +71,7 @@ export async function getCurrentUser() {
 // Export auth as an alias for backward compatibility
 export const auth = getCurrentUser;
 
-// Export stub handlers for NextAuth compatibility (not used with Supabase)
-export const handlers = {
-  GET: async () => NextResponse.json({ error: 'NextAuth not configured - using Supabase' }, { status: 404 }),
-  POST: async () => NextResponse.json({ error: 'NextAuth not configured - using Supabase' }, { status: 404 }),
-};
+// NextAuth has been removed - Supabase Auth is the only auth system
 
 /**
  * Require authentication - redirects to login if not authenticated

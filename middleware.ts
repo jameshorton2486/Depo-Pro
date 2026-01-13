@@ -17,7 +17,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createSupabaseMiddlewareClient } from '@/lib/supabase/middleware';
+import { createMiddlewareClient } from '@/lib/supabase/middleware';
 
 // -----------------------------------------------------------------------------
 // Route Policy
@@ -82,7 +82,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const { supabase, response } = await createSupabaseMiddlewareClient(request);
+  const { supabase, response } = await createMiddlewareClient(request);
 
   // Public routes
   if (isPublicRoute(pathname)) {

@@ -11,6 +11,8 @@
 // 3. Write updated cookies to the response
 //
 // The middleware client ensures sessions stay valid across requests.
+//
+// FIXED: Removed hardcoded fallbacks - env vars are now REQUIRED
 // ═══════════════════════════════════════════════════════════════
 
 import { createServerClient } from '@supabase/ssr';
@@ -42,12 +44,29 @@ export interface MiddlewareClientResult {
  * }
  * ```
  */
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ildhcfspbmhuemzgvzyx.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsZGhjZnNwYm1odWVtemd2enl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNTMwMzgsImV4cCI6MjA3ODYyOTAzOH0.X9ugAI2BWea4WHRNQBP6UrKXXyxokKJqtpZciX2owcM';
+function getEnvVars() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url) {
+    throw new Error(
+      '[Supabase Middleware] Missing NEXT_PUBLIC_SUPABASE_URL environment variable.'
+    );
+  }
+
+  if (!anonKey) {
+    throw new Error(
+      '[Supabase Middleware] Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.'
+    );
+  }
+
+  return { url, anonKey };
+}
 
 export async function createSupabaseMiddlewareClient(
   request: NextRequest
 ): Promise<MiddlewareClientResult> {
+  const { url, anonKey } = getEnvVars();
 
   // Create a response that we'll modify with cookie updates
   let response = NextResponse.next({
@@ -56,7 +75,7 @@ export async function createSupabaseMiddlewareClient(
     },
   });
 
-  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -118,5 +137,8 @@ export function getAccessTokenFromRequest(request: NextRequest): string | null {
 
   return null;
 }
+
+// Alias for backward compatibility
+export const createMiddlewareClient = createSupabaseMiddlewareClient;
 
 export default createSupabaseMiddlewareClient;

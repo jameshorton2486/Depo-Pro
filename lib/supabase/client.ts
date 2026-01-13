@@ -1,7 +1,13 @@
-/**
- * Supabase Browser Client (DEPRECATED - Use browser.ts instead)
- * For backward compatibility with useAuth hook
- * This file redirects to the canonical browser.ts implementation
- */
+// lib/supabase/client.ts
+// ═══════════════════════════════════════════════════════════════
+// BROWSER CLIENT - Singleton instance for client components
+// ═══════════════════════════════════════════════════════════════
+// This provides a singleton browser client instance
+// Use getSupabaseBrowserClient() for new code
 
-export { createSupabaseBrowserClient, createSupabaseBrowserClient as createBrowserClient } from './browser';
+'use client';
+
+import { getSupabaseBrowserClient } from './browser';
+
+// Singleton instance - created once per module load
+export const supabase = getSupabaseBrowserClient();

@@ -1,8 +1,24 @@
-﻿/**
+/**
  * Prisma-Compatible Database Wrapper for Supabase
  * Provides Prisma-like API over Supabase client
+ * 
+ * ⚠️ WARNING: This wrapper is NOT recommended for auth operations
+ * ⚠️ Use direct Supabase queries per route instead
+ * ⚠️ This file is marked server-only to prevent client leakage
+ * 
+ * This wrapper can be dangerous for auth because:
+ * - It may silently fall back to anon key
+ * - It doesn't enforce client/server boundaries
+ * - It can cause silent client/server leakage
+ * 
+ * RECOMMENDATION:
+ * - Do NOT use this for auth or profiles
+ * - Replace with direct Supabase queries per route
+ * - Or use getSupabaseAdmin() for server operations
+ * - Or use getSupabaseBrowserClient() for client operations
  */
 
+import 'server-only';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 // Lazy Supabase client initialization (BUILD-SAFE)
@@ -12,12 +28,21 @@ function getSupabaseClient(): SupabaseClient {
   if (supabaseInstance) return supabaseInstance;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // ⚠️ CRITICAL: No fallback - fail hard if service role key is missing
+  // This prevents silent security issues where anon key might be used accidentally
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!supabaseUrl) {
     throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. ' +
-      'Supabase client requires these environment variables.'
+      'Missing NEXT_PUBLIC_SUPABASE_URL. ' +
+      'Supabase client requires this environment variable.'
+    );
+  }
+  
+  if (!supabaseKey) {
+    throw new Error(
+      'Missing SUPABASE_SERVICE_ROLE_KEY. ' +
+      'Database wrapper requires service role key (no fallback allowed for security).'
     );
   }
 

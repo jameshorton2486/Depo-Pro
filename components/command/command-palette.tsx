@@ -49,8 +49,9 @@ interface CommandPaletteProps {
 export function CommandPalette({ open: controlledOpen, onOpenChange: controlledOnOpenChange }: CommandPaletteProps) {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
-  const { user, profile } = useAuth();
-  const session = user && profile ? { user: { id: user.id, email: user.email || '', role: profile.role, name: profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name || profile.last_name || null } } : null;
+  const { user } = useAuth();
+  // Note: profile data should be fetched separately if needed
+  const session = user ? { user: { id: user.id, email: user.email || '', role: 'REPORTER' as UserRole, name: null } } : null;
   const role = (session?.user?.role as UserRole) || "REPORTER";
 
   // Use controlled state if provided, otherwise use internal state

@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { supabase } from '@/lib/supabase/client';
 import { parseAuthError } from '@/lib/supabase/parse-auth-error';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +36,7 @@ type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 // -----------------------------------------------------------------------------
 
 export default function ForgotPasswordPage() {
-  const supabase = getSupabaseBrowserClient();
+  // Use canonical browser client
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         data.email,
         {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback?next=/reset-password`,
+          redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
         }
       );
 

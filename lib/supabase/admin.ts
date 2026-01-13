@@ -2,23 +2,23 @@
 // ═══════════════════════════════════════════════════════════════
 // ADMIN CLIENT - Service role for privileged operations
 // ⚠️ NEVER expose to client, NEVER use for user identity in middleware
+// ⚠️ NEVER use for login or user authentication
 // ═══════════════════════════════════════════════════════════════
 //
 // USE CASES:
-// - Validating access tokens in API routes
 // - Admin operations (user management, etc.)
 // - Bypassing RLS for server-side operations
+// - Cron jobs and background tasks
 //
 // DO NOT USE FOR:
-// - Client-side operations
-// - Middleware (use the cookie-based client instead)
+// - Client-side operations (use browser.ts instead)
+// - Middleware (use middleware.ts instead)
+// - User login/authentication (use browser.ts instead)
 // - Anything that could expose the service role key
 // ═══════════════════════════════════════════════════════════════
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-
-// Singleton instance
-let adminClient: SupabaseClient | null = null;
+import 'server-only';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Get the Supabase admin client (service role)
@@ -26,43 +26,44 @@ let adminClient: SupabaseClient | null = null;
  * This client bypasses Row Level Security and has full database access.
  * Use only on the server for privileged operations.
  * 
+ * 🚫 Never imported into client
+ * 🚫 Never used for login
+ * 
  * @example
  * ```ts
- * // Validate an access token
- * const supabase = getSupabaseAdminClient();
- * const { data: { user }, error } = await supabase.auth.getUser(token);
+ * // Admin operation
+ * const supabase = getSupabaseAdmin();
+ * const { data, error } = await supabase
+ *   .from('users')
+ *   .select('*');
  * ```
  */
-export function getSupabaseAdminClient(): SupabaseClient {
-  if (adminClient) return adminClient;
+export function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!url || !key) {
     throw new Error(
       'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. ' +
       'The admin client requires the service role key.'
     );
   }
 
-  adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      // Service role client should not persist sessions
-      persistSession: false,
-      autoRefreshToken: false,
-      // Detect session from URL is not needed for admin operations
-      detectSessionInUrl: false,
-    },
+  return createClient(url, key, {
+    auth: { persistSession: false }
   });
-
-  return adminClient;
 }
 
 /**
  * Alias for backwards compatibility
- * @deprecated Use getSupabaseAdminClient instead
+ * @deprecated Use getSupabaseAdmin instead
  */
-export const createSupabaseServiceClient = getSupabaseAdminClient;
+export const getSupabaseAdminClient = getSupabaseAdmin;
 
-export default getSupabaseAdminClient;
+/**
+ * Alias for backwards compatibility
+ * @deprecated Use getSupabaseAdmin instead
+ */
+export const createSupabaseServiceClient = getSupabaseAdmin;
+
+export default getSupabaseAdmin;

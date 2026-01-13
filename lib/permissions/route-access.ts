@@ -23,10 +23,7 @@ export interface RouteConfig {
 // =============================================================================
 // PUBLIC ROUTES (No auth required)
 // =============================================================================
-// NOTE: isPublicRoute() uses prefix matching
-// This means /api/auth covers /api/auth/* (intentional for NextAuth handlers)
-// Marketing pages like /about, /features, /pricing, /security, /contact
-// are included here even if not yet implemented
+// NOTE: Prefix matching is intentional
 // =============================================================================
 
 export const PUBLIC_ROUTES: string[] = [
@@ -35,26 +32,25 @@ export const PUBLIC_ROUTES: string[] = [
   '/register',
   '/forgot-password',
   '/reset-password',
-  '/update-password',
   '/auth/callback',
   '/auth/confirm',
+  '/auth/invite',
   '/about',
   '/features',
   '/pricing',
   '/security',
   '/contact',
-  '/api/auth',
   '/api/health',
 ];
 
 // =============================================================================
 // PROTECTED ROUTE ACCESS
-// Single source of truth for role-based route access
+// Canonical application routes ONLY (no legacy /dashboard/* paths)
 // =============================================================================
 
 export const ROUTE_ACCESS: Record<string, Role[]> = {
   // ─────────────────────────────────────────────────────────────────────────
-  // DASHBOARD (Common)
+  // SHARED / CORE
   // ─────────────────────────────────────────────────────────────────────────
   '/dashboard': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
   '/settings': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
@@ -62,7 +58,7 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/unauthorized': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ADMIN ROUTES
+  // ADMIN
   // ─────────────────────────────────────────────────────────────────────────
   '/admin': ['ADMIN'],
   '/admin/users': ['ADMIN'],
@@ -72,14 +68,11 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/admin/audit': ['ADMIN'],
   '/admin/permissions': ['ADMIN'],
   '/admin/features': ['ADMIN'],
-  '/admin/sitemap': ['ADMIN'],
   '/admin/actions': ['ADMIN'],
-  '/dashboard/admin': ['ADMIN'],
-  '/dashboard/admin/calendar': ['ADMIN'],
-  '/dashboard/admin/jobs': ['ADMIN'],
+  '/admin/sitemap': ['ADMIN'],
 
   // ─────────────────────────────────────────────────────────────────────────
-  // REPORTER ROUTES
+  // REPORTER (CANONICAL — DUPLICATES REMOVED)
   // ─────────────────────────────────────────────────────────────────────────
   '/reporter': ['ADMIN', 'REPORTER'],
   '/jobs': ['ADMIN', 'REPORTER', 'SCOPIST'],
@@ -91,16 +84,15 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/transcription/status': ['ADMIN', 'REPORTER', 'SCOPIST'],
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SCOPIST ROUTES
+  // SCOPIST
   // ─────────────────────────────────────────────────────────────────────────
   '/scopist': ['ADMIN', 'SCOPIST'],
   '/scopist/jobs': ['ADMIN', 'SCOPIST'],
   '/scopist/available': ['ADMIN', 'SCOPIST'],
 
   // ─────────────────────────────────────────────────────────────────────────
-  // ATTORNEY ROUTES
+  // ATTORNEY (CANONICAL)
   // ─────────────────────────────────────────────────────────────────────────
-  '/attorney': ['ADMIN', 'ATTORNEY'],
   '/attorney-dashboard': ['ADMIN', 'ATTORNEY'],
   '/attorney/cases': ['ADMIN', 'ATTORNEY'],
   '/attorney/transcripts': ['ADMIN', 'ATTORNEY'],
@@ -108,7 +100,7 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/attorney/reports': ['ADMIN', 'ATTORNEY'],
 
   // ─────────────────────────────────────────────────────────────────────────
-  // AGENCY ROUTES
+  // AGENCY
   // ─────────────────────────────────────────────────────────────────────────
   '/agency': ['ADMIN', 'AGENCY'],
   '/agency/reporters': ['ADMIN', 'AGENCY'],
@@ -116,7 +108,7 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   '/billing': ['ADMIN', 'REPORTER', 'AGENCY'],
 
   // ─────────────────────────────────────────────────────────────────────────
-  // SHARED ROUTES
+  // CASES & SHARED DATA
   // ─────────────────────────────────────────────────────────────────────────
   '/cases': ['ADMIN', 'REPORTER', 'ATTORNEY'],
   '/cases/new': ['ADMIN', 'REPORTER', 'ATTORNEY'],
@@ -146,18 +138,18 @@ export const API_ACCESS: Record<string, Role[]> = {
   '/api/transcripts/edit': ['ADMIN', 'REPORTER', 'SCOPIST'],
   '/api/transcripts/[id]/finalize': ['ADMIN', 'REPORTER'],
 
-  // Contact
-  '/api/contact': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
-
   // Cases
   '/api/cases': ['ADMIN', 'REPORTER', 'ATTORNEY'],
+
+  // Contact
+  '/api/contact': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
 
   // Admin
   '/api/admin': ['ADMIN'],
   '/api/admin/users': ['ADMIN'],
+  '/api/admin/actions': ['ADMIN'],
   '/api/admin/health': ['ADMIN'],
   '/api/admin/users/[id]/role-history': ['ADMIN'],
-  '/api/admin/actions': ['ADMIN'],
 
   // Attorney
   '/api/attorney': ['ADMIN', 'ATTORNEY'],
@@ -166,33 +158,14 @@ export const API_ACCESS: Record<string, Role[]> = {
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
-// PERMISSION RESOLUTION ORDER
-// =============================================================================
-// The permission system resolves access in this order:
-//
-// 1. EXACT MATCH: Check if path exists exactly in ROUTE_ACCESS
-//    Example: "/admin" matches ROUTE_ACCESS["/admin"]
-//
-// 2. PREFIX MATCH: Check if path starts with a registered route
-//    Example: "/jobs/abc123" matches ROUTE_ACCESS["/jobs"]
-//
-// 3. ROLE PREFIX FALLBACK: Emergency guardrail for role-specific paths
-//    Example: "/admin/anything" falls back to ADMIN-only
-//
-// This layered approach is intentionally defensive. Do NOT remove
-// redundancy - it provides safety during active development.
-// =============================================================================
 
-/**
- * Check if a role has access to a route
- */
 export function hasRouteAccess(path: string, role: Role): boolean {
   if (ROUTE_ACCESS[path]) {
     return ROUTE_ACCESS[path].includes(role);
   }
 
   for (const [route, roles] of Object.entries(ROUTE_ACCESS)) {
-    if (path.startsWith(route + '/') || path === route) {
+    if (path === route || path.startsWith(route + '/')) {
       return roles.includes(role);
     }
   }
@@ -214,16 +187,13 @@ export function hasRouteAccess(path: string, role: Role): boolean {
   return true;
 }
 
-/**
- * Check if a role has access to an API route
- */
 export function hasApiAccess(path: string, role: Role): boolean {
   if (API_ACCESS[path]) {
     return API_ACCESS[path].includes(role);
   }
 
   for (const [route, roles] of Object.entries(API_ACCESS)) {
-    if (path.startsWith(route + '/') || path === route) {
+    if (path === route || path.startsWith(route + '/')) {
       return roles.includes(role);
     }
   }
@@ -231,27 +201,18 @@ export function hasApiAccess(path: string, role: Role): boolean {
   return true;
 }
 
-/**
- * Get all routes accessible by a role
- */
 export function getRoutesForRole(role: Role): string[] {
   return Object.entries(ROUTE_ACCESS)
     .filter(([, roles]) => roles.includes(role))
     .map(([path]) => path);
 }
 
-/**
- * Check if path is public
- */
 export function isPublicRoute(path: string): boolean {
-  return PUBLIC_ROUTES.some(publicPath =>
-    path === publicPath || path.startsWith(publicPath + '/')
+  return PUBLIC_ROUTES.some(
+    publicPath => path === publicPath || path.startsWith(publicPath + '/')
   );
 }
 
-/**
- * Get required roles for a route
- */
 export function getRequiredRoles(path: string): Role[] | null {
   if (ROUTE_ACCESS[path]) {
     return ROUTE_ACCESS[path];
@@ -266,5 +227,17 @@ export function getRequiredRoles(path: string): Role[] | null {
   return null;
 }
 
-// Valid roles from types/database.ts UserRole type
-export const VALID_ROLES: Role[] = ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'PARALEGAL', 'AGENCY', 'AGENCY_ADMIN', 'FIRM_ADMIN'] as Role[];
+// =============================================================================
+// VALID ROLES
+// =============================================================================
+
+export const VALID_ROLES: Role[] = [
+  'ADMIN',
+  'REPORTER',
+  'SCOPIST',
+  'ATTORNEY',
+  'PARALEGAL',
+  'AGENCY',
+  'AGENCY_ADMIN',
+  'FIRM_ADMIN',
+];

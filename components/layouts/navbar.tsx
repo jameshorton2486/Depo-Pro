@@ -32,16 +32,15 @@ interface NavbarProps {
 
 export function Navbar({ user: userProp }: NavbarProps) {
   const pathname = usePathname();
-  const { user: authUser, profile, signOut } = useAuth();
+  const { user: authUser, signOut } = useAuth();
 
   // Use prop if provided, otherwise use auth hook
-  const user = userProp || (authUser && profile ? {
+  // Note: profile data should be fetched separately if needed
+  const user = userProp || (authUser ? {
     id: authUser.id,
     email: authUser.email || '',
-    name: profile.first_name && profile.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile.first_name || profile.last_name || null,
-    role: profile.role as Role,
+    name: null, // Profile data must be fetched separately
+    role: 'REPORTER', // Default role, should be fetched from profile
   } : null);
 
   // Don't render if no user
