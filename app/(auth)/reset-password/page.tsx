@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { parseAuthError } from '@/lib/supabase/parse-auth-error';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
@@ -72,6 +72,7 @@ export default function ResetPasswordPage() {
   // ---------------------------------------------------------------------------
   useEffect(() => {
     let mounted = true;
+    const supabase = getSupabaseBrowserClient();
 
     const checkSession = async () => {
       try {
@@ -120,7 +121,7 @@ export default function ResetPasswordPage() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, []); // ✅ Empty dependency array - client is lazy singleton
 
   // ---------------------------------------------------------------------------
   // Form submission with retry logic for AbortError
@@ -129,6 +130,7 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
     setError(null);
 
+    const supabase = getSupabaseBrowserClient();
     const maxRetries = 3;
     let lastError: Error | null = null;
 

@@ -1,22 +1,13 @@
 // lib/auth/use-auth.ts
 // ═══════════════════════════════════════════════════════════════
-// SINGLE SOURCE OF TRUTH FOR CLIENT-SIDE AUTH
-// ═══════════════════════════════════════════════════════════════
-// This is the ONLY way UI components should interact with auth.
-// 
-// ✅ Uses browser client only (anon key)
-// ✅ Client components only
-// ✅ One browser client per render tree
-// 
-// 🚫 UI never calls supabase.auth.* directly
-// 🚫 UI only uses useAuth()
+// CLIENT-SIDE AUTH HOOK - With fixed dependencies
 // ═══════════════════════════════════════════════════════════════
 
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import type { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 interface AuthState {
   user: User | null;
@@ -25,8 +16,6 @@ interface AuthState {
 }
 
 export function useAuth() {
-  // Use canonical browser client
-
   const [state, setState] = useState<AuthState>({
     user: null,
     session: null,
@@ -35,7 +24,9 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
+    const supabase = getSupabaseBrowserClient();
 
+    // Get initial session
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setState({
@@ -45,6 +36,7 @@ export function useAuth() {
       });
     });
 
+    // Listen for auth changes
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         if (!mounted) return;
@@ -60,24 +52,28 @@ export function useAuth() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, []); // ✅ Empty dependency array - client is lazy singleton
 
   const signIn = useCallback(
-    (email: string, password: string) =>
-      supabase.auth.signInWithPassword({ email, password }),
-    [supabase]
+    (email: string, password: string) => {
+      const supabase = getSupabaseBrowserClient();
+      return supabase.auth.signInWithPassword({ email, password });
+    },
+    [] // ✅ Empty - getSupabaseBrowserClient is stable
   );
 
   const signUp = useCallback(
-    (email: string, password: string) =>
-      supabase.auth.signUp({ email, password }),
-    [supabase]
+    (email: string, password: string) => {
+      const supabase = getSupabaseBrowserClient();
+      return supabase.auth.signUp({ email, password });
+    },
+    []
   );
 
-  const signOut = useCallback(
-    () => supabase.auth.signOut(),
-    [supabase]
-  );
+  const signOut = useCallback(() => {
+    const supabase = getSupabaseBrowserClient();
+    return supabase.auth.signOut();
+  }, []);
 
   return {
     ...state,
