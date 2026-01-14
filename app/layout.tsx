@@ -3,7 +3,11 @@ import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { CommandPalette } from '@/components/command/command-palette';
+import { PUBLIC_ENV } from '@/lib/env';
 import './globals.css';
+
+// Enforce env vars at startup - app will fail fast if missing
+void PUBLIC_ENV;
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
