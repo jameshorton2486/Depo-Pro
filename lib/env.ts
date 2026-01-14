@@ -1,6 +1,6 @@
 /**
  * Runtime-Blocking Environment Variable Validation
- * 
+ *
  * This module enforces that required env vars exist at startup.
  * Importing this in app/layout.tsx will cause the app to fail fast
  * if env vars are missing, preventing silent auth failures.
@@ -8,7 +8,7 @@
 
 import 'server-only';
 
-function requireEnv(name: string): string {
+export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value || value.trim() === '') {
     throw new Error(`Missing required env var: ${name}`);
@@ -27,7 +27,7 @@ export const SERVER_ENV = {
 /**
  * Browser-safe environment variables
  * Must exist at build time (NEXT_PUBLIC_*)
- * 
+ *
  * Note: NEXT_PUBLIC_SUPABASE_ANON_KEY is validated in browser.ts
  * using requirePublishableSupabaseKey() to ensure it's a publishable key.
  */

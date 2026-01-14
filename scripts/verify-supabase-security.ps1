@@ -1,151 +1,147 @@
-#!/usr/bin/env pwsh
-# Supabase Security & Operational Verification
+# =============================================================================
+# Verify Supabase Security Configuration
+# =============================================================================
+# This script checks your .env.local file for proper Supabase configuration
+# =============================================================================
 
-Write-Host "`n╔═══════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  SUPABASE KEY SECURITY & OPERATIONAL VERIFICATION    ║" -ForegroundColor Cyan
-Write-Host "╚═══════════════════════════════════════════════════════╝`n" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Supabase Configuration Validator" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-# Load environment variables
-if (Test-Path .env.local) {
-    Get-Content .env.local | ForEach-Object {
-        if ($_ -match '^([^=]+)=(.*)$') {
-            [System.Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-        }
+# Check if .env.local exists
+$envFile = ".env.local"
+if (-not (Test-Path $envFile)) {
+    $envFile = "../.env.local"
+    if (-not (Test-Path $envFile)) {
+        Write-Host "[ERROR] .env.local file not found!" -ForegroundColor Red
+        Write-Host "Make sure you're in the project root directory." -ForegroundColor Yellow
+        exit 1
     }
-    Write-Host "✓ Loaded .env.local" -ForegroundColor Green
-} else {
-    Write-Host "✗ .env.local not found" -ForegroundColor Red
-    exit 1
 }
 
-Write-Host "`n─────────────────────────────────────────────────────────" -ForegroundColor Gray
-Write-Host "1. KEY FORMAT VALIDATION" -ForegroundColor Yellow
-Write-Host "─────────────────────────────────────────────────────────" -ForegroundColor Gray
+Write-Host "[INFO] Found .env.local file" -ForegroundColor Green
+Write-Host ""
 
-# Check URL
-Write-Host "   Supabase URL: " -NoNewline
-if ($env:NEXT_PUBLIC_SUPABASE_URL -match '^https://[a-z]+\.supabase\.co$') {
-    Write-Host "✓ Valid" -ForegroundColor Green
-} else {
-    Write-Host "✗ Invalid" -ForegroundColor Red
-}
+# Read the file
+$envContent = Get-Content $envFile -Raw
+$lines = Get-Content $envFile
 
-# Check anon key
-Write-Host "   Anon Key: " -NoNewline
-if ($env:NEXT_PUBLIC_SUPABASE_ANON_KEY -match '^eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$') {
-    Write-Host "✓ Valid JWT format" -ForegroundColor Green
-} else {
-    Write-Host "✗ Invalid JWT" -ForegroundColor Red
-}
+# Check for NEXT_PUBLIC_SUPABASE_URL
+Write-Host "Checking NEXT_PUBLIC_SUPABASE_URL..." -ForegroundColor Yellow
+$urlLine = $lines | Where-Object { $_ -match "^NEXT_PUBLIC_SUPABASE_URL=" }
 
-# Check service role key
-Write-Host "   Service Role Key: " -NoNewline
-if ($env:SUPABASE_SERVICE_ROLE_KEY -match '^eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$') {
-    Write-Host "✓ Valid JWT format" -ForegroundColor Green
-} else {
-    Write-Host "✗ Invalid JWT" -ForegroundColor Red
-}
-
-Write-Host "`n─────────────────────────────────────────────────────────" -ForegroundColor Gray
-Write-Host "2. OPERATIONAL TESTS" -ForegroundColor Yellow
-Write-Host "─────────────────────────────────────────────────────────" -ForegroundColor Gray
-
-# Test anon key
-Write-Host "   Testing anon key... " -NoNewline
-try {
-    $headers = @{
-        "apikey" = $env:NEXT_PUBLIC_SUPABASE_ANON_KEY
-        "Authorization" = "Bearer $env:NEXT_PUBLIC_SUPABASE_ANON_KEY"
-    }
-    $response = Invoke-RestMethod -Uri "$env:NEXT_PUBLIC_SUPABASE_URL/rest/v1/" -Headers $headers -Method Get -ErrorAction Stop
-    Write-Host "✓ Working" -ForegroundColor Green
-} catch {
-    Write-Host "✗ Failed" -ForegroundColor Red
-    Write-Host "     Error: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# Test auth endpoint
-Write-Host "   Testing auth endpoint... " -NoNewline
-try {
-    $headers = @{
-        "apikey" = $env:NEXT_PUBLIC_SUPABASE_ANON_KEY
-        "Content-Type" = "application/json"
-    }
-    $response = Invoke-RestMethod -Uri "$env:NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" -Headers $headers -Method Get -ErrorAction Stop
-    Write-Host "✓ Healthy" -ForegroundColor Green
-} catch {
-    Write-Host "✗ Unreachable" -ForegroundColor Red
-}
-
-Write-Host "`n─────────────────────────────────────────────────────────" -ForegroundColor Gray
-Write-Host "3. SECURITY CHECKS" -ForegroundColor Yellow
-Write-Host "─────────────────────────────────────────────────────────" -ForegroundColor Gray
-
-# Check gitignore
-Write-Host "   .gitignore status: " -NoNewline
-if (Test-Path .gitignore) {
-    $gitignore = Get-Content .gitignore -Raw
-    if ($gitignore -match '\.env\.local') {
-        Write-Host "✓ .env.local is gitignored" -ForegroundColor Green
+if ($urlLine) {
+    $url = $urlLine -replace "^NEXT_PUBLIC_SUPABASE_URL=", ""
+    if ($url -match "^https://.*\.supabase\.co$") {
+        Write-Host "  [OK] URL format is valid: $url" -ForegroundColor Green
     } else {
-        Write-Host "✗ .env.local NOT gitignored" -ForegroundColor Red
+        Write-Host "  [WARN] URL may be invalid: $url" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "✗ No .gitignore found" -ForegroundColor Red
+    Write-Host "  [ERROR] NEXT_PUBLIC_SUPABASE_URL not found!" -ForegroundColor Red
 }
 
-# Check if keys are in git history
-Write-Host "   Git history scan: " -NoNewline
-$found = $false
-$keyPart = $env:SUPABASE_SERVICE_ROLE_KEY.Substring(0, 20)
-try {
-    $gitResult = git log --all --oneline -S $keyPart 2>&1
-    if ($gitResult -and $gitResult.Count -gt 0) {
-        Write-Host "⚠ KEYS FOUND IN GIT - ROTATE NOW!" -ForegroundColor Red
-        $found = $true
+Write-Host ""
+
+# Check for NEXT_PUBLIC_SUPABASE_ANON_KEY
+Write-Host "Checking NEXT_PUBLIC_SUPABASE_ANON_KEY..." -ForegroundColor Yellow
+$anonKeyLine = $lines | Where-Object { $_ -match "^NEXT_PUBLIC_SUPABASE_ANON_KEY=" }
+
+if ($anonKeyLine) {
+    $anonKey = $anonKeyLine -replace "^NEXT_PUBLIC_SUPABASE_ANON_KEY=", ""
+    $keyLength = $anonKey.Length
+    $keyParts = $anonKey.Split(".")
+
+    Write-Host "  Key length: $keyLength characters" -ForegroundColor Cyan
+    Write-Host "  JWT segments: $($keyParts.Count)" -ForegroundColor Cyan
+
+    if ($keyParts.Count -eq 3) {
+        Write-Host "  [OK] Key has correct JWT format (3 segments)" -ForegroundColor Green
     } else {
-        Write-Host "✓ Clean" -ForegroundColor Green
+        Write-Host "  [ERROR] Key is MALFORMED!" -ForegroundColor Red
+        Write-Host "  Expected 3 JWT segments, found $($keyParts.Count)" -ForegroundColor Red
+        Write-Host "  This usually means the key is split across multiple lines." -ForegroundColor Yellow
+        Write-Host "  FIX: Put the entire key on ONE line in .env.local" -ForegroundColor Yellow
     }
-} catch {
-    Write-Host "✓ Clean (no git history)" -ForegroundColor Green
+
+    if ($keyLength -gt 150) {
+        Write-Host "  [OK] Key length looks correct ($keyLength chars)" -ForegroundColor Green
+    } else {
+        Write-Host "  [ERROR] Key appears TRUNCATED!" -ForegroundColor Red
+        Write-Host "  Expected 150+ characters, found $keyLength" -ForegroundColor Red
+        Write-Host "  FIX: Ensure the entire key is on ONE line" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  [ERROR] NEXT_PUBLIC_SUPABASE_ANON_KEY not found!" -ForegroundColor Red
 }
 
-Write-Host "`n─────────────────────────────────────────────────────────" -ForegroundColor Gray
-Write-Host "4. KEY EXPOSURE CHECK" -ForegroundColor Yellow
-Write-Host "─────────────────────────────────────────────────────────" -ForegroundColor Gray
+Write-Host ""
 
-Write-Host "   Checking codebase... " -NoNewline
-$exposedFiles = @()
-Get-ChildItem -Recurse -File -Include *.ts,*.tsx,*.js,*.jsx | Where-Object {
-    $_.FullName -notmatch 'node_modules' -and $_.FullName -notmatch '.next'
-} | ForEach-Object {
-    $content = Get-Content $_.FullName -Raw -ErrorAction SilentlyContinue
-    if ($content -match 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJ') {
-        $exposedFiles += $_.FullName
+# Check for SUPABASE_SERVICE_ROLE_KEY
+Write-Host "Checking SUPABASE_SERVICE_ROLE_KEY..." -ForegroundColor Yellow
+$serviceKeyLine = $lines | Where-Object { $_ -match "^SUPABASE_SERVICE_ROLE_KEY=" }
+
+if ($serviceKeyLine) {
+    $serviceKey = $serviceKeyLine -replace "^SUPABASE_SERVICE_ROLE_KEY=", ""
+    $keyLength = $serviceKey.Length
+    $keyParts = $serviceKey.Split(".")
+
+    if ($keyParts.Count -eq 3 -and $keyLength -gt 150) {
+        Write-Host "  [OK] Service role key format is valid" -ForegroundColor Green
+    } else {
+        Write-Host "  [WARN] Service role key may be malformed" -ForegroundColor Yellow
+        Write-Host "  Segments: $($keyParts.Count), Length: $keyLength" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  [WARN] SUPABASE_SERVICE_ROLE_KEY not found (needed for admin operations)" -ForegroundColor Yellow
+}
+
+Write-Host ""
+
+# Check for common issues
+Write-Host "Checking for common issues..." -ForegroundColor Yellow
+
+# Check for quotes around values
+if ($envContent -match 'SUPABASE.*="') {
+    Write-Host "  [WARN] Found quotes around values - remove them!" -ForegroundColor Yellow
+}
+
+# Check for spaces around equals
+if ($envContent -match 'SUPABASE.*\s+=\s+') {
+    Write-Host "  [WARN] Found spaces around '=' - remove them!" -ForegroundColor Yellow
+}
+
+# Check for line continuations in keys
+$multilineKey = $false
+$inKey = $false
+foreach ($line in $lines) {
+    if ($line -match "^NEXT_PUBLIC_SUPABASE_ANON_KEY=") {
+        $inKey = $true
+    } elseif ($inKey -and $line -match "^[A-Za-z0-9+/=]+$") {
+        $multilineKey = $true
+        break
+    } elseif ($line -match "^[A-Z_]+=") {
+        $inKey = $false
     }
 }
 
-if ($exposedFiles.Count -gt 0) {
-    Write-Host "✗ KEYS FOUND IN CODE!" -ForegroundColor Red
-    $exposedFiles | ForEach-Object { Write-Host "     $_" -ForegroundColor Yellow }
-} else {
-    Write-Host "✓ No hardcoded keys" -ForegroundColor Green
+if ($multilineKey) {
+    Write-Host "  [ERROR] Anon key appears to span multiple lines!" -ForegroundColor Red
+    Write-Host "  FIX: Join the key onto a single line" -ForegroundColor Yellow
 }
 
-Write-Host "`n─────────────────────────────────────────────────────────" -ForegroundColor Gray
-Write-Host "5. SUMMARY" -ForegroundColor Yellow
-Write-Host "─────────────────────────────────────────────────────────`n" -ForegroundColor Gray
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Validation Complete" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-if ($found) {
-    Write-Host "⚠  ACTION REQUIRED: Keys found in git history" -ForegroundColor Red
-    Write-Host "   1. Go to Supabase Dashboard → Settings → API" -ForegroundColor Yellow
-    Write-Host "   2. Click 'Reset service_role secret'" -ForegroundColor Yellow
-    Write-Host "   3. Update .env.local with new key" -ForegroundColor Yellow
-    Write-Host ""
-} else {
-    Write-Host "✓ All security checks passed" -ForegroundColor Green
-    Write-Host "✓ Keys are operational" -ForegroundColor Green
-    Write-Host "✓ No exposure detected" -ForegroundColor Green
-}
-
+# Summary
+Write-Host "Next steps:" -ForegroundColor Cyan
+Write-Host "1. Fix any issues marked [ERROR] above" -ForegroundColor White
+Write-Host "2. Run: Remove-Item -Recurse -Force .next" -ForegroundColor White
+Write-Host "3. Run: npm run dev" -ForegroundColor White
+Write-Host "4. Test login at http://localhost:3000/login" -ForegroundColor White
 Write-Host ""

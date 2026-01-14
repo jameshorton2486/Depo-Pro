@@ -7,7 +7,7 @@
 
 import type { DeepgramClient, PrerecordedSchema } from '@deepgram/sdk';
 import { createClient } from '@deepgram/sdk';
-import { env } from '@/lib/env';  // Use centralized env
+import { requireEnv } from '@/lib/env';
 
 // Singleton Deepgram client
 let deepgramClient: DeepgramClient | null = null;
@@ -17,7 +17,8 @@ let deepgramClient: DeepgramClient | null = null;
  */
 export function getDeepgramClient(): DeepgramClient {
   if (!deepgramClient) {
-    deepgramClient = createClient(env.deepgramApiKey);
+    const DEEPGRAM_API_KEY = requireEnv('DEEPGRAM_API_KEY');
+    deepgramClient = createClient(DEEPGRAM_API_KEY);
   }
 
   return deepgramClient;
