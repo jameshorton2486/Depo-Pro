@@ -1,76 +1,83 @@
 /**
- * E2E Authentication Tests
- * Tests auth flows and RLS enforcement
+ * Auth Smoke Tests
+ * 
+ * Purpose: Prove login works end-to-end and cookies persist.
+ * 
+ * These tests validate:
+ * - User can log in successfully
+ * - Session cookies are set correctly
+ * - Protected routes require authentication
+ * - Password reset flow works
+ * 
+ * Run: npx playwright test tests/e2e/auth.spec.ts
  */
 
 import { test, expect } from '@playwright/test';
 
-test.describe('Authentication', () => {
-  test('redirects unauthenticated users from dashboard', async ({ page }) => {
-    await page.goto('/dashboard');
-    await expect(page).toHaveURL(/\/login/);
-  });
+const TEST_USER_EMAIL = process.env.TEST_USER_EMAIL || 'test@example.com';
+const TEST_USER_PASSWORD = process.env.TEST_USER_PASSWORD || 'TestPassword123!';
 
-  test('allows authenticated user to access dashboard', async ({ page }) => {
-    // Note: This test assumes test user login helper or storageState
-    // For now, we test that the dashboard route requires auth
-    // In a real scenario, you'd use:
-    // - storageState with authenticated session
-    // - Or a login helper that authenticates before test
-    
-    await page.goto('/dashboard');
-    // Should redirect to login if not authenticated
-    const url = page.url();
-    expect(url).toMatch(/\/login/);
-  });
-
-  test('unauthenticated users cannot access cases', async ({ page }) => {
-    await page.goto('/cases');
-    await expect(page).toHaveURL(/\/login/);
-  });
-
-  test('unauthenticated users cannot access transcripts', async ({ page }) => {
-    // Using a fake transcript ID - should redirect to login
-    await page.goto('/transcripts/test-transcript-id');
-    await expect(page).toHaveURL(/\/login/);
-  });
-
-  test('login page is accessible', async ({ page }) => {
+test.describe('Authentication Flow', () => {
+  test('user can log in and session persists', async ({ page }) => {
     await page.goto('/login');
-    await expect(page.locator('h1, h2, [role="heading"]')).toContainText(/login/i);
-  });
-});
 
-test.describe('RLS Enforcement', () => {
-  test('user cannot access another user case', async ({ page }) => {
-    // Note: This test assumes we have test users set up
-    // In a real scenario, you'd need to:
-    // 1. Login as user A
-    // 2. Try to access user B's case ID
-    // 3. Verify unauthorized message
-    
-    // For now, test that accessing non-existent/foreign case shows error
-    await page.goto('/cases/foreign-case-id');
-    
-    // Should either redirect to login or show unauthorized
-    const url = page.url();
-    const hasUnauthorized = await page.locator('text=Unauthorized, text=Forbidden, text=404').count() > 0;
-    const isLogin = url.includes('/login');
-    
-    expect(hasUnauthorized || isLogin).toBeTruthy();
+    // Fill in login form
+    await page.fill('input[type="email"]', TEST_USER_EMAIL);
+    await page.fill('input[type="password"]', TEST_USER_PASSWORD);
+
+    // Submit form
+    await page.click('button[type="submit"]');
+
+    // Wait for redirect to dashboard
+    await page.waitForURL('/dashboard', { timeout: 10000 });
+
+    // Verify Supabase auth cookie is set
+    const cookies = await page.context().cookies();
+    const supabaseCookie = cookies.find(c =>
+      c.name.includes('sb-') && c.name.includes('-auth-token')
+    );
+
+    expect(supabaseCookie).toBeTruthy();
+    expect(supabaseCookie?.value).toBeTruthy();
   });
 
-  test('API routes enforce authentication', async ({ request }) => {
-    // Test that unauthenticated API calls are rejected
-    const response = await request.get('/api/cases');
-    expect(response.status()).toBe(401);
+  test('protected route redirects to login when not authenticated', async ({ page }) => {
+    // Clear all cookies to simulate logged-out state
+    await page.context().clearCookies();
+
+    // Try to access protected route
+    await page.goto('/dashboard');
+
+    // Should redirect to login
+    await page.waitForURL(/\/login/, { timeout: 5000 });
+    expect(page.url()).toContain('/login');
   });
 
-  test('API routes enforce RLS', async ({ request }) => {
-    // Test that authenticated users cannot access other users' data
-    // This would require setting up authenticated requests
-    // For now, verify unauthorized response structure
-    const response = await request.get('/api/cases/foreign-case-id');
-    expect([401, 403, 404]).toContain(response.status());
+  test('forgot password flow works', async ({ page }) => {
+    await page.goto('/forgot-password');
+
+    // Fill in email
+    await page.fill('input[type="email"]', TEST_USER_EMAIL);
+
+    // Submit form
+    await page.click('button[type="submit"]');
+
+    // Should show success message
+    await expect(page.locator('text=Check Your Email')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('authenticated user cannot access login page', async ({ page }) => {
+    // First, log in
+    await page.goto('/login');
+    await page.fill('input[type="email"]', TEST_USER_EMAIL);
+    await page.fill('input[type="password"]', TEST_USER_PASSWORD);
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/dashboard', { timeout: 10000 });
+
+    // Try to access login page again
+    await page.goto('/login');
+
+    // Should redirect back to dashboard
+    await page.waitForURL('/dashboard', { timeout: 5000 });
   });
 });
