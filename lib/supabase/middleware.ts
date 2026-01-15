@@ -46,7 +46,7 @@ export interface MiddlewareClientResult {
  */
 function getEnvVars() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url) {
     throw new Error(
@@ -54,19 +54,19 @@ function getEnvVars() {
     );
   }
 
-  if (!anonKey) {
+  if (!publishableKey) {
     throw new Error(
-      '[Supabase Middleware] Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.'
+      '[Supabase Middleware] Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY environment variable.'
     );
   }
 
-  return { url, anonKey };
+  return { url, publishableKey };
 }
 
 export async function createSupabaseMiddlewareClient(
   request: NextRequest
 ): Promise<MiddlewareClientResult> {
-  const { url, anonKey } = getEnvVars();
+  const { url, publishableKey } = getEnvVars();
 
   // Create a response that we'll modify with cookie updates
   let response = NextResponse.next({
@@ -75,7 +75,7 @@ export async function createSupabaseMiddlewareClient(
     },
   });
 
-  const supabase = createServerClient(url, anonKey, {
+  const supabase = createServerClient(url, publishableKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

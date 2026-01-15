@@ -28,7 +28,18 @@ function validateAdminEnvVars(): { url: string; serviceRoleKey: string } {
     );
   }
 
-  return { url: url.trim(), serviceRoleKey: serviceRoleKey.trim() };
+  const trimmedServiceKey = serviceRoleKey.trim();
+
+  // Validate service role key format - must start with sb_secret_
+  if (!trimmedServiceKey.startsWith('sb_secret_')) {
+    throw new Error(
+      '[Supabase Admin] INVALID SERVICE ROLE KEY FORMAT. ' +
+      'SUPABASE_SERVICE_ROLE_KEY must start with "sb_secret_". ' +
+      'Get the secret key from Supabase Dashboard → Settings → API Keys → Secret key.'
+    );
+  }
+
+  return { url: url.trim(), serviceRoleKey: trimmedServiceKey };
 }
 
 /**

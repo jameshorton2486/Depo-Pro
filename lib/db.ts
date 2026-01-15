@@ -7,7 +7,7 @@
  * ⚠️ This file is marked server-only to prevent client leakage
  * 
  * This wrapper can be dangerous for auth because:
- * - It may silently fall back to anon key
+ * - It may silently fall back to publishable key (should use service role)
  * - It doesn't enforce client/server boundaries
  * - It can cause silent client/server leakage
  * 
@@ -29,7 +29,7 @@ function getSupabaseClient(): SupabaseClient {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   // ⚠️ CRITICAL: No fallback - fail hard if service role key is missing
-  // This prevents silent security issues where anon key might be used accidentally
+  // This prevents silent security issues where publishable key might be used accidentally
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl) {

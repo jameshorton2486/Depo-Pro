@@ -22,37 +22,29 @@ if (fs.existsSync(envPath)) {
 }
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 console.log('\n🔍 Supabase Auth Endpoint Test\n');
 console.log('='.repeat(70));
 
 // Check env vars
-if (!SUPABASE_URL || !ANON_KEY) {
+if (!SUPABASE_URL || !PUBLISHABLE_KEY) {
   console.error('❌ Missing env vars:');
   console.error(`   NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL ? '✅' : '❌'}`);
-  console.error(`   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY ? '✅' : '❌'}`);
+  console.error(`   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${PUBLISHABLE_KEY ? '✅' : '❌'}`);
   process.exit(1);
 }
 
 console.log(`✅ SUPABASE_URL: ${SUPABASE_URL}`);
-console.log(`✅ ANON_KEY loaded (length: ${ANON_KEY.length})`);
+console.log(`✅ PUBLISHABLE_KEY loaded (length: ${PUBLISHABLE_KEY.length})`);
 
-// Decode JWT to check expiry
-const parts = ANON_KEY.split('.');
-if (parts.length === 3) {
-  try {
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    console.log(`✅ Key role: ${payload.role}`);
-    console.log(`✅ Key expires: ${new Date(payload.exp * 1000).toISOString()}`);
-
-    if (new Date(payload.exp * 1000) < new Date()) {
-      console.error('❌ KEY IS EXPIRED!');
-      process.exit(1);
-    }
-  } catch (e) {
-    console.error('❌ Could not decode key:', e.message);
-  }
+// Validate publishable key format
+if (!PUBLISHABLE_KEY.startsWith('sb_publishable_')) {
+  console.error('❌ ERROR: Key does not start with "sb_publishable_"');
+  console.error('   Get the publishable key from Supabase Dashboard → Settings → API Keys');
+  process.exit(1);
+} else {
+  console.log('✅ Key format correct (sb_publishable_*)');
 }
 
 console.log('='.repeat(70));
@@ -75,7 +67,7 @@ const options = {
   headers: {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(postData),
-    'apikey': ANON_KEY,
+    'apikey': PUBLISHABLE_KEY,
   }
 };
 
