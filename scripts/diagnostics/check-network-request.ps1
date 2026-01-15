@@ -21,24 +21,24 @@ foreach ($file in $envFiles) {
     if (Test-Path $file) {
         Write-Host "  ✅ $file exists" -ForegroundColor Green
         
-        # Check for NEXT_PUBLIC_SUPABASE_ANON_KEY
+        # Check for NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
         $content = Get-Content $file -Raw
-        if ($content -match "NEXT_PUBLIC_SUPABASE_ANON_KEY=(.+)") {
+        if ($content -match "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=(.+)") {
             $keyValue = $matches[1].Trim()
             $keyValue = $keyValue -replace '^["\']|["\']$', ''  # Remove quotes
             
-            Write-Host "     NEXT_PUBLIC_SUPABASE_ANON_KEY found" -ForegroundColor Gray
+            Write-Host "     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY found" -ForegroundColor Gray
             Write-Host "     Length: $($keyValue.Length) characters" -ForegroundColor Gray
-            Write-Host "     Starts with: $($keyValue.Substring(0, [Math]::Min(10, $keyValue.Length)))" -ForegroundColor Gray
+            Write-Host "     Starts with: $($keyValue.Substring(0, [Math]::Min(20, $keyValue.Length)))" -ForegroundColor Gray
             
-            if ($keyValue.Length -lt 100) {
-                Write-Host "     ⚠️  WARNING: Key seems too short!" -ForegroundColor Yellow
-            }
-            if (-not $keyValue.StartsWith("eyJ")) {
-                Write-Host "     ⚠️  WARNING: Key doesn't start with 'eyJ'!" -ForegroundColor Yellow
+            if (-not $keyValue.StartsWith("sb_publishable_")) {
+                Write-Host "     ❌ ERROR: Key doesn't start with 'sb_publishable_'!" -ForegroundColor Red
+                Write-Host "     Get the publishable key from Supabase Dashboard → Settings → API Keys" -ForegroundColor Yellow
+            } else {
+                Write-Host "     ✅ Key format correct (sb_publishable_*)" -ForegroundColor Green
             }
         } else {
-            Write-Host "     ❌ NEXT_PUBLIC_SUPABASE_ANON_KEY NOT FOUND" -ForegroundColor Red
+            Write-Host "     ❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NOT FOUND" -ForegroundColor Red
         }
     } else {
         Write-Host "  ❌ $file NOT FOUND" -ForegroundColor Red

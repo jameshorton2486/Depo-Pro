@@ -24,31 +24,31 @@ async function main() {
   console.log('└─────────────────────────────────────────────────────────────┘');
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   const urlStatus = supabaseUrl ? '✅ SET' : '❌ MISSING';
-  const anonStatus = supabaseAnonKey ? '✅ SET' : '❌ MISSING';
+  const publishableStatus = publishableKey ? '✅ SET' : '❌ MISSING';
   const serviceStatus = serviceRoleKey ? '✅ SET' : '❌ MISSING';
 
-  console.log(`  NEXT_PUBLIC_SUPABASE_URL:     ${urlStatus}`);
+  console.log(`  NEXT_PUBLIC_SUPABASE_URL:            ${urlStatus}`);
   if (supabaseUrl) console.log(`    → ${supabaseUrl}`);
 
-  console.log(`  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${anonStatus}`);
-  if (supabaseAnonKey) {
-    const masked = `${supabaseAnonKey.substring(0, 20)}...${supabaseAnonKey.substring(supabaseAnonKey.length - 10)}`;
+  console.log(`  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${publishableStatus}`);
+  if (publishableKey) {
+    const masked = `${publishableKey.substring(0, 20)}...${publishableKey.substring(publishableKey.length - 10)}`;
     console.log(`    → ${masked}`);
   }
 
-  console.log(`  SUPABASE_SERVICE_ROLE_KEY:    ${serviceStatus}`);
+  console.log(`  SUPABASE_SERVICE_ROLE_KEY:           ${serviceStatus}`);
   if (serviceRoleKey) {
     const masked = `${serviceRoleKey.substring(0, 20)}...${serviceRoleKey.substring(serviceRoleKey.length - 10)}`;
     console.log(`    → ${masked}`);
   }
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !publishableKey) {
     console.log('\n❌ FATAL: Missing required environment variables');
-    console.log('   Get them from: Supabase Dashboard → Settings → API\n');
+    console.log('   Get them from: Supabase Dashboard → Settings → API → Publishable and secret API keys\n');
     process.exit(1);
   }
 

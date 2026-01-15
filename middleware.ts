@@ -1,12 +1,18 @@
 // =============================================================================
-// MIDDLEWARE
+// MIDDLEWARE - Gold-Standard Supabase Auth
 // =============================================================================
 // Single security boundary for authentication
 //
 // Responsibilities:
-// - Read Supabase session
+// - Read Supabase session (using publishable key)
 // - Redirect unauthenticated users → /login
 // - Redirect authenticated users away from auth pages → /dashboard
+// - Apply security headers
+//
+// ✅ Uses NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (no anon key)
+// ✅ Node.js runtime (allows process.env access)
+// ✅ Cookie-correct (reads from NextRequest, writes to NextResponse)
+// ✅ Deterministic auth behavior (no silent failures)
 //
 // ❌ No DB calls
 // ❌ No role logic
@@ -15,14 +21,13 @@
 
 export const runtime = 'nodejs';
 
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createMiddlewareClient } from '@/lib/supabase/middleware';
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
-// -----------------------------------------------------------------------------
-// Route Policy
-// -----------------------------------------------------------------------------
-
+/**
+ * Routes that do NOT require authentication
+ */
 const PUBLIC_ROUTES = [
   '/',
   '/login',
@@ -34,12 +39,110 @@ const PUBLIC_ROUTES = [
   '/auth/invite/accept',
 ];
 
+/**
+ * Routes that authenticated users should be redirected away from
+ * (e.g., login/register when already logged in)
+ */
 const AUTH_REDIRECT_ROUTES = ['/login', '/register'];
 
-// -----------------------------------------------------------------------------
-// Security Headers
-// -----------------------------------------------------------------------------
+/**
+ * Routes that SHOULD ALWAYS be protected
+ * (explicit allowlist for clarity)
+ */
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/admin',
+  '/cases',
+  '/jobs',
+  '/calendar',
+  '/transcripts',
+  '/reports',
+  '/settings',
+  '/billing',
+  '/exports',
+];
 
+/**
+ * Role-based route protection
+ * Maps roles to route prefixes they can access
+ */
+const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
+  ADMIN: [
+    '/admin',
+    '/dashboard',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+    '/billing',
+    '/exports',
+  ],
+  REPORTER: [
+    '/dashboard',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+  ],
+  SCOPIST: [
+    '/cases',
+    '/jobs',
+    '/transcripts',
+  ],
+  ATTORNEY: [
+    '/dashboard',
+    '/cases',
+    '/transcripts',
+    '/reports',
+  ],
+  AGENCY: [
+    '/dashboard',
+    '/cases',
+    '/jobs',
+    '/calendar',
+  ],
+};
+
+/**
+ * Routes to bypass middleware entirely
+ */
+function isBypassRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/assets') ||
+    pathname === '/api/health'
+  );
+}
+
+/**
+ * Check if route is public
+ */
+function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
+}
+
+/**
+ * Check if route should redirect authenticated users
+ */
+function isAuthRedirectRoute(pathname: string): boolean {
+  return AUTH_REDIRECT_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
+}
+
+/**
+ * Check if route is protected
+ */
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix));
+}
+
+/**
+ * Apply security headers to response
+ */
 function applySecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -50,81 +153,184 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
+/**
+ * Middleware function
+ */
+export async function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
 
-function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.includes(pathname);
-}
-
-function isAuthRedirectRoute(pathname: string): boolean {
-  return AUTH_REDIRECT_ROUTES.includes(pathname);
-}
-
-function isBypassRoute(pathname: string): boolean {
-  return (
-    pathname.startsWith('/_next/') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/api/health'
-  );
-}
-
-// -----------------------------------------------------------------------------
-// Middleware
-// -----------------------------------------------------------------------------
-
-export async function middleware(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
-
-  // Bypass static assets and health checks
+  // Skip static files, Next internals, and public assets
   if (isBypassRoute(pathname)) {
     return NextResponse.next();
   }
 
-  const { supabase, response } = await createMiddlewareClient(request);
-
-  // Public routes
+  // Allow public routes without auth
   if (isPublicRoute(pathname)) {
+    // Create a response we can mutate with cookies for session refresh
+    const res = NextResponse.next();
+
+    /**
+     * Supabase server client (Edge-safe)
+     * Uses:
+     * - NEXT_PUBLIC_SUPABASE_URL
+     * - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+     */
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return req.cookies.get(name)?.value;
+          },
+          set(name: string, value: string, options) {
+            res.cookies.set({ name, value, ...options });
+          },
+          remove(name: string, options) {
+            res.cookies.set({ name, value: '', ...options });
+          },
+        },
+      }
+    );
+
     // Redirect authenticated users away from login/register
     if (isAuthRedirectRoute(pathname)) {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (user) {
-        const redirect = NextResponse.redirect(
-          new URL('/dashboard', request.url)
-        );
+      if (session) {
+        const redirect = NextResponse.redirect(new URL('/dashboard', req.url));
         return applySecurityHeaders(redirect);
       }
     }
 
-    return applySecurityHeaders(response);
+    return applySecurityHeaders(res);
   }
 
-  // Protected routes
-  const { data: { user }, error } = await supabase.auth.getUser();
+  // Create a response we can mutate with cookies
+  const res = NextResponse.next();
 
-  if (error || !user) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set(
-      'callbackUrl',
-      `${pathname}${search}`
-    );
+  /**
+   * Supabase server client (Edge-safe)
+   * Uses:
+   * - NEXT_PUBLIC_SUPABASE_URL
+   * - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+   */
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options) {
+          res.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options) {
+          res.cookies.set({ name, value: '', ...options });
+        },
+      },
+    }
+  );
 
-    const redirect = NextResponse.redirect(loginUrl);
+  /**
+   * Get the current session
+   * This validates cookies + refresh token automatically
+   */
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  // If Supabase throws an auth error, treat as unauthenticated
+  if (error) {
+    const redirectUrl = new URL('/login', req.url);
+    redirectUrl.searchParams.set('reason', 'auth_error');
+    const redirect = NextResponse.redirect(redirectUrl);
     return applySecurityHeaders(redirect);
   }
 
-  // Authenticated → allow access
-  return applySecurityHeaders(response);
+  /**
+   * If the route is protected and no session exists → redirect
+   */
+  if (isProtectedRoute(pathname) && !session) {
+    const redirectUrl = new URL('/login', req.url);
+    redirectUrl.searchParams.set('redirect', `${pathname}${search}`);
+    const redirect = NextResponse.redirect(redirectUrl);
+    return applySecurityHeaders(redirect);
+  }
+
+  /**
+   * Role-based access control (RBAC)
+   * Extract role from user_metadata
+   */
+  if (session && isProtectedRoute(pathname)) {
+    const userMetadata = session.user.user_metadata || {};
+    const role = userMetadata.role as string | undefined;
+    const orgId = userMetadata.org_id as string | undefined;
+    const caseIds = (userMetadata.case_ids as string[] | undefined) || [];
+
+    // ❌ Missing role = deny access
+    if (!role) {
+      const redirectUrl = new URL('/unauthorized', req.url);
+      redirectUrl.searchParams.set('reason', 'missing_role');
+      const redirect = NextResponse.redirect(redirectUrl);
+      return applySecurityHeaders(redirect);
+    }
+
+    // 🔐 Role-based route enforcement
+    const allowedPrefixes = ROLE_PROTECTED_ROUTES[role] || [];
+
+    const isRoleAllowed = allowedPrefixes.some(prefix =>
+      pathname.startsWith(prefix)
+    );
+
+    if (!isRoleAllowed) {
+      const redirectUrl = new URL('/unauthorized', req.url);
+      redirectUrl.searchParams.set('reason', 'insufficient_role');
+      redirectUrl.searchParams.set('role', role);
+      const redirect = NextResponse.redirect(redirectUrl);
+      return applySecurityHeaders(redirect);
+    }
+
+    // 🏢 Organization scoping (example: /org/[orgId]/...)
+    const orgMatch = pathname.match(/^\/org\/([^/]+)/);
+    if (orgMatch && orgId && orgMatch[1] !== orgId) {
+      const redirectUrl = new URL('/unauthorized', req.url);
+      redirectUrl.searchParams.set('reason', 'org_mismatch');
+      const redirect = NextResponse.redirect(redirectUrl);
+      return applySecurityHeaders(redirect);
+    }
+
+    // 📁 Case scoping (example: /cases/[caseId])
+    const caseMatch = pathname.match(/^\/cases\/([^/]+)/);
+    if (caseMatch && caseIds.length > 0 && !caseIds.includes(caseMatch[1])) {
+      const redirectUrl = new URL('/unauthorized', req.url);
+      redirectUrl.searchParams.set('reason', 'case_access_denied');
+      redirectUrl.searchParams.set('caseId', caseMatch[1]);
+      const redirect = NextResponse.redirect(redirectUrl);
+      return applySecurityHeaders(redirect);
+    }
+  }
+
+  /**
+   * Authenticated → continue with security headers
+   */
+  return applySecurityHeaders(res);
 }
 
-// -----------------------------------------------------------------------------
-// Matcher
-// -----------------------------------------------------------------------------
-
+/**
+ * Matcher: apply middleware only where it makes sense
+ */
 export const config = {
   matcher: [
+    /*
+      Run on all routes except:
+      - static files
+      - public assets
+    */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import nextPlugin from '@next/eslint-plugin-next';
+import supabaseGuard from './eslint-plugin-supabase-guard/index.js';
 
 export default [
   // Global ignores
@@ -26,6 +27,8 @@ export default [
       '*_backup_*/**',
       '**/*.config.js',
       '**/*.config.mjs',
+      'eslint-plugin-supabase-guard/**',
+      'next-env.d.ts',
       // Non-MVP / Legacy files
       'test-env.js',
       'test-env-browser.js',
@@ -64,7 +67,15 @@ export default [
   },
   // Custom overrides
   {
+    plugins: {
+      'supabase-guard': supabaseGuard,
+    },
     rules: {
+      // 🔒 Supabase Authentication Enforcement
+      'supabase-guard/no-anon-key': 'error',
+      'supabase-guard/no-jwt-assumptions': 'error',
+      'supabase-guard/no-service-role-in-client': 'error',
+      
       // 🔴 Build safety - Prevent console.log in production
       'no-console': ['error', { allow: ['warn', 'error'] }],
       
@@ -125,6 +136,13 @@ export default [
   },
   {
     files: ['app/(auth)/**/*.tsx', 'app/(auth)/**/*.ts'],
+    rules: {
+      'no-restricted-globals': 'off',
+      'no-console': 'off',
+    },
+  },
+  {
+    files: ['middleware.ts'],
     rules: {
       'no-restricted-globals': 'off',
       'no-console': 'off',

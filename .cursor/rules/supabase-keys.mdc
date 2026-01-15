@@ -1,0 +1,111 @@
+# Supabase Key Usage Enforcement Rule
+
+## Rule
+This project uses Supabase's NEW publishable key model exclusively. Legacy JWT anon keys are FORBIDDEN.
+
+## Allowed Patterns
+
+### Browser/Client Code
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (must start with `sb_publishable_`)
+- `process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- Validation must check for `sb_publishable_` prefix
+
+### Server/Admin Code
+- `SUPABASE_SERVICE_ROLE_KEY` (must start with `sb_secret_`)
+- `process.env.SUPABASE_SERVICE_ROLE_KEY`
+- Validation must check for `sb_secret_` prefix
+- MUST be in server-only files (`import 'server-only'`)
+
+## Forbidden Patterns (NEVER USE)
+
+### Variable Names
+- ❌ `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- ❌ `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- ❌ `SUPABASE_ANON_KEY`
+- ❌ Any variation with "anon" or "anonymous"
+
+### Terminology
+- ❌ "anon key"
+- ❌ "anonymous key"
+- ❌ "JWT anon key"
+- ❌ "legacy anon key"
+
+### JWT Assumptions
+- ❌ `eyJhbGci` (JWT prefix)
+- ❌ JWT decoding logic for anon keys
+- ❌ Length checks for JWT format (~200 chars)
+- ❌ Any logic that assumes JWT format
+
+### Code Patterns
+- ❌ Fallback logic: `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- ❌ Dual support for both key types
+- ❌ Backward compatibility shims
+- ❌ Comments mentioning "anon key" or "JWT key"
+
+## Enforcement
+
+### Client Code Requirements
+1. MUST use `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+2. MUST validate `sb_publishable_` prefix
+3. MUST throw immediately if key is missing or invalid
+4. MUST NOT import or reference service role key
+
+### Server Code Requirements
+1. MUST use `SUPABASE_SERVICE_ROLE_KEY` for admin operations
+2. MUST validate `sb_secret_` prefix
+3. MUST be in files with `import 'server-only'`
+4. MUST NOT be imported into client components
+
+### Validation Requirements
+1. Missing keys MUST throw immediately (no silent failures)
+2. Invalid key format MUST throw with clear error message
+3. Error messages MUST include Supabase Dashboard instructions
+4. NO fallback or default values
+
+## Action on Violation
+
+If any forbidden pattern appears:
+1. **Refactor immediately** - Replace with correct pattern
+2. **Delete legacy logic** - Do not comment it out
+3. **Update validation** - Ensure strict prefix checks
+4. **Do NOT preserve backward compatibility** - This is a breaking change
+
+## Examples
+
+### ✅ CORRECT - Browser Client
+```typescript
+const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+if (!key?.startsWith('sb_publishable_')) {
+  throw new Error('Invalid publishable key format');
+}
+```
+
+### ❌ WRONG - Legacy Anon Key
+```typescript
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; // FORBIDDEN
+```
+
+### ✅ CORRECT - Server Admin
+```typescript
+import 'server-only';
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!key?.startsWith('sb_secret_')) {
+  throw new Error('Invalid service role key format');
+}
+```
+
+### ❌ WRONG - Fallback Logic
+```typescript
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+            process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; // FORBIDDEN
+```
+
+## This Rule Is Mandatory
+
+This rule applies to:
+- ✅ All AI-generated code (Cursor, GitHub Copilot, etc.)
+- ✅ All human-written code
+- ✅ All refactoring and migrations
+- ✅ All new features
+
+**No exceptions. No backward compatibility. Zero tolerance for legacy keys.**

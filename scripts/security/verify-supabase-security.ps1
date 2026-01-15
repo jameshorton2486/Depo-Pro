@@ -45,36 +45,34 @@ if ($urlLine) {
 
 Write-Host ""
 
-# Check for NEXT_PUBLIC_SUPABASE_ANON_KEY
-Write-Host "Checking NEXT_PUBLIC_SUPABASE_ANON_KEY..." -ForegroundColor Yellow
-$anonKeyLine = $lines | Where-Object { $_ -match "^NEXT_PUBLIC_SUPABASE_ANON_KEY=" }
+# Check for NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+Write-Host "Checking NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY..." -ForegroundColor Yellow
+$publishableKeyLine = $lines | Where-Object { $_ -match "^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=" }
 
-if ($anonKeyLine) {
-    $anonKey = $anonKeyLine -replace "^NEXT_PUBLIC_SUPABASE_ANON_KEY=", ""
-    $keyLength = $anonKey.Length
-    $keyParts = $anonKey.Split(".")
+if ($publishableKeyLine) {
+    $publishableKey = $publishableKeyLine -replace "^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=", ""
+    $keyLength = $publishableKey.Length
 
     Write-Host "  Key length: $keyLength characters" -ForegroundColor Cyan
-    Write-Host "  JWT segments: $($keyParts.Count)" -ForegroundColor Cyan
 
-    if ($keyParts.Count -eq 3) {
-        Write-Host "  [OK] Key has correct JWT format (3 segments)" -ForegroundColor Green
+    if ($publishableKey -match '^sb_publishable_') {
+        Write-Host "  [OK] Key has correct publishable format (sb_publishable_*)" -ForegroundColor Green
     } else {
-        Write-Host "  [ERROR] Key is MALFORMED!" -ForegroundColor Red
-        Write-Host "  Expected 3 JWT segments, found $($keyParts.Count)" -ForegroundColor Red
-        Write-Host "  This usually means the key is split across multiple lines." -ForegroundColor Yellow
-        Write-Host "  FIX: Put the entire key on ONE line in .env.local" -ForegroundColor Yellow
+        Write-Host "  [ERROR] Key format is INVALID!" -ForegroundColor Red
+        Write-Host "  Expected: sb_publishable_*" -ForegroundColor Red
+        Write-Host "  Found: $($publishableKey.Substring(0, [Math]::Min(20, $publishableKey.Length)))..." -ForegroundColor Red
+        Write-Host "  FIX: Get the publishable key from Supabase Dashboard → Settings → API Keys" -ForegroundColor Yellow
     }
 
-    if ($keyLength -gt 150) {
+    if ($keyLength -gt 50) {
         Write-Host "  [OK] Key length looks correct ($keyLength chars)" -ForegroundColor Green
     } else {
         Write-Host "  [ERROR] Key appears TRUNCATED!" -ForegroundColor Red
-        Write-Host "  Expected 150+ characters, found $keyLength" -ForegroundColor Red
+        Write-Host "  Expected 50+ characters, found $keyLength" -ForegroundColor Red
         Write-Host "  FIX: Ensure the entire key is on ONE line" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "  [ERROR] NEXT_PUBLIC_SUPABASE_ANON_KEY not found!" -ForegroundColor Red
+    Write-Host "  [ERROR] NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY not found!" -ForegroundColor Red
 }
 
 Write-Host ""
@@ -117,7 +115,7 @@ if ($envContent -match 'SUPABASE.*\s+=\s+') {
 $multilineKey = $false
 $inKey = $false
 foreach ($line in $lines) {
-    if ($line -match "^NEXT_PUBLIC_SUPABASE_ANON_KEY=") {
+    if ($line -match "^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=") {
         $inKey = $true
     } elseif ($inKey -and $line -match "^[A-Za-z0-9+/=]+$") {
         $multilineKey = $true

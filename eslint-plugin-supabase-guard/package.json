@@ -1,0 +1,10 @@
+{
+  "name": "eslint-plugin-supabase-guard",
+  "version": "1.0.0",
+  "description": "ESLint plugin to enforce Supabase publishable key usage and prevent legacy patterns",
+  "main": "index.js",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

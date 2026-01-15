@@ -20,7 +20,7 @@ export async function GET() {
 
     // Check environment variables
     const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const hasAnonKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const hasPublishableKey = !!process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     const status = {
@@ -30,7 +30,7 @@ export async function GET() {
       environment: process.env.NODE_ENV || 'development',
       config: {
         hasUrl,
-        hasAnonKey,
+        hasPublishableKey,
         hasServiceKey,
       },
       errors: {
@@ -38,7 +38,7 @@ export async function GET() {
       },
     };
 
-    const statusCode = status.auth === 'ok' && hasUrl && hasAnonKey && hasServiceKey ? 200 : 503;
+    const statusCode = status.auth === 'ok' && hasUrl && hasPublishableKey && hasServiceKey ? 200 : 503;
 
     return NextResponse.json(status, { status: statusCode });
   } catch (error: any) {

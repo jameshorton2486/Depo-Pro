@@ -37,11 +37,11 @@ Write-Host "   ✅ .env.local found" -ForegroundColor Green
 # Step 4: Verify key format
 Write-Host "4️⃣ Verifying key format..." -ForegroundColor Yellow
 $envContent = Get-Content ".env.local" -Raw
-if ($envContent -match 'NEXT_PUBLIC_SUPABASE_ANON_KEY=(.+?)(?:\r?\n|$)') {
-    $anonKey = $matches[1].Trim() -replace '^["'']|["'']$', ''
-    if ($anonKey -match '^sb_publishable_') {
+if ($envContent -match 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=(.+?)(?:\r?\n|$)') {
+    $publishableKey = $matches[1].Trim() -replace '^["'']|["'']$', ''
+    if ($publishableKey -match '^sb_publishable_') {
         Write-Host "   ✅ Key format correct (sb_publishable_)" -ForegroundColor Green
-    } elseif ($anonKey -match '^eyJhbGciOi') {
+    } elseif ($publishableKey -match '^eyJhbGciOi') {
         Write-Host "   ❌ ERROR: Key is legacy JWT (eyJhbGciOi)" -ForegroundColor Red
         Write-Host "   Update .env.local with publishable key first!" -ForegroundColor Yellow
         exit 1
@@ -49,7 +49,7 @@ if ($envContent -match 'NEXT_PUBLIC_SUPABASE_ANON_KEY=(.+?)(?:\r?\n|$)') {
         Write-Host "   ⚠️  Key format not recognized" -ForegroundColor Yellow
     }
 } else {
-    Write-Host "   ⚠️  NEXT_PUBLIC_SUPABASE_ANON_KEY not found in .env.local" -ForegroundColor Yellow
+    Write-Host "   ⚠️  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY not found in .env.local" -ForegroundColor Yellow
 }
 
 Write-Host ""

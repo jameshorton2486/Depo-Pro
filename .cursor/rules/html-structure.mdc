@@ -1,0 +1,164 @@
+# HTML Structure Rules - Next.js App Router
+
+## CRITICAL: Document-Level Tag Restrictions
+
+### ✅ ALLOWED Locations for `<html>` and `<body>`
+
+**ONLY these files may contain `<html>` or `<body>` tags:**
+
+1. `app/layout.tsx` (root layout) - **REQUIRED**
+   - Must contain both `<html>` and `<body>`
+   - Structure: `<html>` → `<body>` → providers → `{children}`
+
+2. `app/global-error.tsx` (global error boundary) - **OPTIONAL**
+   - May contain `<html>` and `<body>` (replaces root layout on critical errors)
+   - Only used when root layout fails to render
+
+### ❌ FORBIDDEN Locations for `<html>` or `<body>`
+
+**NEVER render `<html>`, `<body>`, or `<head>` in:**
+
+- `app/**/page.tsx` (any page component)
+- `app/**/layout.tsx` (nested layouts)
+- `app/**/error.tsx` (route-level error boundaries)
+- `app/**/template.tsx` (templates)
+- `components/**` (any component file)
+- `app/**/*.tsx` (any other app file)
+
+### ❌ FORBIDDEN Patterns
+
+```tsx
+// ❌ NEVER in nested layouts
+export default function NestedLayout({ children }) {
+  return (
+    <html>  {/* FORBIDDEN */}
+      <body> {/* FORBIDDEN */}
+        {children}
+      </body>
+    </html>
+  );
+}
+
+// ❌ NEVER in pages
+export default function Page() {
+  return (
+    <html>  {/* FORBIDDEN */}
+      <body> {/* FORBIDDEN */}
+        <div>Content</div>
+      </body>
+    </html>
+  );
+}
+
+// ❌ NEVER in error boundaries (except global-error.tsx)
+export default function Error({ error, reset }) {
+  return (
+    <html>  {/* FORBIDDEN */}
+      <body> {/* FORBIDDEN */}
+        <div>Error</div>
+      </body>
+    </html>
+  );
+}
+
+// ❌ NEVER in components
+export function MyComponent() {
+  return (
+    <html>  {/* FORBIDDEN */}
+      <body> {/* FORBIDDEN */}
+        <div>Content</div>
+      </body>
+    </html>
+  );
+}
+```
+
+### ✅ CORRECT Patterns
+
+```tsx
+// ✅ Root layout (app/layout.tsx)
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+
+// ✅ Nested layout (app/(dashboard)/layout.tsx)
+export default function DashboardLayout({ children }) {
+  return (
+    <div className="dashboard">
+      <Sidebar />
+      <main>{children}</main>
+    </div>
+  );
+}
+
+// ✅ Page (app/page.tsx)
+export default function HomePage() {
+  return (
+    <div>
+      <h1>Home</h1>
+    </div>
+  );
+}
+
+// ✅ Error boundary (app/error.tsx)
+export default function Error({ error, reset }) {
+  return (
+    <div className="error-container">
+      <h1>Error</h1>
+      <button onClick={reset}>Retry</button>
+    </div>
+  );
+}
+```
+
+## Enforcement Rules
+
+1. **Before creating any file in `app/` or `components/`:**
+   - Verify it does NOT contain `<html>`, `<body>`, or `<head>` tags
+   - Use semantic HTML containers instead (`<div>`, `<main>`, `<section>`, etc.)
+
+2. **When modifying `app/layout.tsx`:**
+   - Ensure `<html>` directly wraps `<body>`
+   - Ensure `<body>` directly wraps providers and `{children}`
+   - Do NOT add intermediate wrappers
+
+3. **When creating error boundaries:**
+   - `app/error.tsx` → NO `<html>`/`<body>` (returns content only)
+   - `app/global-error.tsx` → MAY have `<html>`/`<body>` (replaces root layout)
+
+4. **suppressHydrationWarning:**
+   - Only use on `<html>` if theme provider causes class mismatches
+   - Do NOT use on `<body>` unless absolutely necessary
+   - Prefer fixing the root cause over suppressing warnings
+
+## Why These Rules Exist
+
+- **Hydration Errors**: Invalid HTML structure causes React hydration mismatches
+- **Next.js Architecture**: App Router handles document structure automatically
+- **Performance**: Extra document tags break Next.js optimizations
+- **Maintainability**: Clear rules prevent future bugs
+
+## Quick Check
+
+Before committing any file:
+
+```bash
+# Check for forbidden tags
+grep -r "<html\|</html>\|<body\|</body>" app/ components/ --include="*.tsx" | grep -v "layout.tsx\|global-error.tsx\|HTMLFormElement\|HTMLInputElement"
+```
+
+If this command returns any results (excluding `layout.tsx` and `global-error.tsx`), **fix the violation before committing**.
+
+## Related Files
+
+- `app/layout.tsx` - Root layout (ONLY place for html/body)
+- `app/global-error.tsx` - Global error boundary (may have html/body)
+- `docs/nextjs/ROOT_LAYOUT_TEMPLATE.md` - Reference implementation

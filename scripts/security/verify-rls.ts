@@ -11,17 +11,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-if (!url || !anonKey) {
-  console.error('❌ Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+if (!url || !publishableKey) {
+  console.error('❌ Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
   process.exit(1);
 }
 
 async function verifyRLS() {
   console.log('🔒 Verifying Row Level Security (RLS) policies...\n');
 
-  const anon = createClient(url, anonKey);
+  const anon = createClient(url, publishableKey);
 
   // Test 1: Anon user should NOT be able to read users table
   console.log('Test 1: Verifying anon user cannot read users table...');

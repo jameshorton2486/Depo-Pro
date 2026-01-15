@@ -3,7 +3,7 @@
 // app/api/calendar/events/route.ts
 //
 // Uses Supabase with Row-Level Security (RLS)
-// Client routes → anon key + RLS
+// Client routes → publishable key + RLS
 // Never bypasses RLS silently
 // =============================================================================
 

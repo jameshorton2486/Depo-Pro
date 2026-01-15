@@ -163,8 +163,8 @@ if (-not (Test-Path ".env")) {
 Write-Host "`n  Database & Supabase:" -ForegroundColor White
 Test-EnvVariable "DATABASE_URL" "^postgresql://" "PostgreSQL connection string" -Required
 Test-EnvVariable "NEXT_PUBLIC_SUPABASE_URL" "^https://" "Supabase project URL" -Required
-Test-EnvVariable "NEXT_PUBLIC_SUPABASE_ANON_KEY" "^ey" "Supabase anon key" -Required
-Test-EnvVariable "SUPABASE_SERVICE_ROLE_KEY" "^ey" "Supabase service role key" -Required
+Test-EnvVariable "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" "^sb_publishable_" "Supabase publishable key" -Required
+Test-EnvVariable "SUPABASE_SERVICE_ROLE_KEY" "^sb_secret_" "Supabase service role key" -Required
 
 Write-Host "`n  Storage:" -ForegroundColor White
 Test-EnvVariable "USE_CLOUD_STORAGE" "^true" "Enable cloud storage" -Required
