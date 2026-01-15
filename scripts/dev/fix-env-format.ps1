@@ -61,25 +61,26 @@ if ($currentKey -and $inMultiLineValue) {
     $fixed += "$currentKey=$currentValue"
 }
 
-# Check for NEXT_PUBLIC_SUPABASE_ANON_KEY specifically
-$anonKeyLine = $fixed | Where-Object { $_ -match '^NEXT_PUBLIC_SUPABASE_ANON_KEY=' }
-if ($anonKeyLine) {
-    $anonKeyValue = ($anonKeyLine -split '=', 2)[1]
+# Check for NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY specifically
+$publishableKeyLine = $fixed | Where-Object { $_ -match '^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=' }
+if ($publishableKeyLine) {
+    $publishableKeyValue = ($publishableKeyLine -split '=', 2)[1]
     
-    # Check if it contains newlines or is suspiciously short
-    if ($anonKeyValue -match "`n" -or $anonKeyValue.Length -lt 200) {
-        Write-Host "⚠️  NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be malformed" -ForegroundColor Yellow
-        Write-Host "   Current length: $($anonKeyValue.Length) characters" -ForegroundColor Yellow
-        Write-Host "   Expected: 200+ characters on ONE line" -ForegroundColor Yellow
+    # Check if it contains newlines or has wrong format
+    if ($publishableKeyValue -match "`n" -or -not $publishableKeyValue.Trim().StartsWith('sb_publishable_')) {
+        Write-Host "⚠️  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY appears to be malformed" -ForegroundColor Yellow
+        Write-Host "   Current length: $($publishableKeyValue.Length) characters" -ForegroundColor Yellow
+        Write-Host "   Expected: Must start with 'sb_publishable_' and be on ONE line" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "📝 Manual fix required:" -ForegroundColor Cyan
         Write-Host "   1. Open .env.local in your editor" -ForegroundColor Cyan
-        Write-Host "   2. Find NEXT_PUBLIC_SUPABASE_ANON_KEY=" -ForegroundColor Cyan
+        Write-Host "   2. Find NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=" -ForegroundColor Cyan
         Write-Host "   3. Ensure the entire key is on ONE line (no line breaks)" -ForegroundColor Cyan
-        Write-Host "   4. The key should be 200+ characters long" -ForegroundColor Cyan
+        Write-Host "   4. The key must start with 'sb_publishable_'" -ForegroundColor Cyan
+        Write-Host "   5. Get the key from Supabase Dashboard → Settings → API Keys" -ForegroundColor Cyan
         Write-Host ""
     } else {
-        Write-Host "✅ NEXT_PUBLIC_SUPABASE_ANON_KEY format looks correct" -ForegroundColor Green
+        Write-Host "✅ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY format looks correct" -ForegroundColor Green
     }
 }
 

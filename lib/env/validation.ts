@@ -19,16 +19,16 @@ const ENV_VARS: EnvVar[] = [
     validate: (v) => v.startsWith('https://') && v.includes('.supabase.co'),
   },
   {
-    name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    name: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
     required: true,
-    description: 'Supabase anonymous key',
-    validate: (v) => v.length > 100,
+    description: 'Supabase publishable key (sb_publishable_*)',
+    validate: (v) => v.startsWith('sb_publishable_'),
   },
   {
     name: 'SUPABASE_SERVICE_ROLE_KEY',
     required: true,
-    description: 'Supabase service role key (server only)',
-    validate: (v) => v.length > 100,
+    description: 'Supabase service role key (sb_secret_*)',
+    validate: (v) => v.startsWith('sb_secret_'),
   },
 
   // Auth - NextAuth removed, using Supabase only

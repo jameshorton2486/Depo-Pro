@@ -28,12 +28,12 @@ export const SERVER_ENV = {
  * Browser-safe environment variables
  * Must exist at build time (NEXT_PUBLIC_*)
  *
- * Note: NEXT_PUBLIC_SUPABASE_ANON_KEY is validated in browser.ts
- * using requirePublishableSupabaseKey() to ensure it's a publishable key.
+ * Note: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is validated in browser.ts
+ * using validatePublishableKey() to ensure it's a publishable key.
  */
 export const PUBLIC_ENV = {
   NEXT_PUBLIC_SUPABASE_URL: requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
-  // Key validation happens in lib/env/require-public-supabase-key.ts
+  // Key validation happens in lib/supabase/browser.ts
   // This ensures publishable key format (sb_publishable_*) is enforced
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: requireEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
 };

@@ -30,46 +30,46 @@ if (-not $urlLine) {
     }
 }
 
-# Check NEXT_PUBLIC_SUPABASE_ANON_KEY
-$anonKeyLines = $content | Where-Object { $_ -match 'NEXT_PUBLIC_SUPABASE_ANON_KEY' }
-$anonKeyCount = ($anonKeyLines | Measure-Object).Count
+# Check NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+$publishableKeyLines = $content | Where-Object { $_ -match 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY' }
+$publishableKeyCount = ($publishableKeyLines | Measure-Object).Count
 
-if ($anonKeyCount -eq 0) {
-    $issues += "❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is missing"
-} elseif ($anonKeyCount -gt 1) {
-    $issues += "❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is split across $anonKeyCount lines (must be ONE line)"
+if ($publishableKeyCount -eq 0) {
+    $issues += "❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is missing"
+} elseif ($publishableKeyCount -gt 1) {
+    $issues += "❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is split across $publishableKeyCount lines (must be ONE line)"
     Write-Host ""
     Write-Host "🔧 FIX REQUIRED:" -ForegroundColor Red
-    Write-Host "   The anon key is split across multiple lines. Fix it like this:" -ForegroundColor Yellow
+    Write-Host "   The publishable key is split across multiple lines. Fix it like this:" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "   ❌ BROKEN (multi-line):" -ForegroundColor Red
-    $anonKeyLines | ForEach-Object { Write-Host "      $_" -ForegroundColor Red }
+    $publishableKeyLines | ForEach-Object { Write-Host "      $_" -ForegroundColor Red }
     Write-Host ""
     Write-Host "   ✅ CORRECT (single line):" -ForegroundColor Green
-    $firstLine = $anonKeyLines[0]
+    $firstLine = $publishableKeyLines[0]
     $keyValue = ($firstLine -split '=', 2)[1]
-    $allKeyParts = $anonKeyLines | ForEach-Object { 
-        if ($_ -match '^NEXT_PUBLIC_SUPABASE_ANON_KEY=') {
+    $allKeyParts = $publishableKeyLines | ForEach-Object { 
+        if ($_ -match '^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=') {
             ($_ -split '=', 2)[1]
         } else {
             $_.Trim()
         }
     }
     $fullKey = $allKeyParts -join ''
-    Write-Host "      NEXT_PUBLIC_SUPABASE_ANON_KEY=$fullKey" -ForegroundColor Green
+    Write-Host "      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$fullKey" -ForegroundColor Green
     Write-Host ""
 } else {
-    $anonKeyLine = $anonKeyLines[0]
-    $keyValue = ($anonKeyLine -split '=', 2)[1]
+    $publishableKeyLine = $publishableKeyLines[0]
+    $keyValue = ($publishableKeyLine -split '=', 2)[1]
     
     if (-not $keyValue -or $keyValue.Trim() -eq '') {
-        $issues += "❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is empty"
-    } elseif ($keyValue.Length -lt 200) {
-        $issues += "⚠️  NEXT_PUBLIC_SUPABASE_ANON_KEY appears too short ($($keyValue.Length) chars, expected 200+)"
+        $issues += "❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is empty"
+    } elseif (-not $keyValue.Trim().StartsWith('sb_publishable_')) {
+        $issues += "❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY does not start with 'sb_publishable_'"
     } elseif ($keyValue -match "`n" -or $keyValue -match "`r") {
-        $issues += "❌ NEXT_PUBLIC_SUPABASE_ANON_KEY contains line breaks (must be ONE line)"
+        $issues += "❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY contains line breaks (must be ONE line)"
     } else {
-        Write-Host "✅ NEXT_PUBLIC_SUPABASE_ANON_KEY: OK ($($keyValue.Length) characters)" -ForegroundColor Green
+        Write-Host "✅ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: OK ($($keyValue.Length) characters)" -ForegroundColor Green
     }
 }
 
@@ -81,7 +81,7 @@ if ($issues.Count -gt 0) {
     Write-Host ""
     Write-Host "📝 TO FIX:" -ForegroundColor Cyan
     Write-Host "   1. Open .env.local: code .env.local" -ForegroundColor Cyan
-    Write-Host "   2. Ensure NEXT_PUBLIC_SUPABASE_ANON_KEY is on ONE line" -ForegroundColor Cyan
+    Write-Host "   2. Ensure NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is on ONE line" -ForegroundColor Cyan
     Write-Host "   3. Remove all line breaks from the key value" -ForegroundColor Cyan
     Write-Host "   4. Save and restart: Remove-Item -Recurse -Force .next; npm run dev" -ForegroundColor Cyan
     exit 1

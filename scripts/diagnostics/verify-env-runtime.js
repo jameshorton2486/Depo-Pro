@@ -7,7 +7,7 @@
 console.log('🔍 Verifying NEXT_PUBLIC_* Environment Variables...\n');
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 console.log('📋 Runtime Values:');
 console.log('─'.repeat(60));
@@ -21,27 +21,26 @@ if (!supabaseUrl) {
   console.log(`   Length: ${supabaseUrl.length} characters`);
 }
 
-if (!supabaseAnonKey) {
-  console.error('❌ NEXT_PUBLIC_SUPABASE_ANON_KEY: UNDEFINED');
+if (!publishableKey) {
+  console.error('❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: UNDEFINED');
   console.error('   This means the variable was NOT replaced at build time!');
   console.error('   This will cause "Invalid API key" errors!');
 } else {
-  console.log('✅ NEXT_PUBLIC_SUPABASE_ANON_KEY: Defined');
-  console.log(`   Value: ${supabaseAnonKey.substring(0, 30)}...`);
-  console.log(`   Length: ${supabaseAnonKey.length} characters`);
+  console.log('✅ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: Defined');
+  console.log(`   Value: ${publishableKey.substring(0, 30)}...`);
+  console.log(`   Length: ${publishableKey.length} characters`);
   
-  if (supabaseAnonKey.length < 100) {
-    console.warn('⚠️  WARNING: Key seems too short (expected ~200+ characters)');
-  }
-  
-  if (!supabaseAnonKey.startsWith('eyJ')) {
-    console.warn('⚠️  WARNING: Key does not start with "eyJ" (JWT format)');
+  if (!publishableKey.startsWith('sb_publishable_')) {
+    console.error('❌ ERROR: Key does not start with "sb_publishable_"');
+    console.error('   Get the publishable key from Supabase Dashboard → Settings → API Keys');
+  } else {
+    console.log('✅ Key format correct (sb_publishable_*)');
   }
 }
 
 console.log('─'.repeat(60));
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !publishableKey) {
   console.error('\n❌ CRITICAL: Environment variables are undefined!');
   console.error('\n🔧 To fix:');
   console.error('1. Check .env.local has the correct values (no quotes)');
@@ -55,4 +54,4 @@ console.log('\n✅ Environment variables are defined at runtime');
 console.log('\n💡 If browser still shows "Invalid API key":');
 console.log('   1. The build cache may be stale - delete .next and rebuild');
 console.log('   2. Check browser Network tab - see actual request to Supabase');
-console.log('   3. Verify the ANON key in Supabase Dashboard matches this value');
+console.log('   3. Verify the publishable key in Supabase Dashboard matches this value');

@@ -6,10 +6,8 @@
 
 const required = [
   { key: 'NEXT_PUBLIC_SUPABASE_URL', mask: false, required: true },
-  { key: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', mask: true, required: true },
+  { key: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', mask: true, required: true },
   { key: 'SUPABASE_SERVICE_ROLE_KEY', mask: true, required: false },
-  { key: 'SUPABASE_URL', mask: false, required: false },
-  { key: 'SUPABASE_ANON_KEY', mask: true, required: false },
   { key: 'NEXT_PUBLIC_SITE_URL', mask: false, required: true },
   // NextAuth removed - using Supabase only
 ];
@@ -49,12 +47,12 @@ if (supabaseUrl) {
   }
 }
 
-// Basic JWT shape check
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-if (anon) {
-  const parts = anon.split('.');
-  if (parts.length !== 3) {
-    console.log('❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is not a JWT');
+// Basic publishable key format check
+const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+if (publishable) {
+  if (!publishable.startsWith('sb_publishable_')) {
+    console.log('❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY does not start with "sb_publishable_"');
+    console.log('   Get the publishable key from Supabase Dashboard → Settings → API Keys');
     hasCriticalGap = true;
   }
 }
