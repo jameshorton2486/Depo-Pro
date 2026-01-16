@@ -189,11 +189,17 @@ export async function processTranscriptionJob(payload: {
   jobId: string;
   fileId: string;
 }): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] processTranscriptionJob is not implemented. ' +
+      'This is a stubbed worker function - implement real transcription processing before production deployment.'
+    );
+  }
   // TODO: Implement actual transcription processing
   // This would call the transcription service
   console.log('[Worker] Processing transcription job:', payload);
 
-  // Simulate work
+  // Simulate work (development only)
   await new Promise(resolve => setTimeout(resolve, 1000));
 }
 
@@ -201,10 +207,16 @@ export async function processExportJob(payload: {
   transcriptId: string;
   format: string;
 }): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] processExportJob is not implemented. ' +
+      'This is a stubbed worker function - implement real export processing before production deployment.'
+    );
+  }
   // TODO: Implement actual export processing
   console.log('[Worker] Processing export job:', payload);
 
-  // Simulate work
+  // Simulate work (development only)
   await new Promise(resolve => setTimeout(resolve, 1000));
 }
 
@@ -213,10 +225,16 @@ export async function processEmailJob(payload: {
   subject: string;
   template: string;
 }): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] processEmailJob is not implemented. ' +
+      'This is a stubbed worker function - implement real email sending before production deployment.'
+    );
+  }
   // TODO: Implement actual email sending
   console.log('[Worker] Processing email job:', payload);
 
-  // Simulate work
+  // Simulate work (development only)
   await new Promise(resolve => setTimeout(resolve, 500));
 }
 

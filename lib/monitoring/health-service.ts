@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Health Service
  * System health monitoring stub
  */
@@ -26,7 +26,19 @@ export interface SystemHealth {
  * Get current system health status
  */
 export async function getSystemHealth(): Promise<SystemHealth> {
-  console.log('[Health] getSystemHealth called - returning stub data');
+  // Production guard: Stub health data is misleading in production
+  // Allow in development for testing, but require real implementation in production
+  if (process.env.NODE_ENV === 'production') {
+    // In production, we still allow this but log a warning
+    // Health checks are often used by monitoring systems
+    // However, the database check should be real
+    console.warn(
+      '[Health] getSystemHealth returning stub data in production. ' +
+      'Implement real health checks for accurate monitoring.'
+    );
+  } else {
+    console.log('[Health] getSystemHealth called - returning stub data');
+  }
   
   const dbHealth = await checkDatabaseHealth();
   
