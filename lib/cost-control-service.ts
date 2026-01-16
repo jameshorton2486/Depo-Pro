@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cost Control Service
  * Usage tracking and quota management
  */
@@ -37,6 +37,13 @@ export async function useQuota(
   quotaType: keyof UsageStats,
   amount: number = 1
 ): Promise<QuotaResult> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[CostControlService] useQuota is not implemented. ' +
+      'This is a stubbed service - implement real quota tracking before production deployment. ' +
+      'Unlimited quotas in production can cause unbounded costs.'
+    );
+  }
   console.log('[Quota] useQuota called - stub', { firmId, quotaType, amount });
   return {
     allowed: true,
@@ -52,6 +59,12 @@ export async function checkQuota(
   firmId: string,
   quotaType: keyof UsageStats
 ): Promise<QuotaResult> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[CostControlService] checkQuota is not implemented. ' +
+      'This is a stubbed service - implement real quota checking before production deployment.'
+    );
+  }
   console.log('[Quota] checkQuota called - stub', { firmId, quotaType });
   return {
     allowed: true,
@@ -64,6 +77,12 @@ export async function checkQuota(
  * Get usage statistics for a firm
  */
 export async function getUsageStats(firmId: string): Promise<UsageStats> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[CostControlService] getUsageStats is not implemented. ' +
+      'This is a stubbed service - implement real usage tracking before production deployment.'
+    );
+  }
   console.log('[Quota] getUsageStats called - stub', { firmId });
   return {
     transcriptionMinutes: 0,
@@ -77,6 +96,12 @@ export async function getUsageStats(firmId: string): Promise<UsageStats> {
  * Get usage summary including limits and percentages
  */
 export async function getUsageSummary(firmId: string): Promise<UsageSummary> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[CostControlService] getUsageSummary is not implemented. ' +
+      'This is a stubbed service - implement real usage summary before production deployment.'
+    );
+  }
   console.log('[Quota] getUsageSummary called - stub', { firmId });
   const stats = await getUsageStats(firmId);
   const limits: UsageStats = {

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RX Session Service
  * Manages RX processing sessions
  */
@@ -34,6 +34,13 @@ export async function createRxSession(
   // Handle operatorUserId as userId if provided
   const resolvedUserId = params.userId || params.operatorUserId || 'unknown';
   
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[RxSessionService] createRxSession is not implemented. ' +
+      'This is a stubbed service - implement real RX session management before production deployment.'
+    );
+  }
+  
   console.log('[RX] createRxSession called - stub', params);
   
   const sessionId = `rx-session-${Date.now()}`;
@@ -55,6 +62,12 @@ export const createRXSession = createRxSession;
  * Get active RX session for a job
  */
 export async function getActiveRXSession(jobId: string): Promise<RxSession | null> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[RxSessionService] getActiveRXSession is not implemented. ' +
+      'This is a stubbed service - implement real RX session retrieval before production deployment.'
+    );
+  }
   console.log('[RX] getActiveRXSession called - stub', { jobId });
   return null;
 }
@@ -63,6 +76,12 @@ export async function getActiveRXSession(jobId: string): Promise<RxSession | nul
  * End an RX session
  */
 export async function endRxSession(sessionId: string): Promise<{ success: boolean }> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[RxSessionService] endRxSession is not implemented. ' +
+      'This is a stubbed service - implement real RX session termination before production deployment.'
+    );
+  }
   console.log('[RX] endRxSession called - stub', { sessionId });
   return { success: true };
 }

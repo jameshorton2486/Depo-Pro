@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Audio Enhancement Service
  * Handles audio processing, Dolby enhancement, and RX queue operations
  */
@@ -33,6 +33,12 @@ export const AudioEnhancementService = {
    * Enhance audio with Dolby
    */
   async enhanceWithDolby(audioUrl: string, _options?: Record<string, any>): Promise<EnhancementResult> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[AudioEnhancementService] enhanceWithDolby is not implemented. ' +
+        'This is a stubbed service - implement real Dolby audio enhancement before production deployment.'
+      );
+    }
     console.log('[Audio] enhanceWithDolby called - stub', { audioUrl });
     return { 
       success: true, 
@@ -49,6 +55,12 @@ export const AudioEnhancementService = {
     audioUrl?: string;
     priority?: number | string;
   }): Promise<RxQueueResult> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[AudioEnhancementService] addToRxQueue is not implemented. ' +
+        'This is a stubbed service - implement real RX queue management before production deployment.'
+      );
+    }
     console.log('[Audio] addToRxQueue called - stub', params);
     return {
       success: true,
@@ -61,6 +73,12 @@ export const AudioEnhancementService = {
    * Get RX queue status
    */
   async getRxQueue(): Promise<RxQueueItem[]> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[AudioEnhancementService] getRxQueue is not implemented. ' +
+        'This is a stubbed service - implement real RX queue retrieval before production deployment.'
+      );
+    }
     console.log('[Audio] getRxQueue called - stub');
     return [];
   },
@@ -69,6 +87,12 @@ export const AudioEnhancementService = {
    * Process an RX queue item
    */
   async processRxItem(itemId: string): Promise<{ success: boolean; error?: string }> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[AudioEnhancementService] processRxItem is not implemented. ' +
+        'This is a stubbed service - implement real RX item processing before production deployment.'
+      );
+    }
     console.log('[Audio] processRxItem called - stub', { itemId });
     return { success: true };
   },
