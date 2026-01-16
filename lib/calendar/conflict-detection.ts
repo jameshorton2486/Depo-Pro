@@ -1,4 +1,4 @@
-﻿// lib/calendar/conflict-detection.ts
+// lib/calendar/conflict-detection.ts
 // STUB: Calendar conflict detection
 
 export interface ConflictResult {
@@ -18,6 +18,13 @@ export async function checkConflicts(
   _reporterId?: string,
   _excludeEventId?: string
 ): Promise<ConflictResult> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[ConflictDetection] checkConflicts is not implemented. ' +
+      'This is a stubbed service - implement real calendar conflict detection before production deployment. ' +
+      'Scheduling without conflict detection can cause double-booking.'
+    );
+  }
   console.log('[STUB] checkConflicts called');
   return { hasConflicts: false, conflicts: [] };
 }

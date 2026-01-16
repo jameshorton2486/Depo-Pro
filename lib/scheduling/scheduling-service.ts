@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Scheduling Service
  * Calendar event scheduling operations
  */
@@ -64,6 +64,13 @@ export async function rescheduleEvent(
   const startTime = params.newStartTime || params.newStart || new Date();
   const endTime = params.newEndTime || params.newEnd || new Date();
   
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[SchedulingService] rescheduleEvent is not implemented. ' +
+      'This is a stubbed service - implement real event rescheduling before production deployment.'
+    );
+  }
+  
   console.log('[Scheduling] rescheduleEvent called - stub', params);
   
   return {
@@ -92,6 +99,13 @@ export async function previewReschedule(
     ? { eventId: paramsOrEventId, newStartTime, newEndTime }
     : paramsOrEventId;
   
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[SchedulingService] previewReschedule is not implemented. ' +
+      'This is a stubbed service - implement real reschedule preview before production deployment.'
+    );
+  }
+  
   console.log('[Scheduling] previewReschedule called - stub', params);
   
   return {
@@ -117,6 +131,13 @@ export async function resizeEvent(
   // Handle both newEndTime and newEnd
   const endTime = params.newEndTime || params.newEnd || new Date();
   
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[SchedulingService] resizeEvent is not implemented. ' +
+      'This is a stubbed service - implement real event resizing before production deployment.'
+    );
+  }
+  
   console.log('[Scheduling] resizeEvent called - stub', params);
   
   return {
@@ -137,6 +158,12 @@ export async function resizeEvent(
  * Undo a reschedule operation
  */
 export async function undoReschedule(undoToken: string): Promise<{ success: boolean; error?: string }> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[SchedulingService] undoReschedule is not implemented. ' +
+      'This is a stubbed service - implement real reschedule undo before production deployment.'
+    );
+  }
   console.log('[Scheduling] undoReschedule called - stub', { undoToken });
   return { success: true };
 }

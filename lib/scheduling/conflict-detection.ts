@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Conflict Detection Service
  * Detects scheduling conflicts for calendar events
  */
@@ -45,6 +45,14 @@ export async function checkForConflicts(
   const params: ConflictCheckParams = paramsOrStartTime instanceof Date
     ? { startTime: paramsOrStartTime, endTime, ...options }
     : paramsOrStartTime;
+  
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[ConflictDetection] checkForConflicts is not implemented. ' +
+      'This is a stubbed service - implement real conflict detection before production deployment. ' +
+      'Scheduling without conflict detection can cause double-booking.'
+    );
+  }
   
   console.log('[Conflict] checkForConflicts called - stub', params);
   
