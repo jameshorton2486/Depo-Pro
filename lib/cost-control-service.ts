@@ -110,7 +110,7 @@ export async function getUsageSummary(firmId: string): Promise<UsageSummary> {
     storage: 10000,
     apiCalls: 10000,
   };
-  
+
   return {
     currentPeriod: stats,
     limits,

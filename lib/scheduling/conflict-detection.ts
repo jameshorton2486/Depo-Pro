@@ -45,7 +45,7 @@ export async function checkForConflicts(
   const params: ConflictCheckParams = paramsOrStartTime instanceof Date
     ? { startTime: paramsOrStartTime, endTime, ...options }
     : paramsOrStartTime;
-  
+
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       '[ConflictDetection] checkForConflicts is not implemented. ' +
@@ -53,9 +53,9 @@ export async function checkForConflicts(
       'Scheduling without conflict detection can cause double-booking.'
     );
   }
-  
+
   console.log('[Conflict] checkForConflicts called - stub', params);
-  
+
   return {
     hasConflicts: false,
     conflicts: [],

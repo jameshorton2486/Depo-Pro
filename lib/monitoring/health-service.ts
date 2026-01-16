@@ -39,9 +39,9 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   } else {
     console.log('[Health] getSystemHealth called - returning stub data');
   }
-  
+
   const dbHealth = await checkDatabaseHealth();
-  
+
   return {
     overall: dbHealth.status,
     database: dbHealth,

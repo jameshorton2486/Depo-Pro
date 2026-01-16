@@ -59,20 +59,20 @@ export async function rescheduleEvent(
   const params: RescheduleParams = typeof paramsOrEventId === 'string'
     ? { eventId: paramsOrEventId, newStartTime, newEndTime, ...options }
     : paramsOrEventId;
-  
+
   // Handle both newStartTime and newStart
   const startTime = params.newStartTime || params.newStart || new Date();
   const endTime = params.newEndTime || params.newEnd || new Date();
-  
+
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       '[SchedulingService] rescheduleEvent is not implemented. ' +
       'This is a stubbed service - implement real event rescheduling before production deployment.'
     );
   }
-  
+
   console.log('[Scheduling] rescheduleEvent called - stub', params);
-  
+
   return {
     success: true,
     event: {
@@ -98,16 +98,16 @@ export async function previewReschedule(
   const params: RescheduleParams = typeof paramsOrEventId === 'string'
     ? { eventId: paramsOrEventId, newStartTime, newEndTime }
     : paramsOrEventId;
-  
+
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       '[SchedulingService] previewReschedule is not implemented. ' +
       'This is a stubbed service - implement real reschedule preview before production deployment.'
     );
   }
-  
+
   console.log('[Scheduling] previewReschedule called - stub', params);
-  
+
   return {
     conflicts: [],
     canReschedule: true,
@@ -127,19 +127,19 @@ export async function resizeEvent(
   const params: RescheduleParams = typeof paramsOrEventId === 'string'
     ? { eventId: paramsOrEventId, newEndTime, ...options }
     : paramsOrEventId;
-  
+
   // Handle both newEndTime and newEnd
   const endTime = params.newEndTime || params.newEnd || new Date();
-  
+
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       '[SchedulingService] resizeEvent is not implemented. ' +
       'This is a stubbed service - implement real event resizing before production deployment.'
     );
   }
-  
+
   console.log('[Scheduling] resizeEvent called - stub', params);
-  
+
   return {
     success: true,
     event: {
