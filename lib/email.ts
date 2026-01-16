@@ -60,7 +60,16 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
     }
   }
 
-  // Mock implementation - simulate success for development
+  // Production guard: Prevent silent email failures in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Email Service] Email sending is not configured. ' +
+      'Set USE_RESEND=true and RESEND_API_KEY in production environment. ' +
+      'Mock email fallback is only available in development.'
+    );
+  }
+
+  // Mock implementation - simulate success for development only
   console.log('📧 [MOCK EMAIL] Resend not configured');
   console.log('From:', FROM_EMAIL);
   console.log('To:', options.to);

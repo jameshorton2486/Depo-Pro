@@ -72,7 +72,16 @@ export async function enqueueJob(data: JobData): Promise<JobResult> {
     // };
   }
 
-  // Mock implementation - simulate immediate processing
+  // Production guard: Prevent mock job queue in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] Job queue is not configured. ' +
+      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
+      'Mock job queue (in-memory) is only available in development.'
+    );
+  }
+
+  // Mock implementation - simulate immediate processing (development only)
   const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const result: JobResult = {
     id: jobId,
@@ -122,7 +131,16 @@ export async function getJobStatus(jobId: string): Promise<JobResult | null> {
     // };
   }
 
-  // Mock implementation
+  // Production guard: Prevent mock job status checks in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] Job queue is not configured. ' +
+      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
+      'Mock job status checks are only available in development.'
+    );
+  }
+
+  // Mock implementation (development only)
   return mockJobStore.get(jobId) || null;
 }
 
@@ -141,7 +159,16 @@ export async function retryJob(jobId: string): Promise<boolean> {
     // return true;
   }
 
-  // Mock implementation
+  // Production guard: Prevent mock job retries in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] Job queue is not configured. ' +
+      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
+      'Mock job retries are only available in development.'
+    );
+  }
+
+  // Mock implementation (development only)
   const job = mockJobStore.get(jobId);
   if (!job) return false;
 
@@ -223,7 +250,16 @@ export async function getQueueStats(): Promise<QueueStats> {
     // };
   }
 
-  // Mock implementation
+  // Production guard: Prevent mock queue stats in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] Job queue is not configured. ' +
+      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
+      'Mock queue stats are only available in development.'
+    );
+  }
+
+  // Mock implementation (development only)
   const jobs = Array.from(mockJobStore.values());
   return {
     queued: jobs.filter(j => j.status === 'queued').length,
@@ -235,7 +271,16 @@ export async function getQueueStats(): Promise<QueueStats> {
 }
 
 export async function getRecentJobs(limit = 10): Promise<JobResult[]> {
-  // Mock implementation
+  // Production guard: Prevent mock job retrieval in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Jobs Service] Job queue is not configured. ' +
+      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
+      'Mock job retrieval is only available in development.'
+    );
+  }
+
+  // Mock implementation (development only)
   const jobs = Array.from(mockJobStore.values());
   return jobs
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())

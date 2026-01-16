@@ -94,7 +94,16 @@ export async function createPaymentIntent(
     // };
   }
 
-  // Mock payment intent
+  // Production guard: Prevent mock payment intents in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Invoice Service] Stripe payment intent creation is not configured. ' +
+      'Set USE_STRIPE=true and STRIPE_SECRET_KEY in production environment. ' +
+      'Mock payment intents are only available in development.'
+    );
+  }
+
+  // Mock payment intent - development only
   console.log('[MOCK] Creating Stripe PaymentIntent', { amount, currency, metadata: _metadata });
 
   return {
@@ -124,7 +133,16 @@ export async function confirmPaymentIntent(paymentIntentId: string): Promise<Pay
     // };
   }
 
-  // Mock confirmation - simulate success
+  // Production guard: Prevent mock payment confirmations in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Invoice Service] Stripe payment confirmation is not configured. ' +
+      'Set USE_STRIPE=true and STRIPE_SECRET_KEY in production environment. ' +
+      'Mock payment confirmations are only available in development.'
+    );
+  }
+
+  // Mock confirmation - simulate success (development only)
   return {
     id: paymentIntentId,
     amount: 10000,
