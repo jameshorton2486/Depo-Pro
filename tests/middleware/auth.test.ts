@@ -1,6 +1,6 @@
 /**
  * Middleware Authentication Integration Tests
- * 
+ *
  * Verifies that middleware correctly:
  * - Parses Supabase auth cookies
  * - Redirects unauthenticated users
