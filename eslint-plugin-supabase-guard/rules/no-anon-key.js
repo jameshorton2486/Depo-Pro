@@ -1,6 +1,6 @@
 /**
  * ESLint rule: no-anon-key
- * 
+ *
  * Prevents usage of legacy NEXT_PUBLIC_SUPABASE_ANON_KEY
  * Enforces NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY usage
  */

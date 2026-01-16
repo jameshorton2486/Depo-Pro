@@ -1,6 +1,6 @@
 /**
  * ESLint rule: no-service-role-in-client
- * 
+ *
  * Prevents SUPABASE_SERVICE_ROLE_KEY usage in client-side code
  * Service role key must only be used in server-only files
  */
@@ -20,9 +20,9 @@ module.exports = {
   },
   create(context) {
     const filename = context.getFilename();
-    
+
     // Check if this is a client file
-    const isClientFile = 
+    const isClientFile =
       filename.includes("'use client'") ||
       filename.includes('"use client"') ||
       (filename.includes('/app/') && !filename.includes('/api/')) ||
@@ -32,7 +32,7 @@ module.exports = {
     // Check if file has 'use client' directive
     const sourceCode = context.getSourceCode();
     const firstStatement = sourceCode.ast.body[0];
-    const hasUseClient = 
+    const hasUseClient =
       firstStatement?.type === 'ExpressionStatement' &&
       firstStatement.expression?.type === 'Literal' &&
       (firstStatement.expression.value === 'use client' ||
@@ -65,7 +65,7 @@ module.exports = {
         },
       };
     }
-    
+
     return {};
   },
 };

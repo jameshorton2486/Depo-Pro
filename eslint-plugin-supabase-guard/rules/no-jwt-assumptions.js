@@ -1,6 +1,6 @@
 /**
  * ESLint rule: no-jwt-assumptions
- * 
+ *
  * Prevents JWT format assumptions (eyJhbGci...)
  * Enforces publishable key format (sb_publishable_...)
  */
@@ -27,20 +27,20 @@ module.exports = {
           const parent = node.parent;
           if (
             parent?.type === 'Property' &&
-            (parent.key?.name === 'description' || 
+            (parent.key?.name === 'description' ||
              parent.key?.name === 'comment' ||
              parent.key?.name === 'example' ||
              parent.key?.name === 'test')
           ) {
             return; // Allow in documentation/test files
           }
-          
+
           // Allow in test files
           const filename = context.getFilename();
           if (filename.includes('test') || filename.includes('spec')) {
             return;
           }
-          
+
           context.report({
             node,
             messageId: 'jwtAssumption',
@@ -64,7 +64,7 @@ module.exports = {
             if (filename.includes('test') || filename.includes('spec')) {
               return;
             }
-            
+
             context.report({
               node,
               messageId: 'jwtAssumption',

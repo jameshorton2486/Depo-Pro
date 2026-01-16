@@ -96,7 +96,7 @@ if (!key?.startsWith('sb_secret_')) {
 
 ### ❌ WRONG - Fallback Logic
 ```typescript
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
             process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; // FORBIDDEN
 ```
 
