@@ -1,4 +1,4 @@
-﻿// lib/transcripts/status-service.ts
+// lib/transcripts/status-service.ts
 // STUB: Transcript status transitions
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
@@ -23,6 +23,12 @@ export async function transitionStatus(
   _newStatus: string,
   _userId: string
 ) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[TranscriptStatusService] transitionStatus is not implemented. ' +
+      'This is a stubbed service - implement real transcript status transitions before production deployment.'
+    );
+  }
   console.log('[STUB] transitionStatus called');
   return { success: true };
 }
