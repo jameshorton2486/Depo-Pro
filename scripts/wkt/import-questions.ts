@@ -12,6 +12,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
 import type { WKTCategory, WKTQuestionType } from '@/types/wkt';
 
 interface ImportQuestion {
@@ -127,6 +128,8 @@ function validateQuestions(questions: unknown[]): ValidationError[] {
 }
 
 async function validateAndImport() {
+  dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
@@ -174,26 +177,25 @@ async function validateAndImport() {
   }
 
   // Validate environment variables
-  if (!process.env.SUPABASE_URL) {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
     console.error('❌ Error: SUPABASE_URL environment variable is required');
     process.exit(1);
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseServiceRoleKey) {
     console.error('❌ Error: SUPABASE_SERVICE_ROLE_KEY environment variable is required');
     process.exit(1);
   }
 
   // Get Supabase admin client
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        persistSession: false,
-      },
-    }
-  );
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 
   // Transform questions to database format
   const questionsToImport: ImportQuestion[] = questions.map((q: unknown) => {
@@ -228,10 +230,18 @@ async function validateAndImport() {
 
     // Check for duplicates first (by question_text)
     const questionTexts = batch.map((q) => q.question_text);
-    const { data: existingQuestions } = await supabase
+    const { data: existingQuestions, error: existingError } = await supabase
       .from('wkt_questions')
       .select('question_text')
       .in('question_text', questionTexts);
+
+    if (existingError) {
+      const errorDetails = JSON.stringify(existingError, null, 2);
+      console.error(`   ❌ Error checking duplicates: ${existingError.message}`);
+      console.error(`   🧾 Supabase error details: ${errorDetails}`);
+      errorCount += batch.length;
+      continue;
+    }
 
     const existingTexts = new Set(existingQuestions?.map((q) => q.question_text) || []);
 
@@ -252,7 +262,9 @@ async function validateAndImport() {
       .select();
 
     if (error) {
+      const errorDetails = JSON.stringify(error, null, 2);
       console.error(`   ❌ Error inserting batch: ${error.message}`);
+      console.error(`   🧾 Supabase error details: ${errorDetails}`);
       errorCount += newQuestions.length;
     } else {
       const inserted = data?.length || 0;

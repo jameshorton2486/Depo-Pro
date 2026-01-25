@@ -105,6 +105,7 @@
     "docx": "^9.5.1",
     "dotenv": "^17.2.3",
     "fuse.js": "^7.1.0",
+    "get-tsconfig": "^4.13.0",
     "google-auth-library": "^10.5.0",
     "googleapis": "^169.0.0",
     "ioredis": "^5.3.2",
@@ -171,6 +172,7 @@
   "overrides": {
     "bullmq": {
       "ioredis": "^5.3.2"
-    }
+    },
+    "unrs-resolver": "1.10.0"
   }
 }
