@@ -4,7 +4,7 @@
 // WKT PRACTICE MODE
 // ═══════════════════════════════════════════════════════════════
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,111 +16,22 @@ import { Filter, CheckCircle2, XCircle } from 'lucide-react';
 import type { WKTQuestion, WKTCategory } from '@/types/wkt';
 import { CATEGORY_INFO } from '@/types/wkt';
 
-// Placeholder questions
-const PLACEHOLDER_QUESTIONS: WKTQuestion[] = [
-  {
-    id: '1',
-    question_text: 'What does the medical term "cardio" refer to?',
-    question_type: 'multiple_choice',
-    options: ['Brain', 'Heart', 'Lung', 'Kidney'],
-    correct_answer: 'Heart',
-    explanation: 'Cardio is the Latin root meaning heart.',
-    category: 'medical_terminology',
-    subcategory: null,
-    difficulty: 2,
-    source_reference: null,
-    ai_generated: false,
-    verified: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    question_text: 'Which of the following is the correct spelling?',
-    question_type: 'multiple_choice',
-    options: ['Occurrence', 'Occurence', 'Occurrance', 'Occurance'],
-    correct_answer: 'Occurrence',
-    explanation: 'Occurrence is the correct spelling with double "r" and "e".',
-    category: 'spelling',
-    subcategory: null,
-    difficulty: 3,
-    source_reference: null,
-    ai_generated: false,
-    verified: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    question_text: 'In Texas, court reporters must maintain certification by:',
-    question_type: 'multiple_choice',
-    options: [
-      'Completing 10 hours of CEU annually',
-      'Passing a recertification exam every 5 years',
-      'Submitting annual reports to the state',
-      'All of the above',
-    ],
-    correct_answer: 'All of the above',
-    explanation: 'Texas requires all of these for maintaining certification.',
-    category: 'texas_rules',
-    subcategory: null,
-    difficulty: 4,
-    source_reference: null,
-    ai_generated: false,
-    verified: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    question_text: 'The term "voir dire" refers to:',
-    question_type: 'multiple_choice',
-    options: [
-      'Jury selection process',
-      'Opening statements',
-      'Closing arguments',
-      'Evidence presentation',
-    ],
-    correct_answer: 'Jury selection process',
-    explanation: 'Voir dire is the process of questioning potential jurors.',
-    category: 'legal_terminology',
-    subcategory: null,
-    difficulty: 2,
-    source_reference: null,
-    ai_generated: false,
-    verified: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    question_text: 'Which sentence is grammatically correct?',
-    question_type: 'multiple_choice',
-    options: [
-      'The witness, who was nervous, testified clearly.',
-      'The witness which was nervous testified clearly.',
-      'The witness, that was nervous, testified clearly.',
-      'The witness who was nervous testified clearly.',
-    ],
-    correct_answer: 'The witness, who was nervous, testified clearly.',
-    explanation: 'Use "who" for people, and commas are needed for the non-restrictive clause.',
-    category: 'grammar_usage',
-    subcategory: null,
-    difficulty: 3,
-    source_reference: null,
-    ai_generated: false,
-    verified: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
+type PracticeResult = {
+  correct: boolean;
+  correctAnswer?: string;
+  explanation?: string | null;
+};
 
 export default function PracticePage() {
-  const [questions] = useState<WKTQuestion[]>(PLACEHOLDER_QUESTIONS);
+  const [questions, setQuestions] = useState<WKTQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [result, setResult] = useState<PracticeResult | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     categories: Object.keys(CATEGORY_INFO) as WKTCategory[],
     difficulty: 'all' as 'all' | '1' | '2' | '3' | '4' | '5',
@@ -128,15 +39,71 @@ export default function PracticePage() {
   });
   const [showFilters, setShowFilters] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadQuestions() {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch('/api/wkt/questions/random?count=10');
+        if (!response.ok) {
+          throw new Error('Failed to load questions');
+        }
+        const data = await response.json();
+        if (isMounted) {
+          setQuestions(Array.isArray(data.questions) ? data.questions : []);
+          setCurrentIndex(0);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load questions');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadQuestions();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const currentQuestion = questions[currentIndex];
-  const categoryInfo = CATEGORY_INFO[currentQuestion.category];
+  const categoryInfo = currentQuestion ? CATEGORY_INFO[currentQuestion.category] : null;
 
-  function handleSubmit() {
-    if (!selectedAnswer) return;
+  async function handleSubmit() {
+    if (!selectedAnswer || !currentQuestion) return;
 
-    const correct = selectedAnswer === currentQuestion.correct_answer;
-    setIsCorrect(correct);
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/wkt/questions/${currentQuestion.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ answer: selectedAnswer }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit answer');
+      }
+
+      const data = (await response.json()) as PracticeResult;
+      setResult(data);
+      setIsCorrect(data.correct);
+      setIsSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit answer');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleNext() {
@@ -145,6 +112,7 @@ export default function PracticePage() {
       setSelectedAnswer(null);
       setIsSubmitted(false);
       setIsCorrect(null);
+      setResult(null);
     }
   }
 
@@ -277,7 +245,7 @@ export default function PracticePage() {
           {/* Progress */}
           <div className="mb-6">
             <p className="text-sm text-muted-foreground">
-              Question {currentIndex + 1} of {questions.length}
+              {isLoading ? 'Loading questions...' : `Question ${currentIndex + 1} of ${questions.length}`}
             </p>
           </div>
 
@@ -286,20 +254,28 @@ export default function PracticePage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl">
-                  {currentQuestion.question_text}
+                  {currentQuestion?.question_text || 'No questions available'}
                 </CardTitle>
-                <Badge
-                  style={{
-                    backgroundColor: `var(--${categoryInfo.color}-500)`,
-                    color: 'white',
-                  }}
-                >
-                  {categoryInfo.label}
-                </Badge>
+                {categoryInfo && (
+                  <Badge
+                    style={{
+                      backgroundColor: `var(--${categoryInfo.color}-500)`,
+                      color: 'white',
+                    }}
+                  >
+                    {categoryInfo.label}
+                  </Badge>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {!isSubmitted ? (
+              {isLoading ? (
+                <div className="text-muted-foreground">Loading questions...</div>
+              ) : error ? (
+                <div className="text-sm text-red-500">{error}</div>
+              ) : !currentQuestion ? (
+                <div className="text-muted-foreground">No questions found.</div>
+              ) : !isSubmitted ? (
                 <>
                   <RadioGroup
                     value={selectedAnswer || ''}
@@ -323,11 +299,11 @@ export default function PracticePage() {
 
                   <Button
                     onClick={handleSubmit}
-                    disabled={!selectedAnswer}
+                    disabled={!selectedAnswer || isSubmitting}
                     className="w-full"
                     size="lg"
                   >
-                    Submit Answer
+                    {isSubmitting ? 'Submitting...' : 'Submit Answer'}
                   </Button>
                 </>
               ) : (
@@ -355,17 +331,17 @@ export default function PracticePage() {
                     </span>
                   </div>
 
-                  {!isCorrect && (
+                  {!isCorrect && result?.correctAnswer && (
                     <div className="p-4 bg-muted rounded-lg">
                       <p className="font-medium mb-1">Correct Answer:</p>
-                      <p>{currentQuestion.correct_answer}</p>
+                      <p>{result.correctAnswer}</p>
                     </div>
                   )}
 
-                  {currentQuestion.explanation && (
+                  {(result?.explanation || currentQuestion.explanation) && (
                     <div className="p-4 bg-muted rounded-lg">
                       <p className="font-medium mb-1">Explanation:</p>
-                      <p>{currentQuestion.explanation}</p>
+                      <p>{result?.explanation || currentQuestion.explanation}</p>
                     </div>
                   )}
 
