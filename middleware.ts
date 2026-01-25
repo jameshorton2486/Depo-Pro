@@ -60,6 +60,7 @@ const PROTECTED_PREFIXES = [
   '/settings',
   '/billing',
   '/exports',
+  '/wkt', // WKT Quiz Module routes
 ];
 
 /**
@@ -78,6 +79,7 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
     '/settings',
     '/billing',
     '/exports',
+    '/wkt', // Admins can access WKT
   ],
   REPORTER: [
     '/dashboard',
@@ -104,6 +106,9 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
     '/cases',
     '/jobs',
     '/calendar',
+  ],
+  WKT_STUDENT: [
+    '/wkt', // WKT students only have access to WKT routes
   ],
 };
 
@@ -257,7 +262,12 @@ export async function middleware(req: NextRequest) {
    */
   if (isProtectedRoute(pathname) && !session) {
     const redirectUrl = new URL('/login', req.url);
-    redirectUrl.searchParams.set('redirect', `${pathname}${search}`);
+    // For WKT routes, set redirect to /wkt
+    if (pathname.startsWith('/wkt')) {
+      redirectUrl.searchParams.set('redirect', '/wkt');
+    } else {
+      redirectUrl.searchParams.set('redirect', `${pathname}${search}`);
+    }
     const redirect = NextResponse.redirect(redirectUrl);
     return applySecurityHeaders(redirect);
   }
@@ -271,6 +281,14 @@ export async function middleware(req: NextRequest) {
     const role = userMetadata.role as string | undefined;
     const orgId = userMetadata.org_id as string | undefined;
     const caseIds = (userMetadata.case_ids as string[] | undefined) || [];
+
+    // Special handling for /wkt routes - allow any authenticated user for now
+    // (WKT layout will enforce WKT_STUDENT role check)
+    if (pathname.startsWith('/wkt')) {
+      // Allow authenticated users to access WKT routes
+      // The WKT layout will handle role-based redirects
+      return applySecurityHeaders(res);
+    }
 
     // ❌ Missing role = deny access
     if (!role) {
