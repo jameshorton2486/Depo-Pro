@@ -7,7 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { WKTQuestion, WKTCategory, WKTQuestionType } from '@/types/wkt';
+import type { WKTCategory, WKTQuestionType } from '@/types/wkt';
 
 const VALID_CATEGORIES: WKTCategory[] = [
   'medical_terminology',

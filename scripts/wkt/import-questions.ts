@@ -5,18 +5,18 @@
  * Usage: npx tsx scripts/wkt/import-questions.ts data/wkt/questions.json
  * 
  * Environment variables required:
- * - NEXT_PUBLIC_SUPABASE_URL
+ * - SUPABASE_URL
  * - SUPABASE_SERVICE_ROLE_KEY
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import type { WKTQuestion, WKTCategory } from '@/types/wkt';
+import { createClient } from '@supabase/supabase-js';
+import type { WKTCategory, WKTQuestionType } from '@/types/wkt';
 
 interface ImportQuestion {
   question_text: string;
-  question_type: 'multiple_choice' | 'fill_blank' | 'true_false';
+  question_type: WKTQuestionType;
   options: string[] | null;
   correct_answer: string;
   explanation: string | null;
@@ -26,6 +26,104 @@ interface ImportQuestion {
   source_reference: string | null;
   ai_generated: boolean;
   verified: boolean;
+}
+
+const VALID_CATEGORIES: WKTCategory[] = [
+  'medical_terminology',
+  'legal_terminology',
+  'grammar_usage',
+  'spelling',
+  'texas_rules',
+  'reporter_duties',
+];
+
+const VALID_QUESTION_TYPES: WKTQuestionType[] = [
+  'multiple_choice',
+  'fill_blank',
+  'true_false',
+];
+
+interface ValidationError {
+  index: number;
+  field: string;
+  message: string;
+}
+
+function validateQuestion(question: unknown, index: number): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  if (typeof question !== 'object' || question === null) {
+    return [{ index, field: 'root', message: 'Question must be an object' }];
+  }
+
+  const q = question as Record<string, unknown>;
+
+  if (!q.question_text || typeof q.question_text !== 'string' || q.question_text.trim() === '') {
+    errors.push({ index, field: 'question_text', message: 'question_text is required and must be a non-empty string' });
+  }
+
+  if (!q.question_type || !VALID_QUESTION_TYPES.includes(q.question_type as WKTQuestionType)) {
+    errors.push({
+      index,
+      field: 'question_type',
+      message: `question_type must be one of: ${VALID_QUESTION_TYPES.join(', ')}`,
+    });
+  }
+
+  if (!q.correct_answer || typeof q.correct_answer !== 'string' || q.correct_answer.trim() === '') {
+    errors.push({ index, field: 'correct_answer', message: 'correct_answer is required and must be a non-empty string' });
+  }
+
+  if (!q.category || !VALID_CATEGORIES.includes(q.category as WKTCategory)) {
+    errors.push({
+      index,
+      field: 'category',
+      message: `category must be one of: ${VALID_CATEGORIES.join(', ')}`,
+    });
+  }
+
+  if (q.question_type === 'multiple_choice') {
+    if (!Array.isArray(q.options) || q.options.length < 2 || q.options.length > 4) {
+      errors.push({
+        index,
+        field: 'options',
+        message: 'multiple_choice questions must have options array with 2-4 items',
+      });
+    } else {
+      q.options.forEach((option, optIndex) => {
+        if (typeof option !== 'string' || option.trim() === '') {
+          errors.push({
+            index,
+            field: `options[${optIndex}]`,
+            message: 'Each option must be a non-empty string',
+          });
+        }
+      });
+
+      if (q.correct_answer && Array.isArray(q.options) && !q.options.includes(q.correct_answer as string)) {
+        errors.push({
+          index,
+          field: 'correct_answer',
+          message: 'correct_answer must be one of the options for multiple_choice questions',
+        });
+      }
+    }
+  }
+
+  return errors;
+}
+
+function validateQuestions(questions: unknown[]): ValidationError[] {
+  const allErrors: ValidationError[] = [];
+
+  questions.forEach((question, index) => {
+    const errors = validateQuestion(question, index);
+    if (errors.length > 0) {
+      allErrors.push(...errors);
+    }
+  });
+
+  return allErrors;
 }
 
 async function validateAndImport() {
@@ -65,9 +163,19 @@ async function validateAndImport() {
 
   console.log(`📊 Total questions to import: ${questions.length}\n`);
 
+  const validationErrors = validateQuestions(questions);
+  if (validationErrors.length > 0) {
+    console.log('❌ Validation failed:');
+    console.log(`   Invalid: ${validationErrors.length} issues\n`);
+    validationErrors.forEach((error) => {
+      console.log(`   Question ${error.index}: ${error.field} - ${error.message}`);
+    });
+    process.exit(1);
+  }
+
   // Validate environment variables
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    console.error('❌ Error: NEXT_PUBLIC_SUPABASE_URL environment variable is required');
+  if (!process.env.SUPABASE_URL) {
+    console.error('❌ Error: SUPABASE_URL environment variable is required');
     process.exit(1);
   }
 
@@ -77,14 +185,22 @@ async function validateAndImport() {
   }
 
   // Get Supabase admin client
-  const supabase = getSupabaseAdmin();
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        persistSession: false,
+      },
+    }
+  );
 
   // Transform questions to database format
   const questionsToImport: ImportQuestion[] = questions.map((q: unknown) => {
     const question = q as Record<string, unknown>;
     return {
       question_text: question.question_text as string,
-      question_type: question.question_type as 'multiple_choice' | 'fill_blank' | 'true_false',
+      question_type: question.question_type as WKTQuestionType,
       options: Array.isArray(question.options) ? (question.options as string[]) : null,
       correct_answer: question.correct_answer as string,
       explanation: (question.explanation as string | null) || null,
