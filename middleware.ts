@@ -356,5 +356,6 @@ export const config = {
       - public assets
     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/wkt/:path*',
   ],
 };
