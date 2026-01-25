@@ -29,19 +29,23 @@ export default function ProgressPage() {
   const [progress, setProgress] = useState<ProgressResponse | null>(null);
   const [exams, setExams] = useState<WKTMockExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExamsLoading, setIsExamsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [examsError, setExamsError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadData() {
       setIsLoading(true);
+      setIsExamsLoading(true);
       setError(null);
+      setExamsError(null);
 
       try {
         const [progressResponse, examsResponse] = await Promise.all([
           fetch('/api/wkt/progress'),
-          fetch('/api/wkt/exams?limit=5'),
+          fetch('/api/wkt/exams'),
         ]);
 
         if (!progressResponse.ok) {
@@ -53,9 +57,13 @@ export default function ProgressPage() {
           setProgress(progressData);
         }
 
-        if (examsResponse.ok && isMounted) {
-          const examsData = await examsResponse.json();
-          setExams(Array.isArray(examsData.exams) ? examsData.exams : []);
+        if (isMounted) {
+          if (!examsResponse.ok) {
+            setExamsError('Failed to load exams');
+          } else {
+            const examsData = await examsResponse.json();
+            setExams(Array.isArray(examsData.exams) ? examsData.exams : []);
+          }
         }
       } catch (err) {
         if (isMounted) {
@@ -64,6 +72,7 @@ export default function ProgressPage() {
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          setIsExamsLoading(false);
         }
       }
     }
@@ -205,8 +214,10 @@ export default function ProgressPage() {
           <CardTitle>Recent Mock Exams</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading ? (
+          {isExamsLoading ? (
             <p className="text-muted-foreground mb-4">Loading exam history...</p>
+          ) : examsError ? (
+            <p className="text-muted-foreground mb-4">{examsError}</p>
           ) : exams.length === 0 ? (
             <>
               <p className="text-muted-foreground mb-4">

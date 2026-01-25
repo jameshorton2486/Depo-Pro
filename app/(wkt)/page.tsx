@@ -25,8 +25,6 @@ type ProgressResponse = {
 
 export default function WKTDashboard() {
   const [progress, setProgress] = useState<ProgressResponse | null>(null);
-  const [examCount, setExamCount] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,11 +36,7 @@ export default function WKTDashboard() {
       setError(null);
 
       try {
-        const [progressResponse, examsResponse, reviewResponse] = await Promise.all([
-          fetch('/api/wkt/progress'),
-          fetch('/api/wkt/exams?limit=1'),
-          fetch('/api/wkt/progress/review-queue'),
-        ]);
+        const progressResponse = await fetch('/api/wkt/progress');
 
         if (!progressResponse.ok) {
           throw new Error('Failed to load progress');
@@ -51,16 +45,6 @@ export default function WKTDashboard() {
         if (isMounted) {
           const progressData = (await progressResponse.json()) as ProgressResponse;
           setProgress(progressData);
-        }
-
-        if (examsResponse.ok && isMounted) {
-          const examsData = await examsResponse.json();
-          setExamCount(Array.isArray(examsData.exams) ? examsData.exams.length : 0);
-        }
-
-        if (reviewResponse.ok && isMounted) {
-          const reviewData = await reviewResponse.json();
-          setReviewCount(typeof reviewData.count === 'number' ? reviewData.count : 0);
         }
       } catch (err) {
         if (isMounted) {
@@ -93,28 +77,45 @@ export default function WKTDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Questions Mastered</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Questions</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : progress?.questionsMastered ?? 0}
+              {isLoading ? '...' : progress?.totalQuestions ?? 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {error ? 'Unable to load' : 'Keep practicing!'}
+              {error ? 'Unable to load' : 'Build your study plan'}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Mock Exams Taken</CardTitle>
+            <CardTitle className="text-sm font-medium">Questions Attempted</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{isLoading ? '...' : examCount}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? '...' : progress?.questionsAttempted ?? 0}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {examCount > 0 ? 'Keep improving' : 'Take your first exam'}
+              {error ? 'Unable to load' : 'Keep improving'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Questions Mastered</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? '...' : progress?.questionsMastered ?? 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {error ? 'Unable to load' : 'Keep the momentum'}
             </p>
           </CardContent>
         </Card>
@@ -122,7 +123,7 @@ export default function WKTDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -130,21 +131,6 @@ export default function WKTDashboard() {
             </div>
             <p className="text-xs text-muted-foreground">
               {progress?.currentStreak ? 'Keep it going' : 'Start your streak today'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Due for Review</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : reviewCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {reviewCount > 0 ? 'Ready to review' : 'No questions due'}
             </p>
           </CardContent>
         </Card>

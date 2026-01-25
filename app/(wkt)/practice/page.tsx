@@ -55,6 +55,10 @@ export default function PracticePage() {
         if (isMounted) {
           setQuestions(Array.isArray(data.questions) ? data.questions : []);
           setCurrentIndex(0);
+          setSelectedAnswer(null);
+          setIsSubmitted(false);
+          setIsCorrect(null);
+          setResult(null);
         }
       } catch (err) {
         if (isMounted) {
