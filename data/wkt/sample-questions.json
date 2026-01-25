@@ -1,0 +1,173 @@
+[
+  {
+    "question_text": "What does the medical prefix 'cardio' refer to?",
+    "question_type": "multiple_choice",
+    "options": ["Brain", "Heart", "Lung", "Stomach"],
+    "correct_answer": "Heart",
+    "explanation": "Cardio comes from the Greek word 'kardia' meaning heart. It is used in medical terms like cardiology (study of the heart) and cardiovascular (relating to the heart and blood vessels).",
+    "category": "medical_terminology",
+    "subcategory": null,
+    "difficulty": 2,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "The medical term 'pneumonia' refers to inflammation of which organ?",
+    "question_type": "multiple_choice",
+    "options": ["Heart", "Liver", "Lungs", "Kidneys"],
+    "correct_answer": "Lungs",
+    "explanation": "Pneumonia is inflammation of the lungs, typically caused by infection. The prefix 'pneumo-' refers to the lungs or air.",
+    "category": "medical_terminology",
+    "subcategory": null,
+    "difficulty": 3,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "What does the legal term 'voir dire' mean?",
+    "question_type": "multiple_choice",
+    "options": ["Opening statements", "Jury selection process", "Closing arguments", "Evidence presentation"],
+    "correct_answer": "Jury selection process",
+    "explanation": "Voir dire is a French term meaning 'to speak the truth.' It refers to the process of questioning potential jurors to determine their suitability to serve on a jury.",
+    "category": "legal_terminology",
+    "subcategory": null,
+    "difficulty": 2,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "In legal proceedings, what does 'ex parte' mean?",
+    "question_type": "multiple_choice",
+    "options": ["On behalf of", "In the presence of all parties", "Without notice to other parties", "With written consent"],
+    "correct_answer": "Without notice to other parties",
+    "explanation": "Ex parte is a Latin term meaning 'from one side' or 'by one party.' It refers to legal proceedings conducted without notice to or in the absence of the other party.",
+    "category": "legal_terminology",
+    "subcategory": null,
+    "difficulty": 3,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "Which sentence is grammatically correct?",
+    "question_type": "multiple_choice",
+    "options": [
+      "The witness, who was nervous, testified clearly.",
+      "The witness which was nervous testified clearly.",
+      "The witness, that was nervous, testified clearly.",
+      "The witness who was nervous testified clearly."
+    ],
+    "correct_answer": "The witness, who was nervous, testified clearly.",
+    "explanation": "Use 'who' for people, not 'which' or 'that.' The commas are needed because 'who was nervous' is a non-restrictive clause providing additional information.",
+    "category": "grammar_usage",
+    "subcategory": null,
+    "difficulty": 3,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "Which sentence demonstrates correct subject-verb agreement?",
+    "question_type": "multiple_choice",
+    "options": [
+      "The jury were divided in their opinions.",
+      "The jury was divided in their opinions.",
+      "The jury were divided in its opinions.",
+      "The jury was divided in its opinions."
+    ],
+    "correct_answer": "The jury was divided in its opinions.",
+    "explanation": "In American English, 'jury' is treated as a singular collective noun, so it takes a singular verb ('was') and singular pronoun ('its').",
+    "category": "grammar_usage",
+    "subcategory": null,
+    "difficulty": 4,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "Which of the following is the correct spelling?",
+    "question_type": "multiple_choice",
+    "options": ["Occurrence", "Occurence", "Occurrance", "Occurance"],
+    "correct_answer": "Occurrence",
+    "explanation": "Occurrence is spelled with double 'r' and 'e' at the end. The root word is 'occur' (double 'c' and double 'r').",
+    "category": "spelling",
+    "subcategory": null,
+    "difficulty": 3,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "Which word is spelled correctly?",
+    "question_type": "multiple_choice",
+    "options": ["Seperate", "Separate", "Seperrate", "Separete"],
+    "correct_answer": "Separate",
+    "explanation": "Separate is spelled with 'a' in the middle, not 'e.' A helpful mnemonic: 'There's a rat in separate.'",
+    "category": "spelling",
+    "subcategory": null,
+    "difficulty": 2,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "In Texas, court reporters must maintain their certification by completing how many hours of continuing education annually?",
+    "question_type": "multiple_choice",
+    "options": ["5 hours", "10 hours", "15 hours", "20 hours"],
+    "correct_answer": "10 hours",
+    "explanation": "Texas court reporters are required to complete 10 hours of continuing education (CEU) annually to maintain their certification.",
+    "category": "texas_rules",
+    "subcategory": null,
+    "difficulty": 2,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "According to Texas rules, what is the minimum passing score for the Written Knowledge Test (WKT)?",
+    "question_type": "multiple_choice",
+    "options": ["70%", "75%", "80%", "85%"],
+    "correct_answer": "75%",
+    "explanation": "The Texas Written Knowledge Test requires a minimum passing score of 75% (75 correct answers out of 100 questions).",
+    "category": "texas_rules",
+    "subcategory": null,
+    "difficulty": 1,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "What is the primary responsibility of a court reporter during a deposition?",
+    "question_type": "multiple_choice",
+    "options": [
+      "To provide legal advice to attorneys",
+      "To create a verbatim record of the proceedings",
+      "To summarize the testimony",
+      "To interpret the testimony"
+    ],
+    "correct_answer": "To create a verbatim record of the proceedings",
+    "explanation": "The primary responsibility of a court reporter is to create a complete, accurate, verbatim (word-for-word) record of all proceedings, including depositions, hearings, and trials.",
+    "category": "reporter_duties",
+    "subcategory": null,
+    "difficulty": 1,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  },
+  {
+    "question_text": "A court reporter must maintain confidentiality of all proceedings. True or False?",
+    "question_type": "true_false",
+    "options": null,
+    "correct_answer": "True",
+    "explanation": "Court reporters are bound by professional ethics to maintain strict confidentiality of all proceedings and must not disclose information to unauthorized parties.",
+    "category": "reporter_duties",
+    "subcategory": null,
+    "difficulty": 1,
+    "source_reference": null,
+    "ai_generated": false,
+    "verified": false
+  }
+]
