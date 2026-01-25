@@ -1,0 +1,83 @@
+# Cursor Rules - WKT Quiz Module Implementation
+
+## Current Task
+Implementing WKT (Written Knowledge Test) Quiz Module for Texas CSR certification prep.
+
+## Implementation Guide Location
+Read the full implementation guide at: `work_files/WKT-COMPLETE-CODEX-GUIDE.ps1`
+
+## Project Structure for WKT
+
+```
+app/
+├── (wkt)/                      # WKT route group - SEPARATE from main app
+│   ├── layout.tsx              # WKT-only layout (no main sidebar)
+│   ├── page.tsx                # Dashboard
+│   ├── practice/page.tsx       # Practice mode
+│   ├── mock-exam/
+│   │   ├── page.tsx            # Pre-exam screen
+│   │   └── results/page.tsx    # Results
+│   ├── flashcards/page.tsx     # Flashcard decks
+│   └── progress/page.tsx       # Progress dashboard
+├── api/wkt/                    # WKT API routes
+│   ├── questions/
+│   ├── exams/
+│   ├── progress/
+│   └── bookmarks/
+
+lib/wkt/                        # WKT business logic
+├── queries.ts                  # Database queries
+├── srs.ts                      # Spaced repetition (SM-2)
+├── exam-generator.ts           # Mock exam generation
+└── readiness.ts                # Readiness calculation
+
+lib/auth/
+└── wkt-guard.ts                # WKT role checking
+
+types/
+└── wkt.ts                      # All WKT TypeScript types
+
+components/wkt/                 # WKT-specific components
+├── loading-skeleton.tsx
+├── error-message.tsx
+└── empty-state.tsx
+
+scripts/wkt/                    # Import scripts
+├── validate-questions.ts
+└── import-questions.ts
+```
+
+## Critical Rules
+
+1. **WKT is ISOLATED** - Users with `wkt_student` role ONLY see /wkt/* routes
+2. **Do NOT modify** existing Depo-Pro features (calendar, jobs, transcripts)
+3. **Be CONSERVATIVE** with readiness scores - don't over-encourage
+4. **Follow existing patterns** - check lib/supabase/, app/api/, components/ui/
+
+## WKT Categories
+- medical_terminology
+- legal_terminology  
+- grammar_usage
+- spelling
+- texas_rules
+- reporter_duties
+
+## Mock Exam Distribution (100 questions total)
+- Medical: 20, Legal: 20, Grammar: 15, Spelling: 15, Texas Rules: 20, Reporter Duties: 10
+
+## Passing Score: 75%
+
+## Database Tables (already exist)
+- wkt_questions
+- wkt_user_progress
+- wkt_mock_exams
+- wkt_bookmarks
+- wkt_study_sessions
+
+## After Each Change
+1. Run: `npm run typecheck`
+2. Fix any errors before proceeding
+3. Commit with message starting with "WKT: "
+
+## Git Branch
+Working on: `feature/wkt-quiz-module`
