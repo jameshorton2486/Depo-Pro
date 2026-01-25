@@ -1,9 +1,8 @@
-#!/usr/bin/env ts-node
 /**
  * WKT Question Validation Script
  * Validates JSON question files before import
  * 
- * Usage: npx ts-node scripts/wkt/validate-questions.ts data/wkt/questions.json
+ * Usage: npx tsx scripts/wkt/validate-questions.ts data/wkt/questions.json
  */
 
 import * as fs from 'fs';

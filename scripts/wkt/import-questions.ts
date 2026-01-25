@@ -1,9 +1,8 @@
-#!/usr/bin/env ts-node
 /**
  * WKT Question Import Script
  * Imports validated questions into Supabase
  * 
- * Usage: npx ts-node scripts/wkt/import-questions.ts data/wkt/questions.json
+ * Usage: npx tsx scripts/wkt/import-questions.ts data/wkt/questions.json
  * 
  * Environment variables required:
  * - NEXT_PUBLIC_SUPABASE_URL
