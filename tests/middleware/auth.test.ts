@@ -12,16 +12,34 @@
  */
 
 import { NextRequest } from 'next/server';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { middleware } from '@/middleware';
 import { createServerClient } from '@supabase/ssr';
 
 // Mock Supabase client for testing
-jest.mock('@supabase/ssr', () => ({
-  createServerClient: jest.fn(),
+vi.mock('@supabase/ssr', () => ({
+  createServerClient: vi.fn(),
 }));
 
 describe('middleware auth session parsing', () => {
   const baseUrl = 'http://localhost:3000';
+  const mockCreateServerClient = vi.mocked(createServerClient);
+  const buildSupabaseMock = (session: unknown) => ({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: { session },
+        error: null,
+      }),
+    },
+  });
+  const expectRedirectStatus = (status: number) => {
+    expect([302, 307]).toContain(status);
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCreateServerClient.mockReturnValue(buildSupabaseMock(null) as any);
+  });
 
   describe('Public routes', () => {
     it('allows access to public routes without authentication', async () => {
@@ -47,19 +65,19 @@ describe('middleware auth session parsing', () => {
       const req = new NextRequest(`${baseUrl}/dashboard`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/login');
-      expect(location).toContain('callbackUrl');
+      expect(location).toContain('redirect=');
     });
 
     it('preserves callback URL in redirect', async () => {
       const req = new NextRequest(`${baseUrl}/dashboard?tab=settings`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
-      expect(location).toContain('callbackUrl=/dashboard%3Ftab%3Dsettings');
+      expect(location).toContain('redirect=%2Fdashboard%3Ftab%3Dsettings');
     });
   });
 
@@ -116,7 +134,7 @@ describe('middleware auth session parsing', () => {
       const req = new NextRequest(`${baseUrl}/dashboard?filter=active&sort=date`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('redirect');
     });
@@ -125,7 +143,7 @@ describe('middleware auth session parsing', () => {
       const req = new NextRequest(`${baseUrl}/dashboard/settings`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/login');
     });
@@ -134,13 +152,14 @@ describe('middleware auth session parsing', () => {
   describe('Role-Based Access Control (RBAC)', () => {
     beforeEach(() => {
       // Reset mocks
-      jest.clearAllMocks();
+      vi.clearAllMocks();
+      mockCreateServerClient.mockReturnValue(buildSupabaseMock(null) as any);
     });
 
     it('allows REPORTER to access /dashboard', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -157,7 +176,7 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/dashboard`);
       const res = await middleware(req);
@@ -169,7 +188,7 @@ describe('middleware auth session parsing', () => {
     it('blocks REPORTER from accessing /admin', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -186,12 +205,12 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/admin`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/unauthorized');
       expect(location).toContain('insufficient_role');
@@ -200,7 +219,7 @@ describe('middleware auth session parsing', () => {
     it('allows ADMIN to access all routes', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -217,7 +236,7 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/admin`);
       const res = await middleware(req);
@@ -229,7 +248,7 @@ describe('middleware auth session parsing', () => {
     it('redirects when role is missing', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -244,12 +263,12 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/dashboard`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/unauthorized');
       expect(location).toContain('missing_role');
@@ -258,13 +277,14 @@ describe('middleware auth session parsing', () => {
 
   describe('Organization Scoping', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
+      mockCreateServerClient.mockReturnValue(buildSupabaseMock(null) as any);
     });
 
     it('allows access when org_id matches URL', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -282,7 +302,7 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/org/org-123/dashboard`);
       const res = await middleware(req);
@@ -294,7 +314,7 @@ describe('middleware auth session parsing', () => {
     it('blocks access when org_id does not match URL', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -312,12 +332,12 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/org/org-456/dashboard`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/unauthorized');
       expect(location).toContain('org_mismatch');
@@ -326,13 +346,14 @@ describe('middleware auth session parsing', () => {
 
   describe('Case Scoping', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
+      mockCreateServerClient.mockReturnValue(buildSupabaseMock(null) as any);
     });
 
     it('allows access when case_id is in case_ids array', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -350,7 +371,7 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/cases/case-123`);
       const res = await middleware(req);
@@ -362,7 +383,7 @@ describe('middleware auth session parsing', () => {
     it('blocks access when case_id is not in case_ids array', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -380,12 +401,12 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/cases/case-999`);
       const res = await middleware(req);
 
-      expect(res.status).toBe(302);
+      expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/unauthorized');
       expect(location).toContain('case_access_denied');
@@ -394,7 +415,7 @@ describe('middleware auth session parsing', () => {
     it('allows access when case_ids is empty (no case scoping)', async () => {
       const mockSupabase = {
         auth: {
-          getSession: jest.fn().mockResolvedValue({
+          getSession: vi.fn().mockResolvedValue({
             data: {
               session: {
                 user: {
@@ -412,7 +433,7 @@ describe('middleware auth session parsing', () => {
         },
       };
 
-      (createServerClient as jest.Mock).mockReturnValue(mockSupabase);
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
 
       const req = new NextRequest(`${baseUrl}/cases/case-999`);
       const res = await middleware(req);

@@ -52,6 +52,7 @@ const AUTH_REDIRECT_ROUTES = ['/login', '/register'];
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/admin',
+  '/org',
   '/cases',
   '/jobs',
   '/calendar',
@@ -71,6 +72,7 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
   ADMIN: [
     '/admin',
     '/dashboard',
+    '/org',
     '/cases',
     '/jobs',
     '/calendar',
@@ -83,6 +85,7 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
   ],
   REPORTER: [
     '/dashboard',
+    '/org',
     '/cases',
     '/jobs',
     '/calendar',
@@ -91,18 +94,21 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
     '/settings',
   ],
   SCOPIST: [
+    '/org',
     '/cases',
     '/jobs',
     '/transcripts',
   ],
   ATTORNEY: [
     '/dashboard',
+    '/org',
     '/cases',
     '/transcripts',
     '/reports',
   ],
   AGENCY: [
     '/dashboard',
+    '/org',
     '/cases',
     '/jobs',
     '/calendar',

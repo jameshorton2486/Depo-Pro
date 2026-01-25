@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createMockRequest, mockAuthSession } from '../utils/test-helpers';
+import { createMockRequest } from '../utils/test-helpers';
 
 // Mock the auth module
 vi.mock('@/lib/auth', () => ({
@@ -9,19 +9,16 @@ vi.mock('@/lib/auth', () => ({
 // Mock Supabase
 vi.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      delete: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      order: vi.fn().mockResolvedValue({ data: [], error: null }),
-      single: vi.fn().mockResolvedValue({ data: null, error: null }),
-    })),
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
     },
   })),
+}));
+
+// Mock jobs queries
+vi.mock('@/lib/supabase/queries/jobs', () => ({
+  listJobs: vi.fn(),
+  createJob: vi.fn(),
 }));
 
 describe('Jobs API', () => {
@@ -42,20 +39,25 @@ describe('Jobs API', () => {
       ];
 
       const { createSupabaseServerClient } = await import('@/lib/supabase/server');
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockResolvedValue({ data: mockJobs, error: null }),
-        })),
+      vi.mocked(createSupabaseServerClient).mockResolvedValue({
         auth: {
-          getUser: vi.fn().mockResolvedValue({ 
-            data: { user: { id: 'user-123' } }, 
-            error: null 
+          getUser: vi.fn().mockResolvedValue({
+            data: {
+              user: {
+                id: 'user-123',
+                user_metadata: { role: 'REPORTER' },
+              },
+            },
+            error: null,
           }),
         },
-      };
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mockSupabase as any);
+      } as any);
+
+      const { listJobs } = await import('@/lib/supabase/queries/jobs');
+      vi.mocked(listJobs).mockResolvedValue({
+        jobs: mockJobs,
+        count: mockJobs.length,
+      });
 
       // Import route handler
       const { GET } = await import('@/app/api/jobs/route');
@@ -70,6 +72,16 @@ describe('Jobs API', () => {
     it('should return 401 for unauthenticated request', async () => {
       const { auth } = await import('@/lib/auth');
       vi.mocked(auth).mockResolvedValue(null);
+
+      const { createSupabaseServerClient } = await import('@/lib/supabase/server');
+      vi.mocked(createSupabaseServerClient).mockResolvedValue({
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: { user: null },
+            error: null,
+          }),
+        },
+      } as any);
 
       const { GET } = await import('@/app/api/jobs/route');
       const request = createMockRequest('GET');
@@ -87,32 +99,34 @@ describe('Jobs API', () => {
       } as any);
 
       const jobData = {
-        case_name: 'New Case v. Defendant',
-        case_number: '2024-CV-99999',
-        deposition_date: '2026-02-01',
+        caseName: 'New Case v. Defendant',
+        caseNumber: '2024-CV-99999',
+        depositionDate: '2026-02-01',
       };
 
       const { createSupabaseServerClient } = await import('@/lib/supabase/server');
-      const mockSupabase = {
-        from: vi.fn(() => ({
-          insert: vi.fn().mockResolvedValue({ data: { id: 'job-new', ...jobData }, error: null }),
-          select: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: { id: 'job-new', ...jobData }, error: null }),
-        })),
+      vi.mocked(createSupabaseServerClient).mockResolvedValue({
         auth: {
-          getUser: vi.fn().mockResolvedValue({ 
-            data: { user: { id: 'user-123' } }, 
-            error: null 
+          getUser: vi.fn().mockResolvedValue({
+            data: {
+              user: {
+                id: 'user-123',
+                user_metadata: { role: 'REPORTER' },
+              },
+            },
+            error: null,
           }),
         },
-      };
-      vi.mocked(createSupabaseServerClient).mockResolvedValue(mockSupabase as any);
+      } as any);
+
+      const { createJob } = await import('@/lib/supabase/queries/jobs');
+      vi.mocked(createJob).mockResolvedValue({ id: 'job-new' });
 
       const { POST } = await import('@/app/api/jobs/route');
       const request = createMockRequest('POST', jobData);
       const response = await POST(request);
 
-      expect([201, 200]).toContain(response.status);
+      expect(response.status).toBe(200);
     });
 
     it('should reject invalid data', async () => {
@@ -123,7 +137,7 @@ describe('Jobs API', () => {
 
       const invalidData = {
         // Missing required case_name
-        case_number: '2024-CV-99999',
+        caseNumber: '2024-CV-99999',
       };
 
       const { POST } = await import('@/app/api/jobs/route');

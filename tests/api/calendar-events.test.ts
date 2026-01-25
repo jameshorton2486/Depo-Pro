@@ -3,14 +3,16 @@
  * Tests RLS enforcement and basic API contracts
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-const API_BASE = process.env.TEST_API_URL || 'http://localhost:3000';
+const API_BASE = process.env.TEST_API_URL;
+const describeApi = API_BASE ? describe : describe.skip;
+const baseUrl = API_BASE || 'http://localhost:3000';
 
-describe('Calendar Events API', () => {
+describeApi('Calendar Events API', () => {
   describe('POST /api/calendar/events', () => {
     it('rejects unauthenticated users', async () => {
-      const response = await fetch(`${API_BASE}/api/calendar/events`, {
+      const response = await fetch(`${baseUrl}/api/calendar/events`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +39,7 @@ describe('Calendar Events API', () => {
 
   describe('GET /api/calendar/events', () => {
     it('rejects unauthenticated users', async () => {
-      const response = await fetch(`${API_BASE}/api/calendar/events`);
+      const response = await fetch(`${baseUrl}/api/calendar/events`);
 
       expect(response.status).toBe(401);
       

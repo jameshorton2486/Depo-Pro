@@ -130,11 +130,9 @@ export async function PUT(
     const updatedExam = await submitExamResults(
       examId,
       answers,
-      timeSpent,
       scoreResult.correct,
-      scoreResult.percentage,
-      scoreResult.categoryScores,
-      scoreResult.passed
+      timeSpent,
+      scoreResult.categoryScores
     );
 
     // Update user progress for each question
@@ -166,14 +164,11 @@ export async function PUT(
       );
 
       try {
-        await updateUserProgress(
-          user.id,
-          question.id,
-          isCorrect,
-          srsResult.newEaseFactor,
-          srsResult.newInterval,
-          srsResult.nextReview
-        );
+        await updateUserProgress(user.id, question.id, isCorrect, {
+          easeFactor: srsResult.newEaseFactor,
+          intervalDays: srsResult.newInterval,
+          nextReview: srsResult.nextReview,
+        });
       } catch (error) {
         // Log but don't fail the entire submission
         console.error(`Failed to update progress for question ${question.id}:`, error);

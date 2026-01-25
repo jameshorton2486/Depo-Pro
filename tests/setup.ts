@@ -1,5 +1,7 @@
 import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 
+vi.mock('server-only', () => ({}));
+
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
   useRouter: () => ({

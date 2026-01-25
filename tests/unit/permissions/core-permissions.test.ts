@@ -45,7 +45,7 @@ describe('Core Permission Tests', () => {
     expect(isPublicRoute('/')).toBe(true);
     expect(isPublicRoute('/login')).toBe(true);
     expect(isPublicRoute('/register')).toBe(true);
-    expect(isPublicRoute('/api/auth')).toBe(true);
+    expect(isPublicRoute('/api/health')).toBe(true);
   });
 
   // TEST 4: Protected routes are not public

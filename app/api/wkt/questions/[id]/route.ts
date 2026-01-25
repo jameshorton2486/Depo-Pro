@@ -117,14 +117,11 @@ export async function POST(
     );
 
     // Update progress
-    await updateUserProgress(
-      user.id,
-      id,
-      isCorrect,
-      srsResult.newEaseFactor,
-      srsResult.newInterval,
-      srsResult.nextReview
-    );
+    await updateUserProgress(user.id, id, isCorrect, {
+      easeFactor: srsResult.newEaseFactor,
+      intervalDays: srsResult.newInterval,
+      nextReview: srsResult.nextReview,
+    });
 
     return NextResponse.json({
       correct: isCorrect,

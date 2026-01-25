@@ -27,16 +27,17 @@ export function createMockRequest(
 }
 
 // Mock authenticated session
-export function mockAuthSession(user: { id: string; email: string; role: string }) {
-  vi.mock('@/lib/auth', () => ({
-    auth: vi.fn().mockResolvedValue({
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-    }),
-  }));
+export function mockAuthSession(
+  authMock: { mockResolvedValue: (value: unknown) => void },
+  user: { id: string; email: string; role: string }
+) {
+  authMock.mockResolvedValue({
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    },
+  });
 }
 
 // Wait for async operations
