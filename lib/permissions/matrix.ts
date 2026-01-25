@@ -3,9 +3,9 @@
 // Centralized role-based access control (RBAC) for Depo-Pro
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type Role = 'ADMIN' | 'REPORTER' | 'SCOPIST' | 'ATTORNEY' | 'PARALEGAL' | 'AGENCY_ADMIN' | 'FIRM_ADMIN';
-export type Resource = 'jobs' | 'transcripts' | 'files' | 'calendar' | 'users' | 'firms' | 'billing' | 'reports' | 'audit' | 'settings' | 'admin';
-export type Action = 'create' | 'read' | 'update' | 'delete' | 'assign' | 'export' | 'share' | 'approve';
+export type Role = 'ADMIN' | 'REPORTER' | 'SCOPIST' | 'ATTORNEY' | 'PARALEGAL' | 'AGENCY_ADMIN' | 'FIRM_ADMIN' | 'WKT_STUDENT';
+export type Resource = 'jobs' | 'transcripts' | 'files' | 'calendar' | 'users' | 'firms' | 'billing' | 'reports' | 'audit' | 'settings' | 'admin' | 'wkt';
+export type Action = 'create' | 'read' | 'update' | 'delete' | 'assign' | 'export' | 'share' | 'approve' | 'practice' | 'mock_exam' | 'flashcards' | 'view_progress' | 'bookmarks';
 
 export interface Permission {
   resource: Resource;
@@ -95,6 +95,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     { resource: 'transcripts', action: 'export', scope: 'firm' },
     { resource: 'users', action: 'read', scope: 'firm' },
     { resource: 'billing', action: 'read', scope: 'firm' },
+  ],
+  WKT_STUDENT: [
+    { resource: 'wkt', action: 'practice', scope: 'own' },
+    { resource: 'wkt', action: 'mock_exam', scope: 'own' },
+    { resource: 'wkt', action: 'flashcards', scope: 'own' },
+    { resource: 'wkt', action: 'view_progress', scope: 'own' },
+    { resource: 'wkt', action: 'bookmarks', scope: 'own' },
   ],
 };
 

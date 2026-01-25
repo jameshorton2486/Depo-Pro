@@ -76,6 +76,11 @@ export async function getEditorPermissions(
       canFinalize: true,
       canUnlock: false,
     },
+    WKT_STUDENT: {
+      canComment: false,
+      canFinalize: false,
+      canUnlock: false,
+    },
   };
 
   const permissions = rolePermissions[userRole] || {

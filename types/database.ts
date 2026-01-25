@@ -22,7 +22,8 @@ export type UserRole =
   | 'PARALEGAL'
   | 'AGENCY'
   | 'AGENCY_ADMIN'
-  | 'FIRM_ADMIN';
+  | 'FIRM_ADMIN'
+  | 'WKT_STUDENT';
 
 export type JobStatus =
   | 'CREATED'

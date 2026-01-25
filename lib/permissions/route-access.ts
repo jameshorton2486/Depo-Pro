@@ -240,4 +240,5 @@ export const VALID_ROLES: Role[] = [
   'AGENCY',
   'AGENCY_ADMIN',
   'FIRM_ADMIN',
+  'WKT_STUDENT',
 ];

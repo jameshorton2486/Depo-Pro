@@ -152,6 +152,24 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     preferredView: 'grid',
     canToggleView: true,
   },
+  
+  WKT_STUDENT: {
+    canViewAllEvents: false,
+    canViewFirmEvents: false,
+    canViewAssignedOnly: false,
+    canAssignReporter: false,
+    canAssignScopist: false,
+    canAssignVideographer: false,
+    canAssignInterpreter: false,
+    canRequestChanges: false,
+    canConvertToJob: false,
+    canCancelEvent: false,
+    canReschedule: false,
+    canAddNotes: false,
+    canMarkComplete: false,
+    preferredView: 'grid',
+    canToggleView: false,
+  },
 };
 
 // ============================================

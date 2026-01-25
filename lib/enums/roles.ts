@@ -16,6 +16,7 @@ export enum UserRole {
   FIRM_ADMIN = "FIRM_ADMIN",
   VIDEOGRAPHER = "VIDEOGRAPHER",
   INTERPRETER = "INTERPRETER",
+  WKT_STUDENT = "WKT_STUDENT",
 }
 
 // =============================================================================
