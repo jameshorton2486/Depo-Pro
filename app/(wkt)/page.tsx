@@ -6,10 +6,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, FileText, TrendingUp, Clock } from 'lucide-react';
+import { DashboardSkeleton } from '@/components/wkt/loading-skeleton';
+import { ErrorMessage } from '@/components/wkt/error-message';
 
 type ProgressResponse = {
   totalQuestions: number;
@@ -28,43 +30,58 @@ export default function WKTDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadData = useCallback(async (isMountedRef: { current: boolean }) => {
+    setIsLoading(true);
+    setError(null);
 
-    async function loadData() {
-      setIsLoading(true);
-      setError(null);
+    try {
+      const progressResponse = await fetch('/api/wkt/progress');
 
-      try {
-        const progressResponse = await fetch('/api/wkt/progress');
+      if (!progressResponse.ok) {
+        throw new Error('Failed to load progress');
+      }
 
-        if (!progressResponse.ok) {
-          throw new Error('Failed to load progress');
-        }
-
-        if (isMounted) {
-          const progressData = (await progressResponse.json()) as ProgressResponse;
-          setProgress(progressData);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load dashboard');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      if (isMountedRef.current) {
+        const progressData = (await progressResponse.json()) as ProgressResponse;
+        setProgress(progressData);
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
       }
     }
-
-    loadData();
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    const isMountedRef = { current: true };
+
+    loadData(isMountedRef);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadData]);
+
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-8">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {error ? (
+        <ErrorMessage
+          message={error}
+          onRetry={() => loadData({ current: true })}
+        />
+      ) : null}
+
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Welcome to WKT Prep</h1>
@@ -82,7 +99,7 @@ export default function WKTDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : progress?.totalQuestions ?? 0}
+              {progress?.totalQuestions ?? 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {error ? 'Unable to load' : 'Build your study plan'}
@@ -97,7 +114,7 @@ export default function WKTDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : progress?.questionsAttempted ?? 0}
+              {progress?.questionsAttempted ?? 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {error ? 'Unable to load' : 'Keep improving'}
@@ -112,7 +129,7 @@ export default function WKTDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : progress?.questionsMastered ?? 0}
+              {progress?.questionsMastered ?? 0}
             </div>
             <p className="text-xs text-muted-foreground">
               {error ? 'Unable to load' : 'Keep the momentum'}
@@ -127,7 +144,7 @@ export default function WKTDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {isLoading ? '...' : `${progress?.currentStreak ?? 0} days`}
+              {`${progress?.currentStreak ?? 0} days`}
             </div>
             <p className="text-xs text-muted-foreground">
               {progress?.currentStreak ? 'Keep it going' : 'Start your streak today'}
@@ -156,9 +173,7 @@ export default function WKTDashboard() {
           <CardTitle>Exam Readiness</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <p className="text-muted-foreground">Loading readiness...</p>
-          ) : error ? (
+          {error ? (
             <p className="text-muted-foreground">{error}</p>
           ) : (
             <p className="text-muted-foreground">
