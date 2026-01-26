@@ -4,6 +4,7 @@
 // WKT FLASHCARDS - DECK SELECTION
 // ═══════════════════════════════════════════════════════════════
 
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { WKTCategory } from '@/types/wkt';
@@ -20,6 +21,12 @@ const DECKS = [
 ];
 
 export default function FlashcardsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
+
   function handleStudy(_deck: typeof DECKS[0]) {
     alert('Flashcard study coming soon!');
   }
@@ -34,28 +41,41 @@ export default function FlashcardsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {DECKS.map((deck) => (
-          <Card key={deck.id || deck.category} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="text-center">
-              <div className="text-4xl mb-2">{deck.icon}</div>
-              <CardTitle className="text-lg">
-                {deck.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {deck.cards} cards
-              </p>
-              <Button
-                onClick={() => handleStudy(deck)}
-                className="w-full"
-                variant="outline"
-              >
-                Study
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+        {isLoading
+          ? Array.from({ length: 8 }).map((_, idx) => (
+              <Card key={`skeleton-${idx}`}>
+                <CardHeader className="text-center">
+                  <div className="mx-auto h-10 w-10 animate-pulse rounded bg-gray-200" />
+                  <div className="mx-auto mt-2 h-5 w-32 animate-pulse rounded bg-gray-200" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="mx-auto h-4 w-20 animate-pulse rounded bg-gray-200" />
+                  <div className="h-10 w-full animate-pulse rounded bg-gray-200" />
+                </CardContent>
+              </Card>
+            ))
+          : DECKS.map((deck) => (
+              <Card key={deck.id || deck.category} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="text-center">
+                  <div className="text-4xl mb-2">{deck.icon}</div>
+                  <CardTitle className="text-lg">
+                    {deck.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-center space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    {deck.cards} cards
+                  </p>
+                  <Button
+                    onClick={() => handleStudy(deck)}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    Study
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
       </div>
     </div>
   );

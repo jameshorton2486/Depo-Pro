@@ -6,11 +6,14 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { CATEGORY_INFO } from '@/types/wkt';
 import type { CategoryStats, WKTCategory, WKTMockExam } from '@/types/wkt';
+import { StatCardSkeleton } from '@/components/wkt/loading-skeleton';
+import { AllCaughtUp, NoExamsYet, NoQuestionsFound } from '@/components/wkt/empty-state';
 
 type ProgressResponse = {
   totalQuestions: number;
@@ -26,6 +29,7 @@ type ProgressResponse = {
 };
 
 export default function ProgressPage() {
+  const router = useRouter();
   const [progress, setProgress] = useState<ProgressResponse | null>(null);
   const [exams, setExams] = useState<WKTMockExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,77 +106,129 @@ export default function ProgressPage() {
           <CardTitle>Exam Readiness</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="text-center">
-            <div className="text-6xl font-bold mb-2">
-              {isLoading ? '...' : `${progress?.readiness?.overallScore ?? 0}%`}
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-4">
+              <div className="h-16 w-32 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-72 animate-pulse rounded bg-gray-200" />
+              <div className="h-10 w-40 animate-pulse rounded bg-gray-200" />
             </div>
-            <p className="text-muted-foreground mb-6">
-              {error
-                ? error
-                : progress?.readiness?.recommendation ||
-                  'Start practicing to build your readiness score'}
-            </p>
-            <Link href="/wkt/mock-exam">
-              <Button size="lg">Take Mock Exam</Button>
-            </Link>
-          </div>
+          ) : (
+            <div className="text-center">
+              <div className="text-6xl font-bold mb-2">
+                {`${progress?.readiness?.overallScore ?? 0}%`}
+              </div>
+              <p className="text-muted-foreground mb-6">
+                {error
+                  ? error
+                  : progress?.readiness?.recommendation ||
+                    'Start practicing to build your readiness score'}
+              </p>
+              <Link href="/wkt/mock-exam">
+                <Button size="lg">Take Mock Exam</Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : progress?.totalQuestions ?? 0}
-            </div>
-          </CardContent>
-        </Card>
+        {isLoading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total Questions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {progress?.totalQuestions ?? 0}
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Attempted</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : progress?.questionsAttempted ?? 0}
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Attempted</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {progress?.questionsAttempted ?? 0}
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Mastered</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : progress?.questionsMastered ?? 0}
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Mastered</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {progress?.questionsMastered ?? 0}
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Study Streak</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '...' : `${progress?.currentStreak ?? 0} days`}
-            </div>
-          </CardContent>
-        </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Study Streak</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {`${progress?.currentStreak ?? 0} days`}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Category Progress */}
       <div>
         <h2 className="text-2xl font-bold mb-4">Category Progress</h2>
         {isLoading ? (
-          <p className="text-muted-foreground">Loading category stats...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <div className="h-5 w-32 animate-pulse rounded bg-gray-200" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="h-2 w-full animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+                <div className="h-10 w-full animate-pulse rounded bg-gray-200" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-5 w-32 animate-pulse rounded bg-gray-200" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="h-2 w-full animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+                <div className="h-10 w-full animate-pulse rounded bg-gray-200" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="h-5 w-32 animate-pulse rounded bg-gray-200" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="h-2 w-full animate-pulse rounded bg-gray-200" />
+                <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+                <div className="h-10 w-full animate-pulse rounded bg-gray-200" />
+              </CardContent>
+            </Card>
+          </div>
         ) : error ? (
           <p className="text-muted-foreground">{error}</p>
+        ) : (progress?.categoryStats || []).length === 0 ? (
+          <NoQuestionsFound onAction={() => router.push('/wkt/practice')} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(progress?.categoryStats || []).map((stat) => {
@@ -215,18 +271,14 @@ export default function ProgressPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {isExamsLoading ? (
-            <p className="text-muted-foreground mb-4">Loading exam history...</p>
+            <div className="space-y-3">
+              <div className="h-16 w-full animate-pulse rounded bg-gray-200" />
+              <div className="h-16 w-full animate-pulse rounded bg-gray-200" />
+            </div>
           ) : examsError ? (
             <p className="text-muted-foreground mb-4">{examsError}</p>
           ) : exams.length === 0 ? (
-            <>
-              <p className="text-muted-foreground mb-4">
-                No mock exams taken yet
-              </p>
-              <Link href="/wkt/mock-exam">
-                <Button>Take Your First Exam</Button>
-              </Link>
-            </>
+            <NoExamsYet onAction={() => router.push('/wkt/mock-exam')} />
           ) : (
             <div className="space-y-3">
               {exams.map((exam) => (
@@ -270,11 +322,13 @@ export default function ProgressPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-muted-foreground">Loading weak areas...</p>
+            <div className="space-y-2">
+              <div className="h-4 w-full animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-5/6 animate-pulse rounded bg-gray-200" />
+              <div className="h-4 w-2/3 animate-pulse rounded bg-gray-200" />
+            </div>
           ) : weakCategories.length === 0 ? (
-            <p className="text-muted-foreground">
-              Complete some practice sessions to identify weak areas
-            </p>
+            <AllCaughtUp onAction={() => router.push('/wkt/practice')} />
           ) : (
             <div className="space-y-2">
               {weakCategories.map((category) => (
