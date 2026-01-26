@@ -1,10 +1,10 @@
 /**
  * Deepgram Environment Configuration (Legacy)
- * 
+ *
  * IMPORTANT: This file is kept for backward compatibility.
  * - Do NOT call dotenv.config() - Next.js loads .env files automatically
  * - New code should use @/lib/env instead
- * 
+ *
  * This file is only used by lib/redis.ts for now.
  * Consider migrating redis.ts to use @/lib/env directly.
  */
@@ -31,7 +31,6 @@ const envSchema = z.object({
 
   // Optional
   SENDGRID_WEBHOOK_SECRET: z.string().optional(),
-  RESEND_API_KEY: z.string().optional(),
 
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -74,7 +73,6 @@ export const config = {
     anthropic: env.ANTHROPIC_API_KEY,
     vercelBlob: env.BLOB_READ_WRITE_TOKEN,
     sendgrid: env.SENDGRID_WEBHOOK_SECRET,
-    resend: env.RESEND_API_KEY,
   },
   app: {
     env: env.NODE_ENV,

@@ -1,10 +1,39 @@
 // ═══════════════════════════════════════════════════════════════
-// EMAIL SERVICE (Resend Implementation)
+// EMAIL SERVICE (Zoho Mail SMTP via Nodemailer)
 // ═══════════════════════════════════════════════════════════════
 
-const USE_RESEND = process.env.USE_RESEND === 'true';
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@depo-pro.com';
+import nodemailer from 'nodemailer';
+
+const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.zoho.com';
+const EMAIL_PORT = parseInt(process.env.EMAIL_PORT || '587');
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Depo-Pro <info@depo-pro.com>';
+
+const EMAIL_ENABLED = !!(EMAIL_USER && EMAIL_PASSWORD);
+
+let transporter: nodemailer.Transporter | null = null;
+
+function getTransporter(): nodemailer.Transporter | null {
+  if (!EMAIL_ENABLED) {
+    console.warn('[Email Service] Email not configured - emails will be logged only');
+    return null;
+  }
+
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: EMAIL_HOST,
+      port: EMAIL_PORT,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: EMAIL_USER,
+        pass: EMAIL_PASSWORD,
+      },
+    });
+  }
+
+  return transporter;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -25,63 +54,67 @@ export interface EmailResult {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// EMAIL SENDING (Mock)
+// EMAIL SENDING
 // ═══════════════════════════════════════════════════════════════
 
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
-  if (USE_RESEND && RESEND_API_KEY) {
-    try {
-      const { Resend } = await import('resend');
-      const resend = new Resend(RESEND_API_KEY);
+  const transport = getTransporter();
 
-      const { data, error } = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: Array.isArray(options.to) ? options.to : [options.to],
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-        replyTo: options.replyTo,
-      });
-
-      if (error) {
-        console.error('Resend email error:', error);
-        return { id: '', success: false, error: error.message };
-      }
-
-      console.log('✅ Email sent via Resend:', data?.id);
-      return { id: data?.id || '', success: true };
-    } catch (error) {
-      console.error('Failed to send email via Resend:', error);
+  if (!transport) {
+    // Development mode: log email instead of sending
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Email Service] Email sending is not configured in production');
       return {
         id: '',
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Email service not configured',
       };
     }
+
+    // Development: log email
+    console.log('📧 [MOCK EMAIL] Email service not configured');
+    console.log('From:', EMAIL_FROM);
+    console.log('To:', options.to);
+    console.log('Subject:', options.subject);
+    console.log('---');
+    console.log(options.text || 'HTML email (text not provided)');
+    console.log('---\n');
+
+    return {
+      id: `mock_email_${Date.now()}`,
+      success: true,
+    };
   }
 
-  // Production guard: Prevent silent email failures in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Email Service] Email sending is not configured. ' +
-      'Set USE_RESEND=true and RESEND_API_KEY in production environment. ' +
-      'Mock email fallback is only available in development.'
-    );
+  try {
+    const recipients = Array.isArray(options.to) ? options.to : [options.to];
+
+    const info = await transport.sendMail({
+      from: EMAIL_FROM,
+      to: recipients.join(', '),
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+      replyTo: options.replyTo,
+    });
+
+    console.log('✅ Email sent via SMTP:', info.messageId);
+    return {
+      id: info.messageId || `email_${Date.now()}`,
+      success: true,
+    };
+  } catch (error) {
+    console.error('[Email Service] Failed to send email:', error);
+    return {
+      id: '',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
+}
 
-  // Mock implementation - simulate success for development only
-  console.log('📧 [MOCK EMAIL] Resend not configured');
-  console.log('From:', FROM_EMAIL);
-  console.log('To:', options.to);
-  console.log('Subject:', options.subject);
-  console.log('---');
-  console.log(options.text || 'HTML email (text not provided)');
-  console.log('---\n');
-
-  return {
-    id: `mock_email_${Date.now()}`,
-    success: true,
-  };
+export function isEmailConfigured(): boolean {
+  return EMAIL_ENABLED;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -233,6 +266,7 @@ export function invoiceEmail(data: {
   dueDate: Date;
 }): EmailOptions {
   const formattedAmount = `$${(data.amount / 100).toFixed(2)}`;
+  const adminEmail = process.env.ADMIN_EMAIL || 'info@depo-pro.com';
 
   const html = `
 <!DOCTYPE html>
@@ -268,7 +302,7 @@ export function invoiceEmail(data: {
     </div>
     <div class="footer">
       <p>Depo-Pro Court Reporting Management System</p>
-      <p>Questions? Contact us at ${FROM_EMAIL}</p>
+      <p>Questions? Contact us at ${adminEmail}</p>
     </div>
   </div>
 </body>
@@ -286,7 +320,7 @@ Due Date: ${data.dueDate.toLocaleDateString()}
 
 View and pay invoice at: ${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/invoices/${data.invoiceNumber}
 
-Questions? Contact us at ${FROM_EMAIL}
+Questions? Contact us at ${adminEmail}
 
 ---
 Depo-Pro Court Reporting Management System

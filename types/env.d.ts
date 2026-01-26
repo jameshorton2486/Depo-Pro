@@ -17,10 +17,13 @@ declare global {
       MICROSOFT_CLIENT_ID?: string;
       MICROSOFT_CLIENT_SECRET?: string;
 
-      // Email
-      RESEND_API_KEY: string;
-      FROM_EMAIL: string;
-      USE_RESEND: string;
+      // Email (Zoho Mail SMTP)
+      EMAIL_HOST?: string;
+      EMAIL_PORT?: string;
+      EMAIL_USER?: string;
+      EMAIL_PASSWORD?: string;
+      EMAIL_FROM?: string;
+      ADMIN_EMAIL?: string;
 
       // Transcription
       DEEPGRAM_API_KEY: string;

@@ -29,7 +29,7 @@ try {
     $healthResponse = Invoke-RestMethod -Uri "$SUPABASE_URL/auth/v1/health" -Headers @{
         "apikey" = $SUPABASE_ANON_KEY
     } -Method Get
-    
+
     Write-Host "  Status: " -NoNewline
     Write-Host "HEALTHY" -ForegroundColor Green
     Write-Host "  Version: $($healthResponse.version)"
@@ -60,25 +60,25 @@ try {
         "apikey" = $SUPABASE_ANON_KEY
         "Content-Type" = "application/json"
     } -Method Post -Body $loginBody
-    
+
     Write-Host "  Status: " -NoNewline
     Write-Host "SUCCESS" -ForegroundColor Green
     Write-Host "  User ID: $($loginResponse.user.id)"
     Write-Host "  Email: $($loginResponse.user.email)"
     Write-Host "  Token: $($loginResponse.access_token.Substring(0, 30))..."
-    
+
     # Save token for later tests
     $ACCESS_TOKEN = $loginResponse.access_token
 } catch {
     Write-Host "  Status: " -NoNewline
     Write-Host "FAILED" -ForegroundColor Red
-    
+
     try {
         $errorBody = $_.ErrorDetails.Message | ConvertFrom-Json
         if ($errorBody) {
             Write-Host "  Error: $($errorBody.error_description)"
             Write-Host "  Code: $($errorBody.error)"
-            
+
             # Provide diagnostic hints
             if ($errorBody.error -eq "invalid_grant") {
                 Write-Host ""
@@ -92,7 +92,7 @@ try {
         $statusCode = $_.Exception.Response.StatusCode.value__
         Write-Host "  HTTP Status: $statusCode"
         Write-Host "  Error: $($_.Exception.Message)"
-        
+
         if ($statusCode -eq 401) {
             Write-Host ""
             Write-Host "  DIAGNOSIS:" -ForegroundColor Magenta
@@ -119,7 +119,7 @@ try {
         "apikey" = $SUPABASE_ANON_KEY
         "Content-Type" = "application/json"
     } -Method Post -Body $resetBody -UseBasicParsing
-    
+
     Write-Host "  Status: " -NoNewline
     Write-Host "SUCCESS" -ForegroundColor Green
     Write-Host "  Response Code: $($resetResponse.StatusCode)"
@@ -127,30 +127,30 @@ try {
 } catch {
     Write-Host "  Status: " -NoNewline
     Write-Host "FAILED" -ForegroundColor Red
-    
+
     $statusCode = $_.Exception.Response.StatusCode.value__
     Write-Host "  HTTP Status: $statusCode"
-    
+
     try {
         $errorStream = $_.Exception.Response.GetResponseStream()
         $reader = New-Object System.IO.StreamReader($errorStream)
         $errorBody = $reader.ReadToEnd() | ConvertFrom-Json
-        
+
         Write-Host "  Error: $($errorBody.error_description)" -ForegroundColor Red
         Write-Host "  Message: $($errorBody.msg)" -ForegroundColor Red
-        
+
         # Diagnose the issue
         Write-Host ""
         Write-Host "  DIAGNOSIS:" -ForegroundColor Magenta
-        
+
         if ($errorBody.msg -match "sending" -or $errorBody.error_description -match "sending") {
             Write-Host "  > SMTP email sending failed" -ForegroundColor Yellow
             Write-Host "  > Possible causes:" -ForegroundColor Yellow
-            Write-Host "    1. Resend API key is incorrect" -ForegroundColor Gray
-            Write-Host "    2. Domain 'depo-pro.com' not verified in Resend" -ForegroundColor Gray
+            Write-Host "    1. Zoho Mail SMTP credentials are incorrect" -ForegroundColor Gray
+            Write-Host "    2. Email service not configured (EMAIL_USER, EMAIL_PASSWORD)" -ForegroundColor Gray
             Write-Host "    3. Sender email 'no-reply@depo-pro.com' not authorized" -ForegroundColor Gray
             Write-Host ""
-            Write-Host "  FIX: Go to https://resend.com/domains and verify your domain" -ForegroundColor Cyan
+            Write-Host "  FIX: Configure Zoho Mail SMTP in .env.local (EMAIL_HOST, EMAIL_USER, EMAIL_PASSWORD)" -ForegroundColor Cyan
             Write-Host "  OR: Use Supabase built-in email (Dashboard → Auth → Email Templates)" -ForegroundColor Cyan
         }
     } catch {
@@ -170,16 +170,16 @@ $envFile = ".env.local"
 if (Test-Path $envFile) {
     Write-Host "  .env.local: " -NoNewline
     Write-Host "EXISTS" -ForegroundColor Green
-    
+
     $envContent = Get-Content $envFile
-    
+
     # Check for SUPABASE_URL
     $urlLine = $envContent | Where-Object { $_ -match "NEXT_PUBLIC_SUPABASE_URL" -and $_ -notmatch "^#" }
     if ($urlLine) {
         $urlValue = ($urlLine -split "=")[1].Trim().Trim('"').Trim("'")
         Write-Host "  NEXT_PUBLIC_SUPABASE_URL: SET" -ForegroundColor Green
         Write-Host "    Value: $($urlValue.Substring(0, [Math]::Min(50, $urlValue.Length)))..."
-        
+
         # Check if it matches
         if ($urlValue -eq $SUPABASE_URL) {
             Write-Host "    ✓ Matches diagnostic URL" -ForegroundColor Green
@@ -189,7 +189,7 @@ if (Test-Path $envFile) {
     } else {
         Write-Host "  NEXT_PUBLIC_SUPABASE_URL: MISSING" -ForegroundColor Red
     }
-    
+
     # Check for ANON_KEY
     $keyLine = $envContent | Where-Object { $_ -match "NEXT_PUBLIC_SUPABASE_ANON_KEY" -and $_ -notmatch "^#" }
     if ($keyLine) {
@@ -197,14 +197,14 @@ if (Test-Path $envFile) {
         Write-Host "  NEXT_PUBLIC_SUPABASE_ANON_KEY: SET" -ForegroundColor Green
         Write-Host "    Length: $($keyValue.Length) chars"
         Write-Host "    Preview: $($keyValue.Substring(0, [Math]::Min(30, $keyValue.Length)))..."
-        
+
         # Check if it matches
         if ($keyValue -eq $SUPABASE_ANON_KEY) {
             Write-Host "    ✓ Matches diagnostic key" -ForegroundColor Green
         } else {
             Write-Host "    ⚠ Different from diagnostic key" -ForegroundColor Yellow
         }
-        
+
         # Check for common issues
         if ($keyValue.StartsWith('"') -or $keyValue.EndsWith('"')) {
             Write-Host "    ⚠ WARNING: Key has quotes! Remove quotes from .env.local" -ForegroundColor Red
@@ -212,7 +212,7 @@ if (Test-Path $envFile) {
     } else {
         Write-Host "  NEXT_PUBLIC_SUPABASE_ANON_KEY: MISSING" -ForegroundColor Red
     }
-    
+
 } else {
     Write-Host "  .env.local: " -NoNewline
     Write-Host "NOT FOUND" -ForegroundColor Red
@@ -231,7 +231,7 @@ if (Test-Path ".next") {
     $cacheAge = (Get-Date) - (Get-Item ".next").LastWriteTime
     Write-Host "  .next folder: EXISTS" -ForegroundColor Yellow
     Write-Host "  Last modified: $([Math]::Floor($cacheAge.TotalHours))h $($cacheAge.Minutes)m ago"
-    
+
     if ($cacheAge.TotalMinutes -gt 30) {
         Write-Host "  WARNING: Cache may be stale. Consider deleting:" -ForegroundColor Yellow
         Write-Host "    Remove-Item -Recurse -Force .next" -ForegroundColor Cyan
@@ -274,8 +274,8 @@ Write-Host "   • Email not confirmed → Check Supabase Auth settings (may req
 Write-Host "   • Stale cache → Delete .next folder and restart dev server" -ForegroundColor Gray
 Write-Host ""
 Write-Host "2. Password Reset Fails:" -ForegroundColor White
-Write-Host "   • SMTP not configured → Enable Supabase email OR configure Resend SMTP" -ForegroundColor Gray
-Write-Host "   • Domain not verified → Verify domain in Resend dashboard" -ForegroundColor Gray
+Write-Host "   • SMTP not configured → Configure Zoho Mail SMTP (EMAIL_HOST, EMAIL_USER, EMAIL_PASSWORD)" -ForegroundColor Gray
+Write-Host "   • Domain not verified → Verify domain in Zoho Mail settings" -ForegroundColor Gray
 Write-Host ""
 Write-Host "3. Environment Variables:" -ForegroundColor White
 Write-Host "   • Check .env.local exists and has correct values" -ForegroundColor Gray
