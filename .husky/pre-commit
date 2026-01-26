@@ -1,1 +1,24 @@
-npm run lint && npm run typecheck
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Pre-commit hook: Run lint and typecheck before allowing commit
+# This prevents committing code with TypeScript or linting errors
+
+echo "🔍 Running pre-commit checks..."
+
+# Run linting
+echo "📝 Running ESLint..."
+npm run lint || {
+  echo "❌ ESLint failed. Fix errors or use --no-verify to skip."
+  exit 1
+}
+
+# Run type checking
+echo "🔷 Running TypeScript type check..."
+npm run typecheck || {
+  echo "❌ TypeScript check failed. Fix errors or use --no-verify to skip."
+  exit 1
+}
+
+echo "✅ Pre-commit checks passed!"
+exit 0
