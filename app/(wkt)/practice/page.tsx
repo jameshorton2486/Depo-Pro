@@ -4,7 +4,7 @@
 // WKT PRACTICE MODE
 // ═══════════════════════════════════════════════════════════════
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,9 @@ import { Switch } from '@/components/ui/switch';
 import { Filter, CheckCircle2, XCircle } from 'lucide-react';
 import type { WKTQuestion, WKTCategory } from '@/types/wkt';
 import { CATEGORY_INFO } from '@/types/wkt';
+import { PracticeSkeleton, QuestionSkeleton } from '@/components/wkt/loading-skeleton';
+import { ErrorMessage } from '@/components/wkt/error-message';
+import { NoQuestionsFound } from '@/components/wkt/empty-state';
 
 type PracticeResult = {
   correct: boolean;
@@ -39,43 +42,43 @@ export default function PracticePage() {
   });
   const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadQuestions = useCallback(async (isMountedRef: { current: boolean }) => {
+    setIsLoading(true);
+    setError(null);
 
-    async function loadQuestions() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch('/api/wkt/questions/random?count=10');
-        if (!response.ok) {
-          throw new Error('Failed to load questions');
-        }
-        const data = await response.json();
-        if (isMounted) {
-          setQuestions(Array.isArray(data.questions) ? data.questions : []);
-          setCurrentIndex(0);
-          setSelectedAnswer(null);
-          setIsSubmitted(false);
-          setIsCorrect(null);
-          setResult(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load questions');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+    try {
+      const response = await fetch('/api/wkt/questions/random?count=10');
+      if (!response.ok) {
+        throw new Error('Failed to load questions');
+      }
+      const data = await response.json();
+      if (isMountedRef.current) {
+        setQuestions(Array.isArray(data.questions) ? data.questions : []);
+        setCurrentIndex(0);
+        setSelectedAnswer(null);
+        setIsSubmitted(false);
+        setIsCorrect(null);
+        setResult(null);
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load questions');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
       }
     }
-
-    loadQuestions();
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    const isMountedRef = { current: true };
+
+    loadQuestions(isMountedRef);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadQuestions]);
 
   const currentQuestion = questions[currentIndex];
   const categoryInfo = currentQuestion ? CATEGORY_INFO[currentQuestion.category] : null;
@@ -135,6 +138,14 @@ export default function PracticePage() {
       difficulty: 'all',
       missedOnly: false,
     });
+  }
+
+  if (isLoading && questions.length === 0) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <PracticeSkeleton />
+      </div>
+    );
   }
 
   return (
@@ -249,129 +260,144 @@ export default function PracticePage() {
           {/* Progress */}
           <div className="mb-6">
             <p className="text-sm text-muted-foreground">
-              {isLoading ? 'Loading questions...' : `Question ${currentIndex + 1} of ${questions.length}`}
+              {isLoading
+                ? 'Loading questions...'
+                : `Question ${currentIndex + 1} of ${questions.length}`}
             </p>
           </div>
 
           {/* Question Card */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl">
-                  {currentQuestion?.question_text || 'No questions available'}
-                </CardTitle>
-                {categoryInfo && (
-                  <Badge
-                    style={{
-                      backgroundColor: `var(--${categoryInfo.color}-500)`,
-                      color: 'white',
-                    }}
-                  >
-                    {categoryInfo.label}
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isLoading ? (
-                <div className="text-muted-foreground">Loading questions...</div>
-              ) : error ? (
-                <div className="text-sm text-red-500">{error}</div>
-              ) : !currentQuestion ? (
-                <div className="text-muted-foreground">No questions found.</div>
-              ) : !isSubmitted ? (
-                <>
-                  <RadioGroup
-                    value={selectedAnswer || ''}
-                    onValueChange={setSelectedAnswer}
-                  >
-                    {currentQuestion.options?.map((option, idx) => (
-                      <div key={idx} className="flex items-center space-x-2">
-                        <RadioGroupItem
-                          value={option}
-                          id={`option-${idx}`}
-                        />
-                        <Label
-                          htmlFor={`option-${idx}`}
-                          className="flex-1 cursor-pointer text-lg"
-                        >
-                          {String.fromCharCode(65 + idx)}. {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+          {isLoading ? (
+            <QuestionSkeleton />
+          ) : error ? (
+            <ErrorMessage
+              message={error}
+              onRetry={() => loadQuestions({ current: true })}
+            />
+          ) : !currentQuestion ? (
+            <NoQuestionsFound
+              onAction={() => {
+                resetFilters();
+                loadQuestions({ current: true });
+              }}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-2xl">
+                    {currentQuestion.question_text}
+                  </CardTitle>
+                  {categoryInfo && (
+                    <Badge
+                      style={{
+                        backgroundColor: `var(--${categoryInfo.color}-500)`,
+                        color: 'white',
+                      }}
+                    >
+                      {categoryInfo.label}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {!isSubmitted ? (
+                  <>
+                    <RadioGroup
+                      value={selectedAnswer || ''}
+                      onValueChange={setSelectedAnswer}
+                    >
+                      {currentQuestion.options?.map((option, idx) => (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <RadioGroupItem
+                            value={option}
+                            id={`option-${idx}`}
+                          />
+                          <Label
+                            htmlFor={`option-${idx}`}
+                            className="flex-1 cursor-pointer text-lg"
+                          >
+                            {String.fromCharCode(65 + idx)}. {option}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
 
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!selectedAnswer || isSubmitting}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit Answer'}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div
-                    className={`flex items-center gap-2 p-4 rounded-lg ${
-                      isCorrect
-                        ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
-                    }`}
-                  >
-                    {isCorrect ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    )}
-                    <span
-                      className={`font-medium ${
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!selectedAnswer || isSubmitting}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isSubmitting ? 'Submitting...' : 'Submit Answer'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className={`flex items-center gap-2 p-4 rounded-lg ${
                         isCorrect
-                          ? 'text-green-800 dark:text-green-200'
-                          : 'text-red-800 dark:text-red-200'
+                          ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
+                          : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
                       }`}
                     >
-                      {isCorrect ? 'Correct!' : 'Incorrect'}
-                    </span>
-                  </div>
-
-                  {!isCorrect && result?.correctAnswer && (
-                    <div className="p-4 bg-muted rounded-lg">
-                      <p className="font-medium mb-1">Correct Answer:</p>
-                      <p>{result.correctAnswer}</p>
+                      {isCorrect ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      )}
+                      <span
+                        className={`font-medium ${
+                          isCorrect
+                            ? 'text-green-800 dark:text-green-200'
+                            : 'text-red-800 dark:text-red-200'
+                        }`}
+                      >
+                        {isCorrect ? 'Correct!' : 'Incorrect'}
+                      </span>
                     </div>
-                  )}
 
-                  {(result?.explanation || currentQuestion.explanation) && (
-                    <div className="p-4 bg-muted rounded-lg">
-                      <p className="font-medium mb-1">Explanation:</p>
-                      <p>{result?.explanation || currentQuestion.explanation}</p>
-                    </div>
-                  )}
+                    {!isCorrect && result?.correctAnswer && (
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="font-medium mb-1">Correct Answer:</p>
+                        <p>{result.correctAnswer}</p>
+                      </div>
+                    )}
 
-                  {currentIndex < questions.length - 1 ? (
-                    <Button onClick={handleNext} className="w-full" size="lg">
-                      Next Question
-                    </Button>
-                  ) : (
-                    <div className="text-center space-y-2">
-                      <p className="text-muted-foreground">
-                        You've completed all questions!
-                      </p>
-                      <Button variant="outline" onClick={() => {
-                        setCurrentIndex(0);
-                        setSelectedAnswer(null);
-                        setIsSubmitted(false);
-                        setIsCorrect(null);
-                      }}>
-                        Start Over
+                    {(result?.explanation || currentQuestion.explanation) && (
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="font-medium mb-1">Explanation:</p>
+                        <p>{result?.explanation || currentQuestion.explanation}</p>
+                      </div>
+                    )}
+
+                    {currentIndex < questions.length - 1 ? (
+                      <Button onClick={handleNext} className="w-full" size="lg">
+                        Next Question
                       </Button>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+                    ) : (
+                      <div className="text-center space-y-2">
+                        <p className="text-muted-foreground">
+                          You've completed all questions!
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setCurrentIndex(0);
+                            setSelectedAnswer(null);
+                            setIsSubmitted(false);
+                            setIsCorrect(null);
+                          }}
+                        >
+                          Start Over
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
