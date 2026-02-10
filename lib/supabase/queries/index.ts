@@ -1,94 +1,23 @@
-// ═══════════════════════════════════════════════════════════════
-// QUERY LAYER INDEX
-// lib/supabase/queries/index.ts
-// ═══════════════════════════════════════════════════════════════
-// Central export point for all query functions
+/**
+ * Query Layer Index for Depo-Pro v1.3
+ *
+ * Centralized exports for all query functions
+ */
 
-// Jobs
-export {
-  getJobById,
-  getJobForAccessCheck,
-  getJobWithAssignments,
-  updateJob,
-  updateJobStatus,
-  deleteJob,
-  listJobs,
-  createJob,
-  isUserAssignedToJob,
-} from './jobs';
+// Job queries
+export * from './jobs';
 
-// Cases
-export {
-  listCases,
-  getCaseById,
-  createCaseWithInitialJob,
-} from './cases';
+// Transcription queries
+export * from './transcriptions';
 
-export type { CaseFilter, CaseSort } from './cases';
+// Flagged word queries
+export * from './flagged-words';
 
-// Transcripts
-export {
-  getTranscriptForExport,
-  getTranscriptEdits,
-} from './transcripts';
+// Lock queries
+export * from './locks';
 
-// Notes
-export {
-  listNotesForJob,
-  getNoteById,
-  createNote,
-  updateNote,
-  deleteNote,
-} from './notes';
+// Share queries
+export * from './shares';
 
-// Files
-export {
-  getFileById,
-  listFilesForJob,
-  createFile,
-  updateFile,
-  deleteFile,
-} from './files';
-
-// Calendar
-export {
-  listCalendarEvents,
-  getCalendarEventById,
-  getCalendarEventByJobId,
-  createCalendarEvent,
-  updateCalendarEvent,
-  deleteCalendarEvent,
-} from './calendar';
-
-// Admin
-export {
-  listUsers,
-  getUserById,
-  updateUserRole,
-} from './admin';
-
-// Audit
-export {
-  createAuditLog,
-  listAuditLogs,
-} from './audit';
-
-// Users (non-admin user queries)
-export * from './users';
-
-// Proper Nouns
-export {
-  getProperNounsByJob,
-  getProperNounById,
-  createProperNoun,
-  updateProperNoun,
-  deleteProperNoun,
-  getOrCreateCsrRecordId,
-  bulkDeleteProperNouns,
-} from './proper-nouns';
-
-// Exhibits
-export * from './exhibits';
-
-// Billing
-export * from './billing';
+// Vocabulary queries
+export * from './vocabulary';

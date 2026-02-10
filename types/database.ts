@@ -39,7 +39,8 @@ export type JobStatus =
   | 'SCOPIST_COMPLETE'
   | 'REVIEW_COMPLETE'
   | 'COMPLETED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'FAILED';
 
 export type FileType =
   | 'AUDIO'
@@ -619,6 +620,7 @@ export const JobStatus = {
   REVIEW_COMPLETE: 'REVIEW_COMPLETE',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
+  FAILED: 'FAILED',
 } as const
 
 export const DepositionNoteType = {
@@ -660,52 +662,3 @@ export const Role = {
 } as const;
 
 export type RoleType = typeof Role[keyof typeof Role];
-
-// Prisma-compatible type definitions
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export namespace Prisma {
-  export type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
-  export type JsonObject = { [key: string]: JsonValue };
-  export type JsonArray = JsonValue[];
-  export type InputJsonValue = string | number | boolean | null | InputJsonObject | InputJsonArray;
-  export type InputJsonObject = { [key: string]: InputJsonValue };
-  export type InputJsonArray = InputJsonValue[];
-  export const JsonNull = null;
-  export const DbNull = null;
-
-  export type CaseWhereInput = Record<string, any>;
-  export type JobWhereInput = Record<string, any>;
-  export type UserWhereInput = Record<string, any>;
-  export type TranscriptWhereInput = Record<string, any>;
-
-  export type CaseOrderByWithRelationInput = Record<string, 'asc' | 'desc'>;
-  export type JobOrderByWithRelationInput = Record<string, 'asc' | 'desc'>;
-  export type UserOrderByWithRelationInput = Record<string, 'asc' | 'desc'>;
-
-  export type JobCreateInput = Record<string, any>;
-  export type JobFileCreateInput = Record<string, any>;
-  export type TranscriptCreateInput = Record<string, any>;
-  export type TranscriptTokenCreateInput = Record<string, any>;
-  export type UserUpdateInput = Record<string, any>;
-  export type CalendarEventCreateInput = Record<string, any>;
-  export type EventParticipantCreateInput = Record<string, any>;
-  export type CalendarAuditLogUncheckedCreateInput = Record<string, any>;
-
-  export type TransactionClient = any;
-  export type TransactionIsolationLevel = 'ReadUncommitted' | 'ReadCommitted' | 'RepeatableRead' | 'Serializable';
-  export type PrismaClientOptions = Record<string, any>;
-
-  export class PrismaClientKnownRequestError extends Error {
-    code: string;
-    constructor(message: string, { code }: { code: string }) {
-      super(message);
-      this.code = code;
-    }
-  }
-
-  export class PrismaClientValidationError extends Error {}
-}
-
-export class PrismaClient {
-  [key: string]: any;
-}

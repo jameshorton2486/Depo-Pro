@@ -325,12 +325,36 @@ export async function updateTranscriptStatus(
  * Lock transcript (stub - implement with actual locking table)
  */
 export async function lockTranscript(
-  _supabase: SupabaseClient,
-  _transcriptId: string,
-  _userId: string
+  supabase: SupabaseClient,
+  transcriptId: string,
+  userId: string
 ) {
-  // TODO: Implement actual locking mechanism
-  // For now, just return success
+  const { data: transcript, error: fetchError } = await supabase
+    .from('transcriptions')
+    .select('id, locked_by')
+    .eq('id', transcriptId)
+    .single();
+
+  if (fetchError) {
+    return { success: false, error: fetchError.message };
+  }
+
+  if (transcript.locked_by && transcript.locked_by !== userId) {
+    return { success: false, error: 'Transcript is already locked by another user' };
+  }
+
+  const { error } = await supabase
+    .from('transcriptions')
+    .update({
+      locked_by: userId,
+      locked_at: new Date().toISOString(),
+    })
+    .eq('id', transcriptId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
   return { success: true };
 }
 
@@ -338,11 +362,22 @@ export async function lockTranscript(
  * Unlock transcript (stub - implement with actual locking table)
  */
 export async function unlockTranscript(
-  _supabase: SupabaseClient,
-  _transcriptId: string
+  supabase: SupabaseClient,
+  transcriptId: string
 ) {
-  // TODO: Implement actual unlocking mechanism
-  // For now, just return success
+  const { error } = await supabase
+    .from('transcriptions')
+    .update({
+      locked_by: null,
+      locked_at: null,
+      lock_reason: null,
+    })
+    .eq('id', transcriptId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
   return { success: true };
 }
 

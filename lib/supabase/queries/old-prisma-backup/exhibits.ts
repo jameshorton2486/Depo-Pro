@@ -98,7 +98,7 @@ export async function createExhibit(
   supabase: SupabaseClient,
   exhibitData: {
     case_id: string;
-    job_id: string;
+    job_id: string | null;
     exhibit_label: string;
     exhibit_number: number;
     description: string;
