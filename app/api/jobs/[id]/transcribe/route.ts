@@ -12,6 +12,7 @@ import { JobType, TranscriptionJobPayload as _TranscriptionJobPayload } from '@/
 import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
 import type { AudioProcessingMode } from '@/lib/services/audio-enhancement-service';
+import { processTranscriptionJob } from '@/lib/transcription/pipeline';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -167,30 +168,21 @@ export async function POST(
     // Update job status to TRANSCRIBING
     await updateJobStatus(supabase, jobId, 'TRANSCRIBING');
 
-    // Enqueue transcription job with enhanced audio URL (or original if enhancement failed)
+    // Determine audio URL for transcription (enhanced or original)
     const audioUrlForTranscription = enhancementResult.success && enhancementResult.enhancedFileUrl
       ? enhancementResult.enhancedFileUrl
       : audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath;
 
-    await enqueueJob(
-      JobType.TRANSCRIPTION_PROCESS,
-      {
-        jobId,
-        audioFileUrl: audioUrlForTranscription,
-        firmId: jobFirmId || '',
-        userId: user.id,
-        options: {
-          language: 'en',
-          diarize: true,
-          punctuate: true,
-          modelPreference,
-        },
-      }
-    );
+    // Start transcription pipeline (async, fire and forget)
+    setImmediate(() => {
+      processTranscriptionJob(jobId, audioUrlForTranscription).catch((error) => {
+        console.error(`Pipeline error for job ${jobId}:`, error);
+      });
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Transcription queued successfully',
+      message: 'Transcription started successfully',
       jobId,
       modelPreference,
       processingMode,
