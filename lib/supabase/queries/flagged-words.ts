@@ -188,8 +188,6 @@ export async function bulkUpdateFlaggedWords(
     review_notes?: string | null;
   }>
 ) {
-  const supabase = await createClient();
-
   const promises = updates.map((update) =>
     updateFlaggedWord(update.id, update)
   );
