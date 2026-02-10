@@ -317,3 +317,85 @@ export async function getJobStats(firmId: string) {
 
   return { data: stats, error: null };
 }
+
+/**
+ * Get assignment by ID (stub for legacy code)
+ */
+export async function getAssignmentById(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  // Assignments are now just scopist_id on jobs table
+  // Return null as this is legacy
+  return isOldPattern ? null : { data: null, error: new Error('Legacy assignment system not in v1.3') };
+}
+
+/**
+ * Update job assignment (stub for legacy code)
+ */
+export async function updateJobAssignment(
+  supabaseOrId: any,
+  idOrUpdates?: any,
+  maybeUpdates?: any
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  // Use assignScopist instead
+  return isOldPattern ? null : { data: null, error: new Error('Use assignScopist instead') };
+}
+
+/**
+ * Delete job assignment (stub for legacy code)
+ */
+export async function deleteJobAssignment(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  // Set scopist_id to null on job
+  return isOldPattern ? null : { data: null, error: new Error('Use updateJob to set scopist_id to null') };
+}
+
+/**
+ * Get job for access check (wrapper around getJobById)
+ */
+export async function getJobForAccessCheck(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  return getJobById(supabaseOrId, maybeId);
+}
+
+/**
+ * Check if user is assigned to job
+ */
+export async function isUserAssignedToJob(
+  supabaseOrJobId: any,
+  jobIdOrUserId?: string,
+  maybeUserId?: string
+): Promise<boolean> {
+  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
+
+  let supabase: any;
+  let jobId: string;
+  let userId: string;
+
+  if (isOldPattern) {
+    supabase = supabaseOrJobId;
+    jobId = jobIdOrUserId as string;
+    userId = maybeUserId as string;
+  } else {
+    supabase = await createClient();
+    jobId = supabaseOrJobId;
+    userId = jobIdOrUserId as string;
+  }
+
+  const { data: job } = await supabase
+    .from('jobs')
+    .select('reporter_id, scopist_id')
+    .eq('id', jobId)
+    .single();
+
+  if (!job) return false;
+  return job.reporter_id === userId || job.scopist_id === userId;
+}

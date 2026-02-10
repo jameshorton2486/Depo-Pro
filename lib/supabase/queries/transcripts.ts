@@ -1,0 +1,92 @@
+/**
+ * Transcripts Query Layer for Depo-Pro v1.3
+ *
+ * Handles transcript queries (legacy compatibility layer)
+ * NOTE: In v1.3, transcripts table is replaced by transcriptions table
+ */
+
+import { createClient } from '@/lib/supabase/server';
+
+/**
+ * Get transcript by ID (legacy - maps to transcriptions)
+ */
+export async function getTranscriptById(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  const supabase = isOldPattern ? supabaseOrId : await createClient();
+  const id = isOldPattern ? maybeId : supabaseOrId;
+
+  const result = await supabase
+    .from('transcriptions')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  return isOldPattern ? result.data : result;
+}
+
+/**
+ * Get transcript for export
+ */
+export async function getTranscriptForExport(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  return getTranscriptById(supabaseOrId, maybeId);
+}
+
+/**
+ * Get transcript edits
+ */
+export async function getTranscriptEdits(
+  supabaseOrTranscriptId: any,
+  maybeTranscriptId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrTranscriptId === 'object' && supabaseOrTranscriptId.from;
+  const supabase = isOldPattern ? supabaseOrTranscriptId : await createClient();
+  const transcriptId = isOldPattern ? maybeTranscriptId : supabaseOrTranscriptId;
+
+  const result = await supabase
+    .from('transcription_edits')
+    .select('*')
+    .eq('transcription_id', transcriptId)
+    .order('created_at', { ascending: false });
+
+  return isOldPattern ? result.data : result;
+}
+
+/**
+ * Update transcript (legacy - maps to transcriptions)
+ */
+export async function updateTranscript(
+  supabaseOrId: any,
+  idOrUpdates?: string | Record<string, any>,
+  maybeUpdates?: Record<string, any>
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+
+  let supabase: any;
+  let id: string;
+  let updates: Record<string, any>;
+
+  if (isOldPattern) {
+    supabase = supabaseOrId;
+    id = idOrUpdates as string;
+    updates = maybeUpdates as Record<string, any>;
+  } else {
+    supabase = await createClient();
+    id = supabaseOrId;
+    updates = idOrUpdates as Record<string, any>;
+  }
+
+  const result = await supabase
+    .from('transcriptions')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  return isOldPattern ? result.data : result;
+}
