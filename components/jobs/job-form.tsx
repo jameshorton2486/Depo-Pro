@@ -216,12 +216,12 @@ export function JobForm({ initialData, mode }: JobFormProps) {
           <p className="text-sm text-gray-500">
             Select how audio files should be processed. This choice cannot be changed once processing begins.
           </p>
-          
+
           <div className="space-y-3">
-            <label 
+            <label
               className={`flex items-start gap-4 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                audioProcessingModeValue === AudioProcessingMode.AUTOMATED 
-                  ? 'border-blue-500 bg-blue-50' 
+                audioProcessingModeValue === AudioProcessingMode.AUTOMATED
+                  ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -245,10 +245,10 @@ export function JobForm({ initialData, mode }: JobFormProps) {
               </div>
             </label>
 
-            <label 
+            <label
               className={`flex items-start gap-4 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                audioProcessingModeValue === AudioProcessingMode.MANUAL_RX 
-                  ? 'border-blue-500 bg-blue-50' 
+                audioProcessingModeValue === AudioProcessingMode.MANUAL_RX
+                  ? 'border-blue-500 bg-blue-50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -272,7 +272,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
               </div>
             </label>
           </div>
-          
+
           {errors.audioProcessingMode && (
             <p className="text-sm text-red-600 mt-1">{errors.audioProcessingMode.message}</p>
           )}

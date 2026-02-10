@@ -11,7 +11,9 @@
       "Bash(git rm:*)",
       "Bash(npx supabase:*)",
       "Bash(npm run typecheck:*)",
-      "Bash(powershell -Command \"Get-ChildItem -Path app -Include *.ts,*.tsx -Recurse | Where-Object { $_FullName -notmatch ''old-prisma-backup'' } | ForEach-Object { \\(Get-Content $_FullName -Raw\\) -replace ''\\\\.created_by_id'', ''.reporter_id'' | Set-Content $_FullName -NoNewline }\")"
+      "Bash(powershell -Command \"Get-ChildItem -Path app -Include *.ts,*.tsx -Recurse | Where-Object { $_FullName -notmatch ''old-prisma-backup'' } | ForEach-Object { \\(Get-Content $_FullName -Raw\\) -replace ''\\\\.created_by_id'', ''.reporter_id'' | Set-Content $_FullName -NoNewline }\")",
+      "Bash(Select-String \"error TS\")",
+      "Bash(Measure-Object)"
     ]
   }
 }

@@ -91,7 +91,7 @@ export function Navbar({ user: userProp }: NavbarProps) {
             >
               Calendar
             </Link>
-            {user.role === Role.REPORTER && (
+            {user.role === Role.COURT_REPORTER && (
               <Link
                 href="/calendar/availability"
                 className={`text-sm font-medium transition-colors hover:text-[var(--color-primary)] ${
@@ -137,7 +137,7 @@ export function Navbar({ user: userProp }: NavbarProps) {
                 </Link>
               </>
             )}
-            {(user.role === Role.REPORTER || user.role === Role.AGENCY || user.role === Role.ADMIN) && (
+            {(user.role === Role.COURT_REPORTER || user.role === Role.ADMIN) && (
               <Link
                 href="/cases/new"
                 className={`text-sm font-medium transition-colors hover:text-[var(--color-primary)] ${
@@ -147,7 +147,7 @@ export function Navbar({ user: userProp }: NavbarProps) {
                 New Case
               </Link>
             )}
-            {(user.role === Role.AGENCY || user.role === Role.ADMIN) && (
+            {(user.role === Role.ADMIN) && (
               <Link
                 href="/calendar/requests"
                 className={`text-sm font-medium transition-colors hover:text-[var(--color-primary)] ${
