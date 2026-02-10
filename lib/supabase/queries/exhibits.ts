@@ -66,3 +66,13 @@ export async function deleteExhibit(
   const error = new Error('Exhibits feature not available in v1.3');
   return isOldPattern ? null : { data: null, error };
 }
+
+/**
+ * List exhibits by case (alias for listExhibitsByJob - cases merged into jobs in v1.3)
+ */
+export async function listExhibitsByCase(
+  supabaseOrCaseId: any,
+  maybeCaseId?: string
+): Promise<any[]> {
+  return listExhibitsByJob(supabaseOrCaseId, maybeCaseId);
+}

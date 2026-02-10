@@ -8,6 +8,24 @@
 import { createClient } from '@/lib/supabase/server';
 
 /**
+ * Case filter type (legacy)
+ */
+export type CaseFilter = {
+  firm_id?: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+};
+
+/**
+ * Case sort type (legacy)
+ */
+export type CaseSort = {
+  field: string;
+  order: 'asc' | 'desc';
+};
+
+/**
  * List cases (maps to jobs with case info)
  */
 export async function listCases(

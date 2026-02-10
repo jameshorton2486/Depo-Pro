@@ -61,3 +61,35 @@ export async function getFileDownloadUrl(
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
 }
+
+/**
+ * Get file with job (stub)
+ */
+export async function getFileWithJob(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
+}
+
+/**
+ * List files for job (alias for listFilesByJob)
+ */
+export async function listFilesForJob(
+  supabaseOrJobId: any,
+  maybeJobId?: string
+): Promise<any> {
+  return listFilesByJob(supabaseOrJobId, maybeJobId);
+}
+
+/**
+ * Create file (stub)
+ */
+export async function createFile(
+  supabaseOrData: any,
+  maybeData?: any
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
+  return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
+}

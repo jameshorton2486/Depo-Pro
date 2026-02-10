@@ -90,3 +90,56 @@ export async function updateTranscript(
 
   return isOldPattern ? result.data : result;
 }
+
+/**
+ * Get transcript by job ID (alias for getTranscriptById)
+ */
+export async function getTranscriptByJobId(
+  supabaseOrJobId: any,
+  maybeJobId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
+  const supabase = isOldPattern ? supabaseOrJobId : await createClient();
+  const jobId = isOldPattern ? maybeJobId : supabaseOrJobId;
+
+  const result = await supabase
+    .from('transcriptions')
+    .select('*')
+    .eq('job_id', jobId)
+    .single();
+
+  return isOldPattern ? result.data : result;
+}
+
+/**
+ * Get transcript annotations (stub)
+ */
+export async function getTranscriptAnnotations(
+  supabaseOrTranscriptId: any,
+  maybeTranscriptId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrTranscriptId === 'object' && supabaseOrTranscriptId.from;
+  return isOldPattern ? [] : { data: [], error: new Error('Annotations feature not in v1.3') };
+}
+
+/**
+ * Create transcript annotation (stub)
+ */
+export async function createTranscriptAnnotation(
+  supabaseOrData: any,
+  maybeData?: any
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
+  return isOldPattern ? null : { data: null, error: new Error('Annotations feature not in v1.3') };
+}
+
+/**
+ * Delete transcript annotation (stub)
+ */
+export async function deleteTranscriptAnnotation(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  return isOldPattern ? null : { data: null, error: new Error('Annotations feature not in v1.3') };
+}

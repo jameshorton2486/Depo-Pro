@@ -399,3 +399,42 @@ export async function isUserAssignedToJob(
   if (!job) return false;
   return job.reporter_id === userId || job.scopist_id === userId;
 }
+
+/**
+ * Get job with assignments (legacy - v1.3 has scopist_id directly on job)
+ */
+export async function getJobWithAssignments(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  // Just call getJobById - scopist is already included
+  return getJobById(supabaseOrId, maybeId);
+}
+
+/**
+ * Delete job
+ */
+export async function deleteJob(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+
+  let supabase: any;
+  let id: string;
+
+  if (isOldPattern) {
+    supabase = supabaseOrId;
+    id = maybeId as string;
+  } else {
+    supabase = await createClient();
+    id = supabaseOrId;
+  }
+
+  const result = await supabase
+    .from('jobs')
+    .delete()
+    .eq('id', id);
+
+  return isOldPattern ? result.data : result;
+}

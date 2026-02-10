@@ -119,3 +119,49 @@ export async function validateEventMove(
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   return isOldPattern ? { valid: false } : { data: { valid: false }, error: null };
 }
+
+/**
+ * Get calendar event notes (stub)
+ */
+export async function getCalendarEventNotes(
+  supabaseOrId: any,
+  maybeId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  return isOldPattern ? [] : { data: [], error: null };
+}
+
+/**
+ * Add note to calendar event (stub)
+ */
+export async function addNoteToCalendarEvent(
+  supabaseOrId: any,
+  idOrNote?: any,
+  maybeNote?: any
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+}
+
+/**
+ * Reschedule calendar event (stub)
+ */
+export async function rescheduleCalendarEvent(
+  supabaseOrId: any,
+  idOrData?: any,
+  maybeData?: any
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+}
+
+/**
+ * Get calendar event by job ID (stub)
+ */
+export async function getCalendarEventByJobId(
+  supabaseOrJobId: any,
+  maybeJobId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
+  return isOldPattern ? null : { data: null, error: null };
+}

@@ -62,3 +62,13 @@ export async function deleteNote(
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
 }
+
+/**
+ * List notes for job (alias for listNotesByJob)
+ */
+export async function listNotesForJob(
+  supabaseOrJobId: any,
+  maybeJobId?: string
+): Promise<any> {
+  return listNotesByJob(supabaseOrJobId, maybeJobId);
+}
