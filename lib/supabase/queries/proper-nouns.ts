@@ -72,3 +72,36 @@ export async function deleteProperNoun(
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
 }
+
+/**
+ * Get proper nouns by job (alias for listProperNounsByJob)
+ */
+export async function getProperNounsByJob(
+  supabaseOrJobId: any,
+  jobIdOrOptions?: string | any,
+  maybeOptions?: any
+): Promise<any> {
+  return listProperNounsByJob(supabaseOrJobId, jobIdOrOptions, maybeOptions);
+}
+
+/**
+ * Get or create CSR record ID (stub)
+ */
+export async function getOrCreateCsrRecordId(
+  supabaseOrJobId: any,
+  maybeJobId?: string
+): Promise<string | null> {
+  // Stub - return null
+  return null;
+}
+
+/**
+ * Bulk delete proper nouns (stub)
+ */
+export async function bulkDeleteProperNouns(
+  supabaseOrIds: any,
+  maybeIds?: string[]
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrIds === 'object' && supabaseOrIds.from;
+  return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
+}

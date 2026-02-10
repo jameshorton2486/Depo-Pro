@@ -13,6 +13,60 @@ type JobInsert = Database['public']['Tables']['jobs']['Insert'];
 type JobUpdate = Database['public']['Tables']['jobs']['Update'];
 
 /**
+ * List jobs with optional filters
+ * Supports: listJobs(supabase, filters) or listJobs(filters)
+ */
+export async function listJobs(
+  supabaseOrFilters?: any,
+  maybeFilters?: any
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrFilters === 'object' && supabaseOrFilters.from;
+
+  let supabase: any;
+  let filters: any;
+
+  if (isOldPattern) {
+    supabase = supabaseOrFilters;
+    filters = maybeFilters || {};
+  } else {
+    supabase = await createClient();
+    filters = supabaseOrFilters || {};
+  }
+
+  let query = supabase
+    .from('jobs')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false });
+
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  if (filters.firm_id) {
+    query = query.eq('firm_id', filters.firm_id);
+  }
+
+  if (filters.reporter_id) {
+    query = query.eq('reporter_id', filters.reporter_id);
+  }
+
+  if (filters.scopist_id) {
+    query = query.eq('scopist_id', filters.scopist_id);
+  }
+
+  if (filters.limit) {
+    query = query.limit(filters.limit);
+  }
+
+  if (filters.offset) {
+    query = query.range(filters.offset, filters.offset + (filters.limit || 20) - 1);
+  }
+
+  const result = await query;
+  return isOldPattern ? result.data : result;
+}
+
+/**
  * Get job by ID with permission check
  * Supports both old and new calling patterns:
  * - New: getJobById(jobId) => { data, error }
