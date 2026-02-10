@@ -1,0 +1,689 @@
+// lib/transcription/pipeline.ts
+
+import { createHash } from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+import { validateAudio, extractAudioFromVideo } from './validate';
+import { chunkAudio, cleanupChunks, getAudioDuration, DEFAULT_CHUNKING_CONFIG } from './chunking';
+import { transcribeAudio, transcribeFile, DEFAULT_DEEPGRAM_OPTIONS } from './deepgram';
+import { reassembleChunks } from './reassemble';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+import type {
+  AudioChunk,
+  DeepgramResult,
+  ProcessedChunk,
+  TranscriptionPipelineStatus,
+  ChunkingConfig,
+  PipelineProgress,
+} from '@/types/transcription';
+
+/**
+ * Process a transcription job end-to-end.
+ *
+ * Pipeline stages:
+ *  1. VALIDATING    — Download audio, validate format/duration
+ *  2. CHUNKING      — Split long audio into 30-min chunks (if needed)
+ *  3. TRANSCRIBING  — Send each chunk to Deepgram Nova-3
+ *  4. REASSEMBLING  — Merge chunks, deduplicate overlaps
+ *  5. EXTRACTING_FLAGS — Identify low-confidence words
+ *  6. COMPLETE      — Update job status to AI_COMPLETE
+ *
+ * Each stage updates the transcription record status.
+ * On failure at any stage, sets PIPELINE_FAILED and logs the error.
+ * The pipeline is RESUMABLE: completed chunks are skipped on restart.
+ */
+export async function processTranscriptionJob(
+  jobId: string,
+  audioFileUrl: string
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  let tempDir: string | null = null;
+  let audioFilePath: string | null = null;
+  let chunks: AudioChunk[] = [];
+
+  try {
+    // --- STAGE 1: VALIDATING ---
+    await updateTranscriptionStatus(jobId, 'VALIDATING', 0);
+
+    // Download audio from Supabase Storage to temp file
+    tempDir = path.join(os.tmpdir(), `depo-pipeline-${jobId}-${Date.now()}`);
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    audioFilePath = await downloadAudioFromStorage(audioFileUrl, tempDir);
+
+    // Validate the audio file
+    const validation = await validateAudio(audioFilePath);
+    if (!validation.valid) {
+      throw new Error(`Audio validation failed: ${validation.error}`);
+    }
+
+    console.log(`Audio validated: ${validation.duration}s, ${validation.format}, ${validation.channels} channels`);
+
+    // If it's a video file, extract audio
+    const videoFormats = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+    if (videoFormats.includes(validation.format.toLowerCase())) {
+      console.log('Video format detected, extracting audio...');
+      audioFilePath = await extractAudioFromVideo(audioFilePath);
+    }
+
+    // Update job with audio metadata
+    await updateJobAudioMetadata(jobId, {
+      audio_duration_seconds: validation.duration,
+      audio_format: validation.format,
+    });
+
+    // --- STAGE 2: CHUNKING (if duration > 30 minutes) ---
+    const CHUNK_THRESHOLD = 1800; // 30 minutes
+
+    if (validation.duration > CHUNK_THRESHOLD) {
+      await updateTranscriptionStatus(jobId, 'CHUNKING', 5);
+      chunks = await chunkAudio(audioFilePath, DEFAULT_CHUNKING_CONFIG);
+      await createChunkRecords(jobId, chunks);
+      console.log(`Audio chunked into ${chunks.length} pieces`);
+    } else {
+      // Single file — treat as one "chunk"
+      chunks = [{
+        index: 0,
+        filePath: audioFilePath,
+        startSeconds: 0,
+        endSeconds: validation.duration,
+        overlapSeconds: 0,
+        durationSeconds: validation.duration,
+      }];
+      console.log('Audio fits in single chunk');
+    }
+
+    const totalChunks = chunks.length;
+
+    // --- STAGE 3: TRANSCRIBING ---
+    await updateTranscriptionStatus(jobId, 'TRANSCRIBING', 10);
+
+    // Get vocabulary keywords for this job
+    const keywords = await getVocabularyKeywords(jobId);
+
+    const processedChunks: ProcessedChunk[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+
+      console.log(`Processing chunk ${i + 1}/${totalChunks}...`);
+
+      // RESUMABILITY CHECK: skip already-completed chunks
+      const existingResult = await getChunkResult(jobId, i);
+      if (existingResult) {
+        console.log(`  Chunk ${i}/${totalChunks} already complete, skipping`);
+        processedChunks.push({
+          index: i,
+          result: existingResult,
+          audioStartSeconds: chunk.startSeconds,
+          overlapSeconds: chunk.overlapSeconds,
+        });
+        continue;
+      }
+
+      try {
+        // Read chunk audio into buffer
+        const audioBuffer = fs.readFileSync(chunk.filePath);
+
+        // Transcribe via Deepgram
+        const result = await transcribeAudio(audioBuffer, {
+          ...DEFAULT_DEEPGRAM_OPTIONS,
+          keywords,
+        });
+
+        // Store chunk result in database
+        await storeChunkResult(jobId, i, result);
+
+        processedChunks.push({
+          index: i,
+          result,
+          audioStartSeconds: chunk.startSeconds,
+          overlapSeconds: chunk.overlapSeconds,
+        });
+
+        // Update progress
+        const progress = 10 + Math.round(((i + 1) / totalChunks) * 60); // 10-70%
+        await updateTranscriptionStatus(jobId, 'TRANSCRIBING', progress, i + 1, totalChunks);
+
+      } catch (chunkError: any) {
+        console.error(`Chunk ${i} failed:`, chunkError.message);
+        await logProcessingError(jobId, `Chunk ${i} failed: ${chunkError.message}`);
+
+        // Mark this chunk as failed but continue to see if resumable
+        throw new Error(`Transcription failed at chunk ${i}/${totalChunks}: ${chunkError.message}`);
+      }
+    }
+
+    // --- STAGE 4: REASSEMBLING ---
+    await updateTranscriptionStatus(jobId, 'REASSEMBLING', 75);
+
+    let finalResult: {
+      words: any[];
+      segments: any[];
+      speakers: any[];
+      fullTranscript: string;
+      rawJson?: any;
+    };
+
+    if (processedChunks.length === 1) {
+      finalResult = {
+        ...processedChunks[0].result,
+        rawJson: processedChunks[0].result.rawJson,
+      };
+    } else {
+      const reassembled = await reassembleChunks(
+        processedChunks,
+        DEFAULT_CHUNKING_CONFIG.overlapSeconds
+      );
+      finalResult = {
+        ...reassembled,
+        rawJson: processedChunks.map(c => c.result.rawJson), // store all chunk responses
+      };
+    }
+
+    console.log(`Reassembly complete: ${finalResult.words.length} words total`);
+
+    // Compute integrity hash of original transcript
+    const integrityHash = createHash('sha256')
+      .update(finalResult.fullTranscript)
+      .digest('hex');
+
+    // Store final transcription in database
+    await storeTranscriptionResult(jobId, {
+      deepgram_raw_json: finalResult.rawJson,
+      original_transcript: finalResult.fullTranscript,
+      full_transcript: finalResult.fullTranscript,
+      original_integrity_hash: integrityHash,
+      words: finalResult.words,
+      segments: finalResult.segments,
+      speakers: finalResult.speakers,
+    });
+
+    // --- STAGE 5: EXTRACTING FLAGS ---
+    await updateTranscriptionStatus(jobId, 'EXTRACTING_FLAGS', 85);
+
+    // Extract flagged (low-confidence) words
+    await extractFlaggedWords(jobId, finalResult.words, 0.85);
+
+    // --- STAGE 6: COMPLETE ---
+    await updateTranscriptionStatus(jobId, 'COMPLETE', 100);
+
+    // Update job status to AI_COMPLETE
+    await updateJobStatus(jobId, 'AI_COMPLETE');
+
+    // Log audit event
+    await logAuditEvent(jobId, 'TRANSCRIPTION_COMPLETED');
+
+    console.log(`Pipeline complete for job ${jobId}`);
+
+  } catch (error: any) {
+    console.error(`Pipeline failed for job ${jobId}:`, error.message);
+
+    // Set failure status
+    await updateTranscriptionStatus(jobId, 'PIPELINE_FAILED', 0, null, null, error.message);
+    await updateJobStatus(jobId, 'FAILED');
+    await logProcessingError(jobId, error.message);
+
+  } finally {
+    // ALWAYS clean up temp files
+    if (chunks.length > 0) {
+      try {
+        await cleanupChunks(chunks);
+      } catch (cleanupError) {
+        console.error('Cleanup error:', cleanupError);
+      }
+    }
+
+    if (tempDir && fs.existsSync(tempDir)) {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch { /* ignore cleanup errors */ }
+    }
+  }
+}
+
+// === Helper Functions ===
+
+async function downloadAudioFromStorage(audioFileUrl: string, tempDir: string): Promise<string> {
+  const supabase = createAdminClient();
+
+  try {
+    // Extract storage path from URL
+    // audioFileUrl format: https://{project}.supabase.co/storage/v1/object/public/depo-audio/{path}
+    // OR just the path: depo-audio/{path}
+    let storagePath: string;
+
+    if (audioFileUrl.includes('supabase.co/storage')) {
+      const urlParts = audioFileUrl.split('/depo-audio/');
+      storagePath = urlParts[1] || audioFileUrl;
+    } else if (audioFileUrl.startsWith('depo-audio/')) {
+      storagePath = audioFileUrl.replace('depo-audio/', '');
+    } else {
+      storagePath = audioFileUrl;
+    }
+
+    console.log(`Downloading audio from storage: ${storagePath}`);
+
+    const { data, error } = await supabase.storage
+      .from('depo-audio')
+      .download(storagePath);
+
+    if (error) {
+      throw new Error(`Storage download error: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error('No data returned from storage');
+    }
+
+    // Convert Blob to Buffer
+    const buffer = Buffer.from(await data.arrayBuffer());
+
+    // Determine file extension from path
+    const ext = path.extname(storagePath) || '.mp3';
+    const outputPath = path.join(tempDir, `audio-original${ext}`);
+
+    // Write to temp file
+    fs.writeFileSync(outputPath, buffer);
+
+    console.log(`Audio downloaded: ${outputPath} (${buffer.length} bytes)`);
+
+    return outputPath;
+  } catch (error: any) {
+    throw new Error(`Failed to download audio: ${error.message}`);
+  }
+}
+
+async function updateTranscriptionStatus(
+  jobId: string,
+  status: TranscriptionPipelineStatus,
+  progress: number,
+  currentChunk: number | null = null,
+  totalChunks: number | null = null,
+  error: string | null = null
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  try {
+    // First, get or create transcription record
+    const { data: existing } = await supabase
+      .from('transcriptions')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+
+    if (existing) {
+      // Update existing
+      await supabase
+        .from('transcriptions')
+        .update({
+          status: status as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('job_id', jobId);
+    } else {
+      // Create new transcription record
+      await supabase
+        .from('transcriptions')
+        .insert({
+          job_id: jobId,
+          status: status as any,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+    }
+
+    console.log(`  Status: ${status} (${progress}%)`);
+  } catch (error: any) {
+    console.error('Failed to update transcription status:', error.message);
+  }
+}
+
+async function updateJobAudioMetadata(
+  jobId: string,
+  metadata: { audio_duration_seconds: number; audio_format: string }
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  await supabase
+    .from('jobs')
+    .update({
+      audio_duration_seconds: metadata.audio_duration_seconds,
+      audio_format: metadata.audio_format as any,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
+}
+
+async function createChunkRecords(jobId: string, chunks: AudioChunk[]): Promise<void> {
+  const supabase = createAdminClient();
+
+  // Get transcription ID
+  const { data: transcription } = await supabase
+    .from('transcriptions')
+    .select('id')
+    .eq('job_id', jobId)
+    .single();
+
+  if (!transcription) {
+    throw new Error('Transcription record not found');
+  }
+
+  const transcriptionId = transcription.id;
+
+  // Insert chunk records
+  const chunkRecords = chunks.map(chunk => ({
+    transcription_id: transcriptionId,
+    chunk_index: chunk.index,
+    audio_start_seconds: chunk.startSeconds,
+    audio_end_seconds: chunk.endSeconds,
+    overlap_seconds: chunk.overlapSeconds,
+    duration_seconds: chunk.durationSeconds,
+    status: 'PENDING' as any,
+  }));
+
+  await supabase
+    .from('transcription_chunks')
+    .insert(chunkRecords);
+
+  console.log(`Created ${chunkRecords.length} chunk records`);
+}
+
+async function getChunkResult(jobId: string, chunkIndex: number): Promise<DeepgramResult | null> {
+  const supabase = createAdminClient();
+
+  try {
+    // Get transcription ID
+    const { data: transcription } = await supabase
+      .from('transcriptions')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+
+    if (!transcription) {
+      return null;
+    }
+
+    // Get chunk record
+    const { data: chunk } = await supabase
+      .from('transcription_chunks')
+      .select('*')
+      .eq('transcription_id', transcription.id)
+      .eq('chunk_index', chunkIndex)
+      .eq('status', 'COMPLETE')
+      .single();
+
+    if (!chunk || !chunk.deepgram_response) {
+      return null;
+    }
+
+    // Reconstruct DeepgramResult from stored response
+    const rawJson = chunk.deepgram_response as any;
+    return rawJson as DeepgramResult;
+  } catch {
+    return null;
+  }
+}
+
+async function storeChunkResult(jobId: string, chunkIndex: number, result: DeepgramResult): Promise<void> {
+  const supabase = createAdminClient();
+
+  // Get transcription ID
+  const { data: transcription } = await supabase
+    .from('transcriptions')
+    .select('id')
+    .eq('job_id', jobId)
+    .single();
+
+  if (!transcription) {
+    throw new Error('Transcription record not found');
+  }
+
+  // Update chunk record
+  await supabase
+    .from('transcription_chunks')
+    .update({
+      deepgram_response: result as any,
+      word_count: result.words.length,
+      status: 'COMPLETE' as any,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('transcription_id', transcription.id)
+    .eq('chunk_index', chunkIndex);
+}
+
+async function getVocabularyKeywords(jobId: string): Promise<string[]> {
+  const supabase = createAdminClient();
+
+  try {
+    // Get job to find firm_id
+    const { data: job } = await supabase
+      .from('jobs')
+      .select('firm_id')
+      .eq('id', jobId)
+      .single();
+
+    if (!job) {
+      return [];
+    }
+
+    const keywords: string[] = [];
+
+    // Get job-specific vocabulary (if table exists)
+    try {
+      const { data: jobVocab } = await supabase
+        .from('job_vocabulary')
+        .select('term')
+        .eq('job_id', jobId);
+
+      if (jobVocab) {
+        keywords.push(...jobVocab.map((v: any) => v.term));
+      }
+    } catch {
+      // Table doesn't exist
+    }
+
+    // Get firm-wide vocabulary (if table exists)
+    try {
+      const { data: firmVocab } = await supabase
+        .from('firm_vocabulary')
+        .select('term')
+        .eq('firm_id', job.firm_id);
+
+      if (firmVocab) {
+        keywords.push(...firmVocab.map((v: any) => v.term));
+      }
+    } catch {
+      // Table doesn't exist
+    }
+
+    console.log(`Loaded ${keywords.length} vocabulary keywords`);
+    return keywords;
+  } catch {
+    return [];
+  }
+}
+
+async function storeTranscriptionResult(jobId: string, data: {
+  deepgram_raw_json: any;
+  original_transcript: string;
+  full_transcript: string;
+  original_integrity_hash: string;
+  words: any[];
+  segments: any[];
+  speakers: any[];
+}): Promise<void> {
+  const supabase = createAdminClient();
+
+  await supabase
+    .from('transcriptions')
+    .update({
+      deepgram_raw_json: data.deepgram_raw_json as any,
+      original_transcript: data.original_transcript,
+      full_transcript: data.full_transcript,
+      original_integrity_hash: data.original_integrity_hash,
+      current_integrity_hash: data.original_integrity_hash,
+      words: data.words as any,
+      segments: data.segments as any,
+      speakers: data.speakers as any,
+      total_word_count: data.words.length,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('job_id', jobId);
+}
+
+async function extractFlaggedWords(
+  jobId: string,
+  words: any[],
+  confidenceThreshold: number
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  try {
+    // Get transcription ID
+    const { data: transcription } = await supabase
+      .from('transcriptions')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+
+    if (!transcription) {
+      throw new Error('Transcription not found');
+    }
+
+    // Try calling extract_flagged_words SQL function
+    const { error } = await supabase.rpc('extract_flagged_words', {
+      p_transcription_id: transcription.id,
+      p_threshold: confidenceThreshold,
+    });
+
+    if (error) {
+      console.error('extract_flagged_words RPC error:', error.message);
+      // Fall back to manual extraction
+      await extractFlaggedWordsManually(transcription.id, words, confidenceThreshold);
+    } else {
+      console.log('Flagged words extracted via SQL function');
+    }
+  } catch (error: any) {
+    console.error('Failed to extract flagged words:', error.message);
+    // Don't throw — this is not critical enough to fail the pipeline
+  }
+}
+
+async function extractFlaggedWordsManually(
+  transcriptionId: string,
+  words: any[],
+  confidenceThreshold: number
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  const flaggedWords = words.filter(w => w.confidence < confidenceThreshold);
+
+  if (flaggedWords.length === 0) {
+    console.log('No flagged words found');
+    return;
+  }
+
+  console.log(`Extracting ${flaggedWords.length} flagged words manually...`);
+
+  const records = flaggedWords.map((word, idx) => {
+    // Get context (5 words before and after)
+    const wordIndex = words.indexOf(word);
+    const contextBefore = words
+      .slice(Math.max(0, wordIndex - 5), wordIndex)
+      .map(w => w.word)
+      .join(' ');
+    const contextAfter = words
+      .slice(wordIndex + 1, Math.min(words.length, wordIndex + 6))
+      .map(w => w.word)
+      .join(' ');
+
+    return {
+      transcription_id: transcriptionId,
+      word_index: wordIndex,
+      segment_index: null,
+      original_word: word.word,
+      confidence: word.confidence,
+      start_time: word.start,
+      end_time: word.end,
+      speaker: word.speaker,
+      context_before: contextBefore,
+      context_after: contextAfter,
+      alternatives: null,
+      status: 'PENDING' as any,
+      sort_order: idx,
+    };
+  });
+
+  // Insert in batches of 100
+  for (let i = 0; i < records.length; i += 100) {
+    const batch = records.slice(i, i + 100);
+    await supabase.from('flagged_words').insert(batch);
+  }
+
+  console.log(`Inserted ${records.length} flagged words`);
+}
+
+async function updateJobStatus(jobId: string, status: string): Promise<void> {
+  const supabase = createAdminClient();
+
+  await supabase
+    .from('jobs')
+    .update({
+      status: status as any,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
+}
+
+async function logProcessingError(jobId: string, errorMessage: string): Promise<void> {
+  const supabase = createAdminClient();
+
+  try {
+    // Try calling SQL function
+    await supabase.rpc('log_processing_error', {
+      p_job_id: jobId,
+      p_error_type: 'TRANSCRIPTION_ERROR',
+      p_error_message: errorMessage,
+    });
+  } catch {
+    // Fall back to direct insert
+    await supabase.from('processing_errors').insert({
+      job_id: jobId,
+      error_type: 'TRANSCRIPTION_ERROR' as any,
+      error_message: errorMessage,
+      created_at: new Date().toISOString(),
+    });
+  }
+}
+
+async function logAuditEvent(jobId: string, action: string): Promise<void> {
+  const supabase = createAdminClient();
+
+  try {
+    // Get job to find user IDs
+    const { data: job } = await supabase
+      .from('jobs')
+      .select('reporter_id')
+      .eq('id', jobId)
+      .single();
+
+    if (!job) {
+      return;
+    }
+
+    await supabase.from('audit_log').insert({
+      action: action as any,
+      actor_id: job.reporter_id,
+      target_id: jobId,
+      target_type: 'job',
+      created_at: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Failed to log audit event:', error.message);
+  }
+}
