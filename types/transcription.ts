@@ -227,3 +227,57 @@ export interface IntegrityChainVerification {
   broken_at_version: number | null;
   details: string;
 }
+
+// === Additional Pipeline Types ===
+
+/**
+ * DeepgramOptions - Options for Deepgram API transcription
+ */
+export interface DeepgramOptions {
+  model: string;
+  smart_format: boolean;
+  punctuate: boolean;
+  diarize: boolean;
+  utterances: boolean;
+  keywords?: string[];
+  language: string;
+}
+
+/**
+ * DeepgramResult - Alias for DeepgramChunkResult for compatibility
+ */
+export type DeepgramResult = DeepgramChunkResult;
+
+/**
+ * ReassembledTranscription - Alias for ReassembledResult for compatibility
+ */
+export type ReassembledTranscription = ReassembledResult;
+
+/**
+ * TranscriptionPipelineStatus - Pipeline execution stages
+ */
+export type TranscriptionPipelineStatus =
+  | 'AWAITING_AUDIO'
+  | 'VALIDATING'
+  | 'CHUNKING'
+  | 'TRANSCRIBING'
+  | 'REASSEMBLING'
+  | 'EXTRACTING_FLAGS'
+  | 'COMPLETE'
+  | 'PIPELINE_FAILED';
+
+/**
+ * FlaggedWordContext - Context information for a flagged word
+ */
+export interface FlaggedWordContext {
+  original_word: string;
+  confidence: number;
+  start_time: number;
+  end_time: number;
+  speaker: string | null;
+  context_before: string;     // ~5 words before
+  context_after: string;      // ~5 words after
+  alternatives: Array<{ word: string; confidence: number }>;
+  corrected_word: string | null;
+  status: FlaggedWordStatus;
+}
