@@ -75,10 +75,12 @@ export async function deleteNote(
 
 /**
  * List notes for job (alias for listNotesByJob)
+ * Supports: listNotesForJob(supabase, jobId, options) or listNotesForJob(jobId)
  */
 export async function listNotesForJob(
   supabaseOrJobId: any,
-  maybeJobId?: string
+  jobIdOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
-  return listNotesByJob(supabaseOrJobId, maybeJobId);
+  return listNotesByJob(supabaseOrJobId, jobIdOrOptions, maybeOptions);
 }

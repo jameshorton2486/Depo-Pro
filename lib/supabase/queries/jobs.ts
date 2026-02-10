@@ -14,10 +14,12 @@ type JobUpdate = Database['public']['Tables']['jobs']['Update'];
 
 /**
  * List jobs with optional filters
- * Supports: listJobs(supabase, filters) or listJobs(filters)
+ * Supports: listJobs(supabase, userId, userRole, filters) or listJobs(filters)
  */
 export async function listJobs(
   supabaseOrFilters?: any,
+  maybeUserIdOrFilters?: any,
+  maybeRoleOrFilters?: any,
   maybeFilters?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrFilters === 'object' && supabaseOrFilters.from;
@@ -27,7 +29,8 @@ export async function listJobs(
 
   if (isOldPattern) {
     supabase = supabaseOrFilters;
-    filters = maybeFilters || {};
+    // 4-arg: (supabase, userId, userRole, filters) => use maybeFilters; 2-arg: (supabase, filters) => use maybeUserIdOrFilters
+    filters = (maybeFilters !== undefined ? maybeFilters : maybeUserIdOrFilters) || {};
   } else {
     supabase = await createClient();
     filters = supabaseOrFilters || {};
@@ -63,7 +66,13 @@ export async function listJobs(
   }
 
   const result = await query;
-  return isOldPattern ? result.data : result;
+  const data = result.data ?? [];
+  const count = result.count ?? 0;
+  const limit = filters.limit || 20;
+  if (isOldPattern) {
+    return { jobs: data, count, totalCount: count, pageCount: Math.ceil(count / limit) };
+  }
+  return result;
 }
 
 /**
@@ -238,12 +247,12 @@ export async function createJob(
     data = supabaseOrData;
   }
 
+  const { case_metadata: _cm, ...rest } = data as Record<string, unknown>;
   const jobData: JobInsert = {
-    ...data,
+    ...rest,
     status: JobStatus.DRAFT,
-    case_metadata: data.case_metadata || {},
     created_at: new Date().toISOString(),
-  };
+  } as JobInsert;
 
   const result = await supabase
     .from('jobs')

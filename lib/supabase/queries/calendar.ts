@@ -92,11 +92,12 @@ export async function rescheduleEvent(
  * Convert to job (stub)
  */
 export async function convertEventToJob(
-  supabaseOrId: any,
-  maybeId?: string
+  supabaseOrEventId: any,
+  eventIdOrJobData?: any,
+  _maybeJobData?: any
 ): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+  const isOldPattern = typeof supabaseOrEventId === 'object' && supabaseOrEventId?.from;
+  return isOldPattern ? null : { success: false, jobId: undefined, data: null, error: new Error('Calendar feature not available in v1.3') };
 }
 
 /**
@@ -127,10 +128,10 @@ export async function validateEventMove(
  */
 export async function getCalendarEventNotes(
   supabaseOrId: any,
-  maybeId?: string
+  maybeIdOrInclude?: string | boolean
 ): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? [] : { data: [], error: null };
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId?.from;
+  return isOldPattern ? null : { notes: null, internalNotes: null };
 }
 
 /**
@@ -153,10 +154,11 @@ export async function addNoteToCalendarEvent(
 export async function rescheduleCalendarEvent(
   supabaseOrId: any,
   idOrData?: any,
-  maybeData?: any
+  maybeData?: any,
+  extraArg?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+  return isOldPattern ? null : { success: false, data: null, error: new Error('Calendar feature not available in v1.3'), conflict: undefined };
 }
 
 /**
