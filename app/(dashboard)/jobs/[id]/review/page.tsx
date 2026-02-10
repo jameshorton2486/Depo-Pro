@@ -45,7 +45,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   }
 
   // Check access: user must be the creator OR an assigned scopist OR admin
-  const isCreator = job.created_by_id === session.user.id;
+  const isCreator = job.reporter_id === session.user.id;
   const isAssignedScopist = (job.assignments || []).some((a: any) => a.scopist_id === session.user.id);
   const isAdmin = session.user.role === Role.ADMIN;
 

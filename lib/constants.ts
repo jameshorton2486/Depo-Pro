@@ -82,6 +82,7 @@ export const USER_ROLE_COLORS: Record<UserRole, string> = {
  * Job status display labels
  */
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  // v1.3 statuses
   [JobStatus.DRAFT]: 'Draft',
   [JobStatus.PENDING]: 'Pending',
   [JobStatus.PROCESSING]: 'Processing',
@@ -95,12 +96,25 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   [JobStatus.COMPLETED]: 'Completed',
   [JobStatus.ARCHIVED]: 'Archived',
   [JobStatus.FAILED]: 'Failed',
+  // Legacy statuses
+  [JobStatus.CREATED]: 'Created',
+  [JobStatus.FILES_UPLOADED]: 'Files Uploaded',
+  [JobStatus.ENHANCING_AUDIO]: 'Enhancing Audio',
+  [JobStatus.TRANSCRIBING]: 'Transcribing',
+  [JobStatus.AI_REVIEWING]: 'AI Reviewing',
+  [JobStatus.READY_FOR_EDIT]: 'Ready for Edit',
+  [JobStatus.ASSIGNED]: 'Assigned',
+  [JobStatus.IN_EDIT]: 'In Edit',
+  [JobStatus.SUBMITTED_FOR_REVIEW]: 'Submitted for Review',
+  [JobStatus.REVIEW_COMPLETE]: 'Review Complete',
+  [JobStatus.CANCELLED]: 'Cancelled',
 };
 
 /**
  * Job status colors for badges
  */
 export const JOB_STATUS_COLORS: Record<JobStatus, string> = {
+  // v1.3 statuses
   [JobStatus.DRAFT]: 'bg-gray-100 text-gray-800 border-gray-300',
   [JobStatus.PENDING]: 'bg-blue-100 text-blue-800 border-blue-300',
   [JobStatus.PROCESSING]: 'bg-purple-100 text-purple-800 border-purple-300',
@@ -114,6 +128,18 @@ export const JOB_STATUS_COLORS: Record<JobStatus, string> = {
   [JobStatus.COMPLETED]: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   [JobStatus.ARCHIVED]: 'bg-slate-100 text-slate-800 border-slate-300',
   [JobStatus.FAILED]: 'bg-red-100 text-red-800 border-red-300',
+  // Legacy statuses
+  [JobStatus.CREATED]: 'bg-gray-100 text-gray-800 border-gray-300',
+  [JobStatus.FILES_UPLOADED]: 'bg-blue-100 text-blue-800 border-blue-300',
+  [JobStatus.ENHANCING_AUDIO]: 'bg-purple-100 text-purple-800 border-purple-300',
+  [JobStatus.TRANSCRIBING]: 'bg-purple-100 text-purple-800 border-purple-300',
+  [JobStatus.AI_REVIEWING]: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  [JobStatus.READY_FOR_EDIT]: 'bg-green-100 text-green-800 border-green-300',
+  [JobStatus.ASSIGNED]: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  [JobStatus.IN_EDIT]: 'bg-amber-100 text-amber-800 border-amber-300',
+  [JobStatus.SUBMITTED_FOR_REVIEW]: 'bg-orange-100 text-orange-800 border-orange-300',
+  [JobStatus.REVIEW_COMPLETE]: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  [JobStatus.CANCELLED]: 'bg-red-100 text-red-800 border-red-300',
 };
 
 /**

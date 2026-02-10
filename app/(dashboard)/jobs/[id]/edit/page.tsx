@@ -39,7 +39,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
   // 🔒 Security: Only reporter or admin can edit
   const canEdit =
     session.role === 'ADMIN' ||
-    job.created_by_id === session.id;
+    job.reporter_id === session.id;
 
   if (!canEdit) {
     redirect('/dashboard');

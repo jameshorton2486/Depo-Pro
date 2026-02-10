@@ -69,8 +69,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   // 🔒 Security: Verify access rights
   const hasAccess =
     session.role === 'ADMIN' ||
-    job.createdById === session.id ||
-    job.assignments.some((a: any) => a.scopistId === session.id);
+    job.reporter_id === session.id ||
+    job.assignments.some((a: any) => a.scopist_id === session.id);
 
   if (!hasAccess) {
     redirect('/dashboard');
@@ -78,7 +78,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   const canEdit =
     session.role === 'ADMIN' ||
-    job.created_by_id === session.id;
+    job.reporter_id === session.id;
 
   const canAssign = canEdit;
 
@@ -88,10 +88,10 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       <div className="flex items-start justify-between mb-8">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold">{job.title || job.caseName || 'Untitled Job'}</h1>
+            <h1 className="text-3xl font-bold">{job.title || job.case_name || 'Untitled Job'}</h1>
             <JobStatusBadge status={job.status} />
           </div>
-          <p className="text-lg text-muted-foreground">{job.caseName}</p>
+          <p className="text-lg text-muted-foreground">{job.case_name}</p>
         </div>
 
         {canEdit && (

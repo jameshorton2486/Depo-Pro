@@ -15,8 +15,10 @@ export enum UserRole {
 /**
  * Job Status - HUMAN WORKFLOW
  * Represents the lifecycle state visible to users in the UI
+ * Includes legacy values for backward compatibility
  */
 export enum JobStatus {
+  // v1.3 values
   DRAFT = 'DRAFT',
   PENDING = 'PENDING',
   PROCESSING = 'PROCESSING',
@@ -29,7 +31,19 @@ export enum JobStatus {
   FINAL_REVIEW = 'FINAL_REVIEW',
   COMPLETED = 'COMPLETED',
   ARCHIVED = 'ARCHIVED',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
+  // Legacy values (pre-v1.3)
+  CREATED = 'CREATED',
+  FILES_UPLOADED = 'FILES_UPLOADED',
+  ENHANCING_AUDIO = 'ENHANCING_AUDIO',
+  TRANSCRIBING = 'TRANSCRIBING',
+  AI_REVIEWING = 'AI_REVIEWING',
+  READY_FOR_EDIT = 'READY_FOR_EDIT',
+  ASSIGNED = 'ASSIGNED',
+  IN_EDIT = 'IN_EDIT',
+  SUBMITTED_FOR_REVIEW = 'SUBMITTED_FOR_REVIEW',
+  REVIEW_COMPLETE = 'REVIEW_COMPLETE',
+  CANCELLED = 'CANCELLED'
 }
 
 /**
