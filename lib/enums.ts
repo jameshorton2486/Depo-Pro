@@ -58,6 +58,7 @@ export enum JobStatus {
   REVIEW_COMPLETE = "REVIEW_COMPLETE",
   COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
+  FAILED = "FAILED",
 }
 
 export enum Priority {

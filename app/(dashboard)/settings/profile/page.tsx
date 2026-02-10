@@ -79,17 +79,38 @@ export default function ProfileSettingsPage() {
     setSuccess(false);
 
     const formData = new FormData(e.currentTarget);
-    const _firstName = formData.get('firstName') as string;
-    const _lastName = formData.get('lastName') as string;
+    const firstName = (formData.get('firstName') as string || '').trim();
+    const lastName = (formData.get('lastName') as string || '').trim();
 
     try {
-      // TODO: Implement API call to update user profile
-      // For now, just simulate success
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!firstName || !lastName) {
+        setError('First and last name are required.');
+        return;
+      }
 
-      // Session update would happen via API call
-      // The profile update will be reflected on next auth check
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('users')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', authUser?.id)
+        .select('*')
+        .single();
 
+      if (updateError) {
+        throw updateError;
+      }
+
+      await supabase.auth.updateUser({
+        data: {
+          firstName,
+          lastName,
+        },
+      });
+
+      setProfile(updatedProfile as User);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {

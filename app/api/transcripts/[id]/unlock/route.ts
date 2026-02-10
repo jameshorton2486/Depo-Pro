@@ -8,16 +8,10 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-// Stub for unlockTranscript (replaces _future/transcripts/lock-service)
-async function unlockTranscript(
-  _transcriptId: string,
-  _userId: string,
-  _reason: string
-): Promise<{ success: boolean; error?: string }> {
-  // TODO: Implement transcript unlocking with Supabase
-  // For now, return success (will be implemented later)
-  return { success: true };
-}
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { unlockTranscript } from '@/lib/supabase/queries/transcripts';
+import { createAuditLog, AuditTargetType } from '@/lib/audit-service';
+import { logger } from '@/lib/logger';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -53,11 +47,8 @@ export async function POST(
       );
     }
 
-    const result = await unlockTranscript(
-      transcriptId,
-      session.user.id,
-      reason
-    );
+    const supabase = await createSupabaseServerClient();
+    const result = await unlockTranscript(supabase, transcriptId);
 
     if (!result.success) {
       return NextResponse.json(
@@ -66,11 +57,27 @@ export async function POST(
       );
     }
 
+    await createAuditLog({
+      actorUserId: session.user.id,
+      firmId: session.user.firmId || null,
+      action: 'TRANSCRIPT_UNLOCKED',
+      targetType: AuditTargetType.TRANSCRIPT,
+      targetId: transcriptId,
+      metadata: { reason },
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
+      userAgent: request.headers.get('user-agent') || undefined,
+    }).catch((error) => {
+      logger.warn('Failed to create transcript unlock audit log', {
+        transcriptId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+
     return NextResponse.json({
       message: 'Transcript unlocked successfully',
     });
   } catch (error) {
-    console.error('Error unlocking transcript:', error);
+    logger.error('Error unlocking transcript', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to unlock transcript' },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 ﻿/**
  * Billing Service
  * Handles invoice generation and billing operations
@@ -30,7 +31,7 @@ export interface Invoice {
  * Generate invoice preview for a job
  */
 export async function generateInvoicePreview(jobId: string): Promise<InvoicePreview> {
-  console.log('[Billing] generateInvoicePreview', { jobId });
+  logger.debug('[Billing] generateInvoicePreview', { jobId });
   
   return {
     subtotal: 0,
@@ -47,7 +48,7 @@ export async function createInvoice(jobId: string, options?: {
   dueDate?: Date;
   notes?: string;
 }): Promise<Invoice> {
-  console.log('[Billing] createInvoice', { jobId, options });
+  logger.debug('[Billing] createInvoice', { jobId, options });
   
   return {
     id: `inv-${Date.now()}`,
@@ -62,6 +63,6 @@ export async function createInvoice(jobId: string, options?: {
  * Get invoice PDF
  */
 export async function getInvoicePdf(invoiceId: string): Promise<Buffer> {
-  console.log('[Billing] getInvoicePdf', { invoiceId });
+  logger.debug('[Billing] getInvoicePdf', { invoiceId });
   return Buffer.from('PDF content');
 }

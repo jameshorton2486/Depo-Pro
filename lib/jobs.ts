@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // ═══════════════════════════════════════════════════════════════
 // BACKGROUND JOBS SERVICE (Mock Implementation - Ready for BullMQ/Inngest)
 // ═══════════════════════════════════════════════════════════════
@@ -197,7 +198,7 @@ export async function processTranscriptionJob(payload: {
   }
   // TODO: Implement actual transcription processing
   // This would call the transcription service
-  console.log('[Worker] Processing transcription job:', payload);
+  logger.debug('[Worker] Processing transcription job:', payload);
 
   // Simulate work (development only)
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -214,7 +215,7 @@ export async function processExportJob(payload: {
     );
   }
   // TODO: Implement actual export processing
-  console.log('[Worker] Processing export job:', payload);
+  logger.debug('[Worker] Processing export job:', payload);
 
   // Simulate work (development only)
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -232,7 +233,7 @@ export async function processEmailJob(payload: {
     );
   }
   // TODO: Implement actual email sending
-  console.log('[Worker] Processing email job:', payload);
+  logger.debug('[Worker] Processing email job:', payload);
 
   // Simulate work (development only)
   await new Promise(resolve => setTimeout(resolve, 500));

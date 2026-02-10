@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Scheduling Service
  * Calendar event scheduling operations
@@ -71,7 +72,7 @@ export async function rescheduleEvent(
     );
   }
 
-  console.log('[Scheduling] rescheduleEvent called - stub', params);
+  logger.debug('[Scheduling] rescheduleEvent called - stub', { ...params });
 
   return {
     success: true,
@@ -106,7 +107,7 @@ export async function previewReschedule(
     );
   }
 
-  console.log('[Scheduling] previewReschedule called - stub', params);
+  logger.debug('[Scheduling] previewReschedule called - stub', { ...params });
 
   return {
     conflicts: [],
@@ -138,7 +139,7 @@ export async function resizeEvent(
     );
   }
 
-  console.log('[Scheduling] resizeEvent called - stub', params);
+  logger.debug('[Scheduling] resizeEvent called - stub', { ...params });
 
   return {
     success: true,
@@ -164,6 +165,8 @@ export async function undoReschedule(undoToken: string): Promise<{ success: bool
       'This is a stubbed service - implement real reschedule undo before production deployment.'
     );
   }
-  console.log('[Scheduling] undoReschedule called - stub', { undoToken });
+  logger.debug('[Scheduling] undoReschedule called - stub', { undoToken });
   return { success: true };
 }
+
+

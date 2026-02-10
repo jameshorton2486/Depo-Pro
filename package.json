@@ -144,16 +144,17 @@
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/glob": "^8.1.0",
     "@types/jest": "^30.0.0",
+    "@types/jsdom": "^27.0.0",
     "@types/node": "^20.19.25",
     "@types/pdfkit": "^0.17.3",
     "@types/react": "18.3.12",
     "@types/react-big-calendar": "1.16.3",
     "@types/react-dom": "18.3.1",
     "@types/uuid": "^10.0.0",
-    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.23",
-    "eslint": "^9",
-    "eslint-config-next": "15.0.7",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^15.5.10",
     "eslint-config-prettier": "^10.1.8",
     "glob": "^13.0.0",
     "husky": "^9.1.7",
@@ -166,7 +167,7 @@
     "tsx": "^4.20.6",
     "typescript": "^5",
     "typescript-eslint": "^8.50.1",
-    "vitest": "^2.1.8"
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=20.0.0"

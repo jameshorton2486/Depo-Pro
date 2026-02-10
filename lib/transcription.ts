@@ -51,15 +51,10 @@ export async function transcribeAudio(
   if (isNova3) {
     // Nova-3: Use keyterm parameter (max 100 terms)
     transcriptionOptions.keyterm = allTerms.slice(0, 100);
-    console.log(`   Using keyterm for Nova-3: ${Math.min(allTerms.length, 100)} terms`);
   } else {
     // Nova-2: Use keywords parameter (up to 1000 terms)
     transcriptionOptions.keywords = allTerms.slice(0, 1000);
-    console.log(`   Using keywords for Nova-2: ${Math.min(allTerms.length, 1000)} terms`);
   }
-
-  console.log('🎤 Starting Deepgram transcription...');
-  console.log(`   Model: ${transcriptionOptions.model}`);
 
   try {
     // Call Deepgram API
@@ -75,7 +70,6 @@ export async function transcribeAudio(
 
     // Process the response
     return processDeepgramResponse(result);
-
   } catch (err) {
     console.error('❌ Transcription error:', err);
     throw err;
@@ -109,10 +103,6 @@ export async function transcribeFromUrl(
     transcriptionOptions.keywords = allTerms.slice(0, 1000);
   }
 
-  console.log('🎤 Starting Deepgram transcription from URL...');
-  console.log(`   URL: ${audioUrl.substring(0, 50)}...`);
-  console.log(`   Model: ${transcriptionOptions.model}`);
-
   try {
     const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
       { url: audioUrl },
@@ -124,7 +114,6 @@ export async function transcribeFromUrl(
     }
 
     return processDeepgramResponse(result);
-
   } catch (err) {
     console.error('❌ Transcription error:', err);
     throw err;
@@ -135,6 +124,10 @@ export async function transcribeFromUrl(
  * Process Deepgram response into our standardized format
  */
 function processDeepgramResponse(result: SyncPrerecordedResponse): TranscriptionResult {
+  if (!result?.results) {
+    throw new Error('Deepgram response missing results payload');
+  }
+
   const channel = result.results?.channels?.[0];
   const alternative = channel?.alternatives?.[0];
 
@@ -173,13 +166,6 @@ function processDeepgramResponse(result: SyncPrerecordedResponse): Transcription
 
   // Calculate quality metrics
   const qualityReport = calculateQualityMetrics(words, flaggedSegments);
-
-  console.log('✅ Transcription complete');
-  console.log(`   Duration: ${result.metadata?.duration?.toFixed(1)}s`);
-  console.log(`   Words: ${words.length}`);
-  console.log(`   Speakers: ${new Set(utterances.map(u => u.speaker)).size}`);
-  console.log(`   Flagged for review: ${flaggedSegments.length} segments`);
-  console.log(`   Quality score: ${qualityReport.qualityScore.toFixed(1)}%`);
 
   return {
     // Full transcript text

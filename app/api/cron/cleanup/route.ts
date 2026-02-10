@@ -4,6 +4,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 // Verify cron secret to prevent unauthorized access
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
     results.failedJobsReset = stuckJobs?.length || 0;
 
     // Log cleanup results
-    console.log('Cleanup job completed:', results);
+    logger.info('Cleanup job completed', results);
 
     return NextResponse.json({
       success: true,

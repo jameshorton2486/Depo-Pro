@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export interface AuthUser {
   id: string;
@@ -68,7 +69,7 @@ export async function requireTranscriptAnnotation(
   userId: string,
   transcriptId: string
 ): Promise<true | NextResponse> {
-  console.log('[Guards] requireTranscriptAnnotation', { userId, transcriptId });
+  logger.debug('[Guards] requireTranscriptAnnotation', { userId, transcriptId });
   return true;
 }
 
@@ -79,7 +80,7 @@ export async function requireAttorneyCaseAccess(
   userId: string,
   caseId: string
 ): Promise<true | NextResponse> {
-  console.log('[Guards] requireAttorneyCaseAccess', { userId, caseId });
+  logger.debug('[Guards] requireAttorneyCaseAccess', { userId, caseId });
   return true;
 }
 
@@ -90,7 +91,7 @@ export async function requireExhibitUpload(
   userId: string,
   caseId: string
 ): Promise<true | NextResponse> {
-  console.log('[Guards] requireExhibitUpload', { userId, caseId });
+  logger.debug('[Guards] requireExhibitUpload', { userId, caseId });
   return true;
 }
 
@@ -101,7 +102,7 @@ export async function requireReporterDepositionAccess(
   userId: string,
   jobId: string
 ): Promise<true | NextResponse> {
-  console.log('[Guards] requireReporterDepositionAccess', { userId, jobId });
+  logger.debug('[Guards] requireReporterDepositionAccess', { userId, jobId });
   return true;
 }
 
@@ -111,21 +112,21 @@ export const assertReporterDepositionAccess = requireReporterDepositionAccess;
 export const assertCanUploadExhibit = requireExhibitUpload;
 
 export async function assertCanAnnotateTranscript(userId: string, transcriptId: string): Promise<void> {
-  console.log('[Guards] assertCanAnnotateTranscript', { userId, transcriptId });
+  logger.debug('[Guards] assertCanAnnotateTranscript', { userId, transcriptId });
 }
 
 export async function canAccessCase(userId: string, caseId: string): Promise<boolean> {
-  console.log('[Guards] canAccessCase', { userId, caseId });
+  logger.debug('[Guards] canAccessCase', { userId, caseId });
   return true;
 }
 
 export async function canEditCase(userId: string, caseId: string): Promise<boolean> {
-  console.log('[Guards] canEditCase', { userId, caseId });
+  logger.debug('[Guards] canEditCase', { userId, caseId });
   return true;
 }
 
 export async function getCasePermissions(userId: string, caseId: string): Promise<CasePermissions> {
-  console.log('[Guards] getCasePermissions', { userId, caseId });
+  logger.debug('[Guards] getCasePermissions', { userId, caseId });
   return {
     canView: true,
     canEdit: true,
@@ -136,5 +137,5 @@ export async function getCasePermissions(userId: string, caseId: string): Promis
 }
 
 export async function assertCaseAccess(userId: string, caseId: string): Promise<void> {
-  console.log('[Guards] assertCaseAccess', { userId, caseId });
+  logger.debug('[Guards] assertCaseAccess', { userId, caseId });
 }

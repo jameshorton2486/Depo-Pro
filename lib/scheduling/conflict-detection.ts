@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Conflict Detection Service
  * Detects scheduling conflicts for calendar events
@@ -54,7 +55,7 @@ export async function checkForConflicts(
     );
   }
 
-  console.log('[Conflict] checkForConflicts called - stub', params);
+  logger.debug('[Conflict] checkForConflicts called - stub', { ...params });
 
   return {
     hasConflicts: false,
@@ -75,3 +76,5 @@ export async function checkReporterConflicts(
 ): Promise<ConflictResult> {
   return checkForConflicts(startTime, endTime, { reporterId, excludeEventId });
 }
+
+

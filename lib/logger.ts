@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // =============================================================================
 // STRUCTURED LOGGER
 // Production-safe logging with levels and context
@@ -88,7 +89,7 @@ function log(level: LogLevel, message: string, context?: LogContext, err?: Error
   switch (level) {
     case 'debug':
     case 'info':
-      console.log(output);
+      logger.debug(output);
       break;
     case 'warn':
       console.warn(output);

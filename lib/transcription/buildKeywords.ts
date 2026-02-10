@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // lib/transcription/buildKeywords.ts
 // STUB: Build keywords for transcription
 //
@@ -17,7 +18,7 @@ export async function buildKeywordsForJob(_jobId: string): Promise<KeywordConfig
       'Empty keyword lists can reduce transcription accuracy.'
     );
   }
-  console.log('[STUB] buildKeywordsForJob called');
+  logger.debug('[STUB] buildKeywordsForJob called');
   // In real implementation, fetch proper nouns and custom dictionary
   return [];
 }

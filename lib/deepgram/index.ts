@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { Queue } from 'bullmq';
+import { logger } from '@/lib/logger';
 
 // Re-export Deepgram client utilities
 export {
@@ -76,7 +77,7 @@ function getQueue(): Queue | null {
       console.error('❌ Transcription queue error:', error);
     });
 
-    console.log('✅ Transcription queue initialized');
+    logger.debug('✅ Transcription queue initialized');
     return queue;
   } catch (error) {
     console.error('❌ Failed to initialize transcription queue:', error);
@@ -116,3 +117,5 @@ export const transcriptionQueue = new Proxy({} as Queue, {
 });
 
 export default transcriptionQueue;
+
+

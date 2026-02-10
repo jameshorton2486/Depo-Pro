@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Health Service
  * System health monitoring stub
@@ -37,7 +38,7 @@ export async function getSystemHealth(): Promise<SystemHealth> {
       'Implement real health checks for accurate monitoring.'
     );
   } else {
-    console.log('[Health] getSystemHealth called - returning stub data');
+    logger.debug('[Health] getSystemHealth called - returning stub data');
   }
 
   const dbHealth = await checkDatabaseHealth();

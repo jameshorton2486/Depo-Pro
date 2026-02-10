@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/supabase/queries/audit';
+import { logger } from '@/lib/logger';
 
 // Simple in-memory rate limiting (5 requests per hour per IP)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -76,8 +77,10 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
       ip_address: ip,
-    }).catch(() => {
-      // Fire and forget - don't block on logging
+    }).catch((error) => {
+      logger.warn('Failed to write contact audit log', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 
     // In production, send email notification here

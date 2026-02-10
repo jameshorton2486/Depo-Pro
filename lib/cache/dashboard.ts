@@ -4,6 +4,7 @@
  */
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export interface JobCounts {
   total: number;
@@ -20,7 +21,7 @@ export interface JobCounts {
  * @param userId - Optional user ID for user-specific counts
  */
 export async function getCachedJobCounts(firmId: string, userId?: string): Promise<JobCounts> {
-  console.log('[Cache] getCachedJobCounts called - using direct query (no cache)', { firmId, userId });
+  logger.debug('[Cache] getCachedJobCounts called - using direct query (no cache)', { firmId, userId });
   
   try {
     const supabase = await createSupabaseServerClient();
@@ -63,7 +64,7 @@ export interface RecentJob {
  * @param limit - Number of jobs to return (as string or number)
  */
 export async function getCachedRecentJobs(firmId: string, limit: number | string = 5): Promise<RecentJob[]> {
-  console.log('[Cache] getCachedRecentJobs called - using direct query (no cache)', { firmId, limit });
+  logger.debug('[Cache] getCachedRecentJobs called - using direct query (no cache)', { firmId, limit });
   
   try {
     const supabase = await createSupabaseServerClient();
@@ -93,6 +94,6 @@ export async function getCachedRecentJobs(firmId: string, limit: number | string
  * Invalidate dashboard cache for a firm
  */
 export async function invalidateDashboardCache(firmId: string): Promise<void> {
-  console.log('[Cache] invalidateDashboardCache called - no-op (no cache)', { firmId });
+  logger.debug('[Cache] invalidateDashboardCache called - no-op (no cache)', { firmId });
   // TODO: Implement Redis cache invalidation
 }

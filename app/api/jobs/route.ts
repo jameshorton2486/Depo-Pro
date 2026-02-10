@@ -9,12 +9,13 @@ import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listJobs, createJob } from '@/lib/supabase/queries/jobs';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/jobs
  * List jobs (filtered by user role)
  */
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
     
@@ -29,8 +30,16 @@ export async function GET(_request: NextRequest) {
     const userRole = (user.user_metadata?.role as string) || 'REPORTER';
     const userId = user.id;
 
+    const searchParams = request.nextUrl.searchParams;
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 100);
+    const offset = (page - 1) * limit;
+
     // List jobs using query function
-    const { jobs, count } = await listJobs(supabase, userId, userRole, { limit: 50 });
+    const { jobs, count, totalCount, pageCount } = await listJobs(supabase, userId, userRole, {
+      limit,
+      offset,
+    });
 
     // Map snake_case to camelCase for response
     const transformedJobs = jobs.map((job: any) => ({
@@ -49,9 +58,23 @@ export async function GET(_request: NextRequest) {
       assignments: job.assignments || [],
     }));
 
-    return NextResponse.json({ jobs: transformedJobs, count });
+    const totalPages = Math.ceil((totalCount || 0) / limit);
+
+    return NextResponse.json({
+      jobs: transformedJobs,
+      count,
+      pageCount,
+      pagination: {
+        page,
+        limit,
+        totalCount: totalCount || 0,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
   } catch (error) {
-    console.error('Error fetching jobs:', error);
+    logger.error('Error fetching jobs', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to fetch jobs' },
       { status: 500 }
@@ -119,14 +142,13 @@ export async function POST(request: NextRequest) {
       message: 'Job created successfully',
     });
   } catch (error) {
-    console.error('Error creating job:', error);
+    logger.error('Error creating job', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to create job' },
       { status: 500 }
     );
   }
 }
-
 
 
 

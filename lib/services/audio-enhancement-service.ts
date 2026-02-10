@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Audio Enhancement Service
  * Handles audio processing, Dolby enhancement, and RX queue operations
@@ -39,7 +40,7 @@ export const AudioEnhancementService = {
         'This is a stubbed service - implement real Dolby audio enhancement before production deployment.'
       );
     }
-    console.log('[Audio] enhanceWithDolby called - stub', { audioUrl });
+    logger.debug('[Audio] enhanceWithDolby called - stub', { audioUrl });
     return { 
       success: true, 
       enhancedUrl: audioUrl,
@@ -61,7 +62,7 @@ export const AudioEnhancementService = {
         'This is a stubbed service - implement real RX queue management before production deployment.'
       );
     }
-    console.log('[Audio] addToRxQueue called - stub', params);
+    logger.debug('[Audio] addToRxQueue called - stub', params);
     return {
       success: true,
       queueId: `queue-${Date.now()}`,
@@ -79,7 +80,7 @@ export const AudioEnhancementService = {
         'This is a stubbed service - implement real RX queue retrieval before production deployment.'
       );
     }
-    console.log('[Audio] getRxQueue called - stub');
+    logger.debug('[Audio] getRxQueue called - stub');
     return [];
   },
 
@@ -93,7 +94,7 @@ export const AudioEnhancementService = {
         'This is a stubbed service - implement real RX item processing before production deployment.'
       );
     }
-    console.log('[Audio] processRxItem called - stub', { itemId });
+    logger.debug('[Audio] processRxItem called - stub', { itemId });
     return { success: true };
   },
 };

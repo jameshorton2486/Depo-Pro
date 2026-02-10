@@ -11,6 +11,7 @@ import { useQuota } from '@/lib/cost-control-service';
 import { canExportFormat, canUseProfile } from '@/lib/export/permissions';
 import { getExportProfile } from '@/lib/export/profiles';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
+import { logger } from '@/lib/logger';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -231,7 +232,12 @@ export async function GET(
       },
       ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
-    }).catch(() => {}); // Fire and forget
+    }).catch((error) => {
+      logger.warn('Failed to write export audit log', {
+        transcriptId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }); // Fire and forget
 
     // Return file
     return new NextResponse(buffer as unknown as BodyInit, {

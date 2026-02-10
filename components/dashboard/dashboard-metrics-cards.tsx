@@ -1,16 +1,9 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCardsSkeleton } from "@/components/ui/skeletons";
-import { 
-  Briefcase, 
-  Clock, 
-  FileText, 
-  Users, 
-  TrendingUp,
-  AlertCircle,
-  Calendar,
-} from "lucide-react";
+import { Briefcase, Clock, Users, TrendingUp, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MetricCard {
@@ -28,119 +21,109 @@ interface DashboardMetricsCardsProps {
   metrics?: MetricCard[];
 }
 
-// Default metrics by role
-const DEFAULT_METRICS: Record<string, MetricCard[]> = {
-  REPORTER: [
-    {
-      title: "Active Jobs",
-      value: 0,
-      change: "0 this week",
-      changeType: "neutral",
-      icon: Briefcase,
-      href: "/jobs?status=IN_PROGRESS",
-    },
-    {
-      title: "Pending Review",
-      value: 0,
-      change: "Waiting for scopist",
-      changeType: "neutral",
-      icon: FileText,
-      href: "/jobs?status=IN_REVIEW",
-    },
-    {
-      title: "This Week",
-      value: 0,
-      change: "depositions scheduled",
-      changeType: "neutral",
-      icon: Calendar,
-      href: "/calendar",
-    },
-    {
-      title: "Completed",
-      value: 0,
-      change: "+0% from last month",
-      changeType: "positive",
-      icon: TrendingUp,
-      href: "/jobs?status=COMPLETED",
-    },
-  ],
-  SCOPIST: [
-    {
-      title: "Assigned Jobs",
-      value: 0,
-      change: "In your queue",
-      changeType: "neutral",
-      icon: Briefcase,
-      href: "/scopist",
-    },
-    {
-      title: "In Review",
-      value: 0,
-      change: "Needs attention",
-      changeType: "neutral",
-      icon: FileText,
-      href: "/jobs?status=IN_REVIEW",
-    },
-    {
-      title: "Average Time",
-      value: "0h",
-      change: "per transcript",
-      changeType: "neutral",
-      icon: Clock,
-    },
-    {
-      title: "Completed",
-      value: 0,
-      change: "This month",
-      changeType: "positive",
-      icon: TrendingUp,
-      href: "/jobs?status=COMPLETED",
-    },
-  ],
-  ADMIN: [
-    {
-      title: "Total Jobs",
-      value: 0,
-      change: "All time",
-      changeType: "neutral",
-      icon: Briefcase,
-      href: "/jobs",
-    },
-    {
-      title: "Active Users",
-      value: 0,
-      change: "This month",
-      changeType: "neutral",
-      icon: Users,
-      href: "/admin/users",
-    },
-    {
-      title: "Pending",
-      value: 0,
-      change: "Requires attention",
-      changeType: "negative",
-      icon: AlertCircle,
-      href: "/admin",
-    },
-    {
-      title: "Revenue",
-      value: "$0",
-      change: "This month",
-      changeType: "positive",
-      icon: TrendingUp,
-      href: "/billing",
-    },
-  ],
+interface DashboardStats {
+  totalJobs: number;
+  pendingTranscription: number;
+  withScopist: number;
+  completedThisMonth: number;
+  inReview: number;
+}
+
+const EMPTY_STATS: DashboardStats = {
+  totalJobs: 0,
+  pendingTranscription: 0,
+  withScopist: 0,
+  completedThisMonth: 0,
+  inReview: 0,
 };
 
+const buildMetrics = (stats: DashboardStats): MetricCard[] => [
+  {
+    title: "Total Jobs",
+    value: stats.totalJobs,
+    change: "All time",
+    changeType: "neutral",
+    icon: Briefcase,
+    href: "/jobs",
+  },
+  {
+    title: "Pending Transcription",
+    value: stats.pendingTranscription,
+    change: "Awaiting AI output",
+    changeType: "neutral",
+    icon: Clock,
+    href: "/jobs?status=TRANSCRIBING",
+  },
+  {
+    title: "With Scopist",
+    value: stats.withScopist,
+    change: "In editing",
+    changeType: "neutral",
+    icon: Users,
+    href: "/jobs?status=IN_EDIT",
+  },
+  {
+    title: "In Review",
+    value: stats.inReview,
+    change: "Reporter review",
+    changeType: "neutral",
+    icon: FileText,
+    href: "/jobs?status=IN_REVIEW",
+  },
+  {
+    title: "Completed This Month",
+    value: stats.completedThisMonth,
+    change: "This month",
+    changeType: "positive",
+    icon: TrendingUp,
+    href: "/jobs?status=COMPLETED",
+  },
+];
+
 export function DashboardMetricsCards({ 
-  role = "REPORTER", 
   isLoading = false,
   metrics,
 }: DashboardMetricsCardsProps) {
-  const displayMetrics = metrics || DEFAULT_METRICS[role] || DEFAULT_METRICS.REPORTER;
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (metrics) return;
+    let isMounted = true;
+
+    const fetchStats = async () => {
+      setIsFetching(true);
+      try {
+        const response = await fetch("/api/dashboard/stats");
+        if (!response.ok) throw new Error("Failed to fetch dashboard stats");
+        const data = (await response.json()) as DashboardStats;
+        if (isMounted) {
+          setStats(data);
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        if (isMounted) {
+          setStats(EMPTY_STATS);
+        }
+      } finally {
+        if (isMounted) {
+          setIsFetching(false);
+        }
+      }
+    };
+
+    fetchStats();
+    return () => {
+      isMounted = false;
+    };
+  }, [metrics]);
+
+  const displayMetrics = useMemo(() => {
+    if (metrics) return metrics;
+    return buildMetrics(stats || EMPTY_STATS);
+  }, [metrics, stats]);
+
+  if (isLoading || isFetching) {
     return <StatCardsSkeleton />;
   }
 
@@ -188,4 +171,3 @@ export function DashboardMetricsCards({
     </div>
   );
 }
-

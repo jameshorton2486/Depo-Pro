@@ -1,4 +1,5 @@
-﻿/**
+import { logger } from '@/lib/logger';
+/**
  * Transcription Job Handler
  */
 
@@ -13,6 +14,8 @@ export interface TranscriptionJobPayload {
 }
 
 export async function handleTranscriptionJob(data: TranscriptionJobPayload): Promise<void> {
-  console.log('[TranscriptionHandler] Processing job', data);
+  logger.debug('[TranscriptionHandler] Processing job', { ...data });
   // Actual implementation would call Deepgram API here
 }
+
+

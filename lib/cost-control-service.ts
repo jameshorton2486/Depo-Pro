@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Cost Control Service
  * Usage tracking and quota management
@@ -44,7 +45,7 @@ export async function useQuota(
       'Unlimited quotas in production can cause unbounded costs.'
     );
   }
-  console.log('[Quota] useQuota called - stub', { firmId, quotaType, amount });
+  logger.debug('[Quota] useQuota called - stub', { firmId, quotaType, amount });
   return {
     allowed: true,
     remaining: 1000,
@@ -65,7 +66,7 @@ export async function checkQuota(
       'This is a stubbed service - implement real quota checking before production deployment.'
     );
   }
-  console.log('[Quota] checkQuota called - stub', { firmId, quotaType });
+  logger.debug('[Quota] checkQuota called - stub', { firmId, quotaType });
   return {
     allowed: true,
     remaining: 1000,
@@ -83,7 +84,7 @@ export async function getUsageStats(firmId: string): Promise<UsageStats> {
       'This is a stubbed service - implement real usage tracking before production deployment.'
     );
   }
-  console.log('[Quota] getUsageStats called - stub', { firmId });
+  logger.debug('[Quota] getUsageStats called - stub', { firmId });
   return {
     transcriptionMinutes: 0,
     exports: 0,
@@ -102,7 +103,7 @@ export async function getUsageSummary(firmId: string): Promise<UsageSummary> {
       'This is a stubbed service - implement real usage summary before production deployment.'
     );
   }
-  console.log('[Quota] getUsageSummary called - stub', { firmId });
+  logger.debug('[Quota] getUsageSummary called - stub', { firmId });
   const stats = await getUsageStats(firmId);
   const limits: UsageStats = {
     transcriptionMinutes: 1000,

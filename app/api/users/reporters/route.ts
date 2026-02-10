@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUsersByRole } from '@/lib/supabase/queries/users';
+import { logger } from '@/lib/logger';
 
 // ============================================
 // GET /api/users/reporters - List reporters for assignment
@@ -18,6 +19,9 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const firmId = searchParams.get('firmId');
     const agencyId = searchParams.get('agencyId');
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '25', 10), 1), 100);
+    const offset = (page - 1) * limit;
 
     const supabase = await createSupabaseServerClient();
 
@@ -51,13 +55,27 @@ export async function GET(request: NextRequest) {
         return a.firstName.localeCompare(b.firstName);
       });
 
-    return NextResponse.json({ reporters: formattedReporters });
+    const totalCount = formattedReporters.length;
+    const pagedReporters = formattedReporters.slice(offset, offset + limit);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return NextResponse.json({
+      reporters: pagedReporters,
+      total: totalCount,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
   } catch (error) {
-    console.error('Reporters GET error:', error);
+    logger.error('Reporters GET error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to fetch reporters' },
       { status: 500 }
     );
   }
 }
-

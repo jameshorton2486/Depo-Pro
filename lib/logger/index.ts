@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Logger Service
  * Structured logging with Winston-like interface
  */
@@ -51,3 +51,4 @@ export const logger = {
 };
 
 export default logger;
+

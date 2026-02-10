@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // lib/external-calendar/sync-service.ts
 // STUB: External calendar sync service
 //
@@ -12,7 +13,7 @@ export class ExternalCalendarSyncService {
         'This is a stubbed service - implement real calendar sync before production deployment.'
       );
     }
-    console.log('[STUB] ExternalCalendarSyncService.syncEvents called');
+    logger.debug('[STUB] ExternalCalendarSyncService.syncEvents called');
     return { synced: 0, errors: [] };
   }
 
@@ -23,7 +24,7 @@ export class ExternalCalendarSyncService {
         'This is a stubbed service - implement real calendar sync before production deployment.'
       );
     }
-    console.log('[STUB] ExternalCalendarSyncService.getAuthUrl called');
+    logger.debug('[STUB] ExternalCalendarSyncService.getAuthUrl called');
     return '';
   }
 
@@ -34,7 +35,7 @@ export class ExternalCalendarSyncService {
         'This is a stubbed service - implement real calendar sync before production deployment.'
       );
     }
-    console.log('[STUB] ExternalCalendarSyncService.handleCallback called');
+    logger.debug('[STUB] ExternalCalendarSyncService.handleCallback called');
     return { success: false };
   }
 
@@ -45,7 +46,7 @@ export class ExternalCalendarSyncService {
         'This is a stubbed service - implement real calendar sync before production deployment.'
       );
     }
-    console.log('[STUB] ExternalCalendarSyncService.connectCalendar called');
+    logger.debug('[STUB] ExternalCalendarSyncService.connectCalendar called');
     return { success: false, error: 'External calendar sync not implemented' };
   }
 }

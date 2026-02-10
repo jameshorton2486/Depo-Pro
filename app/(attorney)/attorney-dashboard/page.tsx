@@ -3,47 +3,141 @@
 // ═══════════════════════════════════════════════════════════════
 // MVP Intelligence View - Summary cards and recent transcripts
 
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Flag, AlertTriangle, FileCheck } from 'lucide-react';
+import { FileText, Flag, CalendarClock, Scale } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { EmptyTranscripts } from '@/components/ui/empty-states';
 
-// TODO: Replace with real data fetching
-const mockSummaryData = {
-  activeTranscripts: 12,
-  totalIssuesTagged: 47,
-  criticalIssues: 8, // Perjury + Contradiction
-  reportsGenerated: 3,
+interface DashboardStats {
+  totalCases: number;
+  activeCases: number;
+  accessibleTranscripts: number;
+  upcomingDepositions: number;
+  annotations: {
+    highlights: number;
+    notes: number;
+    bookmarks: number;
+    total: number;
+  };
+}
+
+interface RecentTranscript {
+  id: string;
+  accessLevel: string;
+  grantedAt: string | null;
+  lastAccessed: string | null;
+  accessCount: number;
+  expiresAt: string | null;
+  job: {
+    id: string;
+    caseName: string | null;
+    caseNumber: string | null;
+    depositionDate: string | null;
+    title: string | null;
+    status: string | null;
+  } | null;
+}
+
+const EMPTY_STATS: DashboardStats = {
+  totalCases: 0,
+  activeCases: 0,
+  accessibleTranscripts: 0,
+  upcomingDepositions: 0,
+  annotations: {
+    highlights: 0,
+    notes: 0,
+    bookmarks: 0,
+    total: 0,
+  },
 };
 
-const mockRecentTranscripts = [
-  {
-    id: '1',
-    name: 'Walker v. A&H Foods - Deposition of Aaron Walker',
-    deponent: 'Aaron Walker',
-    date: '2024-12-18',
-    issueCount: 5,
-    status: 'In Progress',
-  },
-  {
-    id: '2',
-    name: 'Estopinal v. A&H Foods - Deposition of Sarah Johnson',
-    deponent: 'Sarah Johnson',
-    date: '2024-12-15',
-    issueCount: 12,
-    status: 'Complete',
-  },
-  {
-    id: '3',
-    name: 'Smith v. Corporation - Deposition of John Smith',
-    deponent: 'John Smith',
-    date: '2024-12-10',
-    issueCount: 3,
-    status: 'Not Reviewed',
-  },
-];
-
 export default function AttorneyDashboardPage() {
+  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
+  const [recentTranscripts, setRecentTranscripts] = useState<RecentTranscript[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDashboard = async () => {
+      try {
+        const response = await fetch('/api/attorney/dashboard', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error('Failed to load attorney dashboard');
+        }
+        const data = await response.json();
+        if (!isMounted) return;
+        setStats(data.stats || EMPTY_STATS);
+        setRecentTranscripts(data.recentTranscripts || []);
+      } catch {
+        if (!isMounted) return;
+        setStats(EMPTY_STATS);
+        setRecentTranscripts([]);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchDashboard();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const summaryCards = useMemo(() => {
+    return [
+      {
+        title: 'Accessible Transcripts',
+        value: stats.accessibleTranscripts,
+        description: 'Shared with you',
+        icon: FileText,
+      },
+      {
+        title: 'Total Issues Tagged',
+        value: stats.annotations.total,
+        description: 'Highlights + notes',
+        icon: Flag,
+      },
+      {
+        title: 'Active Cases',
+        value: stats.activeCases,
+        description: 'Cases in progress',
+        icon: Scale,
+      },
+      {
+        title: 'Upcoming Depositions',
+        value: stats.upcomingDepositions,
+        description: 'Next 30 days',
+        icon: CalendarClock,
+      },
+    ];
+  }, [stats]);
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return '—';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '—';
+    return parsed.toLocaleDateString();
+  };
+
+  const getTranscriptLabel = (item: RecentTranscript) => {
+    const title = item.job?.title || item.job?.caseName || 'Untitled transcript';
+    const caseNumber = item.job?.caseNumber ? ` (${item.job.caseNumber})` : '';
+    return `${title}${caseNumber}`;
+  };
+
+  const getTranscriptHref = (item: RecentTranscript) => {
+    if (item.job?.id) {
+      return `/transcripts/${item.job.id}`;
+    }
+    return '/transcripts';
+  };
+
   return (
     <div className="space-y-8">
       {/* Page Header */}
@@ -56,59 +150,25 @@ export default function AttorneyDashboardPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Active Transcripts
-            </CardTitle>
-            <FileText className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{mockSummaryData.activeTranscripts}</div>
-            <p className="text-xs text-gray-500 mt-1">Currently reviewing</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Total Issues Tagged
-            </CardTitle>
-            <Flag className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{mockSummaryData.totalIssuesTagged}</div>
-            <p className="text-xs text-gray-500 mt-1">Across all transcripts</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Critical Issues
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {mockSummaryData.criticalIssues}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Perjury + Contradiction</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              Reports Generated
-            </CardTitle>
-            <FileCheck className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{mockSummaryData.reportsGenerated}</div>
-            <p className="text-xs text-gray-500 mt-1">Trial-ready documents</p>
-          </CardContent>
-        </Card>
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Card key={card.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">
+                  {card.title}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-gray-400" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {isLoading ? '—' : card.value}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{card.description}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Recently Analyzed Transcripts Table */}
@@ -117,70 +177,70 @@ export default function AttorneyDashboardPage() {
           <CardTitle>Recently Analyzed Transcripts</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                    Transcript Name
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                    Deponent
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                    Date
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                    Issue Count
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                    Status
-                  </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockRecentTranscripts.map((transcript) => (
-                  <tr key={transcript.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 text-sm text-gray-900">
-                      {transcript.name}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {transcript.deponent}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {new Date(transcript.date).toLocaleDateString()}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {transcript.issueCount}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          transcript.status === 'Complete'
-                            ? 'bg-green-100 text-green-800'
-                            : transcript.status === 'In Progress'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {transcript.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Link href={`/attorney/transcripts/${transcript.id}`}>
-                        <Button variant="outline" size="sm">
-                          Open
-                        </Button>
-                      </Link>
-                    </td>
+          {isLoading ? (
+            <div className="text-sm text-gray-500">Loading transcript activity…</div>
+          ) : recentTranscripts.length === 0 ? (
+            <EmptyTranscripts />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                      Transcript
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                      Deposition Date
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                      Access Level
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                      Status
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                      Action
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recentTranscripts.map((transcript) => (
+                    <tr key={transcript.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 text-sm text-gray-900">
+                        {getTranscriptLabel(transcript)}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {formatDate(transcript.job?.depositionDate)}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {transcript.accessLevel}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                            transcript.job?.status === 'COMPLETED'
+                              ? 'bg-green-100 text-green-800'
+                              : transcript.job?.status === 'IN_REVIEW'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
+                          }`}
+                        >
+                          {transcript.job?.status || 'Unknown'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Link href={getTranscriptHref(transcript)}>
+                          <Button variant="outline" size="sm">
+                            Open
+                          </Button>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

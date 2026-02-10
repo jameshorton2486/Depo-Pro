@@ -11,6 +11,7 @@ import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getCaseById } from '@/lib/supabase/queries/cases';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { Role } from '@/lib/constants';
+import { deleteExhibitFiles } from '@/lib/exhibits/storage';
 
 /**
  * GET /api/attorney/exhibits/[id]
@@ -128,8 +129,30 @@ export async function DELETE(
       );
     }
 
-    // TODO: Delete files from storage
-    // await deleteExhibitFiles(exhibit.original_file_url, exhibit.stamped_file_url);
+    const pathsToDelete: string[] = [];
+    const originalFileUrl = exhibit.original_file_url || (exhibit as any).originalFileUrl;
+    if (originalFileUrl) {
+      const urlMatch = originalFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+      if (urlMatch) {
+        pathsToDelete.push(urlMatch[1]);
+      }
+    }
+
+    const stampedFileUrl = exhibit.stamped_file_url || (exhibit as any).stampedFileUrl;
+    if (stampedFileUrl) {
+      const urlMatch = stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+      if (urlMatch) {
+        pathsToDelete.push(urlMatch[1]);
+      }
+    }
+
+    if (pathsToDelete.length > 0) {
+      try {
+        await deleteExhibitFiles(pathsToDelete);
+      } catch (storageError) {
+        console.error('Failed to delete exhibit files from storage:', storageError);
+      }
+    }
 
     // Delete exhibit record
     await deleteExhibit(supabase, id);

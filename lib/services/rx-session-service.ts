@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * RX Session Service
  * Manages RX processing sessions
@@ -41,7 +42,7 @@ export async function createRxSession(
     );
   }
   
-  console.log('[RX] createRxSession called - stub', params);
+  logger.debug('[RX] createRxSession called - stub', { ...params });
   
   const sessionId = `rx-session-${Date.now()}`;
   return {
@@ -68,7 +69,7 @@ export async function getActiveRXSession(jobId: string): Promise<RxSession | nul
       'This is a stubbed service - implement real RX session retrieval before production deployment.'
     );
   }
-  console.log('[RX] getActiveRXSession called - stub', { jobId });
+  logger.debug('[RX] getActiveRXSession called - stub', { jobId });
   return null;
 }
 
@@ -82,6 +83,8 @@ export async function endRxSession(sessionId: string): Promise<{ success: boolea
       'This is a stubbed service - implement real RX session termination before production deployment.'
     );
   }
-  console.log('[RX] endRxSession called - stub', { sessionId });
+  logger.debug('[RX] endRxSession called - stub', { sessionId });
   return { success: true };
 }
+
+

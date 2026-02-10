@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * RX Eligibility Service
  * Determines if jobs are eligible for RX processing
@@ -24,7 +25,7 @@ export async function checkRxEligibility(
       'This is a stubbed service - implement real RX eligibility checking before production deployment.'
     );
   }
-  console.log('[RX] checkRxEligibility called - stub', { jobId });
+  logger.debug('[RX] checkRxEligibility called - stub', { jobId });
   return {
     eligible: true,
     allowed: true,
@@ -58,7 +59,7 @@ export async function requestRXAdminApprovalForJob(
       'This is a stubbed service - implement real admin approval workflow before production deployment.'
     );
   }
-  console.log('[RX] requestRXAdminApprovalForJob called - stub', { jobId, justification });
+  logger.debug('[RX] requestRXAdminApprovalForJob called - stub', { jobId, justification });
   return {
     success: true,
     requestId: `approval-${Date.now()}`,
@@ -79,7 +80,7 @@ export async function validateProcessingModeChange(
       'This is a stubbed service - implement real processing mode validation before production deployment.'
     );
   }
-  console.log('[RX] validateProcessingModeChange called - stub', { jobId, userId });
+  logger.debug('[RX] validateProcessingModeChange called - stub', { jobId, userId });
   return {
     valid: true,
     allowed: true,

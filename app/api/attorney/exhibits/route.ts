@@ -11,6 +11,9 @@ import { getJobById } from '@/lib/supabase/queries/jobs';
 import { listExhibitsByCase, listExhibitsByJob, createExhibit } from '@/lib/supabase/queries/exhibits';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { Role } from '@/lib/constants';
+import { uploadExhibitOriginal, getFileTypeFromMime } from '@/lib/exhibits/storage';
+import { createAuditLog, AuditTargetType } from '@/lib/audit-service';
+import { logger } from '@/lib/logger';
 import {
   requireAuth,
   requireAttorneyCaseAccess,
@@ -38,6 +41,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const caseId = searchParams.get('caseId');
     const depositionId = searchParams.get('depositionId');
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 100);
+    const offset = (page - 1) * limit;
 
     if (!caseId) {
       return NextResponse.json(
@@ -108,9 +114,23 @@ export async function GET(request: NextRequest) {
       return (a.exhibit_label || '').localeCompare(b.exhibit_label || '');
     });
 
-    return NextResponse.json({ exhibits: enrichedExhibits });
+    const totalCount = enrichedExhibits.length;
+    const pagedExhibits = enrichedExhibits.slice(offset, offset + limit);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return NextResponse.json({
+      exhibits: pagedExhibits,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
   } catch (error) {
-    console.error('Error fetching exhibits:', error);
+    logger.error('Error fetching exhibits', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to fetch exhibits' },
       { status: 500 },
@@ -196,10 +216,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Upload file to storage (Supabase/S3)
-    // For now, we'll use a placeholder URL
-    const fileUrl = `/api/attorney/exhibits/files/${Date.now()}-${file.name}`;
-    const fileType = file.type.startsWith('image/') ? 'IMAGE' : file.type.includes('pdf') ? 'PDF' : 'DOCX';
+    const storageKey = depositionId || caseId;
+    const originalUpload = await uploadExhibitOriginal({
+      jobId: storageKey,
+      file,
+      filename: file.name,
+    });
+    const fileUrl = originalUpload.url;
+    const fileType = getFileTypeFromMime(file.type);
 
     // Get next exhibit number for this case+deposition combination
     const existingExhibits = depositionId
@@ -217,7 +241,7 @@ export async function POST(request: NextRequest) {
     // Create exhibit record
     const exhibit = await createExhibit(supabase, {
       case_id: caseId,
-      job_id: depositionId || '',
+      job_id: depositionId || null,
       exhibit_label: exhibitLabel,
       exhibit_number: nextExhibitNumber,
       description,
@@ -247,12 +271,26 @@ export async function POST(request: NextRequest) {
       } : null,
     };
 
-    // TODO: Add audit log entry
-    // await db.auditLog.create({ ... });
+    await createAuditLog({
+      actorUserId: user.id,
+      firmId: (caseRecord as any).firm_id || (caseRecord as any).firmId || null,
+      action: 'EXHIBIT_UPLOADED',
+      targetType: AuditTargetType.FILE,
+      targetId: exhibit.id,
+      metadata: {
+        caseId,
+        jobId: depositionId || null,
+        fileName: file.name,
+        fileType,
+        fileSize: file.size,
+      },
+      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
+      userAgent: request.headers.get('user-agent') || undefined,
+    });
 
     return NextResponse.json({ exhibit: enrichedExhibit }, { status: 201 });
   } catch (error) {
-    console.error('Error uploading exhibit:', error);
+    logger.error('Error uploading exhibit', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to upload exhibit' },
       { status: 500 },

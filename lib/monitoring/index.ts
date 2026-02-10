@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // ═══════════════════════════════════════════════════════════════════════════
 // APPLICATION MONITORING
 // Tracks errors, performance, and usage metrics
@@ -10,7 +11,7 @@
 export function trackEvent(name: string, data?: Record<string, unknown>) {
   // Log locally in development
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[Event] ${name}`, data);
+    logger.debug(`[Event] ${name}`, data);
   }
   
   // In production, send to monitoring service (Sentry, PostHog, etc.)
@@ -53,7 +54,7 @@ export interface PerformanceMetric {
 
 export function trackPerformance(metric: PerformanceMetric) {
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[Perf] ${metric.name}: ${metric.value}${metric.unit}`);
+    logger.debug(`[Perf] ${metric.name}: ${metric.value}${metric.unit}`);
   }
   
   // Send to monitoring service

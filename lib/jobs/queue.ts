@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 ﻿/**
  * Job Queue Service
  */
@@ -52,7 +53,7 @@ export async function enqueueJob(
   _options?: JobOptions
 ): Promise<string> {
   const jobId = `job-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  console.log('[Queue] enqueueJob', { jobId, type, data });
+  logger.debug('[Queue] enqueueJob', { jobId, type, data });
   return jobId;
 }
 
@@ -60,7 +61,7 @@ export async function enqueueJob(
  * Process pending jobs
  */
 export async function processJobs(): Promise<JobResult[]> {
-  console.log('[Queue] processJobs called');
+  logger.debug('[Queue] processJobs called');
   return [];
 }
 
@@ -90,6 +91,6 @@ export async function getQueueStats(): Promise<{
  * Get job status by ID
  */
 export async function getJobStatus(jobId: string): Promise<QueuedJob | null> {
-  console.log('[Queue] getJobStatus', { jobId });
+  logger.debug('[Queue] getJobStatus', { jobId });
   return null;
 }

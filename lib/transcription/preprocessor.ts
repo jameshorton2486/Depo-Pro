@@ -5,6 +5,7 @@
 
 import _ffmpeg from 'fluent-ffmpeg';
 import type { AudioMetadata, PreprocessingResult } from '@/types/deepgram';
+import { logger } from '@/lib/logger';
 
 /**
  * Analyze audio file quality
@@ -17,7 +18,7 @@ export async function analyzeAudioQuality(_filePath: string): Promise<AudioMetad
   // - channels
   // - format
 
-  console.log('TODO: Implement analyzeAudioQuality()');
+  logger.debug('TODO: Implement analyzeAudioQuality()');
 
   throw new Error('Not implemented');
 }
@@ -37,7 +38,7 @@ export async function enhanceAudioForLegal(
   // 3. Compress dynamic range
   // 4. Convert to consistent format (16-bit, 16kHz, mono)
 
-  console.log('TODO: Implement enhanceAudioForLegal()');
+  logger.debug('TODO: Implement enhanceAudioForLegal()');
 
   throw new Error('Not implemented');
 }
@@ -54,7 +55,7 @@ export async function concatenateAudioFiles(
   // TODO: Use FFmpeg concat filter to merge files
   // Ensure consistent audio format before concatenation
 
-  console.log('TODO: Implement concatenateAudioFiles()');
+  logger.debug('TODO: Implement concatenateAudioFiles()');
 
   throw new Error('Not implemented');
 }

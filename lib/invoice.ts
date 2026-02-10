@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // ═══════════════════════════════════════════════════════════════
 // INVOICE SERVICE (Mock Implementation - Ready for Stripe)
 // ═══════════════════════════════════════════════════════════════
@@ -104,7 +105,7 @@ export async function createPaymentIntent(
   }
 
   // Mock payment intent - development only
-  console.log('[MOCK] Creating Stripe PaymentIntent', { amount, currency, metadata: _metadata });
+  logger.debug('[MOCK] Creating Stripe PaymentIntent', { amount, currency, metadata: _metadata });
 
   return {
     id: `pi_mock_${Date.now()}`,

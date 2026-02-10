@@ -104,3 +104,4 @@ export function withRouteLogging<T extends (...args: any[]) => Promise<NextRespo
     }
   }) as T;
 }
+

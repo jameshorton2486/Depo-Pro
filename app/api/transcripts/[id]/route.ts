@@ -33,10 +33,22 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
   }) as T;
 };
 
-// Stub for canEditTranscript (replaces _future/transcripts/lock-service)
-async function canEditTranscript(_transcriptId: string, _userId: string): Promise<{ canEdit: boolean; reason?: string }> {
-  // TODO: Implement transcript locking with Supabase
-  // For now, allow editing (will be implemented later)
+async function canEditTranscript(transcriptId: string, userId: string): Promise<{ canEdit: boolean; reason?: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('transcriptions')
+    .select('locked_by, lock_reason')
+    .eq('id', transcriptId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { canEdit: true };
+  }
+
+  if (data.locked_by && data.locked_by !== userId) {
+    return { canEdit: false, reason: data.lock_reason || 'Transcript is locked by another user' };
+  }
+
   return { canEdit: true };
 }
 
@@ -81,7 +93,12 @@ export const GET = withRequestLogging(async (
         metadata: { reason: 'insufficient_permissions' },
         ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
-      }).catch(() => {}); // Fire and forget
+      }).catch((error) => {
+        logger.warn('Failed to write access denied audit log', {
+          transcriptId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }); // Fire and forget
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -94,7 +111,12 @@ export const GET = withRequestLogging(async (
       targetId: transcriptId,
       ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
-    }).catch(() => {}); // Fire and forget
+    }).catch((error) => {
+      logger.warn('Failed to write transcript view audit log', {
+        transcriptId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }); // Fire and forget
 
     return NextResponse.json({
       id: transcript.id,

@@ -3,16 +3,18 @@
 // ═══════════════════════════════════════════════════════════════
 // API routes for attorney transcript management
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Role } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/attorney/transcripts
  * List all transcripts for the current attorney
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getCurrentUser();
 
@@ -26,37 +28,65 @@ export async function GET() {
     }
 
     const supabase = await createSupabaseServerClient();
+    const searchParams = request.nextUrl.searchParams;
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100);
+    const offset = (page - 1) * limit;
+    const rangeTo = offset + limit - 1;
 
     // Get transcripts
-    const { data: transcripts, error: transcriptsError } = await supabase
+    const { data: transcripts, error: transcriptsError, count } = await supabase
       .from('attorney_transcripts')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('uploaded_by_id', session.user.id)
-      .order('uploaded_at', { ascending: false });
+      .order('uploaded_at', { ascending: false })
+      .range(offset, rangeTo);
 
     if (transcriptsError) {
       throw transcriptsError;
     }
 
-    // Get annotations for each transcript
-    const transcriptsWithAnnotations = await Promise.all(
-      (transcripts || []).map(async (transcript) => {
-        const { data: annotations } = await supabase
-          .from('transcript_annotations')
-          .select('*')
-          .eq('transcription_id', transcript.id)
-          .order('created_at', { ascending: false });
+    const transcriptIds = (transcripts || []).map(t => t.id);
+    let annotationsByTranscript = new Map<string, any[]>();
 
-        return {
-          ...transcript,
-          annotations: annotations || [],
-        };
-      })
-    );
+    if (transcriptIds.length > 0) {
+      const { data: annotations } = await supabase
+        .from('transcript_annotations')
+        .select('*')
+        .in('transcription_id', transcriptIds)
+        .order('created_at', { ascending: false });
 
-    return NextResponse.json({ transcripts: transcriptsWithAnnotations });
+      annotationsByTranscript = (annotations || []).reduce((acc, annotation) => {
+        const key = annotation.transcription_id as string;
+        if (!acc.has(key)) {
+          acc.set(key, []);
+        }
+        acc.get(key)!.push(annotation);
+        return acc;
+      }, new Map<string, any[]>());
+    }
+
+    const transcriptsWithAnnotations = (transcripts || []).map((transcript) => ({
+      ...transcript,
+      annotations: annotationsByTranscript.get(transcript.id) || [],
+    }));
+
+    const totalCount = count || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return NextResponse.json({
+      transcripts: transcriptsWithAnnotations,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
   } catch (error) {
-    console.error('Error fetching transcripts:', error);
+    logger.error('Error fetching transcripts', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to fetch transcripts' },
       { status: 500 },
@@ -115,7 +145,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ transcript }, { status: 201 });
   } catch (error) {
-    console.error('Error creating transcript:', error);
+    logger.error('Error creating transcript', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to create transcript' },
       { status: 500 },

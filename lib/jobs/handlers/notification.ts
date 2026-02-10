@@ -3,6 +3,7 @@
  */
 
 import { registerHandler } from '../queue';
+import { logger } from '@/lib/logger';
 
 export interface EmailNotificationPayload {
   to: string;
@@ -19,11 +20,11 @@ export interface WebhookNotificationPayload {
 }
 
 async function handleEmailNotification(data: Record<string, unknown>): Promise<void> {
-  console.log('[NotificationHandler] Sending email', data);
+  logger.debug('[NotificationHandler] Sending email', data);
 }
 
 async function handleWebhookNotification(data: Record<string, unknown>): Promise<void> {
-  console.log('[NotificationHandler] Sending webhook', data);
+  logger.debug('[NotificationHandler] Sending webhook', data);
 }
 
 // Register handlers

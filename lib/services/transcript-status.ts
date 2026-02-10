@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 ﻿/**
  * Transcript Status Service
  * Handles transcript status transitions
@@ -24,7 +25,7 @@ export async function transitionTranscriptStatus(
   userRole: string,
   _reason?: string
 ): Promise<TransitionResult> {
-  console.log('[TranscriptStatus] transitionTranscriptStatus', { 
+  logger.debug('[TranscriptStatus] transitionTranscriptStatus', { 
     transcriptId, 
     newStatus, 
     userRole 

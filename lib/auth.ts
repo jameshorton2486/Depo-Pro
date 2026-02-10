@@ -26,7 +26,7 @@ import { redirect } from 'next/navigation';
  * ```ts
  * const session = await getCurrentUser();
  * if (session) {
- *   console.log(session.user.email);
+ *   logger.debug(session.user.email);
  * }
  * ```
  */
@@ -84,7 +84,7 @@ export const auth = getCurrentUser;
  * ```ts
  * const session = await requireAuth();
  * // User is guaranteed to be authenticated here
- * console.log(session.user.id);
+ * logger.debug(session.user.id);
  * ```
  */
 export async function requireAuth() {
@@ -272,3 +272,5 @@ export function assertRole<T extends Role>(
 //   // Firm concept removed
 //   throw new Error('Firm concept removed');
 // }
+
+

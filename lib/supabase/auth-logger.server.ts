@@ -280,3 +280,4 @@ export function createLoggedAuthClient(supabase: SupabaseClient) {
     },
   };
 }
+

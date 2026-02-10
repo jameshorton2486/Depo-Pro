@@ -101,6 +101,38 @@ export async function PATCH(
     // Get current words array (transcription is already fetched above)
     // Note: words are stored in transcript_tokens or in a JSONB column
     const currentWords = (transcription.words as any[]) || (transcription.tokens as any[]) || [];
+    const maxIndex = currentWords.length - 1;
+
+    const invalidCorrectionIndices = corrections.filter(
+      (c) => !Number.isInteger(c.wordIndex) || c.wordIndex < 0 || c.wordIndex > maxIndex,
+    );
+    const invalidReviewedIndices = reviewedIndices.filter(
+      (index) => !Number.isInteger(index) || index < 0 || index > maxIndex,
+    );
+    const invalidLastReviewedIndex =
+      !Number.isInteger(lastReviewedIndex) ||
+      lastReviewedIndex < 0 ||
+      lastReviewedIndex > maxIndex;
+
+    if (
+      currentWords.length === 0 ||
+      invalidCorrectionIndices.length > 0 ||
+      invalidReviewedIndices.length > 0 ||
+      invalidLastReviewedIndex
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Invalid word indices',
+          details: {
+            wordCount: currentWords.length,
+            invalidCorrections: invalidCorrectionIndices.map((c) => c.wordIndex),
+            invalidReviewed: invalidReviewedIndices,
+            invalidLastReviewedIndex: invalidLastReviewedIndex ? lastReviewedIndex : null,
+          },
+        },
+        { status: 400 },
+      );
+    }
 
     // Apply corrections to words array
     const updatedWords = currentWords.map((word, index) => {

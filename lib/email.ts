@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import nodemailer from 'nodemailer';
+import { logger } from '@/lib/logger';
 
 const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.zoho.com';
 const EMAIL_PORT = parseInt(process.env.EMAIL_PORT || '587');
@@ -72,13 +73,12 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
     }
 
     // Development: log email
-    console.log('📧 [MOCK EMAIL] Email service not configured');
-    console.log('From:', EMAIL_FROM);
-    console.log('To:', options.to);
-    console.log('Subject:', options.subject);
-    console.log('---');
-    console.log(options.text || 'HTML email (text not provided)');
-    console.log('---\n');
+    logger.debug('📧 [MOCK EMAIL] Email service not configured', {
+      from: EMAIL_FROM,
+      to: options.to,
+      subject: options.subject,
+      preview: options.text || 'HTML email (text not provided)',
+    });
 
     return {
       id: `mock_email_${Date.now()}`,
@@ -98,7 +98,7 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
       replyTo: options.replyTo,
     });
 
-    console.log('✅ Email sent via SMTP:', info.messageId);
+    logger.debug('✅ Email sent via SMTP', { messageId: info.messageId });
     return {
       id: info.messageId || `email_${Date.now()}`,
       success: true,
@@ -333,3 +333,5 @@ Depo-Pro Court Reporting Management System
     text,
   };
 }
+
+

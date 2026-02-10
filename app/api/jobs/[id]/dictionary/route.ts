@@ -1,11 +1,18 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth-compat';
+import { logger } from '@/lib/logger';
 
 /**
  * Dictionary API - Redirects to proper-nouns API for backward compatibility
  * This endpoint is kept for legacy support but forwards to the new proper-nouns endpoint
  */
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = new URL(request.url);
   const jobId = url.pathname.split('/')[3]; // Extract jobId from /api/jobs/[id]/dictionary
   
@@ -18,6 +25,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = new URL(request.url);
   const jobId = url.pathname.split('/')[3];
   
@@ -27,11 +39,17 @@ export async function POST(request: NextRequest) {
 
   // Forward request to proper-nouns endpoint
   const body = await request.json().catch(() => ({}));
-  const response = await fetch(new URL(`/api/jobs/${jobId}/proper-nouns`, request.url), {
-    method: 'POST',
-    headers: request.headers,
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(new URL(`/api/jobs/${jobId}/proper-nouns`, request.url), {
+      method: 'POST',
+      headers: request.headers,
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    logger.error('Dictionary proxy failed', error instanceof Error ? error : new Error(String(error)));
+    return NextResponse.json({ error: 'Failed to forward request' }, { status: 502 });
+  }
 
   return NextResponse.json(await response.json(), { status: response.status });
 }

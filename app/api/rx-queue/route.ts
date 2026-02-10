@@ -9,6 +9,8 @@ import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,21 +27,36 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const _status = searchParams.get('status') as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | undefined;
-    const firmId = searchParams.get('firmId') || undefined;
+    const requestedFirmId = searchParams.get('firmId') || undefined;
 
     const queue = await AudioEnhancementService.getRxQueue();
 
-    // Filter by firm if specified (for non-admin users)
-    const filteredQueue = firmId
-      ? queue.filter(() => {
-          // Would need to fetch job firmId - for now return all if admin
-          return session.user.role === 'ADMIN' || true; // TODO: Filter by firmId
-        })
-      : queue;
+    const effectiveFirmId = session.user.role === 'ADMIN'
+      ? requestedFirmId
+      : session.user.firmId || undefined;
+
+    let filteredQueue = queue;
+
+    if (effectiveFirmId && queue.length > 0) {
+      const supabase = await createSupabaseServerClient();
+      const jobIds = [...new Set(queue.map(item => item.jobId))];
+
+      const { data: jobs, error: jobsError } = await supabase
+        .from('jobs')
+        .select('id, firm_id')
+        .in('id', jobIds);
+
+      if (jobsError) {
+        throw jobsError;
+      }
+
+      const firmByJobId = new Map((jobs || []).map(job => [job.id, job.firm_id]));
+      filteredQueue = queue.filter(item => firmByJobId.get(item.jobId) === effectiveFirmId);
+    }
 
     return NextResponse.json({ queue: filteredQueue });
   } catch (error) {
-    console.error('[RX Queue] Error:', error);
+    logger.error('[RX Queue] Error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to fetch queue' },
       { status: 500 },

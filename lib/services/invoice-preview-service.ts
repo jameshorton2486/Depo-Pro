@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // lib/services/invoice-preview-service.ts
 // STUB: Invoice preview generation
 //
@@ -11,7 +12,7 @@ export async function generateInvoicePreview(_jobId: string) {
       'This is a stubbed service - implement real invoice preview generation before production deployment.'
     );
   }
-  console.log('[STUB] generateInvoicePreview called');
+  logger.debug('[STUB] generateInvoicePreview called');
   return {
     items: [],
     subtotal: 0,

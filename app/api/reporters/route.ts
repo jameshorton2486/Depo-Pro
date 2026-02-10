@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
 import { canPerformAction } from '@/lib/rbac';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -39,6 +40,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '25', 10), 1), 100);
+    const offset = (page - 1) * limit;
     const effectiveFirmId = user.role === 'ADMIN' ? (searchParams.get('firmId') || user.firmId) : user.firmId;
 
     // Get reporters by role and firm
@@ -75,13 +79,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         return a.firstName.localeCompare(b.firstName);
       });
 
-    return NextResponse.json({ reporters: formattedReporters, total: formattedReporters.length });
+    const totalCount = formattedReporters.length;
+    const pagedReporters = formattedReporters.slice(offset, offset + limit);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return NextResponse.json({
+      reporters: pagedReporters,
+      total: totalCount,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
 
   } catch (error) {
-    console.error('Get reporters error:', error);
+    logger.error('Get reporters error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
-
 
 

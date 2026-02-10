@@ -48,7 +48,6 @@ export function CalendarEventActions({
   
   const handleClick = (action: CalendarAction) => {
     // NO MUTATION - just log for analytics if needed
-    console.log(`[Calendar] Action clicked: ${action} (disabled)`);
     onActionClick?.(action);
   };
   
@@ -116,4 +115,3 @@ export function CalendarEventActions({
     </div>
   );
 }
-

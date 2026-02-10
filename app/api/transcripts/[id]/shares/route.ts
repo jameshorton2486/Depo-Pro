@@ -12,6 +12,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, getTranscriptShares, createTranscriptShare } from '@/lib/supabase/queries/transcripts';
 import { dispatchShareCreated } from '@/lib/webhooks';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 const createShareSchema = z.object({
@@ -75,7 +76,13 @@ export async function POST(request: NextRequest, { params }: Props) {
       },
       ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
-    }).catch(() => {}); // Fire and forget
+    }).catch((error) => {
+      logger.warn('Failed to write share audit log', {
+        transcriptId,
+        shareId: share.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }); // Fire and forget
 
     // Dispatch webhook
     await dispatchShareCreated(share.id, transcriptId);
@@ -109,4 +116,3 @@ export async function GET(_request: NextRequest, { params }: Props) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

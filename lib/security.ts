@@ -6,6 +6,7 @@
 import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { UserRole } from '@/types/database';
+import { logger } from '@/lib/logger';
 
 // Rate limiting store (in production, use Redis)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -275,7 +276,7 @@ export async function logSecurityEvent(
   userAgent?: string
 ) {
   // In production, this would write to a secure audit log
-  console.log('SECURITY EVENT:', {
+  logger.info('SECURITY EVENT', {
     userId,
     action,
     details,

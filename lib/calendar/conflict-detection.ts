@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // lib/calendar/conflict-detection.ts
 // STUB: Calendar conflict detection
 
@@ -25,6 +26,8 @@ export async function checkConflicts(
       'Scheduling without conflict detection can cause double-booking.'
     );
   }
-  console.log('[STUB] checkConflicts called');
+  logger.debug('[STUB] checkConflicts called');
   return { hasConflicts: false, conflicts: [] };
 }
+
+

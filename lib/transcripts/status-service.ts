@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // lib/transcripts/status-service.ts
 // STUB: Transcript status transitions
 
@@ -29,6 +30,6 @@ export async function transitionStatus(
       'This is a stubbed service - implement real transcript status transitions before production deployment.'
     );
   }
-  console.log('[STUB] transitionStatus called');
+  logger.debug('[STUB] transitionStatus called');
   return { success: true };
 }

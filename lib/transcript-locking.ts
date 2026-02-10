@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 ﻿/**
  * Transcript Locking Service
  */
@@ -65,7 +66,7 @@ export async function transitionTranscriptStatus(
   userRole: string,
   _reason?: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log('[TranscriptLocking] transitionTranscriptStatus', {
+  logger.debug('[TranscriptLocking] transitionTranscriptStatus', {
     transcriptId,
     newStatus,
     userRole,

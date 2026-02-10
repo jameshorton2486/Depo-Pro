@@ -7,7 +7,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { FlaggedWordStatus } from '@/types/schema-enums';
-import type { Database } from '@/types/supabase-generated';
 import type { FlaggedWordStats } from '@/types/transcription';
 
 /**
@@ -224,9 +223,9 @@ export async function extractFlaggedWords(
   transcriptionId: string,
   confidenceThreshold: number = 0.7
 ) {
-  const supabase = await createAdminClient();
+  const _supabase = await createAdminClient();
 
-  return await supabase.rpc('extract_flagged_words', {
+  return await _supabase.rpc('extract_flagged_words', {
     p_transcription_id: transcriptionId,
     p_confidence_threshold: confidenceThreshold,
   });

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 // lib/services/webhook-verification-service.ts
 // STUB: Webhook verification service
 //
@@ -15,7 +16,7 @@ export async function processWebhookRequest(
       'Unverified webhooks pose a security risk.'
     );
   }
-  console.log('[STUB] processWebhookRequest called');
+  logger.debug('[STUB] processWebhookRequest called');
   return { success: false, status: 400, body: { error: 'Webhook verification not implemented' } };
 }
 
@@ -27,6 +28,6 @@ export function verifyStripeSignature(_payload: string, ___signature: string) {
       'Unverified webhooks pose a security risk.'
     );
   }
-  console.log('[STUB] verifyStripeSignature called');
+  logger.debug('[STUB] verifyStripeSignature called');
   return { valid: false };
 }

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
+import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import {
   generateInvoiceNumber,
   calculateJobPrice,
@@ -39,14 +40,17 @@ export async function POST(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Verify user is the creator
-    if ((job as any).created_by_id !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Calculate pricing
-    const pageCount = 0; // Mock - would come from transcript
-    const durationMinutes = 60; // Mock - would come from audio file metadata
+    // Calculate pricing from real job/transcription data
+    const transcription = await getTranscriptByJobId(supabase, jobId);
+    const wordCount = transcription?.word_count ?? null;
+    const pageCount = transcription?.page_count ?? (wordCount ? Math.ceil(wordCount / 250) : 0);
+    const durationMinutes =
+      (job as any).audio_duration_minutes ??
+      ((job as any).audio_duration_seconds
+        ? Math.ceil((job as any).audio_duration_seconds / 60)
+        : transcription?.duration
+          ? Math.ceil(transcription.duration / 60)
+          : 0);
     const items = calculateJobPrice(pageCount, durationMinutes, false);
     const totals = calculateInvoiceTotal(items);
 
@@ -68,16 +72,88 @@ export async function POST(
       notes: 'Payment due within 30 days. Thank you for your business.',
     };
 
-    // TODO: Save invoice to database
-    // const invoice = await db.invoice.create({
-    //   data: {
-    //     invoiceNumber,
-    //     jobId,
-    //     amount: totals.total,
-    //     dueDate: invoiceData.dueDate,
-    //     status: 'PENDING',
-    //   },
-    // });
+    const firmId = (job as any).firm_id || (job as any).firmId || null;
+    if (!firmId) {
+      return NextResponse.json({ error: 'Job is missing firm association' }, { status: 400 });
+    }
+
+    const { data: billingAccount, error: billingAccountError } = await supabase
+      .from('billing_accounts')
+      .select('id')
+      .eq('firm_id', firmId)
+      .maybeSingle();
+
+    let billingAccountId = billingAccount?.id || null;
+    if (billingAccountError) {
+      throw billingAccountError;
+    }
+
+    if (!billingAccountId) {
+      const { data: createdBillingAccount, error: createBillingError } = await supabase
+        .from('billing_accounts')
+        .insert({
+          firm_id: firmId,
+          billing_email: session.user.email || 'billing@depo-pro.com',
+          currency: 'USD',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
+
+      if (createBillingError) {
+        throw createBillingError;
+      }
+
+      billingAccountId = createdBillingAccount.id;
+    }
+
+    const periodStart = new Date();
+    periodStart.setUTCDate(1);
+    periodStart.setUTCHours(0, 0, 0, 0);
+    const periodEnd = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + 1, 0, 23, 59, 59));
+
+    const { data: invoiceRecord, error: invoiceError } = await supabase
+      .from('invoices')
+      .insert({
+        billing_account_id: billingAccountId,
+        invoice_number: invoiceNumber,
+        period_start: periodStart.toISOString(),
+        period_end: periodEnd.toISOString(),
+        total_cents: totals.total,
+        subtotal_cents: totals.subtotal,
+        tax_cents: totals.tax,
+        status: 'DRAFT',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select('*')
+      .single();
+
+    if (invoiceError) {
+      throw invoiceError;
+    }
+
+    if (items.length > 0) {
+      const lineItems = items.map((item) => ({
+        invoice_id: invoiceRecord.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price_cents: item.unitPrice,
+        total_cents: item.total,
+      }));
+
+      const { error: lineItemError } = await supabase
+        .from('invoice_line_items')
+        .insert(lineItems);
+
+      if (lineItemError) {
+        logger.warn('Failed to create invoice line items', {
+          invoiceId: invoiceRecord.id,
+          error: lineItemError.message,
+        });
+      }
+    }
 
     logger.info(`Invoice generated - jobId: ${jobId}, invoiceNumber: ${invoiceNumber}`);
 
@@ -95,7 +171,10 @@ export async function POST(
     // Return JSON
     return NextResponse.json({
       success: true,
-      invoice: invoiceData,
+      invoice: {
+        ...invoiceData,
+        id: invoiceRecord.id,
+      },
     });
 
   } catch (error) {

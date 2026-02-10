@@ -1,20 +1,13 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { POST as providerPost } from '../[provider]/route';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify webhook signature (implement later)
-    const body = await request.json();
-
-    console.log('Deepgram webhook received:', body);
-
-    // TODO: Process Deepgram webhook
-    // Update transcription status in database
-    // Handle completion, errors, etc.
-
-    return NextResponse.json({ received: true }, { status: 200 });
+    return await providerPost(request, { params: Promise.resolve({ provider: 'deepgram' }) });
   } catch (error) {
-    console.error('Webhook error:', error);
+    logger.error('Webhook error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 },
