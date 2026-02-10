@@ -14,11 +14,35 @@ type JobUpdate = Database['public']['Tables']['jobs']['Update'];
 
 /**
  * Get job by ID with permission check
+ * Supports both old and new calling patterns:
+ * - New: getJobById(jobId) => { data, error }
+ * - Old: getJobById(supabase, jobId, options) => data (direct)
  */
-export async function getJobById(jobId: string) {
-  const supabase = await createClient();
+export async function getJobById(
+  supabaseOrJobId: any,
+  jobIdOrOptions?: string | Record<string, any>,
+  maybeOptions?: Record<string, any>
+): Promise<any> {
+  // Detect calling pattern
+  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
 
-  return await supabase
+  let supabase: any;
+  let jobId: string;
+  let options: Record<string, any> | undefined;
+
+  if (isOldPattern) {
+    // Old pattern: getJobById(supabase, jobId, options)
+    supabase = supabaseOrJobId;
+    jobId = jobIdOrOptions as string;
+    options = maybeOptions;
+  } else {
+    // New pattern: getJobById(jobId)
+    supabase = await createClient();
+    jobId = supabaseOrJobId as string;
+    options = jobIdOrOptions as Record<string, any> | undefined;
+  }
+
+  const result = await supabase
     .from('jobs')
     .select(`
       *,
@@ -37,6 +61,9 @@ export async function getJobById(jobId: string) {
     `)
     .eq('id', jobId)
     .single();
+
+  // Old pattern returns data directly, new pattern returns { data, error }
+  return isOldPattern ? result.data : result;
 }
 
 /**
@@ -133,9 +160,29 @@ export async function getJobsForFirm(firmId: string, filters?: {
 /**
  * Create a new job
  * Automatically sets status to DRAFT and initializes metadata
+ * Supports both old and new calling patterns:
+ * - New: createJob(data) => { data, error }
+ * - Old: createJob(supabase, data) => data (direct)
  */
-export async function createJob(data: JobInsert) {
-  const supabase = await createClient();
+export async function createJob(
+  supabaseOrData: any,
+  maybeData?: any
+): Promise<any> {
+  // Detect calling pattern
+  const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
+
+  let supabase: any;
+  let data: JobInsert;
+
+  if (isOldPattern) {
+    // Old pattern: createJob(supabase, data)
+    supabase = supabaseOrData;
+    data = maybeData;
+  } else {
+    // New pattern: createJob(data)
+    supabase = await createClient();
+    data = supabaseOrData;
+  }
 
   const jobData: JobInsert = {
     ...data,
@@ -144,11 +191,14 @@ export async function createJob(data: JobInsert) {
     created_at: new Date().toISOString(),
   };
 
-  return await supabase
+  const result = await supabase
     .from('jobs')
     .insert(jobData)
     .select()
     .single();
+
+  // Old pattern returns data directly, new pattern returns { data, error }
+  return isOldPattern ? result.data : result;
 }
 
 /**
