@@ -183,8 +183,8 @@ export default function RegisterPage() {
                   <SelectItem value={Role.ATTORNEY}>
                     {ROLE_LABELS[Role.ATTORNEY]}
                   </SelectItem>
-                  <SelectItem value={Role.REPORTER}>
-                    {ROLE_LABELS[Role.REPORTER]}
+                  <SelectItem value={Role.COURT_REPORTER}>
+                    {ROLE_LABELS[Role.COURT_REPORTER]}
                   </SelectItem>
                   <SelectItem value={Role.SCOPIST}>
                     {ROLE_LABELS[Role.SCOPIST]}
@@ -196,7 +196,7 @@ export default function RegisterPage() {
               </p>
             </div>
 
-            {selectedRole === Role.REPORTER && (
+            {selectedRole === Role.COURT_REPORTER && (
               <div className="space-y-2">
                 <Label htmlFor="agencyName">Agency Name (optional)</Label>
                 <Input {...register('agencyName')} disabled={isLoading} />

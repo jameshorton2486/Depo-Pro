@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
           grantedByIds.map(id => getUserById(supabase, id))
         );
         const grantedByMap = new Map(
-          grantedByUsers.map((u, i) => [grantedByIds[i], u ? {
+          grantedByUsers.map((u: any, i: number) => [grantedByIds[i], u ? {
             id: u.id,
             firstName: u.user_metadata?.firstName || '',
             lastName: u.user_metadata?.lastName || '',
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
           reporterIds.map(id => getUserById(supabase, id))
         );
         const reporterMap = new Map(
-          reporters.map((r, i) => [reporterIds[i], r ? {
+          reporters.map((r: any, i: number) => [reporterIds[i], r ? {
             id: r.id,
             firstName: r.user_metadata?.firstName || '',
             lastName: r.user_metadata?.lastName || '',
@@ -248,7 +248,7 @@ export async function GET(request: NextRequest) {
           sharedByIds.map(id => getUserById(supabase, id))
         );
         const sharedByMap = new Map(
-          sharedByUsers.map((u, i) => [sharedByIds[i], u ? {
+          sharedByUsers.map((u: any, i: number) => [sharedByIds[i], u ? {
             firstName: u.user_metadata?.firstName || '',
             lastName: u.user_metadata?.lastName || '',
           } : null])

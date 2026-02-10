@@ -158,7 +158,7 @@ async function handleDeepgramWebhook(
       if (existingTranscript) {
         await updateTranscript(supabase, existingTranscript.id, {
           status: 'ERROR',
-        }).catch((error) => {
+        }).catch((error: any) => {
           logger.warn('Failed to mark transcript as error', {
             jobId,
             error: error instanceof Error ? error.message : String(error),

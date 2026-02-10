@@ -122,7 +122,7 @@ export async function GET(
 
     // Return in expected format
     return success({
-      notes: notesWithReporter.map(note => ({
+      notes: notesWithReporter.map((note: any) => ({
         ...note,
         isLocked: note.isLocked || isJobFinalized,
       })),

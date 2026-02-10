@@ -47,7 +47,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   // Fetch available scopists for assignment
   const scopistUsers = await getUsersByRole(supabase, 'SCOPIST');
-  const availableScopists = scopistUsers.map((user) => ({
+  const availableScopists = scopistUsers.map((user: any) => ({
     id: user.id,
     firstName: user.user_metadata?.firstName || '',
     lastName: user.user_metadata?.lastName || '',

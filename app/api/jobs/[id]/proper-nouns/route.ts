@@ -62,7 +62,7 @@ export async function GET(
     const csrRecordId = await getOrCreateCsrRecordId(jobId);
 
     return NextResponse.json({
-      properNouns: properNouns.map(noun => ({
+      properNouns: properNouns.map((noun: any) => ({
         ...noun,
         csrRecordId: noun.csr_record_id,
         phoneticHint: noun.phonetic_hint,

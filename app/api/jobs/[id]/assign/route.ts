@@ -127,7 +127,7 @@ export async function POST(
     // 7. SCOPIST VALIDATION WITH TENANT ISOLATION
     // Scopist must exist, have SCOPIST role, AND belong to the same firm
     const scopists = await getUsersByRole(supabase, 'SCOPIST', user.firmId);
-    const scopistData = scopists.find(s => s.id === validatedData.scopistId);
+    const scopistData = scopists.find((s: any) => s.id === validatedData.scopistId);
 
     if (!scopistData) {
       return NextResponse.json(

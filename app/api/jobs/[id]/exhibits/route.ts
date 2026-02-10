@@ -121,7 +121,7 @@ export async function POST(
     // Get current max exhibit number for this job
     const existingExhibits = await listExhibitsByJob(supabase, jobId);
     const maxExhibitNumber = existingExhibits.length > 0
-      ? Math.max(...existingExhibits.map(e => (e as any).exhibit_number || 0))
+      ? Math.max(...existingExhibits.map((e: any) => e.exhibit_number || 0))
       : 0;
     const nextExhibitNumber = maxExhibitNumber + 1;
 

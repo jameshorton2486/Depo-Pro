@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
       ip_address: ip,
-    }).catch((error) => {
+    }).catch((error: any) => {
       logger.warn('Failed to write contact audit log', {
         error: error instanceof Error ? error.message : String(error),
       });

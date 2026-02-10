@@ -31,14 +31,14 @@ export default async function UsersSettingsPage() {
   const usersList = await listUsers(supabase);
 
   // Map to expected format
-  const users = usersList.map((u) => ({
+  const users = usersList.map((u: any) => ({
     id: u.id,
     firstName: u.user_metadata?.firstName || '',
     lastName: u.user_metadata?.lastName || '',
     email: u.email || '',
     role: u.user_metadata?.role || 'REPORTER',
     createdAt: u.created_at || new Date().toISOString(),
-  })).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  })).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <div className="p-6 max-w-7xl mx-auto">

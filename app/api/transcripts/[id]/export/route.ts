@@ -110,7 +110,7 @@ export async function GET(
 
         // Apply corrections from TranscriptionEdit records
         // Edit metadata contains wordIndex and wordId
-        edits.forEach(edit => {
+        edits.forEach((edit: any) => {
           if (edit.edited_text && edit.metadata) {
             const metadata = edit.metadata as { wordIndex?: number; wordId?: string };
             const wordIndex = metadata.wordIndex;

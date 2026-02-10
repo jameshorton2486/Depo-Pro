@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         lastName: r.user_metadata?.lastName || '',
         email: r.email || '',
       }))
-      .sort((a, b) => {
+      .sort((a: any, b: any) => {
         if (a.lastName !== b.lastName) {
           return a.lastName.localeCompare(b.lastName);
         }

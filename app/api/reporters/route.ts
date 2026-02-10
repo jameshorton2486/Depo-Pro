@@ -72,7 +72,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         availability: r.user_metadata?.availability || null,
         activeAssignments: 0,
       }))
-      .sort((a, b) => {
+      .sort((a: any, b: any) => {
         if (a.lastName !== b.lastName) {
           return a.lastName.localeCompare(b.lastName);
         }
