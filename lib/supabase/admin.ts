@@ -64,5 +64,6 @@ export function getSupabaseAdmin(): SupabaseClient {
 // Aliases for backward compatibility
 export const getSupabaseAdminClient = getSupabaseAdmin;
 export const createSupabaseServiceClient = getSupabaseAdmin;
+export const createAdminClient = getSupabaseAdmin;
 
 export default getSupabaseAdmin;

@@ -24,6 +24,25 @@ export {
 } from '@/types/schema-enums';
 
 // ═══════════════════════════════════════════════════════════════
+// BACKWARD COMPATIBILITY ALIASES
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Legacy Role type (for old code that uses 'Role' instead of 'UserRole')
+ */
+export type Role = 'ADMIN' | 'COURT_REPORTER' | 'SCOPIST' | 'ATTORNEY';
+
+/**
+ * Legacy Role constant object
+ */
+export const Role = {
+  ADMIN: 'ADMIN' as const,
+  COURT_REPORTER: 'COURT_REPORTER' as const,
+  SCOPIST: 'SCOPIST' as const,
+  ATTORNEY: 'ATTORNEY' as const,
+} as const;
+
+// ═══════════════════════════════════════════════════════════════
 // UI METADATA
 // ═══════════════════════════════════════════════════════════════
 
@@ -45,6 +64,11 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
 };
 
 /**
+ * Legacy alias for USER_ROLE_LABELS
+ */
+export const ROLE_LABELS = USER_ROLE_LABELS;
+
+/**
  * Role colors for badges
  */
 export const USER_ROLE_COLORS: Record<UserRole, string> = {
@@ -62,8 +86,11 @@ export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   [JobStatus.PENDING]: 'Pending',
   [JobStatus.PROCESSING]: 'Processing',
   [JobStatus.AI_COMPLETE]: 'AI Complete',
+  [JobStatus.ASSIGNED_TO_SCOPIST]: 'Assigned to Scopist',
   [JobStatus.IN_REVIEW]: 'In Review',
+  [JobStatus.SCOPIST_IN_REVIEW]: 'Scopist Reviewing',
   [JobStatus.SCOPIST_COMPLETE]: 'Scopist Complete',
+  [JobStatus.REPORTER_REVIEW]: 'Reporter Review',
   [JobStatus.FINAL_REVIEW]: 'Final Review',
   [JobStatus.COMPLETED]: 'Completed',
   [JobStatus.ARCHIVED]: 'Archived',
@@ -78,8 +105,11 @@ export const JOB_STATUS_COLORS: Record<JobStatus, string> = {
   [JobStatus.PENDING]: 'bg-blue-100 text-blue-800 border-blue-300',
   [JobStatus.PROCESSING]: 'bg-purple-100 text-purple-800 border-purple-300',
   [JobStatus.AI_COMPLETE]: 'bg-green-100 text-green-800 border-green-300',
+  [JobStatus.ASSIGNED_TO_SCOPIST]: 'bg-indigo-100 text-indigo-800 border-indigo-300',
   [JobStatus.IN_REVIEW]: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+  [JobStatus.SCOPIST_IN_REVIEW]: 'bg-amber-100 text-amber-800 border-amber-300',
   [JobStatus.SCOPIST_COMPLETE]: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  [JobStatus.REPORTER_REVIEW]: 'bg-lime-100 text-lime-800 border-lime-300',
   [JobStatus.FINAL_REVIEW]: 'bg-orange-100 text-orange-800 border-orange-300',
   [JobStatus.COMPLETED]: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   [JobStatus.ARCHIVED]: 'bg-slate-100 text-slate-800 border-slate-300',

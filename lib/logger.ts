@@ -1,4 +1,3 @@
-import { logger } from '@/lib/logger';
 // =============================================================================
 // STRUCTURED LOGGER
 // Production-safe logging with levels and context

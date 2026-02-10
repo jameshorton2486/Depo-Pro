@@ -32,4 +32,7 @@ export async function createSupabaseServerClient(): Promise<SupabaseClient> {
   });
 }
 
+// Alias for query layer consistency
+export const createClient = createSupabaseServerClient;
+
 export default createSupabaseServerClient;
