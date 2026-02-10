@@ -13,6 +13,14 @@ import { createClient } from '@/lib/supabase/server';
 export type CaseFilter = {
   firm_id?: string;
   status?: string;
+  case_type?: string;
+  role?: string;
+  court_type?: string;
+  state?: string;
+  has_transcripts?: boolean;
+  date_from?: Date;
+  date_to?: Date;
+  search?: string;
   limit?: number;
   offset?: number;
 };

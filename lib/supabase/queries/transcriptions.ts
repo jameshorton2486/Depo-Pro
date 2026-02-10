@@ -80,27 +80,27 @@ export async function createTranscription(data: {
 }) {
   const supabase = await createAdminClient();
 
+  const chunking = data.chunking_config || {
+    chunkDurationSeconds: 1800,
+    overlapSeconds: 5,
+    outputFormat: 'mp3' as const,
+    outputBitrate: '128k' as const,
+  };
+  const deepgram = data.deepgram_config || {
+    model: 'nova-3',
+    language: 'en',
+    punctuate: true,
+    diarize: true,
+    smart_format: true,
+    paragraphs: true,
+    utterances: true,
+  };
   const transcriptionData: TranscriptionInsert = {
     job_id: data.job_id,
-    audio_url: data.audio_url,
     source: data.source,
     status: TranscriptionStatus.AWAITING_AUDIO,
-    progress: 0,
-    chunking_config: data.chunking_config || {
-      chunkDurationSeconds: 1800,
-      overlapSeconds: 5,
-      outputFormat: 'mp3' as const,
-      outputBitrate: '128k' as const,
-    },
-    deepgram_config: data.deepgram_config || {
-      model: 'nova-3',
-      language: 'en',
-      punctuate: true,
-      diarize: true,
-      smart_format: true,
-      paragraphs: true,
-      utterances: true,
-    },
+    chunking_config: chunking as unknown as import('@/types/supabase-generated').Json,
+    deepgram_config: deepgram as unknown as import('@/types/supabase-generated').Json,
     created_at: new Date().toISOString(),
   };
 

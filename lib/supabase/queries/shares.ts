@@ -26,12 +26,11 @@ export async function createShare(data: {
 
   const shareData: ShareInsert = {
     job_id: data.job_id,
-    attorney_id: data.attorney_id,
+    shared_with: data.attorney_id,
     shared_by: data.shared_by,
     access_level: data.access_level || ShareAccessLevel.READ_ONLY,
     expires_at: data.expires_at || null,
-    notes: data.notes || null,
-    shared_at: new Date().toISOString(),
+    message: data.notes || null,
   };
 
   return await supabase

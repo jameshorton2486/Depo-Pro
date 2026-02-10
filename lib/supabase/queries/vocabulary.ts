@@ -8,8 +8,12 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Database } from '@/types/supabase-generated';
 
-type JobVocabularyInsert = Database['public']['Tables']['job_vocabulary']['Insert'];
-type FirmVocabularyInsert = Database['public']['Tables']['firm_vocabulary']['Insert'];
+type Tables = Database['public']['Tables'] & {
+  job_vocabulary?: { Insert: Record<string, unknown> };
+  firm_vocabulary?: { Insert: Record<string, unknown> };
+};
+type JobVocabularyInsert = Tables['job_vocabulary'] extends { Insert: infer I } ? I : Record<string, unknown>;
+type FirmVocabularyInsert = Tables['firm_vocabulary'] extends { Insert: infer I } ? I : Record<string, unknown>;
 
 /**
  * Get all vocabulary terms for a job
@@ -17,8 +21,7 @@ type FirmVocabularyInsert = Database['public']['Tables']['firm_vocabulary']['Ins
  */
 export async function getJobVocabulary(jobId: string) {
   const supabase = await createClient();
-
-  return await supabase
+  return await (supabase as any)
     .from('job_vocabulary')
     .select('*')
     .eq('job_id', jobId)
@@ -30,8 +33,7 @@ export async function getJobVocabulary(jobId: string) {
  */
 export async function getFirmVocabulary(firmId: string) {
   const supabase = await createClient();
-
-  return await supabase
+  return await (supabase as any)
     .from('firm_vocabulary')
     .select('*')
     .eq('firm_id', firmId)

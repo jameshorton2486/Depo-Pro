@@ -31,11 +31,12 @@ export class AuditService {
 
     const logData: AuditLogInsert = {
       action: data.action,
-      entity_type: data.entity_type,
-      entity_id: data.entity_id,
-      user_id: data.user_id,
-      metadata: data.metadata || null,
+      actor_id: data.user_id,
+      target_id: data.entity_id,
+      target_type: data.entity_type,
+      details: (data.metadata ?? null) as import('@/types/supabase-generated').Json,
       ip_address: data.ip_address || null,
+      user_agent: null,
       created_at: new Date().toISOString(),
     };
 

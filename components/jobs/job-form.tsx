@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // JOB FORM COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
@@ -41,10 +41,10 @@ export function JobForm({ initialData, mode }: JobFormProps) {
     formState: { errors },
   } = useForm<CreateJobInput>({
     resolver: zodResolver(createJobSchema),
-    defaultValues: initialData || {
+    defaultValues: (initialData || {
       status: JobStatus.CREATED,
       audioProcessingMode: AudioProcessingMode.AUTOMATED,
-    },
+    }) as Partial<CreateJobInput>,
   });
 
   const onSubmit: SubmitHandler<CreateJobInput> = async (data) => {
@@ -156,7 +156,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
             <Label htmlFor="status">Status</Label>
             <Select
               value={statusValue}
-              onValueChange={(value) => setValue('status', value as JobStatus)}
+              onValueChange={(value) => setValue('status', value as CreateJobInput['status'])}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
