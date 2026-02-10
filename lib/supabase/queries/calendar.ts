@@ -76,11 +76,13 @@ export async function getBookingRequestById(
 
 /**
  * Reschedule event (stub)
+ * Supports: rescheduleEvent(supabase, id, data, options) or rescheduleEvent(id, data)
  */
 export async function rescheduleEvent(
   supabaseOrId: any,
   idOrData?: any,
-  maybeData?: any
+  dataOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
@@ -133,11 +135,13 @@ export async function getCalendarEventNotes(
 
 /**
  * Add note to calendar event (stub)
+ * Supports: addNoteToCalendarEvent(supabase, id, note, options) or addNoteToCalendarEvent(id, note)
  */
 export async function addNoteToCalendarEvent(
   supabaseOrId: any,
   idOrNote?: any,
-  maybeNote?: any
+  noteOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };

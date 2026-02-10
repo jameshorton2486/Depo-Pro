@@ -204,11 +204,30 @@ export async function createJob(
 /**
  * Update job fields
  * Does NOT update status - use updateJobStatus for that
+ * Supports: updateJob(supabase, jobId, updates) or updateJob(jobId, updates)
  */
-export async function updateJob(jobId: string, updates: JobUpdate) {
-  const supabase = await createClient();
+export async function updateJob(
+  supabaseOrJobId: any,
+  jobIdOrUpdates?: string | any,
+  maybeUpdates?: any
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
 
-  return await supabase
+  let supabase: any;
+  let jobId: string;
+  let updates: any;
+
+  if (isOldPattern) {
+    supabase = supabaseOrJobId;
+    jobId = jobIdOrUpdates as string;
+    updates = maybeUpdates;
+  } else {
+    supabase = await createClient();
+    jobId = supabaseOrJobId;
+    updates = jobIdOrUpdates;
+  }
+
+  const result = await supabase
     .from('jobs')
     .update({
       ...updates,
@@ -217,26 +236,52 @@ export async function updateJob(jobId: string, updates: JobUpdate) {
     .eq('id', jobId)
     .select()
     .single();
+
+  return isOldPattern ? result.data : result;
 }
 
 /**
  * Update job status with audit logging
  * This uses the RPC function to ensure proper audit trail
+ * Supports: updateJobStatus(supabase, jobId, newStatus, userId, notes) or updateJobStatus(jobId, newStatus, userId, notes)
  */
 export async function updateJobStatus(
-  jobId: string,
-  newStatus: JobStatus,
-  userId: string,
-  notes?: string
-) {
-  const supabase = await createClient();
+  supabaseOrJobId: any,
+  jobIdOrNewStatus?: string | any,
+  newStatusOrUserId?: any,
+  userIdOrNotes?: string,
+  maybeNotes?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
 
-  return await supabase.rpc('update_job_status', {
+  let supabase: any;
+  let jobId: string;
+  let newStatus: JobStatus;
+  let userId: string;
+  let notes: string | undefined;
+
+  if (isOldPattern) {
+    supabase = supabaseOrJobId;
+    jobId = jobIdOrNewStatus as string;
+    newStatus = newStatusOrUserId;
+    userId = userIdOrNotes as string;
+    notes = maybeNotes;
+  } else {
+    supabase = await createClient();
+    jobId = supabaseOrJobId;
+    newStatus = jobIdOrNewStatus;
+    userId = newStatusOrUserId;
+    notes = userIdOrNotes;
+  }
+
+  const result = await supabase.rpc('update_job_status', {
     p_job_id: jobId,
     p_new_status: newStatus,
     p_user_id: userId,
     p_notes: notes,
   });
+
+  return isOldPattern ? result.data : result;
 }
 
 /**

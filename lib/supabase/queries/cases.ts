@@ -27,14 +27,36 @@ export type CaseSort = {
 
 /**
  * List cases (maps to jobs with case info)
+ * Supports: listCases(supabase, userId, email, filters, sort, pagination)
  */
 export async function listCases(
   supabaseOrFilters: any,
-  maybeFilters?: any
+  userIdOrFilters?: any,
+  emailOrSort?: any,
+  maybeFilters?: any,
+  maybeSort?: any,
+  maybePagination?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrFilters === 'object' && supabaseOrFilters.from;
-  const supabase = isOldPattern ? supabaseOrFilters : await createClient();
-  const filters = isOldPattern ? maybeFilters : supabaseOrFilters;
+
+  let supabase: any;
+  let filters: any;
+  let sort: any;
+  let pagination: any;
+
+  if (isOldPattern) {
+    // Old pattern: listCases(supabase, userId, email, filters, sort, pagination)
+    supabase = supabaseOrFilters;
+    // userId and email are ignored in stub - v1.3 uses RLS
+    filters = maybeFilters || {};
+    sort = maybeSort;
+    pagination = maybePagination || {};
+  } else {
+    // New pattern: listCases(filters)
+    supabase = await createClient();
+    filters = supabaseOrFilters || {};
+    pagination = {};
+  }
 
   let query = supabase
     .from('jobs')
@@ -45,24 +67,51 @@ export async function listCases(
     query = query.eq('firm_id', filters.firm_id);
   }
 
-  if (filters?.limit) {
-    query = query.limit(filters.limit);
+  if (filters?.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  if (pagination?.limit) {
+    query = query.limit(pagination.limit);
+  }
+
+  if (pagination?.skip) {
+    const limit = pagination.limit || 20;
+    query = query.range(pagination.skip, pagination.skip + limit - 1);
   }
 
   const result = await query;
-  return isOldPattern ? result.data : result;
+
+  if (isOldPattern) {
+    return {
+      cases: result.data || [],
+      totalCount: result.count || 0,
+    };
+  }
+  return result;
 }
 
 /**
  * Get case by ID (maps to job)
+ * Supports: getCaseById(supabase, id, options) or getCaseById(id)
  */
 export async function getCaseById(
   supabaseOrId: any,
-  maybeId?: string
+  idOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  const supabase = isOldPattern ? supabaseOrId : await createClient();
-  const id = isOldPattern ? maybeId : supabaseOrId;
+
+  let supabase: any;
+  let id: string;
+
+  if (isOldPattern) {
+    supabase = supabaseOrId;
+    id = idOrOptions as string;
+  } else {
+    supabase = await createClient();
+    id = supabaseOrId;
+  }
 
   const result = await supabase
     .from('jobs')

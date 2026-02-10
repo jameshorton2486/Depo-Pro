@@ -20,10 +20,12 @@ export async function listExhibitsByJob(
 
 /**
  * Get exhibit by ID (stub)
+ * Supports: getExhibitById(supabase, id, options) or getExhibitById(id)
  */
 export async function getExhibitById(
   supabaseOrId: any,
-  maybeId?: string
+  idOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   // Exhibits not in v1.3 schema - return null
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
@@ -32,10 +34,12 @@ export async function getExhibitById(
 
 /**
  * Create exhibit (stub)
+ * Supports: createExhibit(supabase, data, options) or createExhibit(data)
  */
 export async function createExhibit(
   supabaseOrData: any,
-  maybeData?: any
+  dataOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   const error = new Error('Exhibits feature not available in v1.3');
@@ -44,11 +48,13 @@ export async function createExhibit(
 
 /**
  * Update exhibit (stub)
+ * Supports: updateExhibit(supabase, id, updates, options) or updateExhibit(id, updates)
  */
 export async function updateExhibit(
   supabaseOrId: any,
   idOrUpdates?: any,
-  maybeUpdates?: any
+  updatesOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   const error = new Error('Exhibits feature not available in v1.3');
@@ -57,10 +63,12 @@ export async function updateExhibit(
 
 /**
  * Delete exhibit (stub)
+ * Supports: deleteExhibit(supabase, id, options) or deleteExhibit(id)
  */
 export async function deleteExhibit(
   supabaseOrId: any,
-  maybeId?: string
+  idOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   const error = new Error('Exhibits feature not available in v1.3');

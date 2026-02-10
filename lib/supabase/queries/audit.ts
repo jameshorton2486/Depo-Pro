@@ -29,14 +29,23 @@ export async function createAuditLog(
 
 /**
  * List audit logs with pagination
+ * Supports: listAuditLogs(supabase, filters, options) or listAuditLogs(filters)
  */
 export async function listAuditLogs(
   supabaseOrFilters: any,
-  maybeFilters?: any
+  maybeFilters?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrFilters === 'object' && supabaseOrFilters.from;
   const supabase = isOldPattern ? supabaseOrFilters : await createClient();
-  const filters = isOldPattern ? maybeFilters : supabaseOrFilters;
+
+  // Merge filters and options
+  let filters: any;
+  if (isOldPattern) {
+    filters = { ...maybeFilters, ...maybeOptions };
+  } else {
+    filters = supabaseOrFilters;
+  }
 
   let query = supabase
     .from('audit_log')
@@ -55,6 +64,14 @@ export async function listAuditLogs(
     query = query.eq('entity_type', filters.entity_type);
   }
 
+  if (filters?.startDate) {
+    query = query.gte('timestamp', filters.startDate);
+  }
+
+  if (filters?.endDate) {
+    query = query.lte('timestamp', filters.endDate);
+  }
+
   if (filters?.limit) {
     query = query.limit(filters.limit);
   }
@@ -64,7 +81,13 @@ export async function listAuditLogs(
   }
 
   const result = await query;
-  return isOldPattern ? result.data : result;
+
+  // Return format depends on calling pattern
+  if (isOldPattern) {
+    // Old pattern expects { logs: [...] }
+    return { logs: result.data || [], count: result.count || 0 };
+  }
+  return result;
 }
 
 /**

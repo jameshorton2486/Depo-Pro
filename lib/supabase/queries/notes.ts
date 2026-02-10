@@ -9,10 +9,12 @@ import { createClient } from '@/lib/supabase/server';
 
 /**
  * Get note by ID (stub)
+ * Supports: getNoteById(supabase, id, options) or getNoteById(id)
  */
 export async function getNoteById(
   supabaseOrId: any,
-  maybeId?: string
+  idOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
@@ -20,10 +22,12 @@ export async function getNoteById(
 
 /**
  * List notes by job (stub)
+ * Supports: listNotesByJob(supabase, jobId, options) or listNotesByJob(jobId)
  */
 export async function listNotesByJob(
   supabaseOrJobId: any,
-  maybeJobId?: string
+  jobIdOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
   return isOldPattern ? [] : { data: [], error: null };
@@ -31,10 +35,12 @@ export async function listNotesByJob(
 
 /**
  * Create note (stub)
+ * Supports: createNote(supabase, data, options) or createNote(data)
  */
 export async function createNote(
   supabaseOrData: any,
-  maybeData?: any
+  dataOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
@@ -42,11 +48,13 @@ export async function createNote(
 
 /**
  * Update note (stub)
+ * Supports: updateNote(supabase, id, updates, options) or updateNote(id, updates)
  */
 export async function updateNote(
   supabaseOrId: any,
   idOrUpdates?: any,
-  maybeUpdates?: any
+  updatesOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
@@ -54,10 +62,12 @@ export async function updateNote(
 
 /**
  * Delete note (stub)
+ * Supports: deleteNote(supabase, id, options) or deleteNote(id)
  */
 export async function deleteNote(
   supabaseOrId: any,
-  maybeId?: string
+  idOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };

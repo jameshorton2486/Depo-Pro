@@ -9,10 +9,12 @@ import { createClient } from '@/lib/supabase/server';
 
 /**
  * Get proper noun by ID (stub)
+ * Supports: getProperNounById(supabase, id, options) or getProperNounById(id)
  */
 export async function getProperNounById(
   supabaseOrId: any,
-  maybeId?: string
+  idOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
@@ -20,10 +22,12 @@ export async function getProperNounById(
 
 /**
  * List proper nouns by job (stub)
+ * Supports: listProperNounsByJob(supabase, jobId, options) or listProperNounsByJob(jobId)
  */
 export async function listProperNounsByJob(
   supabaseOrJobId: any,
-  maybeJobId?: string
+  jobIdOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
   return isOldPattern ? [] : { data: [], error: null };
@@ -31,10 +35,12 @@ export async function listProperNounsByJob(
 
 /**
  * Create proper noun (stub)
+ * Supports: createProperNoun(supabase, data, options) or createProperNoun(data)
  */
 export async function createProperNoun(
   supabaseOrData: any,
-  maybeData?: any
+  dataOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
@@ -42,11 +48,13 @@ export async function createProperNoun(
 
 /**
  * Update proper noun (stub)
+ * Supports: updateProperNoun(supabase, id, updates, options) or updateProperNoun(id, updates)
  */
 export async function updateProperNoun(
   supabaseOrId: any,
   idOrUpdates?: any,
-  maybeUpdates?: any
+  updatesOrOptions?: any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
@@ -54,10 +62,12 @@ export async function updateProperNoun(
 
 /**
  * Delete proper noun (stub)
+ * Supports: deleteProperNoun(supabase, id, options) or deleteProperNoun(id)
  */
 export async function deleteProperNoun(
   supabaseOrId: any,
-  maybeId?: string
+  idOrOptions?: string | any,
+  maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
