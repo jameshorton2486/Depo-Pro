@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger';
-﻿/**
+/**
  * Billing Service
  * Handles invoice generation and billing operations
  */

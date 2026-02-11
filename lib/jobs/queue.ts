@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger';
-﻿/**
+/**
  * Job Queue Service
  */
 

@@ -5,7 +5,6 @@
  * This is a compatibility stub for legacy code
  */
 
-import { createClient } from '@/lib/supabase/server';
 
 /**
  * Get proper noun by ID (stub)
@@ -13,8 +12,8 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function getProperNounById(
   supabaseOrId: any,
-  idOrOptions?: string | any,
-  maybeOptions?: any
+  _idOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
@@ -25,11 +24,11 @@ export async function getProperNounById(
  * Supports: listProperNounsByJob(supabase, jobId, options) or listProperNounsByJob(jobId)
  */
 export async function listProperNounsByJob(
-  supabaseOrJobId: any,
-  jobIdOrOptions?: string | any,
-  maybeOptions?: any
+  _supabaseOrJobId: any,
+  _jobIdOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
-  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
+  const isOldPattern = typeof _supabaseOrJobId === 'object' && _supabaseOrJobId.from;
   return isOldPattern ? [] : { data: [], error: null };
 }
 
@@ -39,8 +38,8 @@ export async function listProperNounsByJob(
  */
 export async function createProperNoun(
   supabaseOrData: any,
-  dataOrOptions?: any,
-  maybeOptions?: any
+  _dataOrOptions?: any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
@@ -52,9 +51,9 @@ export async function createProperNoun(
  */
 export async function updateProperNoun(
   supabaseOrId: any,
-  idOrUpdates?: any,
-  updatesOrOptions?: any,
-  maybeOptions?: any
+  _idOrUpdates?: any,
+  _updatesOrOptions?: any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
@@ -66,8 +65,8 @@ export async function updateProperNoun(
  */
 export async function deleteProperNoun(
   supabaseOrId: any,
-  idOrOptions?: string | any,
-  maybeOptions?: any
+  _idOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };
@@ -77,19 +76,19 @@ export async function deleteProperNoun(
  * Get proper nouns by job (alias for listProperNounsByJob)
  */
 export async function getProperNounsByJob(
-  supabaseOrJobId: any,
-  jobIdOrOptions?: string | any,
-  maybeOptions?: any
+  _supabaseOrJobId: any,
+  _jobIdOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
-  return listProperNounsByJob(supabaseOrJobId, jobIdOrOptions, maybeOptions);
+  return listProperNounsByJob(_supabaseOrJobId, _jobIdOrOptions, _maybeOptions);
 }
 
 /**
  * Get or create CSR record ID (stub)
  */
 export async function getOrCreateCsrRecordId(
-  supabaseOrJobId: any,
-  maybeJobId?: string
+_supabaseOrJobId: any,
+  _maybeJobId?: string
 ): Promise<string | null> {
   // Stub - return null
   return null;
@@ -100,7 +99,7 @@ export async function getOrCreateCsrRecordId(
  */
 export async function bulkDeleteProperNouns(
   supabaseOrIds: any,
-  maybeIds?: string[]
+  _maybeIds?: string[]
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrIds === 'object' && supabaseOrIds.from;
   return isOldPattern ? null : { data: null, error: new Error('Proper nouns feature not available in v1.3') };

@@ -5,7 +5,6 @@
  * This is a compatibility stub for legacy code
  */
 
-import { createClient } from '@/lib/supabase/server';
 
 /**
  * JobExhibitRow type - stub for exhibits feature
@@ -25,8 +24,8 @@ export interface JobExhibitRow {
  * List exhibits by job (stub)
  */
 export async function listExhibitsByJob(
-  supabaseOrJobId: any,
-  maybeJobId?: string
+_supabaseOrJobId: any,
+  _maybeJobId?: string
 ): Promise<any[]> {
   // Exhibits not in v1.3 schema - return empty array
   return [];
@@ -38,8 +37,8 @@ export async function listExhibitsByJob(
  */
 export async function getExhibitById(
   supabaseOrId: any,
-  idOrOptions?: string | any,
-  maybeOptions?: any
+  _idOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
   // Exhibits not in v1.3 schema - return null
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
@@ -52,8 +51,8 @@ export async function getExhibitById(
  */
 export async function createExhibit(
   supabaseOrData: any,
-  dataOrOptions?: any,
-  maybeOptions?: any
+  _dataOrOptions?: any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   const error = new Error('Exhibits feature not available in v1.3');
@@ -66,9 +65,9 @@ export async function createExhibit(
  */
 export async function updateExhibit(
   supabaseOrId: any,
-  idOrUpdates?: any,
-  updatesOrOptions?: any,
-  maybeOptions?: any
+  _idOrUpdates?: any,
+  _updatesOrOptions?: any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   const error = new Error('Exhibits feature not available in v1.3');
@@ -81,8 +80,8 @@ export async function updateExhibit(
  */
 export async function deleteExhibit(
   supabaseOrId: any,
-  idOrOptions?: string | any,
-  maybeOptions?: any
+  _idOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   const error = new Error('Exhibits feature not available in v1.3');

@@ -6,8 +6,8 @@ import path from 'path';
 import os from 'os';
 
 import { validateAudio, extractAudioFromVideo } from './validate';
-import { chunkAudio, cleanupChunks, getAudioDuration, DEFAULT_CHUNKING_CONFIG } from './chunking';
-import { transcribeAudio, transcribeFile, DEFAULT_DEEPGRAM_OPTIONS } from './deepgram';
+import { chunkAudio, cleanupChunks, DEFAULT_CHUNKING_CONFIG } from './chunking';
+import { transcribeAudio, DEFAULT_DEEPGRAM_OPTIONS } from './deepgram';
 import { reassembleChunks } from './reassemble';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -16,8 +16,6 @@ import type {
   DeepgramResult,
   ProcessedChunk,
   TranscriptionPipelineStatus,
-  ChunkingConfig,
-  PipelineProgress,
 } from '@/types/transcription';
 
 /**
@@ -39,8 +37,6 @@ export async function processTranscriptionJob(
   jobId: string,
   audioFileUrl: string
 ): Promise<void> {
-  const supabase = createAdminClient();
-
   let tempDir: string | null = null;
   let audioFilePath: string | null = null;
   let chunks: AudioChunk[] = [];
@@ -302,9 +298,9 @@ async function updateTranscriptionStatus(
   jobId: string,
   status: TranscriptionPipelineStatus,
   progress: number,
-  currentChunk: number | null = null,
-  totalChunks: number | null = null,
-  error: string | null = null
+  _currentChunk: number | null = null,
+  _totalChunks: number | null = null,
+  _error: string | null = null
 ): Promise<void> {
   const supabase = createAdminClient();
 

@@ -5,14 +5,12 @@
  * This is a compatibility stub for legacy code
  */
 
-import { createClient } from '@/lib/supabase/server';
-
 /**
  * Get file by ID (stub)
  */
 export async function getFileById(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
@@ -23,7 +21,7 @@ export async function getFileById(
  */
 export async function listFilesByJob(
   supabaseOrJobId: any,
-  maybeJobId?: string
+  _maybeJobId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
   return isOldPattern ? [] : { data: [], error: null };
@@ -34,7 +32,7 @@ export async function listFilesByJob(
  */
 export async function uploadFile(
   supabaseOrData: any,
-  maybeData?: any
+  _maybeData?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
@@ -45,7 +43,7 @@ export async function uploadFile(
  */
 export async function deleteFile(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
@@ -56,7 +54,7 @@ export async function deleteFile(
  */
 export async function getFileDownloadUrl(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
@@ -67,7 +65,7 @@ export async function getFileDownloadUrl(
  */
 export async function getFileWithJob(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };
@@ -78,9 +76,9 @@ export async function getFileWithJob(
  */
 export async function listFilesForJob(
   supabaseOrJobId: any,
-  maybeJobId?: string
+  _maybeJobId?: string
 ): Promise<any> {
-  return listFilesByJob(supabaseOrJobId, maybeJobId);
+  return listFilesByJob(supabaseOrJobId, _maybeJobId);
 }
 
 /**
@@ -88,7 +86,7 @@ export async function listFilesForJob(
  */
 export async function createFile(
   supabaseOrData: any,
-  maybeData?: any
+  _maybeData?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   return isOldPattern ? null : { data: null, error: new Error('File management not available in v1.3') };

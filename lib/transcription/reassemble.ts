@@ -1,6 +1,6 @@
 // lib/transcription/reassemble.ts
 
-import {
+import type {
   ProcessedChunk,
   ReassembledTranscription,
   TranscriptionWord,
@@ -52,7 +52,7 @@ export async function reassembleChunks(
   // Process each subsequent chunk
   for (let i = 1; i < sorted.length; i++) {
     const chunk = sorted[i];
-    const prevChunk = sorted[i - 1];
+    const _prevChunk = sorted[i - 1];
 
     console.log(`  Merging chunk ${chunk.index}...`);
 

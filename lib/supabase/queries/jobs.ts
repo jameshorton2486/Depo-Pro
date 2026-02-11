@@ -10,7 +10,7 @@ import { JobStatus } from '@/types/schema-enums';
 import type { Database } from '@/types/supabase-generated';
 
 type JobInsert = Database['public']['Tables']['jobs']['Insert'];
-type JobUpdate = Database['public']['Tables']['jobs']['Update'];
+type _JobUpdate = Database['public']['Tables']['jobs']['Update'];
 
 /**
  * List jobs with optional filters
@@ -91,18 +91,18 @@ export async function getJobById(
 
   let supabase: any;
   let jobId: string;
-  let options: Record<string, any> | undefined;
+  let _options: Record<string, any> | undefined;
 
   if (isOldPattern) {
     // Old pattern: getJobById(supabase, jobId, options)
     supabase = supabaseOrJobId;
     jobId = jobIdOrOptions as string;
-    options = maybeOptions;
+    _options = maybeOptions;
   } else {
     // New pattern: getJobById(jobId)
     supabase = await createClient();
     jobId = supabaseOrJobId as string;
-    options = jobIdOrOptions as Record<string, any> | undefined;
+    _options = jobIdOrOptions as Record<string, any> | undefined;
   }
 
   const result = await supabase
@@ -229,7 +229,7 @@ export async function getJobsForFirm(firmId: string, filters?: {
  */
 export async function createJob(
   supabaseOrData: any,
-  maybeData?: any
+  _maybeData?: any
 ): Promise<any> {
   // Detect calling pattern
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
@@ -240,7 +240,7 @@ export async function createJob(
   if (isOldPattern) {
     // Old pattern: createJob(supabase, data)
     supabase = supabaseOrData;
-    data = maybeData;
+    data = _maybeData;
   } else {
     // New pattern: createJob(data)
     supabase = await createClient();
@@ -272,7 +272,7 @@ export async function createJob(
 export async function updateJob(
   supabaseOrJobId: any,
   jobIdOrUpdates?: string | any,
-  maybeUpdates?: any
+  _maybeUpdates?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
 
@@ -283,7 +283,7 @@ export async function updateJob(
   if (isOldPattern) {
     supabase = supabaseOrJobId;
     jobId = jobIdOrUpdates as string;
-    updates = maybeUpdates;
+    updates = _maybeUpdates;
   } else {
     supabase = await createClient();
     jobId = supabaseOrJobId;
@@ -431,7 +431,7 @@ export async function getJobStats(firmId: string) {
  */
 export async function getAssignmentById(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   // Assignments are now just scopist_id on jobs table
@@ -444,8 +444,8 @@ export async function getAssignmentById(
  */
 export async function updateJobAssignment(
   supabaseOrId: any,
-  idOrUpdates?: any,
-  maybeUpdates?: any
+  _idOrUpdates?: any,
+  _maybeUpdates?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   // Use assignScopist instead
@@ -457,7 +457,7 @@ export async function updateJobAssignment(
  */
 export async function deleteJobAssignment(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   // Set scopist_id to null on job
@@ -469,9 +469,9 @@ export async function deleteJobAssignment(
  */
 export async function getJobForAccessCheck(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
-  return getJobById(supabaseOrId, maybeId);
+  return getJobById(supabaseOrId, _maybeId);
 }
 
 /**
@@ -513,10 +513,10 @@ export async function isUserAssignedToJob(
  */
 export async function getJobWithAssignments(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   // Just call getJobById - scopist is already included
-  return getJobById(supabaseOrId, maybeId);
+  return getJobById(supabaseOrId, _maybeId);
 }
 
 /**
@@ -524,7 +524,7 @@ export async function getJobWithAssignments(
  */
 export async function deleteJob(
   supabaseOrId: any,
-  maybeId?: string
+  _maybeId?: string
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
 
@@ -533,7 +533,7 @@ export async function deleteJob(
 
   if (isOldPattern) {
     supabase = supabaseOrId;
-    id = maybeId as string;
+    id = _maybeId as string;
   } else {
     supabase = await createClient();
     id = supabaseOrId;

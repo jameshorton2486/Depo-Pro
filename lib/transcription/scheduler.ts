@@ -348,7 +348,7 @@ export async function resumePipeline(
 
 async function finalizePipeline(
   jobId: string,
-  baseUrl: string
+  _baseUrl: string
 ): Promise<{ completed: boolean; nextChunkIndex: null }> {
   const supabase = createAdminClient();
 
@@ -368,7 +368,7 @@ async function finalizePipeline(
       throw new Error('Transcription not found');
     }
 
-    const totalChunks = transcription.chunk_count || 1;
+    const _totalChunks = transcription.chunk_count || 1;
 
     // Get all chunk results
     const { data: chunks } = await supabase

@@ -2,7 +2,7 @@
 
 import { createClient } from '@deepgram/sdk';
 import fs from 'fs';
-import {
+import type {
   DeepgramOptions,
   DeepgramResult,
   TranscriptionWord,

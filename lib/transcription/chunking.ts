@@ -2,7 +2,7 @@
 
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
-import { AudioChunk, ChunkingConfig } from '@/types/transcription';
+import type { AudioChunk, ChunkingConfig } from '@/types/transcription';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';

@@ -5,7 +5,6 @@
  * This is a compatibility stub for legacy code
  */
 
-import { createClient } from '@/lib/supabase/server';
 
 /**
  * Get note by ID (stub)
@@ -13,8 +12,8 @@ import { createClient } from '@/lib/supabase/server';
  */
 export async function getNoteById(
   supabaseOrId: any,
-  idOrOptions?: string | any,
-  maybeOptions?: any
+  _idOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
@@ -25,11 +24,11 @@ export async function getNoteById(
  * Supports: listNotesByJob(supabase, jobId, options) or listNotesByJob(jobId)
  */
 export async function listNotesByJob(
-  supabaseOrJobId: any,
-  jobIdOrOptions?: string | any,
-  maybeOptions?: any
+  _supabaseOrJobId: any,
+  _jobIdOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
-  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
+  const isOldPattern = typeof _supabaseOrJobId === 'object' && _supabaseOrJobId.from;
   return isOldPattern ? [] : { data: [], error: null };
 }
 
@@ -39,8 +38,8 @@ export async function listNotesByJob(
  */
 export async function createNote(
   supabaseOrData: any,
-  dataOrOptions?: any,
-  maybeOptions?: any
+  _dataOrOptions?: any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
@@ -52,9 +51,9 @@ export async function createNote(
  */
 export async function updateNote(
   supabaseOrId: any,
-  idOrUpdates?: any,
-  updatesOrOptions?: any,
-  maybeOptions?: any
+  _idOrUpdates?: any,
+  _updatesOrOptions?: any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
@@ -66,8 +65,8 @@ export async function updateNote(
  */
 export async function deleteNote(
   supabaseOrId: any,
-  idOrOptions?: string | any,
-  maybeOptions?: any
+  _idOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   return isOldPattern ? null : { data: null, error: new Error('Notes feature not available in v1.3') };
@@ -78,9 +77,9 @@ export async function deleteNote(
  * Supports: listNotesForJob(supabase, jobId, options) or listNotesForJob(jobId)
  */
 export async function listNotesForJob(
-  supabaseOrJobId: any,
-  jobIdOrOptions?: string | any,
-  maybeOptions?: any
+  _supabaseOrJobId: any,
+  _jobIdOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
-  return listNotesByJob(supabaseOrJobId, jobIdOrOptions, maybeOptions);
+  return listNotesByJob(_supabaseOrJobId, _jobIdOrOptions, _maybeOptions);
 }

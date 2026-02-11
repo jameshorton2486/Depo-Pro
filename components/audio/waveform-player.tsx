@@ -1,7 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
 import WaveSurfer from 'wavesurfer.js';
+
+export interface WaveformPlayerRef {
+  seekTo: (time: number) => void;
+  play: () => void;
+  pause: () => void;
+  togglePlay: () => void;
+}
 
 interface WaveformPlayerProps {
   audioUrl: string;
@@ -10,12 +17,12 @@ interface WaveformPlayerProps {
   initialTime?: number;
 }
 
-export function WaveformPlayer({
+export const WaveformPlayer = forwardRef<WaveformPlayerRef, WaveformPlayerProps>(({
   audioUrl,
   onTimeUpdate,
   onReady,
   initialTime = 0,
-}: WaveformPlayerProps) {
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -120,6 +127,14 @@ export function WaveformPlayer({
       setPlaybackRate(rate);
     }
   }, []);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    seekTo,
+    play: () => wavesurferRef.current?.play(),
+    pause: () => wavesurferRef.current?.pause(),
+    togglePlay,
+  }), [seekTo, togglePlay]);
 
   // Format time helper
   const formatTime = (seconds: number) => {
@@ -266,13 +281,6 @@ export function WaveformPlayer({
       </div>
     </div>
   );
-}
+});
 
-// Type for the global seek function
-declare global {
-  interface Window {
-    depoProSeekTo?: (time: number) => void;
-  }
-}
-
-export type SeekToFunction = (time: number) => void;
+WaveformPlayer.displayName = 'WaveformPlayer';

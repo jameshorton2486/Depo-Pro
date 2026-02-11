@@ -12,23 +12,23 @@ import type { SupabaseDbClient } from './_scope';
  * NOTE: v1.0 'transcripts' table removed in v1.3
  * These are compatibility stubs - use getTranscriptById, createTranscript, etc. below
  */
-export async function getById(id: string, supabase?: SupabaseDbClient): Promise<any> {
+export async function getById(_id: string, _supabase?: SupabaseDbClient): Promise<any> {
   throw new Error('Use getTranscriptById() instead - transcripts table removed in v1.3');
 }
 
-export async function getManyForMatter(matterId: string, supabase?: SupabaseDbClient): Promise<any[]> {
+export async function getManyForMatter(_matterId: string, _supabase?: SupabaseDbClient): Promise<any[]> {
   return [];
 }
 
-export async function create(payload: any, supabase?: SupabaseDbClient): Promise<any> {
+export async function create(_payload: any, _supabase?: SupabaseDbClient): Promise<any> {
   throw new Error('Use createTranscript() instead - transcripts table removed in v1.3');
 }
 
-export async function update(id: string, updates: any, supabase?: SupabaseDbClient): Promise<any> {
+export async function update(_id: string, _updates: any, _supabase?: SupabaseDbClient): Promise<any> {
   throw new Error('Use updateTranscript() instead - transcripts table removed in v1.3');
 }
 
-async function deleteById(id: string, supabase?: SupabaseDbClient): Promise<void> {
+async function deleteById(_id: string, _supabase?: SupabaseDbClient): Promise<void> {
   throw new Error('Delete not supported in v1.3');
 }
 
@@ -39,12 +39,12 @@ export { deleteById as delete };
  */
 export async function getTranscriptById(
   supabaseOrId: any,
-  maybeId?: string,
+  _maybeId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   const supabase = isOldPattern ? supabaseOrId : await createClient();
-  const id = isOldPattern ? maybeId : supabaseOrId;
+  const id = isOldPattern ? _maybeId : supabaseOrId;
 
   const result = await supabase
     .from('transcriptions')
@@ -60,10 +60,10 @@ export async function getTranscriptById(
  */
 export async function getTranscriptForExport(
   supabaseOrId: any,
-  maybeId?: string,
+  _maybeId?: string,
   _opts?: any
 ): Promise<any> {
-  return getTranscriptById(supabaseOrId, maybeId);
+  return getTranscriptById(supabaseOrId, _maybeId);
 }
 
 /**
@@ -71,12 +71,12 @@ export async function getTranscriptForExport(
  */
 export async function getTranscriptEdits(
   supabaseOrTranscriptId: any,
-  maybeTranscriptId?: string,
+  _maybeTranscriptId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrTranscriptId === 'object' && supabaseOrTranscriptId.from;
   const supabase = isOldPattern ? supabaseOrTranscriptId : await createClient();
-  const transcriptId = isOldPattern ? maybeTranscriptId : supabaseOrTranscriptId;
+  const transcriptId = isOldPattern ? _maybeTranscriptId : supabaseOrTranscriptId;
 
   const result = await supabase
     .from('transcription_edits')
@@ -92,8 +92,8 @@ export async function getTranscriptEdits(
  */
 export async function updateTranscript(
   supabaseOrId: any,
-  idOrUpdates?: string | Record<string, any>,
-  maybeUpdates?: Record<string, any>
+  _idOrUpdates?: string | Record<string, any>,
+  _maybeUpdates?: Record<string, any>
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
 
@@ -103,12 +103,12 @@ export async function updateTranscript(
 
   if (isOldPattern) {
     supabase = supabaseOrId;
-    id = idOrUpdates as string;
-    updates = maybeUpdates as Record<string, any>;
+    id = _idOrUpdates as string;
+    updates = _maybeUpdates as Record<string, any>;
   } else {
     supabase = await createClient();
     id = supabaseOrId;
-    updates = idOrUpdates as Record<string, any>;
+    updates = _idOrUpdates as Record<string, any>;
   }
 
   const result = await supabase
@@ -147,7 +147,7 @@ export async function getTranscriptByJobId(
  */
 export async function getTranscriptAnnotations(
   supabaseOrTranscriptId: any,
-  maybeTranscriptId?: string,
+  _maybeTranscriptId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrTranscriptId === 'object' && supabaseOrTranscriptId.from;
@@ -159,7 +159,7 @@ export async function getTranscriptAnnotations(
  */
 export async function createTranscriptAnnotation(
   supabaseOrData: any,
-  maybeData?: any,
+  _maybeData?: any,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
@@ -171,7 +171,7 @@ export async function createTranscriptAnnotation(
  */
 export async function deleteTranscriptAnnotation(
   supabaseOrId: any,
-  maybeId?: string,
+  _maybeId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
@@ -183,8 +183,8 @@ export async function deleteTranscriptAnnotation(
  */
 export async function updateTranscriptAnnotation(
   supabaseOrId: any,
-  idOrUpdates?: any,
-  maybeUpdates?: any,
+  _idOrUpdates?: any,
+  _maybeUpdates?: any,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
@@ -196,7 +196,7 @@ export async function updateTranscriptAnnotation(
  */
 export async function getTranscriptBookmarks(
   supabaseOrTranscriptId: any,
-  maybeTranscriptId?: string,
+  _maybeTranscriptId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrTranscriptId === 'object' && supabaseOrTranscriptId.from;
@@ -208,7 +208,7 @@ export async function getTranscriptBookmarks(
  */
 export async function createTranscriptBookmark(
   supabaseOrData: any,
-  maybeData?: any,
+  _maybeData?: any,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
@@ -220,12 +220,12 @@ export async function createTranscriptBookmark(
  */
 export async function getTranscriptWithTokensAndJob(
   supabaseOrId: any,
-  maybeId?: string,
+  _maybeId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   const supabase = isOldPattern ? supabaseOrId : await createClient();
-  const id = isOldPattern ? maybeId : supabaseOrId;
+  const id = isOldPattern ? _maybeId : supabaseOrId;
 
   const result = await supabase
     .from('transcriptions')
@@ -279,10 +279,10 @@ export async function updateTranscriptStatus(
  */
 export async function getTranscriptHighlights(
   supabaseOrTranscriptId: any,
-  maybeTranscriptId?: string,
+  _maybeTranscriptId?: string,
   _opts?: any
 ): Promise<any> {
-  return getTranscriptEdits(supabaseOrTranscriptId, maybeTranscriptId);
+  return getTranscriptEdits(supabaseOrTranscriptId, _maybeTranscriptId);
 }
 
 /**
@@ -290,7 +290,7 @@ export async function getTranscriptHighlights(
  */
 export async function getTranscriptNotes(
   supabaseOrTranscriptId: any,
-  maybeTranscriptId?: string,
+  _maybeTranscriptId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrTranscriptId === 'object' && supabaseOrTranscriptId.from;
@@ -302,7 +302,7 @@ export async function getTranscriptNotes(
  */
 export async function createTranscript(
   supabaseOrData: any,
-  maybeData?: any,
+  _maybeData?: any,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
@@ -312,7 +312,7 @@ export async function createTranscript(
 
   if (isOldPattern) {
     supabase = supabaseOrData;
-    data = maybeData;
+    data = _maybeData;
   } else {
     supabase = await createClient();
     data = supabaseOrData;
@@ -332,12 +332,12 @@ export async function createTranscript(
  */
 export async function getTranscriptShares(
   supabaseOrTranscriptId: any,
-  maybeTranscriptId?: string,
+  _maybeTranscriptId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrTranscriptId === 'object' && supabaseOrTranscriptId.from;
   const supabase = isOldPattern ? supabaseOrTranscriptId : await createClient();
-  const transcriptId = isOldPattern ? maybeTranscriptId : supabaseOrTranscriptId;
+  const transcriptId = isOldPattern ? _maybeTranscriptId : supabaseOrTranscriptId;
 
   const result = await supabase
     .from('transcript_shares')
@@ -352,7 +352,7 @@ export async function getTranscriptShares(
  */
 export async function createTranscriptShare(
   supabaseOrData: any,
-  maybeData?: any,
+  _maybeData?: any,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
@@ -363,9 +363,9 @@ export async function createTranscriptShare(
   if (isOldPattern) {
     supabase = supabaseOrData;
     // 3-arg: (supabase, transcriptId, sharePayload) => merge transcriptId into payload
-    data = _opts != null && typeof maybeData === 'string'
-      ? { transcription_id: maybeData, ..._opts }
-      : maybeData;
+    data = _opts != null && typeof _maybeData === 'string'
+      ? { transcription_id: _maybeData, ..._opts }
+      : _maybeData;
   } else {
     supabase = await createClient();
     data = supabaseOrData;
@@ -385,7 +385,7 @@ export async function createTranscriptShare(
  */
 export async function unlockTranscript(
   supabaseOrId: any,
-  maybeId?: string,
+  _maybeId?: string,
   _opts?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;

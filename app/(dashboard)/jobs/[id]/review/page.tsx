@@ -111,6 +111,39 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     console.error('Error parsing transcription segments:', _error);
   }
 
+  // Fetch flagged words for this transcription
+  const { data: flaggedWords } = await supabase
+    .from('flagged_words')
+    .select('*')
+    .eq('transcription_id', transcription.id)
+    .order('timestamp', { ascending: true });
+
+  // Calculate stats from flagged words
+  const initialFlaggedWords = flaggedWords || [];
+  const initialStats = {
+    total: initialFlaggedWords.length,
+    corrected: initialFlaggedWords.filter((w: any) => w.status === 'CORRECTED').length,
+    skipped: initialFlaggedWords.filter((w: any) => w.status === 'SKIPPED').length,
+    pending: initialFlaggedWords.filter((w: any) => w.status === 'PENDING').length,
+    confirmed: initialFlaggedWords.filter((w: any) => w.is_confirmed === true).length,
+  };
+
+  // Check lock status
+  const { data: lockData } = await supabase
+    .from('transcription_locks')
+    .select('*, locked_by:users(name)')
+    .eq('transcription_id', transcription.id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  const lockInfo = lockData
+    ? {
+        locked: true,
+        lockedByMe: lockData.locked_by_id === session.user.id,
+        lockedByName: lockData.locked_by?.name || 'Someone',
+      }
+    : { locked: false, lockedByMe: false };
+
   return (
     <ReviewClientNew
       jobId={job.id}
@@ -119,6 +152,10 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       segments={segments}
       caseName={job.case_name || 'Untitled Case'}
       deponentName={job.deponent_name || undefined}
+      initialFlaggedWords={initialFlaggedWords as any}
+      initialStats={initialStats}
+      lockInfo={lockInfo}
+      userId={session.user.id}
     />
   );
 }

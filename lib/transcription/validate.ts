@@ -2,7 +2,7 @@
 
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
-import { AudioValidation } from '@/types/transcription';
+import type { AudioValidation } from '@/types/transcription';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';

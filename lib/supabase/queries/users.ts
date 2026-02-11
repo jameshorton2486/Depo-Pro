@@ -4,7 +4,6 @@
  * Handles user/profile queries (wraps Supabase Auth)
  */
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { UserRole } from '@/types/schema-enums';
 
@@ -51,7 +50,7 @@ export async function getUsersByRole(
 /**
  * List all users (admin only)
  */
-export async function listUsers(supabase: any): Promise<any[]> {
+export async function listUsers(_supabase: any): Promise<any[]> {
   const admin = await createAdminClient();
   const { data, error } = await admin.auth.admin.listUsers();
 

@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger';
-﻿/**
+/**
  * Transcript Status Service
  * Handles transcript status transitions
  */

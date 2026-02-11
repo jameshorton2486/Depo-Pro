@@ -49,7 +49,7 @@ export async function listCases(
 
   let supabase: any;
   let filters: any;
-  let sort: any;
+  let _sort: any;
   let pagination: any;
 
   if (isOldPattern) {
@@ -57,7 +57,7 @@ export async function listCases(
     supabase = supabaseOrFilters;
     // userId and email are ignored in stub - v1.3 uses RLS
     filters = maybeFilters || {};
-    sort = maybeSort;
+    _sort = maybeSort;
     pagination = maybePagination || {};
   } else {
     // New pattern: listCases(filters)
@@ -105,8 +105,8 @@ export async function listCases(
  */
 export async function getCaseById(
   supabaseOrId: any,
-  idOrOptions?: string | any,
-  maybeOptions?: any
+  _idOrOptions?: string | any,
+  _maybeOptions?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
 
@@ -115,7 +115,7 @@ export async function getCaseById(
 
   if (isOldPattern) {
     supabase = supabaseOrId;
-    id = idOrOptions as string;
+    id = _idOrOptions as string;
   } else {
     supabase = await createClient();
     id = supabaseOrId;
@@ -135,11 +135,11 @@ export async function getCaseById(
  */
 export async function createCaseWithInitialJob(
   supabaseOrData: any,
-  maybeData?: any
+  _maybeData?: any
 ): Promise<any> {
   const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
   const supabase = isOldPattern ? supabaseOrData : await createClient();
-  const data = isOldPattern ? maybeData : supabaseOrData;
+  const data = isOldPattern ? _maybeData : supabaseOrData;
 
   // In v1.3, just create a job
   const result = await supabase

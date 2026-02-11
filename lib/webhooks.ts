@@ -1,5 +1,5 @@
 import { logger } from '@/lib/logger';
-﻿/**
+/**
  * Webhook Dispatch Service
  */
 

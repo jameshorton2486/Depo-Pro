@@ -16,7 +16,28 @@ interface FlaggedWord extends TranscriptWord {
   originalIndex: number;
 }
 
-interface LowConfidencePanelProps {
+// Support for database-backed flagged words
+interface FlaggedWordRowCompat {
+  id: string;
+  original_word: string;
+  confidence: number;
+  start_time: number;
+  end_time: number;
+  context_before: string;
+  context_after: string;
+  status: string;
+  corrected_word?: string | null;
+}
+
+interface FlaggedWordStatsCompat {
+  total: number;
+  corrected: number;
+  skipped: number;
+  pending: number;
+}
+
+// Legacy props (word-based)
+interface LowConfidencePanelLegacyProps {
   allWords: TranscriptWord[];
   confidenceThreshold?: number;
   onWordSelect: (word: TranscriptWord) => void;
@@ -25,14 +46,39 @@ interface LowConfidencePanelProps {
   onMarkReviewed: (wordIndex: number) => void;
 }
 
-export function LowConfidencePanel({
-  allWords,
-  confidenceThreshold = 0.85,
-  onWordSelect,
-  onWordCorrect,
-  reviewedWords,
-  onMarkReviewed,
-}: LowConfidencePanelProps) {
+// New props (database-backed)
+interface LowConfidencePanelNewProps {
+  flaggedWords: FlaggedWordRowCompat[];
+  stats: FlaggedWordStatsCompat;
+  currentAudioTime: number;
+  onSeekAudio: (timestamp: number) => void;
+  onCorrection: (wordId: string, action: 'correct' | 'skip', correctedWord?: string) => Promise<void>;
+  isReadOnly: boolean;
+  isLoading: boolean;
+}
+
+type LowConfidencePanelProps = LowConfidencePanelLegacyProps | LowConfidencePanelNewProps;
+
+// Type guard
+function isNewProps(props: LowConfidencePanelProps): props is LowConfidencePanelNewProps {
+  return 'flaggedWords' in props;
+}
+
+export function LowConfidencePanel(props: LowConfidencePanelProps) {
+  // Handle new database-backed mode
+  if (isNewProps(props)) {
+    return <LowConfidencePanelNew {...props} />;
+  }
+
+  // Handle legacy word-based mode
+  const {
+    allWords,
+    confidenceThreshold = 0.85,
+    onWordSelect,
+    onWordCorrect,
+    reviewedWords,
+    onMarkReviewed,
+  } = props;
   const [filter, setFilter] = useState<'all' | 'pending' | 'reviewed'>('pending');
   const [sortBy, setSortBy] = useState<'confidence' | 'time'>('confidence');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -451,6 +497,196 @@ function LowConfidenceWordCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// New database-backed flagged words component
+function LowConfidencePanelNew({
+  flaggedWords,
+  stats,
+  currentAudioTime: _currentAudioTime,
+  onSeekAudio,
+  onCorrection,
+  isReadOnly,
+  isLoading,
+}: LowConfidencePanelNewProps) {
+  const [filter, setFilter] = useState<'all' | 'pending' | 'corrected' | 'skipped'>('pending');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [correctionText, setCorrectionText] = useState('');
+
+  const filteredWords = useMemo(() => {
+    return flaggedWords.filter(word => {
+      if (filter === 'all') return true;
+      if (filter === 'pending') return word.status === 'PENDING';
+      if (filter === 'corrected') return word.status === 'CORRECTED';
+      if (filter === 'skipped') return word.status === 'SKIPPED';
+      return true;
+    });
+  }, [flaggedWords, filter]);
+
+  const handleCorrect = async (wordId: string) => {
+    if (!correctionText.trim()) return;
+    try {
+      await onCorrection(wordId, 'correct', correctionText);
+      setEditingId(null);
+      setCorrectionText('');
+    } catch (error) {
+      console.error('Failed to correct word:', error);
+    }
+  };
+
+  const handleSkip = async (wordId: string) => {
+    try {
+      await onCorrection(wordId, 'skip');
+    } catch (error) {
+      console.error('Failed to skip word:', error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-slate-500">Loading flagged words...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-slate-950">
+      {/* Header with stats */}
+      <div className="p-3 border-b border-slate-800">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-slate-200">Low Confidence Words</h3>
+          <div className="text-xs text-slate-400">
+            {stats.corrected + stats.skipped} / {stats.total} reviewed
+          </div>
+        </div>
+
+        {/* Filter buttons */}
+        <div className="flex gap-1">
+          {([
+            ['all', stats.total],
+            ['pending', stats.pending],
+            ['corrected', stats.corrected],
+            ['skipped', stats.skipped],
+          ] as const).map(([f, count]) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                'flex-1 px-2 py-1 text-xs rounded',
+                filter === f
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              )}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)} ({count})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Word list */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {filteredWords.length === 0 ? (
+          <div className="text-center text-slate-500 py-8">
+            <div className="text-2xl mb-2">✨</div>
+            <div>No {filter === 'all' ? '' : filter} words to show</div>
+          </div>
+        ) : (
+          filteredWords.map((word) => (
+            <div
+              key={word.id}
+              className="bg-slate-900 rounded p-3 space-y-2 border border-slate-800"
+            >
+              {/* Context and word */}
+              <div className="text-sm">
+                <span className="text-slate-400">{word.context_before} </span>
+                <span className="text-yellow-400 font-semibold bg-yellow-400/10 px-1 rounded">
+                  {word.original_word}
+                </span>
+                <span className="text-slate-400"> {word.context_after}</span>
+              </div>
+
+              {/* Confidence and timestamp */}
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Confidence: {Math.round(word.confidence * 100)}%</span>
+                <button
+                  onClick={() => onSeekAudio(word.start_time)}
+                  className="hover:text-blue-400"
+                >
+                  {Math.floor(word.start_time / 60)}:{String(Math.floor(word.start_time % 60)).padStart(2, '0')}
+                </button>
+              </div>
+
+              {/* Actions */}
+              {!isReadOnly && word.status === 'PENDING' && (
+                <div className="flex gap-2">
+                  {editingId === word.id ? (
+                    <>
+                      <input
+                        type="text"
+                        value={correctionText}
+                        onChange={(e) => setCorrectionText(e.target.value)}
+                        placeholder="Enter correction"
+                        className="flex-1 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleCorrect(word.id)}
+                        className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingId(null);
+                          setCorrectionText('');
+                        }}
+                        className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditingId(word.id);
+                          setCorrectionText(word.original_word);
+                        }}
+                        className="flex-1 px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
+                      >
+                        Correct
+                      </button>
+                      <button
+                        onClick={() => handleSkip(word.id)}
+                        className="flex-1 px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded"
+                      >
+                        Skip
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Show status if not pending */}
+              {word.status !== 'PENDING' && (
+                <div className={cn(
+                  'text-xs px-2 py-1 rounded text-center',
+                  word.status === 'CORRECTED' && 'bg-green-900/30 text-green-400',
+                  word.status === 'SKIPPED' && 'bg-slate-800 text-slate-400'
+                )}>
+                  {word.status === 'CORRECTED' && word.corrected_word
+                    ? `Corrected to: ${word.corrected_word}`
+                    : word.status}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

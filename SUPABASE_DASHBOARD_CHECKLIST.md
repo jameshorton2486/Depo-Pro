@@ -130,6 +130,43 @@ Verify these match your `.env.local`:
 
 ---
 
+## 🧾 Database → SQL Editor (Run SQL Migration)
+
+Run required migrations directly in the Supabase Dashboard:
+
+- [ ] Open **SQL Editor** → **New Query**
+- [ ] Paste the migration SQL (example):
+  - `supabase/migrations/20260211_medical_records_chronology.sql`
+- [ ] Click **Run** (Ctrl+Enter)
+- [ ] Confirm success output (no errors)
+
+---
+
+## 🧪 Phase 10: Medical Chronology Go-Live
+
+### 1) Run SQL Migration
+- [ ] Supabase Dashboard → **SQL Editor** → **New Query**
+- [ ] Run: `supabase/migrations/20260211_medical_records_chronology.sql`
+- [ ] Confirm tables created: `medical_records`, `chronology_entries`
+
+### 2) Add Environment Variables
+- [ ] Local: add `ANTHROPIC_API_KEY` to `.env.local`
+- [ ] Vercel: add `ANTHROPIC_API_KEY` and redeploy
+
+### 3) Verify Storage Bucket
+- [ ] Storage → confirm bucket `depo-files` exists
+- [ ] Create if missing: **Storage** → **New Bucket** → `depo-files`
+
+### 4) Test Full Workflow
+- [ ] Open any job detail page
+- [ ] Click **Open Chronology** (Medical Chronology card)
+- [ ] Upload a medical PDF
+- [ ] Click **Extract** to run AI analysis
+- [ ] Verify chronology entries appear
+- [ ] Export to DOCX
+
+---
+
 ## 💾 Storage → Buckets
 
 ### Required Buckets
