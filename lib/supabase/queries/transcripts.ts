@@ -6,6 +6,33 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseDbClient } from './_scope';
+
+/**
+ * NOTE: v1.0 'transcripts' table removed in v1.3
+ * These are compatibility stubs - use getTranscriptById, createTranscript, etc. below
+ */
+export async function getById(id: string, supabase?: SupabaseDbClient): Promise<any> {
+  throw new Error('Use getTranscriptById() instead - transcripts table removed in v1.3');
+}
+
+export async function getManyForMatter(matterId: string, supabase?: SupabaseDbClient): Promise<any[]> {
+  return [];
+}
+
+export async function create(payload: any, supabase?: SupabaseDbClient): Promise<any> {
+  throw new Error('Use createTranscript() instead - transcripts table removed in v1.3');
+}
+
+export async function update(id: string, updates: any, supabase?: SupabaseDbClient): Promise<any> {
+  throw new Error('Use updateTranscript() instead - transcripts table removed in v1.3');
+}
+
+async function deleteById(id: string, supabase?: SupabaseDbClient): Promise<void> {
+  throw new Error('Delete not supported in v1.3');
+}
+
+export { deleteById as delete };
 
 /**
  * Get transcript by ID (legacy - maps to transcriptions)

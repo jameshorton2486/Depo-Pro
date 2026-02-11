@@ -41,29 +41,49 @@ export async function releaseJobLock(jobId: string, userId: string) {
 /**
  * Get current lock status for a job
  * Returns null if no lock, or the lock record if locked
+ * NOTE: Lock columns are on the jobs table, not a separate job_locks table
  */
 export async function getJobLockStatus(jobId: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from('job_locks')
+  const { data: job, error } = await supabase
+    .from('jobs')
     .select(`
-      *,
-      user:profiles!job_locks_user_id_fkey(
+      id,
+      locked_by,
+      locked_at,
+      lock_expires_at,
+      user:profiles!jobs_locked_by_fkey(
         id,
         full_name,
         email
       )
     `)
-    .eq('job_id', jobId)
+    .eq('id', jobId)
     .single();
 
-  // No lock exists - this is valid
-  if (error?.code === 'PGRST116') {
+  if (error) {
+    return { data: null, error };
+  }
+
+  // Check if lock is active (not null and not expired)
+  const isLocked = job.locked_by && job.lock_expires_at && new Date(job.lock_expires_at) > new Date();
+
+  if (!isLocked) {
     return { data: null, error: null };
   }
 
-  return { data, error };
+  // Return lock data in expected format
+  return {
+    data: {
+      job_id: job.id,
+      user_id: job.locked_by,
+      locked_at: job.locked_at,
+      lock_expires_at: job.lock_expires_at,
+      user: job.user,
+    },
+    error: null,
+  };
 }
 
 /**
@@ -114,13 +134,12 @@ export async function extendJobLock(
   ).toISOString();
 
   return await supabase
-    .from('job_locks')
+    .from('jobs')
     .update({
-      expires_at: newExpiresAt,
-      updated_at: new Date().toISOString(),
+      lock_expires_at: newExpiresAt,
     })
-    .eq('job_id', jobId)
-    .eq('user_id', userId)
+    .eq('id', jobId)
+    .eq('locked_by', userId)
     .select()
     .single();
 }
@@ -133,9 +152,13 @@ export async function forceReleaseJobLock(jobId: string) {
   const supabase = await createAdminClient();
 
   return await supabase
-    .from('job_locks')
-    .delete()
-    .eq('job_id', jobId);
+    .from('jobs')
+    .update({
+      locked_by: null,
+      locked_at: null,
+      lock_expires_at: null,
+    })
+    .eq('id', jobId);
 }
 
 /**
@@ -145,18 +168,19 @@ export async function getUserLocks(userId: string) {
   const supabase = await createClient();
 
   return await supabase
-    .from('job_locks')
+    .from('jobs')
     .select(`
-      *,
-      job:jobs(
-        id,
-        case_name,
-        case_number,
-        status
-      )
+      id,
+      case_name,
+      case_number,
+      status,
+      locked_by,
+      locked_at,
+      lock_expires_at
     `)
-    .eq('user_id', userId)
-    .order('acquired_at', { ascending: false });
+    .eq('locked_by', userId)
+    .not('locked_by', 'is', null)
+    .order('locked_at', { ascending: false });
 }
 
 /**
@@ -167,9 +191,10 @@ export async function getExpiredLocks() {
   const supabase = await createAdminClient();
 
   return await supabase
-    .from('job_locks')
-    .select('*')
-    .lt('expires_at', new Date().toISOString());
+    .from('jobs')
+    .select('id, locked_by, locked_at, lock_expires_at')
+    .not('locked_by', 'is', null)
+    .lt('lock_expires_at', new Date().toISOString());
 }
 
 /**
