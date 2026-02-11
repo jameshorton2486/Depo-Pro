@@ -24,6 +24,7 @@ import {
   User,
   Edit,
   Trash2,
+  FileText,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -190,6 +191,29 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
       {/* Exhibits */}
       <ExhibitsManager jobId={job.id} canEdit={canEdit} />
+
+      {/* Medical Chronology */}
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Medical Chronology
+            </CardTitle>
+            <Link href={`/jobs/${job.id}/medical`}>
+              <Button variant="outline" size="sm">
+                Open Chronology
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Upload medical records and generate an AI-powered chronology
+            of dated medical events for this case.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Assignments */}
       <AssignmentManagement

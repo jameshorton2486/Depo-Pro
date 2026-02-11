@@ -8,6 +8,20 @@
 import { createClient } from '@/lib/supabase/server';
 
 /**
+ * JobExhibitRow type - stub for exhibits feature
+ */
+export interface JobExhibitRow {
+  id: string;
+  job_id: string;
+  exhibit_number: string;
+  description: string;
+  file_url: string;
+  file_type: string;
+  timestamp?: number;
+  created_at: string;
+}
+
+/**
  * List exhibits by job (stub)
  */
 export async function listExhibitsByJob(

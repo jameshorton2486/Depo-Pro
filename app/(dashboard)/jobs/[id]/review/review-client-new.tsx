@@ -45,7 +45,7 @@ export function ReviewClientNew({
   initialFlaggedWords,
   initialStats,
   lockInfo,
-  userId,
+  userId: _userId,
 }: ReviewClientNewProps) {
   const router = useRouter();
   const audioRef = useRef<WaveformPlayerRef>(null);
@@ -63,7 +63,7 @@ export function ReviewClientNew({
 
   // Exhibits state
   const [exhibits, setExhibits] = useState<JobExhibitRow[]>([]);
-  const [isLoadingExhibits, setIsLoadingExhibits] = useState(false);
+  const [_isLoadingExhibits, setIsLoadingExhibits] = useState(false);
   const [activeTab, setActiveTab] = useState<'flagged' | 'exhibits'>('flagged');
 
   // Flatten all words from segments for transcript viewer
@@ -103,7 +103,7 @@ export function ReviewClientNew({
   }, [jobId]);
 
   // Handle exhibit mark added
-  const handleAddExhibitMark = useCallback((timestamp: number) => {
+  const handleAddExhibitMark = useCallback((_timestamp: number) => {
     toast.success('Exhibit marker created');
   }, []);
 

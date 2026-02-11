@@ -13,7 +13,11 @@
       "Bash(npm run typecheck:*)",
       "Bash(powershell -Command \"Get-ChildItem -Path app -Include *.ts,*.tsx -Recurse | Where-Object { $_FullName -notmatch ''old-prisma-backup'' } | ForEach-Object { \\(Get-Content $_FullName -Raw\\) -replace ''\\\\.created_by_id'', ''.reporter_id'' | Set-Content $_FullName -NoNewline }\")",
       "Bash(Select-String \"error TS\")",
-      "Bash(Measure-Object)"
+      "Bash(Measure-Object)",
+      "Bash(GIT_SEQUENCE_EDITOR=\"sed -i '1s/^pick/edit/'\" git rebase:*)",
+      "Bash(npm run build:*)",
+      "Bash(Select-String -Pattern \"medical-extraction\")",
+      "Bash(find:*)"
     ]
   }
 }
