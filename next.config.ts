@@ -24,6 +24,8 @@ const nextConfig: NextConfig = {
     'ioredis',
     'bullmq',
     '@dolbyio/media-apis', // Optional - may not be installed
+    '@ffmpeg-installer/ffmpeg',
+    'fluent-ffmpeg',
   ],
 
   // Webpack configuration

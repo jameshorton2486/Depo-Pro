@@ -1122,6 +1122,125 @@ export type Database = {
           },
         ]
       }
+      chronology_entries: {
+        Row: {
+          category: string
+          confidence: number | null
+          created_at: string
+          created_by_id: string
+          date_precision: string
+          details: string | null
+          event_date: string
+          event_date_end: string | null
+          id: string
+          is_verified: boolean
+          job_id: string
+          medical_record_id: string | null
+          page_reference: string | null
+          provider: string | null
+          source_document_name: string | null
+          source_type: Database["public"]["Enums"]["chronology_source_type"]
+          summary: string
+          updated_at: string
+          verified_at: string | null
+          verified_by_id: string | null
+        }
+        Insert: {
+          category: string
+          confidence?: number | null
+          created_at?: string
+          created_by_id: string
+          date_precision?: string
+          details?: string | null
+          event_date: string
+          event_date_end?: string | null
+          id?: string
+          is_verified?: boolean
+          job_id: string
+          medical_record_id?: string | null
+          page_reference?: string | null
+          provider?: string | null
+          source_document_name?: string | null
+          source_type?: Database["public"]["Enums"]["chronology_source_type"]
+          summary: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by_id?: string | null
+        }
+        Update: {
+          category?: string
+          confidence?: number | null
+          created_at?: string
+          created_by_id?: string
+          date_precision?: string
+          details?: string | null
+          event_date?: string
+          event_date_end?: string | null
+          id?: string
+          is_verified?: boolean
+          job_id?: string
+          medical_record_id?: string | null
+          page_reference?: string | null
+          provider?: string | null
+          source_document_name?: string | null
+          source_type?: Database["public"]["Enums"]["chronology_source_type"]
+          summary?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chronology_entries_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chronology_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "attorney_shared_transcripts"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "chronology_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chronology_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "reporter_job_dashboard"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "chronology_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scopist_review_queue"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "chronology_entries_medical_record_id_fkey"
+            columns: ["medical_record_id"]
+            isOneToOne: false
+            referencedRelation: "medical_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chronology_entries_verified_by_id_fkey"
+            columns: ["verified_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       CSRAttorney: {
         Row: {
           attorneyId: string
@@ -2880,6 +2999,114 @@ export type Database = {
           userId?: string
         }
         Relationships: []
+      }
+      medical_records: {
+        Row: {
+          created_at: string
+          date_range_end: string | null
+          date_range_start: string | null
+          document_type: string | null
+          error_message: string | null
+          extraction_raw_json: Json | null
+          extraction_summary: string | null
+          facility_name: string | null
+          file_name: string
+          file_size_bytes: number
+          file_url: string
+          id: string
+          job_id: string
+          mime_type: string
+          page_count: number | null
+          patient_name: string | null
+          processed_at: string | null
+          provider_name: string | null
+          status: Database["public"]["Enums"]["medical_record_status"]
+          updated_at: string
+          uploaded_by_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_range_end?: string | null
+          date_range_start?: string | null
+          document_type?: string | null
+          error_message?: string | null
+          extraction_raw_json?: Json | null
+          extraction_summary?: string | null
+          facility_name?: string | null
+          file_name: string
+          file_size_bytes?: number
+          file_url: string
+          id?: string
+          job_id: string
+          mime_type?: string
+          page_count?: number | null
+          patient_name?: string | null
+          processed_at?: string | null
+          provider_name?: string | null
+          status?: Database["public"]["Enums"]["medical_record_status"]
+          updated_at?: string
+          uploaded_by_id: string
+        }
+        Update: {
+          created_at?: string
+          date_range_end?: string | null
+          date_range_start?: string | null
+          document_type?: string | null
+          error_message?: string | null
+          extraction_raw_json?: Json | null
+          extraction_summary?: string | null
+          facility_name?: string | null
+          file_name?: string
+          file_size_bytes?: number
+          file_url?: string
+          id?: string
+          job_id?: string
+          mime_type?: string
+          page_count?: number | null
+          patient_name?: string | null
+          processed_at?: string | null
+          provider_name?: string | null
+          status?: Database["public"]["Enums"]["medical_record_status"]
+          updated_at?: string
+          uploaded_by_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "attorney_shared_transcripts"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "medical_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "reporter_job_dashboard"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "medical_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scopist_review_queue"
+            referencedColumns: ["job_id"]
+          },
+          {
+            foreignKeyName: "medical_records_uploaded_by_id_fkey"
+            columns: ["uploaded_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       Message: {
         Row: {
@@ -5149,6 +5376,7 @@ export type Database = {
         | "OTHER"
       CaseRole: "ATTORNEY" | "PARALEGAL" | "REPORTER"
       CaseStatus: "ACTIVE" | "CLOSED" | "SETTLED" | "ARCHIVED"
+      chronology_source_type: "AI_EXTRACTED" | "MANUAL" | "EDITED"
       chunk_status: "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED"
       ClaimStatus:
         | "PENDING"
@@ -5253,6 +5481,12 @@ export type Database = {
         | "PHONE"
         | "HYBRID"
         | "OTHER"
+      medical_record_status:
+        | "UPLOADED"
+        | "PROCESSING"
+        | "EXTRACTED"
+        | "FAILED"
+        | "ARCHIVED"
       MeetingPlatform: "ZOOM" | "TEAMS" | "WEBEX" | "GOOGLE_MEET" | "OTHER"
       NotificationType:
         | "JOB_ASSIGNED"
@@ -5597,6 +5831,7 @@ export const Constants = {
       ],
       CaseRole: ["ATTORNEY", "PARALEGAL", "REPORTER"],
       CaseStatus: ["ACTIVE", "CLOSED", "SETTLED", "ARCHIVED"],
+      chronology_source_type: ["AI_EXTRACTED", "MANUAL", "EDITED"],
       chunk_status: ["PENDING", "PROCESSING", "COMPLETE", "FAILED"],
       ClaimStatus: [
         "PENDING",
@@ -5713,6 +5948,13 @@ export const Constants = {
         "PHONE",
         "HYBRID",
         "OTHER",
+      ],
+      medical_record_status: [
+        "UPLOADED",
+        "PROCESSING",
+        "EXTRACTED",
+        "FAILED",
+        "ARCHIVED",
       ],
       MeetingPlatform: ["ZOOM", "TEAMS", "WEBEX", "GOOGLE_MEET", "OTHER"],
       NotificationType: [
