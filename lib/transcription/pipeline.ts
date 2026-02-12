@@ -10,6 +10,8 @@ import { chunkAudio, cleanupChunks, DEFAULT_CHUNKING_CONFIG } from './chunking';
 import { transcribeAudio, DEFAULT_DEEPGRAM_OPTIONS } from './deepgram';
 import { reassembleChunks } from './reassemble';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { calculateConfidenceAnalytics } from '@/lib/services/confidence-analytics';
+import { calculateRiskScore, extractRiskInputs } from '@/lib/services/risk-score';
 
 import type {
   AudioChunk,
@@ -204,6 +206,12 @@ export async function processTranscriptionJob(
 
     // Extract flagged (low-confidence) words
     await extractFlaggedWords(jobId, finalResult.words, 0.85);
+
+    // Calculate and store confidence analytics (Feature Deep Dive Enhancement 1.2 & 1.3)
+    await calculateAndStoreAnalytics(jobId, {
+      words: finalResult.words,
+      segments: finalResult.segments,
+    });
 
     // --- STAGE 6: COMPLETE ---
     await updateTranscriptionStatus(jobId, 'COMPLETE', 100);
@@ -681,5 +689,74 @@ async function logAuditEvent(jobId: string, action: string): Promise<void> {
     });
   } catch (error: any) {
     console.error('Failed to log audit event:', error.message);
+  }
+}
+
+/**
+ * Calculate and store confidence analytics and risk score
+ * Feature Deep Dive v2: Enhancement 1.2 & 1.3
+ */
+async function calculateAndStoreAnalytics(
+  jobId: string,
+  data: {
+    words: any[];
+    segments: any[];
+  }
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  try {
+    // Get transcription with flagged word count
+    const { data: transcription } = await supabase
+      .from('transcriptions')
+      .select('id, total_word_count, flagged_word_count, words, segments')
+      .eq('job_id', jobId)
+      .single();
+
+    if (!transcription) {
+      console.error('Transcription not found for analytics calculation');
+      return;
+    }
+
+    // Get flagged words for category breakdown
+    const { data: flaggedWords } = await supabase
+      .from('flagged_words')
+      .select('original_word, corrected_word')
+      .eq('transcription_id', transcription.id);
+
+    // Calculate confidence analytics
+    const analytics = calculateConfidenceAnalytics({
+      words: data.words,
+      flagged_words: flaggedWords || [],
+      word_count: transcription.total_word_count,
+      flagged_word_count: transcription.flagged_word_count,
+    });
+
+    // Extract risk inputs and calculate risk score
+    const riskInputs = extractRiskInputs({
+      word_count: transcription.total_word_count,
+      flagged_word_count: transcription.flagged_word_count,
+      words: data.words,
+      segments: data.segments,
+    });
+
+    const riskScore = calculateRiskScore(riskInputs);
+
+    // Store in metadata column
+    await supabase
+      .from('transcriptions')
+      .update({
+        metadata: {
+          confidence_analytics: analytics,
+          risk_score_result: riskScore,
+        } as any,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('job_id', jobId);
+
+    console.log(`Analytics stored: Risk Score = ${riskScore.score} (${riskScore.label}), Flagged = ${analytics.flagged_percentage}%`);
+  } catch (error: any) {
+    console.error('Failed to calculate analytics:', error.message);
+    // Don't throw — this is not critical enough to fail the pipeline
   }
 }

@@ -7,7 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TranscriptionStatus } from '@/types/schema-enums';
-import type { Database } from '@/types/supabase-generated';
+import type { Database, Json } from '@/types/supabase-generated';
 import type {
   TranscriptionWord,
   TranscriptionSegment,
@@ -99,8 +99,8 @@ export async function createTranscription(data: {
     job_id: data.job_id,
     source: data.source,
     status: TranscriptionStatus.AWAITING_AUDIO,
-    chunking_config: chunking as unknown as import('@/types/supabase-generated').Json,
-    deepgram_config: deepgram as unknown as import('@/types/supabase-generated').Json,
+    chunking_config: chunking as unknown as Json,
+    deepgram_config: deepgram as unknown as Json,
     created_at: new Date().toISOString(),
   };
 

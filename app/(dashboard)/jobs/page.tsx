@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
+import { RiskScoreBadge } from '@/components/jobs/risk-score-badge';
 import { Plus, Search, Calendar, FileText, Clock } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -195,18 +196,24 @@ async function JobsList({
     );
   }
 
-  // Get file and transcript counts for each job
+  // Get file and transcript counts for each job, plus transcription metadata
   const jobIds = jobsData?.map(j => j.id) || [];
-  const [filesCounts, transcriptsCounts] = await Promise.all([
+  const [filesCounts, transcriptionData] = await Promise.all([
     jobIds.length > 0 ? supabase
       .from('job_files')
       .select('job_id')
       .in('job_id', jobIds) : Promise.resolve({ data: [] }),
     jobIds.length > 0 ? supabase
       .from('transcriptions')
-      .select('job_id')
+      .select('job_id, metadata')
       .in('job_id', jobIds) : Promise.resolve({ data: [] }),
   ]);
+
+  // Extract transcription metadata (risk scores) by job_id
+  const transcriptionsByJobId: Record<string, any> = {};
+  transcriptionData.data?.forEach((t: any) => {
+    transcriptionsByJobId[t.job_id] = t;
+  });
 
   // Get created_by user info (from Supabase Auth)
   const { getSupabaseAdminClient } = await import('@/lib/supabase/admin');
@@ -248,7 +255,9 @@ async function JobsList({
   // Transform to expected format
   const jobs = (jobsData || []).map((job: any) => {
     const fileCount = filesCounts.data?.filter(f => f.job_id === job.id).length || 0;
-    const transcriptCount = transcriptsCounts.data?.filter(t => t.job_id === job.id).length || 0;
+    const transcriptCount = transcriptionData.data?.filter(t => t.job_id === job.id).length || 0;
+    const transcription = transcriptionsByJobId[job.id];
+    const riskScoreResult = transcription?.metadata?.risk_score_result;
 
     return {
       id: job.id,
@@ -275,6 +284,7 @@ async function JobsList({
         files: fileCount,
         transcripts: transcriptCount,
       },
+      riskScore: riskScoreResult,
     };
   });
 
@@ -311,9 +321,20 @@ async function JobsList({
           <Link key={job.id} href={`/jobs/${job.id}`}>
             <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-lg line-clamp-2">{job.title || job.caseName || 'Untitled Job'}</CardTitle>
-                  <JobStatusBadge status={job.status} />
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-lg line-clamp-2 flex-1">{job.title || job.caseName || 'Untitled Job'}</CardTitle>
+                  <div className="flex flex-col gap-2 items-end">
+                    <JobStatusBadge status={job.status} />
+                    {job.riskScore && (
+                      <RiskScoreBadge
+                        score={job.riskScore.score}
+                        label={job.riskScore.label}
+                        color={job.riskScore.color}
+                        showIcon={false}
+                        className="text-xs"
+                      />
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">

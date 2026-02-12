@@ -144,6 +144,10 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       }
     : { locked: false, lockedByMe: false };
 
+  // Extract confidence analytics from transcription metadata (Feature Deep Dive Enhancement 1.2)
+  const confidenceAnalytics = transcription.metadata?.confidence_analytics;
+  const riskScoreResult = transcription.metadata?.risk_score_result;
+
   return (
     <ReviewClientNew
       jobId={job.id}
@@ -156,6 +160,8 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       initialStats={initialStats}
       lockInfo={lockInfo}
       userId={session.user.id}
+      confidenceAnalytics={confidenceAnalytics}
+      riskScoreResult={riskScoreResult}
     />
   );
 }

@@ -8,6 +8,7 @@ import { SyncedTranscriptViewer } from '@/components/transcripts/synced-transcri
 import { LowConfidencePanel } from '@/components/transcripts/low-confidence-panel';
 import { TranscriptSkeleton } from '@/components/transcripts/transcript-skeleton';
 import { ExhibitTimelinePanel } from '@/components/transcripts/ExhibitTimelinePanel';
+import { ConfidenceAnalyticsPanel } from '@/components/transcripts/confidence-analytics-panel';
 import type { FlaggedWordRow, FlaggedWordStats } from '@/types/transcription';
 import type { JobExhibitRow } from '@/lib/supabase/queries/exhibits';
 import { toast } from 'sonner';
@@ -33,6 +34,8 @@ interface ReviewClientNewProps {
   initialStats: FlaggedWordStats;
   lockInfo: { locked: boolean; lockedByMe: boolean; lockedByName?: string } | null;
   userId: string;
+  confidenceAnalytics?: any;
+  riskScoreResult?: any;
 }
 
 export function ReviewClientNew({
@@ -46,6 +49,8 @@ export function ReviewClientNew({
   initialStats,
   lockInfo,
   userId: _userId,
+  confidenceAnalytics,
+  riskScoreResult,
 }: ReviewClientNewProps) {
   const router = useRouter();
   const audioRef = useRef<WaveformPlayerRef>(null);
@@ -64,7 +69,7 @@ export function ReviewClientNew({
   // Exhibits state
   const [exhibits, setExhibits] = useState<JobExhibitRow[]>([]);
   const [_isLoadingExhibits, setIsLoadingExhibits] = useState(false);
-  const [activeTab, setActiveTab] = useState<'flagged' | 'exhibits'>('flagged');
+  const [activeTab, setActiveTab] = useState<'flagged' | 'exhibits' | 'analytics'>('flagged');
 
   // Flatten all words from segments for transcript viewer
   const allWords = segments.flatMap(s => s.words);
@@ -456,13 +461,16 @@ export function ReviewClientNew({
 
         {/* Review Panel (1/3 width) - Tabbed */}
         <div className="w-1/3 overflow-hidden bg-card">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'flagged' | 'exhibits')} className="h-full flex flex-col">
-            <TabsList className="w-full grid grid-cols-2 shrink-0">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'flagged' | 'exhibits' | 'analytics')} className="h-full flex flex-col">
+            <TabsList className="w-full grid grid-cols-3 shrink-0">
               <TabsTrigger value="flagged" className="text-xs">
-                Flagged Words ({stats.total})
+                Flagged ({stats.total})
               </TabsTrigger>
               <TabsTrigger value="exhibits" className="text-xs">
                 Exhibits ({exhibits.length})
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs">
+                Analytics
               </TabsTrigger>
             </TabsList>
             <TabsContent value="flagged" className="flex-1 overflow-hidden m-0">
@@ -485,6 +493,12 @@ export function ReviewClientNew({
                 onAddExhibitMark={handleAddExhibitMark}
                 canEdit={!isReadOnly}
                 onRefresh={handleRefreshExhibits}
+              />
+            </TabsContent>
+            <TabsContent value="analytics" className="flex-1 overflow-hidden m-0">
+              <ConfidenceAnalyticsPanel
+                analytics={confidenceAnalytics}
+                riskScore={riskScoreResult}
               />
             </TabsContent>
           </Tabs>
