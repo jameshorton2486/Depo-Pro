@@ -30,6 +30,7 @@ interface ExportOptions {
   caseName: string;
   caseNumber?: string;
   deponentName?: string;
+  integrityHash?: string; // Security Audit D.14 - Legal safeguard
 }
 
 // ── Constants ──────────────────────────────────────────────────
@@ -270,6 +271,7 @@ function buildTitlePage(options: ExportOptions, entryCount: number): Paragraph[]
     }),
   );
 
+  // Security Audit D.14 - Legal safeguard footer
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -285,6 +287,37 @@ function buildTitlePage(options: ExportOptions, entryCount: number): Paragraph[]
       ],
     }),
   );
+
+  children.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 60 },
+      children: [
+        new TextRun({
+          text: `Processing Timestamp: ${new Date().toISOString()}`,
+          font: 'Courier New',
+          size: 16,
+          color: '999999',
+        }),
+      ],
+    }),
+  );
+
+  if (options.integrityHash) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [
+          new TextRun({
+            text: `Integrity Hash: ${options.integrityHash}`,
+            font: 'Courier New',
+            size: 16,
+            color: '999999',
+          }),
+        ],
+      }),
+    );
+  }
 
   return children;
 }

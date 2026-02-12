@@ -92,16 +92,14 @@ export async function logAuditEvent(input: AuditEventInput): Promise<void> {
     });
 
     if (error) {
-      logger.error('[audit] Failed to log event', {
+      logger.error('[audit] Failed to log event', error as Error, {
         action: input.action,
-        error: error.message,
       });
     }
   } catch (error) {
     // Never let audit logging failure break the request
-    logger.error('[audit] Exception logging event', {
+    logger.error('[audit] Exception logging event', error as Error, {
       action: input.action,
-      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -210,15 +208,13 @@ export async function getAuditTrail(
       .limit(limit);
 
     if (error) {
-      logger.error('[audit] Failed to fetch audit trail', { error: error.message });
+      logger.error('[audit] Failed to fetch audit trail', error as Error);
       return [];
     }
 
     return data || [];
   } catch (error) {
-    logger.error('[audit] Exception fetching audit trail', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.error('[audit] Exception fetching audit trail', error as Error);
     return [];
   }
 }
@@ -251,15 +247,13 @@ export async function getRecentAuditEvents(
       .limit(limit);
 
     if (error) {
-      logger.error('[audit] Failed to fetch recent events', { error: error.message });
+      logger.error('[audit] Failed to fetch recent events', error as Error);
       return [];
     }
 
     return data || [];
   } catch (error) {
-    logger.error('[audit] Exception fetching recent events', {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.error('[audit] Exception fetching recent events', error as Error);
     return [];
   }
 }

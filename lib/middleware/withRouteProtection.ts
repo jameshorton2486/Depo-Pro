@@ -113,7 +113,7 @@ export function withRouteProtection(
           .single();
 
         if (!profile?.firm_id) {
-          logger.error('[guard] Profile not found or missing firm_id', {
+          logger.error('[guard] Profile not found or missing firm_id', undefined, {
             userId: user.id,
           });
           return NextResponse.json(
@@ -183,8 +183,7 @@ export function withRouteProtection(
         params,
       });
     } catch (error) {
-      logger.error('[guard] Unhandled error', {
-        error: error instanceof Error ? error.message : String(error),
+      logger.error('[guard] Unhandled error', error as Error, {
         path: request.nextUrl.pathname,
       });
       return NextResponse.json(
@@ -232,9 +231,11 @@ export async function verifyJobTenantAccess(
     return { allowed: false, error: 'Forbidden - not assigned to this job' };
   }
 
-  if (userRole === 'COURT_REPORTER' && job.reporter_id !== userId && userRole !== 'ADMIN') {
+  if (userRole === 'COURT_REPORTER' && job.reporter_id !== userId) {
     return { allowed: false, error: 'Forbidden - not owner of this job' };
   }
+
+  // ADMIN and ATTORNEY roles can access any job in their firm (already passed tenant check)
 
   return { allowed: true, job };
 }
