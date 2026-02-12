@@ -6,31 +6,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { RiskScoreBadge } from '@/components/jobs/risk-score-badge';
+import type { ConfidenceAnalytics, RiskScoreResult } from '@/types/analytics';
 import { AlertCircle, TrendingUp, Users, FileText } from 'lucide-react';
 
-interface ConfidenceAnalyticsProps {
-  analytics?: {
-    total_words: number;
-    flagged_count: number;
-    flagged_percentage: number;
-    avg_confidence: number;
-    category_breakdown: {
-      medical: number;
-      proper_nouns: number;
-      numbers_dates: number;
-      general: number;
-    };
-    speaker_confidence: Record<string, number>;
-  };
-  riskScore?: {
-    score: number;
-    label: string;
-    color: string;
-    priority: number;
-  };
+interface ConfidenceAnalyticsPanelProps {
+  analytics?: ConfidenceAnalytics;
+  riskScore?: RiskScoreResult;
 }
 
-export function ConfidenceAnalyticsPanel({ analytics, riskScore }: ConfidenceAnalyticsProps) {
+export function ConfidenceAnalyticsPanel({ analytics, riskScore }: ConfidenceAnalyticsPanelProps) {
   if (!analytics) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground p-6">

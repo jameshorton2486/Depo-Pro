@@ -11,6 +11,7 @@ import { ExhibitTimelinePanel } from '@/components/transcripts/ExhibitTimelinePa
 import { ConfidenceAnalyticsPanel } from '@/components/transcripts/confidence-analytics-panel';
 import type { FlaggedWordRow, FlaggedWordStats } from '@/types/transcription';
 import type { JobExhibitRow } from '@/lib/supabase/queries/exhibits';
+import type { ConfidenceAnalytics, RiskScoreResult } from '@/types/analytics';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -34,8 +35,8 @@ interface ReviewClientNewProps {
   initialStats: FlaggedWordStats;
   lockInfo: { locked: boolean; lockedByMe: boolean; lockedByName?: string } | null;
   userId: string;
-  confidenceAnalytics?: any;
-  riskScoreResult?: any;
+  confidenceAnalytics?: ConfidenceAnalytics;
+  riskScoreResult?: RiskScoreResult;
 }
 
 export function ReviewClientNew({

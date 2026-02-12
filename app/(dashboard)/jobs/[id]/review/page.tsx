@@ -12,6 +12,7 @@ import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { Role } from '@/lib/constants';
 import type { TranscriptSegment } from '@/components/transcripts/synced-transcript-viewer';
+import type { ConfidenceAnalytics, RiskScoreResult } from '@/types/analytics';
 import { ReviewClientNew } from './review-client-new';
 
 export const dynamic = 'force-dynamic';
@@ -145,8 +146,8 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     : { locked: false, lockedByMe: false };
 
   // Extract confidence analytics from transcription metadata (Feature Deep Dive Enhancement 1.2)
-  const confidenceAnalytics = transcription.metadata?.confidence_analytics;
-  const riskScoreResult = transcription.metadata?.risk_score_result;
+  const confidenceAnalytics = transcription.metadata?.confidence_analytics as ConfidenceAnalytics | undefined;
+  const riskScoreResult = transcription.metadata?.risk_score_result as RiskScoreResult | undefined;
 
   return (
     <ReviewClientNew

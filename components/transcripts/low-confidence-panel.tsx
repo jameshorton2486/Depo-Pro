@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import type { FlaggedWordCategory } from '@/types/analytics';
+import { categorizeWord } from '@/lib/services/confidence-analytics';
 
 export interface TranscriptWord {
   word: string;
@@ -512,18 +514,32 @@ function LowConfidencePanelNew({
   isLoading,
 }: LowConfidencePanelNewProps) {
   const [filter, setFilter] = useState<'all' | 'pending' | 'corrected' | 'skipped'>('pending');
+  const [categoryFilter, setCategoryFilter] = useState<FlaggedWordCategory>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [correctionText, setCorrectionText] = useState('');
 
   const filteredWords = useMemo(() => {
     return flaggedWords.filter(word => {
-      if (filter === 'all') return true;
-      if (filter === 'pending') return word.status === 'PENDING';
-      if (filter === 'corrected') return word.status === 'CORRECTED';
-      if (filter === 'skipped') return word.status === 'SKIPPED';
+      // Status filter
+      if (filter === 'pending' && word.status !== 'PENDING') return false;
+      if (filter === 'corrected' && word.status !== 'CORRECTED') return false;
+      if (filter === 'skipped' && word.status !== 'SKIPPED') return false;
+
+      // Category filter (Enhancement 2A: Actionable Filters)
+      if (categoryFilter !== 'all') {
+        if (categoryFilter === 'very_low') {
+          return word.confidence < 0.5;
+        }
+        const category = categorizeWord(word.original_word);
+        if (categoryFilter === 'medical' && category !== 'medical') return false;
+        if (categoryFilter === 'proper_nouns' && category !== 'proper_nouns') return false;
+        if (categoryFilter === 'numbers_dates' && category !== 'numbers_dates') return false;
+        if (categoryFilter === 'general' && category !== 'general') return false;
+      }
+
       return true;
     });
-  }, [flaggedWords, filter]);
+  }, [flaggedWords, filter, categoryFilter]);
 
   const handleCorrect = async (wordId: string) => {
     if (!correctionText.trim()) return;
@@ -563,8 +579,8 @@ function LowConfidencePanelNew({
           </div>
         </div>
 
-        {/* Filter buttons */}
-        <div className="flex gap-1">
+        {/* Status filter buttons */}
+        <div className="flex gap-1 mb-2">
           {([
             ['all', stats.total],
             ['pending', stats.pending],
@@ -582,6 +598,30 @@ function LowConfidencePanelNew({
               )}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)} ({count})
+            </button>
+          ))}
+        </div>
+
+        {/* Category filter buttons (Enhancement 2A) */}
+        <div className="flex gap-1 flex-wrap">
+          {([
+            ['all', 'All'],
+            ['medical', 'Medical'],
+            ['proper_nouns', 'Names'],
+            ['numbers_dates', 'Numbers'],
+            ['very_low', '< 50%'],
+          ] as const).map(([cat, label]) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={cn(
+                'px-2 py-1 text-xs rounded',
+                categoryFilter === cat
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              )}
+            >
+              {label}
             </button>
           ))}
         </div>

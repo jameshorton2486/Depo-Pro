@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { RiskScoreBadge } from '@/components/jobs/risk-score-badge';
+import { RiskOverviewWidget, calculateRiskOverview } from '@/components/jobs/risk-overview-widget';
 import { Plus, Search, Calendar, FileText, Clock } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -23,6 +24,7 @@ interface JobsPageProps {
     status?: string;
     search?: string;
     page?: string;
+    sort?: string;
   }>;
 }
 
@@ -40,6 +42,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const status = params.status as string | undefined;
   const search = params.search || '';
   const page = parseInt(params.page || '1');
+  const sort = params.sort || 'updated_at';
 
   return (
     <div className="container py-8 max-w-7xl mx-auto">
@@ -97,11 +100,27 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           <option value="IN_EDIT">In Edit</option>
           <option value="COMPLETED">Completed</option>
         </select>
+        <label htmlFor="sort" className="sr-only">
+          Sort by
+        </label>
+        <select
+          id="sort"
+          name="sort"
+          defaultValue={sort}
+          className="px-3 py-2 border rounded-md bg-background"
+          title="Sort jobs"
+        >
+          <option value="updated_at">Recently Updated</option>
+          <option value="risk_desc">Risk (High → Low)</option>
+          <option value="risk_asc">Risk (Low → High)</option>
+          <option value="flagged_desc">Flagged % (High → Low)</option>
+          <option value="confidence_asc">Confidence (Low → High)</option>
+        </select>
         <Button type="submit">Apply Filters</Button>
       </form>
 
       <Suspense fallback={<JobsListSkeleton />}>
-        <JobsList user={session} status={status} search={search} page={page} />
+        <JobsList user={session} status={status} search={search} page={page} sort={sort} />
       </Suspense>
     </div>
   );
@@ -112,11 +131,13 @@ async function JobsList({
   status,
   search,
   page,
+  sort,
 }: {
   user: { id: string; role: string };
   status?: string;
   search?: string;
   page: number;
+  sort: string;
 }) {
   const supabase = await createSupabaseServerClient();
   const limit = 20;
@@ -179,9 +200,14 @@ async function JobsList({
   }
 
   // Pagination and ordering
-  jobsQuery = jobsQuery
-    .order('updated_at', { ascending: false })
-    .range(skip, skip + limit - 1);
+  // Note: Risk-based sorting requires client-side sort after fetching metadata
+  if (sort === 'updated_at' || !sort) {
+    jobsQuery = jobsQuery.order('updated_at', { ascending: false });
+  } else if (sort === 'created_at') {
+    jobsQuery = jobsQuery.order('created_at', { ascending: false });
+  }
+
+  jobsQuery = jobsQuery.range(skip, skip + limit - 1);
 
   const { data: jobsData, count: total, error } = await jobsQuery;
 
@@ -258,6 +284,7 @@ async function JobsList({
     const transcriptCount = transcriptionData.data?.filter(t => t.job_id === job.id).length || 0;
     const transcription = transcriptionsByJobId[job.id];
     const riskScoreResult = transcription?.metadata?.risk_score_result;
+    const confidenceAnalytics = transcription?.metadata?.confidence_analytics;
 
     return {
       id: job.id,
@@ -285,8 +312,24 @@ async function JobsList({
         transcripts: transcriptCount,
       },
       riskScore: riskScoreResult,
+      confidenceAnalytics,
     };
   });
+
+  // Client-side sorting by risk/analytics (Enhancement 5)
+  if (sort === 'risk_desc') {
+    jobs.sort((a, b) => (b.riskScore?.priority || 0) - (a.riskScore?.priority || 0));
+  } else if (sort === 'risk_asc') {
+    jobs.sort((a, b) => (a.riskScore?.priority || 0) - (b.riskScore?.priority || 0));
+  } else if (sort === 'flagged_desc') {
+    jobs.sort((a, b) =>
+      (b.confidenceAnalytics?.flagged_percentage || 0) - (a.confidenceAnalytics?.flagged_percentage || 0)
+    );
+  } else if (sort === 'confidence_asc') {
+    jobs.sort((a, b) =>
+      (a.confidenceAnalytics?.avg_confidence || 1) - (b.confidenceAnalytics?.avg_confidence || 1)
+    );
+  }
 
   if (jobs.length === 0) {
     return (
@@ -314,8 +357,16 @@ async function JobsList({
     );
   }
 
+  // Calculate risk overview (Enhancement 4A)
+  const riskOverview = calculateRiskOverview(jobs);
+
   return (
     <div className="space-y-4">
+      {/* Risk Overview Widget */}
+      {jobs.length > 0 && jobs.some(j => j.riskScore) && (
+        <RiskOverviewWidget overview={riskOverview} />
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
           <Link key={job.id} href={`/jobs/${job.id}`}>
@@ -376,7 +427,7 @@ async function JobsList({
       {(total ?? 0) > limit && (
         <div className="flex items-center justify-center gap-2 pt-4">
           {page > 1 && (
-            <Link href={`/jobs?page=${page - 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}>
+            <Link href={`/jobs?page=${page - 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}${sort !== 'updated_at' ? `&sort=${sort}` : ''}`}>
               <Button variant="outline">Previous</Button>
             </Link>
           )}
@@ -384,7 +435,7 @@ async function JobsList({
             Page {page} of {Math.ceil((total ?? 0) / limit)}
           </span>
           {page < Math.ceil((total ?? 0) / limit) && (
-            <Link href={`/jobs?page=${page + 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}>
+            <Link href={`/jobs?page=${page + 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}${sort !== 'updated_at' ? `&sort=${sort}` : ''}`}>
               <Button variant="outline">Next</Button>
             </Link>
           )}
