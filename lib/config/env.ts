@@ -7,7 +7,7 @@
  */
 const REQUIRED_ENV_VARS = [
   'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
   'DEEPGRAM_API_KEY',
   'ANTHROPIC_API_KEY',
@@ -88,9 +88,9 @@ export function validateEnvPatterns(): void {
   }
 
   // Anon key must not be empty string
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (anonKey && anonKey.length < 20) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY appears invalid (too short)');
+    throw new Error('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY appears invalid (too short)');
   }
 
   // Service role key must not be exposed to client
@@ -165,7 +165,7 @@ export function printEnvSummary(): void {
   console.log(`Environment: ${getEnvironment()}`);
   console.log(`Node Version: ${process.version}`);
   console.log(`\nSupabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
-  console.log(`Supabase Anon Key: ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20)}...`);
+  console.log(`Supabase Anon Key: ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.substring(0, 20)}...`);
   console.log(`Service Role Key: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing'}`);
   console.log(`Deepgram API Key: ${process.env.DEEPGRAM_API_KEY ? '✓ Set' : '✗ Missing'}`);
   console.log(`Anthropic API Key: ${process.env.ANTHROPIC_API_KEY ? '✓ Set' : '✗ Missing'}`);

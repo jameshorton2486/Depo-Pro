@@ -2,7 +2,8 @@
 // Security Audit D.1 - Centralized Route Guard Wrapper
 // Eliminates #1 vulnerability: forgotten auth/tenant checks
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';

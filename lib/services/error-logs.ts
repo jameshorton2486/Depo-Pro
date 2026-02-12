@@ -67,7 +67,7 @@ function sanitizeErrorMessage(message: string): string {
 
   // Remove file paths (could contain usernames)
   sanitized = sanitized.replace(/[A-Z]:\\[\w\s\-\\]+/g, '[PATH]');
-  sanitized = sanitized.replace(/\/[\w\s\-\/]+/g, '[PATH]');
+  sanitized = sanitized.replace(/\/[\w\s\-/]+/g, '[PATH]');
 
   // Truncate to reasonable length
   return sanitized.substring(0, 1000);
