@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [],
   },
 
+  // Turbopack configuration (Next.js 16+)
+  turbopack: {},
+
     // Prevent Windows FS rename bug for error pages
   generateBuildId: async () => {
     return 'windows-build';
