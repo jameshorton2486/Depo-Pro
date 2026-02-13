@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { ConfidenceWord } from './confidence-word';
 
 // Types matching Deepgram output
 export interface TranscriptWord {
@@ -28,6 +29,7 @@ interface SyncedTranscriptViewerProps {
   isEditable?: boolean;
   onWordEdit?: (wordIndex: number, segmentIndex: number, newText: string) => void;
   highlightLowConfidence?: boolean;
+  showHeatmap?: boolean; // Feature 3: Inline Confidence Heatmap toggle
 }
 
 export function SyncedTranscriptViewer({
@@ -38,6 +40,7 @@ export function SyncedTranscriptViewer({
   isEditable = false,
   onWordEdit,
   highlightLowConfidence = true,
+  showHeatmap = false, // Feature 3: Default to false (user can toggle)
 }: SyncedTranscriptViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeWordRef = useRef<HTMLSpanElement>(null);
@@ -196,6 +199,25 @@ export function SyncedTranscriptViewer({
                 );
               }
 
+              // Feature 3: Use ConfidenceWord component when heatmap enabled
+              if (showHeatmap) {
+                return (
+                  <span key={`word-${segmentIndex}-${wordIndex}`}>
+                    <span ref={isActive ? activeWordRef : undefined}>
+                      <ConfidenceWord
+                        word={word}
+                        isActive={isActive}
+                        onClick={() => handleWordClick(word, segmentIndex, wordIndex)}
+                        showHeatmap={showHeatmap}
+                        isFlagged={isLowConfidence && highlightLowConfidence}
+                      />
+                    </span>
+                    {wordIndex < segment.words.length - 1 && ' '}
+                  </span>
+                );
+              }
+
+              // Default rendering (heatmap disabled)
               return (
                 <span key={`word-${segmentIndex}-${wordIndex}`}>
                   <span

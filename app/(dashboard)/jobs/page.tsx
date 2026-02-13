@@ -13,7 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { RiskScoreBadge } from '@/components/jobs/risk-score-badge';
 import { RiskOverviewWidget, calculateRiskOverview } from '@/components/jobs/risk-overview-widget';
-import { Plus, Search, Calendar, FileText, Clock } from 'lucide-react';
+import { EffortBadge } from '@/components/jobs/effort-badge';
+import { estimateReviewEffort, calculateTotalEffort } from '@/lib/services/effort-estimate';
+import { Plus, Search, Calendar, FileText, Clock, AlertTriangle, ListChecks } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -42,7 +44,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const status = params.status as string | undefined;
   const search = params.search || '';
   const page = parseInt(params.page || '1');
-  const sort = params.sort || 'updated_at';
+  const sort = params.sort || 'risk_desc'; // Feature 1: Risk is now the DEFAULT
 
   return (
     <div className="container py-8 max-w-7xl mx-auto">
@@ -100,22 +102,6 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           <option value="IN_EDIT">In Edit</option>
           <option value="COMPLETED">Completed</option>
         </select>
-        <label htmlFor="sort" className="sr-only">
-          Sort by
-        </label>
-        <select
-          id="sort"
-          name="sort"
-          defaultValue={sort}
-          className="px-3 py-2 border rounded-md bg-background"
-          title="Sort jobs"
-        >
-          <option value="updated_at">Recently Updated</option>
-          <option value="risk_desc">Risk (High → Low)</option>
-          <option value="risk_asc">Risk (Low → High)</option>
-          <option value="flagged_desc">Flagged % (High → Low)</option>
-          <option value="confidence_asc">Confidence (Low → High)</option>
-        </select>
         <Button type="submit">Apply Filters</Button>
       </form>
 
@@ -133,7 +119,7 @@ async function JobsList({
   page,
   sort,
 }: {
-  user: { id: string; role: string };
+  user: { id: string; role: string; firm_id?: string };
   status?: string;
   search?: string;
   page: number;
@@ -201,10 +187,13 @@ async function JobsList({
 
   // Pagination and ordering
   // Note: Risk-based sorting requires client-side sort after fetching metadata
-  if (sort === 'updated_at' || !sort) {
+  if (sort === 'updated_at') {
     jobsQuery = jobsQuery.order('updated_at', { ascending: false });
-  } else if (sort === 'created_at') {
-    jobsQuery = jobsQuery.order('created_at', { ascending: false });
+  } else if (sort === 'status') {
+    jobsQuery = jobsQuery.order('status', { ascending: true });
+  } else {
+    // Default to updated_at for initial fetch, then sort by risk client-side
+    jobsQuery = jobsQuery.order('updated_at', { ascending: false });
   }
 
   jobsQuery = jobsQuery.range(skip, skip + limit - 1);
@@ -316,19 +305,34 @@ async function JobsList({
     };
   });
 
-  // Client-side sorting by risk/analytics (Enhancement 5)
-  if (sort === 'risk_desc') {
-    jobs.sort((a, b) => (b.riskScore?.priority || 0) - (a.riskScore?.priority || 0));
+  // Client-side sorting by risk/analytics (Feature 1: Workflow Intelligence)
+  if (sort === 'risk_desc' || !sort) {
+    // DEFAULT SORT: Highest risk first, unscored jobs at bottom
+    jobs.sort((a, b) => {
+      const aScore = a.riskScore?.score ?? -1;
+      const bScore = b.riskScore?.score ?? -1;
+      return bScore - aScore;
+    });
   } else if (sort === 'risk_asc') {
-    jobs.sort((a, b) => (a.riskScore?.priority || 0) - (b.riskScore?.priority || 0));
-  } else if (sort === 'flagged_desc') {
-    jobs.sort((a, b) =>
-      (b.confidenceAnalytics?.flagged_percentage || 0) - (a.confidenceAnalytics?.flagged_percentage || 0)
-    );
-  } else if (sort === 'confidence_asc') {
-    jobs.sort((a, b) =>
-      (a.confidenceAnalytics?.avg_confidence || 1) - (b.confidenceAnalytics?.avg_confidence || 1)
-    );
+    jobs.sort((a, b) => {
+      const aScore = a.riskScore?.score ?? Infinity;
+      const bScore = b.riskScore?.score ?? Infinity;
+      return aScore - bScore;
+    });
+  } else if (sort === 'status') {
+    // Priority order for status sorting
+    const statusOrder: Record<string, number> = {
+      AI_COMPLETE: 0, // Needs review - top priority
+      READY_FOR_EDIT: 1,
+      IN_EDIT: 2,
+      ASSIGNED: 3,
+      TRANSCRIBING: 4,
+      AI_REVIEWING: 5,
+      FILES_UPLOADED: 6,
+      CREATED: 7,
+      COMPLETED: 8,
+    };
+    jobs.sort((a, b) => (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99));
   }
 
   if (jobs.length === 0) {
@@ -360,8 +364,83 @@ async function JobsList({
   // Calculate risk overview (Enhancement 4A)
   const riskOverview = calculateRiskOverview(jobs);
 
+  // Calculate scopist queue metrics (Feature 1.3)
+  const criticalCount = jobs.filter(j => j.riskScore?.score && j.riskScore.score >= 75).length;
+  const highRiskCount = jobs.filter(j => j.riskScore?.score && j.riskScore.score >= 50 && j.riskScore.score < 75).length;
+  const completedToday = jobs.filter(j => j.status === 'COMPLETED' &&
+    new Date(j.updatedAt).toDateString() === new Date().toDateString()
+  ).length;
+  const totalEstimatedMinutes = calculateTotalEffort(jobs); // Feature 4
+
   return (
     <div className="space-y-4">
+      {/* Sort Toggle UI (Feature 1) */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Sort by:</span>
+        <div className="flex gap-1">
+          <Link href={`/jobs?sort=risk_desc${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}>
+            <Button
+              variant={sort === 'risk_desc' ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs gap-1"
+            >
+              <AlertTriangle className="h-3 w-3" />
+              Highest Risk
+            </Button>
+          </Link>
+          <Link href={`/jobs?sort=updated_at${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}>
+            <Button
+              variant={sort === 'updated_at' ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs gap-1"
+            >
+              <Clock className="h-3 w-3" />
+              Newest
+            </Button>
+          </Link>
+          <Link href={`/jobs?sort=status${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}>
+            <Button
+              variant={sort === 'status' ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs gap-1"
+            >
+              <ListChecks className="h-3 w-3" />
+              Status
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Scopist Queue Summary (Feature 1.3) - Only show if user is scopist */}
+      {user.role === 'SCOPIST' && jobs.length > 0 && (
+        <div className="grid grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-red-600">{criticalCount}</div>
+              <p className="text-xs text-muted-foreground">Critical Risk</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-orange-500">{highRiskCount}</div>
+              <p className="text-xs text-muted-foreground">High Risk</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-blue-600">{totalEstimatedMinutes}</div>
+              <p className="text-xs text-muted-foreground">Est. Minutes Today</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-green-600">{completedToday}</div>
+              <p className="text-xs text-muted-foreground">Completed Today</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Risk Overview Widget */}
       {jobs.length > 0 && jobs.some(j => j.riskScore) && (
         <RiskOverviewWidget overview={riskOverview} />
@@ -385,6 +464,15 @@ async function JobsList({
                         className="text-xs"
                       />
                     )}
+                    {/* Feature 4: Effort Badge */}
+                    {job.riskScore && job.confidenceAnalytics && (() => {
+                      const effort = estimateReviewEffort(
+                        job.riskScore.score,
+                        job.confidenceAnalytics.flagged_count,
+                        job.confidenceAnalytics.total_words
+                      );
+                      return <EffortBadge {...effort} />;
+                    })()}
                   </div>
                 </div>
               </CardHeader>

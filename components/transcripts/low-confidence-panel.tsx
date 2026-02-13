@@ -3,7 +3,11 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import type { FlaggedWordCategory } from '@/types/analytics';
+import type { ConfidenceSeverity } from '@/types/review-filters';
+import { SEVERITY_THRESHOLDS } from '@/types/review-filters';
 import { categorizeWord } from '@/lib/services/confidence-analytics';
+import { Button } from '@/components/ui/button';
+import { ArrowUp } from 'lucide-react';
 
 export interface TranscriptWord {
   word: string;
@@ -57,6 +61,7 @@ interface LowConfidencePanelNewProps {
   onCorrection: (wordId: string, action: 'correct' | 'skip', correctedWord?: string) => Promise<void>;
   isReadOnly: boolean;
   isLoading: boolean;
+  onFilterUsed?: (filterType: string) => void; // Feature 5: Track filter usage
 }
 
 type LowConfidencePanelProps = LowConfidencePanelLegacyProps | LowConfidencePanelNewProps;
@@ -512,18 +517,28 @@ function LowConfidencePanelNew({
   onCorrection,
   isReadOnly,
   isLoading,
+  onFilterUsed,
 }: LowConfidencePanelNewProps) {
   const [filter, setFilter] = useState<'all' | 'pending' | 'corrected' | 'skipped'>('pending');
+  const [severityFilter, setSeverityFilter] = useState<ConfidenceSeverity>('all');
   const [categoryFilter, setCategoryFilter] = useState<FlaggedWordCategory>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [correctionText, setCorrectionText] = useState('');
+  const [_currentWordIndex, _setCurrentWordIndex] = useState<number>(0);
 
+  // Filter flagged words (Feature 2.2 & 2.3)
   const filteredWords = useMemo(() => {
     return flaggedWords.filter(word => {
       // Status filter
       if (filter === 'pending' && word.status !== 'PENDING') return false;
       if (filter === 'corrected' && word.status !== 'CORRECTED') return false;
       if (filter === 'skipped' && word.status !== 'SKIPPED') return false;
+
+      // Severity filter (Feature 2: NEW)
+      if (severityFilter !== 'all') {
+        const [min, max] = SEVERITY_THRESHOLDS[severityFilter];
+        if (word.confidence < min || word.confidence >= max) return false;
+      }
 
       // Category filter (Enhancement 2A: Actionable Filters)
       if (categoryFilter !== 'all') {
@@ -539,7 +554,77 @@ function LowConfidencePanelNew({
 
       return true;
     });
-  }, [flaggedWords, filter, categoryFilter]);
+  }, [flaggedWords, filter, severityFilter, categoryFilter]);
+
+  // Count words by severity for filter buttons
+  const countBySeverity = useMemo(() => {
+    const counts: Record<ConfidenceSeverity, number> = {
+      all: flaggedWords.length,
+      critical: 0,
+      low: 0,
+      medium: 0,
+    };
+
+    flaggedWords.forEach(word => {
+      if (word.confidence < 0.5) counts.critical++;
+      else if (word.confidence < 0.7) counts.low++;
+      else if (word.confidence < 0.85) counts.medium++;
+    });
+
+    return counts;
+  }, [flaggedWords]);
+
+  // Jump to highest risk word (Feature 2.5)
+  const jumpToHighestRisk = useCallback(() => {
+    const pendingWords = flaggedWords.filter(w => w.status === 'PENDING');
+    if (pendingWords.length === 0) return;
+
+    const lowestConf = [...pendingWords].sort((a, b) => a.confidence - b.confidence)[0];
+    if (lowestConf) {
+      onSeekAudio(Math.max(0, lowestConf.start_time - 2)); // Start 2 seconds before
+    }
+  }, [flaggedWords, onSeekAudio]);
+
+  // Keyboard shortcuts (Feature 2.5)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.shiftKey) {
+        switch (e.key) {
+          case 'R':
+            jumpToHighestRisk();
+            break;
+          case '!': // Shift+1
+            setSeverityFilter('critical');
+            onFilterUsed?.('critical'); // Feature 5: Track filter usage
+            break;
+          case 'M':
+            setCategoryFilter('medical');
+            onFilterUsed?.('medical'); // Feature 5: Track filter usage
+            break;
+          case 'N':
+            setCategoryFilter('numbers_dates');
+            onFilterUsed?.('numbers_dates'); // Feature 5: Track filter usage
+            break;
+          case 'P':
+            setCategoryFilter('proper_nouns');
+            onFilterUsed?.('proper_nouns'); // Feature 5: Track filter usage
+            break;
+          case 'A':
+            // Reset all filters
+            setSeverityFilter('all');
+            setCategoryFilter('all');
+            setFilter('all');
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [jumpToHighestRisk, onFilterUsed]);
 
   const handleCorrect = async (wordId: string) => {
     if (!correctionText.trim()) return;
@@ -574,8 +659,21 @@ function LowConfidencePanelNew({
       <div className="p-3 border-b border-slate-800">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-slate-200">Low Confidence Words</h3>
-          <div className="text-xs text-slate-400">
-            {stats.corrected + stats.skipped} / {stats.total} reviewed
+          <div className="flex items-center gap-2">
+            {/* Jump to Highest Risk Button (Feature 2.5) */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-6 gap-1 text-yellow-400 border-yellow-600 hover:bg-yellow-900/20"
+              onClick={jumpToHighestRisk}
+              title="Shift+R"
+            >
+              <ArrowUp className="h-3 w-3" />
+              Jump to Worst
+            </Button>
+            <div className="text-xs text-slate-400">
+              {stats.corrected + stats.skipped} / {stats.total} reviewed
+            </div>
           </div>
         </div>
 
@@ -602,28 +700,66 @@ function LowConfidencePanelNew({
           ))}
         </div>
 
+        {/* Severity filter buttons (Feature 2.2) */}
+        <div className="flex gap-1 mb-2">
+          <span className="text-xs text-slate-400 w-12 pt-1">Risk:</span>
+          {([
+            ['all', 'All', null],
+            ['critical', '< 0.5', 'text-red-400'],
+            ['low', '0.5–0.7', 'text-orange-400'],
+            ['medium', '0.7–0.85', 'text-yellow-400'],
+          ] as const).map(([sev, label, color]) => (
+            <button
+              key={sev}
+              onClick={() => {
+                setSeverityFilter(sev as ConfidenceSeverity);
+                if (sev !== 'all') onFilterUsed?.(sev as string); // Feature 5: Track filter usage
+              }}
+              className={cn(
+                'px-2 py-1 text-xs rounded',
+                severityFilter === sev
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700',
+                color
+              )}
+              title={sev === 'critical' ? 'Shift+1' : undefined}
+            >
+              {label} {sev !== 'all' && `(${countBySeverity[sev as ConfidenceSeverity]})`}
+            </button>
+          ))}
+        </div>
+
         {/* Category filter buttons (Enhancement 2A) */}
         <div className="flex gap-1 flex-wrap">
+          <span className="text-xs text-slate-400 w-12 pt-1">Type:</span>
           {([
-            ['all', 'All'],
-            ['medical', 'Medical'],
-            ['proper_nouns', 'Names'],
-            ['numbers_dates', 'Numbers'],
-            ['very_low', '< 50%'],
-          ] as const).map(([cat, label]) => (
+            ['all', 'All', null],
+            ['medical', '⚕ Medical', 'M'],
+            ['proper_nouns', '👤 Names', 'P'],
+            ['numbers_dates', '# Numbers', 'N'],
+          ] as const).map(([cat, label, shortcut]) => (
             <button
               key={cat}
-              onClick={() => setCategoryFilter(cat)}
+              onClick={() => {
+                setCategoryFilter(cat);
+                if (cat !== 'all') onFilterUsed?.(cat as string); // Feature 5: Track filter usage
+              }}
               className={cn(
                 'px-2 py-1 text-xs rounded',
                 categoryFilter === cat
                   ? 'bg-purple-600 text-white'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               )}
+              title={shortcut ? `Shift+${shortcut}` : undefined}
             >
               {label}
             </button>
           ))}
+        </div>
+
+        {/* Keyboard shortcuts hint */}
+        <div className="mt-2 text-xs text-slate-500 text-center">
+          Tip: Use Shift+R (jump), Shift+M (medical), Shift+N (numbers), Shift+A (reset)
         </div>
       </div>
 

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import { useReviewSession } from '@/hooks/use-review-session';
 import { WaveformPlayer, type WaveformPlayerRef } from '@/components/audio/waveform-player';
 import type { TranscriptSegment, TranscriptWord } from '@/components/transcripts/synced-transcript-viewer';
 import { SyncedTranscriptViewer } from '@/components/transcripts/synced-transcript-viewer';
@@ -66,6 +68,18 @@ export function ReviewClientNew({
 
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Feature 3: Inline Confidence Heatmap toggle
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
+  // Feature 5: Review Session Duration Tracking
+  const { metrics, trackWordReviewed, trackAudioReplay, trackFilterUsed } = useReviewSession({
+    transcriptionId,
+    jobId,
+    userId: _userId,
+    riskScore: riskScoreResult?.score,
+    flaggedCount: stats.total,
+  });
 
   // Exhibits state
   const [exhibits, setExhibits] = useState<JobExhibitRow[]>([]);
@@ -224,7 +238,8 @@ export function ReviewClientNew({
   // Audio seek via ref
   const handleSeekAudio = useCallback((timestamp: number) => {
     audioRef.current?.seekTo(Math.max(0, timestamp - 2)); // 2 seconds before for context
-  }, []);
+    trackAudioReplay(); // Feature 5: Track audio replay
+  }, [trackAudioReplay]);
 
   // Handle word click from transcript viewer
   const handleWordClick = useCallback((word: TranscriptWord) => {
@@ -255,6 +270,9 @@ export function ReviewClientNew({
       setFlaggedWords(prev => prev.map(w => w.id === wordId ? updated : w));
       setStats(newStats);
 
+      // Feature 5: Track word review
+      trackWordReviewed(action === 'correct');
+
       toast.success(
         action === 'correct' ? `Corrected to "${correctedWord}"` :
         action === 'confirm' ? 'Confirmed as correct' :
@@ -265,7 +283,7 @@ export function ReviewClientNew({
       toast.error('Failed to save. Please try again.');
       throw error; // Re-throw so component can handle
     }
-  }, [jobId]);
+  }, [jobId, trackWordReviewed]);
 
   // Submit review handler
   const handleSubmitReview = useCallback(async () => {
@@ -378,6 +396,21 @@ export function ReviewClientNew({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Feature 3: Confidence Heatmap Toggle */}
+          <button
+            onClick={() => setShowHeatmap(!showHeatmap)}
+            className={cn(
+              'px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2',
+              showHeatmap
+                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30'
+                : 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
+            )}
+            title="Toggle confidence heatmap - colors words by AI confidence"
+          >
+            <span className="text-xs">🎨</span>
+            Heatmap {showHeatmap ? 'ON' : 'OFF'}
+          </button>
+
           {/* Export Dropdown */}
           <div className="relative group">
             <button
@@ -430,6 +463,10 @@ export function ReviewClientNew({
         <span>Corrected: {stats.corrected}</span>
         <span>Confirmed: {stats.confirmed}</span>
         <span>Skipped: {stats.skipped}</span>
+        {/* Feature 5: Session tracking display */}
+        <span className="ml-auto text-slate-500">
+          ⏱ Active: {Math.floor(metrics.activeDuration / 60)}m {metrics.activeDuration % 60}s
+        </span>
       </div>
 
       {/* Audio Player */}
@@ -457,6 +494,7 @@ export function ReviewClientNew({
             onWordClick={handleWordClick}
             confidenceThreshold={0.85}
             highlightLowConfidence={true}
+            showHeatmap={showHeatmap}
           />
         </div>
 
@@ -483,6 +521,7 @@ export function ReviewClientNew({
                 onCorrection={handleCorrection}
                 isReadOnly={isReadOnly}
                 isLoading={false}
+                onFilterUsed={trackFilterUsed}
               />
             </TabsContent>
             <TabsContent value="exhibits" className="flex-1 overflow-hidden m-0">
