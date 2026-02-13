@@ -2,8 +2,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Use standalone output to prevent Windows FS rename bug for error pages
-  output: 'standalone',
+  // Vercel handles output mode automatically - standalone causes build issues in Next.js 15.0.7
+  // output: 'standalone', // Commented out for Vercel deployment
 
   // Note: NEXT_PUBLIC_* variables are automatically exposed to the client
   // No need to explicitly list them in env: {} - Next.js handles this automatically
