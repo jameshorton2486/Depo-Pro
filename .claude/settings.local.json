@@ -32,7 +32,8 @@
       "Bash(xargs -I {} sh -c 'echo \"\"=== {} ===\"\" && grep -i \"\"service.*role\\\\|SUPABASE_SERVICE_ROLE\"\" \"\"{}\"\" || true')",
       "Bash(supabase status:*)",
       "Bash(intelligence platform\" - measurable quality metrics differentiate\nfrom Rev, Verbit, Otter, and basic Deepgram wrappers.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(unzip:*)"
     ]
   }
 }
