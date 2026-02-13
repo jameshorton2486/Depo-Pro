@@ -2,8 +2,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Vercel handles output mode automatically - standalone causes build issues in Next.js 15.0.7
-  // output: 'standalone', // Commented out for Vercel deployment
+  // DO NOT use output: 'standalone' — Vercel handles output mode automatically.
+  // DO NOT use generateBuildId — the 'windows-build' hack breaks Vercel's cache.
 
   // Note: NEXT_PUBLIC_* variables are automatically exposed to the client
   // No need to explicitly list them in env: {} - Next.js handles this automatically
@@ -15,11 +15,6 @@ const nextConfig: NextConfig = {
 
   // Turbopack configuration (Next.js 16+)
   turbopack: {},
-
-    // Prevent Windows FS rename bug for error pages
-  generateBuildId: async () => {
-    return 'windows-build';
-  },
 
   // Server-side only packages (not bundled for client)
   serverExternalPackages: [
