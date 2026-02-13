@@ -33,7 +33,9 @@
       "Bash(supabase status:*)",
       "Bash(intelligence platform\" - measurable quality metrics differentiate\nfrom Rev, Verbit, Otter, and basic Deepgram wrappers.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git reset:*)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(vercel:*)",
+      "Bash(npm install:*)"
     ]
   }
 }
