@@ -7,6 +7,7 @@ import {
   Briefcase,
   Building2,
   Activity,
+  Mic,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
@@ -64,13 +65,23 @@ export default async function AdminDashboard() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-          Admin Dashboard
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          System overview and management
-        </p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            Admin Dashboard
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            System overview and management
+          </p>
+        </div>
+        <Link
+          href="/transcription-tool"
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
+            text-white font-medium rounded-lg transition-colors"
+        >
+          <Mic className="w-4 h-4" />
+          High-Accuracy Transcription
+        </Link>
       </div>
 
       {/* Stats Grid */}

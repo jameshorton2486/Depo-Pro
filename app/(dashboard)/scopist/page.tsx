@@ -11,6 +11,7 @@ import {
   Keyboard,
   MousePointer,
   FileCheck,
+  Mic,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { startOfMonth } from 'date-fns';
@@ -273,6 +274,26 @@ export default async function ScopistDashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* High-Accuracy Transcription Tool */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200
+          dark:border-slate-700 p-6 mb-6">
+          <Link
+            href="/transcription-tool"
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
+              dark:hover:bg-slate-700/50 transition-colors border-2 border-indigo-200 dark:border-indigo-800"
+          >
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex-shrink-0">
+              <Mic className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <p className="font-medium text-slate-900 dark:text-slate-100">
+                High-Accuracy Transcription
+              </p>
+              <p className="text-sm text-slate-500">Audio normalized for best results</p>
+            </div>
+          </Link>
         </div>
 
         {/* Quick Tips */}

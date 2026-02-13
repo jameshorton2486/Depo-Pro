@@ -5,10 +5,15 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-import { validateAudio, extractAudioFromVideo } from './validate';
+import { validateAudio } from './validate';
 import { chunkAudio, cleanupChunks, DEFAULT_CHUNKING_CONFIG } from './chunking';
 import { transcribeAudio, DEFAULT_DEEPGRAM_OPTIONS } from './deepgram';
 import { reassembleChunks } from './reassemble';
+import {
+  normalizeAudioForTranscription,
+  needsNormalization,
+  cleanupPreprocessedFile,
+} from './preprocessor';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { calculateConfidenceAnalytics } from '@/lib/services/confidence-analytics';
 import { calculateRiskScore, extractRiskInputs } from '@/lib/services/risk-score';
@@ -41,6 +46,7 @@ export async function processTranscriptionJob(
 ): Promise<void> {
   let tempDir: string | null = null;
   let audioFilePath: string | null = null;
+  let normalizedPath: string | null = null;
   let chunks: AudioChunk[] = [];
 
   try {
@@ -61,11 +67,19 @@ export async function processTranscriptionJob(
 
     console.log(`Audio validated: ${validation.duration}s, ${validation.format}, ${validation.channels} channels`);
 
-    // If it's a video file, extract audio
-    const videoFormats = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-    if (videoFormats.includes(validation.format.toLowerCase())) {
-      console.log('Video format detected, extracting audio...');
-      audioFilePath = await extractAudioFromVideo(audioFilePath);
+    // --- STAGE 1b: NORMALIZING ---
+    // Normalize ALL audio to 16kHz mono WAV for optimal Deepgram accuracy.
+    // For video files, this also extracts the audio track in the same pass.
+    const shouldNormalize = await needsNormalization(audioFilePath);
+
+    if (shouldNormalize) {
+      console.log('Normalizing audio to 16kHz mono WAV for high-accuracy transcription...');
+      const preprocessResult = await normalizeAudioForTranscription(audioFilePath);
+      normalizedPath = preprocessResult.outputPath;
+      audioFilePath = normalizedPath;
+      console.log(`Audio normalized in ${preprocessResult.processingTimeMs}ms`);
+    } else {
+      console.log('Audio already in optimal format, skipping normalization');
     }
 
     // Update job with audio metadata
@@ -240,6 +254,13 @@ export async function processTranscriptionJob(
       } catch (cleanupError) {
         console.error('Cleanup error:', cleanupError);
       }
+    }
+
+    // Clean up normalized audio file
+    if (normalizedPath) {
+      try {
+        cleanupPreprocessedFile(normalizedPath);
+      } catch { /* ignore cleanup errors */ }
     }
 
     if (tempDir && fs.existsSync(tempDir)) {

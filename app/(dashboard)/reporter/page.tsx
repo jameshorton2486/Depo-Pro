@@ -12,6 +12,7 @@ import {
   Upload,
   UserPlus,
   Download,
+  Mic,
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
@@ -143,6 +144,22 @@ export default async function ReporterDashboard() {
             Quick Actions
           </h3>
           <div className="space-y-3">
+            <Link
+              href="/transcription-tool"
+              className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
+                dark:hover:bg-slate-700/50 transition-colors border-2 border-indigo-200 dark:border-indigo-800"
+            >
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                <Mic className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900 dark:text-slate-100">
+                  High-Accuracy Transcription
+                </p>
+                <p className="text-sm text-slate-500">Audio normalized for best results</p>
+              </div>
+            </Link>
+
             <Link
               href="/cases/new"
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
