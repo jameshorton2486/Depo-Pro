@@ -35,7 +35,11 @@
       "Bash(git reset:*)",
       "Bash(unzip:*)",
       "Bash(vercel:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(nslookup:*)",
+      "Bash(Select-String -Pattern \"SITE_URL\")",
+      "Bash(python3:*)",
+      "Bash(echo:*)"
     ]
   }
 }
