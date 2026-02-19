@@ -1,171 +1,61 @@
 /**
- * Calendar Query Layer for Depo-Pro v1.3
- *
- * NOTE: Calendar/scheduling out of v1.3 MVP scope
- * This is a compatibility stub for legacy code
+ * Calendar Query Stub
+ * Calendar feature is pending Phase 1 rebuild (multi-tenant architecture).
+ * All functions return null/empty. DO NOT add real logic here — implement in Phase 1.
  */
 
-/**
- * Get calendar event by ID (stub)
- */
-export async function getCalendarEventById(
-  supabaseOrId: any,
-  _maybeId?: string
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function getCalendarEventById(_supabaseOrId: any, _maybeId?: string): Promise<any> {
+  return null;
 }
 
-/**
- * List calendar events (stub)
- */
-export async function listCalendarEvents(
-  supabaseOrFilters: any,
-  _maybeFilters?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrFilters === 'object' && supabaseOrFilters.from;
-  return isOldPattern ? [] : { data: [], error: null };
+export async function listCalendarEvents(_supabaseOrFilters: any, _maybeFilters?: any): Promise<any[]> {
+  return [];
 }
 
-/**
- * Create calendar event (stub)
- */
-export async function createCalendarEvent(
-  supabaseOrData: any,
-  _maybeData?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function createCalendarEvent(_supabaseOrData: any, _maybeData?: any): Promise<any> {
+  return null;
 }
 
-/**
- * Update calendar event (stub)
- */
-export async function updateCalendarEvent(
-  supabaseOrId: any,
-  _idOrUpdates?: any,
-  _maybeUpdates?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function updateCalendarEvent(_supabaseOrId: any, _idOrUpdates?: any, _maybeUpdates?: any): Promise<any> {
+  return null;
 }
 
-/**
- * Delete calendar event (stub)
- */
-export async function deleteCalendarEvent(
-  supabaseOrId: any,
-  _maybeId?: string
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function deleteCalendarEvent(_supabaseOrId: any, _maybeId?: string): Promise<any> {
+  return null;
 }
 
-/**
- * Get booking request (stub)
- */
-export async function getBookingRequestById(
-  supabaseOrId: any,
-  _maybeId?: string
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function getBookingRequestById(_supabaseOrId: any, _maybeId?: string): Promise<any> {
+  return null;
 }
 
-/**
- * Reschedule event (stub)
- * Supports: rescheduleEvent(supabase, id, data, options) or rescheduleEvent(id, data)
- */
-export async function rescheduleEvent(
-  supabaseOrId: any,
-  _idOrData?: any,
-  _dataOrOptions?: any,
-  _maybeOptions?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function rescheduleEvent(_supabaseOrId: any, _idOrData?: any, _dataOrOptions?: any, _maybeOptions?: any): Promise<any> {
+  return null;
 }
 
-/**
- * Convert to job (stub)
- */
-export async function convertEventToJob(
-  supabaseOrEventId: any,
-  _eventIdOrJobData?: any,
-  _maybeJobData?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrEventId === 'object' && supabaseOrEventId?.from;
-  return isOldPattern ? null : { success: false, jobId: undefined, data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function convertEventToJob(_supabaseOrEventId: any, _eventIdOrJobData?: any, _maybeJobData?: any): Promise<any> {
+  return { success: false, jobId: undefined };
 }
 
-/**
- * Add event notes (stub)
- */
-export async function addEventNotes(
-  supabaseOrId: any,
-  __idOrNotes?: any,
-  _maybeNotes?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function addEventNotes(_supabaseOrId: any, _idOrNotes?: any, _maybeNotes?: any): Promise<any> {
+  return null;
 }
 
-/**
- * Validate move (stub)
- */
-export async function validateEventMove(
-  supabaseOrData: any,
-  _maybeData?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrData === 'object' && supabaseOrData.from;
-  return isOldPattern ? { valid: false } : { data: { valid: false }, error: null };
+export async function validateEventMove(_supabaseOrData: any, _maybeData?: any): Promise<any> {
+  return { valid: false };
 }
 
-/**
- * Get calendar event notes (stub)
- */
-export async function getCalendarEventNotes(
-  supabaseOrId: any,
-  __maybeIdOrInclude?: string | boolean
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId?.from;
-  return isOldPattern ? null : { notes: null, internalNotes: null };
+export async function getCalendarEventNotes(_supabaseOrId: any, _maybeIdOrInclude?: string | boolean): Promise<any> {
+  return { notes: null, internalNotes: null };
 }
 
-/**
- * Add note to calendar event (stub)
- * Supports: addNoteToCalendarEvent(supabase, id, note, options) or addNoteToCalendarEvent(id, note)
- */
-export async function addNoteToCalendarEvent(
-  supabaseOrId: any,
-  _idOrNote?: any,
-  _noteOrOptions?: any,
-  _maybeOptions?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { data: null, error: new Error('Calendar feature not available in v1.3') };
+export async function addNoteToCalendarEvent(_supabaseOrId: any, _idOrNote?: any, _noteOrOptions?: any, _maybeOptions?: any): Promise<any> {
+  return null;
 }
 
-/**
- * Reschedule calendar event (stub)
- */
-export async function rescheduleCalendarEvent(
-  supabaseOrId: any,
-  _idOrData?: any,
-  _maybeData?: any,
-  _extraArg?: any
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
-  return isOldPattern ? null : { success: false, data: null, error: new Error('Calendar feature not available in v1.3'), conflict: undefined };
+export async function rescheduleCalendarEvent(_supabaseOrId: any, _idOrData?: any, _maybeData?: any, _extraArg?: any): Promise<any> {
+  return { success: false };
 }
 
-/**
- * Get calendar event by job ID (stub)
- */
-export async function getCalendarEventByJobId(
-  supabaseOrJobId: any,
-  _maybeJobId?: string
-): Promise<any> {
-  const isOldPattern = typeof supabaseOrJobId === 'object' && supabaseOrJobId.from;
-  return isOldPattern ? null : { data: null, error: null };
+export async function getCalendarEventByJobId(_supabaseOrJobId: any, _maybeJobId?: string): Promise<any> {
+  return null;
 }

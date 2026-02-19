@@ -65,10 +65,11 @@ const PROTECTED_PREFIXES = [
 ];
 
 /**
- * Role-based route protection
- * Maps roles to route prefixes they can access
+ * Route prefixes accessible by each role.
+ * Covers both legacy (v1.x) and v2.2 roles.
  */
 const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
+  // ── v1.x legacy roles ─────────────────────────────────────────
   ADMIN: [
     '/admin',
     '/dashboard',
@@ -81,7 +82,75 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
     '/settings',
     '/billing',
     '/exports',
-    '/wkt', // Admins can access WKT
+    '/wkt',
+  ],
+  COURT_REPORTER: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+  ],
+  AGENCY: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/billing',
+    '/reports',
+    '/settings',
+  ],
+  AGENCY_ADMIN: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/billing',
+    '/reports',
+    '/settings',
+  ],
+  FIRM_ADMIN: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/transcripts',
+    '/reports',
+    '/billing',
+    '/settings',
+  ],
+  WKT_STUDENT: [
+    '/wkt',
+  ],
+
+  // ── v2.2 multi-tenant roles ────────────────────────────────────
+  AGENCY_OWNER: [
+    '/admin',
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+    '/billing',
+    '/exports',
+  ],
+  AGENCY_MANAGER: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+    '/billing',
   ],
   REPORTER: [
     '/dashboard',
@@ -106,15 +175,59 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
     '/transcripts',
     '/reports',
   ],
-  AGENCY: [
+  PARALEGAL: [
+    '/dashboard',
+    '/cases',
+    '/transcripts',
+  ],
+  VIDEOGRAPHER: [
+    '/dashboard',
+    '/org',
+    '/jobs',
+    '/calendar',
+    '/settings',
+  ],
+  INTERPRETER: [
+    '/dashboard',
+    '/org',
+    '/jobs',
+    '/calendar',
+    '/settings',
+  ],
+  FIRM_OWNER: [
     '/dashboard',
     '/org',
     '/cases',
     '/jobs',
     '/calendar',
+    '/transcripts',
+    '/reports',
+    '/billing',
+    '/settings',
   ],
-  WKT_STUDENT: [
-    '/wkt', // WKT students only have access to WKT routes
+  FIRM_MANAGER: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+  ],
+  SUPER_ADMIN: [
+    '/admin',
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+    '/billing',
+    '/exports',
+    '/wkt',
   ],
 };
 

@@ -8,12 +8,9 @@
 
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
+import { UserRole } from '@/lib/enums/roles';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export type UserRole = 'ADMIN' | 'REPORTER' | 'SCOPIST' | 'ATTORNEY' | 'AGENCY';
+export type { UserRole };
 
 export interface RoleConfig {
   allowed: UserRole[];
@@ -26,23 +23,35 @@ export interface RoleConfig {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Role hierarchy - higher roles inherit lower role permissions
- * ADMIN > AGENCY > REPORTER > SCOPIST
- * ATTORNEY is separate (doesn't inherit from others)
+ * Role hierarchy - higher roles inherit lower role permissions.
+ * Covers both legacy and v2.2 roles.
  */
-export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  ADMIN: 100,
-  AGENCY: 80,
-  REPORTER: 60,
-  ATTORNEY: 50,
-  SCOPIST: 40,
+export const ROLE_HIERARCHY: Partial<Record<UserRole, number>> = {
+  // v2.2
+  [UserRole.SUPER_ADMIN]: 110,
+  [UserRole.AGENCY_OWNER]: 100,
+  [UserRole.FIRM_OWNER]: 100,
+  [UserRole.AGENCY_MANAGER]: 80,
+  [UserRole.FIRM_MANAGER]: 80,
+  [UserRole.REPORTER]: 60,
+  [UserRole.ATTORNEY]: 50,
+  [UserRole.SCOPIST]: 40,
+  [UserRole.PARALEGAL]: 35,
+  [UserRole.VIDEOGRAPHER]: 30,
+  [UserRole.INTERPRETER]: 30,
+  // Legacy
+  [UserRole.ADMIN]: 100,
+  [UserRole.AGENCY]: 80,
+  [UserRole.AGENCY_ADMIN]: 80,
+  [UserRole.FIRM_ADMIN]: 80,
+  [UserRole.COURT_REPORTER]: 60,
 };
 
 /**
  * Check if a role has at least the required level
  */
 export function hasRoleLevel(userRole: UserRole, requiredRole: UserRole): boolean {
-  return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
+  return (ROLE_HIERARCHY[userRole] ?? 0) >= (ROLE_HIERARCHY[requiredRole] ?? 0);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -144,7 +153,7 @@ export function getDefaultRedirectForRole(role: UserRole): string {
  * Define which roles can access each route pattern
  * This is the single source of truth for route permissions
  */
-export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
+export const ROUTE_PERMISSIONS: Record<string, string[]> = {
   // Admin routes
   '/admin': ['ADMIN', 'AGENCY'],
   '/admin/users': ['ADMIN'],
@@ -203,8 +212,8 @@ export function isRouteAllowedForRole(route: string, role: UserRole): boolean {
     }
   }
 
-  // Default: allow access (routes not in the list are considered public within dashboard)
-  return true;
+  // Default DENY — routes not in the list are not accessible
+  return false;
 }
 
 /**

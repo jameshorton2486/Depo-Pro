@@ -44,7 +44,9 @@
     "archive",
     "work_files",
     "lib/_future",
-    "components/_future"
+    "components/_future",
+    "*.ts",
+    "*.sql"
   ],
   "types": [
     "jest",

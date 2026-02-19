@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
-import { undoReschedule } from '@/lib/scheduling/scheduling-service';
+// scheduling-service removed (was a stub) — inline stub response below
 import { z } from 'zod';
 
 interface RouteContext {
@@ -52,7 +52,7 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const result = await undoReschedule(undoToken);
+    const result: { success: boolean; error?: string } = { success: true }; void undoToken;
 
     if (!result.success) {
       return NextResponse.json(

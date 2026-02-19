@@ -5,12 +5,7 @@
  * DO NOT modify these without corresponding schema changes.
  */
 
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  COURT_REPORTER = 'COURT_REPORTER',
-  SCOPIST = 'SCOPIST',
-  ATTORNEY = 'ATTORNEY'
-}
+// UserRole removed — use canonical enum from @/lib/enums/roles instead
 
 /**
  * Job Status - HUMAN WORKFLOW

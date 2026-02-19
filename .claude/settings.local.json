@@ -39,7 +39,18 @@
       "Bash(nslookup:*)",
       "Bash(Select-String -Pattern \"SITE_URL\")",
       "Bash(python3:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(GIT_TERMINAL_PROMPT=0 git commit:*)",
+      "Bash(git config:*)",
+      "Bash(git -C /c/Users/james/depo-pro config:*)",
+      "Bash(git --version)",
+      "Bash(git -C \"C:/Users/james/depo-pro\" commit -m \"pre-phase-0 snapshot\")",
+      "Bash(git -C \"C:/Users/james/depo-pro\" log --oneline -3)",
+      "Bash(git -C \"C:/Users/james/depo-pro\" checkout -b crm-rebuild-phase0)",
+      "Bash(git -C \"C:/Users/james/depo-pro\" push -u origin crm-rebuild-phase0)",
+      "Bash(node:*)",
+      "Bash(wc:*)",
+      "Bash(del \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarEventCard.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarShell.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarTimeline.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarView.tsx\")"
     ]
   }
 }

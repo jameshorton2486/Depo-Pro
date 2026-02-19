@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
-import { canPerformAction } from '@/lib/rbac';
+import { canPerformAction } from '@/lib/permissions/rbac';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {

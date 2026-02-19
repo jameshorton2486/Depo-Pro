@@ -184,7 +184,8 @@ export function hasRouteAccess(path: string, role: Role): boolean {
     }
   }
 
-  return true;
+  // Default DENY — unmapped routes are not accessible
+  return false;
 }
 
 export function hasApiAccess(path: string, role: Role): boolean {
@@ -198,7 +199,8 @@ export function hasApiAccess(path: string, role: Role): boolean {
     }
   }
 
-  return true;
+  // Default DENY — unmapped API routes are not accessible
+  return false;
 }
 
 export function getRoutesForRole(role: Role): string[] {

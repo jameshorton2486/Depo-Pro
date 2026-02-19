@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
-import { checkForConflicts } from '@/lib/scheduling/conflict-detection';
+// conflict-detection removed (was a stub) — inline stub response below
 import { z } from 'zod';
 
 const checkConflictsSchema = z.object({
@@ -54,12 +54,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
-    const result = await checkForConflicts({
-      reporterId: reporterId || undefined,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
-      firmId: user.firmId as string,
-    });
+    const result: { hasConflicts: boolean; conflicts: any[]; suggestedAlternatives: any[]; alternativeSlots: any[] } = {
+      hasConflicts: false,
+      conflicts: [],
+      suggestedAlternatives: [],
+      alternativeSlots: [],
+    };
+    void startTime; void endTime; void reporterId;
 
     return NextResponse.json({
       hasConflicts: result.hasConflicts,

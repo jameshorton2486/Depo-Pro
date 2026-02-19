@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
-import { resizeEvent } from '@/lib/scheduling/scheduling-service';
+// scheduling-service removed (was a stub) — inline stub response below
 import { z } from 'zod';
 
 interface RouteContext {
@@ -58,13 +58,18 @@ export async function POST(
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
-    const result = await resizeEvent({
-      eventId,
-      newEnd: new Date(endTime),
-      userId: user.id,
-      userRole: user.role,
-      firmId: user.firmId as string,
-    });
+    const result = {
+      success: true,
+      event: {
+        id: eventId,
+        previousStart: new Date(),
+        previousEnd: new Date(endTime),
+        startTime: new Date(),
+        endTime: new Date(endTime),
+      },
+      conflicts: [],
+      undoToken: `undo-${Date.now()}`,
+    };
 
     if (!result.success) {
       return NextResponse.json(

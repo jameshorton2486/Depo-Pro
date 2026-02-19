@@ -10,7 +10,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { getCalendarEventById, convertEventToJob } from '@/lib/supabase/queries/calendar';
 import { logAudit } from '@/lib/audit';
-import { canConvertEventToJob } from '@/lib/rbac';
+import { canConvertEventToJob } from '@/lib/permissions/rbac';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
 
 interface RouteContext {
