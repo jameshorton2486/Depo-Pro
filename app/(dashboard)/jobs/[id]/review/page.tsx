@@ -158,8 +158,15 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     redirect(`/jobs/${jobId}?error=no_transcription`);
   }
 
-  // Get audio file URL from job files
-  const audioFile = (job.files || []).find(
+  // Get audio file URL from job_files table
+  // Note: getJobById does not join job_files, so we query separately
+  const { data: jobFiles } = await supabase
+    .from('job_files')
+    .select('*')
+    .eq('job_id', jobId)
+    .order('created_at', { ascending: false });
+
+  const audioFile = (jobFiles || []).find(
     (f: any) => f.type === 'AUDIO' || f.mime_type?.startsWith('audio/'),
   );
 
@@ -219,21 +226,26 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     confirmed: initialFlaggedWords.filter((w: any) => w.is_confirmed === true).length,
   };
 
-  // Check lock status
-  const { data: lockData } = await supabase
-    .from('transcription_locks')
-    .select('*, locked_by:users(name)')
-    .eq('transcription_id', transcription.id)
-    .eq('is_active', true)
-    .maybeSingle();
+  // Check lock status (table may not exist yet — default to no lock on error)
+  let lockInfo: { locked: boolean; lockedByMe: boolean; lockedByName?: string } = { locked: false, lockedByMe: false };
+  try {
+    const { data: lockData, error: lockError } = await supabase
+      .from('transcription_locks')
+      .select('locked_by_id, locked_by_name')
+      .eq('transcription_id', transcription.id)
+      .eq('is_active', true)
+      .maybeSingle();
 
-  const lockInfo = lockData
-    ? {
+    if (!lockError && lockData) {
+      lockInfo = {
         locked: true,
         lockedByMe: lockData.locked_by_id === session.user.id,
-        lockedByName: lockData.locked_by?.name || 'Someone',
-      }
-    : { locked: false, lockedByMe: false };
+        lockedByName: lockData.locked_by_name || 'Someone',
+      };
+    }
+  } catch {
+    // Table doesn't exist yet — lock disabled
+  }
 
   // Extract confidence analytics from transcription metadata (Feature Deep Dive Enhancement 1.2)
   const confidenceAnalytics = transcription.metadata?.confidence_analytics as ConfidenceAnalytics | undefined;
