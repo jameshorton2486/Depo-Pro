@@ -3,6 +3,46 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+// Storage bucket names
+const AUDIO_BUCKET = 'depo-audio';
+const FILES_BUCKET = 'depo-files';
+
+/**
+ * Upload a file to Supabase Storage.
+ * Returns the storage path (e.g. "firm-id/job-id/1234-filename.mp3").
+ * Use getSupabasePublicUrl() to get the playable HTTPS URL.
+ */
+export async function uploadFileToSupabase(
+  buffer: Buffer,
+  filename: string,
+  storagePath: string,
+  mimeType: string,
+  isAudio: boolean = false,
+): Promise<string> {
+  const supabase = createAdminClient();
+  const bucket = isAudio ? AUDIO_BUCKET : FILES_BUCKET;
+
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(storagePath, buffer, {
+      contentType: mimeType || 'application/octet-stream',
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`Supabase Storage upload failed: ${error.message}`);
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(storagePath);
+
+  return publicUrl;
+}
+
+
 
 // ============================================
 // DOWNLOAD FILE

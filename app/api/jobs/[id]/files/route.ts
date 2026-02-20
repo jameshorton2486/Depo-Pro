@@ -7,17 +7,13 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { FileType } from '@/types/database';
-import { uploadFile } from '@/lib/storage';
-import { mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { uploadFileToSupabase } from '@/lib/storage';
 import { listFilesForJob, createFile } from '@/lib/supabase/queries/files';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 
-export const runtime = 'nodejs'; // Required for fs/path usage
+export const runtime = 'nodejs';
 
-const UPLOAD_DIR = join(process.cwd(), 'uploads');
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -96,19 +92,19 @@ export async function POST(
       );
     }
 
-    // 📂 Ensure upload directory exists
-    if (!existsSync(UPLOAD_DIR)) {
-      await mkdir(UPLOAD_DIR, { recursive: true });
-    }
-
-    // � Upload file to storage
+    //� Upload file to storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const storagePath = await uploadFile(
+    const isAudio = file.type.startsWith('audio/') || file.type.startsWith('video/');
+    const supabaseStoragePath = `${jobId}/${Date.now()}-${file.name}`;
+
+    const publicUrl = await uploadFileToSupabase(
       buffer,
       file.name,
-      'jobs',
+      supabaseStoragePath,
+      file.type,
+      isAudio,
     );
 
     // 💿 Save file metadata to database using query module
@@ -118,8 +114,8 @@ export async function POST(
       mime_type: file.type,
       file_size: buffer.length,
       type: getFileType(file.type),
-      storage_path: storagePath,
-      storage_url: storagePath,
+      storage_path: supabaseStoragePath,
+      storage_url: publicUrl,
     });
 
     return NextResponse.json({ file: uploadedFile }, { status: 201 });

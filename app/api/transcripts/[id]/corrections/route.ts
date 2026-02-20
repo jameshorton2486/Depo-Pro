@@ -10,9 +10,15 @@ import { auth } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { Role } from '@/lib/constants';
+import {
+  getReviewSession,
+  getTranscriptionWords,
+  hasTranscriptReviewAccess,
+  mergeReviewSession,
+} from '@/lib/transcripts/review-session';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -36,8 +42,7 @@ export async function GET(
     }
 
     // Get review session from flagged_segments
-    const flaggedSegments = (transcript.flagged_segments as Record<string, any>) || {};
-    const reviewSession = flaggedSegments?.reviewSession || null;
+    const reviewSession = getReviewSession(transcript.flagged_segments);
 
     if (!reviewSession) {
       return NextResponse.json({
@@ -90,11 +95,7 @@ export async function POST(
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
-    const isCreator = transcription.job.createdById === session.user.id;
-    const isAssignedScopist = transcription.job.assignments.length > 0;
-    const isAdmin = session.user.role === Role.ADMIN;
-
-    if (!isCreator && !isAssignedScopist && !isAdmin) {
+    if (!hasTranscriptReviewAccess(transcription, session.user.id, session.user.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -118,7 +119,7 @@ export async function POST(
     }
 
     // Get current words array
-    const currentWords = (transcription.words as any[]) || (transcription.tokens as any[]) || [];
+    const currentWords = getTranscriptionWords(transcription);
 
     // Apply corrections
     const correctionsMap = new Map(corrections);
@@ -153,8 +154,6 @@ export async function POST(
     ).length;
 
     // Get current flaggedSegments or create empty object
-    const currentFlaggedSegments = (transcription.flagged_segments as Record<string, any>) || {};
-
     // Build review session data and merge into flagged_segments
     const reviewSession = {
       transcriptionId,
@@ -168,10 +167,7 @@ export async function POST(
     await updateTranscript(supabase, transcriptionId, {
       content_json: updatedWords as any,
       flagged_word_count: remainingFlagged,
-      flagged_segments: {
-        ...currentFlaggedSegments,
-        reviewSession,
-      } as any,
+      flagged_segments: mergeReviewSession(transcription.flagged_segments, reviewSession) as any,
     });
 
     // Create audit log entries for corrections
