@@ -36,7 +36,7 @@ export default async function UsersSettingsPage() {
     firstName: u.user_metadata?.firstName || '',
     lastName: u.user_metadata?.lastName || '',
     email: u.email || '',
-    role: u.user_metadata?.role || 'REPORTER',
+    role: u.user_metadata?.role ?? 'UNASSIGNED',
     createdAt: u.created_at || new Date().toISOString(),
   })).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 

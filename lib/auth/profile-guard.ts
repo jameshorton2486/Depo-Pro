@@ -12,7 +12,6 @@
 // - phone: User's phone (optional)
 // ═══════════════════════════════════════════════════════════════
 
-import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Role } from '@/lib/permissions/route-access';
 import { VALID_ROLES } from '@/lib/permissions/route-access';
@@ -42,7 +41,10 @@ export function getUserProfile(supabaseUser: SupabaseUser): UserProfile {
     throw new Error('Supabase user must have an email address');
   }
 
-  const role = (supabaseUser.user_metadata?.role as Role) || 'REPORTER';
+  const role = supabaseUser.user_metadata?.role as Role | undefined;
+  if (!role || !VALID_ROLES.includes(role)) {
+    throw new Error('User profile incomplete: no role assigned');
+  }
   const firstName = supabaseUser.user_metadata?.firstName || '';
   const lastName = supabaseUser.user_metadata?.lastName || '';
   const agencyName = supabaseUser.user_metadata?.agencyName || null;
@@ -51,7 +53,7 @@ export function getUserProfile(supabaseUser: SupabaseUser): UserProfile {
   return {
     id: supabaseUser.id,
     email: supabaseUser.email,
-    role: VALID_ROLES.includes(role) ? role : 'REPORTER',
+    role,
     firstName,
     lastName,
     agencyName,
@@ -63,48 +65,13 @@ export function getUserProfile(supabaseUser: SupabaseUser): UserProfile {
 
 /**
  * Ensure user has required metadata fields
- * 
- * If role is missing, sets default role to REPORTER
- * Updates user_metadata via Supabase Admin API
+ *
+ * Validates metadata and fails if role is missing/invalid.
  * 
  * @param supabaseUser - Authenticated Supabase user
  * @returns Updated user profile
  */
 export async function ensureUserProfile(supabaseUser: SupabaseUser): Promise<UserProfile> {
-  if (!supabaseUser.email) {
-    throw new Error('Supabase user must have an email address');
-  }
-
-  // Check if role is missing or invalid
-  const currentRole = supabaseUser.user_metadata?.role as Role | undefined;
-  const needsUpdate = !currentRole || !VALID_ROLES.includes(currentRole);
-
-  if (needsUpdate) {
-    // Update user_metadata to ensure role exists
-    const supabase = getSupabaseAdminClient();
-    const updatedMetadata = {
-      ...supabaseUser.user_metadata,
-      role: currentRole && VALID_ROLES.includes(currentRole) ? currentRole : 'REPORTER',
-    };
-
-    const { data: updatedUser, error } = await supabase.auth.admin.updateUserById(
-      supabaseUser.id,
-      {
-        user_metadata: updatedMetadata,
-      }
-    );
-
-    if (error) {
-      console.error('Failed to update user metadata:', error);
-      // Return profile with default role if update fails
-      return getUserProfile(supabaseUser);
-    }
-
-    if (updatedUser.user) {
-      return getUserProfile(updatedUser.user);
-    }
-  }
-
   return getUserProfile(supabaseUser);
 }
 

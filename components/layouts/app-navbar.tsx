@@ -44,7 +44,7 @@ interface AppNavbarProps {
     id: string;
     email: string;
     name?: string | null;
-    role: string;
+    role: string | null;
   };
 }
 
@@ -58,7 +58,7 @@ export function AppNavbar({ user: userProp }: AppNavbarProps) {
     id: authUser.id,
     email: authUser.email || '',
     name: null, // Profile data must be fetched separately
-    role: 'REPORTER', // Default role, should be fetched from profile
+    role: (authUser.user_metadata?.role as string | undefined) ?? null,
   } : null);
 
   // Don't render if no user
@@ -66,7 +66,11 @@ export function AppNavbar({ user: userProp }: AppNavbarProps) {
     return null;
   }
 
-  const role = (user.role as UserRole) || 'REPORTER';
+  if (!user.role) {
+    return null;
+  }
+
+  const role = user.role as UserRole;
   const navItems = getNavigationItemsForRole(role);
 
   const handleSignOut = async () => {

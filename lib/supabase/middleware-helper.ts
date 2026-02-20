@@ -9,6 +9,7 @@ import type { NextRequest } from 'next/server';
 import { createSupabaseMiddlewareClient } from './middleware';
 import { getSupabaseAdminClient } from './admin';
 import type { Role } from '@/lib/permissions/route-access';
+import { VALID_ROLES } from '@/lib/permissions/route-access';
 
 export interface MiddlewareUser {
   id: string;
@@ -43,7 +44,10 @@ export async function getSupabaseUserWithProfile(
     }
 
     // Get role from user_metadata (single source of truth)
-    const role = (supabaseUser.user_metadata?.role as Role) || 'REPORTER';
+    const role = supabaseUser.user_metadata?.role as Role | undefined;
+    if (!role || !VALID_ROLES.includes(role)) {
+      return { user: null, error: 'User profile incomplete: no role assigned' };
+    }
 
     return {
       user: {
@@ -85,7 +89,10 @@ export async function getUserByToken(
     }
 
     // Get role from user_metadata (single source of truth)
-    const role = (supabaseUser.user_metadata?.role as Role) || 'REPORTER';
+    const role = supabaseUser.user_metadata?.role as Role | undefined;
+    if (!role || !VALID_ROLES.includes(role)) {
+      return { user: null, error: 'User profile incomplete: no role assigned' };
+    }
 
     return {
       user: {

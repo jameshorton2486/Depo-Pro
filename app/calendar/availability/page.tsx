@@ -70,7 +70,11 @@ export default function AvailabilityPage() {
   }
 
   // Only reporters and scopists can set availability
-  const userRole = profile?.role || 'REPORTER';
+  const userRole = profile?.role ?? null;
+  if (!userRole) {
+    redirect('/unauthorized');
+    return null;
+  }
   if (userRole !== 'REPORTER' && userRole !== 'SCOPIST' && userRole !== 'ADMIN') {
     redirect('/dashboard');
     return null;

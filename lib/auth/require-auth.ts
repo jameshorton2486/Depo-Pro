@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
-import { hasApiAccess } from '@/lib/permissions/route-access';
+import { hasApiAccess, VALID_ROLES } from '@/lib/permissions/route-access';
 import type { User } from '@supabase/supabase-js';
 import type { Role } from '@/lib/permissions/route-access';
 
@@ -64,7 +64,13 @@ export function requireAuth(handler: AuthHandler) {
 
       // Get profile from user_metadata (Supabase-only, no database lookup)
       const user = data.user;
-      const role = (user.user_metadata?.role as Role) || 'REPORTER';
+      const role = user.user_metadata?.role as Role | undefined;
+      if (!role || !VALID_ROLES.includes(role)) {
+        return NextResponse.json(
+          { error: 'User profile incomplete: no role assigned' },
+          { status: 401 }
+        );
+      }
       const profile = {
         id: user.id,
         email: user.email || '',
