@@ -5,7 +5,7 @@
  * DO NOT modify these without corresponding schema changes.
  */
 
-// UserRole removed — use canonical enum from @/lib/enums/roles instead
+export { UserRole } from '@/lib/enums/roles';
 
 /**
  * Job Status - HUMAN WORKFLOW

@@ -6,13 +6,13 @@
 // Used by: middleware, navigation, API guards, audit scripts
 // =============================================================================
 
-import type { UserRole } from '@/types/database';
+import { UserRole } from '@/lib/enums/roles';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-export type Role = UserRole;
+export type Role = `${UserRole}`;
 
 export interface RouteConfig {
   path: string;
@@ -52,69 +52,69 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
   // ─────────────────────────────────────────────────────────────────────────
   // SHARED / CORE
   // ─────────────────────────────────────────────────────────────────────────
-  '/dashboard': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
-  '/settings': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
-  '/settings/profile': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
-  '/unauthorized': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
+  '/dashboard': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  '/settings': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  '/settings/profile': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  '/unauthorized': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
 
   // ─────────────────────────────────────────────────────────────────────────
   // ADMIN
   // ─────────────────────────────────────────────────────────────────────────
-  '/admin': ['ADMIN'],
-  '/admin/users': ['ADMIN'],
-  '/admin/firms': ['ADMIN'],
-  '/admin/rx-queue': ['ADMIN'],
-  '/admin/settings': ['ADMIN'],
-  '/admin/audit': ['ADMIN'],
-  '/admin/permissions': ['ADMIN'],
-  '/admin/features': ['ADMIN'],
-  '/admin/actions': ['ADMIN'],
-  '/admin/sitemap': ['ADMIN'],
+  '/admin': [UserRole.ADMIN],
+  '/admin/users': [UserRole.ADMIN],
+  '/admin/firms': [UserRole.ADMIN],
+  '/admin/rx-queue': [UserRole.ADMIN],
+  '/admin/settings': [UserRole.ADMIN],
+  '/admin/audit': [UserRole.ADMIN],
+  '/admin/permissions': [UserRole.ADMIN],
+  '/admin/features': [UserRole.ADMIN],
+  '/admin/actions': [UserRole.ADMIN],
+  '/admin/sitemap': [UserRole.ADMIN],
 
   // ─────────────────────────────────────────────────────────────────────────
   // REPORTER (CANONICAL — DUPLICATES REMOVED)
   // ─────────────────────────────────────────────────────────────────────────
-  '/reporter': ['ADMIN', 'REPORTER'],
-  '/jobs': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/jobs/new': ['ADMIN', 'REPORTER'],
-  '/calendar': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/calendar/availability': ['ADMIN', 'REPORTER'],
-  '/transcripts': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/transcription/upload': ['ADMIN', 'REPORTER'],
-  '/transcription/status': ['ADMIN', 'REPORTER', 'SCOPIST'],
+  '/reporter': [UserRole.ADMIN, UserRole.REPORTER],
+  '/jobs': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/jobs/new': [UserRole.ADMIN, UserRole.REPORTER],
+  '/calendar': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/calendar/availability': [UserRole.ADMIN, UserRole.REPORTER],
+  '/transcripts': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/transcription/upload': [UserRole.ADMIN, UserRole.REPORTER],
+  '/transcription/status': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
 
   // ─────────────────────────────────────────────────────────────────────────
   // SCOPIST
   // ─────────────────────────────────────────────────────────────────────────
-  '/scopist': ['ADMIN', 'SCOPIST'],
-  '/scopist/jobs': ['ADMIN', 'SCOPIST'],
-  '/scopist/available': ['ADMIN', 'SCOPIST'],
+  '/scopist': [UserRole.ADMIN, UserRole.SCOPIST],
+  '/scopist/jobs': [UserRole.ADMIN, UserRole.SCOPIST],
+  '/scopist/available': [UserRole.ADMIN, UserRole.SCOPIST],
 
   // ─────────────────────────────────────────────────────────────────────────
   // ATTORNEY (CANONICAL)
   // ─────────────────────────────────────────────────────────────────────────
-  '/attorney-dashboard': ['ADMIN', 'ATTORNEY'],
-  '/attorney/cases': ['ADMIN', 'ATTORNEY'],
-  '/attorney/transcripts': ['ADMIN', 'ATTORNEY'],
-  '/attorney/onboarding': ['ADMIN', 'ATTORNEY'],
-  '/attorney/reports': ['ADMIN', 'ATTORNEY'],
+  '/attorney-dashboard': [UserRole.ADMIN, UserRole.ATTORNEY],
+  '/attorney/cases': [UserRole.ADMIN, UserRole.ATTORNEY],
+  '/attorney/transcripts': [UserRole.ADMIN, UserRole.ATTORNEY],
+  '/attorney/onboarding': [UserRole.ADMIN, UserRole.ATTORNEY],
+  '/attorney/reports': [UserRole.ADMIN, UserRole.ATTORNEY],
 
   // ─────────────────────────────────────────────────────────────────────────
   // AGENCY
   // ─────────────────────────────────────────────────────────────────────────
-  '/agency': ['ADMIN', 'AGENCY'],
-  '/agency/reporters': ['ADMIN', 'AGENCY'],
-  '/agency/jobs': ['ADMIN', 'AGENCY'],
-  '/billing': ['ADMIN', 'REPORTER', 'AGENCY'],
+  '/agency': [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  '/agency/reporters': [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  '/agency/jobs': [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  '/billing': [UserRole.ADMIN, UserRole.REPORTER, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
 
   // ─────────────────────────────────────────────────────────────────────────
   // CASES & SHARED DATA
   // ─────────────────────────────────────────────────────────────────────────
-  '/cases': ['ADMIN', 'REPORTER', 'ATTORNEY'],
-  '/cases/new': ['ADMIN', 'REPORTER', 'ATTORNEY'],
-  '/exhibits': ['ADMIN', 'ATTORNEY'],
-  '/issues': ['ADMIN', 'ATTORNEY'],
-  '/reports': ['ADMIN', 'ATTORNEY', 'REPORTER'],
+  '/cases': [UserRole.ADMIN, UserRole.REPORTER, UserRole.ATTORNEY],
+  '/cases/new': [UserRole.ADMIN, UserRole.REPORTER, UserRole.ATTORNEY],
+  '/exhibits': [UserRole.ADMIN, UserRole.ATTORNEY],
+  '/issues': [UserRole.ADMIN, UserRole.ATTORNEY],
+  '/reports': [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.REPORTER],
 };
 
 // =============================================================================
@@ -123,36 +123,36 @@ export const ROUTE_ACCESS: Record<string, Role[]> = {
 
 export const API_ACCESS: Record<string, Role[]> = {
   // Jobs
-  '/api/jobs': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/api/jobs/create': ['ADMIN', 'REPORTER'],
-  '/api/jobs/[jobId]/status': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/api/jobs/[jobId]/upload': ['ADMIN', 'REPORTER'],
+  '/api/jobs': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/api/jobs/create': [UserRole.ADMIN, UserRole.REPORTER],
+  '/api/jobs/[jobId]/status': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/api/jobs/[jobId]/upload': [UserRole.ADMIN, UserRole.REPORTER],
 
   // Calendar
-  '/api/calendar': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/api/calendar/availability': ['ADMIN', 'REPORTER'],
-  '/api/calendar/events': ['ADMIN', 'REPORTER', 'SCOPIST'],
+  '/api/calendar': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/api/calendar/availability': [UserRole.ADMIN, UserRole.REPORTER],
+  '/api/calendar/events': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
 
   // Transcripts
-  '/api/transcripts': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/api/transcripts/edit': ['ADMIN', 'REPORTER', 'SCOPIST'],
-  '/api/transcripts/[id]/finalize': ['ADMIN', 'REPORTER'],
+  '/api/transcripts': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/api/transcripts/edit': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST],
+  '/api/transcripts/[id]/finalize': [UserRole.ADMIN, UserRole.REPORTER],
 
   // Cases
-  '/api/cases': ['ADMIN', 'REPORTER', 'ATTORNEY'],
+  '/api/cases': [UserRole.ADMIN, UserRole.REPORTER, UserRole.ATTORNEY],
 
   // Contact
-  '/api/contact': ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'AGENCY'],
+  '/api/contact': [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
 
   // Admin
-  '/api/admin': ['ADMIN'],
-  '/api/admin/users': ['ADMIN'],
-  '/api/admin/actions': ['ADMIN'],
-  '/api/admin/health': ['ADMIN'],
-  '/api/admin/users/[id]/role-history': ['ADMIN'],
+  '/api/admin': [UserRole.ADMIN],
+  '/api/admin/users': [UserRole.ADMIN],
+  '/api/admin/actions': [UserRole.ADMIN],
+  '/api/admin/health': [UserRole.ADMIN],
+  '/api/admin/users/[id]/role-history': [UserRole.ADMIN],
 
   // Attorney
-  '/api/attorney': ['ADMIN', 'ATTORNEY'],
+  '/api/attorney': [UserRole.ADMIN, UserRole.ATTORNEY],
 };
 
 // =============================================================================
@@ -171,11 +171,11 @@ export function hasRouteAccess(path: string, role: Role): boolean {
   }
 
   const rolePrefixes: Record<string, Role[]> = {
-    '/admin': ['ADMIN'],
-    '/reporter': ['ADMIN', 'REPORTER'],
-    '/scopist': ['ADMIN', 'SCOPIST'],
-    '/attorney': ['ADMIN', 'ATTORNEY'],
-    '/agency': ['ADMIN', 'AGENCY'],
+    '/admin': [UserRole.ADMIN],
+    '/reporter': [UserRole.ADMIN, UserRole.REPORTER],
+    '/scopist': [UserRole.ADMIN, UserRole.SCOPIST],
+    '/attorney': [UserRole.ADMIN, UserRole.ATTORNEY],
+    '/agency': [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
   };
 
   for (const [prefix, roles] of Object.entries(rolePrefixes)) {
@@ -234,13 +234,18 @@ export function getRequiredRoles(path: string): Role[] | null {
 // =============================================================================
 
 export const VALID_ROLES: Role[] = [
-  'ADMIN',
-  'REPORTER',
-  'SCOPIST',
-  'ATTORNEY',
-  'PARALEGAL',
-  'AGENCY',
-  'AGENCY_ADMIN',
-  'FIRM_ADMIN',
-  'WKT_STUDENT',
+  UserRole.ADMIN,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.PARALEGAL,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+  UserRole.VIDEOGRAPHER,
+  UserRole.INTERPRETER,
+  UserRole.FIRM_OWNER,
+  UserRole.FIRM_MANAGER,
+  UserRole.SUPER_ADMIN,
+  UserRole.COURT_REPORTER,
 ];
+

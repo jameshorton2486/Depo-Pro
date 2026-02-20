@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { hasRouteAccess } from '@/lib/permissions/route-access';
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 
 export type CalendarView = 'jobs' | 'availability' | 'assignments';
 

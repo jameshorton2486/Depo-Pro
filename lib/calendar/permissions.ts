@@ -8,7 +8,29 @@ import type { UserRole, RolePermissions, CalendarAction, ActionAvailability, Cal
 // ROLE PERMISSION DEFINITIONS
 // ============================================
 
-export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
+const DEFAULT_PERMISSIONS: RolePermissions = {
+  canViewAllEvents: false,
+  canViewFirmEvents: false,
+  canViewAssignedOnly: true,
+  canAssignReporter: false,
+  canAssignScopist: false,
+  canAssignVideographer: false,
+  canAssignInterpreter: false,
+  canRequestChanges: false,
+  canConvertToJob: false,
+  canCancelEvent: false,
+  canReschedule: false,
+  canAddNotes: false,
+  canMarkComplete: false,
+  preferredView: 'timeline',
+  canToggleView: false,
+};
+
+export function getRolePermissions(role: UserRole): RolePermissions {
+  return ROLE_PERMISSIONS[role] || DEFAULT_PERMISSIONS;
+}
+
+export const ROLE_PERMISSIONS: Partial<Record<UserRole, RolePermissions>> = {
   ADMIN: {
     canViewAllEvents: true,
     canViewFirmEvents: true,
@@ -99,7 +121,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canToggleView: true,
   },
   
-  AGENCY: {
+  AGENCY_OWNER: {
     canViewAllEvents: false,
     canViewFirmEvents: false,
     canViewAssignedOnly: true,
@@ -117,7 +139,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canToggleView: false,
   },
   
-  AGENCY_ADMIN: {
+  AGENCY_MANAGER: {
     canViewAllEvents: true,
     canViewFirmEvents: true,
     canViewAssignedOnly: false,
@@ -135,7 +157,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canToggleView: true,
   },
   
-  FIRM_ADMIN: {
+  FIRM_OWNER: {
     canViewAllEvents: false,
     canViewFirmEvents: true,
     canViewAssignedOnly: false,
@@ -153,7 +175,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canToggleView: true,
   },
   
-  WKT_STUDENT: {
+  FIRM_MANAGER: {
     canViewAllEvents: false,
     canViewFirmEvents: false,
     canViewAssignedOnly: false,
@@ -181,7 +203,7 @@ export function getActionAvailability(
   role: UserRole,
   _event?: CalendarEventUI
 ): ActionAvailability {
-  const permissions = ROLE_PERMISSIONS[role];
+  const permissions = ROLE_PERMISSIONS[role] || DEFAULT_PERMISSIONS;
   
   // Map actions to permission checks
   const permissionMap: Record<CalendarAction, keyof RolePermissions | null> = {
@@ -251,14 +273,14 @@ export const ACTION_PERMISSION_REASONS: Record<CalendarAction, string> = {
 // ============================================
 
 export function canConvertToJob(role: UserRole): boolean {
-  return ROLE_PERMISSIONS[role].canConvertToJob;
+  return getRolePermissions(role).canConvertToJob;
 }
 
 export function canAssignPersonnel(
   role: UserRole,
   personnelType: 'REPORTER' | 'SCOPIST' | 'VIDEOGRAPHER' | 'INTERPRETER'
 ): boolean {
-  const permissions = ROLE_PERMISSIONS[role];
+  const permissions = getRolePermissions(role);
   switch (personnelType) {
     case 'REPORTER':
       return permissions.canAssignReporter;
@@ -278,10 +300,10 @@ export function canCancelEvent(
   _userId: string,
   _event: { createdById?: string; firmId?: string }
 ): boolean {
-  const permissions = ROLE_PERMISSIONS[role];
+  const permissions = getRolePermissions(role);
   if (permissions.canCancelEvent) {
     // Attorneys can only cancel their own firm's events
-    if (role === 'ATTORNEY' || role === 'FIRM_ADMIN') {
+    if (role === 'ATTORNEY' || role === 'FIRM_OWNER' || role === 'FIRM_MANAGER') {
       // This check should be done at the API level with actual firm data
       return true; // API route will verify firmId match
     }
@@ -295,7 +317,7 @@ export function canReschedule(
   _userId: string,
   _event: { createdById?: string; firmId?: string }
 ): boolean {
-  const permissions = ROLE_PERMISSIONS[role];
+  const permissions = getRolePermissions(role);
   if (permissions.canReschedule) {
     // Similar to cancel, attorneys can only reschedule their firm's events
     return true; // API route will verify firmId match
@@ -304,6 +326,5 @@ export function canReschedule(
 }
 
 export function canAddNotes(role: UserRole): boolean {
-  return ROLE_PERMISSIONS[role].canAddNotes;
+  return getRolePermissions(role).canAddNotes;
 }
-

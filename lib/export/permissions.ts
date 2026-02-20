@@ -5,7 +5,7 @@
 // Phase 3C-2: Role-aware export restrictions
 // =============================================================================
 
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 
 export type ExportFormat = 'docx' | 'pdf' | 'zip' | 'txt' | 'gdocs';
 
@@ -39,7 +39,12 @@ export const EXPORT_PERMISSIONS: Partial<Record<UserRole, ExportPermissions>> = 
     profiles: ['attorney-review'],
     restrictions: ['read-only-watermark'],
   },
-  AGENCY: {
+  AGENCY_OWNER: {
+    formats: ['docx', 'pdf'],
+    profiles: ['court-standard', 'attorney-review'],
+    restrictions: [],
+  },
+  AGENCY_MANAGER: {
     formats: ['docx', 'pdf'],
     profiles: ['court-standard', 'attorney-review'],
     restrictions: [],

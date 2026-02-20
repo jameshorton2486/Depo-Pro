@@ -32,7 +32,7 @@ export {
 /**
  * Legacy Role type (for old code that uses 'Role' instead of 'UserRole')
  */
-export type Role = 'ADMIN' | 'COURT_REPORTER' | 'SCOPIST' | 'ATTORNEY';
+export type Role = `${UserRole}`;
 
 /**
  * Legacy Role constant object
@@ -64,10 +64,6 @@ export const USER_ROLE_LABELS: Partial<Record<UserRole, string>> = {
   [UserRole.COURT_REPORTER]: 'Court Reporter',
   [UserRole.SCOPIST]: 'Scopist',
   [UserRole.ATTORNEY]: 'Attorney',
-  [UserRole.AGENCY]: 'Agency',
-  [UserRole.AGENCY_ADMIN]: 'Agency Admin',
-  [UserRole.FIRM_ADMIN]: 'Firm Admin',
-  [UserRole.WKT_STUDENT]: 'WKT Student',
   // v2.2 roles
   [UserRole.AGENCY_OWNER]: 'Agency Owner',
   [UserRole.AGENCY_MANAGER]: 'Agency Manager',
@@ -94,7 +90,6 @@ export const USER_ROLE_COLORS: Partial<Record<UserRole, string>> = {
   [UserRole.COURT_REPORTER]: 'bg-blue-100 text-blue-800 border-blue-300',
   [UserRole.SCOPIST]: 'bg-green-100 text-green-800 border-green-300',
   [UserRole.ATTORNEY]: 'bg-purple-100 text-purple-800 border-purple-300',
-  [UserRole.AGENCY]: 'bg-orange-100 text-orange-800 border-orange-300',
   // v2.2 roles
   [UserRole.AGENCY_OWNER]: 'bg-red-100 text-red-800 border-red-300',
   [UserRole.AGENCY_MANAGER]: 'bg-orange-100 text-orange-800 border-orange-300',

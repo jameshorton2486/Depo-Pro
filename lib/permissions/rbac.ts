@@ -22,27 +22,27 @@ export type PermissionKey =
  */
 export const PERMISSIONS: Record<PermissionKey, UserRole[]> = {
   CONVERT_CALENDAR_TO_JOB: [
-    UserRole.ADMIN, UserRole.AGENCY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
+    UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
   ],
   ASSIGN_REPORTER: [
-    UserRole.ADMIN, UserRole.AGENCY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
+    UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
     UserRole.REPORTER,
   ],
   VIEW_CALENDAR: [
-    UserRole.ADMIN, UserRole.AGENCY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
+    UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
     UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.ATTORNEY,
     UserRole.VIDEOGRAPHER, UserRole.INTERPRETER,
   ],
   VIEW_JOBS: [
-    UserRole.ADMIN, UserRole.AGENCY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
+    UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
     UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY,
     UserRole.FIRM_OWNER, UserRole.FIRM_MANAGER,
   ],
   MANAGE_CALENDAR_EVENTS: [
-    UserRole.ADMIN, UserRole.AGENCY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
+    UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
   ],
   VIEW_ALL_REPORTERS: [
-    UserRole.ADMIN, UserRole.AGENCY, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
+    UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER,
   ],
 };
 

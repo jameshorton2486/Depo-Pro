@@ -10,7 +10,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, assertEditableBeforeFinal } from '@/lib/auth/permissions';
 // UserRole type not needed as value import
-import { UserRole } from '@/types/database';
+import { UserRole } from '@/lib/enums/roles';
 import { handleApiError, success, error } from '@/lib/api-response';
 import { getNoteById, updateNote, deleteNote } from '@/lib/supabase/queries/notes';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
@@ -30,7 +30,7 @@ export async function GET(
     const { id: jobId, noteId } = await params;
 
     // Only REPORTER and SCOPIST can read notes
-    if (!requireAnyRole(user.role, ['REPORTER', UserRole.SCOPIST])) {
+    if (!requireAnyRole(user.role, [UserRole.REPORTER, UserRole.SCOPIST])) {
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
@@ -57,7 +57,7 @@ export async function GET(
       if (!isAssigned) {
         return error('FORBIDDEN', 'You are not assigned to this job', 403);
       }
-    } else if (user.role === 'REPORTER' && (job as any).created_by_id !== user.id) {
+    } else if (user.role === UserRole.REPORTER && (job as any).created_by_id !== user.id) {
       return error('FORBIDDEN', 'You can only access notes for your own jobs', 403);
     }
 
@@ -103,7 +103,7 @@ export async function PATCH(
     const { id: jobId, noteId } = await params;
 
     // Only reporters can edit notes
-    requireRole(user.role, ['REPORTER', 'ADMIN']);
+    requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
 
     const supabase = await createSupabaseServerClient();
     
@@ -212,7 +212,7 @@ export async function DELETE(
     const { id: jobId, noteId } = await params;
 
     // Only reporters can delete notes
-    requireRole(user.role, ['REPORTER', UserRole.ADMIN]);
+    requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
 
     const supabase = await createSupabaseServerClient();
     

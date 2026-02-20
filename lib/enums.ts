@@ -262,7 +262,8 @@ import { UserRole } from './enums/roles';
 export const JOB_CREATOR_ROLES = [
   UserRole.ADMIN,
   UserRole.REPORTER,
-  UserRole.AGENCY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
 ] as const;
 
 export const SCOPIST_ASSIGNABLE_ROLES = [

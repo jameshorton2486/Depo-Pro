@@ -24,9 +24,9 @@ export { UserRole, LEGACY_ROLE_MAP };
 export { isAgencyAdmin, isFirmAdmin, canManageOrg };
 
 export const ROLE_GROUPS = {
-  AGENCY_ADMIN: [UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER, UserRole.ADMIN, UserRole.AGENCY, UserRole.AGENCY_ADMIN],
+  AGENCY_ADMIN: [UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER, UserRole.ADMIN],
   AGENCY_STAFF: [UserRole.REPORTER, UserRole.SCOPIST, UserRole.COURT_REPORTER, UserRole.VIDEOGRAPHER, UserRole.INTERPRETER],
-  FIRM_ADMIN: [UserRole.FIRM_OWNER, UserRole.FIRM_MANAGER, UserRole.FIRM_ADMIN],
+  FIRM_ADMIN: [UserRole.FIRM_OWNER, UserRole.FIRM_MANAGER],
   FIRM_STAFF: [UserRole.ATTORNEY, UserRole.PARALEGAL],
 } as const;
 

@@ -1,39 +1,22 @@
-// ═══════════════════════════════════════════════════════════════
-// ROLE GROUPS — Prevents conditional explosion in permission checks
-// Depo-Pro Architecture Blueprint v2.2, Section 3: Permission Groups
-//
-// Instead of: if (role === 'X' || role === 'Y' || role === 'Z')
-// Use:        if (isAgencyAdmin(role))
-// ═══════════════════════════════════════════════════════════════
-
 import { UserRole } from '@/lib/enums/roles';
 
-// ── Group Definitions ──────────────────────────────────────────
-
 export const ROLE_GROUPS = {
-  // Agency admin: canonical + legacy
   AGENCY_ADMIN: [
     UserRole.AGENCY_OWNER,
     UserRole.AGENCY_MANAGER,
-    UserRole.ADMIN,         // legacy
-    UserRole.AGENCY,        // legacy
-    UserRole.AGENCY_ADMIN,  // old format
+    UserRole.ADMIN,
   ],
-  // Agency staff: canonical + legacy
   AGENCY_STAFF: [
     UserRole.REPORTER,
     UserRole.SCOPIST,
     UserRole.VIDEOGRAPHER,
     UserRole.INTERPRETER,
-    UserRole.COURT_REPORTER, // legacy
+    UserRole.COURT_REPORTER,
   ],
-  // Firm admin: canonical + legacy
   FIRM_ADMIN: [
     UserRole.FIRM_OWNER,
     UserRole.FIRM_MANAGER,
-    UserRole.FIRM_ADMIN,  // old format
   ],
-  // Firm staff: canonical
   FIRM_STAFF: [
     UserRole.ATTORNEY,
     UserRole.PARALEGAL,
@@ -54,10 +37,7 @@ export const ALL_ROLES = [
   ...ALL_AGENCY,
   ...ALL_FIRM,
   UserRole.SUPER_ADMIN,
-  UserRole.WKT_STUDENT,
 ] as const;
-
-// ── Group Checkers ─────────────────────────────────────────────
 
 export function isAgencyAdmin(role: string): boolean {
   return (ROLE_GROUPS.AGENCY_ADMIN as readonly string[]).includes(role);
@@ -98,6 +78,6 @@ export function canManageBilling(role: string): boolean {
   return (
     role === UserRole.AGENCY_OWNER ||
     role === UserRole.FIRM_OWNER ||
-    role === UserRole.ADMIN // legacy
+    role === UserRole.ADMIN
   );
 }
