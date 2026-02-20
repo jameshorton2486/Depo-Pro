@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { CalendarEventUI } from '@/components/calendar/calendar.types';
-import type { UserRole } from '@/types/database';
+import { UserRole } from '@/lib/enums/roles';
 import type { EventTypeFilter } from './event-types';
 import { filterEventsByType } from './event-types';
 
@@ -31,7 +31,7 @@ export function filterEventsByRole(
   let filtered = filterEventsByType(events, typeFilter);
   
   // Then apply role-based filtering
-  if (userRole === 'SCOPIST') {
+  if (userRole === UserRole.SCOPIST) {
     // Scopists see only their assignments and jobs assigned to them
     filtered = filtered.filter((event) => {
       // If it's an assignment, check if assigned to this scopist
@@ -42,7 +42,7 @@ export function filterEventsByRole(
       // For now, we'll show events where they're the assigned reporter
       return event.assignedReporter?.id === userId;
     });
-  } else if (userRole === 'REPORTER') {
+  } else if (userRole === UserRole.REPORTER) {
     // Reporters see their jobs, availability, and assignments
     filtered = filtered.filter((event) => {
       // Their own events
@@ -59,7 +59,7 @@ export function filterEventsByRole(
       }
       return false;
     });
-  } else if (userRole === 'ADMIN') {
+  } else if (userRole === UserRole.ADMIN) {
     // Admin sees all events
     // Optionally filter by firm/agency if provided
     if (firmId) {
@@ -68,14 +68,14 @@ export function filterEventsByRole(
     if (agencyId) {
       filtered = filtered.filter((event) => event.agencyId === agencyId);
     }
-  } else if (userRole === 'ATTORNEY') {
+  } else if (userRole === UserRole.ATTORNEY) {
     // Attorneys see events for their cases
     // This would need case relationship lookup
     // For now, show events in their firm
     if (firmId) {
       filtered = filtered.filter((event) => event.firmId === firmId);
     }
-  } else if (userRole === 'AGENCY') {
+  } else if (userRole === UserRole.AGENCY_OWNER || userRole === UserRole.AGENCY_MANAGER) {
     // Agency sees events for their agency
     if (agencyId) {
       filtered = filtered.filter((event) => event.agencyId === agencyId);
@@ -84,3 +84,4 @@ export function filterEventsByRole(
   
   return filtered;
 }
+

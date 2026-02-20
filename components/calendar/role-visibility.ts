@@ -2,7 +2,7 @@
 // Role-Based Visibility (Display Only)
 // ============================================
 
-import { UserRole } from '@/lib/enums';
+import { UserRole } from '@/lib/enums/roles';
 
 /**
  * Check if role only sees their own events
@@ -24,7 +24,7 @@ export function canSeeEventDetails(role: UserRole): boolean {
  * Check if role can see reporter assignments
  */
 export function canSeeAssignments(role: UserRole): boolean {
-  const allowedRoles: UserRole[] = [UserRole.ADMIN, UserRole.AGENCY_ADMIN, UserRole.REPORTER];
+  const allowedRoles: UserRole[] = [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER, UserRole.REPORTER];
   return allowedRoles.includes(role);
 }
 
@@ -32,5 +32,5 @@ export function canSeeAssignments(role: UserRole): boolean {
  * Check if role can see conflicts
  */
 export function canSeeConflicts(role: UserRole): boolean {
-  return role === UserRole.ADMIN || role === UserRole.AGENCY_ADMIN;
+  return role === UserRole.ADMIN || role === UserRole.AGENCY_OWNER || role === UserRole.AGENCY_MANAGER;
 }

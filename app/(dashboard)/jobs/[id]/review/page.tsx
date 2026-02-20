@@ -21,6 +21,103 @@ interface ReviewPageProps {
   params: Promise<{ id: string }>;
 }
 
+function parseJsonArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) {
+    return value as T[];
+  }
+
+  if (typeof value !== 'string' || !value.trim()) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeSpeaker(speaker: unknown): number {
+  if (typeof speaker === 'number' && Number.isFinite(speaker)) {
+    return speaker;
+  }
+
+  if (typeof speaker === 'string') {
+    const match = speaker.match(/\d+/);
+    return match ? Number.parseInt(match[0], 10) : 0;
+  }
+
+  return 0;
+}
+
+function normalizeWord(raw: any): TranscriptSegment['words'][number] | null {
+  const start = Number(raw?.start);
+  const end = Number(raw?.end);
+  const word = String(raw?.word ?? '').trim();
+
+  if (!word || !Number.isFinite(start) || !Number.isFinite(end)) {
+    return null;
+  }
+
+  return {
+    word,
+    punctuated_word: raw?.punctuated_word ? String(raw.punctuated_word) : word,
+    start,
+    end,
+    confidence: Number.isFinite(Number(raw?.confidence)) ? Number(raw.confidence) : 1,
+    speaker: normalizeSpeaker(raw?.speaker),
+  };
+}
+
+function buildSegmentsFromWords(words: TranscriptSegment['words'][number][]): TranscriptSegment[] {
+  if (words.length === 0) {
+    return [];
+  }
+
+  const sortedWords = [...words].sort((a, b) => a.start - b.start);
+  const segments: TranscriptSegment[] = [];
+  const maxGapSeconds = 2;
+  let currentWords: TranscriptSegment['words'] = [];
+  let currentSpeaker = sortedWords[0].speaker ?? 0;
+
+  for (const word of sortedWords) {
+    const wordSpeaker = word.speaker ?? 0;
+    const previousWord = currentWords[currentWords.length - 1];
+    const gap = previousWord ? word.start - previousWord.end : 0;
+    const speakerChanged = wordSpeaker !== currentSpeaker;
+    const shouldSplit = currentWords.length > 0 && (speakerChanged || gap > maxGapSeconds);
+
+    if (shouldSplit) {
+      segments.push({
+        speaker: currentSpeaker,
+        words: currentWords,
+        start: currentWords[0].start,
+        end: currentWords[currentWords.length - 1].end,
+      });
+      currentWords = [];
+      currentSpeaker = wordSpeaker;
+    }
+
+    if (currentWords.length === 0) {
+      currentSpeaker = wordSpeaker;
+    }
+
+    currentWords.push(word);
+  }
+
+  if (currentWords.length > 0) {
+    segments.push({
+      speaker: currentSpeaker,
+      words: currentWords,
+      start: currentWords[0].start,
+      end: currentWords[currentWords.length - 1].end,
+    });
+  }
+
+  return segments;
+}
+
 export default async function ReviewPage({ params }: ReviewPageProps) {
   const { id: jobId } = await params;
 
@@ -73,40 +170,33 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   // Parse transcript segments from transcription
   let segments: TranscriptSegment[] = [];
   try {
-    // Try to get segments from utterances first
-    if (transcription.utterances) {
-      const utterances = Array.isArray(transcription.utterances)
-        ? transcription.utterances
-        : JSON.parse(transcription.utterances as string || '[]');
+    // Normalize all possible payload shapes, then build chronological segments for the viewer.
+    const words = parseJsonArray<any>(transcription.words)
+      .map(normalizeWord)
+      .filter((word): word is TranscriptSegment['words'][number] => word !== null);
 
-      segments = utterances.map((utt: any) => ({
-        speaker: utt.speaker || 0,
-        words: utt.words || [],
-        start: utt.start || 0,
-        end: utt.end || 0,
-      }));
-    } else if (transcription.words) {
-      // Fallback: create segments from words grouped by speaker
-      const words = Array.isArray(transcription.words)
-        ? transcription.words
-        : JSON.parse(transcription.words as string || '[]');
+    if (words.length > 0) {
+      segments = buildSegmentsFromWords(words);
+    } else {
+      const utterances = parseJsonArray<any>(transcription.utterances);
+      segments = utterances
+        .map((utt: any) => {
+          const uttWords = parseJsonArray<any>(utt?.words)
+            .map(normalizeWord)
+            .filter((word): word is TranscriptSegment['words'][number] => word !== null);
 
-      // Group words by speaker to create segments
-      const segmentsMap = new Map<number, any[]>();
-      words.forEach((word: any) => {
-        const speaker = word.speaker || 0;
-        if (!segmentsMap.has(speaker)) {
-          segmentsMap.set(speaker, []);
-        }
-        segmentsMap.get(speaker)!.push(word);
-      });
+          if (uttWords.length === 0) {
+            return null;
+          }
 
-      segments = Array.from(segmentsMap.entries()).map(([speaker, wordsArray]) => ({
-        speaker,
-        words: wordsArray,
-        start: wordsArray[0]?.start || 0,
-        end: wordsArray[wordsArray.length - 1]?.end || 0,
-      }));
+          return {
+            speaker: normalizeSpeaker(utt?.speaker),
+            words: uttWords,
+            start: Number.isFinite(Number(utt?.start)) ? Number(utt.start) : uttWords[0].start,
+            end: Number.isFinite(Number(utt?.end)) ? Number(utt.end) : uttWords[uttWords.length - 1].end,
+          } satisfies TranscriptSegment;
+        })
+        .filter((segment): segment is TranscriptSegment => segment !== null);
     }
   } catch (_error) {
     console.error('Error parsing transcription segments:', _error);

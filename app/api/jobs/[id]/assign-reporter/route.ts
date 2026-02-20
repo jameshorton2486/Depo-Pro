@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById, updateJob } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { logAudit } from '@/lib/audit';
-import { canAssignReporter } from '@/lib/rbac';
+import { canAssignReporter } from '@/lib/permissions/rbac';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
 import { z } from 'zod';
 

@@ -2,7 +2,8 @@
 
 export type TranscriptRole =
   | 'ADMIN'
-  | 'COURT_REPORTER'
+  | 'REPORTER'
+  | 'COURT_REPORTER' // @deprecated legacy alias — treat same as REPORTER
   | 'SCOPIST'
   | 'ATTORNEY';
 
@@ -22,7 +23,7 @@ export function canEditTranscript(ctx: TranscriptAccessContext): boolean {
 
   if (ctx.role === 'ADMIN') return true;
 
-  if (ctx.role === 'COURT_REPORTER' && ctx.isOwner) {
+  if ((ctx.role === 'REPORTER' || ctx.role === 'COURT_REPORTER') && ctx.isOwner) {
     return true;
   }
 

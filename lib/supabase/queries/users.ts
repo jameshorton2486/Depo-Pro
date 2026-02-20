@@ -5,7 +5,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { UserRole } from '@/types/schema-enums';
+import type { UserRole } from '@/lib/enums/roles';
 
 /**
  * Get user by ID using admin client

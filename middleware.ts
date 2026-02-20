@@ -24,6 +24,7 @@ export const runtime = 'nodejs';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { LEGACY_ROLE_MAP, UserRole } from '@/lib/enums/roles';
 
 /**
  * Routes that do NOT require authentication
@@ -65,11 +66,11 @@ const PROTECTED_PREFIXES = [
 ];
 
 /**
- * Role-based route protection
- * Maps roles to route prefixes they can access
+ * Route prefixes accessible by each role.
+ * Covers both legacy (v1.x) and v2.2 roles.
  */
-const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
-  ADMIN: [
+const ROLE_PROTECTED_ROUTES: Record<UserRole, string[]> = {
+  [UserRole.ADMIN]: [
     '/admin',
     '/dashboard',
     '/org',
@@ -81,9 +82,8 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
     '/settings',
     '/billing',
     '/exports',
-    '/wkt', // Admins can access WKT
   ],
-  REPORTER: [
+  [UserRole.COURT_REPORTER]: [
     '/dashboard',
     '/org',
     '/cases',
@@ -93,30 +93,117 @@ const ROLE_PROTECTED_ROUTES: Record<string, string[]> = {
     '/reports',
     '/settings',
   ],
-  SCOPIST: [
+  [UserRole.AGENCY_OWNER]: [
+    '/admin',
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+    '/billing',
+  ],
+  [UserRole.AGENCY_MANAGER]: [
+    '/admin',
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+    '/billing',
+    '/exports',
+  ],
+  [UserRole.REPORTER]: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+  ],
+  [UserRole.SCOPIST]: [
     '/org',
     '/cases',
     '/jobs',
     '/transcripts',
   ],
-  ATTORNEY: [
+  [UserRole.ATTORNEY]: [
     '/dashboard',
     '/org',
     '/cases',
     '/transcripts',
     '/reports',
   ],
-  AGENCY: [
+  [UserRole.PARALEGAL]: [
+    '/dashboard',
+    '/cases',
+    '/transcripts',
+  ],
+  [UserRole.VIDEOGRAPHER]: [
+    '/dashboard',
+    '/org',
+    '/jobs',
+    '/calendar',
+    '/settings',
+  ],
+  [UserRole.INTERPRETER]: [
+    '/dashboard',
+    '/org',
+    '/jobs',
+    '/calendar',
+    '/settings',
+  ],
+  [UserRole.FIRM_OWNER]: [
     '/dashboard',
     '/org',
     '/cases',
     '/jobs',
     '/calendar',
+    '/transcripts',
+    '/reports',
+    '/billing',
+    '/settings',
   ],
-  WKT_STUDENT: [
-    '/wkt', // WKT students only have access to WKT routes
+  [UserRole.FIRM_MANAGER]: [
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/billing',
+    '/settings',
+  ],
+  [UserRole.SUPER_ADMIN]: [
+    '/admin',
+    '/dashboard',
+    '/org',
+    '/cases',
+    '/jobs',
+    '/calendar',
+    '/transcripts',
+    '/reports',
+    '/settings',
+    '/billing',
+    '/exports',
   ],
 };
+
+function normalizeRole(role: string | undefined): UserRole | null {
+  if (!role) return null;
+  if ((Object.values(UserRole) as string[]).includes(role)) {
+    return role as UserRole;
+  }
+  return LEGACY_ROLE_MAP[role] ?? null;
+}
 
 /**
  * Routes to bypass middleware entirely
@@ -284,7 +371,7 @@ export async function middleware(req: NextRequest) {
    */
   if (session && isProtectedRoute(pathname)) {
     const userMetadata = session.user.user_metadata || {};
-    const role = userMetadata.role as string | undefined;
+    const role = normalizeRole(userMetadata.role as string | undefined);
     const orgId = userMetadata.org_id as string | undefined;
     const caseIds = (userMetadata.case_ids as string[] | undefined) || [];
 
@@ -305,7 +392,7 @@ export async function middleware(req: NextRequest) {
     }
 
     // 🔐 Role-based route enforcement
-    const allowedPrefixes = ROLE_PROTECTED_ROUTES[role] || [];
+    const allowedPrefixes = ROLE_PROTECTED_ROUTES[role];
 
     const isRoleAllowed = allowedPrefixes.some(prefix =>
       pathname.startsWith(prefix)

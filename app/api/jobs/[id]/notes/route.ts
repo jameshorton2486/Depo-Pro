@@ -9,7 +9,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
 import { requireRole, requireAnyRole, isTranscriptFinalized } from '@/lib/auth/permissions';
 // UserRole type not needed as value import
-import { UserRole, DepositionNoteType, JobStatus } from '@/types/database';
+import { UserRole } from '@/lib/enums/roles';
+import { DepositionNoteType, JobStatus } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
 import { listNotesForJob, createNote } from '@/lib/supabase/queries/notes';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
@@ -32,8 +33,8 @@ async function checkReporterJobAccess(reporterId: string, jobId: string): Promis
 
 async function canViewNotes(user: { id: string; role: UserRole }, job: any, assignments: any[]): Promise<boolean> {
   if (user.role === UserRole.ADMIN) return true;
-  if (user.role === 'REPORTER' && job.created_by_id === user.id) return true;
-  if (user.role === 'REPORTER') return await checkReporterJobAccess(user.id, job.id);
+  if (user.role === UserRole.REPORTER && job.created_by_id === user.id) return true;
+  if (user.role === UserRole.REPORTER) return await checkReporterJobAccess(user.id, job.id);
   if (user.role === UserRole.SCOPIST) {
     return assignments.some((a: any) => a.scopist_id === user.id && a.status !== 'DECLINED');
   }
@@ -57,7 +58,7 @@ export async function GET(
 
     // Only REPORTER and SCOPIST can read notes
     // Attorneys are explicitly blocked
-    if (!requireAnyRole(user.role, ['REPORTER', UserRole.SCOPIST])) {
+    if (!requireAnyRole(user.role, [UserRole.REPORTER, UserRole.SCOPIST])) {
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
@@ -148,7 +149,7 @@ export async function POST(
     const { id: jobId } = await params;
 
     // Only reporters can create notes
-    requireRole(user.role, ['REPORTER', 'ADMIN']);
+    requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
 
     // Check if transcript is finalized (via Job status)
     const supabase = await createSupabaseServerClient();
@@ -159,7 +160,7 @@ export async function POST(
     }
 
     // Verify job access
-    if (user.role === 'REPORTER' && (job as any).created_by_id !== user.id) {
+    if (user.role === UserRole.REPORTER && (job as any).created_by_id !== user.id) {
       const hasAccess = await checkReporterJobAccess(user.id, jobId);
       if (!hasAccess) {
         return error('FORBIDDEN', 'No access to this job', 403);

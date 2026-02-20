@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { UserRole } from '@/types/database';
+import { UserRole } from '@/lib/enums/roles';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ensureUserProfile } from '@/lib/auth/profile-guard';
 
@@ -84,7 +84,21 @@ export async function POST(request: Request) {
       }
 
       // Validate role is a valid value
-      const validRoles: UserRole[] = ['ADMIN', 'REPORTER', 'SCOPIST', 'ATTORNEY', 'PARALEGAL', 'AGENCY', 'AGENCY_ADMIN', 'FIRM_ADMIN'];
+      const validRoles: UserRole[] = [
+        UserRole.ADMIN,
+        UserRole.REPORTER,
+        UserRole.SCOPIST,
+        UserRole.ATTORNEY,
+        UserRole.PARALEGAL,
+        UserRole.AGENCY_OWNER,
+        UserRole.AGENCY_MANAGER,
+        UserRole.VIDEOGRAPHER,
+        UserRole.INTERPRETER,
+        UserRole.FIRM_OWNER,
+        UserRole.FIRM_MANAGER,
+        UserRole.SUPER_ADMIN,
+        UserRole.COURT_REPORTER,
+      ];
       if (!validRoles.includes(role as UserRole)) {
         return NextResponse.json(
           { error: 'Invalid role value' },

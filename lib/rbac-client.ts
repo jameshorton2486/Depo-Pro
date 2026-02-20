@@ -4,13 +4,15 @@
 // ============================================================
 // Safe to use in 'use client' components
 
+import { UserRole } from '@/lib/enums/roles'; void UserRole; // available for consumers
+
 export const PERMISSIONS = {
-  CONVERT_CALENDAR_TO_JOB: ['ADMIN', 'AGENCY'],
-  ASSIGN_REPORTER: ['ADMIN', 'AGENCY', 'REPORTER'],
-  VIEW_CALENDAR: ['ADMIN', 'AGENCY', 'REPORTER', 'ATTORNEY'],
-  VIEW_JOBS: ['ADMIN', 'AGENCY', 'REPORTER', 'SCOPIST', 'ATTORNEY'],
-  MANAGE_CALENDAR_EVENTS: ['ADMIN', 'AGENCY'],
-  VIEW_ALL_REPORTERS: ['ADMIN', 'AGENCY'],
+  CONVERT_CALENDAR_TO_JOB: [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  ASSIGN_REPORTER: [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER, UserRole.REPORTER],
+  VIEW_CALENDAR: [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER, UserRole.REPORTER, UserRole.ATTORNEY],
+  VIEW_JOBS: [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER, UserRole.REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY],
+  MANAGE_CALENDAR_EVENTS: [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
+  VIEW_ALL_REPORTERS: [UserRole.ADMIN, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER],
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

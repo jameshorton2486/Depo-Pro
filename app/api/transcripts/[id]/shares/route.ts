@@ -10,7 +10,6 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, getTranscriptShares, createTranscriptShare } from '@/lib/supabase/queries/transcripts';
-import { dispatchShareCreated } from '@/lib/webhooks';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
@@ -83,9 +82,6 @@ export async function POST(request: NextRequest, { params }: Props) {
         error: error instanceof Error ? error.message : String(error),
       });
     }); // Fire and forget
-
-    // Dispatch webhook
-    await dispatchShareCreated(share.id, transcriptId);
 
     return NextResponse.json(share, { status: 201 });
 

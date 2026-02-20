@@ -5,7 +5,7 @@
 // Phase 3B-2: Role-based editor permissions
 // =============================================================================
 
-import type { UserRole } from '@/types/database';
+import { UserRole } from '@/lib/enums/roles';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 // Stub for canEditTranscript (replaces _future/transcripts/lock-service)
@@ -49,7 +49,7 @@ export async function getEditorPermissions(
   const lockCheck = await canEditTranscript(transcriptId, userId);
 
   // Base permissions by role
-  const rolePermissions: Record<UserRole, Omit<EditorPermissions, 'canEdit' | 'lockReason'>> = {
+  const rolePermissions: Partial<Record<UserRole, Omit<EditorPermissions, 'canEdit' | 'lockReason'>>> = {
     REPORTER: {
       canComment: true,
       canFinalize: true,
@@ -75,24 +75,24 @@ export async function getEditorPermissions(
       canFinalize: false,
       canUnlock: false,
     },
-    AGENCY: {
+    AGENCY_OWNER: {
       canComment: true,
       canFinalize: true,
       canUnlock: false,
     },
-    AGENCY_ADMIN: {
+    AGENCY_MANAGER: {
       canComment: true,
       canFinalize: true,
       canUnlock: false,
     },
-    FIRM_ADMIN: {
+    FIRM_OWNER: {
       canComment: true,
       canFinalize: true,
       canUnlock: false,
     },
-    WKT_STUDENT: {
-      canComment: false,
-      canFinalize: false,
+    FIRM_MANAGER: {
+      canComment: true,
+      canFinalize: true,
       canUnlock: false,
     },
   };

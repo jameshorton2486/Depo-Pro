@@ -8,8 +8,10 @@
 // SCHEMA ENUMS (re-exported from types/schema-enums.ts)
 // ═══════════════════════════════════════════════════════════════
 
+// UserRole: canonical source is lib/enums/roles.ts
+export { UserRole } from '@/lib/enums/roles';
+
 export {
-  UserRole,
   JobStatus,
   TranscriptionStatus,
   FlaggedWordStatus,
@@ -30,7 +32,7 @@ export {
 /**
  * Legacy Role type (for old code that uses 'Role' instead of 'UserRole')
  */
-export type Role = 'ADMIN' | 'COURT_REPORTER' | 'SCOPIST' | 'ATTORNEY';
+export type Role = `${UserRole}`;
 
 /**
  * Legacy Role constant object
@@ -46,8 +48,8 @@ export const Role = {
 // UI METADATA
 // ═══════════════════════════════════════════════════════════════
 
+import { UserRole } from '@/lib/enums/roles';
 import {
-  UserRole,
   JobStatus,
   TranscriptionStatus,
   FlaggedWordStatus,
@@ -56,11 +58,22 @@ import {
 /**
  * Role display names
  */
-export const USER_ROLE_LABELS: Record<UserRole, string> = {
+export const USER_ROLE_LABELS: Partial<Record<UserRole, string>> = {
+  // Legacy roles
   [UserRole.ADMIN]: 'Admin',
   [UserRole.COURT_REPORTER]: 'Court Reporter',
   [UserRole.SCOPIST]: 'Scopist',
   [UserRole.ATTORNEY]: 'Attorney',
+  // v2.2 roles
+  [UserRole.AGENCY_OWNER]: 'Agency Owner',
+  [UserRole.AGENCY_MANAGER]: 'Agency Manager',
+  [UserRole.REPORTER]: 'Reporter',
+  [UserRole.VIDEOGRAPHER]: 'Videographer',
+  [UserRole.INTERPRETER]: 'Interpreter',
+  [UserRole.FIRM_OWNER]: 'Firm Owner',
+  [UserRole.FIRM_MANAGER]: 'Firm Manager',
+  [UserRole.PARALEGAL]: 'Paralegal',
+  [UserRole.SUPER_ADMIN]: 'Super Admin',
 };
 
 /**
@@ -71,11 +84,22 @@ export const ROLE_LABELS = USER_ROLE_LABELS;
 /**
  * Role colors for badges
  */
-export const USER_ROLE_COLORS: Record<UserRole, string> = {
+export const USER_ROLE_COLORS: Partial<Record<UserRole, string>> = {
+  // Legacy roles
   [UserRole.ADMIN]: 'bg-red-100 text-red-800 border-red-300',
   [UserRole.COURT_REPORTER]: 'bg-blue-100 text-blue-800 border-blue-300',
   [UserRole.SCOPIST]: 'bg-green-100 text-green-800 border-green-300',
   [UserRole.ATTORNEY]: 'bg-purple-100 text-purple-800 border-purple-300',
+  // v2.2 roles
+  [UserRole.AGENCY_OWNER]: 'bg-red-100 text-red-800 border-red-300',
+  [UserRole.AGENCY_MANAGER]: 'bg-orange-100 text-orange-800 border-orange-300',
+  [UserRole.REPORTER]: 'bg-blue-100 text-blue-800 border-blue-300',
+  [UserRole.VIDEOGRAPHER]: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+  [UserRole.INTERPRETER]: 'bg-teal-100 text-teal-800 border-teal-300',
+  [UserRole.FIRM_OWNER]: 'bg-violet-100 text-violet-800 border-violet-300',
+  [UserRole.FIRM_MANAGER]: 'bg-purple-100 text-purple-800 border-purple-300',
+  [UserRole.PARALEGAL]: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+  [UserRole.SUPER_ADMIN]: 'bg-rose-100 text-rose-800 border-rose-300',
 };
 
 /**

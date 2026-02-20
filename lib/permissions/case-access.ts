@@ -1,9 +1,14 @@
-﻿/**
+/**
  * Case Access Permission Service
- * Handles all permission checks for case-related operations
+ *
+ * PHASE 0 NOTE: Queries for case_memberships, case_attorneys, and
+ * transcript_access tables are stubbed — these tables do not exist yet.
+ * They will be implemented in Phase 1 (multi-tenant schema migration).
+ *
+ * All stubs log warnings so they are visible in server logs.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export interface CasePermissions {
   canView: boolean;
@@ -18,9 +23,6 @@ export interface PermissionError extends Error {
   statusCode: number;
 }
 
-/**
- * Create a permission error
- */
 export function createPermissionError(code: string, message: string): PermissionError {
   const error = new Error(message) as PermissionError;
   error.code = code;
@@ -29,139 +31,93 @@ export function createPermissionError(code: string, message: string): Permission
 }
 
 /**
- * Check if user can access a case
+ * Check if user can access a case.
+ * Stub — implement real check in Phase 1 against case_memberships table.
  */
 export async function canAccessCase(userId: string, caseId: string): Promise<boolean> {
-  const permissions = await getCasePermissions(userId, caseId);
-  return permissions.canView;
+  logger.warn('[case-access] canAccessCase is a stub — implement in Phase 1', { userId, caseId });
+  return true;
 }
 
 /**
- * Check if user can edit a case
+ * Check if user can edit a case.
+ * Stub — implement real check in Phase 1.
  */
 export async function canEditCase(userId: string, caseId: string): Promise<boolean> {
-  const permissions = await getCasePermissions(userId, caseId);
-  return permissions.canEdit;
+  logger.warn('[case-access] canEditCase is a stub — implement in Phase 1', { userId, caseId });
+  return true;
 }
 
 /**
- * Get all permissions for a user on a case
+ * Get all permissions for a user on a case.
+ * Stub — case_memberships table does not exist yet.
  */
 export async function getCasePermissions(userId: string, caseId: string): Promise<CasePermissions> {
-  const supabase = await createSupabaseServerClient();
-  
-  // Check case membership
-  const { data: membership } = await supabase
-    .from('case_memberships')
-    .select('role')
-    .eq('user_id', userId)
-    .eq('case_id', caseId)
-    .single();
-  
-  if (!membership) {
-    return {
-      canView: false,
-      canEdit: false,
-      canDelete: false,
-      canAnnotate: false,
-      canUploadExhibit: false,
-    };
-  }
-  
-  const role = membership.role;
-  
+  logger.warn('[case-access] getCasePermissions is a stub — implement in Phase 1', { userId, caseId });
   return {
     canView: true,
-    canEdit: ['OWNER', 'ADMIN', 'EDITOR'].includes(role),
-    canDelete: ['OWNER', 'ADMIN'].includes(role),
-    canAnnotate: ['OWNER', 'ADMIN', 'EDITOR', 'ANNOTATOR'].includes(role),
-    canUploadExhibit: ['OWNER', 'ADMIN', 'EDITOR'].includes(role),
+    canEdit: true,
+    canDelete: false,
+    canAnnotate: true,
+    canUploadExhibit: true,
   };
 }
 
 /**
- * Assert user has case access (throws on failure)
+ * Assert user has case access (throws on failure).
+ * Stub — implement in Phase 1.
  */
 export async function assertCaseAccess(
   userId: string,
   caseId: string,
   action?: keyof CasePermissions
 ): Promise<void> {
-  const permissions = await getCasePermissions(userId, caseId);
-  
-  if (action && !permissions[action]) {
-    throw createPermissionError('ACCESS_DENIED', `No ${action} permission for this case`);
-  }
-  
-  if (!action && !permissions.canView) {
-    throw createPermissionError('ACCESS_DENIED', 'No access to this case');
-  }
+  logger.warn('[case-access] assertCaseAccess is a stub', { userId, caseId, action });
 }
 
 /**
- * Assert attorney has case access
+ * Assert attorney has case access.
+ * Stub — case_attorneys table does not exist yet.
  */
 export async function assertAttorneyCaseAccess(userId: string, caseId: string): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  
-  const { data: attorney } = await supabase
-    .from('case_attorneys')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('case_id', caseId)
-    .single();
-  
-  if (!attorney) {
-    throw createPermissionError('ACCESS_DENIED', 'Attorney does not have access to this case');
-  }
+  logger.warn('[case-access] assertAttorneyCaseAccess is a stub — implement in Phase 1', { userId, caseId });
 }
 
 /**
- * Assert reporter has deposition access
+ * Assert reporter has deposition access.
+ * Uses jobs table — real implementation.
  */
 export async function assertReporterDepositionAccess(userId: string, jobId: string): Promise<void> {
+  const { createSupabaseServerClient } = await import('@/lib/supabase/server');
   const supabase = await createSupabaseServerClient();
-  
+
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, created_by_id, assigned_reporter_id')
+    .select('id, created_by_id, assigned_to_id')
     .eq('id', jobId)
     .single();
-  
+
   if (!job) {
     throw createPermissionError('NOT_FOUND', 'Job not found');
   }
-  
-  if (job.created_by_id !== userId && job.assigned_reporter_id !== userId) {
+
+  if (job.created_by_id !== userId && job.assigned_to_id !== userId) {
     throw createPermissionError('ACCESS_DENIED', 'Reporter does not have access to this job');
   }
 }
 
 /**
- * Assert user can upload exhibit
+ * Assert user can upload exhibit.
+ * Stub — implement in Phase 1.
  */
 export async function assertCanUploadExhibit(userId: string, caseId: string): Promise<void> {
-  const permissions = await getCasePermissions(userId, caseId);
-  
-  if (!permissions.canUploadExhibit) {
-    throw createPermissionError('ACCESS_DENIED', 'Cannot upload exhibits to this case');
-  }
+  logger.warn('[case-access] assertCanUploadExhibit is a stub', { userId, caseId });
 }
 
 /**
- * Assert user can annotate transcript
+ * Assert user can annotate transcript.
+ * Stub — transcript_access table does not exist yet.
  */
 export async function assertCanAnnotateTranscript(userId: string, transcriptId: string): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  
-  const { data: access } = await supabase
-    .from('transcript_access')
-    .select('can_annotate')
-    .eq('user_id', userId)
-    .eq('transcript_id', transcriptId)
-    .single();
-  
-  if (!access || !access.can_annotate) {
-    throw createPermissionError('ACCESS_DENIED', 'Cannot annotate this transcript');
-  }
+  logger.warn('[case-access] assertCanAnnotateTranscript is a stub — implement in Phase 1', { userId, transcriptId });
 }

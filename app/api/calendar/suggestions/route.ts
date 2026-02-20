@@ -62,8 +62,12 @@ export async function POST(request: NextRequest) {
       role: userData.user_metadata?.role || 'REPORTER',
     };
     
-    // Basic role check (ADMIN, AGENCY can view)
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.AGENCY) {
+    // Basic role check (ADMIN, AGENCY_OWNER, AGENCY_MANAGER can view)
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.role !== UserRole.AGENCY_OWNER &&
+      user.role !== UserRole.AGENCY_MANAGER
+    ) {
       return NextResponse.json(
         { error: 'Insufficient permissions to view suggestions' },
         { status: 403 }
@@ -147,8 +151,12 @@ export async function GET(_request: NextRequest) {
       role: userData.user_metadata?.role || 'REPORTER',
     };
     
-    // Basic role check (ADMIN, AGENCY can view)
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.AGENCY) {
+    // Basic role check (ADMIN, AGENCY_OWNER, AGENCY_MANAGER can view)
+    if (
+      user.role !== UserRole.ADMIN &&
+      user.role !== UserRole.AGENCY_OWNER &&
+      user.role !== UserRole.AGENCY_MANAGER
+    ) {
       return NextResponse.json(
         { error: 'Insufficient permissions to view suggestions' },
         { status: 403 }
@@ -165,5 +173,4 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 });
   }
 }
-
 

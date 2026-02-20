@@ -174,7 +174,7 @@ export default function RegisterPage() {
               <Label>Role</Label>
               <Select
                 disabled={isLoading}
-                onValueChange={(value) => setValue('role', value as Role)}
+                onValueChange={(value) => setValue('role', value as RegisterInput['role'])}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select your role" />
