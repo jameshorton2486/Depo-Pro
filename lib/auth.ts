@@ -14,7 +14,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Role } from '@/lib/constants';
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 import { redirect } from 'next/navigation';
 
 /**

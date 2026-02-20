@@ -5,7 +5,7 @@
 
 import type { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 import { logger } from '@/lib/logger';
 
 // Rate limiting store (in production, use Redis)

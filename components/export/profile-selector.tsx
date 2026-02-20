@@ -13,7 +13,7 @@ import { FileText, File, Archive, FileCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAllExportProfiles, type ExportProfile } from '@/lib/export/profiles';
 import { canUseProfile } from '@/lib/export/permissions';
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 
 interface ProfileSelectorProps {
   selectedProfileId?: string;

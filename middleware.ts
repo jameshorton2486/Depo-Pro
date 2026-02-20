@@ -82,6 +82,7 @@ const ROLE_PROTECTED_ROUTES: Record<UserRole, string[]> = {
     '/settings',
     '/billing',
     '/exports',
+    '/wkt',
   ],
   [UserRole.COURT_REPORTER]: [
     '/dashboard',
@@ -104,6 +105,7 @@ const ROLE_PROTECTED_ROUTES: Record<UserRole, string[]> = {
     '/reports',
     '/settings',
     '/billing',
+    '/wkt',
   ],
   [UserRole.AGENCY_MANAGER]: [
     '/admin',
@@ -129,10 +131,12 @@ const ROLE_PROTECTED_ROUTES: Record<UserRole, string[]> = {
     '/settings',
   ],
   [UserRole.SCOPIST]: [
+    '/dashboard',
     '/org',
     '/cases',
     '/jobs',
     '/transcripts',
+    '/settings',
   ],
   [UserRole.ATTORNEY]: [
     '/dashboard',
@@ -143,8 +147,10 @@ const ROLE_PROTECTED_ROUTES: Record<UserRole, string[]> = {
   ],
   [UserRole.PARALEGAL]: [
     '/dashboard',
+    '/org',
     '/cases',
     '/transcripts',
+    '/settings',
   ],
   [UserRole.VIDEOGRAPHER]: [
     '/dashboard',
@@ -184,6 +190,7 @@ const ROLE_PROTECTED_ROUTES: Record<UserRole, string[]> = {
   ],
   [UserRole.SUPER_ADMIN]: [
     '/admin',
+    '/super-admin',
     '/dashboard',
     '/org',
     '/cases',
@@ -194,6 +201,7 @@ const ROLE_PROTECTED_ROUTES: Record<UserRole, string[]> = {
     '/settings',
     '/billing',
     '/exports',
+    '/wkt',
   ],
 };
 

@@ -9,7 +9,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
-import { UserRole } from '@/types/database';
+import { UserRole } from '@/lib/enums/roles';
 import {
   enqueueJob,
   getJobStatus,

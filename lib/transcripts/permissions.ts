@@ -5,7 +5,7 @@
 // Phase 3B-2: Role-based editor permissions
 // =============================================================================
 
-import { UserRole } from '@/lib/enums/roles';
+import type { UserRole } from '@/lib/enums/roles';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 // Stub for canEditTranscript (replaces _future/transcripts/lock-service)

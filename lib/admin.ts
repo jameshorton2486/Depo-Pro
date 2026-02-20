@@ -10,6 +10,10 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
+function isAdminRole(role: unknown): boolean {
+  return role === 'admin' || role === 'ADMIN';
+}
+
 /**
  * Check if current user is an admin
  */
@@ -26,7 +30,7 @@ export async function isAdmin(): Promise<boolean> {
       .eq('id', user.id)
       .single();
 
-    return profile?.role === 'admin';
+    return isAdminRole(profile?.role);
   } catch (_error) {
     // Silently fail - not admin if check fails
     return false;
@@ -52,7 +56,7 @@ export async function requireAdmin(): Promise<void> {
     .eq('id', user.id)
     .single();
 
-  if (profileError || profile?.role !== 'admin') {
+  if (profileError || !isAdminRole(profile?.role)) {
     throw new Error('Forbidden: Admin access required');
   }
 }
@@ -76,7 +80,7 @@ export async function requireAdminUserId(): Promise<string> {
     .eq('id', user.id)
     .single();
 
-  if (profileError || profile?.role !== 'admin') {
+  if (profileError || !isAdminRole(profile?.role)) {
     throw new Error('Forbidden: Admin access required');
   }
 

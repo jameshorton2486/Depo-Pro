@@ -5,7 +5,7 @@
 // Centralized type definitions for calendar functionality
 // =============================================================================
 
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 import type { AssignmentStatus } from '@/types/database';
 
 /**

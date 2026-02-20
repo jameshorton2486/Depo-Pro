@@ -5,7 +5,7 @@
 // Phase 3D-4: Lightweight feature flags
 // =============================================================================
 
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 
 export interface FeatureFlag {
   id: string;

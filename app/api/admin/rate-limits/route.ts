@@ -8,7 +8,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { UserRole } from '@/lib/enums';
+import { UserRole } from '@/lib/enums/roles';
 import {
   getRateLimitStats,
   getAbusePatterns,
@@ -19,24 +19,23 @@ import {
 // =============================================================================
 
 export async function GET(_request: NextRequest) {
-  const session = await auth();
-  
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-  
-  // Admin only
-  if (session.user.role !== UserRole.ADMIN) {
-    return NextResponse.json(
-      { error: 'Admin access required' },
-      { status: 403 }
-    );
-  }
-  
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.role !== UserRole.ADMIN) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
     const stats = getRateLimitStats();
     const abusePatterns = getAbusePatterns();
     

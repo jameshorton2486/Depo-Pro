@@ -49,7 +49,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
-    const user = {
+    const _user = {
       id: userData.id,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };

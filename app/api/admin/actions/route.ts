@@ -12,6 +12,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { listAuditLogs } from '@/lib/supabase/queries/audit';
 import { subDays } from 'date-fns';
+import { z } from 'zod';
 
 // RouteContext interface removed - not used
 
@@ -24,6 +25,11 @@ const SENSITIVE_ACTIONS = [
   'SYSTEM_CONFIG_CHANGED',
   'PERMISSION_MODIFIED',
 ];
+
+const querySchema = z.object({
+  filter: z.string().trim().max(100).default('all'),
+  range: z.enum(['1d', '7d', '30d', '90d']).default('7d'),
+});
 
 /**
  * GET /api/admin/actions
@@ -42,8 +48,10 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const filter = searchParams.get('filter') || 'all';
-    const range = searchParams.get('range') || '7d';
+    const { filter, range } = querySchema.parse({
+      filter: searchParams.get('filter') ?? undefined,
+      range: searchParams.get('range') ?? undefined,
+    });
 
     // Calculate date range
     const days = range === '1d' ? 1 : range === '7d' ? 7 : range === '30d' ? 30 : 90;

@@ -3,7 +3,7 @@
 // Authoritative server-side permission checks
 // =============================================================================
 
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 
 /**
  * Require user to have one of the allowed roles

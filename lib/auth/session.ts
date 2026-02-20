@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 
 // Session user format (flat structure for easier access)
 export interface SessionUser {

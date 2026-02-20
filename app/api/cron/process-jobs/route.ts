@@ -23,23 +23,21 @@ const CRON_SECRET = process.env.CRON_SECRET;
 export async function GET(request: NextRequest) {
   // Verify authorization
   const authHeader = request.headers.get('authorization');
-  
-  // In production, verify cron secret
-  if (process.env.NODE_ENV === 'production') {
-    if (!CRON_SECRET) {
-      logger.error('CRON_SECRET not configured');
-      return NextResponse.json(
-        { error: 'Cron not configured' },
-        { status: 500 }
-      );
-    }
-    
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+
+  // In production, secret is required. In non-production, enforce it when configured.
+  if (process.env.NODE_ENV === 'production' && !CRON_SECRET) {
+    logger.error('CRON_SECRET not configured');
+    return NextResponse.json(
+      { error: 'Cron not configured' },
+      { status: 500 }
+    );
+  }
+
+  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
   }
   
   const start = performance.now();

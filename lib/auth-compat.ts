@@ -5,7 +5,7 @@
 // Use Supabase Auth directly via createSupabaseServerClient() from @/lib/supabase/server
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { UserRole } from '@/types/database';
+import type { UserRole } from '@/lib/enums/roles';
 
 /**
  * Get auth session (legacy compatibility function)
