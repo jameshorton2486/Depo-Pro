@@ -2,12 +2,12 @@
 // AUTH HELPER FUNCTIONS (LEGACY - DEPRECATED)
 // ═══════════════════════════════════════════════════════════════
 // ⚠️ DEPRECATED: This file is kept for backward compatibility only
-// 
+//
 // MIGRATION GUIDE:
 // - Client components: Use useAuth() hook from '@/lib/auth/use-auth'
 // - Server components: Use createSupabaseServerClient() from '@/lib/supabase/server'
 // - API routes: Use createSupabaseServerClient() or getSupabaseAdmin()
-// 
+//
 // This file will be removed in a future version.
 // ═══════════════════════════════════════════════════════════════
 
@@ -50,12 +50,16 @@ export async function getCurrentUser() {
       return null;
     }
 
+    if (!profile.role) {
+      return null;
+    }
+
     // Return session format
     return {
       user: {
         id: user.id,
         email: user.email || '',
-        role: (profile.role as UserRole) || 'REPORTER',
+        role: profile.role as UserRole,
         name: profile.first_name && profile.last_name
           ? `${profile.first_name} ${profile.last_name}`
           : profile.first_name || profile.last_name || null,

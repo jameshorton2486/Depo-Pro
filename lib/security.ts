@@ -105,12 +105,16 @@ export async function requireAuth(_request?: NextRequest) {
     throw new Error('UNAUTHENTICATED');
   }
 
+  if (!profile.role) {
+    throw new Error('UNAUTHENTICATED');
+  }
+
   // Return user with profile
   return {
     user: {
       id: user.id,
       email: user.email || '',
-      role: (profile.role as UserRole) || 'REPORTER',
+      role: profile.role as UserRole,
       name: profile.first_name && profile.last_name
         ? `${profile.first_name} ${profile.last_name}`
         : profile.first_name || profile.last_name || null,

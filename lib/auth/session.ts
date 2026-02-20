@@ -40,10 +40,14 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     return null;
   }
 
+  if (!profile.role) {
+    return null;
+  }
+
   return {
     id: user.id,
     email: user.email || '',
-    role: (profile.role as UserRole) || 'REPORTER',
+    role: profile.role as UserRole,
     name: profile.first_name && profile.last_name
       ? `${profile.first_name} ${profile.last_name}`
       : profile.first_name || profile.last_name || null,

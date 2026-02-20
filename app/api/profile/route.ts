@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     // ⚠️ CRITICAL: Update user_metadata, NOT a users table
     if (Object.keys(allowedUpdates).length > 0) {
       const supabase = getSupabaseAdminClient();
-      
+
       // Get current user to preserve existing metadata
       const { data: currentUserData, error: getUserError } = await supabase.auth.admin.getUserById(updateTargetId);
       if (getUserError || !currentUserData.user) {
@@ -158,7 +158,7 @@ export async function POST(request: Request) {
       const profile = {
         id: updatedUser.id,
         email: updatedUser.email || '',
-        role: (updatedUser.user_metadata?.role as UserRole) || 'REPORTER',
+        role: (updatedUser.user_metadata?.role as UserRole) ?? null,
         firstName: updatedUser.user_metadata?.firstName || '',
         lastName: updatedUser.user_metadata?.lastName || '',
         agencyName: updatedUser.user_metadata?.agencyName || null,

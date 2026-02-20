@@ -44,24 +44,24 @@ export async function POST(request: NextRequest) {
 
   try {
     const session = await auth();
-    
-    if (!session?.user) {
+
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
-    
+
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
 
     const user = {
-      id: userData.id,
+      id: session.user.id,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      role: session.user.role,
     };
-    
+
     // Basic role check (ADMIN, AGENCY_OWNER, AGENCY_MANAGER can view)
     if (
       user.role !== UserRole.ADMIN &&
@@ -73,20 +73,20 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     const body = await request.json();
     const validation = getSuggestionsSchema.safeParse(body);
-    
+
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.issues },
         { status: 400 }
       );
     }
-    
+
     const data = validation.data;
     const suggestions: unknown[] = [];
-    
+
     // Build context
     const _context = {
       firmId: user.firmId as string,
@@ -98,15 +98,15 @@ export async function POST(request: NextRequest) {
       isRemote: data.isRemote,
       estimatedDuration: data.estimatedDuration,
     };
-    
+
     // Phase 5 feature - disabled (feature-flagged)
     // Return empty suggestions array
-    
+
     return NextResponse.json({
       suggestions,
       generated: new Date().toISOString(),
     });
-    
+
   } catch (error) {
     console.error('Generate suggestions error:', error);
     return NextResponse.json({ error: 'Failed to generate suggestions' }, { status: 500 });
@@ -133,24 +133,24 @@ export async function GET(_request: NextRequest) {
   }
   try {
     const session = await auth();
-    
-    if (!session?.user) {
+
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
-    
+
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
 
     const user = {
-      id: userData.id,
+      id: session.user.id,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      role: session.user.role,
     };
-    
+
     // Basic role check (ADMIN, AGENCY_OWNER, AGENCY_MANAGER can view)
     if (
       user.role !== UserRole.ADMIN &&
@@ -162,12 +162,12 @@ export async function GET(_request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     // Phase 5 feature - return empty array
     const suggestions: unknown[] = [];
-    
+
     return NextResponse.json({ suggestions });
-    
+
   } catch (error) {
     console.error('Get suggestions error:', error);
     return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 });

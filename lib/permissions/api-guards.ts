@@ -94,6 +94,11 @@ export async function requireAuth(_request?: Request): Promise<AuthUser | NextRe
       return NextResponse.json({ error: 'User profile not found' }, { status: 401 });
     }
 
+    if (!profile.role) {
+      logger.warn('[api-guards] User has no role assigned', { userId: user.id });
+      return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
+    }
+
     // Try to enrich with org context (graceful — org tables may not exist yet)
     let orgId: string | null = null;
     let orgType: 'AGENCY' | 'FIRM' | null = null;

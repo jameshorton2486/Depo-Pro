@@ -28,7 +28,7 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -47,14 +47,14 @@ export async function POST(
 
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
-    
+
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
     const _user = {
-      id: userData.id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      id: session.user.id,
+      role: session.user.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 

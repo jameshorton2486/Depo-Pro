@@ -18,7 +18,7 @@ import { logger } from '@/lib/logger';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
-    
+
     // Validate auth using getUser() (not getSession())
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -26,8 +26,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user role from metadata
-    const userRole = (user.user_metadata?.role as string) || 'REPORTER';
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+    if (!profile?.role) {
+      return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
+    }
+    const userRole = profile.role as string;
     const userId = user.id;
 
     const searchParams = request.nextUrl.searchParams;
@@ -89,7 +92,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
-    
+
     // Validate auth using getUser() (not getSession())
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -97,8 +100,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user role from metadata
-    const userRole = (user.user_metadata?.role as string) || 'REPORTER';
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+    if (!profile?.role) {
+      return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
+    }
+    const userRole = profile.role as string;
     const userId = user.id;
 
     // Only reporters and admins can create jobs

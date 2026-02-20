@@ -9,7 +9,7 @@ import type { UserRole } from '@/lib/enums/roles';
 
 /**
  * Get auth session (legacy compatibility function)
- * 
+ *
  * @deprecated Use createSupabaseServerClient() from @/lib/supabase/server instead
  */
 export async function auth() {
@@ -31,12 +31,16 @@ export async function auth() {
     return null;
   }
 
+  if (!profile.role) {
+    return null;
+  }
+
   // Return session format
   return {
     user: {
       id: user.id,
       email: user.email || '',
-      role: (profile.role as UserRole) || 'REPORTER',
+      role: profile.role as UserRole,
       name: profile.first_name && profile.last_name
         ? `${profile.first_name} ${profile.last_name}`
         : profile.first_name || profile.last_name || null,

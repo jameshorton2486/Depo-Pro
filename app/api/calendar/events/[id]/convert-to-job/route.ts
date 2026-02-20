@@ -24,7 +24,7 @@ export async function POST(
   try {
     // 1. Authentication
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -43,7 +43,7 @@ export async function POST(
     // 3. Fetch user with firm info
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
-    
+
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
@@ -52,8 +52,8 @@ export async function POST(
     }
 
     const user = {
-      id: userData.id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      id: session.user.id,
+      role: session.user.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
       firstName: userData.user_metadata?.firstName || '',
       lastName: userData.user_metadata?.lastName || '',
@@ -80,7 +80,7 @@ export async function POST(
     // 6. Idempotency check
     if (event.job_id || event.status === 'CONVERTED') {
       return NextResponse.json(
-        { 
+        {
           error: 'This event has already been converted to a job',
           code: 'ALREADY_CONVERTED',
           jobId: event.job_id,
