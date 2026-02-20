@@ -13,22 +13,20 @@ export async function GET() {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Get job statistics
-    const { data: jobStats } = await supabase
-      .from('jobs')
-      .select('status, created_at')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-
-    // Get transcription statistics
-    const { data: transcriptionStats } = await supabase
-      .from('transcriptions')
-      .select('status, confidence_score, created_at')
-      .gte('created_at', thirtyDaysAgo.toISOString());
-
-    // Get user statistics
-    const { data: userStats } = await supabase
-      .from('profiles')
-      .select('role, created_at');
+    // Fetch independent metric sets in parallel and project only required columns.
+    const [{ data: jobStats }, { data: transcriptionStats }, { data: userStats }] = await Promise.all([
+      supabase
+        .from('jobs')
+        .select('status')
+        .gte('created_at', thirtyDaysAgo.toISOString()),
+      supabase
+        .from('transcriptions')
+        .select('status, confidence_score')
+        .gte('created_at', thirtyDaysAgo.toISOString()),
+      supabase
+        .from('profiles')
+        .select('role'),
+    ]);
 
     // Calculate metrics
     const metrics = {
