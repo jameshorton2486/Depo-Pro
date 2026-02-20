@@ -52,7 +52,7 @@ export async function POST(
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
-    const user = {
+    const _user = {
       id: userData.id,
       role: userData.user_metadata?.role || 'REPORTER',
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
@@ -97,4 +97,3 @@ export async function POST(
     );
   }
 }
-

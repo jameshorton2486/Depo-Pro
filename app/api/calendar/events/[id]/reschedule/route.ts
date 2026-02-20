@@ -54,7 +54,7 @@ export async function POST(
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
-    const user = {
+    const _user = {
       id: userData.id,
       role: userData.user_metadata?.role || 'REPORTER',
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
@@ -114,7 +114,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: eventId } = await context.params;
+    const { id: _eventId } = await context.params;
     const body = await request.json();
     const validation = z.object({
       startTime: z.string().datetime(),
@@ -127,7 +127,7 @@ export async function PUT(
       );
     }
 
-    const { startTime, endTime } = validation.data;
+    const { startTime: _startTime, endTime: _endTime } = validation.data;
 
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
@@ -136,7 +136,7 @@ export async function PUT(
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
-    const user = {
+    const _user = {
       id: userData.id,
       role: userData.user_metadata?.role || 'REPORTER',
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
@@ -172,4 +172,3 @@ export async function PUT(
     );
   }
 }
-
