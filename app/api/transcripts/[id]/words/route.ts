@@ -13,6 +13,12 @@ import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/
 import { Role, JobStatus } from '@/lib/constants';
 import type { ReviewState } from '@/types/review';
 import { isTranscriptLocked, getLockStatus } from '@/lib/transcript-locking';
+import {
+  getReviewSession,
+  getTranscriptionWords,
+  hasTranscriptReviewAccess,
+  mergeReviewSession,
+} from '@/lib/transcripts/review-session';
 
 // Threshold bounds
 const MIN_THRESHOLD = 0.5;
@@ -90,17 +96,15 @@ export async function PATCH(
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
-    const isCreator = transcription.job.createdById === session.user.id;
-    const isAssignedScopist = transcription.job.assignments.length > 0;
-    const isAdmin = session.user.role === Role.ADMIN;
-
-    if (!isCreator && !isAssignedScopist && !isAdmin) {
+    if (!hasTranscriptReviewAccess(transcription, session.user.id, session.user.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
+    const isAssignedScopist = Array.isArray(transcription.job.assignments)
+      && transcription.job.assignments.length > 0;
 
     // Get current words array (transcription is already fetched above)
     // Note: words are stored in transcript_tokens or in a JSONB column
-    const currentWords = (transcription.words as any[]) || (transcription.tokens as any[]) || [];
+    const currentWords = getTranscriptionWords(transcription);
     const maxIndex = currentWords.length - 1;
 
     const invalidCorrectionIndices = corrections.filter(
@@ -222,17 +226,12 @@ export async function PATCH(
     };
 
     // Get current flaggedSegments or create empty object
-    const currentFlaggedSegments = (transcription.flagged_segments as Record<string, any>) || {};
-
     // Update transcription (only words and review data, not base text)
     // Store review session in flagged_segments for resume functionality
     await updateTranscript(supabase, transcriptionId, {
       content_json: updatedWords as any,
       flagged_word_count: remainingCount,
-      flagged_segments: {
-        ...currentFlaggedSegments,
-        reviewSession,
-      } as any,
+      flagged_segments: mergeReviewSession(transcription.flagged_segments, reviewSession) as any,
     });
 
     // If marking complete, update job status
@@ -282,7 +281,7 @@ export async function PATCH(
 
 // GET: Retrieve current review progress
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -302,20 +301,15 @@ export async function GET(
     }
 
     // Check access
-    const isCreator = transcription.job.createdById === session.user.id;
-    const isAssignedScopist = transcription.job.assignments.length > 0;
-    const isAdmin = session.user.role === Role.ADMIN;
-
-    if (!isCreator && !isAssignedScopist && !isAdmin) {
+    if (!hasTranscriptReviewAccess(transcription, session.user.id, session.user.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // Get saved session from flaggedSegments
-    const flaggedSegments = (transcription.flagged_segments as Record<string, any>) || {};
-    const reviewSession = flaggedSegments?.reviewSession || null;
+    const reviewSession = getReviewSession(transcription.flagged_segments);
 
     // Calculate current progress stats
-    const words = (transcription.words as any[]) || (transcription.tokens as any[]) || [];
+    const words = getTranscriptionWords(transcription);
     const threshold = reviewSession?.confidenceThreshold || DEFAULT_THRESHOLD;
 
     const totalFlagged = words.filter((w) => w.confidence < threshold).length;
