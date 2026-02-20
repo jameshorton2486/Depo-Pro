@@ -9,11 +9,21 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET;
+
 export async function POST(
   request: NextRequest,
   context: RouteContext,
 ) {
   try {
+    const authHeader = request.headers.get('authorization');
+    if (process.env.NODE_ENV === 'production' && !INTERNAL_API_SECRET) {
+      return NextResponse.json({ error: 'Internal API secret not configured' }, { status: 500 });
+    }
+    if (INTERNAL_API_SECRET && authHeader !== `Bearer ${INTERNAL_API_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: jobId } = await context.params;
     const body = await request.json();
     const { chunkIndex } = body;

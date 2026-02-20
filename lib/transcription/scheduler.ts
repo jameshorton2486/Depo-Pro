@@ -16,6 +16,16 @@ import type {
   DeepgramResult,
 } from '@/types/transcription';
 
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET;
+
+function buildInternalHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (INTERNAL_API_SECRET) {
+    headers.authorization = `Bearer ${INTERNAL_API_SECRET}`;
+  }
+  return headers;
+}
+
 /**
  * Serverless-friendly transcription scheduling.
  *
@@ -150,7 +160,7 @@ export async function startTranscriptionPipeline(
     setImmediate(() => {
       fetch(`${baseUrl}/api/jobs/${jobId}/transcribe/process-chunk`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildInternalHeaders(),
         body: JSON.stringify({ chunkIndex: 0 }),
       }).catch(err => {
         console.error('Failed to trigger first chunk:', err.message);
@@ -258,7 +268,7 @@ export async function processChunk(
         setImmediate(() => {
           fetch(`${baseUrl}/api/jobs/${jobId}/transcribe/process-chunk`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: buildInternalHeaders(),
             body: JSON.stringify({ chunkIndex: chunkIndex + 1 }),
           }).catch(err => {
             console.error(`Failed to trigger chunk ${chunkIndex + 1}:`, err.message);
@@ -334,7 +344,7 @@ export async function resumePipeline(
   setImmediate(() => {
     fetch(`${baseUrl}/api/jobs/${jobId}/transcribe/process-chunk`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: buildInternalHeaders(),
       body: JSON.stringify({ chunkIndex: resumeIndex }),
     }).catch(err => {
       console.error(`Failed to resume from chunk ${resumeIndex}:`, err.message);

@@ -3,17 +3,24 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext,
 ) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id: transcriptionId } = await context.params;
     const supabase = await createClient();
 
@@ -29,6 +36,22 @@ export async function GET(
         { error: 'Transcription not found' },
         { status: 404 }
       );
+    }
+
+    const job = await getJobById(supabase, transcription.job_id, {
+      includeAssignments: true,
+    });
+    if (!job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    const hasAccess =
+      session.user.role === 'ADMIN' ||
+      (job as any).created_by_id === session.user.id ||
+      await isUserAssignedToJob(transcription.job_id, session.user.id);
+
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const totalChunks = transcription.chunk_count || 1;
