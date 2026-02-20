@@ -21,7 +21,7 @@ export async function POST(
   try {
     // 1. Authentication
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
@@ -109,11 +109,11 @@ export async function POST(
       }
 
       const personnel = userData.user;
-      const role = (personnel.user_metadata?.role as string) || 'REPORTER';
+      const role = personnel.user_metadata?.role as string | undefined;
       const agencyId = personnel.user_metadata?.agencyId || null;
 
       // Validate role is REPORTER
-      if (role !== 'REPORTER' && role !== 'ADMIN' && role !== 'AGENCY_ADMIN') {
+      if (!role || (role !== 'REPORTER' && role !== 'ADMIN' && role !== 'AGENCY_ADMIN')) {
         return NextResponse.json(
           { 
             error: 'Invalid personnel role', 
@@ -243,4 +243,3 @@ export async function POST(
     );
   }
 }
-

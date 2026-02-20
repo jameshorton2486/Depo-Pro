@@ -16,14 +16,14 @@ import { listCases, type CaseFilter, type CaseSort } from '@/lib/supabase/querie
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    
-    if (!session?.user?.id) {
+
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Verify user is an attorney
-    const userRole = session.user.role || 'REPORTER';
-    
+    const userRole = session.user.role;
+
     if (userRole !== 'ATTORNEY') {
       return NextResponse.json({ error: 'Attorney access required' }, { status: 403 });
     }

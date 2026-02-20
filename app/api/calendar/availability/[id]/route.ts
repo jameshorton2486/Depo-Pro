@@ -22,7 +22,7 @@ export async function DELETE(
   try {
     const session = await auth();
 
-    if (!session?.user) {
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -35,8 +35,8 @@ export async function DELETE(
     }
 
     const user = {
-      id: userData.id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      id: session.user.id,
+      role: session.user.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 

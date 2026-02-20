@@ -46,8 +46,8 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    
-    if (!session?.user) {
+
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -59,14 +59,14 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
-    
+
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
     const user = {
-      id: userData.id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      id: session.user.id,
+      role: session.user.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -150,21 +150,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    
-    if (!session?.user) {
+
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
-    
+
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
     const user = {
-      id: userData.id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      id: session.user.id,
+      role: session.user.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -241,4 +241,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
   }
 }
-

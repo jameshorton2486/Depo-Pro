@@ -33,24 +33,24 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    
-    if (!session?.user) {
+
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const supabase = await createSupabaseServerClient();
     const userData = await getUserById(supabase, session.user.id);
-    
+
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
 
     const user = {
-      id: userData.id,
+      id: session.user.id,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
-      role: userData.user_metadata?.role || 'REPORTER',
+      role: session.user.role,
     };
-    
+
     const { id: eventId } = await params;
     
     // Verify event exists and belongs to firm
