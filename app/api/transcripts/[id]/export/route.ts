@@ -17,6 +17,78 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
+interface ExportWord {
+  word: string;
+  correctedWord?: string;
+  isEdited?: boolean;
+}
+
+function parseUnknownJson<T>(value: unknown, fallback: T): T {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return value as T;
+}
+
+function getWordsForExport(value: unknown): ExportWord[] {
+  const parsed = parseUnknownJson<unknown>(value, []);
+  return Array.isArray(parsed) ? (parsed as ExportWord[]) : [];
+}
+
+function getFlaggedCorrections(value: unknown): Map<number, string> {
+  const parsed = parseUnknownJson<unknown>(value, null);
+  const corrections = new Map<number, string>();
+
+  if (Array.isArray(parsed)) {
+    for (const segment of parsed) {
+      if (
+        segment &&
+        typeof segment === 'object' &&
+        typeof (segment as { wordIndex?: unknown }).wordIndex === 'number' &&
+        Number.isInteger((segment as { wordIndex: number }).wordIndex) &&
+        (segment as { wordIndex: number }).wordIndex >= 0 &&
+        typeof (segment as { correctedWord?: unknown }).correctedWord === 'string' &&
+        (segment as { correctedWord: string }).correctedWord.trim().length > 0
+      ) {
+        corrections.set(
+          (segment as { wordIndex: number }).wordIndex,
+          (segment as { correctedWord: string }).correctedWord,
+        );
+      }
+    }
+    return corrections;
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return corrections;
+  }
+
+  const reviewSession = (parsed as { reviewSession?: { corrections?: Record<string, string> } }).reviewSession;
+  const reviewCorrections = reviewSession?.corrections;
+
+  if (!reviewCorrections || typeof reviewCorrections !== 'object') {
+    return corrections;
+  }
+
+  for (const [indexRaw, correctedWord] of Object.entries(reviewCorrections)) {
+    const index = Number(indexRaw);
+    if (Number.isInteger(index) && index >= 0 && typeof correctedWord === 'string' && correctedWord.trim().length > 0) {
+      corrections.set(index, correctedWord);
+    }
+  }
+
+  return corrections;
+}
+
 export async function GET(
   request: NextRequest,
   context: RouteContext,
@@ -97,83 +169,41 @@ export async function GET(
     let exportText = transcription.full_transcript || '';
 
     // Fetch all edits for this transcription
-    const edits = await getTranscriptEdits(supabase, transcriptId);
+    const edits = (await getTranscriptEdits(supabase, transcriptId)) || [];
 
-    // If there are edits, apply them to the words array
-    if (edits.length > 0 && transcription.words) {
-      try {
-        const words = JSON.parse(transcription.words as string) as Array<{
-          word: string;
-          correctedWord?: string;
-          isEdited?: boolean;
-        }>;
-
-        // Apply corrections from TranscriptionEdit records
-        // Edit metadata contains wordIndex and wordId
-        edits.forEach((edit: any) => {
-          if (edit.edited_text && edit.metadata) {
-            const metadata = edit.metadata as { wordIndex?: number; wordId?: string };
-            const wordIndex = metadata.wordIndex;
-
-            if (wordIndex !== undefined && wordIndex !== null && words[wordIndex]) {
-              words[wordIndex].word = edit.edited_text;
-              words[wordIndex].correctedWord = edit.edited_text;
-              words[wordIndex].isEdited = true;
-            }
-          }
-        });
-
-        // Also check flaggedSegments for correctedWord values (may have been updated directly)
-        if (transcription.flagged_segments) {
-          const flaggedSegments = JSON.parse(transcription.flagged_segments as string) as Array<{
-            wordIndex: number;
-            correctedWord?: string;
-            word: string;
-          }>;
-
-          flaggedSegments.forEach(segment => {
-            if (segment.correctedWord && segment.wordIndex !== undefined) {
-              const wordIndex = segment.wordIndex;
-              if (words[wordIndex]) {
-                words[wordIndex].word = segment.correctedWord;
-                words[wordIndex].correctedWord = segment.correctedWord;
-                words[wordIndex].isEdited = true;
-              }
-            }
-          });
+    const words = getWordsForExport(transcription.words).map((word) => ({ ...word }));
+    if (words.length > 0) {
+      // Apply edit history oldest -> newest so the newest value wins deterministically.
+      const chronologicalEdits = [...edits].reverse();
+      for (const edit of chronologicalEdits) {
+        if (!edit?.edited_text || !edit?.metadata) {
+          continue;
         }
 
-        // Generate corrected text from words array
-        exportText = words.map(w => w.correctedWord || w.word).join(' ');
-      } catch (error) {
-        console.error('Error applying edits to export:', error);
-        // Fall back to original transcript if edit application fails
+        const metadata = edit.metadata as { wordIndex?: number };
+        if (typeof metadata.wordIndex !== 'number' || !Number.isInteger(metadata.wordIndex)) {
+          continue;
+        }
+        const wordIndex = metadata.wordIndex;
+        if (wordIndex < 0 || wordIndex >= words.length) {
+          continue;
+        }
+
+        words[wordIndex].correctedWord = edit.edited_text;
+        words[wordIndex].isEdited = true;
       }
-    } else if (transcription.flagged_segments) {
-      // Even without TranscriptionEdit records, check flaggedSegments for corrections
-      try {
-        const flaggedSegments = JSON.parse(transcription.flagged_segments as string) as Array<{
-          wordIndex: number;
-          correctedWord?: string;
-          word: string;
-        }>;
 
-        const words = JSON.parse(transcription.words as string) as Array<{
-          word: string;
-          correctedWord?: string;
-        }>;
-
-        flaggedSegments.forEach(segment => {
-          if (segment.correctedWord && segment.wordIndex !== undefined && words[segment.wordIndex]) {
-            words[segment.wordIndex].word = segment.correctedWord;
-            words[segment.wordIndex].correctedWord = segment.correctedWord;
-          }
-        });
-
-        exportText = words.map(w => w.correctedWord || w.word).join(' ');
-      } catch (error) {
-        console.error('Error applying flagged segment corrections to export:', error);
+      // Apply in-record review corrections (new shape and legacy array shape) last.
+      const flaggedCorrections = getFlaggedCorrections(transcription.flagged_segments);
+      for (const [wordIndex, correctedWord] of flaggedCorrections.entries()) {
+        if (wordIndex < 0 || wordIndex >= words.length) {
+          continue;
+        }
+        words[wordIndex].correctedWord = correctedWord;
+        words[wordIndex].isEdited = true;
       }
+
+      exportText = words.map((w) => w.correctedWord || w.word).join(' ').trim();
     }
 
     // Build metadata
