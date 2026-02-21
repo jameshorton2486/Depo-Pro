@@ -99,7 +99,7 @@ export async function requireAuth(_request?: Request): Promise<AuthUser | NextRe
       return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
     }
 
-    // Try to enrich with org context (graceful — org tables may not exist yet)
+    // Enrich with org context from active primary membership.
     let orgId: string | null = null;
     let orgType: 'AGENCY' | 'FIRM' | null = null;
     try {
@@ -116,14 +116,19 @@ export async function requireAuth(_request?: Request): Promise<AuthUser | NextRe
         orgType = (membership as any).organizations?.type || null;
       }
     } catch {
-      // organization_memberships may not exist yet — fall back to firm_id
+      // Strict mode: org context must come from membership table.
+    }
+
+    if (!orgId && profile.role !== UserRole.SUPER_ADMIN) {
+      logger.warn('[api-guards] User has no active organization membership', { userId: user.id });
+      return NextResponse.json({ error: 'User profile incomplete: no active organization membership' }, { status: 401 });
     }
 
     return {
       id: profile.id,
       role: profile.role,
       firmId: profile.firm_id || null,
-      orgId: orgId || profile.firm_id || null,
+      orgId,
       orgType,
       email: profile.email,
     };
@@ -206,7 +211,11 @@ export async function requireOrgMembership(orgId: string): Promise<AuthResult> {
   const auth = await requireAuthV2();
   if (!auth.authorized) return auth;
 
-  if (auth.user.orgId !== orgId && auth.user.firmId !== orgId) {
+  if (auth.user.role === UserRole.SUPER_ADMIN) {
+    return auth;
+  }
+
+  if (auth.user.orgId !== orgId) {
     return {
       authorized: false,
       response: NextResponse.json(

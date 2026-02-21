@@ -1,75 +1,31 @@
 /**
- * Org-scoped access helpers for Phase 1 multi-tenant hardening
+ * Org-scoped access helpers for Phase 2 strict org enforcement.
  *
- * Returns org/firm IDs the user belongs to. Uses organization_memberships when
- * available, falls back to profiles.firm_id during transition.
+ * Org access is sourced from organization_memberships only.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Get all org/firm IDs the user has access to.
- * Used to scope queries and verify job/case access.
- *
- * - Tries organization_memberships first (if table exists)
- * - Falls back to users.firm_id / profiles.firm_id
+ * Get all organization IDs the user has access to.
+ * Source of truth: organization_memberships with ACTIVE status.
  */
 export async function getUserOrgIds(
   supabase: SupabaseClient,
   userId: string
 ): Promise<string[]> {
-  const ids: string[] = [];
+  const { data: memberships } = await supabase
+    .from('organization_memberships')
+    .select('org_id')
+    .eq('user_id', userId)
+    .eq('status', 'ACTIVE');
 
-  // 1. Try organization_memberships (v2.2 schema)
-  try {
-    const { data: memberships } = await supabase
-      .from('organization_memberships')
-      .select('org_id')
-      .eq('user_id', userId)
-      .eq('status', 'ACTIVE');
-
-    if (memberships?.length) {
-      ids.push(...memberships.map((m) => m.org_id));
-    }
-  } catch {
-    // Table may not exist yet
-  }
-
-  // 2. Fallback: firm_id from users or profiles
-  if (ids.length === 0) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('firm_id')
-      .eq('id', userId)
-      .single();
-
-    if (profile?.firm_id && !ids.includes(profile.firm_id)) {
-      ids.push(profile.firm_id);
-    }
-  }
-
-  // Also try profiles if users didn't have firm_id
-  if (ids.length === 0) {
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('firm_id')
-        .eq('id', userId)
-        .single();
-
-      if (profile?.firm_id && !ids.includes(profile.firm_id)) {
-        ids.push(profile.firm_id);
-      }
-    } catch {
-      // profiles may not exist
-    }
-  }
-
-  return ids;
+  if (!memberships?.length) return [];
+  return memberships.map((m) => m.org_id);
 }
 
 /**
- * Check if user has access to a job (by firm_id or org_id).
+ * Check if user has access to a job by org membership or direct assignment.
  * Returns true if job belongs to user's org(s) or user is assigned.
  */
 export async function userHasJobAccess(
@@ -100,7 +56,7 @@ export async function userHasJobAccess(
   const orgIds = await getUserOrgIds(supabase, userId);
   if (orgIds.length === 0) return false;
 
-  const jobOrgId = job.org_id ?? job.firm_id;
+  const jobOrgId = job.org_id ?? null;
   if (!jobOrgId) return false;
 
   return orgIds.includes(jobOrgId);

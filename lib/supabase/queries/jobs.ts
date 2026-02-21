@@ -63,7 +63,7 @@ export async function listJobs(
       } else if (userRole === 'SCOPIST') {
         query = query.eq('scopist_id', userId);
       } else {
-        query = query.in('firm_id', orgIds);
+        query = query.in('org_id', orgIds);
       }
     }
   }
