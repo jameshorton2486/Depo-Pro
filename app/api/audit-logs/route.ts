@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { requireAuthV2 } from '@/lib/permissions/api-guards';
 
 /**
  * Audit Logs API - Not Implemented
@@ -9,12 +9,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
  */
 
 export async function GET() {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
 
   return NextResponse.json(
     { error: 'Audit logs API is not available in v1.3. Use the audit service directly.' },
@@ -23,6 +19,9 @@ export async function GET() {
 }
 
 export async function POST() {
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
+
   return NextResponse.json(
     { error: 'This feature is not implemented' },
     { status: 501 }
@@ -30,6 +29,9 @@ export async function POST() {
 }
 
 export async function PUT() {
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
+
   return NextResponse.json(
     { error: 'This feature is not implemented' },
     { status: 501 }
@@ -37,6 +39,9 @@ export async function PUT() {
 }
 
 export async function DELETE() {
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
+
   return NextResponse.json(
     { error: 'This feature is not implemented' },
     { status: 501 }
