@@ -6,6 +6,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-compat';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +20,20 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session.user.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const allowedRoles = new Set<string>([
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+      UserRole.REPORTER,
+      UserRole.COURT_REPORTER,
+      UserRole.SCOPIST,
+    ]);
+
+    if (!allowedRoles.has(session.user.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { id: sessionId } = await context.params;
@@ -36,6 +49,39 @@ export async function PATCH(
     } = body;
 
     const supabase = await createSupabaseServerClient();
+
+    // Ensure session exists and is owned by caller before updates
+    const { data: reviewSession, error: reviewSessionError } = await supabase
+      .from('review_sessions')
+      .select('id, user_id, job_id')
+      .eq('id', sessionId)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (reviewSessionError || !reviewSession) {
+      return NextResponse.json({ error: 'Review session not found' }, { status: 404 });
+    }
+
+    // Validate tenant/job access for update as defense in depth
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, firm_id, created_by_id, scopist_id')
+      .eq('id', reviewSession.job_id)
+      .single();
+
+    if (jobError || !job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    const isPlatformAdmin =
+      session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN;
+    const isJobOwner = job.created_by_id === session.user.id;
+    const isAssignedScopist = job.scopist_id === session.user.id;
+    const isSameFirm = !!session.user.firmId && !!job.firm_id && session.user.firmId === job.firm_id;
+
+    if (!isPlatformAdmin && !isJobOwner && !isAssignedScopist && !isSameFirm) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Build update object
     const updates: any = {
