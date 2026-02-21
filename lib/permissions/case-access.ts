@@ -1,13 +1,19 @@
 /**
  * Case Access Permission Service
  *
- * PHASE 0 NOTE: Queries for case_memberships, case_attorneys, and
- * transcript_access tables are stubbed — these tables do not exist yet.
- * They will be implemented in Phase 1 (multi-tenant schema migration).
- *
- * All stubs log warnings so they are visible in server logs.
+ * Uses the same enforcement as api-guards (jobs-as-cases compatibility layer).
+ * Throws typed permission errors for server-side callers.
  */
 
+import {
+  canAccessCase as canAccessCaseGuard,
+  canEditCase as canEditCaseGuard,
+  getCasePermissions as getCasePermissionsGuard,
+  assertCaseAccess as assertCaseAccessGuard,
+  requireAttorneyCaseAccess,
+  requireExhibitUpload,
+  requireReporterDepositionAccess,
+} from '@/lib/permissions/api-guards';
 import { logger } from '@/lib/logger';
 
 export interface CasePermissions {
@@ -32,55 +38,53 @@ export function createPermissionError(code: string, message: string): Permission
 
 /**
  * Check if user can access a case.
- * Stub — implement real check in Phase 1 against case_memberships table.
  */
 export async function canAccessCase(userId: string, caseId: string): Promise<boolean> {
-  logger.warn('[case-access] canAccessCase is a stub — implement in Phase 1', { userId, caseId });
-  return true;
+  return canAccessCaseGuard(userId, caseId);
 }
 
 /**
  * Check if user can edit a case.
- * Stub — implement real check in Phase 1.
  */
 export async function canEditCase(userId: string, caseId: string): Promise<boolean> {
-  logger.warn('[case-access] canEditCase is a stub — implement in Phase 1', { userId, caseId });
-  return true;
+  return canEditCaseGuard(userId, caseId);
 }
 
 /**
  * Get all permissions for a user on a case.
- * Stub — case_memberships table does not exist yet.
  */
 export async function getCasePermissions(userId: string, caseId: string): Promise<CasePermissions> {
-  logger.warn('[case-access] getCasePermissions is a stub — implement in Phase 1', { userId, caseId });
-  return {
-    canView: true,
-    canEdit: true,
-    canDelete: false,
-    canAnnotate: true,
-    canUploadExhibit: true,
-  };
+  return getCasePermissionsGuard(userId, caseId);
 }
 
 /**
  * Assert user has case access (throws on failure).
- * Stub — implement in Phase 1.
  */
 export async function assertCaseAccess(
   userId: string,
   caseId: string,
   action?: keyof CasePermissions
 ): Promise<void> {
-  logger.warn('[case-access] assertCaseAccess is a stub', { userId, caseId, action });
+  if (!action) {
+    await assertCaseAccessGuard(userId, caseId);
+    return;
+  }
+
+  const permissions = await getCasePermissions(userId, caseId);
+  const isAllowed = permissions[action];
+  if (!isAllowed) {
+    throw createPermissionError('ACCESS_DENIED', `Missing "${action}" permission for case`);
+  }
 }
 
 /**
  * Assert attorney has case access.
- * Stub — case_attorneys table does not exist yet.
  */
 export async function assertAttorneyCaseAccess(userId: string, caseId: string): Promise<void> {
-  logger.warn('[case-access] assertAttorneyCaseAccess is a stub — implement in Phase 1', { userId, caseId });
+  const result = await requireAttorneyCaseAccess(userId, caseId);
+  if (result !== true) {
+    throw createPermissionError('ACCESS_DENIED', 'Attorney does not have access to this case');
+  }
 }
 
 /**
@@ -88,30 +92,20 @@ export async function assertAttorneyCaseAccess(userId: string, caseId: string): 
  * Uses jobs table — real implementation.
  */
 export async function assertReporterDepositionAccess(userId: string, jobId: string): Promise<void> {
-  const { createSupabaseServerClient } = await import('@/lib/supabase/server');
-  const supabase = await createSupabaseServerClient();
-
-  const { data: job } = await supabase
-    .from('jobs')
-    .select('id, created_by_id, assigned_to_id')
-    .eq('id', jobId)
-    .single();
-
-  if (!job) {
-    throw createPermissionError('NOT_FOUND', 'Job not found');
-  }
-
-  if (job.created_by_id !== userId && job.assigned_to_id !== userId) {
-    throw createPermissionError('ACCESS_DENIED', 'Reporter does not have access to this job');
+  const result = await requireReporterDepositionAccess(userId, jobId);
+  if (result !== true) {
+    throw createPermissionError('ACCESS_DENIED', 'Reporter does not have access to this deposition');
   }
 }
 
 /**
  * Assert user can upload exhibit.
- * Stub — implement in Phase 1.
  */
 export async function assertCanUploadExhibit(userId: string, caseId: string): Promise<void> {
-  logger.warn('[case-access] assertCanUploadExhibit is a stub', { userId, caseId });
+  const result = await requireExhibitUpload(userId, caseId);
+  if (result !== true) {
+    throw createPermissionError('ACCESS_DENIED', 'User cannot upload exhibits for this case');
+  }
 }
 
 /**

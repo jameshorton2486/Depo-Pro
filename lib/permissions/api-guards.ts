@@ -219,9 +219,103 @@ export async function requireOrgMembership(orgId: string): Promise<AuthResult> {
   return auth;
 }
 
-// ── Legacy Stubs (backward compatibility) ──────────────────────
-// Stubs now log warnings instead of silently returning true.
-// Phase 2 will implement real checks against case/transcript tables.
+// ── Case/Job Access Helpers ─────────────────────────────────────
+
+type AccessUserProfile = {
+  id: string;
+  role: string;
+  firm_id: string | null;
+};
+
+type AccessJob = {
+  id: string;
+  firm_id: string | null;
+  reporter_id: string | null;
+  scopist_id: string | null;
+  created_by_id?: string | null;
+};
+
+const CASE_VIEW_ROLES = new Set<string>([
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+  UserRole.FIRM_OWNER,
+  UserRole.FIRM_MANAGER,
+  UserRole.ATTORNEY,
+  UserRole.PARALEGAL,
+  UserRole.REPORTER,
+  UserRole.COURT_REPORTER,
+  UserRole.SCOPIST,
+]);
+
+const CASE_EDIT_ROLES = new Set<string>([
+  UserRole.SUPER_ADMIN,
+  UserRole.ADMIN,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+  UserRole.FIRM_OWNER,
+  UserRole.FIRM_MANAGER,
+  UserRole.ATTORNEY,
+  UserRole.PARALEGAL,
+]);
+
+async function getAccessUserProfile(
+  userId: string
+): Promise<AccessUserProfile | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('id, role, firm_id')
+    .eq('id', userId)
+    .single();
+
+  if (error || !user?.id || !user?.role) {
+    return null;
+  }
+  return user as AccessUserProfile;
+}
+
+async function getCaseAsJob(caseId: string): Promise<AccessJob | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data: job, error } = await supabase
+    .from('jobs')
+    .select('id, firm_id, reporter_id, scopist_id, created_by_id')
+    .eq('id', caseId)
+    .maybeSingle();
+
+  if (error || !job?.id) {
+    return null;
+  }
+  return job as AccessJob;
+}
+
+async function getJobForAccess(jobId: string): Promise<AccessJob | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data: job, error } = await supabase
+    .from('jobs')
+    .select('id, firm_id, reporter_id, scopist_id, created_by_id')
+    .eq('id', jobId)
+    .maybeSingle();
+
+  if (error || !job?.id) {
+    return null;
+  }
+  return job as AccessJob;
+}
+
+function hasDirectAssignment(userId: string, job: AccessJob): boolean {
+  return (
+    job.reporter_id === userId ||
+    job.scopist_id === userId ||
+    (job.created_by_id ?? null) === userId
+  );
+}
+
+function hasFirmAccess(user: AccessUserProfile, job: AccessJob): boolean {
+  if (!user.firm_id || !job.firm_id) return false;
+  return user.firm_id === job.firm_id;
+}
 
 export async function requireTranscriptAnnotation(
   userId: string, transcriptId: string
@@ -233,22 +327,85 @@ export async function requireTranscriptAnnotation(
 export async function requireAttorneyCaseAccess(
   userId: string, caseId: string
 ): Promise<true | NextResponse> {
-  logger.warn('[Guards] requireAttorneyCaseAccess is a stub — implement in Phase 2', { userId, caseId });
-  return true;
+  const user = await getAccessUserProfile(userId);
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!CASE_VIEW_ROLES.has(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const job = await getCaseAsJob(caseId);
+  if (!job) {
+    return NextResponse.json({ error: 'Case not found' }, { status: 404 });
+  }
+
+  if (user.role === UserRole.SUPER_ADMIN) return true;
+
+  if (user.role === UserRole.REPORTER || user.role === UserRole.COURT_REPORTER) {
+    return hasDirectAssignment(userId, job)
+      ? true
+      : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (user.role === UserRole.SCOPIST) {
+    return job.scopist_id === userId
+      ? true
+      : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return hasFirmAccess(user, job)
+    ? true
+    : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 }
 
 export async function requireExhibitUpload(
   userId: string, caseId: string
 ): Promise<true | NextResponse> {
-  logger.warn('[Guards] requireExhibitUpload is a stub — implement in Phase 2', { userId, caseId });
-  return true;
+  const user = await getAccessUserProfile(userId);
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!CASE_EDIT_ROLES.has(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return requireAttorneyCaseAccess(userId, caseId);
 }
 
 export async function requireReporterDepositionAccess(
   userId: string, jobId: string
 ): Promise<true | NextResponse> {
-  logger.warn('[Guards] requireReporterDepositionAccess is a stub — implement in Phase 2', { userId, jobId });
-  return true;
+  const user = await getAccessUserProfile(userId);
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const job = await getJobForAccess(jobId);
+  if (!job) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  }
+
+  if (user.role === UserRole.SUPER_ADMIN) return true;
+
+  if (user.role === UserRole.REPORTER || user.role === UserRole.COURT_REPORTER) {
+    return hasDirectAssignment(userId, job)
+      ? true
+      : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (user.role === UserRole.SCOPIST) {
+    return job.scopist_id === userId
+      ? true
+      : NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  if (CASE_VIEW_ROLES.has(user.role) && hasFirmAccess(user, job)) {
+    return true;
+  }
+
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 }
 
 // Legacy aliases
@@ -261,20 +418,36 @@ export async function assertCanAnnotateTranscript(userId: string, transcriptId: 
 }
 
 export async function canAccessCase(userId: string, caseId: string): Promise<boolean> {
-  logger.warn('[Guards] canAccessCase is a stub', { userId, caseId });
-  return true;
+  const result = await requireAttorneyCaseAccess(userId, caseId);
+  return result === true;
 }
 
 export async function canEditCase(userId: string, caseId: string): Promise<boolean> {
-  logger.warn('[Guards] canEditCase is a stub', { userId, caseId });
-  return true;
+  const user = await getAccessUserProfile(userId);
+  if (!user || !CASE_EDIT_ROLES.has(user.role)) {
+    return false;
+  }
+  return canAccessCase(userId, caseId);
 }
 
 export async function getCasePermissions(userId: string, caseId: string): Promise<CasePermissions> {
-  logger.warn('[Guards] getCasePermissions is a stub', { userId, caseId });
-  return { canView: true, canEdit: true, canDelete: false, canAnnotate: true, canUploadExhibit: true };
+  const canView = await canAccessCase(userId, caseId);
+  const canEdit = canView ? await canEditCase(userId, caseId) : false;
+  return {
+    canView,
+    canEdit,
+    canDelete: false,
+    canAnnotate: canView,
+    canUploadExhibit: canEdit,
+  };
 }
 
 export async function assertCaseAccess(userId: string, caseId: string): Promise<void> {
-  logger.warn('[Guards] assertCaseAccess is a stub', { userId, caseId });
+  const canView = await canAccessCase(userId, caseId);
+  if (!canView) {
+    const error = new Error('Case access denied') as Error & { statusCode?: number; code?: string };
+    error.statusCode = 403;
+    error.code = 'FORBIDDEN';
+    throw error;
+  }
 }
