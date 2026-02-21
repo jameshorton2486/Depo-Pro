@@ -7,9 +7,14 @@
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { requireRole } from '@/lib/permissions/api-guards';
+import { UserRole } from '@/lib/enums/roles';
 
 export async function GET() {
   try {
+    const auth = await requireRole([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
+    if (!auth.authorized) return auth.response;
+
     const supabase = getSupabaseAdminClient();
     
     // Test Supabase Auth connection (list users)
