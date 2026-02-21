@@ -47,6 +47,7 @@ export async function listJobs(
   let query = supabase
     .from('jobs')
     .select('*', { count: 'exact' })
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (userId) {
@@ -149,6 +150,7 @@ export async function getJobById(
       )
     `)
     .eq('id', jobId)
+    .is('deleted_at', null)
     .single();
 
   const job = result.data;
@@ -564,6 +566,43 @@ export async function getJobWithAssignments(
 
 /**
  * Delete job
+ */
+/**
+ * Soft-delete a job (legal-grade: never physically deletes records).
+ * Sets deleted_at timestamp. The job remains in the DB for audit purposes.
+ * Use archiveJob() to preserve the record with ARCHIVED status instead.
+ */
+export async function softDeleteJob(
+  supabaseOrId: any,
+  jobIdOrUserId?: string,
+  _maybeUserId?: string
+): Promise<any> {
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+
+  let supabase: any;
+  let id: string;
+
+  if (isOldPattern) {
+    supabase = supabaseOrId;
+    id = jobIdOrUserId as string;
+  } else {
+    supabase = await createClient();
+    id = supabaseOrId;
+  }
+
+  const result = await supabase
+    .from('jobs')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  return isOldPattern ? result.data : result;
+}
+
+/**
+ * @deprecated Use softDeleteJob() to preserve legal records.
+ * Hard deletes are retained for internal test cleanup only.
  */
 export async function deleteJob(
   supabaseOrId: any,

@@ -2,18 +2,14 @@
 // TRANSCRIPT VERSIONS API
 // app/api/transcripts/[id]/versions/route.ts
 //
-// Phase 4B-1: Get version history for a transcript
+// Returns the integrity chain for a transcript — every snapshot hash recorded
+// before an edit session begins. Backed by transcript_integrity_chain table.
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-// Stub for getVersions (replaces _future/transcripts/version-service)
-async function getVersions(_transcriptId: string): Promise<any[]> {
-  // TODO: Implement version history with Supabase
-  // For now, return empty array (will be implemented later)
-  return [];
-}
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -21,39 +17,58 @@ interface RouteContext {
 
 /**
  * GET /api/transcripts/[id]/versions
- * Get all versions for a transcript
+ * Returns all integrity chain entries for a transcript, ordered by version.
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ) {
   try {
     const session = await auth();
 
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: transcriptId } = await context.params;
 
-    // Verify access to transcript
-    // (Would check transcript ownership/assignment here)
+    const supabase = await createSupabaseServerClient();
 
-    const versions = await getVersions(transcriptId);
+    // Fetch integrity chain entries with creator profile
+    const { data: chain, error } = await supabase
+      .from('transcript_integrity_chain')
+      .select(`
+        id,
+        version_number,
+        transcript_hash,
+        previous_hash,
+        edit_id,
+        created_by,
+        created_at,
+        creator:profiles!transcript_integrity_chain_created_by_fkey(
+          id, full_name, email
+        )
+      `)
+      .eq('transcription_id', transcriptId)
+      .order('version_number', { ascending: true });
+
+    if (error) {
+      // Table may not exist yet in older deployments — return empty list
+      console.error('Error fetching integrity chain:', error.message);
+      return NextResponse.json({ versions: [] });
+    }
 
     return NextResponse.json({
-      versions: versions.map((v: any) => ({
-        id: v.id,
-        version: v.version,
-        versionType: v.versionType,
-        wordCount: v.wordCount,
-        flaggedCount: v.flaggedCount,
-        createdBy: {
-          firstName: v.creator.firstName,
-          lastName: v.creator.lastName,
-        },
-        createdAt: v.createdAt.toISOString(),
-        metadata: v.metadata,
+      versions: (chain ?? []).map((entry: any) => ({
+        id: entry.id,
+        versionNumber: entry.version_number,
+        transcriptHash: entry.transcript_hash,
+        previousHash: entry.previous_hash,
+        editId: entry.edit_id ?? null,
+        createdBy: entry.creator
+          ? { id: entry.creator.id, name: entry.creator.full_name, email: entry.creator.email }
+          : { id: entry.created_by, name: null, email: null },
+        createdAt: entry.created_at,
       })),
     });
   } catch (error) {
