@@ -14,12 +14,12 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { searchCommandActions, type UserRole } from "./command-actions";
-import { 
-  FileText, 
-  Calendar, 
-  Plus, 
-  Settings, 
-  Users, 
+import {
+  FileText,
+  Calendar,
+  Plus,
+  Settings,
+  Users,
   CreditCard,
   BarChart3,
   Briefcase,
@@ -50,9 +50,8 @@ export function CommandPalette({ open: controlledOpen, onOpenChange: controlledO
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
   const { user } = useAuth();
-  // Note: profile data should be fetched separately if needed
-  const session = user ? { user: { id: user.id, email: user.email || '', role: 'REPORTER' as UserRole, name: null } } : null;
-  const role = (session?.user?.role as UserRole) || "REPORTER";
+  const role = (user?.user_metadata?.role as UserRole) ?? null;
+  const _session = user && role ? { user: { id: user.id, email: user.email || '', role, name: null } } : null;
 
   // Use controlled state if provided, otherwise use internal state
   const isOpen = controlledOpen !== undefined ? controlledOpen : open;
@@ -94,7 +93,7 @@ export function CommandPalette({ open: controlledOpen, onOpenChange: controlledO
         // Search jobs
         const jobsResponse = await fetch(`/api/jobs?search=${encodeURIComponent(search)}&limit=5`);
         const jobsData = jobsResponse.ok ? await jobsResponse.json() : { jobs: [] };
-        
+
         // Search transcripts (if API exists)
         let transcriptsData = { transcripts: [] };
         try {
@@ -159,8 +158,6 @@ export function CommandPalette({ open: controlledOpen, onOpenChange: controlledO
     [router, controlledOnOpenChange]
   );
 
-  if (!role) return null;
-
   const handleOpenChange = React.useCallback((open: boolean) => {
     if (controlledOnOpenChange) {
       controlledOnOpenChange(open);
@@ -171,8 +168,8 @@ export function CommandPalette({ open: controlledOpen, onOpenChange: controlledO
 
   return (
     <CommandDialog open={isOpen} onOpenChange={handleOpenChange}>
-      <CommandInput 
-        placeholder="Type a command or search…" 
+      <CommandInput
+        placeholder="Type a command or search…"
         value={search}
         onValueChange={setSearch}
       />

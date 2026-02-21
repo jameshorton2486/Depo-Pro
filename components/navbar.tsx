@@ -179,7 +179,7 @@ export function AppNavbar({ user }: AppNavbarProps) {
   const [scrolled, setScrolled] = React.useState(false);
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
 
-  const navLinks = roleNavLinks[user.role] || roleNavLinks.COURT_REPORTER;
+  const navLinks = (user.role && roleNavLinks[user.role as keyof typeof roleNavLinks]) || roleNavLinks.COURT_REPORTER;
 
   React.useEffect(() => {
     const handleScroll = () => {

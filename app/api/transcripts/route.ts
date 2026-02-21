@@ -130,11 +130,13 @@ export async function GET(request: NextRequest) {
         .eq('id', user.id)
         .single();
 
-      // Check authorization
+      if (!profile?.role) {
+        return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
+      }
       const accessCheck = await checkTranscriptAccess(
         id,
         user.id,
-        profile?.role || 'SCOPIST',
+        profile.role,
         supabase
       );
 
@@ -242,18 +244,19 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get user profile for role
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    // Check authorization
+    if (!profile?.role) {
+      return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
+    }
     const accessCheck = await checkTranscriptAccess(
       id,
       user.id,
-      profile?.role || 'SCOPIST',
+      profile.role,
       supabase
     );
 
@@ -290,18 +293,19 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    // Get user profile for role
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    // Check authorization
+    if (!profile?.role) {
+      return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
+    }
     const accessCheck = await checkTranscriptAccess(
       id,
       user.id,
-      profile?.role || 'SCOPIST',
+      profile.role,
       supabase
     );
 

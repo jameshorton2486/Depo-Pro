@@ -63,18 +63,27 @@ export const COMMAND_ACTIONS: Record<UserRole, CommandAction[]> = {
   ],
 };
 
+const MINIMAL_ACTIONS: CommandAction[] = [
+  { label: "Dashboard", href: "/dashboard", group: "Navigation", keywords: ["home", "overview"] },
+  { label: "Settings", href: "/settings/profile", group: "Navigation", keywords: ["profile", "preferences"] },
+];
+
 /**
- * Get command actions for a specific role
+ * Get command actions for a specific role.
+ * Returns minimal actions for unknown/unassigned roles (no elevation).
  */
-export function getCommandActions(role: UserRole): CommandAction[] {
-  return COMMAND_ACTIONS[role] || COMMAND_ACTIONS.REPORTER;
+export function getCommandActions(role: UserRole | null | undefined): CommandAction[] {
+  if (!role || !(role in COMMAND_ACTIONS)) {
+    return MINIMAL_ACTIONS;
+  }
+  return COMMAND_ACTIONS[role as UserRole];
 }
 
 /**
  * Search command actions by query
  */
 export function searchCommandActions(
-  role: UserRole,
+  role: UserRole | null | undefined,
   query: string
 ): CommandAction[] {
   const actions = getCommandActions(role);

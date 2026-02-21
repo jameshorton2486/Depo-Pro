@@ -181,10 +181,10 @@ export function DepoCalendar({
   const [_canOverrideConflicts, setCanOverrideConflicts] = useState(false);
   const [suggestedAlternatives, setSuggestedAlternatives] = useState<AlternativeTimeSlot[]>([]);
 
-  // User role checks
-  const userRole = session?.user?.role || 'ATTORNEY';
-  const canCreateEvents = ['AGENCY', 'ADMIN'].includes(userRole);
-  const canDragDrop = ['AGENCY', 'ADMIN'].includes(userRole);
+  // User role checks — no fallback; restrict permissions when role is unassigned
+  const userRole = session?.user?.role ?? null;
+  const canCreateEvents = userRole != null && ['AGENCY', 'ADMIN'].includes(userRole);
+  const canDragDrop = userRole != null && ['AGENCY', 'ADMIN'].includes(userRole);
 
   // ------------------------------------------------------------
   // REFRESH EVENT LISTENER
