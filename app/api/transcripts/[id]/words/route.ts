@@ -37,6 +37,7 @@ interface SaveReviewRequest {
   audioPosition: number;
   confidenceThreshold: number;
   complete?: boolean;
+  updatedAt?: string; // Client sends last known server timestamp for optimistic locking
 }
 
 function normalizeThreshold(threshold: number | undefined): number {
@@ -66,6 +67,7 @@ export async function PATCH(
       audioPosition,
       confidenceThreshold: rawThreshold,
       complete,
+      updatedAt: clientUpdatedAt,
     } = body;
 
     const confidenceThreshold = normalizeThreshold(rawThreshold);
@@ -93,6 +95,24 @@ export async function PATCH(
         },
         { status: 403 }
       );
+    }
+
+    // Row-level optimistic lock: prevent stale overwrites from concurrent editors
+    if (clientUpdatedAt && (transcription as any).updated_at) {
+      const serverTs = new Date((transcription as any).updated_at).getTime();
+      const clientTs = new Date(clientUpdatedAt).getTime();
+      // 2-second tolerance covers auto-save timing jitter
+      if (serverTs > clientTs && Math.abs(serverTs - clientTs) > 2000) {
+        return NextResponse.json(
+          {
+            error: 'Transcript has been modified by another user',
+            code: 'STALE_DATA',
+            serverUpdatedAt: (transcription as any).updated_at,
+            details: { message: 'Please reload the page to get the latest version before saving.' },
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
@@ -184,6 +204,27 @@ export async function PATCH(
         console.error('Error creating transcription edits:', editError);
         // Continue anyway - edits are logged but not critical
       }
+
+      // Wire integrity chain: snapshot before the first edit of each session
+      const isFirstSave = !getReviewSession((transcription as any).flagged_segments)?.lastSavedAt;
+      if (isFirstSave) {
+        try {
+          const { createHash } = await import('crypto');
+          const snapshotHash = createHash('sha256')
+            .update(JSON.stringify(currentWords))
+            .digest('hex');
+          await supabase.from('transcript_integrity_chain').insert({
+            transcription_id: transcriptionId,
+            version_number: ((transcription as any).chain_version ?? 0) + 1,
+            transcript_hash: snapshotHash,
+            previous_hash: (transcription as any).current_integrity_hash ?? null,
+            created_by: session.user.id,
+          });
+        } catch (chainErr) {
+          console.error('Error inserting integrity chain entry:', chainErr);
+          // Non-critical — continue
+        }
+      }
     }
 
     // Calculate progress stats
@@ -225,7 +266,6 @@ export async function PATCH(
       audioPosition,
     };
 
-    // Get current flaggedSegments or create empty object
     // Update transcription (only words and review data, not base text)
     // Store review session in flagged_segments for resume functionality
     await updateTranscript(supabase, transcriptionId, {
@@ -260,9 +300,11 @@ export async function PATCH(
       }
     }
 
+    const savedAt = new Date().toISOString();
     return NextResponse.json({
       success: true,
-      savedAt: new Date().toISOString(),
+      savedAt,
+      updatedAt: savedAt, // Echo back for client-side optimistic lock tracking
       correctionCount: corrections.length,
       reviewedCount: reviewedFlagged,
       correctedCount,
