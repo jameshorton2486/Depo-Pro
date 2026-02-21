@@ -72,15 +72,22 @@ export const GET = withRequestLogging(async (
 
     // Get full transcript with content
     const supabase = await createSupabaseServerClient();
-    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, {
+      verifyAccessForUserId: session.user.id,
+    });
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
     // Check access: Creator or Assigned Scopist
-    const isCreator = transcript.job.createdById === session.user.id;
-    const isAssignedScopist = transcript.job.assignments.length > 0;
+    const isCreator =
+      transcript.job.createdById === session.user.id ||
+      transcript.job.created_by_id === session.user.id;
+    const isAssignedScopist =
+      transcript.job.scopist_id === session.user.id ||
+      (Array.isArray(transcript.job.assignments) &&
+        transcript.job.assignments.some((assignment: any) => assignment.scopist_id === session.user.id));
 
     if (!isCreator && !isAssignedScopist && session.user.role !== 'ADMIN') {
       // Log access denied
@@ -166,14 +173,19 @@ export const PATCH = withRequestLogging(async (
 
     // Verify transcript exists and user has access
     const supabase = await createSupabaseServerClient();
-    const existingTranscript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
+    const existingTranscript = await getTranscriptWithTokensAndJob(supabase, transcriptId, {
+      verifyAccessForUserId: session.user.id,
+    });
 
     if (!existingTranscript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
     // Check if user is the creator
-    if (existingTranscript.job.createdById !== session.user.id) {
+    if (
+      existingTranscript.job.createdById !== session.user.id &&
+      existingTranscript.job.created_by_id !== session.user.id
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -257,14 +269,21 @@ export const PUT = withRequestLogging(async (
 
     // Verify access
     const supabase = await createSupabaseServerClient();
-    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, {
+      verifyAccessForUserId: session.user.id,
+    });
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    const isCreator = transcript.job.createdById === session.user.id;
-    const isAssignedScopist = transcript.job.assignments.length > 0;
+    const isCreator =
+      transcript.job.createdById === session.user.id ||
+      transcript.job.created_by_id === session.user.id;
+    const isAssignedScopist =
+      transcript.job.scopist_id === session.user.id ||
+      (Array.isArray(transcript.job.assignments) &&
+        transcript.job.assignments.some((assignment: any) => assignment.scopist_id === session.user.id));
 
     if (!isCreator && !isAssignedScopist && session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
