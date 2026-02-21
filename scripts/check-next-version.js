@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
  * Version Guard Script
- * Enforces Next.js 15.0.7 exactly (locked version - patched for CVE-2025-66478)
+ * Enforces Next.js 16.1.6 exactly (upgraded for route group build fix)
  * Run: node scripts/check-next-version.js
- * 
+ *
  * This script checks:
- * 1. package.json declares Next.js 15.0.3 exactly (no caret/range)
- * 2. package-lock.json resolves to 15.0.3 exactly
+ * 1. package.json declares Next.js 16.1.6 exactly (no caret/range)
+ * 2. package-lock.json resolves to 16.1.6 exactly
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const REQUIRED_VERSION = '15.0.7';
+const REQUIRED_VERSION = '16.1.6';
 const rootDir = path.join(__dirname, '..');
 const pkgPath = path.join(rootDir, 'package.json');
 const lockPath = path.join(rootDir, 'package-lock.json');
