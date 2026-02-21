@@ -10,6 +10,7 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { requireAuthV2 } from '@/lib/permissions/api-guards';
 import { UserRole } from '@/lib/enums';
 import type {
   AuditLogQuery} from '@/lib/audit-service';
@@ -145,6 +146,9 @@ export async function GET(request: NextRequest) {
 // =============================================================================
 
 export async function POST() {
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
+
   return NextResponse.json(
     { error: 'Audit logs cannot be created via API' },
     { status: 405 }
@@ -156,6 +160,9 @@ export async function POST() {
 // =============================================================================
 
 export async function DELETE() {
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
+
   return NextResponse.json(
     { error: 'Audit logs cannot be deleted' },
     { status: 405 }
@@ -167,6 +174,9 @@ export async function DELETE() {
 // =============================================================================
 
 export async function PATCH() {
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
+
   return NextResponse.json(
     { error: 'Audit logs cannot be modified' },
     { status: 405 }
@@ -174,6 +184,9 @@ export async function PATCH() {
 }
 
 export async function PUT() {
+  const auth = await requireAuthV2();
+  if (!auth.authorized) return auth.response;
+
   return NextResponse.json(
     { error: 'Audit logs cannot be modified' },
     { status: 405 }

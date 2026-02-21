@@ -8,6 +8,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { JobStatus } from '@/types/schema-enums';
 import type { Database } from '@/types/supabase-generated';
+import { getUserOrgIds, userHasJobAccess } from './org-access';
 
 type JobInsert = Database['public']['Tables']['jobs']['Insert'];
 type _JobUpdate = Database['public']['Tables']['jobs']['Update'];
@@ -26,11 +27,18 @@ export async function listJobs(
 
   let supabase: any;
   let filters: any;
+  let userId: string | undefined;
+  let userRole: string | undefined;
 
   if (isOldPattern) {
     supabase = supabaseOrFilters;
-    // 4-arg: (supabase, userId, userRole, filters) => use maybeFilters; 2-arg: (supabase, filters) => use maybeUserIdOrFilters
-    filters = (maybeFilters !== undefined ? maybeFilters : maybeUserIdOrFilters) || {};
+    if (maybeFilters !== undefined) {
+      userId = maybeUserIdOrFilters as string;
+      userRole = maybeRoleOrFilters as string;
+      filters = maybeFilters || {};
+    } else {
+      filters = maybeUserIdOrFilters || {};
+    }
   } else {
     supabase = await createClient();
     filters = supabaseOrFilters || {};
@@ -41,6 +49,24 @@ export async function listJobs(
     .select('*', { count: 'exact' })
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
+
+  if (userId) {
+    if (userRole === 'SUPER_ADMIN') {
+      // SUPER_ADMIN has global visibility.
+    } else {
+      const orgIds = await getUserOrgIds(supabase, userId);
+      if (orgIds.length === 0) {
+        return isOldPattern ? { jobs: [], count: 0, totalCount: 0, pageCount: 0 } : { data: [], count: 0 };
+      }
+      if (userRole === 'REPORTER' || userRole === 'COURT_REPORTER') {
+        query = query.or(`reporter_id.eq.${userId},created_by_id.eq.${userId}`);
+      } else if (userRole === 'SCOPIST') {
+        query = query.eq('scopist_id', userId);
+      } else {
+        query = query.in('firm_id', orgIds);
+      }
+    }
+  }
 
   if (filters.status) {
     query = query.eq('status', filters.status);
@@ -127,7 +153,23 @@ export async function getJobById(
     .is('deleted_at', null)
     .single();
 
-  // Old pattern returns data directly, new pattern returns { data, error }
+  const job = result.data;
+  const verifyUserId = _options?.verifyAccessForUserId as string | undefined;
+
+  if (verifyUserId && job && !result.error) {
+    const hasAccess = await userHasJobAccess(supabase, verifyUserId, {
+      firm_id: job.firm_id,
+      org_id: (job as any).org_id,
+      reporter_id: job.reporter_id,
+      scopist_id: job.scopist_id,
+      created_by_id: (job as any).created_by_id,
+    });
+    if (!hasAccess) {
+      if (isOldPattern) return null;
+      return { data: null, error: { message: 'Access denied', code: 'PGRST116' } };
+    }
+  }
+
   return isOldPattern ? result.data : result;
 }
 
@@ -471,9 +513,10 @@ export async function deleteJobAssignment(
  */
 export async function getJobForAccessCheck(
   supabaseOrId: any,
-  _maybeId?: string
+  _maybeId?: string,
+  options?: Record<string, unknown>
 ): Promise<any> {
-  return getJobById(supabaseOrId, _maybeId);
+  return getJobById(supabaseOrId, _maybeId, options);
 }
 
 /**
@@ -515,10 +558,10 @@ export async function isUserAssignedToJob(
  */
 export async function getJobWithAssignments(
   supabaseOrId: any,
-  _maybeId?: string
+  _maybeId?: string,
+  options?: Record<string, unknown>
 ): Promise<any> {
-  // Just call getJobById - scopist is already included
-  return getJobById(supabaseOrId, _maybeId);
+  return getJobById(supabaseOrId, _maybeId, options);
 }
 
 /**

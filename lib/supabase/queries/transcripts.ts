@@ -7,6 +7,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { SupabaseDbClient } from './_scope';
+import { userHasJobAccess } from './org-access';
 
 /**
  * NOTE: v1.0 'transcripts' table removed in v1.3
@@ -226,6 +227,10 @@ export async function getTranscriptWithTokensAndJob(
   const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
   const supabase = isOldPattern ? supabaseOrId : await createClient();
   const id = isOldPattern ? _maybeId : supabaseOrId;
+  const options = isOldPattern
+    ? (typeof _opts === 'object' && _opts !== null ? _opts : { verifyAccessForUserId: _opts })
+    : (_maybeId ?? {});
+  const verifyUserId: string | undefined = options?.verifyAccessForUserId;
 
   const result = await supabase
     .from('transcriptions')
@@ -235,6 +240,22 @@ export async function getTranscriptWithTokensAndJob(
     `)
     .eq('id', id)
     .single();
+
+  if (!result.error && result.data && verifyUserId) {
+    const job = result.data.job as any;
+    const hasAccess = await userHasJobAccess(supabase, verifyUserId, {
+      firm_id: job?.firm_id ?? null,
+      org_id: job?.org_id ?? null,
+      reporter_id: job?.reporter_id ?? null,
+      scopist_id: job?.scopist_id ?? null,
+      created_by_id: job?.created_by_id ?? null,
+    });
+
+    if (!hasAccess) {
+      if (isOldPattern) return null;
+      return { data: null, error: { message: 'Access denied', code: 'PGRST116' } };
+    }
+  }
 
   return isOldPattern ? result.data : result;
 }
