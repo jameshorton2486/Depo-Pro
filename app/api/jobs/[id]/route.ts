@@ -82,20 +82,11 @@ export const GET = withRequestLogging(async (
       includeFiles: includes.includes('files'),
       includeTranscripts: true,
       includeTranscription: includes.includes('transcription'),
+      verifyAccessForUserId: session.user.id,
     });
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    // 🔒 Security: Verify access rights
-    const hasAccess =
-      session.user.role === 'ADMIN' ||
-      job.created_by_id === session.user.id ||
-      (job.assignments && job.assignments.some((a: any) => a.scopist_id === session.user.id));
-
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Map snake_case to camelCase for response
@@ -157,7 +148,9 @@ export const PUT = withRequestLogging(async (
     const supabase = await createSupabaseServerClient();
 
     // Check if job exists and user has access
-    const existingJob = await getJobForAccessCheck(supabase, id);
+    const existingJob = await getJobForAccessCheck(supabase, id, {
+      verifyAccessForUserId: session.user.id,
+    });
 
     if (!existingJob) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -195,6 +188,7 @@ export const PUT = withRequestLogging(async (
     // Fetch updated job with createdBy
     const job = await getJobById(supabase, id, {
       includeCreatedBy: true,
+      verifyAccessForUserId: session.user.id,
     });
 
     if (!job) {
@@ -286,7 +280,9 @@ export const PATCH = withRequestLogging(async (
 
     const supabase = await createSupabaseServerClient();
 
-    const job = await getJobWithAssignments(supabase, id);
+    const job = await getJobWithAssignments(supabase, id, {
+      verifyAccessForUserId: session.user.id,
+    });
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -356,7 +352,9 @@ export const DELETE = withRequestLogging(async (
     const supabase = await createSupabaseServerClient();
 
     // Check if job exists and user has access
-    const existingJob = await getJobForAccessCheck(supabase, id);
+    const existingJob = await getJobForAccessCheck(supabase, id, {
+      verifyAccessForUserId: session.user.id,
+    });
 
     if (!existingJob) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
