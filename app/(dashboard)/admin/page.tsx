@@ -1,6 +1,6 @@
 // app/(dashboard)/admin/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   Users,
@@ -20,15 +20,13 @@ import { Button } from '@/components/ui/button';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
-  const user = session.user as { id: string; role: string; firmId?: string };
-
-  if (user.role !== 'ADMIN') {
+  if (currentUser.role !== 'ADMIN') {
     redirect('/dashboard');
   }
 

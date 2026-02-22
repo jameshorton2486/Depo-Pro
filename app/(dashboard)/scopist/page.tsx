@@ -1,6 +1,6 @@
 // app/(dashboard)/scopist/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
@@ -20,15 +20,13 @@ import type { FlaggedWord } from '@/types/transcript';
 export const dynamic = 'force-dynamic';
 
 export default async function ScopistDashboard() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
-  const user = session.user as { id: string; role: string; firmId?: string };
-
-  if (user.role !== 'SCOPIST' && user.role !== 'ADMIN') {
+  if (currentUser.role !== 'SCOPIST' && currentUser.role !== 'ADMIN') {
     redirect('/dashboard');
   }
 
@@ -40,7 +38,7 @@ export default async function ScopistDashboard() {
   const { data: assignments } = await supabase
     .from('job_assignments')
     .select('job_id, status, submitted_at')
-    .eq('scopist_id', user.id);
+    .eq('scopist_id', currentUser.id);
 
   const assignmentJobIds = assignments?.map(a => a.job_id) || [];
 
@@ -91,7 +89,7 @@ export default async function ScopistDashboard() {
             .from('job_assignments')
             .select('job_id, status')
             .in('job_id', assignedJobIdsForTranscripts)
-            .eq('scopist_id', user.id)
+            .eq('scopist_id', currentUser.id)
         : Promise.resolve({ data: [] }),
     ]);
 

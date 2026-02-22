@@ -6,7 +6,7 @@
 // Loads: Job data, transcription, audio file URL, saved session
 
 import { notFound, redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -122,8 +122,8 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   const { id: jobId } = await params;
 
   // Check authentication
-  const session = await auth();
-  if (!session?.user?.id) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
     redirect('/login');
   }
 
@@ -143,9 +143,9 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   }
 
   // Check access: user must be the creator OR an assigned scopist OR admin
-  const isCreator = job.reporter_id === session.user.id;
-  const isAssignedScopist = (job.assignments || []).some((a: any) => a.scopist_id === session.user.id);
-  const isAdmin = session.user.role === Role.ADMIN;
+  const isCreator = job.reporter_id === currentUser.id;
+  const isAssignedScopist = (job.assignments || []).some((a: any) => a.scopist_id === currentUser.id);
+  const isAdmin = currentUser.role === Role.ADMIN;
 
   if (!isCreator && !isAssignedScopist && !isAdmin) {
     redirect('/dashboard?error=unauthorized');
@@ -239,7 +239,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     if (!lockError && lockData) {
       lockInfo = {
         locked: true,
-        lockedByMe: lockData.locked_by_id === session.user.id,
+        lockedByMe: lockData.locked_by_id === currentUser.id,
         lockedByName: lockData.locked_by_name || 'Someone',
       };
     }
@@ -262,7 +262,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       initialFlaggedWords={initialFlaggedWords as any}
       initialStats={initialStats}
       lockInfo={lockInfo}
-      userId={session.user.id}
+      userId={currentUser.id}
       confidenceAnalytics={confidenceAnalytics}
       riskScoreResult={riskScoreResult}
     />

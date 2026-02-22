@@ -1,20 +1,18 @@
 // app/(dashboard)/admin/rx-queue/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { RxQueueManager } from '@/components/billing/rx-queue-manager';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RxQueuePage() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
-  const user = session.user as { id: string; role: string };
-
-  if (user.role !== 'ADMIN' && user.role !== 'REPORTER') {
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'REPORTER') {
     redirect('/dashboard');
   }
 

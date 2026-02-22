@@ -6,19 +6,19 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { ActionConsole } from '@/components/admin/action-console';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminActionsPage() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
-  if (session.user.role !== 'ADMIN') {
+  if (currentUser.role !== 'ADMIN') {
     redirect('/dashboard');
   }
 

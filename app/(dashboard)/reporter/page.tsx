@@ -1,6 +1,6 @@
 // app/(dashboard)/reporter/page.tsx
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import {
@@ -21,15 +21,13 @@ import { getCachedJobCounts, getCachedRecentJobs } from '@/lib/cache/dashboard';
 export const dynamic = 'force-dynamic';
 
 export default async function ReporterDashboard() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
-  const user = session.user as { id: string; role: string; firmId?: string };
-
-  if (user.role !== 'REPORTER' && user.role !== 'ADMIN') {
+  if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN') {
     redirect('/dashboard');
   }
 
@@ -38,19 +36,19 @@ export default async function ReporterDashboard() {
   const supabase = await createSupabaseServerClient();
 
   const [jobCounts, recentJobsResult] = await Promise.all([
-    user.firmId ? getCachedJobCounts(user.firmId) : Promise.resolve({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 }),
-    user.firmId
-      ? getCachedRecentJobs(user.firmId, 5)
+    currentUser.firmId ? getCachedJobCounts(currentUser.firmId) : Promise.resolve({ total: 0, pending: 0, processing: 0, completed: 0, failed: 0 }),
+    currentUser.firmId
+      ? getCachedRecentJobs(currentUser.firmId, 5)
       : supabase
           .from('jobs')
           .select('id, title, case_name, status, updated_at')
-          .eq('created_by_id', user.id)
+          .eq('created_by_id', currentUser.id)
           .order('updated_at', { ascending: false })
           .limit(5),
   ]);
 
   // Transform recentJobs to match expected format for component
-  const recentJobs = user.firmId
+  const recentJobs = currentUser.firmId
     ? recentJobsResult
     : (Array.isArray(recentJobsResult) ? recentJobsResult : (recentJobsResult?.data || [])).map((job: any) => ({
         id: job.id,
@@ -229,5 +227,4 @@ export default async function ReporterDashboard() {
     </div>
   );
 }
-
 
