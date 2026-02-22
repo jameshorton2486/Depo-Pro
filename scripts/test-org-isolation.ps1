@@ -35,12 +35,17 @@ function Invoke-PsqlJson {
     throw "psql command failed"
   }
 
-  $text = ($raw | Out-String).Trim()
-  if ([string]::IsNullOrWhiteSpace($text)) {
+  $lines = @($raw | ForEach-Object { $_.ToString().Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  if ($lines.Count -eq 0) {
     return $null
   }
 
-  return ($text | ConvertFrom-Json)
+  $jsonCandidate = ($lines | Where-Object { $_ -match '^[\{\[]' } | Select-Object -Last 1)
+  if ([string]::IsNullOrWhiteSpace($jsonCandidate)) {
+    return $null
+  }
+
+  return ($jsonCandidate | ConvertFrom-Json)
 }
 
 function Resolve-OrgExpression {
