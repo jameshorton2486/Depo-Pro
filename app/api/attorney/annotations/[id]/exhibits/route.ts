@@ -5,7 +5,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getExhibitById } from '@/lib/supabase/queries/exhibits';
 import { Role } from '@/lib/constants';
@@ -19,13 +19,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getCurrentUser();
+    const currentUser = await getCurrentUser();
 
-    if (!session) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+    if (currentUser.role !== Role.ATTORNEY && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -78,7 +78,7 @@ export async function POST(
           .insert({
             annotation_id: annotationId,
             exhibit_id: exhibitId,
-            created_by_id: session.user.id,
+            created_by_id: currentUser.id,
           })
           .select()
           .single();
@@ -118,13 +118,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getCurrentUser();
+    const currentUser = await getCurrentUser();
 
-    if (!session) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+    if (currentUser.role !== Role.ATTORNEY && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

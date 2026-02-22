@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   getMedicalRecordById,
@@ -17,8 +17,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string; recordId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -45,14 +45,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; recordId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { recordId } = await params;
-    const user = session.user as { id: string; role: string };
-    const supabase = await createSupabaseServerClient();
+    const { recordId } = await params;    const supabase = await createSupabaseServerClient();
 
     const record = await getMedicalRecordById(supabase, recordId);
     if (!record) {
@@ -60,7 +58,7 @@ export async function DELETE(
     }
 
     // Only uploader or admin can delete
-    if (record.uploaded_by_id !== user.id && user.role !== 'ADMIN') {
+    if (record.uploaded_by_id !== currentUser.id && currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

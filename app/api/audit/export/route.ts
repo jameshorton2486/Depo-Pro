@@ -8,7 +8,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { listAuditLogs, createAuditLog } from '@/lib/supabase/queries/audit';
@@ -38,9 +38,9 @@ const exportSchema = z.object({
 // =============================================================================
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!currentUser) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   // Only admins can export full audit logs
   // Other roles can only export their own actions
-  const isAdmin = session.user.role === UserRole.ADMIN;
+  const isAdmin = currentUser.role === UserRole.ADMIN;
 
   try {
     const body = await request.json();
@@ -65,13 +65,13 @@ export async function POST(request: NextRequest) {
 
     // Non-admins: scope to their firm
     if (!isAdmin) {
-      if (!session.user.firmId) {
+      if (!currentUser.firmId) {
         return NextResponse.json(
           { error: 'Firm context required' },
           { status: 403 }
         );
       }
-      filters.firm_id = session.user.firmId;
+      filters.firm_id = currentUser.firmId;
     }
 
     // Optional filters - query without action/target_type filters first
@@ -135,8 +135,8 @@ export async function POST(request: NextRequest) {
 
     // Log the export action itself
     await createAuditLog(supabase, {
-      actor_user_id: session.user.id,
-      firm_id: session.user.firmId || null,
+      actor_user_id: currentUser.id,
+      firm_id: currentUser.firmId || null,
       action: AuditAction.DATA_EXPORT_REQUESTED,
       target_type: AuditTargetType.SYSTEM,
       target_id: 'audit-logs',
@@ -173,9 +173,9 @@ export async function POST(request: NextRequest) {
         id: log.id,
         timestamp: log.created_at,
         actor: log.user ? {
-          id: log.user.id,
+          id: log.currentUser.id,
           name: `${log.user.firstName} ${log.user.lastName}`,
-          email: log.user.email,
+          email: log.currentUser.email,
         } : null,
         firmId: log.firm_id,
         action: log.action,

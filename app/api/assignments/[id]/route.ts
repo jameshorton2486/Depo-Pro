@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getAssignmentById, getJobById, updateJobAssignment, deleteJobAssignment } from '@/lib/supabase/queries/jobs';
 import { updateAssignmentSchema } from '@/lib/validations/job';
@@ -22,9 +22,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -50,9 +50,9 @@ export async function PATCH(
 
     // 🔒 Security: Scopist can update their own assignments, reporter/admin can update any
     const canUpdate =
-      session.user.role === 'ADMIN' ||
-      assignment.scopist_id === session.user.id ||
-      job.created_by_id === session.user.id;
+      currentUser.role === 'ADMIN' ||
+      assignment.scopist_id === currentUser.id ||
+      job.created_by_id === currentUser.id;
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -77,7 +77,7 @@ export async function PATCH(
 
     const updatedAssignment = await updateJobAssignment(supabase, id, updateData);
 
-    logger.info(`Assignment updated: ${id} to ${validatedData.status} by user ${session.user.id}`);
+    logger.info(`Assignment updated: ${id} to ${validatedData.status} by user ${currentUser.id}`);
 
     return NextResponse.json(updatedAssignment);
 
@@ -106,9 +106,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -134,8 +134,8 @@ export async function DELETE(
 
     // 🔒 Security: Only reporter or admin can delete assignments
     const canDelete =
-      session.user.role === 'ADMIN' ||
-      job.created_by_id === session.user.id;
+      currentUser.role === 'ADMIN' ||
+      job.created_by_id === currentUser.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -143,7 +143,7 @@ export async function DELETE(
 
     await deleteJobAssignment(supabase, id);
 
-    logger.info(`Assignment deleted: ${id} by user ${session.user.id}`);
+    logger.info(`Assignment deleted: ${id} by user ${currentUser.id}`);
 
     return NextResponse.json({ success: true });
 

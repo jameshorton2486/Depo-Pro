@@ -6,7 +6,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { z } from 'zod';
@@ -45,9 +45,9 @@ const querySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -58,15 +58,15 @@ export async function GET(request: NextRequest) {
     });
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -74,11 +74,11 @@ export async function GET(request: NextRequest) {
     let requestsQuery = supabase
       .from('booking_requests')
       .select('*')
-      .eq('firm_id', user.firmId);
+      .eq('firm_id', currentUser.firmId);
 
     // Attorneys only see their own requests
-    if (user.role === 'ATTORNEY') {
-      requestsQuery = requestsQuery.eq('requested_by_id', user.id);
+    if (currentUser.role === 'ATTORNEY') {
+      requestsQuery = requestsQuery.eq('requested_by_id', currentUser.id);
     } else if (query.requestedById) {
       requestsQuery = requestsQuery.eq('requested_by_id', query.requestedById);
     }
@@ -149,27 +149,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
     // Typically attorneys create requests, but agency can too
-    if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
+    if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(currentUser.role)) {
       return NextResponse.json({ error: 'Only attorneys can submit booking requests' }, { status: 403 });
     }
 
@@ -187,8 +187,8 @@ export async function POST(request: NextRequest) {
     const { data: bookingRequest, error: createError } = await supabase
       .from('booking_requests')
       .insert({
-        firm_id: user.firmId,
-        requested_by_id: user.id,
+        firm_id: currentUser.firmId,
+        requested_by_id: currentUser.id,
         case_name: data.caseName,
         case_number: data.caseNumber || null,
         preferred_date: new Date(data.preferredDate).toISOString(),
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get requested by info
-    const requestedBy = await getUserById(supabase, user.id);
+    const requestedBy = await getUserById(supabase, currentUser.id);
 
     // TODO: Notify agency of new booking request
     // await notifyAgencyOfNewRequest(bookingRequest);
@@ -241,3 +241,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
   }
 }
+

@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptBookmarks, createTranscriptBookmark } from '@/lib/supabase/queries/transcripts';
 
@@ -10,9 +10,9 @@ interface Props {
 
 export async function POST(request: NextRequest, { params }: Props) {
   const { id } = await params;
-  const session = await auth();
+  const currentUser = await getCurrentUser();
   
-  if (!session?.user?.id || !session?.user?.email) {
+  if (!currentUser?.id || !currentUser?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest, { params }: Props) {
   const supabase = await createSupabaseServerClient();
   const bookmark = await createTranscriptBookmark(supabase, {
     transcription_id: id,
-    user_id: session.user.id,
+    user_id: currentUser.id,
     line_number: lineNumber,
     label: label || null,
   });
@@ -32,14 +32,14 @@ export async function POST(request: NextRequest, { params }: Props) {
 
 export async function GET(_request: NextRequest, { params }: Props) {
   const { id } = await params;
-  const session = await auth();
+  const currentUser = await getCurrentUser();
   
-  if (!session?.user?.id) {
+  if (!currentUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = await createSupabaseServerClient();
-  const bookmarks = await getTranscriptBookmarks(supabase, id, session.user.id);
+  const bookmarks = await getTranscriptBookmarks(supabase, id, currentUser.id);
 
   return NextResponse.json(bookmarks);
 }

@@ -10,13 +10,13 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { generateInvoicePreview } from '@/lib/services/invoice-preview-service';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getCurrentUser();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

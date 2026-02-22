@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import {
@@ -18,8 +18,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -49,14 +49,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId } = await params;
-    const user = session.user as { id: string; role: string };
-    const supabase = await createSupabaseServerClient();
+    const { id: jobId } = await params;    const supabase = await createSupabaseServerClient();
 
     // Verify job exists
     const job = await getJobById(supabase, jobId);
@@ -65,7 +63,7 @@ export async function POST(
     }
 
     // Only reporters and admins can upload medical records
-    if (!['ADMIN', 'REPORTER', 'COURT_REPORTER'].includes(user.role)) {
+    if (!['ADMIN', 'REPORTER', 'COURT_REPORTER'].includes(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -125,7 +123,7 @@ export async function POST(
       file_url: storagePath,
       file_size_bytes: file.size,
       mime_type: file.type,
-      uploaded_by_id: user.id,
+      uploaded_by_id: currentUser.id,
     });
 
     logger.info('[api/medical-records] Record created', {

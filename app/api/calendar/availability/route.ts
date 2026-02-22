@@ -6,7 +6,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { z } from 'zod';
@@ -39,9 +39,9 @@ const querySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -54,22 +54,22 @@ export async function GET(request: NextRequest) {
     });
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
     // Role-based access control: ADMIN and REPORTER can access availability
     // This matches the page-level permissions for /calendar/availability
     const allowedRoles = ['ADMIN', 'REPORTER', 'AGENCY'];
-    if (!allowedRoles.includes(user.role)) {
+    if (!allowedRoles.includes(currentUser.role)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -77,12 +77,12 @@ export async function GET(request: NextRequest) {
     let availabilityQuery = supabase
       .from('reporter_availability')
       .select('*')
-      .eq('firm_id', user.firmId);
+      .eq('firm_id', currentUser.firmId);
 
     // Role-based filtering
-    if (user.role === 'REPORTER') {
+    if (currentUser.role === 'REPORTER') {
       // Reporters can only see their own availability
-      availabilityQuery = availabilityQuery.eq('reporter_id', user.id);
+      availabilityQuery = availabilityQuery.eq('reporter_id', currentUser.id);
     } else if (query.reporterId) {
       // Agency/Admin can filter by specific reporter
       availabilityQuery = availabilityQuery.eq('reporter_id', query.reporterId);
@@ -176,29 +176,29 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
     // Role-based access control: ADMIN, REPORTER, and AGENCY can create availability
     // Reporters create their own, Admin/Agency can create for any reporter
     const allowedRoles = ['ADMIN', 'REPORTER', 'AGENCY'];
-    if (!allowedRoles.includes(user.role)) {
+    if (!allowedRoles.includes(currentUser.role)) {
       return NextResponse.json({ error: 'Insufficient permissions to set availability' }, { status: 403 });
     }
 
@@ -206,20 +206,20 @@ export async function POST(request: NextRequest) {
     const data = createAvailabilitySchema.parse(body);
 
     // Determine which reporter this is for
-    let reporterId = user.id;
+    let reporterId = currentUser.id;
     
-    if (['ADMIN', 'AGENCY'].includes(user.role) && body.reporterId) {
+    if (['ADMIN', 'AGENCY'].includes(currentUser.role) && body.reporterId) {
       // Verify reporter exists in same firm
       const reporterData = await getUserById(supabase, body.reporterId);
       
       if (!reporterData || 
-          (reporterData.user_metadata?.firmId !== user.firmId && reporterData.user_metadata?.firm_id !== user.firmId) ||
+          (reporterData.user_metadata?.firmId !== currentUser.firmId && reporterData.user_metadata?.firm_id !== currentUser.firmId) ||
           reporterData.user_metadata?.role !== 'REPORTER') {
         return NextResponse.json({ error: 'Reporter not found' }, { status: 404 });
       }
       
       reporterId = body.reporterId;
-    } else if (user.role !== 'REPORTER') {
+    } else if (currentUser.role !== 'REPORTER') {
       return NextResponse.json({ error: 'Must specify reporterId' }, { status: 400 });
     }
 
@@ -260,7 +260,7 @@ export async function POST(request: NextRequest) {
       .from('reporter_availability')
       .insert({
         reporter_id: reporterId,
-        firm_id: user.firmId,
+        firm_id: currentUser.firmId,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         timezone: data.timezone,
@@ -307,22 +307,22 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -339,13 +339,13 @@ export async function DELETE(request: NextRequest) {
     let deleteQuery = supabase
       .from('reporter_availability')
       .delete()
-      .eq('firm_id', user.firmId)
+      .eq('firm_id', currentUser.firmId)
       .gte('start_time', new Date(start).toISOString())
       .lte('end_time', new Date(end).toISOString());
 
     // Reporters can only delete their own
-    if (user.role === 'REPORTER') {
-      deleteQuery = deleteQuery.eq('reporter_id', user.id);
+    if (currentUser.role === 'REPORTER') {
+      deleteQuery = deleteQuery.eq('reporter_id', currentUser.id);
     } else if (reporterId) {
       deleteQuery = deleteQuery.eq('reporter_id', reporterId);
     }
@@ -366,3 +366,4 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete availability' }, { status: 500 });
   }
 }
+

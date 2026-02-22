@@ -5,7 +5,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { FEATURES } from '@/lib/feature-flags';
@@ -43,30 +43,30 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
+    const _user = {
+      id: currentUser.id,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
-      role: session.user.role,
+      role: currentUser.role,
     };
 
     // Basic role check (ADMIN, AGENCY_OWNER, AGENCY_MANAGER can view)
     if (
-      user.role !== UserRole.ADMIN &&
-      user.role !== UserRole.AGENCY_OWNER &&
-      user.role !== UserRole.AGENCY_MANAGER
+      currentUser.role !== UserRole.ADMIN &&
+      currentUser.role !== UserRole.AGENCY_OWNER &&
+      currentUser.role !== UserRole.AGENCY_MANAGER
     ) {
       return NextResponse.json(
         { error: 'Insufficient permissions to view suggestions' },
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     // Build context
     const _context = {
-      firmId: user.firmId as string,
+      firmId: currentUser.firmId as string,
       eventType: data.eventType,
       requestedStart: data.requestedStart ? new Date(data.requestedStart) : undefined,
       requestedEnd: data.requestedEnd ? new Date(data.requestedEnd) : undefined,
@@ -132,30 +132,30 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ suggestions: [] }, { status: 200 });
   }
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
+    const _user = {
+      id: currentUser.id,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
-      role: session.user.role,
+      role: currentUser.role,
     };
 
     // Basic role check (ADMIN, AGENCY_OWNER, AGENCY_MANAGER can view)
     if (
-      user.role !== UserRole.ADMIN &&
-      user.role !== UserRole.AGENCY_OWNER &&
-      user.role !== UserRole.AGENCY_MANAGER
+      currentUser.role !== UserRole.ADMIN &&
+      currentUser.role !== UserRole.AGENCY_OWNER &&
+      currentUser.role !== UserRole.AGENCY_MANAGER
     ) {
       return NextResponse.json(
         { error: 'Insufficient permissions to view suggestions' },
@@ -173,4 +173,5 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch suggestions' }, { status: 500 });
   }
 }
+
 

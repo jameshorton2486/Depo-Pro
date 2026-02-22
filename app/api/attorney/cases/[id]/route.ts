@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { getCaseById } from '@/lib/supabase/queries/cases';
@@ -20,16 +20,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
 
     // Verify user is an attorney
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -41,7 +41,7 @@ export async function GET(
     }
 
     // Get case with access check
-    const caseData = await getCaseById(supabase, id, session.user.id);
+    const caseData = await getCaseById(supabase, id, currentUser.id);
 
     if (!caseData) {
       return NextResponse.json({ error: 'Case not found or access denied' }, { status: 404 });
@@ -172,7 +172,7 @@ export async function GET(
       .from('transcript_access')
       .select('transcription_id, access_level, expires_at, last_accessed_at')
       .in('transcription_id', transcriptIds)
-      .eq('user_id', session.user.id) : { data: [] };
+      .eq('user_id', currentUser.id) : { data: [] };
 
     const accessMap = new Map(
       (accessGrants || []).map((grant: any) => [grant.transcription_id, {

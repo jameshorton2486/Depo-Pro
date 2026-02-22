@@ -3,7 +3,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { deleteExhibitFiles } from '@/lib/exhibits/storage';
@@ -14,14 +14,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string; exhibitId: string }> },
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: jobId, exhibitId } = await params;
-    const user = session.user as { id: string; role: string };
 
     const supabase = await createSupabaseServerClient();
 
@@ -48,9 +47,9 @@ export async function GET(
 
     // Check permissions
     const hasAccess =
-      (job as any).created_by_id === user.id ||
-      ((job as any).assignments && (job as any).assignments.some((a: any) => a.scopist_id === user.id)) ||
-      user.role === 'ADMIN';
+      (job as any).created_by_id === currentUser.id ||
+      ((job as any).assignments && (job as any).assignments.some((a: any) => a.scopist_id === currentUser.id)) ||
+      currentUser.role === 'ADMIN';
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -72,14 +71,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; exhibitId: string }> },
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: jobId, exhibitId } = await params;
-    const user = session.user as { id: string; role: string };
 
     // Parse request body
     const body = await request.json();
@@ -115,8 +113,8 @@ export async function PATCH(
 
     // Check permissions (only reporter who created job, or admin can edit)
     const canEdit =
-      (job as any).created_by_id === user.id ||
-      user.role === 'ADMIN';
+      (job as any).created_by_id === currentUser.id ||
+      currentUser.role === 'ADMIN';
 
     if (!canEdit) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -150,14 +148,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; exhibitId: string }> },
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: jobId, exhibitId } = await params;
-    const user = session.user as { id: string; role: string };
 
     const supabase = await createSupabaseServerClient();
 
@@ -182,9 +179,9 @@ export async function DELETE(
 
     // Check permissions (only reporter who created job, admin, or creator can delete)
     const canDelete =
-      (job as any).created_by_id === user.id ||
-      exhibit.created_by_id === user.id ||
-      user.role === 'ADMIN';
+      (job as any).created_by_id === currentUser.id ||
+      exhibit.created_by_id === currentUser.id ||
+      currentUser.role === 'ADMIN';
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

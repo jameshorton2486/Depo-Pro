@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import {
@@ -20,8 +20,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -85,14 +85,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId } = await params;
-    const user = session.user as { id: string; role: string };
-    const supabase = await createSupabaseServerClient();
+    const { id: jobId } = await params;    const supabase = await createSupabaseServerClient();
 
     // Verify job exists
     const job = await getJobById(supabase, jobId);
@@ -136,7 +134,7 @@ export async function POST(
       source_type: 'MANUAL',
       source_document_name: body.source_document_name || null,
       confidence: 1.0,
-      created_by_id: user.id,
+      created_by_id: currentUser.id,
     });
 
     return NextResponse.json({ data: entry }, { status: 201 });

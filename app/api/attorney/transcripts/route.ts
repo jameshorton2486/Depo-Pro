@@ -5,7 +5,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Role } from '@/lib/constants';
 import { logger } from '@/lib/logger';
@@ -16,14 +16,14 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getCurrentUser();
+    const currentUser = await getCurrentUser();
 
-    if (!session) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Only attorneys and admins can access
-    if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+    if (currentUser.role !== Role.ATTORNEY && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const { data: transcripts, error: transcriptsError, count } = await supabase
       .from('attorney_transcripts')
       .select('*', { count: 'exact' })
-      .eq('uploaded_by_id', session.user.id)
+      .eq('uploaded_by_id', currentUser.id)
       .order('uploaded_at', { ascending: false })
       .range(offset, rangeTo);
 
@@ -100,13 +100,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: Request) {
   try {
-    const session = await getCurrentUser();
+    const currentUser = await getCurrentUser();
 
-    if (!session) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+    if (currentUser.role !== Role.ATTORNEY && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
         transcript_data: transcriptData,
         total_pages: totalPages,
         total_lines: totalLines,
-        uploaded_by_id: session.user.id,
+        uploaded_by_id: currentUser.id,
         status: 'NOT_REVIEWED',
       })
       .select()

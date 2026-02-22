@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const PENDING_TRANSCRIPTION_STATUSES = [
@@ -81,13 +81,13 @@ async function countCompletedThisMonth(firmId: string) {
 }
 
 export async function GET() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!currentUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const firmId = session.user.firmId;
+  const firmId = currentUser.firmId;
 
   if (!firmId) {
     return NextResponse.json({ error: 'Firm context required' }, { status: 403 });

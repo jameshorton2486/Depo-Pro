@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { Role } from '@/lib/constants';
@@ -17,13 +17,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getCurrentUser();
+    const currentUser = await getCurrentUser();
 
-    if (!session) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+    if (currentUser.role !== Role.ATTORNEY && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -42,7 +42,7 @@ export async function GET(
     }
 
     // Check access (only creator or admin)
-    if (transcript.uploaded_by_id !== session.user.id && session.user.role !== Role.ADMIN) {
+    if (transcript.uploaded_by_id !== currentUser.id && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

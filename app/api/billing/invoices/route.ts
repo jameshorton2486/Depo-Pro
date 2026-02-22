@@ -5,7 +5,7 @@
 
 import type { NextRequest} from "next/server";
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isBillingEnabled } from "@/lib/feature-flags";
 import { logger } from "@/lib/logger";
@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.firmId) {
+    if (!currentUser?.firmId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const { data: billingAccount } = await supabase
       .from('billing_accounts')
       .select('id')
-      .eq('firm_id', session.user.firmId)
+      .eq('firm_id', currentUser.firmId)
       .maybeSingle();
 
     if (!billingAccount) {

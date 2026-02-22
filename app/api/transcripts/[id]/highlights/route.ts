@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptHighlights } from '@/lib/supabase/queries/transcripts';
 
@@ -10,9 +10,9 @@ interface Props {
 
 export async function POST(request: NextRequest, { params }: Props) {
   const { id } = await params;
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user?.id || !session?.user?.email) {
+  if (!currentUser?.id || !currentUser?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     .from('transcript_share')
     .select()
     .eq('transcript_id', id)
-    .eq('recipient_email', session.user.email)
+    .eq('recipient_email', currentUser.email)
     .eq('status', 'ACTIVE')
     .in('access_level', ['COMMENT', 'EDIT'])
     .maybeSingle();
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     .from('transcript_access')
     .select()
     .eq('transcript_id', id)
-    .eq('user_id', session.user.id)
+    .eq('user_id', currentUser.id)
     .maybeSingle();
 
   if (!share && (!directAccess || (directAccess as any).access_level === 'VIEW')) {
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     .from('transcript_highlight')
     .insert({
       transcript_id: id,
-      user_id: session.user.id,
+      user_id: currentUser.id,
       start_index: startIndex,
       end_index: endIndex,
       color,
@@ -65,14 +65,14 @@ export async function POST(request: NextRequest, { params }: Props) {
 
 export async function GET(_request: NextRequest, { params }: Props) {
   const { id } = await params;
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!currentUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = await createSupabaseServerClient();
-  const highlights = await getTranscriptHighlights(supabase, id, session.user.id);
+  const highlights = await getTranscriptHighlights(supabase, id, currentUser.id);
 
   return NextResponse.json(highlights);
 }

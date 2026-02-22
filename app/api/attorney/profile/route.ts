@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { z } from 'zod';
@@ -31,14 +31,14 @@ const attorneyProfileSchema = z.object({
 // Returns the attorney's profile
 export async function GET(_request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -53,7 +53,7 @@ export async function GET(_request: NextRequest) {
     const { data: attorneyProfile } = await supabase
       .from('attorney_profiles')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', currentUser.id)
       .maybeSingle();
 
     return NextResponse.json({
@@ -81,14 +81,14 @@ export async function GET(_request: NextRequest) {
 // Creates attorney profile (onboarding)
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const { data: existingProfile } = await supabase
       .from('attorney_profiles')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', currentUser.id)
       .maybeSingle();
 
     if (existingProfile) {
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('attorney_profiles')
       .insert({
-        user_id: session.user.id,
+        user_id: currentUser.id,
         bar_number: data.barNumber || null,
         bar_state: data.barState || null,
         firm_name: data.firmName || null,
@@ -166,14 +166,14 @@ export async function POST(request: NextRequest) {
 // Updates attorney profile
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -188,7 +188,7 @@ export async function PATCH(request: NextRequest) {
     const { data: existingProfile } = await supabase
       .from('attorney_profiles')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', currentUser.id)
       .maybeSingle();
 
     if (!existingProfile) {
@@ -228,7 +228,7 @@ export async function PATCH(request: NextRequest) {
     const { data: profile, error: updateError } = await supabase
       .from('attorney_profiles')
       .update(updates)
-      .eq('user_id', session.user.id)
+      .eq('user_id', currentUser.id)
       .select()
       .single();
 

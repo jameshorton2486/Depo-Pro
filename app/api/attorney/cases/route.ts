@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listCases, type CaseFilter, type CaseSort } from '@/lib/supabase/queries/cases';
 
@@ -15,21 +15,21 @@ import { listCases, type CaseFilter, type CaseSort } from '@/lib/supabase/querie
 // Returns paginated list of cases the attorney has access to
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify user is an attorney
-    const userRole = session.user.role;
+    const userRole = currentUser.role;
 
     if (userRole !== 'ATTORNEY') {
       return NextResponse.json({ error: 'Attorney access required' }, { status: 403 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userEmail = session.user.email || '';
+    const userEmail = currentUser.email || '';
     
     // Parse query parameters
     const { searchParams } = new URL(request.url);
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     // Get cases
     const { cases: casesWithRole, totalCount } = await listCases(
       supabase,
-      session.user.id,
+      currentUser.id,
       userEmail,
       filters,
       sort,

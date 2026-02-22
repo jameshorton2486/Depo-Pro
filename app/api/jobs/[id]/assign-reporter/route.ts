@@ -4,7 +4,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById, updateJob } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
@@ -26,8 +26,8 @@ export async function POST(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -42,13 +42,13 @@ export async function POST(
     const { reporterId } = validation.data;
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 403 });
     }
 
-    const user = {
+    const _user = {
       id: userData.id,
       role: userData.user_metadata?.role as string,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
@@ -56,7 +56,7 @@ export async function POST(
       lastName: userData.user_metadata?.lastName || '',
     };
 
-    if (!user.firmId) {
+    if (!currentUser.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
@@ -67,7 +67,7 @@ export async function POST(
     }
 
     const jobFirmId = (job as any).firm_id || (job as any).firmId;
-    if (!canAssignReporter(user.role, user.firmId, jobFirmId ?? '', user.id, reporterId)) {
+    if (!canAssignReporter(currentUser.role, currentUser.firmId, jobFirmId ?? '', currentUser.id, reporterId)) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
@@ -108,7 +108,7 @@ export async function POST(
     }
 
     await logAudit({
-      userId: session.user.id,
+      userId: currentUser.id,
       action: AuditAction.JOB_ASSIGN_REPORTER,
       entityType: AuditEntityType.Job,
       entityId: jobId,
@@ -136,21 +136,21 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: jobId } = await context.params;
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 403 });
     }
 
-    const user = {
+    const _user = {
       id: userData.id,
       role: userData.user_metadata?.role as string,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
@@ -158,7 +158,7 @@ export async function DELETE(
       lastName: userData.user_metadata?.lastName || '',
     };
 
-    if (!user.firmId || !['ADMIN', 'AGENCY'].includes(user.role)) {
+    if (!currentUser.firmId || !['ADMIN', 'AGENCY'].includes(currentUser.role)) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
@@ -169,7 +169,7 @@ export async function DELETE(
     }
 
     const jobFirmId = (job as any).firm_id || (job as any).firmId;
-    if (user.role !== 'ADMIN' && user.firmId !== jobFirmId) {
+    if (currentUser.role !== 'ADMIN' && currentUser.firmId !== jobFirmId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -190,7 +190,7 @@ export async function DELETE(
     }
 
     await logAudit({
-      userId: session.user.id,
+      userId: currentUser.id,
       action: AuditAction.JOB_UNASSIGN_REPORTER,
       entityType: AuditEntityType.Job,
       entityId: jobId,
@@ -204,4 +204,5 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
+
 

@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptByJobId, getTranscriptById, updateTranscriptStatus } from '@/lib/supabase/queries/transcripts';
 import { getJobById } from '@/lib/supabase/queries/jobs';
@@ -25,15 +25,13 @@ export async function POST(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await context.params;
-    const user = session.user as { id: string; role: string };
-
     const supabase = await createSupabaseServerClient();
     
     // Try to find by job ID first (since pages use jobId)
@@ -57,9 +55,9 @@ export async function POST(
 
     // Check access
     if (
-      user.role !== 'ADMIN' &&
-      job.created_by_id !== user.id &&
-      (job as any).scopist_id !== user.id
+      currentUser.role !== 'ADMIN' &&
+      job.created_by_id !== currentUser.id &&
+      (job as any).scopist_id !== currentUser.id
     ) {
       return NextResponse.json(
         { error: 'Forbidden' },

@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { unlockTranscript } from '@/lib/supabase/queries/transcripts';
 import { createAuditLog, AuditTargetType } from '@/lib/audit-service';
@@ -26,13 +26,13 @@ export async function POST(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== 'ADMIN') {
+    if (currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 });
     }
 
@@ -58,8 +58,8 @@ export async function POST(
     }
 
     await createAuditLog({
-      actorUserId: session.user.id,
-      firmId: session.user.firmId || null,
+      actorUserId: currentUser.id,
+      firmId: currentUser.firmId || null,
       action: 'TRANSCRIPT_UNLOCKED',
       targetType: AuditTargetType.TRANSCRIPT,
       targetId: transcriptId,

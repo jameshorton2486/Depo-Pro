@@ -6,7 +6,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { createCalendarEvent, getCalendarEventById, updateCalendarEvent } from '@/lib/supabase/queries/calendar';
@@ -37,22 +37,22 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -60,7 +60,7 @@ export async function GET(
       .from('booking_requests')
       .select('*')
       .eq('id', id)
-      .eq('firm_id', user.firmId)
+      .eq('firm_id', currentUser.firmId)
       .maybeSingle();
 
     if (requestError || !bookingRequest) {
@@ -68,7 +68,7 @@ export async function GET(
     }
 
     // Attorneys can only see their own
-    if (user.role === 'ATTORNEY' && bookingRequest.requested_by_id !== user.id) {
+    if (currentUser.role === 'ATTORNEY' && bookingRequest.requested_by_id !== currentUser.id) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -132,22 +132,22 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -156,7 +156,7 @@ export async function PATCH(
       .from('booking_requests')
       .select('*')
       .eq('id', id)
-      .eq('firm_id', user.firmId)
+      .eq('firm_id', currentUser.firmId)
       .maybeSingle();
 
     if (existingError || !existing) {
@@ -172,7 +172,7 @@ export async function PATCH(
       // APPROVE - Agency approves and creates calendar event
       // --------------------------------------------------------
       case 'approve': {
-        if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
+        if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(currentUser.role)) {
           return NextResponse.json({ error: 'Only agency can approve requests' }, { status: 403 });
         }
 
@@ -193,7 +193,7 @@ export async function PATCH(
           const { data: conflicts } = await supabase
             .from('calendar_events')
             .select('id, title, start_time')
-            .eq('firm_id', user.firmId)
+            .eq('firm_id', currentUser.firmId)
             .eq('assigned_reporter_id', data.assignedReporterId)
             .not('status', 'in', '(CANCELLED,COMPLETED)')
             .or(`and(start_time.lte.${eventDate.toISOString()},end_time.gt.${eventDate.toISOString()}),and(start_time.lt.${endTime.toISOString()},end_time.gte.${endTime.toISOString()})`)
@@ -213,7 +213,7 @@ export async function PATCH(
 
         // Create calendar event
         const calendarEvent = await createCalendarEvent(supabase, {
-          firm_id: user.firmId as string,
+          firm_id: currentUser.firmId as string,
           title: `${existing.case_name} - ${existing.deponent_name}`,
           event_type: existing.event_type,
           status: data.assignedReporterId ? 'SCHEDULED' : 'REQUESTED',
@@ -222,7 +222,7 @@ export async function PATCH(
           location: existing.location || null,
           notes: existing.special_notes || null,
           assigned_reporter_id: data.assignedReporterId || null,
-          created_by_id: user.id,
+          created_by_id: currentUser.id,
         });
 
         // Update booking request
@@ -231,7 +231,7 @@ export async function PATCH(
           .update({
             status: 'APPROVED',
             calendar_event_id: calendarEvent.id,
-            responded_by_id: user.id,
+            responded_by_id: currentUser.id,
             responded_at: new Date().toISOString(),
           })
           .eq('id', id)
@@ -256,7 +256,7 @@ export async function PATCH(
       // REJECT - Agency rejects the request
       // --------------------------------------------------------
       case 'reject': {
-        if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
+        if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(currentUser.role)) {
           return NextResponse.json({ error: 'Only agency can reject requests' }, { status: 403 });
         }
 
@@ -269,7 +269,7 @@ export async function PATCH(
           .update({
             status: 'REJECTED',
             rejection_reason: data.rejectionReason,
-            responded_by_id: user.id,
+            responded_by_id: currentUser.id,
             responded_at: new Date().toISOString(),
           })
           .eq('id', id)
@@ -294,7 +294,7 @@ export async function PATCH(
       // --------------------------------------------------------
       case 'cancel': {
         // Only the requesting attorney or agency can cancel
-        if (existing.requestedById !== user.id && !['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
+        if (existing.requestedById !== currentUser.id && !['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(currentUser.role)) {
           return NextResponse.json({ error: 'Cannot cancel this request' }, { status: 403 });
         }
 
@@ -311,7 +311,7 @@ export async function PATCH(
           .from('booking_requests')
           .update({
             status: 'CANCELLED',
-            responded_by_id: user.id,
+            responded_by_id: currentUser.id,
             responded_at: new Date().toISOString(),
           })
           .eq('id', id)
@@ -332,7 +332,7 @@ export async function PATCH(
       // MODIFY - Agency proposes different date
       // --------------------------------------------------------
       case 'modify': {
-        if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(user.role)) {
+        if (!['ADMIN', 'REPORTER', 'SCOPIST', 'COURT_REPORTER', 'ATTORNEY', 'AGENCY'].includes(currentUser.role)) {
           return NextResponse.json({ error: 'Only agency can modify requests' }, { status: 403 });
         }
 
@@ -345,7 +345,7 @@ export async function PATCH(
           .update({
             status: 'MODIFIED',
             preferred_date: new Date(data.proposedDate).toISOString(), // Update to agency's proposed date
-            responded_by_id: user.id,
+            responded_by_id: currentUser.id,
             responded_at: new Date().toISOString(),
             // Store original date in notes
             special_notes: existing.special_notes 
@@ -392,22 +392,22 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -415,7 +415,7 @@ export async function DELETE(
       .from('booking_requests')
       .select('*')
       .eq('id', id)
-      .eq('firm_id', user.firmId)
+      .eq('firm_id', currentUser.firmId)
       .maybeSingle();
 
     if (existingError || !existing) {
@@ -423,7 +423,7 @@ export async function DELETE(
     }
 
     // Only requesting attorney or admin can delete
-    if (existing.requested_by_id !== user.id && user.role !== 'ADMIN') {
+    if (existing.requested_by_id !== currentUser.id && currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
@@ -452,3 +452,4 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete request' }, { status: 500 });
   }
 }
+

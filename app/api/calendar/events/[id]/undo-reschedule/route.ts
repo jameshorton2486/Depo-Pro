@@ -5,7 +5,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 // scheduling-service removed (was a stub) — inline stub response below
@@ -27,8 +27,8 @@ export async function POST(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -46,7 +46,7 @@ export async function POST(
     const { undoToken } = validation.data;
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
     
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });

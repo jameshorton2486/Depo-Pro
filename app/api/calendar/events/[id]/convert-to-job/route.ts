@@ -5,7 +5,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { getCalendarEventById, convertEventToJob } from '@/lib/supabase/queries/calendar';
@@ -23,8 +23,8 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     // 1. Authentication
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -42,7 +42,7 @@ export async function POST(
 
     // 3. Fetch user with firm info
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json(
@@ -52,8 +52,8 @@ export async function POST(
     }
 
     const user = {
-      id: session.user.id,
-      role: session.user.role,
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
       firstName: userData.user_metadata?.firstName || '',
       lastName: userData.user_metadata?.lastName || '',
@@ -70,7 +70,7 @@ export async function POST(
     }
 
     // 5. Authorization check
-    if (!canConvertEventToJob(user.role, user.firmId as string, event.firm_id)) {
+    if (!canConvertEventToJob(currentUser.role, currentUser.firmId as string, event.firm_id)) {
       return NextResponse.json(
         { error: 'You do not have permission to convert this event', code: 'FORBIDDEN' },
         { status: 403 }
@@ -105,7 +105,7 @@ export async function POST(
       deposition_date: new Date(event.start_time).toISOString(),
       location: event.location || null,
       zoom_link: event.meeting_link || null,
-      created_by_id: session.user.id,
+      created_by_id: currentUser.id,
       firm_id: event.firm_id,
       agency_id: event.agency_id || null,
       assigned_to_id: event.assigned_reporter_id || null,
@@ -137,7 +137,7 @@ export async function POST(
 
     // 9. Audit log
     await logAudit({
-      userId: session.user.id,
+      userId: currentUser.id,
       action: AuditAction.CALENDAR_CONVERT_TO_JOB,
       entityType: AuditEntityType.CalendarEvent,
       entityId: eventId,
@@ -150,9 +150,9 @@ export async function POST(
           location: event.location,
         },
         convertedBy: {
-          userId: session.user.id,
+          userId: currentUser.id,
           name: `${user.firstName} ${user.lastName}`,
-          role: user.role,
+          role: currentUser.role,
         },
       },
     });

@@ -3,7 +3,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireReporterDepositionAccess } from '@/lib/permissions/api-guards';
 import {
@@ -22,14 +22,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: jobId } = await params;
-    const user = session.user as { id: string; role: string };
 
     // Verify job exists and user has access using query module
     const supabase = await createSupabaseServerClient();
@@ -40,12 +39,12 @@ export async function GET(
     }
 
     // SECURITY: Enforce reporter deposition access
-    if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
-      const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
+    if (currentUser.role === 'REPORTER' || currentUser.role === 'COURT_REPORTER') {
+      const accessCheck = await requireReporterDepositionAccess(currentUser.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
-    } else if (user.role !== 'ADMIN') {
+    } else if (currentUser.role !== 'ADMIN') {
       // Allow scopists assigned to the job via query layer
-      const isAssigned = await isUserAssignedToJob(jobId, user.id);
+      const isAssigned = await isUserAssignedToJob(jobId, currentUser.id);
       
       if (!isAssigned) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -71,14 +70,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: jobId } = await params;
-    const user = session.user as { id: string; role: string };
 
     // Get job with case details for stamping using query module
     const supabase = await createSupabaseServerClient();
@@ -89,10 +87,10 @@ export async function POST(
     }
 
     // SECURITY: Enforce reporter deposition access for upload
-    if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
-      const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
+    if (currentUser.role === 'REPORTER' || currentUser.role === 'COURT_REPORTER') {
+      const accessCheck = await requireReporterDepositionAccess(currentUser.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
-    } else if (user.role !== 'ADMIN') {
+    } else if (currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -185,8 +183,8 @@ export async function POST(
         file_name: file.name,
         file_size: file.size,
         stamped: !!stampedUpload,
-        uploaded_by_role: user.role, // Required
-        created_by_id: user.id,
+        uploaded_by_role: currentUser.role, // Required
+        created_by_id: currentUser.id,
       });
 
       createdExhibits.push(exhibit);

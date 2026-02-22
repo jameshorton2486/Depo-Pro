@@ -1,7 +1,7 @@
 // Migrated from Prisma to Supabase queries — PASS 2A
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getAssignmentById, getJobById } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
@@ -17,8 +17,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getCurrentUser();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -43,7 +43,7 @@ export async function POST(
     }
 
     // Verify job creator matches session user
-    if (job?.created_by_id !== session.user.id) {
+    if (job?.created_by_id !== currentUser.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

@@ -6,7 +6,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { Role } from '@/lib/constants';
@@ -23,15 +23,15 @@ export async function GET(
 ) {
   try {
     const { id: transcriptionId } = await params;
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Fetch existing review session from transcript's flagged_segments
     const supabase = await createSupabaseServerClient();
-    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
 
     if (!transcript) {
       return NextResponse.json({
@@ -73,9 +73,9 @@ export async function POST(
 ) {
   try {
     const { id: transcriptionId } = await params;
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -88,14 +88,14 @@ export async function POST(
 
     // Fetch transcription with job
     const supabase = await createSupabaseServerClient();
-    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
-    if (!hasTranscriptReviewAccess(transcription, session.user.id, session.user.role, Role.ADMIN)) {
+    if (!hasTranscriptReviewAccess(transcription, currentUser.id, currentUser.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -157,7 +157,7 @@ export async function POST(
     // Build review session data and merge into flagged_segments
     const reviewSession = {
       transcriptionId,
-      userId: session.user.id,
+      userId: currentUser.id,
       reviewedIndices: reviewedWordIndices,
       corrections: Object.fromEntries(corrections) as Record<string, string>,
       lastSavedAt: new Date().toISOString(),
@@ -181,9 +181,9 @@ export async function POST(
           const originalWord = currentWords[wordIndex];
           return {
             transcription_id: transcriptionId,
-            editor_id: session.user.id,
-            editor_email: session.user.email || null,
-            editor_role: session.user.role || null,
+            editor_id: currentUser.id,
+            editor_email: currentUser.email || null,
+            editor_role: currentUser.role || null,
             edit_type: 'WORD_CORRECTION',
             original_text: originalWord?.word || '',
             edited_text: correctedWord,

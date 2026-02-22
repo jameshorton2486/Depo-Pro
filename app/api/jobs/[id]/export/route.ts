@@ -5,7 +5,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -21,12 +21,10 @@ export async function GET(
   context: RouteContext,
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const user = session.user as { id: string; role: string; firmId?: string };
     const { id: jobId } = await context.params;
 
     // Get format from query params
@@ -45,10 +43,10 @@ export async function GET(
     }
 
     // Check permissions
-    const isOwner = (job as any).created_by_id === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isOwner = (job as any).created_by_id === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN';
     const jobFirmId = (job as any).firm_id || (job as any).firmId;
-    const isSameFirm = jobFirmId === user.firmId;
+    const isSameFirm = jobFirmId === currentUser.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -130,12 +128,10 @@ export async function POST(
   context: RouteContext,
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const user = session.user as { id: string; role: string; firmId?: string };
     const { id: jobId } = await context.params;
 
     // Parse request body for custom options
@@ -153,10 +149,10 @@ export async function POST(
     }
 
     // Check permissions
-    const isOwner = (job as any).created_by_id === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isOwner = (job as any).created_by_id === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN';
     const jobFirmId = (job as any).firm_id || (job as any).firmId;
-    const isSameFirm = jobFirmId === user.firmId;
+    const isSameFirm = jobFirmId === currentUser.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

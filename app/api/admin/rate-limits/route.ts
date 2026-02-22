@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { UserRole } from '@/lib/enums/roles';
 import {
   getRateLimitStats,
@@ -20,16 +20,16 @@ import {
 
 export async function GET(_request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    if (session.user.role !== UserRole.ADMIN) {
+    if (currentUser.role !== UserRole.ADMIN) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

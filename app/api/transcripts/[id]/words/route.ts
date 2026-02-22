@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { Role, JobStatus } from '@/lib/constants';
@@ -54,8 +54,8 @@ export async function PATCH(
   try {
     const { id: transcriptionId } = await params;
 
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -74,7 +74,7 @@ export async function PATCH(
 
     // Fetch transcription with job
     const supabase = await createSupabaseServerClient();
-    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
@@ -116,7 +116,7 @@ export async function PATCH(
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
-    if (!hasTranscriptReviewAccess(transcription, session.user.id, session.user.role, Role.ADMIN)) {
+    if (!hasTranscriptReviewAccess(transcription, currentUser.id, currentUser.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     const isAssignedScopist = Array.isArray(transcription.job.assignments)
@@ -169,7 +169,7 @@ export async function PATCH(
           correctedWord: correction.correctedWord,
           reviewed: true,
           editedAt: new Date().toISOString(),
-          editedBy: session.user.id,
+          editedBy: currentUser.id,
         };
       } else if (isReviewed) {
         return {
@@ -185,9 +185,9 @@ export async function PATCH(
     if (corrections.length > 0) {
       const newEditRecords = corrections.map((c) => ({
         transcription_id: transcriptionId,
-        editor_id: session.user.id,
-        editor_email: session.user.email || null,
-        editor_role: session.user.role || null,
+        editor_id: currentUser.id,
+        editor_email: currentUser.email || null,
+        editor_role: currentUser.role || null,
         edit_type: 'WORD_CORRECTION',
         original_text: currentWords[c.wordIndex]?.word || '',
         edited_text: c.correctedWord,
@@ -218,7 +218,7 @@ export async function PATCH(
             version_number: ((transcription as any).chain_version ?? 0) + 1,
             transcript_hash: snapshotHash,
             previous_hash: (transcription as any).current_integrity_hash ?? null,
-            created_by: session.user.id,
+            created_by: currentUser.id,
           });
         } catch (chainErr) {
           console.error('Error inserting integrity chain entry:', chainErr);
@@ -259,7 +259,7 @@ export async function PATCH(
         originalWord: currentWords[c.wordIndex]?.word || '',
         correctedWord: c.correctedWord,
         timestamp: new Date().toISOString(),
-        userId: session.user.id,
+        userId: currentUser.id,
       })),
       reviewedIndices,
       lastSavedAt: new Date().toISOString(),
@@ -292,7 +292,7 @@ export async function PATCH(
             submitted_at: new Date().toISOString(),
           })
           .eq('job_id', transcription.job.id)
-          .eq('scopist_id', session.user.id);
+          .eq('scopist_id', currentUser.id);
 
         if (assignmentError) {
           console.error('Error updating assignment:', assignmentError);
@@ -329,21 +329,21 @@ export async function GET(
   try {
     const { id: transcriptionId } = await params;
 
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Fetch transcription with job
     const supabase = await createSupabaseServerClient();
-    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, session.user.id);
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
     }
 
     // Check access
-    if (!hasTranscriptReviewAccess(transcription, session.user.id, session.user.role, Role.ADMIN)) {
+    if (!hasTranscriptReviewAccess(transcription, currentUser.id, currentUser.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   getChronologyEntryById,
@@ -19,14 +19,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; entryId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { entryId } = await params;
-    const user = session.user as { id: string; role: string };
-    const supabase = await createSupabaseServerClient();
+    const { entryId } = await params;    const supabase = await createSupabaseServerClient();
 
     const existing = await getChronologyEntryById(supabase, entryId);
     if (!existing) {
@@ -37,7 +35,7 @@ export async function PATCH(
 
     // Handle verify action
     if (body.action === 'verify') {
-      const updated = await verifyChronologyEntry(supabase, entryId, user.id);
+      const updated = await verifyChronologyEntry(supabase, entryId, currentUser.id);
       return NextResponse.json({ data: updated });
     }
 
@@ -92,14 +90,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; entryId: string }> },
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { entryId } = await params;
-    const user = session.user as { id: string; role: string };
-    const supabase = await createSupabaseServerClient();
+    const { entryId } = await params;    const supabase = await createSupabaseServerClient();
 
     const existing = await getChronologyEntryById(supabase, entryId);
     if (!existing) {
@@ -107,7 +103,7 @@ export async function DELETE(
     }
 
     // Only creator or admin can delete
-    if (existing.created_by_id !== user.id && user.role !== 'ADMIN') {
+    if (existing.created_by_id !== currentUser.id && currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

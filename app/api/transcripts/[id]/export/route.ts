@@ -1,7 +1,7 @@
 // app/api/transcripts/[id]/export/route.ts
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript } from '@/lib/export';
@@ -94,25 +94,23 @@ export async function GET(
   context: RouteContext,
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const user = session.user as { id: string; role: string; firmId?: string };
     const { id: transcriptId } = await context.params;
 
     // Rate limit check
-    const rateLimit = checkUserRateLimit(user.id, 'TRANSCRIPT_EXPORT');
+    const rateLimit = checkUserRateLimit(currentUser.id, 'TRANSCRIPT_EXPORT');
     if (!rateLimit.allowed) {
       return rateLimitResponse(rateLimit);
     }
 
     // Quota check
-    if (user.firmId) {
+    if (currentUser.firmId) {
       const _tier = 'FREE'; // TODO: Get from subscription
-      const quotaCheck = await useQuota(user.firmId, 'exports', 1);
+      const quotaCheck = await useQuota(currentUser.firmId, 'exports', 1);
       if (!quotaCheck.allowed) {
         return NextResponse.json(
           { error: 'Export quota exceeded', ...quotaCheck },
@@ -135,16 +133,16 @@ export async function GET(
     }
 
     // Check permissions
-    const isOwner = transcription.job.created_by_id === user.id;
-    const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = transcription.job.firm_id === user.firmId;
+    const isOwner = transcription.job.created_by_id === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN';
+    const isSameFirm = transcription.job.firm_id === currentUser.firmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Phase 3C-2: Check export format permissions
-    const userRole = user.role as any;
+    const userRole = currentUser.role as any;
     if (!canExportFormat(userRole, format)) {
       return NextResponse.json(
         { error: `Export format ${format} not allowed for your role` },
@@ -249,7 +247,7 @@ export async function GET(
 
     // Phase 3C-3: Log export to audit trail
     await createAuditLog({
-      actorUserId: user.id,
+      actorUserId: currentUser.id,
       firmId: transcription.job.firm_id || undefined,
       action: AuditAction.TRANSCRIPT_EXPORTED,
       targetType: AuditTargetType.TRANSCRIPT,

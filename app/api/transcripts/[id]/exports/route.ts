@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob } from '@/lib/supabase/queries/transcripts';
 
@@ -24,9 +24,9 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -34,15 +34,15 @@ export async function GET(
 
     // Verify transcript exists and user has access
     const supabase = await createSupabaseServerClient();
-    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, currentUser.id);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
     // Check access
-    const isCreator = transcript.job.createdById === session.user.id;
-    const isAdmin = session.user.role === 'ADMIN';
+    const isCreator = transcript.job.createdById === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN';
 
     if (!isCreator && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

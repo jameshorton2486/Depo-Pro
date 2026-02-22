@@ -9,7 +9,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { requireAuthV2 } from '@/lib/permissions/api-guards';
 import { UserRole } from '@/lib/enums';
 import type {
@@ -43,9 +43,9 @@ const querySchema = z.object({
 // =============================================================================
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
   
-  if (!session?.user?.id) {
+  if (!currentUser) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
@@ -74,14 +74,14 @@ export async function GET(request: NextRequest) {
     };
     
     // Non-admins can only query their own firm
-    if (session.user.role !== UserRole.ADMIN) {
-      if (!session.user.firmId) {
+    if (currentUser.role !== UserRole.ADMIN) {
+      if (!currentUser.firmId) {
         return NextResponse.json(
           { error: 'Firm context required' },
           { status: 403 }
         );
       }
-      query.firmId = session.user.firmId;
+      query.firmId = currentUser.firmId;
     } else {
       // Admin can query specific firm or all
       const firmIdParam = searchParams.get('firmId');
@@ -103,8 +103,8 @@ export async function GET(request: NextRequest) {
     
     // Log the audit query itself
     await createAuditLog({
-      actorUserId: session.user.id,
-      firmId: session.user.firmId,
+      actorUserId: currentUser.id,
+      firmId: currentUser.firmId,
       action: AuditAction.ADMIN_ACCESS,
       targetType: AuditTargetType.SYSTEM,
       targetId: 'audit-logs',

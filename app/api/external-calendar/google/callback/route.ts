@@ -6,7 +6,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import type { ExternalCalendarProvider } from '@/lib/enums';
 import { externalCalendarSyncService } from '@/lib/external-calendar/sync-service';
 import { logger } from '@/lib/logger';
@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify session matches state
-    const session = await auth();
-    if (!session?.user?.id || session.user.id !== stateData.userId) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || currentUser.id !== stateData.userId) {
       return NextResponse.redirect(
         new URL('/settings/calendar?error=session_mismatch', request.url)
       );

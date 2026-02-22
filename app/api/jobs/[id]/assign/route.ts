@@ -8,7 +8,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobForAccessCheck } from '@/lib/supabase/queries/jobs';
 import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
@@ -42,9 +42,9 @@ export async function POST(
 ) {
   try {
     // 1. AUTHENTICATION CHECK
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -55,7 +55,7 @@ export async function POST(
 
     // 2. GET USER WITH FIRM CONTEXT (Tenant Isolation)
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function POST(
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
     };
 
-    if (!user.firmId) {
+    if (!currentUser.firmId) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }
@@ -102,7 +102,7 @@ export async function POST(
     const canAssign =
       user.role === 'ADMIN' ||
       user.role === 'AGENCY' ||
-      (job as any).created_by_id === user.id;
+      (job as any).created_by_id === currentUser.id;
 
     if (!canAssign) {
       return NextResponse.json(
@@ -126,7 +126,7 @@ export async function POST(
 
     // 7. SCOPIST VALIDATION WITH TENANT ISOLATION
     // Scopist must exist, have SCOPIST role, AND belong to the same firm
-    const scopists = await getUsersByRole(supabase, 'SCOPIST', user.firmId);
+    const scopists = await getUsersByRole(supabase, 'SCOPIST', currentUser.firmId);
     const scopistData = scopists.find((s: any) => s.id === validatedData.scopistId);
 
     if (!scopistData) {
@@ -180,7 +180,7 @@ export async function POST(
 
     // 10. AUDIT LOG - MANDATORY
     await logAudit({
-      userId: user.id,
+      userId: currentUser.id,
       action: AuditAction.CREATE,
       entityType: AuditEntityType.Job,
       entityId: jobId,
@@ -195,7 +195,7 @@ export async function POST(
       },
     });
 
-    logger.info(`Assignment created: ${assignment.id} for job ${jobId} by user ${user.id}`);
+    logger.info(`Assignment created: ${assignment.id} for job ${jobId} by user ${currentUser.id}`);
 
     return NextResponse.json(
       {
@@ -236,9 +236,9 @@ export async function DELETE(
 ) {
   try {
     // 1. AUTHENTICATION CHECK
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -258,7 +258,7 @@ export async function DELETE(
 
     // 2. GET USER WITH FIRM CONTEXT
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json(
@@ -267,13 +267,13 @@ export async function DELETE(
       );
     }
 
-    const user = {
+    const _user = {
       id: userData.id,
       role: userData.user_metadata?.role as string,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
     };
 
-    if (!user.firmId) {
+    if (!currentUser.firmId) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }
@@ -281,7 +281,7 @@ export async function DELETE(
     }
 
     // 3. ROLE CHECK AT API BOUNDARY
-    if (!ASSIGNMENT_ALLOWED_ROLES.includes(user.role as typeof ASSIGNMENT_ALLOWED_ROLES[number])) {
+    if (!ASSIGNMENT_ALLOWED_ROLES.includes(currentUser.role as typeof ASSIGNMENT_ALLOWED_ROLES[number])) {
       return NextResponse.json(
         { error: 'Insufficient permissions to remove assignments', code: 'FORBIDDEN' },
         { status: 403 }
@@ -327,7 +327,7 @@ export async function DELETE(
 
     // 6. AUDIT LOG - MANDATORY
     await logAudit({
-      userId: user.id,
+      userId: currentUser.id,
       action: AuditAction.DELETE,
       entityType: AuditEntityType.Job,
       entityId: jobId,
@@ -341,7 +341,7 @@ export async function DELETE(
       },
     });
 
-    logger.info(`Assignment deleted: ${assignment.id} for job ${jobId} by user ${user.id}`);
+    logger.info(`Assignment deleted: ${assignment.id} for job ${jobId} by user ${currentUser.id}`);
 
     return NextResponse.json({
       message: 'Assignment removed successfully',
@@ -355,3 +355,4 @@ export async function DELETE(
     );
   }
 }
+

@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { ConvertToJobSchema } from '@/lib/calendar/validations';
 import { canConvertToJob } from '@/lib/calendar/permissions';
 import { getCalendarEventById, convertEventToJob } from '@/lib/supabase/queries/calendar';
@@ -19,8 +19,8 @@ export async function POST(
 ) {
   try {
     // 1. Authentication Check
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
@@ -28,8 +28,8 @@ export async function POST(
     }
 
     const { id: eventId } = await params;
-    const userId = session.user.id;
-    const userRole = session.user.role as string;
+    const userId = currentUser.id;
+    const userRole = currentUser.role as string;
 
     // 2. Permission Check
     if (!canConvertToJob(userRole as any)) {

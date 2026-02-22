@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptAnnotations, updateTranscriptAnnotation, deleteTranscriptAnnotation } from '@/lib/supabase/queries/transcripts';
 
@@ -24,9 +24,9 @@ export async function PATCH(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -70,9 +70,9 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -81,7 +81,7 @@ export async function DELETE(
     // Verify annotation exists and user has permission
     const supabase = await createSupabaseServerClient();
     const annotations = await getTranscriptAnnotations(supabase, transcriptId);
-    const annotation = annotations.find((a: any) => a.id === annotationId && a.created_by_id === session.user.id);
+    const annotation = annotations.find((a: any) => a.id === annotationId && a.created_by_id === currentUser.id);
 
     if (!annotation) {
       return NextResponse.json({ error: 'Annotation not found' }, { status: 404 });

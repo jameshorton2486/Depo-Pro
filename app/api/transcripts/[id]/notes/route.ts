@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptNotes } from '@/lib/supabase/queries/transcripts';
 
@@ -10,9 +10,9 @@ interface Props {
 
 export async function POST(request: NextRequest, { params }: Props) {
   const { id } = await params;
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user?.id || !session?.user?.email) {
+  if (!currentUser?.id || !currentUser?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     .from('transcript_note')
     .insert({
       transcript_id: id,
-      user_id: session.user.id,
+      user_id: currentUser.id,
       content,
       line_number: lineNumber,
       page_number: pageNumber,
@@ -42,14 +42,14 @@ export async function POST(request: NextRequest, { params }: Props) {
 
 export async function GET(_request: NextRequest, { params }: Props) {
   const { id } = await params;
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!currentUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const supabase = await createSupabaseServerClient();
-  const notes = await getTranscriptNotes(supabase, id, session.user.id);
+  const notes = await getTranscriptNotes(supabase, id, currentUser.id);
 
   return NextResponse.json(notes);
 }

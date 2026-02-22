@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { RescheduleEventSchema } from '@/lib/calendar/validations';
 import { canReschedule } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
@@ -18,8 +18,8 @@ export async function PATCH(
 ) {
   try {
     // 1. Authentication
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
@@ -27,8 +27,8 @@ export async function PATCH(
     }
 
     const { id: eventId } = await params;
-    const userId = session.user.id;
-    const userRole = session.user.role as string;
+    const userId = currentUser.id;
+    const userRole = currentUser.role as string;
 
     // 2. Parse and Validate
     const body = await request.json();

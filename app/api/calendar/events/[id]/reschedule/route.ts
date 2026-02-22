@@ -5,7 +5,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 // scheduling-service removed (was a stub) — inline stub responses below
@@ -29,8 +29,8 @@ export async function POST(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -48,15 +48,15 @@ export async function POST(
     const { startTime, endTime, overrideReason: _overrideReason } = validation.data;
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
     const _user = {
-      id: session.user.id,
-      role: session.user.role,
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -109,8 +109,8 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -130,15 +130,15 @@ export async function PUT(
     const { startTime: _startTime, endTime: _endTime } = validation.data;
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with a firm' }, { status: 403 });
     }
 
     const _user = {
-      id: session.user.id,
-      role: session.user.role,
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 

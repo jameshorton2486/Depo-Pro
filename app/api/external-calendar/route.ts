@@ -6,7 +6,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { ExternalCalendarProvider, ExternalCalendarSyncMode } from '@/lib/enums';
 import { FEATURES } from '@/lib/feature-flags';
@@ -23,8 +23,8 @@ export async function GET(_request: NextRequest) {
   }
 
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.firmId) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.firmId) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -36,8 +36,8 @@ export async function GET(_request: NextRequest) {
     const { data: connections, error: connectionsError } = await supabase
       .from('external_calendar_connections')
       .select('id, provider, sync_mode, calendar_name, is_enabled, last_synced_at, last_sync_error, created_at')
-      .eq('user_id', session.user.id)
-      .eq('firm_id', session.user.firmId)
+      .eq('user_id', currentUser.id)
+      .eq('firm_id', currentUser.firmId)
       .order('created_at', { ascending: false });
 
     if (connectionsError) {
@@ -72,8 +72,8 @@ export async function GET(_request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.firmId) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.firmId) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.firmId) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.firmId) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -133,8 +133,8 @@ export async function PATCH(request: NextRequest) {
       .from('external_calendar_connections')
       .select('id')
       .eq('id', connectionId)
-      .eq('user_id', session.user.id)
-      .eq('firm_id', session.user.firmId)
+      .eq('user_id', currentUser.id)
+      .eq('firm_id', currentUser.firmId)
       .maybeSingle();
 
     if (connectionError || !connection) {
@@ -183,8 +183,8 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.firmId) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.firmId) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
         { status: 401 }
@@ -208,8 +208,8 @@ export async function DELETE(request: NextRequest) {
       .from('external_calendar_connections')
       .select('id')
       .eq('id', connectionId)
-      .eq('user_id', session.user.id)
-      .eq('firm_id', session.user.firmId)
+      .eq('user_id', currentUser.id)
+      .eq('firm_id', currentUser.firmId)
       .maybeSingle();
 
     if (connectionError || !connection) {
@@ -222,7 +222,7 @@ export async function DELETE(request: NextRequest) {
     const syncService = new ExternalCalendarSyncService();
     await (syncService as any).disconnectCalendar(
       connectionId,
-      session.user.id
+      currentUser.id
     );
 
     return NextResponse.json({ success: true });

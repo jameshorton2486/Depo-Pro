@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { listCases } from '@/lib/supabase/queries/cases';
@@ -16,16 +16,16 @@ import { listCases } from '@/lib/supabase/queries/cases';
 // Returns dashboard data for the authenticated attorney
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
     
-    if (!session?.user?.id) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const supabase = await createSupabaseServerClient();
     
     // Verify user is an attorney
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
     
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
     const { data: attorneyProfile } = await supabase
       .from('attorney_profiles')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', currentUser.id)
       .maybeSingle();
     
-    const user = {
+    const _user = {
       id: userData.id,
       email: userData.email || '',
       role: userRole,
@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
       (async () => {
         const { cases: casesWithRole } = await listCases(
           supabase,
-          session.user.id,
-          user.email,
+          currentUser.id,
+          currentUser.email,
           {},
           { field: 'created_at', order: 'desc' },
           { skip: 0, limit: 50 }
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
           .from('case_attorneys')
           .select('case_id, role')
           .in('case_id', caseIds)
-          .or(`email.eq.${user.email},attorney_id.eq.${session.user.id}`);
+          .or(`email.eq.${currentUser.email},attorney_id.eq.${currentUser.id}`);
         
         const roleMap = new Map(caseAttorneys?.map((ca: any) => [ca.case_id, ca.role]) || []);
         
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
         const { data: transcriptAccess } = await supabase
           .from('transcript_access')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', currentUser.id)
           .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
           .order('created_at', { ascending: false })
           .limit(10);
@@ -229,7 +229,7 @@ export async function GET(request: NextRequest) {
         const { data: shares } = await supabase
           .from('transcript_shares')
           .select('*')
-          .or(`created_by_id.eq.${session.user.id},recipient_email.eq.${user.email}`)
+          .or(`created_by_id.eq.${currentUser.id},recipient_email.eq.${currentUser.email}`)
           .gte('created_at', startDate.toISOString())
           .order('created_at', { ascending: false })
           .limit(20);
@@ -272,9 +272,9 @@ export async function GET(request: NextRequest) {
       
       // Annotation Stats: Count user's annotations
       Promise.all([
-        supabase.from('transcript_highlights').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id),
-        supabase.from('transcript_notes').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id),
-        supabase.from('transcript_bookmarks').select('*', { count: 'exact', head: true }).eq('user_id', session.user.id),
+        supabase.from('transcript_highlights').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id),
+        supabase.from('transcript_notes').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id),
+        supabase.from('transcript_bookmarks').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id),
       ]).then(([highlights, notes, bookmarks]) => [
         highlights.count || 0,
         notes.count || 0,
@@ -351,4 +351,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 

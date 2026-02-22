@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { AddNoteSchema } from '@/lib/calendar/validations';
 import { canAddNotes } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
@@ -19,8 +19,8 @@ export async function POST(
 ) {
   try {
     // 1. Authentication
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
@@ -28,8 +28,8 @@ export async function POST(
     }
 
     const { id: eventId } = await params;
-    const userId = session.user.id;
-    const userRole = session.user.role as string;
+    const userId = currentUser.id;
+    const userRole = currentUser.role as string;
 
     // 2. Permission Check
     if (!canAddNotes(userRole as any)) {
@@ -137,8 +137,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json(
         { error: 'Unauthorized', code: 'AUTH_REQUIRED' },
         { status: 401 }
@@ -146,7 +146,7 @@ export async function GET(
     }
 
     const { id: eventId } = await params;
-    const userRole = session.user.role as string;
+    const userRole = currentUser.role as string;
 
     // Only certain roles can see internal notes
     const canSeeInternal = ['ADMIN', 'REPORTER', 'AGENCY_ADMIN'].includes(userRole);

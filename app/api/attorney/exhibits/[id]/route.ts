@@ -4,7 +4,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getExhibitById, deleteExhibit } from '@/lib/supabase/queries/exhibits';
 import { getJobById } from '@/lib/supabase/queries/jobs';
@@ -22,13 +22,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getCurrentUser();
+    const currentUser = await getCurrentUser();
 
-    if (!session) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+    if (currentUser.role !== Role.ATTORNEY && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -44,7 +44,7 @@ export async function GET(
 
     // Get related data
     const job = exhibit.job_id ? await getJobById(supabase, exhibit.job_id) : null;
-    const caseData = await getCaseById(supabase, exhibit.case_id, session.user.id);
+    const caseData = await getCaseById(supabase, exhibit.case_id, currentUser.id);
     const createdBy = await getUserById(supabase, exhibit.created_by_id);
 
     // Get annotation links
@@ -94,13 +94,13 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getCurrentUser();
+    const currentUser = await getCurrentUser();
 
-    if (!session) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (session.user.role !== Role.ATTORNEY && session.user.role !== Role.ADMIN) {
+    if (currentUser.role !== Role.ATTORNEY && currentUser.role !== Role.ADMIN) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -119,8 +119,8 @@ export async function DELETE(
     // 1. User is admin, OR
     // 2. User uploaded it (createdById matches) AND it's an attorney upload
     const canDelete =
-      session.user.role === Role.ADMIN ||
-      (exhibit.created_by_id === session.user.id && exhibit.uploaded_by_role === 'ATTORNEY');
+      currentUser.role === Role.ADMIN ||
+      (exhibit.created_by_id === currentUser.id && exhibit.uploaded_by_role === 'ATTORNEY');
 
     if (!canDelete) {
       return NextResponse.json(

@@ -5,7 +5,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { getCalendarEventById } from '@/lib/supabase/queries/calendar';
@@ -32,23 +32,23 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'No firm association' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
+    const _user = {
+      id: currentUser.id,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
-      role: session.user.role,
+      role: currentUser.role,
     };
 
     const { id: eventId } = await params;
@@ -56,7 +56,7 @@ export async function POST(
     // Verify event exists and belongs to firm
     const event = await getCalendarEventById(eventId);
     
-    if (!event || event.firm_id !== user.firmId) {
+    if (!event || event.firm_id !== currentUser.firmId) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
     
@@ -75,9 +75,9 @@ export async function POST(
     // Build validation request
     const _validationRequest = {
       eventId,
-      userId: user.id,
-      userRole: user.role,
-      firmId: user.firmId,
+      userId: currentUser.id,
+      userRole: currentUser.role,
+      firmId: currentUser.firmId,
       originalStart: new Date(event.start_time),
       originalEnd: new Date(event.end_time),
       proposedStart: new Date(proposedStart),
@@ -115,3 +115,4 @@ export async function POST(
     return NextResponse.json({ error: 'Validation failed' }, { status: 500 });
   }
 }
+

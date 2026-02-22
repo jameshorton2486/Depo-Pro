@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -22,8 +22,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getCurrentUser();
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -93,7 +93,7 @@ export async function POST(
         .from('billing_accounts')
         .insert({
           firm_id: firmId,
-          billing_email: session.user.email || 'billing@depo-pro.com',
+          billing_email: currentUser.email || 'billing@depo-pro.com',
           currency: 'USD',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),

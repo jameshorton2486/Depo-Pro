@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptById, getTranscriptAnnotations, createTranscriptAnnotation } from '@/lib/supabase/queries/transcripts';
 import { z } from 'zod';
@@ -33,9 +33,9 @@ export async function POST(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -62,7 +62,7 @@ export async function POST(
       page_end: data.segmentEnd || data.segmentStart || null,
       line_end: data.wordIndex || null,
       note: data.content || null,
-      created_by_id: session.user.id,
+      created_by_id: currentUser.id,
     });
 
     return NextResponse.json({
@@ -93,9 +93,9 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

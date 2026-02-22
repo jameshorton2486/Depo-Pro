@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 
@@ -20,23 +20,23 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id || !session.user.role) {
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await context.params;
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
     
     if (!userData?.user_metadata?.firmId) {
       return NextResponse.json({ error: 'User not associated with firm' }, { status: 403 });
     }
 
-    const user = {
-      id: session.user.id,
-      role: session.user.role,
+    const _user = {
+      id: currentUser.id,
+      role: currentUser.role,
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id,
     };
 
@@ -52,11 +52,11 @@ export async function DELETE(
     }
 
     // Check permissions: Reporters can only delete their own, Admins/Agency can delete any
-    if (user.role === 'REPORTER' && availability.reporter_id !== user.id) {
+    if (currentUser.role === 'REPORTER' && availability.reporter_id !== currentUser.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (availability.firm_id !== user.firmId) {
+    if (availability.firm_id !== currentUser.firmId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -81,3 +81,4 @@ export async function DELETE(
     );
   }
 }
+
