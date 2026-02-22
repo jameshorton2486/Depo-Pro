@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -20,9 +20,9 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -45,11 +45,9 @@ export async function GET(
       );
     }
 
-    // Check access
-    const user = session.user as { id: string; role: string };
-    const isCreator = (job as any).created_by_id === user.id;
-    const isAdmin = user.role === 'ADMIN';
-    const isScopist = (job as any).scopist_id === user.id;
+    // Check access    const isCreator = (job as any).created_by_id === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN';
+    const isScopist = (job as any).scopist_id === currentUser.id;
 
     if (!isCreator && !isAdmin && !isScopist) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
