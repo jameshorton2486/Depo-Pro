@@ -1,0 +1,51 @@
+name: Org Isolation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  isolation:
+    runs-on: windows-latest
+    env:
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      TEST_USER_A: ${{ secrets.TEST_USER_A }}
+      TEST_USER_B: ${{ secrets.TEST_USER_B }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Verify required secrets are present
+        shell: pwsh
+        run: |
+          $missing = @()
+          if ([string]::IsNullOrWhiteSpace($env:DIRECT_URL)) { $missing += 'DIRECT_URL' }
+          if ([string]::IsNullOrWhiteSpace($env:TEST_USER_A)) { $missing += 'TEST_USER_A' }
+          if ([string]::IsNullOrWhiteSpace($env:TEST_USER_B)) { $missing += 'TEST_USER_B' }
+          if ($missing.Count -gt 0) {
+            Write-Error ("Missing required secrets: " + ($missing -join ', '))
+            exit 1
+          }
+
+      - name: Run org isolation suite
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/run-isolation-suite.ps1 -UserA "$env:TEST_USER_A" -UserB "$env:TEST_USER_B"
+
+      - name: Upload isolation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: org-isolation-reports
+          path: reports/*.json
+          if-no-files-found: warn
