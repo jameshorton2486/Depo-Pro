@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     if (!profile?.role) {
       return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
     }
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     if (!profile?.role) {
       return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
     }
@@ -155,7 +155,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
 
 
 

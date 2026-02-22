@@ -39,10 +39,10 @@ export async function getCurrentUser() {
       return null;
     }
 
-    // Fetch user profile from users table
+    // Fetch user profile from profiles table
     const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('*')
+      .from('profiles')
+      .select('role, full_name, firm_id')
       .eq('id', user.id)
       .single();
 
@@ -60,9 +60,7 @@ export async function getCurrentUser() {
         id: user.id,
         email: user.email || '',
         role: profile.role as UserRole,
-        name: profile.first_name && profile.last_name
-          ? `${profile.first_name} ${profile.last_name}`
-          : profile.first_name || profile.last_name || null,
+        name: profile.full_name || null,
         firmId: profile.firm_id || null,
       }
     };
@@ -276,5 +274,4 @@ export function assertRole<T extends Role>(
 //   // Firm concept removed
 //   throw new Error('Firm concept removed');
 // }
-
 

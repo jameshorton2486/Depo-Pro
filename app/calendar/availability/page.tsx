@@ -12,9 +12,10 @@ import { useAuth } from '@/hooks/use-auth';
 import { AvailabilityEditor } from '@/components/calendar/availability-editor';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import type { Database } from '@/types/database';
-
-type User = Database['public']['Tables']['users']['Row'];
+type User = {
+  id: string;
+  role: string | null;
+};
 
 export default function AvailabilityPage() {
   const { user, loading } = useAuth();
@@ -39,7 +40,7 @@ export default function AvailabilityPage() {
 
       try {
         const { data, error } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();

@@ -90,15 +90,17 @@ export async function GET(request: NextRequest) {
     const userMap = new Map<string, { id: string; firstName: string; lastName: string; email: string }>();
     if (actorIds.length > 0) {
       const { data: users } = await supabase
-        .from('users')
-        .select('id, first_name, last_name, email')
+        .from('profiles')
+        .select('id, full_name, email')
         .in('id', actorIds);
 
       for (const u of users || []) {
+        const name = u.full_name || '';
+        const parts = name.trim().split(/\s+/).filter(Boolean);
         userMap.set(u.id, {
           id: u.id,
-          firstName: u.first_name || '',
-          lastName: u.last_name || '',
+          firstName: parts.length > 0 ? parts[0] : '',
+          lastName: parts.length > 1 ? parts.slice(1).join(' ') : '',
           email: u.email || '',
         });
       }

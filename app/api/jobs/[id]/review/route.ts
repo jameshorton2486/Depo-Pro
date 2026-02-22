@@ -100,7 +100,7 @@ export async function PATCH(
 
     // Get firm_id from user
     const { data: user } = await supabase
-      .from('users')
+      .from('profiles')
       .select('firm_id')
       .eq('id', session.user.id)
       .single();

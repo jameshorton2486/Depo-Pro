@@ -35,7 +35,7 @@ export async function userHasJobAccess(
 ): Promise<boolean> {
   // SUPER_ADMIN bypass
   const { data: profile } = await supabase
-    .from('users')
+    .from('profiles')
     .select('role')
     .eq('id', userId)
     .single();

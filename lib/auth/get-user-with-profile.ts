@@ -75,8 +75,8 @@ export async function getUserWithProfile(request: Request | { headers: Headers }
 export async function getUserProfile(supabaseUserId: string) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
-    .from('users')
-    .select('id, email, role, first_name, last_name, agency_name, phone, created_at, updated_at')
+    .from('profiles')
+    .select('id, email, role, full_name, agency_name, phone, created_at, updated_at')
     .eq('id', supabaseUserId)
     .single();
 
@@ -87,13 +87,19 @@ export async function getUserProfile(supabaseUserId: string) {
 
   if (!data) return null;
 
+  const fullName = data.full_name || '';
+  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+  const firstName = nameParts.length > 0 ? nameParts[0] : null;
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : null;
+
   // Convert snake_case to camelCase
   return {
     id: data.id,
     email: data.email,
     role: data.role,
-    firstName: data.first_name,
-    lastName: data.last_name,
+    fullName: data.full_name,
+    firstName,
+    lastName,
     agencyName: data.agency_name,
     phone: data.phone,
     createdAt: data.created_at,

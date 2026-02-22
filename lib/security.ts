@@ -94,10 +94,10 @@ export async function requireAuth(_request?: NextRequest) {
     throw new Error('UNAUTHENTICATED');
   }
 
-  // Fetch user profile from users table
+  // Fetch user profile from profiles table
   const { data: profile, error: profileError } = await supabase
-    .from('users')
-    .select('*')
+    .from('profiles')
+    .select('role, full_name, firm_id')
     .eq('id', user.id)
     .single();
 
@@ -115,9 +115,7 @@ export async function requireAuth(_request?: NextRequest) {
       id: user.id,
       email: user.email || '',
       role: profile.role as UserRole,
-      name: profile.first_name && profile.last_name
-        ? `${profile.first_name} ${profile.last_name}`
-        : profile.first_name || profile.last_name || null,
+      name: profile.full_name || null,
       firmId: profile.firm_id || null,
     },
   };

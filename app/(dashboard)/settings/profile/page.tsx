@@ -12,9 +12,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
-import type { Database } from '@/types/database';
-
-type User = Database['public']['Tables']['users']['Row'];
+type User = {
+  id: string;
+  role: string | null;
+  full_name: string | null;
+  firm_id: string | null;
+  updated_at?: string | null;
+};
 
 export default function ProfileSettingsPage() {
   const { user: authUser, loading } = useAuth();
@@ -38,7 +42,7 @@ export default function ProfileSettingsPage() {
 
       try {
         const { data, error } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', authUser.id)
           .single();
@@ -59,9 +63,7 @@ export default function ProfileSettingsPage() {
     id: authUser.id,
     email: authUser.email || '',
     role: profile.role,
-    name: profile.first_name && profile.last_name
-      ? `${profile.first_name} ${profile.last_name}`
-      : profile.first_name || profile.last_name || null,
+    name: profile.full_name || null,
   } : null;
 
   if (loading || profileLoading) {
@@ -89,10 +91,9 @@ export default function ProfileSettingsPage() {
       }
 
       const { data: updatedProfile, error: updateError } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
-          first_name: firstName,
-          last_name: lastName,
+          full_name: `${firstName} ${lastName}`.trim(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', authUser?.id)

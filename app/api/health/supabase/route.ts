@@ -25,7 +25,7 @@ export async function GET() {
     // Test 1: Verify connection and RLS
     // Attempt to query a protected table (should fail for anon, but connection works)
     const { error: queryError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id')
       .limit(1);
 

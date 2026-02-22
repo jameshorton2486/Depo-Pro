@@ -5,7 +5,7 @@
 // Replaces: stub version (silent true returns)
 // Preserves: Existing AuthUser interface + requireAuth signature
 //
-// Auth pattern: createSupabaseServerClient() → .from('users')
+// Auth pattern: createSupabaseServerClient() → .from('profiles')
 // Role source: profiles.role (user_role enum)
 // Org source: organization_memberships.org_id (after migration)
 // ═══════════════════════════════════════════════════════════════
@@ -70,7 +70,7 @@ export function createPermissionError(code: string, message: string): Permission
 
 /**
  * Require authentication. Returns enriched AuthUser or 401 response.
- * Queries 'users' table (matches existing pattern in lib/auth.ts).
+ * Queries 'profiles' table (matches existing pattern in lib/auth.ts).
  * After Phase 1 migration, also enriches with org context.
  */
 export async function requireAuth(_request?: Request): Promise<AuthUser | NextResponse> {
@@ -82,9 +82,9 @@ export async function requireAuth(_request?: Request): Promise<AuthUser | NextRe
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user profile (existing pattern — queries 'users' view/table)
+    // Get user profile
     const { data: profile, error: profileError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id, role, firm_id, email')
       .eq('id', user.id)
       .single();
@@ -274,7 +274,7 @@ async function getAccessUserProfile(
 ): Promise<AccessUserProfile | null> {
   const supabase = await createSupabaseServerClient();
   const { data: user, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('id, role, firm_id')
     .eq('id', userId)
     .single();
