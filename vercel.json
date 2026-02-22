@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "app/api/jobs/[id]/transcribe/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/jobs/[id]/medical-records/[recordId]/extract/route.ts": {
+      "maxDuration": 120
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/process-jobs",

@@ -190,6 +190,9 @@ const POSTHandler = async (
     });
 
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] transcription trigger failure', error);
+    }
     console.error('Error triggering transcription:', error);
     return NextResponse.json(
       { error: 'Failed to trigger transcription' },

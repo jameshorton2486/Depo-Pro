@@ -139,6 +139,9 @@ export async function GET(
       useQAFormat: true,
     });
   } catch (error: any) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] job export GET failure', error);
+    }
     console.error('Export error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to export transcript' },
@@ -164,6 +167,9 @@ const POSTHandler = async (
       linesPerPage: body.linesPerPage || 25,
     });
   } catch (error: any) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] job export POST failure', error);
+    }
     console.error('Export error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to export transcript' },

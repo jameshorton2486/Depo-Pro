@@ -240,6 +240,9 @@ const PATCHHandler = async (
       updatedAt: responseUpdatedAt,
     });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] review mutation failure', error);
+    }
     console.error('Error in review API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

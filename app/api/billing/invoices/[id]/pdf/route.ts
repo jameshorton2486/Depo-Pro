@@ -119,6 +119,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] invoice pdf generation failure', error);
+    }
     console.error('[Invoice PDF] Error:', error);
     return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
   }

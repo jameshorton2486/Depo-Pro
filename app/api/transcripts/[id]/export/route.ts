@@ -276,6 +276,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] transcript export failure', error);
+    }
     console.error('Export error:', error);
     return NextResponse.json({ error: 'Failed to export transcript' }, { status: 500 });
   }
