@@ -263,6 +263,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       initialStats={initialStats}
       lockInfo={lockInfo}
       userId={currentUser.id}
+      userRole={currentUser.role}
       confidenceAnalytics={confidenceAnalytics}
       riskScoreResult={riskScoreResult}
     />

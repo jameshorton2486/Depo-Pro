@@ -25,6 +25,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { canExportFormat } from '@/lib/export/permissions';
+import type { UserRole } from '@/lib/enums/roles';
 
 interface ReviewClientNewProps {
   jobId: string;
@@ -37,6 +39,7 @@ interface ReviewClientNewProps {
   initialStats: FlaggedWordStats;
   lockInfo: { locked: boolean; lockedByMe: boolean; lockedByName?: string } | null;
   userId: string;
+  userRole: UserRole;
   confidenceAnalytics?: ConfidenceAnalytics;
   riskScoreResult?: RiskScoreResult;
 }
@@ -52,6 +55,7 @@ export function ReviewClientNew({
   initialStats,
   lockInfo,
   userId: _userId,
+  userRole,
   confidenceAnalytics,
   riskScoreResult,
 }: ReviewClientNewProps) {
@@ -68,6 +72,7 @@ export function ReviewClientNew({
 
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const savesInFlightRef = useRef(0);
 
   // Feature 3: Inline Confidence Heatmap toggle
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -252,6 +257,7 @@ export function ReviewClientNew({
     action: 'correct' | 'confirm' | 'skip',
     correctedWord?: string
   ) => {
+    savesInFlightRef.current++;
     try {
       const response = await fetch(`/api/jobs/${jobId}/review`, {
         method: 'PATCH',
@@ -282,6 +288,8 @@ export function ReviewClientNew({
       console.error('Correction failed:', error);
       toast.error('Failed to save. Please try again.');
       throw error; // Re-throw so component can handle
+    } finally {
+      savesInFlightRef.current--;
     }
   }, [jobId, trackWordReviewed]);
 
@@ -320,6 +328,22 @@ export function ReviewClientNew({
 
   // Handle export from review page
   const handleExport = async (format: 'docx' | 'pdf' | 'txt') => {
+    if (savesInFlightRef.current > 0) {
+      toast.info('Saving changes...', {
+        description: 'Export will begin once save completes.',
+      });
+
+      const start = Date.now();
+      while (savesInFlightRef.current > 0 && Date.now() - start < 5000) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      if (savesInFlightRef.current > 0) {
+        toast.error('Save is taking too long. Please try exporting again.');
+        return;
+      }
+    }
+
     setIsExporting(true);
     try {
       const response = await fetch(
@@ -359,6 +383,12 @@ export function ReviewClientNew({
       setIsExporting(false);
     }
   };
+
+  const exportFormats = [
+    { format: 'docx' as const, label: 'Word (.docx)' },
+    { format: 'pdf' as const, label: 'PDF (.pdf)' },
+    { format: 'txt' as const, label: 'Text (.txt)' },
+  ].filter(({ format }) => canExportFormat(userRole, format));
 
   // Show loading state if segments are empty or acquiring lock
   if (isAcquiringLock || segments.length === 0) {
@@ -414,33 +444,26 @@ export function ReviewClientNew({
           {/* Export Dropdown */}
           <div className="relative group">
             <button
-              disabled={isExporting}
+              disabled={isExporting || exportFormats.length === 0}
               className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm disabled:opacity-50 transition-colors flex items-center gap-1"
             >
               {isExporting ? 'Exporting...' : 'Export'} ▼
             </button>
             <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              <button
-                onClick={() => handleExport('docx')}
-                disabled={isExporting}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors rounded-t-lg"
-              >
-                Word (.docx)
-              </button>
-              <button
-                onClick={() => handleExport('pdf')}
-                disabled={isExporting}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors"
-              >
-                PDF (.pdf)
-              </button>
-              <button
-                onClick={() => handleExport('txt')}
-                disabled={isExporting}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors rounded-b-lg"
-              >
-                Text (.txt)
-              </button>
+              {exportFormats.map(({ format, label }, index) => (
+                <button
+                  key={format}
+                  onClick={() => handleExport(format)}
+                  disabled={isExporting}
+                  className={cn(
+                    'w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors',
+                    index === 0 && 'rounded-t-lg',
+                    index === exportFormats.length - 1 && 'rounded-b-lg'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
