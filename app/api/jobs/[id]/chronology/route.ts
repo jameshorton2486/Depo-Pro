@@ -3,6 +3,8 @@
 // POST: Create a manual chronology entry
 
 import type { NextRequest } from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -80,10 +82,10 @@ export async function GET(
   }
 }
 
-export async function POST(
+const POSTHandler = async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
@@ -146,3 +148,13 @@ export async function POST(
     );
   }
 }
+
+
+export const POST = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER, GuardRole.SCOPIST],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

@@ -2,6 +2,8 @@
 // API route for getting and updating job status
 
 import type { NextRequest} from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -104,10 +106,10 @@ export async function GET(
  * PATCH /api/jobs/[id]/status
  * Update job status
  */
-export async function PATCH(
+const PATCHHandler = async (
   request: NextRequest,
   context: RouteContext,
-) {
+) => {
   try {
     const currentUser = await getCurrentUser();
 
@@ -191,3 +193,13 @@ export async function PATCH(
 
 
 
+
+
+export const PATCH = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER, GuardRole.SCOPIST],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

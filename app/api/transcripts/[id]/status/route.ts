@@ -6,6 +6,8 @@
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { transitionTranscriptStatus } from '@/lib/services/transcript-status';
@@ -20,10 +22,10 @@ interface RouteContext {
  * PATCH /api/transcripts/[id]/status
  * Transition transcript to a new status
  */
-export async function PATCH(
+const PATCHHandler = async (
   request: NextRequest,
   context: RouteContext
-) {
+) => {
   try {
     const currentUser = await getCurrentUser();
 
@@ -81,3 +83,13 @@ export async function PATCH(
   }
 }
 
+
+
+export const PATCH = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

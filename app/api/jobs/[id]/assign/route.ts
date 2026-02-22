@@ -7,6 +7,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 import type { NextRequest} from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -36,10 +38,10 @@ const ASSIGNMENT_ALLOWED_ROLES = ['ADMIN', 'AGENCY', 'COURT_REPORTER'] as const;
 // POST - Assign scopist to job
 // ------------------------------------------------------------
 
-export async function POST(
+const POSTHandler = async (
   request: NextRequest,
   { params }: RouteParams,
-) {
+) => {
   try {
     // 1. AUTHENTICATION CHECK
     const currentUser = await getCurrentUser();
@@ -356,3 +358,13 @@ export async function DELETE(
   }
 }
 
+
+
+export const POST = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

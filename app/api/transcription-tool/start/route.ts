@@ -8,6 +8,8 @@
 // =============================================================================
 
 import type { NextRequest } from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -34,7 +36,7 @@ const ALLOWED_VIDEO_TYPES = [
 
 const ALLOWED_TYPES = [...ALLOWED_AUDIO_TYPES, ...ALLOWED_VIDEO_TYPES];
 
-export async function POST(request: NextRequest) {
+const POSTHandler = async (request: NextRequest) => {
   try {
     // --- AUTH ---
     const currentUser = await getCurrentUser();
@@ -261,3 +263,13 @@ export async function POST(request: NextRequest) {
 }
 
 
+
+
+export const POST = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    rateLimit: { limit: 10, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

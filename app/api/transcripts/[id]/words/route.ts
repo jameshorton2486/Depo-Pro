@@ -6,6 +6,8 @@
 // Access: Court reporters (own jobs) and assigned scopists
 
 import type { NextRequest} from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -47,10 +49,10 @@ function normalizeThreshold(threshold: number | undefined): number {
   return Math.min(MAX_THRESHOLD, Math.max(MIN_THRESHOLD, threshold));
 }
 
-export async function PATCH(
+const PATCHHandler = async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
-) {
+) => {
   try {
     const { id: transcriptionId } = await params;
 
@@ -378,3 +380,13 @@ export async function GET(
     );
   }
 }
+
+
+export const PATCH = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

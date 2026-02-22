@@ -2,6 +2,8 @@
 // POST: Trigger Claude AI extraction on a medical record
 
 import type { NextRequest } from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -13,10 +15,10 @@ import { logger } from '@/lib/logger';
 
 export const maxDuration = 120; // Allow up to 2 minutes for Claude processing
 
-export async function POST(
+const POSTHandler = async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string; recordId: string }> },
-) {
+) => {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
@@ -87,3 +89,13 @@ export async function POST(
     );
   }
 }
+
+
+export const POST = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER, GuardRole.SCOPIST],
+    rateLimit: { limit: 5, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

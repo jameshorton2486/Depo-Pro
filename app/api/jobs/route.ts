@@ -6,6 +6,8 @@
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listJobs, createJob } from '@/lib/supabase/queries/jobs';
@@ -89,7 +91,7 @@ export async function GET(request: NextRequest) {
  * POST /api/jobs
  * Create a new job
  */
-export async function POST(request: NextRequest) {
+const POSTHandler = async (request: NextRequest) => {
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -159,3 +161,13 @@ export async function POST(request: NextRequest) {
 
 
 
+
+
+export const POST = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    rateLimit: { limit: 20, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+);

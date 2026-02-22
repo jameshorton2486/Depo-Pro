@@ -6,6 +6,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { NextRequest} from 'next/server';
+import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -192,10 +194,10 @@ export async function GET(
 
 // PATCH /api/jobs/[id]/flagged-words
 // Update a flagged word (mark as reviewed, correct text)
-export async function PATCH(
+const PATCHHandler = async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
@@ -346,3 +348,13 @@ export async function DELETE(
 }
 
 
+
+
+export const PATCH = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+);
