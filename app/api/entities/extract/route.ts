@@ -3,7 +3,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { extractEntities, deduplicateEntities } from '@/lib/services/entity-extraction';
@@ -17,12 +17,12 @@ export const maxDuration = 60; // 1 minute
 export async function POST(request: NextRequest) {
   try {
     // --- AUTH ---
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = session.user as { id: string; role: string; firmId?: string };
+    const user = currentUser as { id: string; role: string; firmId?: string };
 
     // --- PARSE REQUEST ---
     const body = await request.json();
@@ -224,12 +224,12 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = session.user as { id: string; role: string; firmId?: string };
+    const user = currentUser as { id: string; role: string; firmId?: string };
 
     // Parse query params
     const { searchParams } = new URL(request.url);
@@ -304,3 +304,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+

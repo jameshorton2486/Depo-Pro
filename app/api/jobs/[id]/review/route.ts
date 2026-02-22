@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logCorrection, getWordContext } from '@/lib/services/correction-logger';
 
@@ -26,8 +26,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -102,7 +102,7 @@ export async function PATCH(
     const { data: user } = await supabase
       .from('profiles')
       .select('firm_id')
-      .eq('id', session.user.id)
+      .eq('id', currentUser.id)
       .single();
 
     const firmId = user?.firm_id || job.firm_id;
@@ -116,7 +116,7 @@ export async function PATCH(
     const updateData: any = {
       status: newStatus,
       reviewed_at: new Date().toISOString(),
-      reviewed_by: session.user.id,
+      reviewed_by: currentUser.id,
     };
 
     if (action === 'correct' && correctedWord) {
@@ -163,7 +163,7 @@ export async function PATCH(
       transcriptionId: flaggedWord.transcription_id,
       jobId,
       firmId,
-      reviewerId: session.user.id,
+      reviewerId: currentUser.id,
       wordIndex: wordIndex >= 0 ? wordIndex : -1,
       originalWord: flaggedWord.original_word,
       correctedWord: action === 'correct' ? correctedWord : undefined,
@@ -201,3 +201,4 @@ export async function PATCH(
     );
   }
 }
+

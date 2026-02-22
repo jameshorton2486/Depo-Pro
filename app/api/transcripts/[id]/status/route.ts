@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { transitionTranscriptStatus } from '@/lib/services/transcript-status';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptById } from '@/lib/supabase/queries/transcripts';
@@ -25,9 +25,9 @@ export async function PATCH(
   context: RouteContext
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -43,7 +43,7 @@ export async function PATCH(
     const result = await transitionTranscriptStatus(
       transcriptId,
       status,
-      session.user.role as string
+      currentUser.role as string
     );
 
     if (!result.success) {
@@ -80,3 +80,4 @@ export async function PATCH(
     );
   }
 }
+

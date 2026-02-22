@@ -8,7 +8,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 // ProperNounCategory not needed as value - using string validation
 import { getProperNounsByJob, createProperNoun, getOrCreateCsrRecordId, bulkDeleteProperNouns } from '@/lib/supabase/queries/proper-nouns';
@@ -28,8 +28,8 @@ export async function GET(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -44,7 +44,7 @@ export async function GET(
     }
 
     // Check access: admin, job owner, or same firm
-    const user = session.user as any;
+    const user = currentUser as any;
     const userFirmId = user.firmId || null;
     const hasAccess =
       user.role === 'ADMIN' ||
@@ -92,8 +92,8 @@ export async function POST(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -146,7 +146,7 @@ export async function POST(
     }
 
     // Check access
-    const user = session.user as any;
+    const user = currentUser as any;
     const userFirmId = user.firmId || null;
     const hasAccess =
       user.role === 'ADMIN' ||
@@ -211,8 +211,8 @@ export async function DELETE(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -236,7 +236,7 @@ export async function DELETE(
     }
 
     // Check access
-    const user = session.user as any;
+    const user = currentUser as any;
     const userFirmId = user.firmId || null;
     const hasAccess =
       user.role === 'ADMIN' ||
@@ -272,3 +272,5 @@ export async function DELETE(
     );
   }
 }
+
+

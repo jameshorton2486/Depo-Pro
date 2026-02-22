@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { logger } from '@/lib/logger';
 
 /**
@@ -8,8 +8,8 @@ import { logger } from '@/lib/logger';
  * This endpoint is kept for legacy support but forwards to the new proper-nouns endpoint
  */
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -53,3 +53,4 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(await response.json(), { status: response.status });
 }
+

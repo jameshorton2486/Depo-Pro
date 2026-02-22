@@ -9,7 +9,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { processTranscriptionJob } from '@/lib/transcription/pipeline';
@@ -37,12 +37,12 @@ const ALLOWED_TYPES = [...ALLOWED_AUDIO_TYPES, ...ALLOWED_VIDEO_TYPES];
 export async function POST(request: NextRequest) {
   try {
     // --- AUTH ---
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = session.user as {
+    const user = currentUser as {
       id: string;
       role: string;
       firmId?: string;
@@ -259,3 +259,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+

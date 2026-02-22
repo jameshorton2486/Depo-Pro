@@ -7,21 +7,21 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user?.id) {
+    if (!currentUser?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Only admin and operators can view queue
-    if (session.user.role !== 'ADMIN' && session.user.role !== 'REPORTER') {
+    if (currentUser.role !== 'ADMIN' && currentUser.role !== 'REPORTER') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
 
     const queue = await AudioEnhancementService.getRxQueue();
 
-    const effectiveFirmId = session.user.role === 'ADMIN'
+    const effectiveFirmId = currentUser.role === 'ADMIN'
       ? requestedFirmId
-      : session.user.firmId || undefined;
+      : currentUser.firmId || undefined;
 
     let filteredQueue = queue;
 
@@ -63,3 +63,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

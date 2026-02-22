@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { UserRole } from '@/lib/enums/roles';
 
@@ -16,8 +16,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       UserRole.SCOPIST,
     ]);
 
-    if (!allowedRoles.has(session.user.role)) {
+    if (!allowedRoles.has(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -72,10 +72,10 @@ export async function POST(req: NextRequest) {
     }
 
     const isPlatformAdmin =
-      session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN;
-    const isJobOwner = job.created_by_id === session.user.id;
-    const isAssignedScopist = job.scopist_id === session.user.id;
-    const isSameFirm = !!session.user.firmId && !!job.firm_id && session.user.firmId === job.firm_id;
+      currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
+    const isJobOwner = job.created_by_id === currentUser.id;
+    const isAssignedScopist = job.scopist_id === currentUser.id;
+    const isSameFirm = !!currentUser.firmId && !!job.firm_id && currentUser.firmId === job.firm_id;
 
     if (!isPlatformAdmin && !isJobOwner && !isAssignedScopist && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       .insert({
         transcription_id: transcriptionId,
         job_id: jobId,
-        user_id: session.user.id,
+        user_id: currentUser.id,
         risk_score: riskScore,
         flagged_count: flaggedCount,
         started_at: new Date().toISOString(),
@@ -112,3 +112,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

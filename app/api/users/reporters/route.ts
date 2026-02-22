@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUsersByRole } from '@/lib/supabase/queries/users';
 import { logger } from '@/lib/logger';
@@ -11,8 +11,8 @@ import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -79,3 +79,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

@@ -6,7 +6,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import {
   getUsageSummary,
   getFirmUsage as _getFirmUsage,
@@ -17,16 +17,16 @@ import {
 // =============================================================================
 
 export async function GET(_request: NextRequest) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!currentUser?.id) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401 }
     );
   }
 
-  const firmId = (session.user as any).firmId;
+  const firmId = (currentUser as any).firmId;
 
   if (!firmId) {
     return NextResponse.json(
@@ -63,3 +63,5 @@ export async function GET(_request: NextRequest) {
     );
   }
 }
+
+

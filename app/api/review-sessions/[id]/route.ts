@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { UserRole } from '@/lib/enums/roles';
 
@@ -19,8 +19,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id || !session.user.role) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id || !currentUser.role) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -32,7 +32,7 @@ export async function PATCH(
       UserRole.SCOPIST,
     ]);
 
-    if (!allowedRoles.has(session.user.role)) {
+    if (!allowedRoles.has(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -55,7 +55,7 @@ export async function PATCH(
       .from('review_sessions')
       .select('id, user_id, job_id')
       .eq('id', sessionId)
-      .eq('user_id', session.user.id)
+      .eq('user_id', currentUser.id)
       .single();
 
     if (reviewSessionError || !reviewSession) {
@@ -74,10 +74,10 @@ export async function PATCH(
     }
 
     const isPlatformAdmin =
-      session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPER_ADMIN;
-    const isJobOwner = job.created_by_id === session.user.id;
-    const isAssignedScopist = job.scopist_id === session.user.id;
-    const isSameFirm = !!session.user.firmId && !!job.firm_id && session.user.firmId === job.firm_id;
+      currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
+    const isJobOwner = job.created_by_id === currentUser.id;
+    const isAssignedScopist = job.scopist_id === currentUser.id;
+    const isSameFirm = !!currentUser.firmId && !!job.firm_id && currentUser.firmId === job.firm_id;
 
     if (!isPlatformAdmin && !isJobOwner && !isAssignedScopist && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -117,7 +117,7 @@ export async function PATCH(
       .from('review_sessions')
       .update(updates)
       .eq('id', sessionId)
-      .eq('user_id', session.user.id); // Ensure user owns this session
+      .eq('user_id', currentUser.id); // Ensure user owns this session
 
     if (error) {
       console.error('Failed to update review session:', error);
@@ -136,3 +136,4 @@ export async function PATCH(
     );
   }
 }
+

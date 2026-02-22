@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, getTranscriptShares, createTranscriptShare } from '@/lib/supabase/queries/transcripts';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
@@ -27,15 +27,15 @@ interface Props {
 export async function POST(request: NextRequest, { params }: Props) {
   try {
     const { id: transcriptId } = await params;
-    const session = await auth();
+    const currentUser = await getCurrentUser();
     
-    if (!session?.user?.id) {
+    if (!currentUser?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Verify transcript exists and user has access
     const supabase = await createSupabaseServerClient();
-    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, session.user.id);
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, currentUser.id);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
@@ -43,9 +43,9 @@ export async function POST(request: NextRequest, { params }: Props) {
 
     // Check permissions (Creator, Admin, or same Firm)
     const canShare = 
-      transcript.job.createdById === session.user.id || 
-      session.user.role === 'ADMIN' ||
-      (transcript.job.firmId && transcript.job.firmId === (session.user as any).firmId);
+      transcript.job.createdById === currentUser.id || 
+      currentUser.role === 'ADMIN' ||
+      (transcript.job.firmId && transcript.job.firmId === (currentUser as any).firmId);
 
     if (!canShare) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -58,13 +58,13 @@ export async function POST(request: NextRequest, { params }: Props) {
     const share = await createTranscriptShare(supabase, transcriptId, {
       email: validatedData.recipientEmail,
       expires_at: validatedData.expiresAt || null,
-      created_by_id: session.user.id,
+      created_by_id: currentUser.id,
     });
 
     // Log share creation
     await createAuditLog({
-      actorUserId: session.user.id,
-      firmId: transcript.job.firmId || (session.user as any).firmId || null,
+      actorUserId: currentUser.id,
+      firmId: transcript.job.firmId || (currentUser as any).firmId || null,
       action: AuditAction.SHARE_CREATED,
       targetType: AuditTargetType.TRANSCRIPT_SHARE,
       targetId: share.id,
@@ -97,9 +97,9 @@ export async function POST(request: NextRequest, { params }: Props) {
 export async function GET(_request: NextRequest, { params }: Props) {
   try {
     const { id: transcriptId } = await params;
-    const session = await auth();
+    const currentUser = await getCurrentUser();
     
-    if (!session?.user?.id) {
+    if (!currentUser?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -112,3 +112,5 @@ export async function GET(_request: NextRequest, { params }: Props) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+

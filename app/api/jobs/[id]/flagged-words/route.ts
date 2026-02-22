@@ -7,7 +7,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
@@ -42,8 +42,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -66,9 +66,9 @@ export async function GET(
     }
 
     // Check access (owner, admin, or same firm)
-    const isOwner = job.created_by_id === session.user.id;
-    const isAdmin = session.user.role === 'ADMIN';
-    const sameFirm = job.firm_id === (session.user as any).firmId;
+    const isOwner = job.created_by_id === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN';
+    const sameFirm = job.firm_id === (currentUser as any).firmId;
 
     if (!isOwner && !isAdmin && !sameFirm) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -197,8 +197,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -224,9 +224,9 @@ export async function PATCH(
     }
 
     // Check edit access (scopist, reporter owner, or admin)
-    const isOwner = job.created_by_id === session.user.id;
-    const isAdmin = session.user.role === 'ADMIN';
-    const isScopist = session.user.role === 'SCOPIST';
+    const isOwner = job.created_by_id === currentUser.id;
+    const isAdmin = currentUser.role === 'ADMIN';
+    const isScopist = currentUser.role === 'SCOPIST';
 
     if (!isOwner && !isAdmin && !isScopist) {
       return NextResponse.json({ error: 'Unauthorized to edit' }, { status: 403 });
@@ -260,8 +260,8 @@ export async function PATCH(
           word_index: wordIndex,
           edited_text: correctedText || null,
           edit_type: 'WORD_CORRECTION',
-          editor_id: session.user.id,
-          editor_role: session.user.role,
+          editor_id: currentUser.id,
+          editor_role: currentUser.role,
           created_at: new Date().toISOString(),
         },
         {
@@ -278,7 +278,7 @@ export async function PATCH(
       success: true,
       wordId,
       correctedText,
-      reviewedBy: session.user.id,
+      reviewedBy: currentUser.id,
     });
   } catch (error) {
     console.error('Flagged words PATCH error:', error);
@@ -296,8 +296,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -344,3 +344,5 @@ export async function DELETE(
     );
   }
 }
+
+

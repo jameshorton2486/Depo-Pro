@@ -1,6 +1,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { z } from 'zod';
 import { getTranscriptionQueue } from '@/lib/queue/transcription-queue';
 import { logger } from '@/lib/logger';
@@ -54,13 +54,13 @@ async function postTranscribeStartHandler(request: NextRequest) {
   }
 
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Rate limiting
-    const rateLimit = checkRateLimit(session.user.id, 'API_TRANSCRIPTION');
+    const rateLimit = checkRateLimit(currentUser.id, 'API_TRANSCRIPTION');
     if (!rateLimit.allowed) {
       return NextResponse.json({ error: 'Too many transcription requests' }, { status: 429 });
     }
@@ -70,7 +70,7 @@ async function postTranscribeStartHandler(request: NextRequest) {
 
     logger.info('Starting transcription', {
       jobId: validated.jobId,
-      userId: session.user.id,
+      userId: currentUser.id,
       options: validated.options,
     });
 
@@ -81,7 +81,7 @@ async function postTranscribeStartHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (job.created_by_id !== session.user.id && session.user.role !== 'ADMIN') {
+    if (job.created_by_id !== currentUser.id && currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -104,8 +104,8 @@ async function postTranscribeStartHandler(request: NextRequest) {
       audioFileId: validated.jobId, // Use jobId as fileId for now
       audioFileUrl: validated.audioFileUrl,
       audioFileName: 'audio', // We might want to get this from the file URL or metadata
-      firmId: (session.user as { firmId?: string }).firmId || '',
-      userId: session.user.id,
+      firmId: (currentUser as { firmId?: string }).firmId || '',
+      userId: currentUser.id,
       modelType: (validated.options?.model as 'STANDARD' | 'MEDICAL' | 'BILINGUAL') || 'MEDICAL',
     });
 
@@ -117,7 +117,7 @@ async function postTranscribeStartHandler(request: NextRequest) {
     }, { status: 200 });
   } catch (error) {
     logger.error('Transcription start error', error as Error, {
-      userId: (await auth())?.user?.id,
+      userId: (await getCurrentUser())?.id,
     });
 
     if (error instanceof z.ZodError) {
@@ -135,6 +135,8 @@ async function postTranscribeStartHandler(request: NextRequest) {
 }
 
 export const POST = withRequestLogging(postTranscribeStartHandler);
+
+
 
 
 

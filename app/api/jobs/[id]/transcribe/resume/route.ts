@@ -3,7 +3,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { resumePipeline } from '@/lib/transcription/scheduler';
 
 interface RouteContext {
@@ -15,9 +15,9 @@ export async function POST(
   context: RouteContext,
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -43,3 +43,4 @@ export async function POST(
     );
   }
 }
+

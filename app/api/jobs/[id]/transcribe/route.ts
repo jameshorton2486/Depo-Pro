@@ -3,7 +3,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById, updateJobStatus, updateJob } from '@/lib/supabase/queries/jobs';
 import { listFilesForJob } from '@/lib/supabase/queries/files';
@@ -21,13 +21,13 @@ export async function POST(
   context: RouteContext,
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = session.user as { id: string; role: string; firmId?: string };
+    const user = currentUser as { id: string; role: string; firmId?: string };
     const { id: jobId } = await context.params;
 
     // Rate limit check
@@ -195,3 +195,5 @@ export async function POST(
     );
   }
 }
+
+

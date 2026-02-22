@@ -4,7 +4,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
 import { canPerformAction } from '@/lib/permissions/rbac';
@@ -12,13 +12,13 @@ import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await createSupabaseServerClient();
-    const userData = await getUserById(supabase, session.user.id);
+    const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 403 });
@@ -101,5 +101,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
+
 
 

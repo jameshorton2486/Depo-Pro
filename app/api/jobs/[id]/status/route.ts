@@ -3,7 +3,7 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-compat';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { JobStatus } from '@/types/database';
 import { getJobById, updateJobStatus, updateJob, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
@@ -23,14 +23,14 @@ export async function GET(
   context: RouteContext,
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id: jobId } = await context.params;
-    const user = session.user as { id: string; role: string };
+    const user = currentUser as { id: string; role: string };
 
     // Get job using query module
     const supabase = await createSupabaseServerClient();
@@ -109,9 +109,9 @@ export async function PATCH(
   context: RouteContext,
 ) {
   try {
-    const session = await auth();
+    const currentUser = await getCurrentUser();
 
-    if (!session?.user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -155,9 +155,9 @@ export async function PATCH(
     }
 
     // Check permissions via query layer
-    const isOwner = (job as any).created_by_id === session.user.id;
-    const isAssignedScopist = await isUserAssignedToJob(jobId, session.user.id);
-    const isAdmin = session.user.role === 'ADMIN';
+    const isOwner = (job as any).created_by_id === currentUser.id;
+    const isAssignedScopist = await isUserAssignedToJob(jobId, currentUser.id);
+    const isAdmin = currentUser.role === 'ADMIN';
 
     if (!isOwner && !isAssignedScopist && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -188,4 +188,6 @@ export async function PATCH(
     );
   }
 }
+
+
 
