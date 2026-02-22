@@ -39,6 +39,33 @@ function splitIntoLines(text: string, maxChars: number = CHARS_PER_LINE): string
   return lines;
 }
 
+interface PaginatedPage {
+  lines: string[];
+  pageNumber: number;
+}
+
+function paginateTranscript(
+  fullText: string,
+  maxCharsPerLine: number = CHARS_PER_LINE,
+  linesPerPage: number = LINES_PER_PAGE,
+): PaginatedPage[] {
+  const rawLines = splitIntoLines(fullText, maxCharsPerLine);
+  const pages: PaginatedPage[] = [];
+
+  for (let i = 0; i < rawLines.length; i += linesPerPage) {
+    pages.push({
+      lines: rawLines.slice(i, i + linesPerPage),
+      pageNumber: pages.length + 1,
+    });
+  }
+
+  if (pages.length === 0) {
+    pages.push({ lines: [], pageNumber: 1 });
+  }
+
+  return pages;
+}
+
 // Helper: Format date for legal documents
 function formatDate(date: Date): string {
   return format(date, 'MMMM d, yyyy');
@@ -120,20 +147,25 @@ export async function exportToDocx(
 ): Promise<Buffer> {
   // Apply speaker name replacement
   const processedText = replaceSpeakerLabels(transcriptText, metadata.speakerNames);
-  const lines = splitIntoLines(processedText);
-  const pages: string[][] = [];
-
-  // Split into pages
-  for (let i = 0; i < lines.length; i += LINES_PER_PAGE) {
-    pages.push(lines.slice(i, i + LINES_PER_PAGE));
-  }
+  const paginatedPages = paginateTranscript(processedText, CHARS_PER_LINE, options.linesPerPage || LINES_PER_PAGE);
+  const lines = paginatedPages.flatMap((page) => page.lines);
 
   // Create document sections
   const sections: any[] = [];
 
   // Title Page
   sections.push({
-    properties: {},
+    properties: {
+      page: {
+        size: { width: 12240, height: 15840 },
+        margin: {
+          top: 1440,
+          bottom: 1440,
+          left: 1800,
+          right: 1440,
+        },
+      },
+    },
     children: [
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -218,7 +250,17 @@ export async function exportToDocx(
 
   // Appearances Page (placeholder)
   sections.push({
-    properties: {},
+    properties: {
+      page: {
+        size: { width: 12240, height: 15840 },
+        margin: {
+          top: 1440,
+          bottom: 1440,
+          left: 1800,
+          right: 1440,
+        },
+      },
+    },
     children: [
       new Paragraph({
         alignment: AlignmentType.CENTER,
@@ -250,8 +292,8 @@ export async function exportToDocx(
   let globalLineNumber = 0;
   const formattedLines = options.useQAFormat ? formatQALines(lines) : null;
 
-  for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-    const pageLines = pages[pageIndex];
+  for (let pageIndex = 0; pageIndex < paginatedPages.length; pageIndex++) {
+    const pageLines = paginatedPages[pageIndex].lines;
     const paragraphs: Paragraph[] = [];
 
     // Add timestamp at page start if enabled
@@ -283,7 +325,7 @@ export async function exportToDocx(
       const lineNum = options.lineNumbering ? getLineNumber(globalLineNumber - 1) : '';
       
       // Get Q/A formatting info if enabled
-      const globalLineIdx = pageIndex * LINES_PER_PAGE + lineIndex;
+      const globalLineIdx = pageIndex * (options.linesPerPage || LINES_PER_PAGE) + lineIndex;
       const qaInfo = formattedLines ? formattedLines[globalLineIdx] : null;
 
       // Build text runs
@@ -340,7 +382,20 @@ export async function exportToDocx(
     }
 
     sections.push({
-      properties: {},
+      properties: {
+        page: {
+          size: {
+            width: 12240,
+            height: 15840,
+          },
+          margin: {
+            top: 1440,
+            bottom: 1440,
+            left: 1800,
+            right: 1440,
+          },
+        },
+      },
       headers: {
         default: new Header({
           children: [
@@ -382,6 +437,65 @@ export async function exportToDocx(
     });
   }
 
+  const reporterName = metadata.courtReporterName || 'Court Reporter';
+  sections.push({
+    properties: {
+      page: {
+        size: { width: 12240, height: 15840 },
+        margin: {
+          top: 1440,
+          bottom: 1440,
+          left: 1800,
+          right: 1440,
+        },
+      },
+    },
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
+        children: [new TextRun({ text: 'CERTIFICATE', bold: true, size: 28, font: 'Courier New' })],
+      }),
+      new Paragraph({
+        spacing: { after: 400, line: 360 },
+        children: [new TextRun({
+          text: `I, ${reporterName}, do hereby certify that the foregoing transcript is a true and accurate record of the proceedings in the above-entitled matter.`,
+          size: 24, font: 'Courier New',
+        })],
+      }),
+      new Paragraph({
+        spacing: { after: 800, line: 360 },
+        children: [new TextRun({
+          text: `Dated this _____ day of _____________, ${new Date().getFullYear()}.`,
+          size: 24, font: 'Courier New',
+        })],
+      }),
+      new Paragraph({
+        spacing: { after: 100 },
+        children: [new TextRun({ text: '_________________________________', size: 24, font: 'Courier New' })],
+      }),
+      new Paragraph({
+        spacing: { after: 100 },
+        children: [new TextRun({ text: reporterName, size: 24, font: 'Courier New' })],
+      }),
+      new Paragraph({
+        children: [new TextRun({ text: 'Court Reporter', size: 24, font: 'Courier New' })],
+      }),
+      new Paragraph({ spacing: { before: 600 }, children: [] }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: 'Generated by Depo-Pro', size: 18, font: 'Courier New', color: '999999' })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({
+          text: `Processing Timestamp: ${new Date().toISOString()}`,
+          size: 18, font: 'Courier New', color: '999999',
+        })],
+      }),
+    ],
+  });
+
   const doc = new Document({
     sections,
   });
@@ -401,10 +515,24 @@ export async function exportToPdf(
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
+      // NOTE: pdfkit uses built-in PostScript Courier. DOCX uses Courier New.
+      // Both are monospace with very similar metrics; exact glyph matching requires embedded TTF.
       const doc = new PDFDocument({
         size: 'LETTER',
         margins: { top: 72, bottom: 72, left: 72, right: 72 },
       });
+      const PAGE_WIDTH = 612;
+      const PAGE_HEIGHT = 792;
+      const MARGIN_TOP = 72;
+      const MARGIN_BOTTOM = 72;
+      const MARGIN_LEFT = 72;
+      const MARGIN_RIGHT = 72;
+      const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+      const HEADER_Y = 30;
+      const FOOTER_Y = PAGE_HEIGHT - MARGIN_BOTTOM + 20;
+      const LINE_HEIGHT_PT = 24;
+      const CONTENT_START_Y = MARGIN_TOP;
+      const linesPerPage = options.linesPerPage || LINES_PER_PAGE;
 
       const chunks: Buffer[] = [];
       doc.on('data', (chunk) => chunks.push(chunk));
@@ -428,90 +556,106 @@ export async function exportToPdf(
       doc.fontSize(10).text(`Reported by: ${metadata.courtReporterName || 'Court Reporter'}`, { align: 'center' });
       doc.text(metadata.firmName || '', { align: 'center' });
 
+      // Appearances page (placeholder — matches DOCX)
+      doc.addPage();
+      doc.font('Courier-Bold').fontSize(14).text('APPEARANCES', { align: 'center' });
+      doc.moveDown(2);
+      doc.font('Courier-Oblique').fontSize(12).text('[Appearances to be added]', { align: 'center' });
+
       // New page for transcript
       doc.addPage();
 
-      // Header function
       const addHeader = () => {
         doc.fontSize(8)
           .text(
             `${metadata.caseName || 'Deposition'} - ${metadata.deponentName || 'Deponent'}`,
-            72,
-            30,
-            { align: 'center', width: 468 },
+            MARGIN_LEFT,
+            HEADER_Y,
+            { align: 'center', width: CONTENT_WIDTH },
           );
       };
 
-      // Footer function
       const addFooter = (pageNum: number) => {
-        doc.fontSize(8).text(`Page ${pageNum}`, 72, 750, { align: 'center', width: 468 });
+        doc.fontSize(8).font('Courier').fillColor('#000000').text(
+          `Page ${pageNum}`,
+          MARGIN_LEFT,
+          FOOTER_Y,
+          { align: 'center', width: CONTENT_WIDTH },
+        );
       };
 
-      // Split text into lines
-      const lines = splitIntoLines(processedText);
+      const paginatedPages = paginateTranscript(processedText, CHARS_PER_LINE, linesPerPage);
+      const lines = paginatedPages.flatMap((page) => page.lines);
       const formattedLines = options.useQAFormat ? formatQALines(lines) : null;
-      let currentPage = 2;
-      let lineOnPage = 0;
 
-      addHeader();
-
-      doc.fontSize(12);
-      const lineHeight = 24;
-      let yPosition = 72;
-
-      // Add timestamp at start if enabled
-      if (options.includeTimestamps && wordData && wordData.length > 0) {
-        const startTime = wordData[0]?.start || 0;
-        doc.fontSize(9).fillColor('#666666').font('Courier-Oblique').text(formatTimestamp(startTime), 72, yPosition);
-        yPosition = 96;
-      }
-
-      for (let i = 0; i < lines.length; i++) {
-        // Check if we need a new page
-        if (lineOnPage >= LINES_PER_PAGE) {
-          addFooter(currentPage);
+      for (let pageIndex = 0; pageIndex < paginatedPages.length; pageIndex++) {
+        if (pageIndex > 0) {
           doc.addPage();
-          currentPage++;
-          lineOnPage = 0;
-          
-          yPosition = 72;
-          
-          // Add timestamp at page start if enabled
-          if (options.includeTimestamps && wordData && wordData.length > 0) {
-            const _wordsPerPage = LINES_PER_PAGE * 10;
-            const startWordIndex = (currentPage - 2) * _wordsPerPage;
-            const startTime = wordData[Math.min(startWordIndex, wordData.length - 1)]?.start || 0;
-            doc.fontSize(9).fillColor('#666666').font('Courier-Oblique').text(formatTimestamp(startTime), 72, yPosition);
-            yPosition = 96;
+        }
+
+        addHeader();
+        let yPosition = CONTENT_START_Y;
+
+        if (options.includeTimestamps && wordData && wordData.length > 0) {
+          const wordsPerPage = linesPerPage * 10;
+          const startWordIndex = pageIndex * wordsPerPage;
+          const startTime = wordData[Math.min(startWordIndex, wordData.length - 1)]?.start || 0;
+          doc.fontSize(9).fillColor('#666666').font('Courier-Oblique').text(
+            formatTimestamp(startTime),
+            MARGIN_LEFT,
+            yPosition,
+          );
+          yPosition = CONTENT_START_Y + LINE_HEIGHT_PT;
+        }
+
+        const pageLines = paginatedPages[pageIndex].lines;
+        for (let lineIndex = 0; lineIndex < pageLines.length; lineIndex++) {
+          const globalLineIndex = pageIndex * linesPerPage + lineIndex;
+          const qaInfo = formattedLines ? formattedLines[globalLineIndex] : null;
+          const lineText = pageLines[lineIndex];
+
+          if (options.lineNumbering) {
+            const lineNum = getLineNumber(globalLineIndex);
+            doc.fillColor('#888888').font('Courier').text(lineNum, 40, yPosition);
           }
-          addHeader();
+
+          doc.fillColor('#000000');
+          if (qaInfo?.isQuestion) {
+            doc.font('Courier-Bold').text(lineText, MARGIN_LEFT, yPosition);
+          } else if (qaInfo?.isContinuation) {
+            doc.font('Courier').text(`     ${lineText.trim()}`, MARGIN_LEFT, yPosition);
+          } else {
+            doc.font('Courier').text(lineText, MARGIN_LEFT, yPosition);
+          }
+
+          yPosition += LINE_HEIGHT_PT;
         }
 
-        // Get Q/A formatting info if enabled
-        const qaInfo = formattedLines ? formattedLines[i] : null;
-
-        // Line number
-        if (options.lineNumbering) {
-          const lineNum = getLineNumber(i);
-          doc.fillColor('#888888').text(lineNum, 40, yPosition);
-        }
-
-        // Line text with Q/A formatting
-        doc.fillColor('#000000');
-        if (qaInfo?.isQuestion) {
-          doc.font('Courier-Bold').text(lines[i], 72, yPosition);
-        } else if (qaInfo?.isContinuation) {
-          doc.font('Courier').text('     ' + lines[i].trim(), 72, yPosition); // 5-space indent
-        } else {
-          doc.font('Courier').text(lines[i], 72, yPosition);
-        }
-
-        yPosition += lineHeight;
-        lineOnPage++;
+        addFooter(pageIndex + 1);
       }
 
-      // Final page footer
-      addFooter(currentPage);
+      // Certificate page
+      doc.addPage();
+      doc.font('Courier-Bold').fontSize(14).text('CERTIFICATE', { align: 'center' });
+      doc.moveDown(2);
+
+      doc.font('Courier').fontSize(12);
+      const reporterName = metadata.courtReporterName || 'Court Reporter';
+      doc.text(
+        `I, ${reporterName}, do hereby certify that the foregoing transcript is a true and accurate record of the proceedings in the above-entitled matter.`,
+        { lineGap: 8 },
+      );
+      doc.moveDown(2);
+      doc.text(`Dated this _____ day of _____________, ${new Date().getFullYear()}.`);
+      doc.moveDown(3);
+      doc.text('_________________________________');
+      doc.moveDown(0.5);
+      doc.text(reporterName);
+      doc.text('Court Reporter');
+      doc.moveDown(3);
+      doc.font('Courier').fontSize(8).fillColor('#999999');
+      doc.text('Generated by Depo-Pro', { align: 'center' });
+      doc.text(`Processing Timestamp: ${new Date().toISOString()}`, { align: 'center' });
 
       doc.end();
     } catch (error) {
