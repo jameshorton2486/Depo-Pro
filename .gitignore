@@ -129,10 +129,7 @@ debug*.ps1
 # Supabase temp artifacts
 # =============================================================================
 supabase/.temp/
-depo-pro\
 supabase.txt
-
-depo-pro supabase.txt
 .vercel
 
 # Windows reserved names

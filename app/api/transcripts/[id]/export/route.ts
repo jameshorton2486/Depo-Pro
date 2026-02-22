@@ -93,6 +93,7 @@ export async function GET(
   request: NextRequest,
   context: RouteContext,
 ) {
+  const startTime = performance.now();
   try {
     const currentUser = await getCurrentUser();
 
@@ -281,5 +282,8 @@ export async function GET(
     }
     console.error('Export error:', error);
     return NextResponse.json({ error: 'Failed to export transcript' }, { status: 500 });
+  } finally {
+    const duration = Math.round(performance.now() - startTime);
+    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 }

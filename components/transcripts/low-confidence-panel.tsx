@@ -58,7 +58,7 @@ interface LowConfidencePanelNewProps {
   stats: FlaggedWordStatsCompat;
   currentAudioTime: number;
   onSeekAudio: (timestamp: number) => void;
-  onCorrection: (wordId: string, action: 'correct' | 'skip', correctedWord?: string) => Promise<void>;
+  onCorrection: (wordId: string, action: 'correct' | 'confirm' | 'skip', correctedWord?: string) => Promise<void>;
   isReadOnly: boolean;
   isLoading: boolean;
   onFilterUsed?: (filterType: string) => void; // Feature 5: Track filter usage
@@ -524,7 +524,7 @@ function LowConfidencePanelNew({
   const [categoryFilter, setCategoryFilter] = useState<FlaggedWordCategory>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [correctionText, setCorrectionText] = useState('');
-  const [_currentWordIndex, _setCurrentWordIndex] = useState<number>(0);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   // Filter flagged words (Feature 2.2 & 2.3)
   const filteredWords = useMemo(() => {
@@ -585,7 +585,7 @@ function LowConfidencePanelNew({
     }
   }, [flaggedWords, onSeekAudio]);
 
-  // Keyboard shortcuts (Feature 2.5)
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in input/textarea
@@ -619,12 +619,91 @@ function LowConfidencePanelNew({
             setFilter('all');
             break;
         }
+        return;
+      }
+
+      if (filteredWords.length === 0) return;
+
+      const selectAndSeek = (idx: number) => {
+        setSelectedIndex(idx);
+        const target = filteredWords[idx];
+        if (target) {
+          onSeekAudio(Math.max(0, target.start_time - 2));
+        }
+      };
+
+      switch (e.key) {
+        case 'ArrowDown': {
+          e.preventDefault();
+          const next = selectedIndex === null ? 0 : Math.min(selectedIndex + 1, filteredWords.length - 1);
+          selectAndSeek(next);
+          break;
+        }
+        case 'ArrowUp': {
+          e.preventDefault();
+          const prev = selectedIndex === null ? 0 : Math.max(selectedIndex - 1, 0);
+          selectAndSeek(prev);
+          break;
+        }
+        case 'Tab': {
+          e.preventDefault();
+          if (e.shiftKey) {
+            const prevPending = filteredWords
+              .map((w, idx) => ({ w, idx }))
+              .reverse()
+              .find(({ w, idx }) => w.status === 'PENDING' && idx < (selectedIndex ?? filteredWords.length));
+            if (prevPending) selectAndSeek(prevPending.idx);
+          } else {
+            const nextPending = filteredWords.findIndex(
+              (w, idx) => w.status === 'PENDING' && idx > (selectedIndex ?? -1),
+            );
+            if (nextPending >= 0) selectAndSeek(nextPending);
+          }
+          break;
+        }
+        case ' ': {
+          e.preventDefault();
+          if (selectedIndex !== null && filteredWords[selectedIndex]) {
+            onSeekAudio(Math.max(0, filteredWords[selectedIndex].start_time - 2));
+          }
+          break;
+        }
+        case 'Enter': {
+          e.preventDefault();
+          if (selectedIndex !== null && filteredWords[selectedIndex]) {
+            setEditingId(filteredWords[selectedIndex].id);
+            setCorrectionText(filteredWords[selectedIndex].corrected_word || '');
+          }
+          break;
+        }
+        case 'Escape': {
+          e.preventDefault();
+          setEditingId(null);
+          setSelectedIndex(null);
+          break;
+        }
+        case 'c':
+        case 'C': {
+          if (selectedIndex !== null && filteredWords[selectedIndex]) {
+            e.preventDefault();
+            void onCorrection(filteredWords[selectedIndex].id, 'confirm');
+          }
+          break;
+        }
+        case 's':
+        case 'S': {
+          if (selectedIndex !== null && filteredWords[selectedIndex]) {
+            e.preventDefault();
+            void onCorrection(filteredWords[selectedIndex].id, 'skip');
+          }
+          break;
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [jumpToHighestRisk, onFilterUsed]);
+  }, [filteredWords, jumpToHighestRisk, onCorrection, onFilterUsed, onSeekAudio, selectedIndex]);
 
   const handleCorrect = async (wordId: string) => {
     if (!correctionText.trim()) return;
@@ -642,6 +721,14 @@ function LowConfidencePanelNew({
       await onCorrection(wordId, 'skip');
     } catch (error) {
       console.error('Failed to skip word:', error);
+    }
+  };
+
+  const handleConfirm = async (wordId: string) => {
+    try {
+      await onCorrection(wordId, 'confirm');
+    } catch (error) {
+      console.error('Failed to confirm word:', error);
     }
   };
 
@@ -759,7 +846,7 @@ function LowConfidencePanelNew({
 
         {/* Keyboard shortcuts hint */}
         <div className="mt-2 text-xs text-slate-500 text-center">
-          Tip: Use Shift+R (jump), Shift+M (medical), Shift+N (numbers), Shift+A (reset)
+          Tip: Arrows/Tab navigate, Space play, Enter edit, C confirm, S skip
         </div>
       </div>
 
@@ -771,10 +858,17 @@ function LowConfidencePanelNew({
             <div>No {filter === 'all' ? '' : filter} words to show</div>
           </div>
         ) : (
-          filteredWords.map((word) => (
+          filteredWords.map((word, index) => (
             <div
               key={word.id}
-              className="bg-slate-900 rounded p-3 space-y-2 border border-slate-800"
+              className={cn(
+                'bg-slate-900 rounded p-3 space-y-2 border border-slate-800 cursor-pointer',
+                selectedIndex === index && 'ring-2 ring-blue-500 ring-offset-1 ring-offset-slate-950 border-blue-500/50'
+              )}
+              onClick={() => {
+                setSelectedIndex(index);
+                onSeekAudio(Math.max(0, word.start_time - 2));
+              }}
             >
               {/* Context and word */}
               <div className="text-sm">
@@ -789,7 +883,10 @@ function LowConfidencePanelNew({
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>Confidence: {Math.round(word.confidence * 100)}%</span>
                 <button
-                  onClick={() => onSeekAudio(word.start_time)}
+                  onClick={() => {
+                    setSelectedIndex(index);
+                    onSeekAudio(word.start_time);
+                  }}
                   className="hover:text-blue-400"
                 >
                   {Math.floor(word.start_time / 60)}:{String(Math.floor(word.start_time % 60)).padStart(2, '0')}
@@ -835,6 +932,12 @@ function LowConfidencePanelNew({
                         className="flex-1 px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
                       >
                         Correct
+                      </button>
+                      <button
+                        onClick={() => handleConfirm(word.id)}
+                        className="flex-1 px-3 py-1 text-xs bg-green-700/70 hover:bg-green-700 rounded"
+                      >
+                        Confirm
                       </button>
                       <button
                         onClick={() => handleSkip(word.id)}

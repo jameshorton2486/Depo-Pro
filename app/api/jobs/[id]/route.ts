@@ -58,6 +58,7 @@ export const GET = withRequestLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) => {
+  const startTime = performance.now();
   try {
     const session = await requireAuth(request);
     const { id } = await params;
@@ -124,6 +125,9 @@ export const GET = withRequestLogging(async (
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     throw error;
+  } finally {
+    const duration = Math.round(performance.now() - startTime);
+    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 });
 

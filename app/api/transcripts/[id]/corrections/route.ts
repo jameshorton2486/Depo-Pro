@@ -74,6 +74,7 @@ const POSTHandler = async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) => {
+  const startTime = performance.now();
   try {
     const { id: transcriptionId } = await params;
     const currentUser = await getCurrentUser();
@@ -236,6 +237,9 @@ const POSTHandler = async (
       { error: 'Failed to save corrections' },
       { status: 500 }
     );
+  } finally {
+    const duration = Math.round(performance.now() - startTime);
+    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 }
 

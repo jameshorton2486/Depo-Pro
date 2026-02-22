@@ -29,6 +29,7 @@ const PATCHHandler = async (
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) => {
+  const startTime = performance.now();
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser?.id) {
@@ -248,6 +249,9 @@ const PATCHHandler = async (
       { error: 'Internal server error' },
       { status: 500 }
     );
+  } finally {
+    const duration = Math.round(performance.now() - startTime);
+    console.log(`[perf] ${req.method} ${req.nextUrl.pathname} ${duration}ms`);
   }
 }
 

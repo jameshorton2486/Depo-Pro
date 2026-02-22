@@ -18,6 +18,7 @@ import { logger } from '@/lib/logger';
  * List jobs (filtered by user role)
  */
 export async function GET(request: NextRequest) {
+  const startTime = performance.now();
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -84,6 +85,9 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch jobs' },
       { status: 500 }
     );
+  } finally {
+    const duration = Math.round(performance.now() - startTime);
+    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 }
 
@@ -92,6 +96,7 @@ export async function GET(request: NextRequest) {
  * Create a new job
  */
 const POSTHandler = async (request: NextRequest) => {
+  const startTime = performance.now();
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -155,6 +160,9 @@ const POSTHandler = async (request: NextRequest) => {
       { error: 'Failed to create job' },
       { status: 500 }
     );
+  } finally {
+    const duration = Math.round(performance.now() - startTime);
+    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 }
 

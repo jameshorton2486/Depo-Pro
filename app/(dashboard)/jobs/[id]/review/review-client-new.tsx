@@ -73,6 +73,7 @@ export function ReviewClientNew({
   const [isAcquiringLock, setIsAcquiringLock] = useState(false);
 
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const savesInFlightRef = useRef(0);
   const [latestUpdatedAt, setLatestUpdatedAt] = useState<string | null>(initialUpdatedAt);
@@ -478,6 +479,15 @@ export function ReviewClientNew({
             </div>
           </div>
 
+          <button
+            onClick={() => setShowShortcutsDialog(true)}
+            className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm transition-colors"
+            title="Keyboard shortcuts"
+            aria-label="Show keyboard shortcuts"
+          >
+            ?
+          </button>
+
           {/* Complete Button */}
           <button
             onClick={() => setShowCompleteDialog(true)}
@@ -624,6 +634,28 @@ export function ReviewClientNew({
             <Button onClick={handleSubmitReview} disabled={stats.pending > 0}>
               Complete Review
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogDescription>
+              Review faster with these shortcuts.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between"><span>Up/Down</span><span className="text-muted-foreground">Navigate flagged words</span></div>
+            <div className="flex justify-between"><span>Space</span><span className="text-muted-foreground">Play audio at word</span></div>
+            <div className="flex justify-between"><span>Enter</span><span className="text-muted-foreground">Edit word</span></div>
+            <div className="flex justify-between"><span>C</span><span className="text-muted-foreground">Confirm word</span></div>
+            <div className="flex justify-between"><span>S</span><span className="text-muted-foreground">Skip word</span></div>
+            <div className="flex justify-between"><span>Escape</span><span className="text-muted-foreground">Close / deselect</span></div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowShortcutsDialog(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
