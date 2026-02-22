@@ -5,19 +5,21 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
+import type { SessionUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
-
-type UserRole = 'ADMIN' | 'COURT_REPORTER' | 'SCOPIST' | 'ATTORNEY';
+import type { UserRole } from '@/lib/enums/roles';
 
 export interface RouteProtectionOptions {
   requireAuth?: boolean;         // Default: true
   requireRole?: UserRole[];      // Allowed roles (empty = any authenticated)
   enforceTenant?: boolean;       // Default: true for job-scoped routes
+  requireFirm?: boolean;         // Default: true when enforceTenant is enabled
   rateLimit?: {
     limit: number;               // Max requests
     windowMs: number;            // Window in milliseconds
   };
+  auditAction?: string;          // Handler uses this for audit semantics
 }
 
 export interface ProtectedContext {
@@ -71,7 +73,7 @@ export function withRouteProtection(
       // STEP 1: AUTHENTICATION
       // ══════════════════════════════════════════════════════════
       if (options.requireAuth !== false) {
-        const currentUser = await getCurrentUser();
+        const currentUser: SessionUser | null = await getCurrentUser();
         if (!currentUser) {
           logger.warn('[guard] Unauthenticated request', {
             path: request.nextUrl.pathname,
@@ -107,18 +109,32 @@ export function withRouteProtection(
         // ══════════════════════════════════════════════════════════
         const { data: profile } = await supabase
           .from('profiles')
-          .select('firm_id')
+          .select('firm_id, role')
           .eq('id', currentUser.id)
           .single();
 
-        if (!profile?.firm_id) {
-          logger.error('[guard] Profile not found or missing firm_id', undefined, {
+        if (!profile) {
+          logger.error('[guard] Profile not found', undefined, {
             userId: currentUser.id,
           });
           return NextResponse.json(
-            { error: 'Profile configuration error' },
+            { error: 'Profile not found' },
             { status: 403 }
           );
+        }
+
+        if (options.requireFirm !== false && options.enforceTenant !== false) {
+          if (!profile.firm_id) {
+            logger.warn('[guard] User has no firm_id for tenant-scoped route', {
+              userId: currentUser.id,
+              role: profile.role,
+              path: request.nextUrl.pathname,
+            });
+            return NextResponse.json(
+              { error: 'Firm assignment required' },
+              { status: 403 }
+            );
+          }
         }
 
         // ══════════════════════════════════════════════════════════
@@ -165,8 +181,11 @@ export function withRouteProtection(
         // ══════════════════════════════════════════════════════════
         // PASS TO HANDLER WITH FULL CONTEXT
         // ══════════════════════════════════════════════════════════
+        // STEP 5: AUDIT LOGGING (if configured)
+        // The actual audit log is created by the handler.
+        // This middleware only enforces that the context is available.
         return handler(request, {
-          user: { id: currentUser.id, role: currentUser.role, firm_id: profile.firm_id },
+          user: { id: currentUser.id, role: currentUser.role, firm_id: profile?.firm_id || '' },
           supabase,
           params,
         });
