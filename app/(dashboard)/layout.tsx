@@ -11,6 +11,7 @@ import { redirect } from 'next/navigation';
 import { SidebarLayout } from '@/components/layouts/app-sidebar';
 import { Breadcrumbs } from '@/components/layouts/breadcrumbs';
 import { type UserRole } from '@/lib/navigation';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 export default async function DashboardLayout({
   children,
@@ -31,7 +32,9 @@ export default async function DashboardLayout({
       {/* Page Content with Breadcrumbs */}
       <div className="p-6">
         <Breadcrumbs role={userRole} className="mb-4" />
-        {children}
+        <ErrorBoundary pageName="dashboard-layout">
+          {children}
+        </ErrorBoundary>
       </div>
     </SidebarLayout>
   );

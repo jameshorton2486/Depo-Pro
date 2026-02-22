@@ -18,6 +18,7 @@ import { LiveNotesCapture } from '@/components/jobs/live-notes-capture';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import {
   Calendar,
   MapPin,
@@ -84,7 +85,8 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const canAssign = canEdit;
 
   return (
-    <div className="container max-w-6xl py-8">
+    <ErrorBoundary pageName="job-detail-page">
+      <div className="container max-w-6xl py-8">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div className="flex-1">
@@ -271,6 +273,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

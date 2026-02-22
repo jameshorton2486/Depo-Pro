@@ -14,6 +14,7 @@ import { Role } from '@/lib/constants';
 import type { TranscriptSegment } from '@/components/transcripts/synced-transcript-viewer';
 import type { ConfidenceAnalytics, RiskScoreResult } from '@/types/analytics';
 import { ReviewClientNew } from './review-client-new';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 export const dynamic = 'force-dynamic';
 
@@ -252,21 +253,23 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
   const riskScoreResult = transcription.metadata?.risk_score_result as RiskScoreResult | undefined;
 
   return (
-    <ReviewClientNew
-      jobId={job.id}
-      transcriptionId={transcription.id}
-      audioUrl={audioFile.storage_url || audioFile.storageUrl}
-      segments={segments}
-      caseName={job.case_name || 'Untitled Case'}
-      deponentName={job.deponent_name || undefined}
-      initialFlaggedWords={initialFlaggedWords as any}
-      initialStats={initialStats}
-      lockInfo={lockInfo}
-      initialUpdatedAt={transcription.updated_at || transcription.updatedAt || null}
-      userId={currentUser.id}
-      userRole={currentUser.role}
-      confidenceAnalytics={confidenceAnalytics}
-      riskScoreResult={riskScoreResult}
-    />
+    <ErrorBoundary pageName="review-page">
+      <ReviewClientNew
+        jobId={job.id}
+        transcriptionId={transcription.id}
+        audioUrl={audioFile.storage_url || audioFile.storageUrl}
+        segments={segments}
+        caseName={job.case_name || 'Untitled Case'}
+        deponentName={job.deponent_name || undefined}
+        initialFlaggedWords={initialFlaggedWords as any}
+        initialStats={initialStats}
+        lockInfo={lockInfo}
+        initialUpdatedAt={transcription.updated_at || transcription.updatedAt || null}
+        userId={currentUser.id}
+        userRole={currentUser.role}
+        confidenceAnalytics={confidenceAnalytics}
+        riskScoreResult={riskScoreResult}
+      />
+    </ErrorBoundary>
   );
 }
