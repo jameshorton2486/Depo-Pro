@@ -207,6 +207,19 @@ const PATCHHandler = async (
       contextAfter: wordIndex >= 0 ? getWordContext(allWords, wordIndex, 3) : undefined,
     });
 
+    const { data: touchedTranscription, error: touchError } = await supabase
+      .from('transcriptions')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', flaggedWord.transcription_id)
+      .select('updated_at')
+      .single();
+
+    if (touchError) {
+      console.error('Error touching transcription updated_at:', touchError);
+    }
+
+    const responseUpdatedAt = touchedTranscription?.updated_at || new Date().toISOString();
+
     // Calculate updated stats
     const { data: allFlaggedWords } = await supabase
       .from('flagged_words')
@@ -224,7 +237,7 @@ const PATCHHandler = async (
     return NextResponse.json({
       flaggedWord: { ...flaggedWord, ...updateData },
       stats,
-      updatedAt: transcription.updated_at,
+      updatedAt: responseUpdatedAt,
     });
   } catch (error) {
     console.error('Error in review API:', error);

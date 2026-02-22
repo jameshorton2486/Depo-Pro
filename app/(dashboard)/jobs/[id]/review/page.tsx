@@ -262,6 +262,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       initialFlaggedWords={initialFlaggedWords as any}
       initialStats={initialStats}
       lockInfo={lockInfo}
+      initialUpdatedAt={transcription.updated_at || transcription.updatedAt || null}
       userId={currentUser.id}
       userRole={currentUser.role}
       confidenceAnalytics={confidenceAnalytics}

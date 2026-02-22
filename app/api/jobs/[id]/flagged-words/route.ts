@@ -305,11 +305,23 @@ const PATCHHandler = async (
       throw upsertError;
     }
 
+    const { data: touchedTranscription, error: touchError } = await supabase
+      .from('transcriptions')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', transcription.id)
+      .select('updated_at')
+      .single();
+
+    if (touchError) {
+      console.error('Error touching transcription updated_at:', touchError);
+    }
+
     return NextResponse.json({
       success: true,
       wordId,
       correctedText,
       reviewedBy: currentUser.id,
+      updatedAt: touchedTranscription?.updated_at || new Date().toISOString(),
     });
   } catch (error) {
     console.error('Flagged words PATCH error:', error);

@@ -38,6 +38,7 @@ interface ReviewClientNewProps {
   initialFlaggedWords: FlaggedWordRow[];
   initialStats: FlaggedWordStats;
   lockInfo: { locked: boolean; lockedByMe: boolean; lockedByName?: string } | null;
+  initialUpdatedAt: string | null;
   userId: string;
   userRole: UserRole;
   confidenceAnalytics?: ConfidenceAnalytics;
@@ -54,6 +55,7 @@ export function ReviewClientNew({
   initialFlaggedWords,
   initialStats,
   lockInfo,
+  initialUpdatedAt,
   userId: _userId,
   userRole,
   confidenceAnalytics,
@@ -73,6 +75,7 @@ export function ReviewClientNew({
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const savesInFlightRef = useRef(0);
+  const [latestUpdatedAt, setLatestUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
   // Feature 3: Inline Confidence Heatmap toggle
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -262,7 +265,12 @@ export function ReviewClientNew({
       const response = await fetch(`/api/jobs/${jobId}/review`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wordId, action, correctedWord }),
+        body: JSON.stringify({
+          wordId,
+          action,
+          correctedWord,
+          expectedUpdatedAt: latestUpdatedAt,
+        }),
       });
 
       if (!response.ok) {
@@ -270,11 +278,14 @@ export function ReviewClientNew({
         throw new Error(errorData.error || 'Failed to save correction');
       }
 
-      const { flaggedWord: updated, stats: newStats } = await response.json();
+      const { flaggedWord: updated, stats: newStats, updatedAt } = await response.json();
 
       // Optimistic update
       setFlaggedWords(prev => prev.map(w => w.id === wordId ? updated : w));
       setStats(newStats);
+      if (updatedAt) {
+        setLatestUpdatedAt(updatedAt);
+      }
 
       // Feature 5: Track word review
       trackWordReviewed(action === 'correct');
@@ -291,7 +302,7 @@ export function ReviewClientNew({
     } finally {
       savesInFlightRef.current--;
     }
-  }, [jobId, trackWordReviewed]);
+  }, [jobId, latestUpdatedAt, trackWordReviewed]);
 
   // Submit review handler
   const handleSubmitReview = useCallback(async () => {
