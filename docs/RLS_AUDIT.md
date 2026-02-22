@@ -1,17 +1,31 @@
-# RLS Audit (Stream B.4)
+# RLS Policy Audit - 2026-02-22
 
-Date: 2026-02-22
-Scope: Public-schema RLS policy coverage and medical chronology tables.
+Scope: Stream B.4 verification for public-schema RLS coverage and policy completeness.
 
-## Audit commands
+## Summary
+- Total public tables: Pending live query
+- Tables with RLS enabled: Pending live query
+- Tables with RLS disabled: Pending live query
+- Total policies: Pending live query
 
-Run in Supabase SQL Editor:
+## Audit SQL
+Run `scripts/sql/verify-rls-policies.sql` in Supabase SQL Editor.
 
-1. `scripts/sql/verify-rls-policies.sql`
-2. Export query results for evidence capture.
+## Critical Tables
+| Table | RLS | SELECT | INSERT | UPDATE | DELETE | Notes |
+|---|---|---|---|---|---|---|
+| profiles | Pending | Pending | Pending | Pending | Pending | Own-profile model expected |
+| firms | Pending | Pending | Pending | Pending | Pending | Admin/owner write controls expected |
+| jobs | Pending | Pending | Pending | Pending | Pending | Firm-scoped access required |
+| transcriptions | Pending | Pending | Pending | Pending | Pending | Must be job-firm scoped |
+| transcription_edits | Pending | Pending | Pending | Pending | Pending | Editor attribution required |
+| flagged_words | Pending | Pending | Pending | Pending | Pending | Reviewer role checks expected |
+| medical_records | Pending | Pending | Pending | Pending | Pending | PHI, strict firm scoping |
+| chronology_entries | Pending | Pending | Pending | Pending | Pending | PHI adjacency via job scope |
+| invoices | Pending | Pending | Pending | Pending | Pending | Billing isolation required |
+| audit_log / audit_logs | Pending | Pending | Pending | Pending | Pending | Prefer immutable write-once |
 
-## Tables checked
-
+## Tables Checked (Current Stream)
 - `profiles`
 - `firms`
 - `jobs`
@@ -21,35 +35,26 @@ Run in Supabase SQL Editor:
 - `flagged_words`
 - `review_sessions`
 - `audit_log`
+- `audit_logs` (if present)
 - `medical_records`
 - `chronology_entries`
 - `calendar_events`
 - `exhibits`
 
-## Expected pass criteria
+## Gaps Found and Fixed
+1. Pending live run.
 
-- Every table above reports `rowsecurity = true`.
-- Policy list includes tenant-safe `USING`/`WITH CHECK` constraints.
-- `medical_records` and `chronology_entries` both have active policies.
+## Tables Intentionally Without RLS
+- Pending live run and architecture sign-off.
 
-## Current repository status
-
-- Verification SQL script added: `scripts/sql/verify-rls-policies.sql`
-- Gap-remediation SQL included as commented blocks in that script.
-
-## Live environment verification
-
-The local workspace cannot directly verify Supabase project policy state without
-live database credentials/session. Execute the SQL script in staging and prod,
-then paste/export results in this document under:
-
-- `### Staging results`
-- `### Production results`
-
-## Staging results
-
+## Staging Results
 Pending live run.
 
-## Production results
-
+## Production Results
 Pending live run.
+
+## Evidence
+- Attach SQL Editor screenshots for:
+1. `pg_tables` RLS summary query
+2. `pg_policies` full inventory query
+3. medical chronology policy query output
