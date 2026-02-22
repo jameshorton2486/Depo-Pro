@@ -11,6 +11,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
+import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { Role } from '@/lib/constants';
 import {
   getReviewSession,
@@ -101,21 +102,34 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Check for optimistic locking conflict
-    if (expectedUpdatedAt) {
-      const expectedDate = new Date(expectedUpdatedAt);
-      const actualDate = new Date(transcription.updated_at || transcription.updatedAt);
+    if (!expectedUpdatedAt) {
+      return NextResponse.json(
+        { error: 'expectedUpdatedAt is required to prevent concurrent edit conflicts' },
+        { status: 400 },
+      );
+    }
 
-      // Allow 1 second tolerance for timing differences
-      if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
+    const expectedDate = new Date(expectedUpdatedAt);
+    const actualDate = new Date(transcription.updated_at || transcription.updatedAt);
+    if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
+      return NextResponse.json(
+        {
+          error: 'Conflict detected',
+          code: 'CONFLICT',
+          message: 'This transcript was modified since you loaded it. Refresh to see the latest version.',
+          serverUpdatedAt: actualDate.toISOString(),
+        },
+        { status: 409 },
+      );
+    }
+
+    const jobId = transcription.job?.id;
+    if (jobId) {
+      const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+      if (isLocked) {
         return NextResponse.json(
-          {
-            error: 'Conflict detected',
-            code: 'CONFLICT',
-            message: 'Transcript was modified by another user. Please refresh and try again.',
-            serverUpdatedAt: actualDate.toISOString(),
-          },
-          { status: 409 }
+          { error: 'Job is locked by another user', code: 'LOCKED' },
+          { status: 423 },
         );
       }
     }

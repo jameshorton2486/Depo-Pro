@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
+import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { Role, JobStatus } from '@/lib/constants';
 import type { ReviewState } from '@/types/review';
 import { isTranscriptLocked, getLockStatus } from '@/lib/transcript-locking';
@@ -39,6 +40,7 @@ interface SaveReviewRequest {
   audioPosition: number;
   confidenceThreshold: number;
   complete?: boolean;
+  expectedUpdatedAt?: string;
   updatedAt?: string; // Client sends last known server timestamp for optimistic locking
 }
 
@@ -69,6 +71,7 @@ const PATCHHandler = async (
       audioPosition,
       confidenceThreshold: rawThreshold,
       complete,
+      expectedUpdatedAt,
       updatedAt: clientUpdatedAt,
     } = body;
 
@@ -99,22 +102,36 @@ const PATCHHandler = async (
       );
     }
 
-    // Row-level optimistic lock: prevent stale overwrites from concurrent editors
-    if (clientUpdatedAt && (transcription as any).updated_at) {
-      const serverTs = new Date((transcription as any).updated_at).getTime();
-      const clientTs = new Date(clientUpdatedAt).getTime();
-      // 2-second tolerance covers auto-save timing jitter
-      if (serverTs > clientTs && Math.abs(serverTs - clientTs) > 2000) {
+    const expected = expectedUpdatedAt || clientUpdatedAt;
+    if (!expected) {
+      return NextResponse.json(
+        { error: 'expectedUpdatedAt is required' },
+        { status: 400 },
+      );
+    }
+    if ((transcription as any).updated_at) {
+      const expectedDate = new Date(expected);
+      const actualDate = new Date((transcription as any).updated_at);
+      if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
         return NextResponse.json(
           {
-            error: 'Transcript has been modified by another user',
-            code: 'STALE_DATA',
-            serverUpdatedAt: (transcription as any).updated_at,
-            details: { message: 'Please reload the page to get the latest version before saving.' },
+            error: 'Conflict detected',
+            code: 'CONFLICT',
+            message: 'This transcript was modified since you loaded it. Refresh to see changes.',
+            serverUpdatedAt: actualDate.toISOString(),
           },
           { status: 409 },
         );
       }
+    }
+
+    const jobId = transcription.job.id;
+    const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+    if (isLocked) {
+      return NextResponse.json(
+        { error: 'Job is locked by another user', code: 'LOCKED' },
+        { status: 423 },
+      );
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
@@ -371,6 +388,7 @@ export async function GET(
       reviewedCount: reviewedFlagged,
       correctedCount,
       remainingCount: totalFlagged - reviewedFlagged,
+      updatedAt: (transcription as any).updated_at || null,
     });
   } catch (error) {
     console.error('Error fetching review progress:', error);

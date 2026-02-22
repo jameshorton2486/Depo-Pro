@@ -11,6 +11,7 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 
 export const runtime = 'nodejs';
 
@@ -79,7 +80,7 @@ export async function GET(
     // Get transcription with flagged segments
     const { data: transcription, error: transcriptionError } = await supabase
       .from('transcriptions')
-      .select('id, flagged_segments, status')
+      .select('id, flagged_segments, status, updated_at')
       .eq('job_id', jobId)
       .single();
 
@@ -93,6 +94,7 @@ export async function GET(
           reviewed: 0,
           averageConfidence: null,
         },
+        updatedAt: null,
       });
     }
 
@@ -110,6 +112,7 @@ export async function GET(
           reviewed: 0,
           averageConfidence: null,
         },
+        updatedAt: transcription.updated_at,
       });
     }
 
@@ -182,6 +185,7 @@ export async function GET(
         reviewed,
         averageConfidence: avgConfidence,
       },
+      updatedAt: transcription.updated_at,
     });
   } catch (error) {
     console.error('Flagged words GET error:', error);
@@ -206,10 +210,13 @@ const PATCHHandler = async (
 
     const { id: jobId } = await params;
     const body = await request.json();
-    const { wordId, correctedText } = body;
+    const { wordId, correctedText, expectedUpdatedAt } = body;
 
     if (!wordId) {
       return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
+    }
+    if (!expectedUpdatedAt) {
+      return NextResponse.json({ error: 'expectedUpdatedAt is required' }, { status: 400 });
     }
 
     const supabase = await createSupabaseServerClient();
@@ -237,12 +244,34 @@ const PATCHHandler = async (
     // Get transcription
     const { data: transcription, error: transcriptionError } = await supabase
       .from('transcriptions')
-      .select('id')
+      .select('id, updated_at')
       .eq('job_id', jobId)
       .single();
 
     if (transcriptionError || !transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
+    }
+
+    const expectedDate = new Date(expectedUpdatedAt);
+    const actualDate = new Date(transcription.updated_at);
+    if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
+      return NextResponse.json(
+        {
+          error: 'Conflict detected',
+          code: 'CONFLICT',
+          message: 'This transcript was modified since you loaded it. Refresh to see changes.',
+          serverUpdatedAt: actualDate.toISOString(),
+        },
+        { status: 409 },
+      );
+    }
+
+    const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+    if (isLocked) {
+      return NextResponse.json(
+        { error: 'Job is locked by another user', code: 'LOCKED' },
+        { status: 423 },
+      );
     }
 
     // Extract word index from wordId (format: transcriptionId-index)

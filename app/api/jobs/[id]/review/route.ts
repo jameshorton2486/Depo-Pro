@@ -8,6 +8,7 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { logCorrection, getWordContext } from '@/lib/services/correction-logger';
 
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,7 @@ interface ReviewRequest {
   wordId: string;
   action: 'correct' | 'confirm' | 'skip';
   correctedWord?: string;
+  expectedUpdatedAt?: string;
 }
 
 /**
@@ -35,7 +37,7 @@ const PATCHHandler = async (
 
     const { id: jobId } = await context.params;
     const body: ReviewRequest = await req.json();
-    const { wordId, action, correctedWord } = body;
+    const { wordId, action, correctedWord, expectedUpdatedAt } = body;
 
     if (!wordId || !action) {
       return NextResponse.json(
@@ -48,6 +50,12 @@ const PATCHHandler = async (
       return NextResponse.json(
         { error: 'correctedWord is required for correct action' },
         { status: 400 }
+      );
+    }
+    if (!expectedUpdatedAt) {
+      return NextResponse.json(
+        { error: 'expectedUpdatedAt is required' },
+        { status: 400 },
       );
     }
 
@@ -70,7 +78,7 @@ const PATCHHandler = async (
     // Get transcription to verify access and get firm_id
     const { data: transcription, error: transcriptionError } = await supabase
       .from('transcriptions')
-      .select('id, job_id, words, utterances')
+      .select('id, job_id, words, utterances, updated_at')
       .eq('id', flaggedWord.transcription_id)
       .single();
 
@@ -97,6 +105,28 @@ const PATCHHandler = async (
       return NextResponse.json(
         { error: 'Job/transcription mismatch' },
         { status: 400 }
+      );
+    }
+
+    const expectedDate = new Date(expectedUpdatedAt);
+    const actualDate = new Date(transcription.updated_at);
+    if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
+      return NextResponse.json(
+        {
+          error: 'Conflict detected',
+          code: 'CONFLICT',
+          message: 'This transcript was modified since you loaded it. Refresh to see changes.',
+          serverUpdatedAt: actualDate.toISOString(),
+        },
+        { status: 409 },
+      );
+    }
+
+    const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+    if (isLocked) {
+      return NextResponse.json(
+        { error: 'Job is locked by another user', code: 'LOCKED' },
+        { status: 423 },
       );
     }
 
@@ -194,6 +224,7 @@ const PATCHHandler = async (
     return NextResponse.json({
       flaggedWord: { ...flaggedWord, ...updateData },
       stats,
+      updatedAt: transcription.updated_at,
     });
   } catch (error) {
     console.error('Error in review API:', error);
