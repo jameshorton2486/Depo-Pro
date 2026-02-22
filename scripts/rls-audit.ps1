@@ -50,7 +50,7 @@ if ([string]::IsNullOrWhiteSpace($env:DIRECT_URL)) {
 
 $reportPath = "reports/rls-policy-report.json"
 $timestamp = (Get-Date).ToUniversalTime().ToString("o")
-$violations = New-Object System.Collections.Generic.List[object]
+$violations = @()
 
 try {
   $tables = Invoke-PsqlJson -Sql @"
@@ -112,20 +112,20 @@ WHERE p.schemaname = 'public';
   foreach ($requiredTable in $orgScopedTables) {
     $requiredKey = $requiredTable.ToLowerInvariant()
     if (-not $tableLookup.ContainsKey($requiredKey)) {
-      $violations.Add([ordered]@{
-          type = "missing_table"
-          table = $requiredTable
-          message = "Expected org-scoped table not found in public schema"
-        })
+      $violations += [ordered]@{
+        type = "missing_table"
+        table = $requiredTable
+        message = "Expected org-scoped table not found in public schema"
+      }
       continue
     }
 
     if (-not [bool]$tableLookup[$requiredKey].relrowsecurity) {
-      $violations.Add([ordered]@{
-          type = "rls_disabled"
-          table = $requiredTable
-          message = "Row level security is disabled for org-scoped table"
-        })
+      $violations += [ordered]@{
+        type = "rls_disabled"
+        table = $requiredTable
+        message = "Row level security is disabled for org-scoped table"
+      }
     }
   }
 
@@ -138,15 +138,15 @@ WHERE p.schemaname = 'public';
 
   Write-JsonReport -Path $reportPath -Payload $report
 
-  if ($violations.Count -gt 0) {
-    Write-Host "RLS AUDIT: FAIL ($($violations.Count) violation(s))"
-    Write-Error "RLS audit failed. See $reportPath"
+  if (@($violations).Count -gt 0) {
+    Write-Host "RLS AUDIT: FAIL ($(@($violations).Count) violation(s))"
+    Write-Host "RLS audit failed. See $reportPath"
     exit 1
   }
 
   Write-Host "RLS AUDIT: PASS (tables=$($tables.Count), policies=$($policies.Count))"
   Write-Host "Report written to $reportPath"
 } catch {
-  Write-Error "RLS audit execution error: $($_.Exception.Message)"
+  Write-Host "RLS audit execution error: $($_.Exception.Message)"
   exit 1
 }

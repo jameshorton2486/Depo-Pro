@@ -54,10 +54,32 @@ The workflow runs `scripts/run-isolation-suite.ps1`, which executes:
 2. `scripts/test-org-isolation.ps1`
 3. `scripts/service-role-scan.ps1`
 
+The workflow also enforces policy quality and regression controls:
+
+1. `scripts/rls-policy-linter.ps1`
+2. `scripts/export-rls-policies.ps1`
+3. `scripts/check-rls-policy-diff.ps1`
+4. `scripts/generate-tenant-isolation-report.ps1`
+
 CI fails automatically if any script exits non-zero. That includes:
 
 - Missing/disabled RLS on required org-scoped tables
 - Cross-org organization ID overlap between test users
 - `SUPABASE_SERVICE_ROLE_KEY` usage outside approved server-only locations
+- Policy lint violations (missing org membership checks, permissive `true`, service role references)
+- Drift from `security-baseline/rls-policies.json`
 
 Each script writes JSON output into `reports/` for traceability.
+
+## RLS Policy Baseline
+
+Baseline file:
+
+- `security-baseline/rls-policies.json`
+
+To refresh baseline intentionally:
+
+```powershell
+$env:DIRECT_URL="<postgres-direct-url>"
+powershell -ExecutionPolicy Bypass -File scripts/export-rls-policies.ps1 -OutputPath security-baseline/rls-policies.json
+```

@@ -1,0 +1,1159 @@
+﻿{
+    "timestamp":  "2026-02-22T04:25:06.5610596Z",
+    "source":  "pg_policies",
+    "schema":  "public",
+    "policies":  [
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "AttorneyProfile",
+                         "policyname":  "attorney_profile_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(\"userId\" = (auth.uid())::text)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "AttorneyProfile",
+                         "policyname":  "attorney_profile_update_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(\"userId\" = (auth.uid())::text)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "BillingAccount",
+                         "policyname":  "billing_account_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "user_belongs_to_firm(\"firmId\")",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "BillingRate",
+                         "policyname":  "billing_rate_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "user_belongs_to_firm(\"firmId\")",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Case",
+                         "policyname":  "case_insert_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "user_belongs_to_firm(\"firmId\")"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Case",
+                         "policyname":  "case_select_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "user_belongs_to_firm(\"firmId\")",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Case",
+                         "policyname":  "case_update_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "user_belongs_to_firm(\"firmId\")",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "CaseAttorney",
+                         "policyname":  "case_attorney_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM \"Case\" c\n  WHERE ((c.id = \"CaseAttorney\".\"caseId\") AND user_belongs_to_firm(c.\"firmId\"))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "CaseDocument",
+                         "policyname":  "case_document_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM \"Case\" c\n  WHERE ((c.id = \"CaseDocument\".\"caseId\") AND user_belongs_to_firm(c.\"firmId\"))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "CaseMembership",
+                         "policyname":  "case_membership_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "((EXISTS ( SELECT 1\n   FROM \"Case\" c\n  WHERE ((c.id = \"CaseMembership\".\"caseId\") AND user_belongs_to_firm(c.\"firmId\")))) OR (\"userId\" = (auth.uid())::text))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Exhibit",
+                         "policyname":  "exhibit_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM \"Case\" c\n  WHERE ((c.id = \"Exhibit\".\"caseId\") AND user_belongs_to_firm(c.\"firmId\"))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Invoice",
+                         "policyname":  "invoice_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM \"BillingAccount\" ba\n  WHERE ((ba.id = \"Invoice\".\"billingAccountId\") AND user_belongs_to_firm(ba.\"firmId\"))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "InvoiceLineItem",
+                         "policyname":  "line_item_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM (\"Invoice\" i\n     JOIN \"BillingAccount\" ba ON ((ba.id = i.\"billingAccountId\")))\n  WHERE ((i.id = \"InvoiceLineItem\".\"invoiceId\") AND user_belongs_to_firm(ba.\"firmId\"))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "JobAssignment",
+                         "policyname":  "job_assignment_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "((EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = (\"JobAssignment\".\"jobId\")::uuid) AND ((j.reporter_id = auth.uid()) OR (j.scopist_id = auth.uid()) OR user_belongs_to_firm((j.firm_id)::text))))) OR (\"scopistId\" = (auth.uid())::text))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Message",
+                         "policyname":  "message_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "((\"senderId\" = (auth.uid())::text) OR (EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = (\"Message\".\"jobId\")::uuid) AND ((j.reporter_id = auth.uid()) OR (j.scopist_id = auth.uid()) OR user_belongs_to_firm((j.firm_id)::text))))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Notification",
+                         "policyname":  "notification_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(\"userId\" = (auth.uid())::text)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "Notification",
+                         "policyname":  "notification_update_rls",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(\"userId\" = (auth.uid())::text)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "audit_log",
+                         "policyname":  "attorney_block_audit_insert",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "is_not_attorney()"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "audit_log",
+                         "policyname":  "audit_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(auth.uid() IS NOT NULL)"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "audit_log",
+                         "policyname":  "audit_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM (profiles admin_p\n     JOIN profiles actor_p ON ((actor_p.firm_id = admin_p.firm_id)))\n  WHERE ((admin_p.id = auth.uid()) AND (admin_p.role = \u0027ADMIN\u0027::user_role) AND (actor_p.id = audit_log.actor_id))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "chronology_entries",
+                         "policyname":  "chronology_entries_delete",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "DELETE",
+                         "qual":  "((created_by_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "chronology_entries",
+                         "policyname":  "chronology_entries_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(created_by_id = auth.uid())"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "chronology_entries",
+                         "policyname":  "chronology_entries_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = chronology_entries.job_id) AND ((j.reporter_id = auth.uid()) OR (j.scopist_id = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM profiles p\n          WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role))))))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "chronology_entries",
+                         "policyname":  "chronology_entries_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "((created_by_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "custom_vocabularies",
+                         "policyname":  "attorney_block_vocab",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "is_not_attorney()",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "custom_vocabularies",
+                         "policyname":  "vocab_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = custom_vocabularies.job_id) AND ((j.reporter_id = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM profiles p\n          WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role))))))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "custom_vocabularies",
+                         "policyname":  "vocab_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM (jobs j\n     JOIN profiles p ON ((p.firm_id = j.firm_id)))\n  WHERE ((j.id = custom_vocabularies.job_id) AND (p.id = auth.uid()))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "firm_vocabularies",
+                         "policyname":  "attorney_block_firm_vocab",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "is_not_attorney()",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "firm_vocabularies",
+                         "policyname":  "firm_vocab_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = ANY (ARRAY[\u0027ADMIN\u0027::user_role, \u0027COURT_REPORTER\u0027::user_role])) AND (p.firm_id = firm_vocabularies.firm_id))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "firm_vocabularies",
+                         "policyname":  "firm_vocab_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(firm_id IN ( SELECT profiles.firm_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid())))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "firms",
+                         "policyname":  "firms_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(id IN ( SELECT profiles.firm_id\n   FROM profiles\n  WHERE (profiles.id = auth.uid())))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "firms",
+                         "policyname":  "firms_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(id IN ( SELECT profiles.firm_id\n   FROM profiles\n  WHERE ((profiles.id = auth.uid()) AND (profiles.role = \u0027ADMIN\u0027::user_role))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "flagged_words",
+                         "policyname":  "attorney_block_flags_all",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "is_not_attorney()",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "flagged_words",
+                         "policyname":  "flagged_words_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = flagged_words.transcription_id) AND app_can_access_job(t.job_id))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "flagged_words",
+                         "policyname":  "flagged_words_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = flagged_words.transcription_id) AND app_can_access_job(t.job_id))))",
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = flagged_words.transcription_id) AND app_can_access_job(t.job_id))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "jobs",
+                         "policyname":  "attorney_block_jobs_delete",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "DELETE",
+                         "qual":  "is_not_attorney()",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "jobs",
+                         "policyname":  "attorney_block_jobs_insert",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "is_not_attorney()"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "jobs",
+                         "policyname":  "attorney_block_jobs_update",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "is_not_attorney()",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "jobs",
+                         "policyname":  "jobs_delete",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "DELETE",
+                         "qual":  "(app_is_super_admin() OR ((org_id IS NOT NULL) AND app_is_org_admin() AND app_is_org_member(org_id)))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "jobs",
+                         "policyname":  "jobs_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(app_is_super_admin() OR ((org_id IS NOT NULL) AND (reporter_id = auth.uid()) AND app_is_org_member(org_id)) OR ((org_id IS NOT NULL) AND app_is_org_admin() AND app_is_org_member(org_id)))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "jobs",
+                         "policyname":  "jobs_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(app_is_super_admin() OR (reporter_id = auth.uid()) OR (scopist_id = auth.uid()) OR ((org_id IS NOT NULL) AND app_is_org_member(org_id)))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "jobs",
+                         "policyname":  "jobs_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(app_is_super_admin() OR (reporter_id = auth.uid()) OR (scopist_id = auth.uid()) OR ((org_id IS NOT NULL) AND app_is_org_admin() AND app_is_org_member(org_id)))",
+                         "with_check":  "(app_is_super_admin() OR (reporter_id = auth.uid()) OR (scopist_id = auth.uid()) OR ((org_id IS NOT NULL) AND app_is_org_admin() AND app_is_org_member(org_id)))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "medical_records",
+                         "policyname":  "medical_records_delete",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "DELETE",
+                         "qual":  "((uploaded_by_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "medical_records",
+                         "policyname":  "medical_records_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "((uploaded_by_id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = medical_records.job_id) AND ((j.reporter_id = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM profiles p\n          WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role)))))))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "medical_records",
+                         "policyname":  "medical_records_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = medical_records.job_id) AND ((j.reporter_id = auth.uid()) OR (j.scopist_id = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM profiles p\n          WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role))))))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "medical_records",
+                         "policyname":  "medical_records_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "((uploaded_by_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "org_connections",
+                         "policyname":  "connection_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.status = \u0027ACTIVE\u0027::membership_status) AND ((om.org_id = org_connections.firm_id) OR (om.org_id = org_connections.agency_id)) AND (om.role = ANY (ARRAY[\u0027AGENCY_OWNER\u0027::user_role, \u0027AGENCY_MANAGER\u0027::user_role, \u0027FIRM_OWNER\u0027::user_role, \u0027FIRM_MANAGER\u0027::user_role, \u0027ADMIN\u0027::user_role])))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "org_connections",
+                         "policyname":  "connection_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.status = \u0027ACTIVE\u0027::membership_status) AND ((om.org_id = org_connections.firm_id) OR (om.org_id = org_connections.agency_id)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "org_connections",
+                         "policyname":  "connection_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.status = \u0027ACTIVE\u0027::membership_status) AND ((om.org_id = org_connections.firm_id) OR (om.org_id = org_connections.agency_id)) AND (om.role = ANY (ARRAY[\u0027AGENCY_OWNER\u0027::user_role, \u0027AGENCY_MANAGER\u0027::user_role, \u0027FIRM_OWNER\u0027::user_role, \u0027FIRM_MANAGER\u0027::user_role, \u0027ADMIN\u0027::user_role])))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "organization_memberships",
+                         "policyname":  "membership_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "((EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.org_id = organization_memberships.org_id) AND (om.status = \u0027ACTIVE\u0027::membership_status) AND (om.role = ANY (ARRAY[\u0027AGENCY_OWNER\u0027::user_role, \u0027AGENCY_MANAGER\u0027::user_role, \u0027FIRM_OWNER\u0027::user_role, \u0027FIRM_MANAGER\u0027::user_role, \u0027ADMIN\u0027::user_role]))))) OR (user_id = auth.uid()))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "organization_memberships",
+                         "policyname":  "membership_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "((user_id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM organization_memberships om2\n  WHERE ((om2.user_id = auth.uid()) AND (om2.org_id = organization_memberships.org_id) AND (om2.status = \u0027ACTIVE\u0027::membership_status)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "organization_memberships",
+                         "policyname":  "membership_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.org_id = organization_memberships.org_id) AND (om.status = \u0027ACTIVE\u0027::membership_status) AND (om.role = ANY (ARRAY[\u0027AGENCY_OWNER\u0027::user_role, \u0027AGENCY_MANAGER\u0027::user_role, \u0027FIRM_OWNER\u0027::user_role, \u0027FIRM_MANAGER\u0027::user_role, \u0027ADMIN\u0027::user_role])))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "organizations",
+                         "policyname":  "org_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(auth.uid() = owner_id)"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "organizations",
+                         "policyname":  "org_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.org_id = organizations.id) AND (om.status = \u0027ACTIVE\u0027::membership_status))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "organizations",
+                         "policyname":  "org_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(auth.uid() = owner_id)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "processing_errors",
+                         "policyname":  "attorney_block_errors_insert",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "is_not_attorney()"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "processing_errors",
+                         "policyname":  "errors_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(app_can_access_job(job_id) AND (app_is_super_admin() OR app_is_org_admin() OR (EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = processing_errors.job_id) AND (j.reporter_id = auth.uid()))))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "processing_errors",
+                         "policyname":  "errors_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "app_can_access_job(job_id)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "profiles",
+                         "policyname":  "profiles_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "((id = auth.uid()) OR (firm_id IN ( SELECT profiles_1.firm_id\n   FROM profiles profiles_1\n  WHERE (profiles_1.id = auth.uid()))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "profiles",
+                         "policyname":  "profiles_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "((id = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM profiles admin_p\n  WHERE ((admin_p.id = auth.uid()) AND (admin_p.role = \u0027ADMIN\u0027::user_role) AND (admin_p.firm_id = profiles.firm_id)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "silent_segments",
+                         "policyname":  "attorney_block_silent_insert",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "is_not_attorney()"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "silent_segments",
+                         "policyname":  "attorney_block_silent_update",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "is_not_attorney()",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "silent_segments",
+                         "policyname":  "silent_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = silent_segments.transcription_id) AND app_can_access_job(t.job_id))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "silent_segments",
+                         "policyname":  "silent_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = silent_segments.transcription_id) AND app_can_access_job(t.job_id))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "silent_segments",
+                         "policyname":  "silent_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = silent_segments.transcription_id) AND app_can_access_job(t.job_id))))",
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = silent_segments.transcription_id) AND app_can_access_job(t.job_id))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "tasks",
+                         "policyname":  "task_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.org_id = tasks.org_id) AND (om.status = \u0027ACTIVE\u0027::membership_status) AND (om.role = ANY (ARRAY[\u0027AGENCY_OWNER\u0027::user_role, \u0027AGENCY_MANAGER\u0027::user_role, \u0027FIRM_OWNER\u0027::user_role, \u0027FIRM_MANAGER\u0027::user_role, \u0027ADMIN\u0027::user_role])))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "tasks",
+                         "policyname":  "task_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "((assigned_to = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.org_id = tasks.org_id) AND (om.status = \u0027ACTIVE\u0027::membership_status)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "tasks",
+                         "policyname":  "task_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "((assigned_to = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM organization_memberships om\n  WHERE ((om.user_id = auth.uid()) AND (om.org_id = tasks.org_id) AND (om.status = \u0027ACTIVE\u0027::membership_status) AND (om.role = ANY (ARRAY[\u0027AGENCY_OWNER\u0027::user_role, \u0027AGENCY_MANAGER\u0027::user_role, \u0027FIRM_OWNER\u0027::user_role, \u0027FIRM_MANAGER\u0027::user_role, \u0027ADMIN\u0027::user_role]))))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcript_integrity_chain",
+                         "policyname":  "attorney_block_chain_insert",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "is_not_attorney()"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcript_integrity_chain",
+                         "policyname":  "chain_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(auth.uid() IS NOT NULL)"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcript_integrity_chain",
+                         "policyname":  "chain_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM (transcriptions t\n     JOIN jobs j ON ((j.id = t.job_id)))\n  WHERE ((t.id = transcript_integrity_chain.transcription_id) AND ((j.reporter_id = auth.uid()) OR (j.scopist_id = auth.uid()) OR (EXISTS ( SELECT 1\n           FROM profiles p\n          WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role) AND (p.firm_id = j.firm_id))))))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcript_shares",
+                         "policyname":  "shares_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM (jobs j\n     JOIN profiles p ON (((p.id = auth.uid()) AND (p.firm_id = j.firm_id))))\n  WHERE ((j.id = transcript_shares.job_id) AND ((j.reporter_id = auth.uid()) OR (p.role = \u0027ADMIN\u0027::user_role)))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcript_shares",
+                         "policyname":  "shares_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "((shared_with = auth.uid()) OR (shared_by = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN jobs j ON ((j.firm_id = p.firm_id)))\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role) AND (j.id = transcript_shares.job_id)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcript_shares",
+                         "policyname":  "shares_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "((shared_by = auth.uid()) OR (EXISTS ( SELECT 1\n   FROM (profiles p\n     JOIN jobs j ON ((j.firm_id = p.firm_id)))\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role) AND (j.id = transcript_shares.job_id)))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcription_chunks",
+                         "policyname":  "chunks_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = transcription_chunks.transcription_id) AND app_can_access_job(t.job_id))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcription_edits",
+                         "policyname":  "attorney_block_edits_insert",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "is_not_attorney()"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcription_edits",
+                         "policyname":  "edits_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = transcription_edits.transcription_id) AND app_can_access_job(t.job_id))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcription_edits",
+                         "policyname":  "edits_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM transcriptions t\n  WHERE ((t.id = transcription_edits.transcription_id) AND app_can_access_job(t.job_id))))",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcriptions",
+                         "policyname":  "attorney_block_txn_insert",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "is_not_attorney()"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcriptions",
+                         "policyname":  "attorney_block_txn_update",
+                         "permissive":  "RESTRICTIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "is_not_attorney()",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcriptions",
+                         "policyname":  "transcriptions_insert",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(app_can_access_job(job_id) AND (app_is_super_admin() OR app_is_org_admin() OR (EXISTS ( SELECT 1\n   FROM jobs j\n  WHERE ((j.id = transcriptions.job_id) AND (j.reporter_id = auth.uid()))))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcriptions",
+                         "policyname":  "transcriptions_select",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "app_can_access_job(job_id)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "transcriptions",
+                         "policyname":  "transcriptions_update",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "UPDATE",
+                         "qual":  "app_can_access_job(job_id)",
+                         "with_check":  "app_can_access_job(job_id)"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_bookmarks",
+                         "policyname":  "Users manage own bookmarks",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(auth.uid() = user_id)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_bookmarks",
+                         "policyname":  "wkt bookmarks access",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "authenticated"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(user_id = ( SELECT auth.uid() AS uid))",
+                         "with_check":  "(user_id = ( SELECT auth.uid() AS uid))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_mock_exams",
+                         "policyname":  "Users manage own exams",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(auth.uid() = user_id)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_mock_exams",
+                         "policyname":  "wkt mock exams access",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "authenticated"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(user_id = ( SELECT auth.uid() AS uid))",
+                         "with_check":  "(user_id = ( SELECT auth.uid() AS uid))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_questions",
+                         "policyname":  "Allow insert for admin",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "(auth.role() = \u0027service_role\u0027::text)"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_questions",
+                         "policyname":  "Anyone can read questions",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "true",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_questions",
+                         "policyname":  "Service role can insert questions",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "INSERT",
+                         "qual":  null,
+                         "with_check":  "true"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_questions",
+                         "policyname":  "admins manage wkt questions",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "authenticated"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role))))",
+                         "with_check":  "(EXISTS ( SELECT 1\n   FROM profiles p\n  WHERE ((p.id = auth.uid()) AND (p.role = \u0027ADMIN\u0027::user_role))))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_questions",
+                         "policyname":  "read wkt questions",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "authenticated"
+                                   ],
+                         "cmd":  "SELECT",
+                         "qual":  "true",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_study_sessions",
+                         "policyname":  "Users manage own sessions",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(auth.uid() = user_id)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_study_sessions",
+                         "policyname":  "wkt study sessions access",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "authenticated"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(user_id = ( SELECT auth.uid() AS uid))",
+                         "with_check":  "(user_id = ( SELECT auth.uid() AS uid))"
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_user_progress",
+                         "policyname":  "Users manage own progress",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "public"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(auth.uid() = user_id)",
+                         "with_check":  null
+                     },
+                     {
+                         "schemaname":  "public",
+                         "tablename":  "wkt_user_progress",
+                         "policyname":  "wkt user progress access",
+                         "permissive":  "PERMISSIVE",
+                         "roles":  [
+                                       "authenticated"
+                                   ],
+                         "cmd":  "ALL",
+                         "qual":  "(user_id = ( SELECT auth.uid() AS uid))",
+                         "with_check":  "(user_id = ( SELECT auth.uid() AS uid))"
+                     }
+                 ]
+}

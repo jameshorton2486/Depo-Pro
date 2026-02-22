@@ -42,6 +42,26 @@ jobs:
         run: |
           powershell -ExecutionPolicy Bypass -File scripts/run-isolation-suite.ps1 -UserA "$env:TEST_USER_A" -UserB "$env:TEST_USER_B"
 
+      - name: Run RLS policy linter
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/rls-policy-linter.ps1
+
+      - name: Export current RLS policies
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/export-rls-policies.ps1 -OutputPath reports/rls-policies-current.json
+
+      - name: Enforce RLS policy baseline diff
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/check-rls-policy-diff.ps1 -BaselinePath security-baseline/rls-policies.json -CurrentPath reports/rls-policies-current.json
+
+      - name: Generate tenant isolation dashboard
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/generate-tenant-isolation-report.ps1 -UserA "$env:TEST_USER_A" -UserB "$env:TEST_USER_B"
+
       - name: Upload isolation reports
         if: always()
         uses: actions/upload-artifact@v4
