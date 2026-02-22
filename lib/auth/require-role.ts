@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { UserRole } from '@/lib/enums/roles';
 
 export type { UserRole };
@@ -61,7 +61,7 @@ export function hasRoleLevel(userRole: UserRole, requiredRole: UserRole): boolea
  *
  * @example
  * const canAccess = requireRole([UserRole.ADMIN, 'AGENCY']);
- * if (!canAccess(session.user.role)) redirect('/unauthorized');
+ * if (!canAccess(currentUser.role)) redirect('/unauthorized');
  */
 export function requireRole(allowed: UserRole[]) {
   return (role: UserRole): boolean => allowed.includes(role);
@@ -94,17 +94,17 @@ export async function protectRoute(
 ): Promise<{ user: { id: string; role: UserRole; firmId?: string | null; name?: string | null; email?: string | null } }> {
   const { redirectTo = '/dashboard', requireAuth = true } = options;
 
-  const session = await getCurrentUser();
+  const currentUser = await getCurrentUser();
 
   // Not authenticated
-  if (!session?.user) {
+  if (!currentUser) {
     if (requireAuth) {
       redirect('/login');
     }
     throw new Error('Not authenticated');
   }
 
-  const userRole = session.user.role as UserRole;
+  const userRole = currentUser.role as UserRole;
 
   // Check role access (admin always has access)
   if (userRole !== UserRole.ADMIN && !allowedRoles.includes(userRole)) {
@@ -113,11 +113,11 @@ export async function protectRoute(
 
   return {
     user: {
-      id: session.user.id,
+      id: currentUser.id,
       role: userRole,
-      firmId: session.user.firmId,
-      name: session.user.name,
-      email: session.user.email,
+      firmId: currentUser.firmId,
+      name: currentUser.name,
+      email: currentUser.email,
     },
   };
 }
@@ -244,18 +244,17 @@ export function getRoutesForRole(role: UserRole): string[] {
 export async function checkApiRole(
   allowedRoles: UserRole[]
 ): Promise<{ authorized: boolean; user?: any; error?: string }> {
-  const session = await getCurrentUser();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     return { authorized: false, error: 'Not authenticated' };
   }
 
-  const userRole = session.user.role as UserRole;
+  const userRole = currentUser.role as UserRole;
 
   if (userRole !== UserRole.ADMIN && !allowedRoles.includes(userRole)) {
     return { authorized: false, error: 'Insufficient permissions' };
   }
 
-  return { authorized: true, user: session.user };
+  return { authorized: true, user: currentUser };
 }
-

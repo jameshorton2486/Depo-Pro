@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
@@ -71,8 +71,8 @@ export function withRouteProtection(
       // STEP 1: AUTHENTICATION
       // ══════════════════════════════════════════════════════════
       if (options.requireAuth !== false) {
-        const session = await auth();
-        if (!session?.user) {
+        const currentUser = await getCurrentUser();
+        if (!currentUser) {
           logger.warn('[guard] Unauthenticated request', {
             path: request.nextUrl.pathname,
             method: request.method,
@@ -82,18 +82,16 @@ export function withRouteProtection(
             { status: 401 }
           );
         }
-
-        const user = session.user as { id: string; role: string };
         const supabase = await createSupabaseServerClient();
 
         // ══════════════════════════════════════════════════════════
         // STEP 2: ROLE-BASED AUTHORIZATION
         // ══════════════════════════════════════════════════════════
         if (options.requireRole?.length) {
-          if (!options.requireRole.includes(user.role as UserRole)) {
+          if (!options.requireRole.includes(currentUser.role as UserRole)) {
             logger.warn('[guard] Role denied', {
-              userId: user.id,
-              role: user.role,
+              userId: currentUser.id,
+              role: currentUser.role,
               required: options.requireRole,
               path: request.nextUrl.pathname,
             });
@@ -110,12 +108,12 @@ export function withRouteProtection(
         const { data: profile } = await supabase
           .from('profiles')
           .select('firm_id')
-          .eq('id', user.id)
+          .eq('id', currentUser.id)
           .single();
 
         if (!profile?.firm_id) {
           logger.error('[guard] Profile not found or missing firm_id', undefined, {
-            userId: user.id,
+            userId: currentUser.id,
           });
           return NextResponse.json(
             { error: 'Profile configuration error' },
@@ -127,14 +125,14 @@ export function withRouteProtection(
         // STEP 4: RATE LIMITING
         // ══════════════════════════════════════════════════════════
         if (options.rateLimit) {
-          const key = `${user.id}:${request.nextUrl.pathname}`;
+          const key = `${currentUser.id}:${request.nextUrl.pathname}`;
           const now = Date.now();
           const entry = rateLimitStore.get(key);
 
           if (entry && entry.resetAt > now) {
             if (entry.count >= options.rateLimit.limit) {
               logger.warn('[guard] Rate limit exceeded', {
-                userId: user.id,
+                userId: currentUser.id,
                 path: request.nextUrl.pathname,
                 limit: options.rateLimit.limit,
               });
@@ -168,7 +166,7 @@ export function withRouteProtection(
         // PASS TO HANDLER WITH FULL CONTEXT
         // ══════════════════════════════════════════════════════════
         return handler(request, {
-          user: { ...user, firm_id: profile.firm_id },
+          user: { id: currentUser.id, role: currentUser.role, firm_id: profile.firm_id },
           supabase,
           params,
         });
