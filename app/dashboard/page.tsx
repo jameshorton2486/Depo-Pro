@@ -6,18 +6,18 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
-  const role = session.user.role;
+  const role = currentUser.role;
 
   // Redirect based on role
   // Routes are defined in app/(dashboard)/ which creates routes WITHOUT /dashboard prefix

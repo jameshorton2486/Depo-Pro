@@ -6,7 +6,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { SidebarLayout } from '@/components/layouts/app-sidebar';
 import { Breadcrumbs } from '@/components/layouts/breadcrumbs';
@@ -17,14 +17,14 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getCurrentUser();
+  const currentUser = await getCurrentUser();
 
-  if (!session) {
+  if (!currentUser) {
     redirect('/login');
   }
 
-  const userRole = session.user.role as UserRole;
-  const userName = session.user.name || session.user.email;
+  const userRole = currentUser.role as UserRole;
+  const userName = currentUser.name || currentUser.email;
 
   return (
     <SidebarLayout userRole={userRole} userName={userName}>

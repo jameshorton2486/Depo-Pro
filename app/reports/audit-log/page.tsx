@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listAuditLogs } from '@/lib/supabase/queries/audit';
 import { getUserById } from '@/lib/supabase/queries/users';
@@ -22,16 +22,13 @@ interface PageProps {
 }
 
 export default async function AuditLogPage({ searchParams }: PageProps) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
-  }
+  }  const params = await searchParams;
 
-  const user = session.user as { id: string; role: string };
-  const params = await searchParams;
-
-  if (user.role !== 'ADMIN') {
+  if (currentUser.role !== 'ADMIN') {
     redirect('/unauthorized');
   }
 
@@ -60,7 +57,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
             userData = {
               firstName: user.user_metadata?.firstName || '',
               lastName: user.user_metadata?.lastName || '',
-              email: user.email || '',
+              email: currentUser.email || '',
             };
           }
         } catch {

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 
@@ -10,17 +10,14 @@ interface ConfirmDepositionPageProps {
 }
 
 export default async function ConfirmDepositionPage({ params }: ConfirmDepositionPageProps) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
-  }
-
-  const user = session.user as { id: string; role: string };
-  const { id } = await params;
+  }  const { id } = await params;
 
   // Only reporters and admins can confirm depositions
-  if (user.role !== 'REPORTER' && user.role !== 'ADMIN' && user.role !== 'COURT_REPORTER') {
+  if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN' && currentUser.role !== 'COURT_REPORTER') {
     redirect('/unauthorized');
   }
 

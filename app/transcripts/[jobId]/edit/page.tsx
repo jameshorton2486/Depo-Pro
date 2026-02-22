@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { redirect, notFound } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -20,15 +20,13 @@ interface PageProps {
 }
 
 export default async function TranscriptEditPage({ params }: PageProps) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
   const { jobId } = await params;
-  const user = session.user as { id: string; role: string };
-
   const supabase = await createSupabaseServerClient();
 
   const job = await getJobById(supabase, jobId, {
@@ -41,9 +39,9 @@ export default async function TranscriptEditPage({ params }: PageProps) {
 
   // Check access
   if (
-    user.role !== 'ADMIN' &&
-    job.created_by_id !== user.id &&
-    !(job.assignments || []).some((a: any) => a.scopist_id === user.id)
+    currentUser.role !== 'ADMIN' &&
+    job.created_by_id !== currentUser.id &&
+    !(job.assignments || []).some((a: any) => a.scopist_id === currentUser.id)
   ) {
     redirect('/unauthorized');
   }

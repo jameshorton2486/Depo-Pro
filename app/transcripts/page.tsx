@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listJobs } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -24,14 +24,11 @@ interface PageProps {
 }
 
 export default async function TranscriptsPage({ searchParams }: PageProps) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
-  }
-
-  const user = session.user as { id: string; role: string };
-  const params = await searchParams;
+  }  const params = await searchParams;
 
   const page = parseInt(params.page || '1');
   const status = params.status;
@@ -40,7 +37,7 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
   const supabase = await createSupabaseServerClient();
 
   // List jobs with role-based filtering
-  const { jobs: jobsList } = await listJobs(supabase, user.id, user.role, {
+  const { jobs: jobsList } = await listJobs(supabase, currentUser.id, currentUser.role, {
     limit: 100, // Get more than needed for filtering
   });
 

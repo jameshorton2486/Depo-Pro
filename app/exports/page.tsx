@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -16,14 +16,11 @@ import { Download, FileText } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export default async function ExportsPage() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
-  }
-
-  const user = session.user as { id: string; role: string };
-  const supabase = await createSupabaseServerClient();
+  }  const supabase = await createSupabaseServerClient();
 
   // Build filters based on role
   let jobsQuery = supabase
@@ -32,10 +29,10 @@ export default async function ExportsPage() {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
-    jobsQuery = jobsQuery.eq('created_by_id', user.id);
-  } else if (user.role === 'SCOPIST') {
-    jobsQuery = jobsQuery.eq('scopist_id', user.id);
+  if (currentUser.role === 'REPORTER' || currentUser.role === 'COURT_REPORTER') {
+    jobsQuery = jobsQuery.eq('created_by_id', currentUser.id);
+  } else if (currentUser.role === 'SCOPIST') {
+    jobsQuery = jobsQuery.eq('scopist_id', currentUser.id);
   }
   // Admin and Attorney can see all
 

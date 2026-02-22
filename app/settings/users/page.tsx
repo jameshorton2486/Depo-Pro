@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listUsers } from '@/lib/supabase/queries/admin';
 import { Plus, Edit, Trash2 } from 'lucide-react';
@@ -15,15 +15,12 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export default async function UsersSettingsPage() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
-
-  const user = session.user as { id: string; role: string };
-
-  if (user.role !== 'ADMIN') {
+  if (currentUser.role !== 'ADMIN') {
     redirect('/unauthorized');
   }
 
@@ -82,7 +79,7 @@ export default async function UsersSettingsPage() {
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
                     </button>
-                    {u.id !== user.id && (
+                    {u.id !== currentUser.id && (
                       <button className="text-red-600 hover:underline text-sm flex items-center">
                         <Trash2 className="w-4 h-4 mr-1" />
                         Delete

@@ -6,22 +6,19 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import Link from 'next/link';
 import { FileText, Activity, BarChart3, Database } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReportsPage() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
-
-  const user = session.user as { id: string; role: string };
-
-  if (user.role !== 'ADMIN') {
+  if (currentUser.role !== 'ADMIN') {
     redirect('/unauthorized');
   }
 

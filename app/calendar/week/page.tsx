@@ -6,25 +6,22 @@
 // =============================================================================
 
 import { redirect } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { CalendarShell } from '@/components/calendar/calendar-shell';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CalendarWeekPage() {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
-
-  const user = session.user as { id: string; role: string };
-
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Calendar - Week View</h1>
       <CalendarShell
-        userRole={user.role as any}
+        userRole={currentUser.role as any}
       />
     </div>
   );

@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { redirect, notFound } from 'next/navigation';
-import { auth } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
@@ -19,14 +19,13 @@ interface PageProps {
 }
 
 export default async function TranscriptViewPage({ params }: PageProps) {
-  const session = await auth();
+  const currentUser = await getCurrentUser();
 
-  if (!session?.user) {
+  if (!currentUser) {
     redirect('/login');
   }
 
   const { jobId } = await params;
-  const user = session.user as { id: string; role: string };
 
   const supabase = await createSupabaseServerClient();
 
@@ -45,19 +44,19 @@ export default async function TranscriptViewPage({ params }: PageProps) {
 
   // Check access
   if (
-    user.role !== 'ADMIN' &&
-    user.role !== 'ATTORNEY' &&
-    job.created_by_id !== user.id &&
-    !(job.assignments || []).some((a: any) => a.scopist_id === user.id)
+    currentUser.role !== 'ADMIN' &&
+    currentUser.role !== 'ATTORNEY' &&
+    job.created_by_id !== currentUser.id &&
+    !(job.assignments || []).some((a: any) => a.scopist_id === currentUser.id)
   ) {
     redirect('/unauthorized');
   }
 
   const transcript = transcription;
   const canEdit =
-    user.role === 'ADMIN' ||
-    (user.role === 'REPORTER' && job.created_by_id === user.id) ||
-    (user.role === 'SCOPIST' && (job.assignments || []).some((a: any) => a.scopist_id === user.id));
+    currentUser.role === 'ADMIN' ||
+    (currentUser.role === 'REPORTER' && job.created_by_id === currentUser.id) ||
+    (currentUser.role === 'SCOPIST' && (job.assignments || []).some((a: any) => a.scopist_id === currentUser.id));
   const canReview = canEdit;
   const isFinalized = transcript?.status === 'COMPLETED';
 
