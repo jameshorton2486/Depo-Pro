@@ -4,9 +4,11 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { UserRole } from '@/lib/enums/roles';
+import { createReviewSessionSchema } from '@/lib/api/schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,15 +35,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const body = await req.json();
-    const { transcriptionId, jobId, riskScore, flaggedCount } = body;
-
-    if (!transcriptionId || !jobId) {
-      return NextResponse.json(
-        { error: 'transcriptionId and jobId are required' },
-        { status: 400 }
-      );
+    let parsed: z.infer<typeof createReviewSessionSchema>;
+    try {
+      const body = await req.json();
+      parsed = createReviewSessionSchema.parse(body);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 });
+      }
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
+    const { transcriptionId, jobId, riskScore, flaggedCount } = parsed;
 
     const supabase = await createSupabaseServerClient();
 

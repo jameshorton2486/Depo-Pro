@@ -50,13 +50,14 @@ export async function uploadExhibitOriginal(params: {
     throw new Error(`Failed to upload exhibit: ${error.message}`);
   }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
+  // Private bucket — signed URL with 1-hour expiry
+  const { data: signedData, error: signErr } = await supabase.storage
     .from(BUCKET_NAME)
-    .getPublicUrl(data.path);
+    .createSignedUrl(data.path, 3600);
+  if (signErr) throw new Error(`Failed to generate signed URL: ${signErr.message}`);
 
   return {
-    url: urlData.publicUrl,
+    url: signedData.signedUrl,
     path: data.path,
   };
 }
@@ -88,13 +89,14 @@ export async function uploadExhibitStamped(params: {
     throw new Error(`Failed to upload stamped exhibit: ${error.message}`);
   }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
+  // Private bucket — signed URL with 1-hour expiry
+  const { data: signedData, error: signErr } = await supabase.storage
     .from(BUCKET_NAME)
-    .getPublicUrl(data.path);
+    .createSignedUrl(data.path, 3600);
+  if (signErr) throw new Error(`Failed to generate signed URL: ${signErr.message}`);
 
   return {
-    url: urlData.publicUrl,
+    url: signedData.signedUrl,
     path: data.path,
   };
 }

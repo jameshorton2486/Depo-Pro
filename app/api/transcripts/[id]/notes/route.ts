@@ -1,8 +1,10 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptNotes } from '@/lib/supabase/queries/transcripts';
+import { createNoteSchema } from '@/lib/api/schemas';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -16,8 +18,16 @@ export async function POST(request: NextRequest, { params }: Props) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { content, lineNumber, pageNumber } = body;
+  let data: z.infer<typeof createNoteSchema>;
+  try {
+    const body = await request.json();
+    data = createNoteSchema.parse(body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
 
   const supabase = await createSupabaseServerClient();
 
@@ -26,9 +36,9 @@ export async function POST(request: NextRequest, { params }: Props) {
     .insert({
       transcript_id: id,
       user_id: currentUser.id,
-      content,
-      line_number: lineNumber,
-      page_number: pageNumber,
+      content: data.content,
+      line_number: data.lineNumber,
+      page_number: data.pageNumber,
     })
     .select()
     .single();

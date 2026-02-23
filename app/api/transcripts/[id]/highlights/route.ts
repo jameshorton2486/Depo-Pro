@@ -1,8 +1,10 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptHighlights } from '@/lib/supabase/queries/transcripts';
+import { createHighlightSchema } from '@/lib/api/schemas';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -39,19 +41,27 @@ export async function POST(request: NextRequest, { params }: Props) {
     return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
-  const body = await request.json();
-  const { startIndex, endIndex, color, highlightedText, note } = body;
+  let data: z.infer<typeof createHighlightSchema>;
+  try {
+    const body = await request.json();
+    data = createHighlightSchema.parse(body);
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
 
   const { data: highlight, error } = await supabase
     .from('transcript_highlight')
     .insert({
       transcript_id: id,
       user_id: currentUser.id,
-      start_index: startIndex,
-      end_index: endIndex,
-      color,
-      highlighted_text: highlightedText,
-      note,
+      start_index: data.startIndex,
+      end_index: data.endIndex,
+      color: data.color,
+      highlighted_text: data.highlightedText,
+      note: data.note,
     })
     .select()
     .single();

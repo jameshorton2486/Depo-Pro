@@ -11,8 +11,8 @@ const FILES_BUCKET = 'depo-files';
 
 /**
  * Upload a file to Supabase Storage.
- * Returns the storage path (e.g. "firm-id/job-id/1234-filename.mp3").
- * Use getSupabasePublicUrl() to get the playable HTTPS URL.
+ * - Audio files (public bucket): returns a permanent public URL for streaming.
+ * - Non-audio files (private bucket): returns a 1-hour signed URL.
  */
 export async function uploadFileToSupabase(
   buffer: Buffer,
@@ -35,11 +35,18 @@ export async function uploadFileToSupabase(
     throw new Error(`Supabase Storage upload failed: ${error.message}`);
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(storagePath);
+  if (isAudio) {
+    // Public bucket — stable permanent URL for audio streaming
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(storagePath);
+    return publicUrl;
+  }
 
-  return publicUrl;
+  // Private bucket — signed URL with 1-hour expiry
+  const { data, error: signErr } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(storagePath, 3600);
+  if (signErr) throw new Error(`Storage sign failed: ${signErr.message}`);
+  return data.signedUrl;
 }
 
 

@@ -7,10 +7,12 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createAuditLog } from '@/lib/supabase/queries/audit';
 import { logger } from '@/lib/logger';
+import { contactFormSchema } from '@/lib/api/schemas';
 
 // Simple in-memory rate limiting (5 requests per hour per IP)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -51,15 +53,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { name, email, message } = body;
-
-    if (!name || !email || !message) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
-        { status: 400 }
-      );
+    let data: z.infer<typeof contactFormSchema>;
+    try {
+      const body = await request.json();
+      data = contactFormSchema.parse(body);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 });
+      }
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
+
+    const { name, email, message } = data;
 
     // For v1.0, log to database (could also send email)
     // In production, you'd integrate with an email service
@@ -73,7 +78,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         name,
         email,
-        message: message.substring(0, 500), // Limit length
+        message: message.substring(0, 500),
         timestamp: new Date().toISOString(),
       },
       ip_address: ip,

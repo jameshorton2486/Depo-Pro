@@ -9,9 +9,11 @@ import type { NextRequest} from 'next/server';
 import { UserRole as GuardRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
+import { updateFlaggedWordSchema } from '@/lib/api/schemas';
 
 export const runtime = 'nodejs';
 
@@ -188,6 +190,9 @@ export async function GET(
       updatedAt: transcription.updated_at,
     });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] flagged words read failure', error);
+    }
     console.error('Flagged words GET error:', error);
     return NextResponse.json(
       { error: 'Failed to load flagged words' },
@@ -209,15 +214,17 @@ const PATCHHandler = async (
     }
 
     const { id: jobId } = await params;
-    const body = await request.json();
-    const { wordId, correctedText, expectedUpdatedAt } = body;
-
-    if (!wordId) {
-      return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
+    let parsed: z.infer<typeof updateFlaggedWordSchema>;
+    try {
+      const body = await request.json();
+      parsed = updateFlaggedWordSchema.parse(body);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 });
+      }
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
-    if (!expectedUpdatedAt) {
-      return NextResponse.json({ error: 'expectedUpdatedAt is required' }, { status: 400 });
-    }
+    const { wordId, correctedText, expectedUpdatedAt } = parsed;
 
     const supabase = await createSupabaseServerClient();
 
@@ -324,6 +331,9 @@ const PATCHHandler = async (
       updatedAt: touchedTranscription?.updated_at || new Date().toISOString(),
     });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] flagged words mutation failure', error);
+    }
     console.error('Flagged words PATCH error:', error);
     return NextResponse.json(
       { error: 'Failed to update flagged word' },
@@ -380,6 +390,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] flagged words delete failure', error);
+    }
     console.error('Flagged words DELETE error:', error);
     return NextResponse.json(
       { error: 'Failed to remove edit' },
