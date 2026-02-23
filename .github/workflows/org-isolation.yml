@@ -8,7 +8,7 @@ on:
 
 jobs:
   isolation:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     env:
       DIRECT_URL: ${{ secrets.DIRECT_URL }}
       TEST_USER_A: ${{ secrets.TEST_USER_A }}

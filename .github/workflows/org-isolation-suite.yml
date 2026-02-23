@@ -1,0 +1,49 @@
+name: Org Isolation Suite
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  org-isolation:
+    runs-on: ubuntu-latest
+    env:
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      TEST_USER_A: ${{ secrets.TEST_USER_A }}
+      TEST_USER_B: ${{ secrets.TEST_USER_B }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          missing=0
+          for var in DIRECT_URL TEST_USER_A TEST_USER_B; do
+            if [ -z "${!var}" ]; then
+              echo "Missing required secret/env: $var"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql --version
+
+      - name: Run org isolation suite
+        shell: pwsh
+        run: ./scripts/run-isolation-suite.ps1 -UserA $env:TEST_USER_A -UserB $env:TEST_USER_B
+
+      - name: Upload isolation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: org-isolation-reports
+          path: reports/*.json
