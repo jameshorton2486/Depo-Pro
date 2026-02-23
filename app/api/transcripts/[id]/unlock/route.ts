@@ -14,6 +14,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { unlockTranscript } from '@/lib/supabase/queries/transcripts';
 import { createAuditLog, AuditTargetType } from '@/lib/audit-service';
 import { logger } from '@/lib/logger';
+import { unlockTranscriptSchema } from '@/lib/api/schemas';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -40,14 +41,11 @@ const POSTHandler = async (
 
     const { id: transcriptId } = await context.params;
     const body = await request.json();
-    const { reason } = body;
-
-    if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Reason is required for unlocking' },
-        { status: 400 }
-      );
+    const parsed = unlockTranscriptSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Reason is required for unlocking' }, { status: 400 });
     }
+    const { reason } = parsed.data;
 
     const supabase = await createSupabaseServerClient();
     const result = await unlockTranscript(supabase, transcriptId);

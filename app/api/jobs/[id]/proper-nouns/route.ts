@@ -14,6 +14,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getProperNounsByJob, createProperNoun, getOrCreateCsrRecordId, bulkDeleteProperNouns } from '@/lib/supabase/queries/proper-nouns';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
+import { properNounSchema } from '@/lib/api/schemas';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -99,43 +100,11 @@ export async function POST(
 
     const { id: jobId } = await context.params;
     const body = await request.json();
-
-    const {
-      value,
-      category = 'OTHER',
-      phoneticHint,
-      source,
-      useInTranscription = true,
-      priority = 0,
-    } = body;
-
-    // Validate required fields
-    if (!value || typeof value !== 'string' || value.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Value is required and must be a non-empty string' },
-        { status: 400 },
-      );
+    const parsed = properNounSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
     }
-
-    // Validate category
-    const validCategories: string[] = [
-      'PERSON_NAME',
-      'COMPANY_NAME',
-      'PLACE_NAME',
-      'PRODUCT_NAME',
-      'LEGAL_TERM',
-      'MEDICAL_TERM',
-      'TECHNICAL_TERM',
-      'ACRONYM',
-      'OTHER',
-    ];
-
-    if (!validCategories.includes(category)) {
-      return NextResponse.json(
-        { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
-        { status: 400 },
-      );
-    }
+    const { value, category, phoneticHint, source, useInTranscription, priority } = parsed.data;
 
     // Find the job and verify access using query module
     const supabase = await createSupabaseServerClient();

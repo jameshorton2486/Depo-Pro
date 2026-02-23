@@ -11,6 +11,7 @@ import type { JobStatus } from '@/types/database';
 import { getJobById, updateJobStatus, updateJob, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { logger } from '@/lib/logger';
+import { jobStatusSchema } from '@/lib/api/schemas';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -119,34 +120,11 @@ const PATCHHandler = async (
 
     const { id: jobId } = await context.params;
     const body = await request.json();
-    const { status } = body;
-
-    if (!status) {
-      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
+    const parsed = jobStatusSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid status' }, { status: 400 });
     }
-
-    // Validate status is a valid JobStatus enum value
-    const validStatuses: JobStatus[] = [
-      'CREATED',
-      'FILES_UPLOADED',
-      'ENHANCING_AUDIO',
-      'TRANSCRIBING',
-      'AI_REVIEWING',
-      'READY_FOR_EDIT',
-      'ASSIGNED',
-      'IN_EDIT',
-      'SUBMITTED_FOR_REVIEW',
-      'IN_REVIEW',
-      'COMPLETED',
-      'CANCELLED',
-    ];
-
-    if (!validStatuses.includes(status as JobStatus)) {
-      return NextResponse.json(
-        { error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` },
-        { status: 400 },
-      );
-    }
+    const { status } = parsed.data;
 
     // Get job to check permissions using query module
     const supabase = await createSupabaseServerClient();

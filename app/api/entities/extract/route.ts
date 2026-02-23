@@ -10,6 +10,7 @@ import { extractEntities, deduplicateEntities } from '@/lib/services/entity-extr
 import { buildKnowledgeGraph } from '@/lib/services/knowledge-graph';
 import { logger } from '@/lib/logger';
 import type { TranscriptionWord } from '@/types/transcription';
+import { entityExtractionSchema } from '@/lib/api/schemas';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 1 minute
@@ -26,14 +27,11 @@ export async function POST(request: NextRequest) {
 
     // --- PARSE REQUEST ---
     const body = await request.json();
-    const { jobId, transcriptionId, forceReextract = false } = body;
-
-    if (!jobId || !transcriptionId) {
-      return NextResponse.json(
-        { error: 'jobId and transcriptionId are required' },
-        { status: 400 }
-      );
+    const parsed = entityExtractionSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
     }
+    const { jobId, transcriptionId, forceReextract } = parsed.data;
 
     const supabase = await createSupabaseServerClient();
     const adminClient = createAdminClient();

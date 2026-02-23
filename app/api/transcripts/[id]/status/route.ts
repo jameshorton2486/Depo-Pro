@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { transitionTranscriptStatus } from '@/lib/services/transcript-status';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptById } from '@/lib/supabase/queries/transcripts';
+import { transcriptStatusSchema } from '@/lib/api/schemas';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -35,11 +36,11 @@ const PATCHHandler = async (
 
     const { id: transcriptId } = await context.params;
     const body = await request.json();
-    const { status, reason: _reason } = body;
-
-    if (!status) {
-      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
+    const parsed = transcriptStatusSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid input' }, { status: 400 });
     }
+    const { status } = parsed.data;
 
     // Transition status
     const result = await transitionTranscriptStatus(

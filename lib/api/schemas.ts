@@ -75,3 +75,53 @@ export const saveCorrectionsSchema = z.object({
   expectedUpdatedAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
+
+// -----------------------------------------------------------------------------
+// Transcript Status — PATCH
+// -----------------------------------------------------------------------------
+export const transcriptStatusSchema = z.object({
+  status: z.string().min(1).max(50),
+  reason: z.string().max(500).optional(),
+});
+
+// -----------------------------------------------------------------------------
+// Transcript Unlock — POST
+// -----------------------------------------------------------------------------
+export const unlockTranscriptSchema = z.object({
+  reason: z.string().min(1).max(500).trim(),
+});
+
+// -----------------------------------------------------------------------------
+// Job Status — PATCH
+// -----------------------------------------------------------------------------
+export const jobStatusSchema = z.object({
+  status: z.enum([
+    'CREATED', 'FILES_UPLOADED', 'ENHANCING_AUDIO', 'TRANSCRIBING',
+    'AI_REVIEWING', 'READY_FOR_EDIT', 'ASSIGNED', 'IN_EDIT',
+    'SUBMITTED_FOR_REVIEW', 'IN_REVIEW', 'COMPLETED', 'CANCELLED',
+  ]),
+});
+
+// -----------------------------------------------------------------------------
+// Proper Noun — POST
+// -----------------------------------------------------------------------------
+export const properNounSchema = z.object({
+  value: z.string().min(1).max(500).trim(),
+  category: z.enum([
+    'PERSON_NAME', 'COMPANY_NAME', 'PLACE_NAME', 'PRODUCT_NAME',
+    'LEGAL_TERM', 'MEDICAL_TERM', 'TECHNICAL_TERM', 'ACRONYM', 'OTHER',
+  ]).default('OTHER'),
+  phoneticHint: z.string().max(500).optional().nullable(),
+  source: z.string().max(100).optional(),
+  useInTranscription: z.boolean().default(true),
+  priority: z.number().int().min(-100).max(100).default(0),
+});
+
+// -----------------------------------------------------------------------------
+// Entity Extraction — POST
+// -----------------------------------------------------------------------------
+export const entityExtractionSchema = z.object({
+  jobId: z.string().min(1),
+  transcriptionId: z.string().min(1),
+  forceReextract: z.boolean().default(false),
+});
