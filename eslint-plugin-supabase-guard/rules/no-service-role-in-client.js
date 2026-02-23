@@ -19,7 +19,8 @@ module.exports = {
     },
   },
   create(context) {
-    const filename = context.getFilename();
+    // context.getFilename() removed in ESLint 10 — use context.filename (flat config) or physicalFilename
+    const filename = context.filename ?? context.getPhysicalFilename?.() ?? context.getFilename?.() ?? '';
 
     // Check if this is a client file
     const isClientFile =
@@ -30,7 +31,8 @@ module.exports = {
       filename.includes('/hooks/');
 
     // Check if file has 'use client' directive
-    const sourceCode = context.getSourceCode();
+    // context.getSourceCode() deprecated in ESLint 10 — use context.sourceCode
+    const sourceCode = context.sourceCode ?? context.getSourceCode();
     const firstStatement = sourceCode.ast.body[0];
     const hasUseClient =
       firstStatement?.type === 'ExpressionStatement' &&

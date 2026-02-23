@@ -12,6 +12,7 @@ import { getCaseById } from '@/lib/supabase/queries/cases';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { Role } from '@/lib/constants';
 import { deleteExhibitFiles } from '@/lib/exhibits/storage';
+import { getFileUrl, extractStoragePath } from '@/lib/storage/url';
 
 /**
  * GET /api/attorney/exhibits/[id]
@@ -53,8 +54,18 @@ export async function GET(
       .select('*, transcript_annotations(id, issue_label, page_start, line_start)')
       .eq('exhibit_id', id);
 
+    // Regenerate fresh signed URLs at read time (DB stores paths, not URLs)
+    const originalUrl = exhibit.original_file_url
+      ? await getFileUrl(extractStoragePath(exhibit.original_file_url), 'depo-files').catch(() => exhibit.original_file_url)
+      : null;
+    const stampedUrl = exhibit.stamped_file_url
+      ? await getFileUrl(extractStoragePath(exhibit.stamped_file_url), 'depo-files').catch(() => exhibit.stamped_file_url)
+      : null;
+
     const enrichedExhibit = {
       ...exhibit,
+      original_file_url: originalUrl,
+      stamped_file_url: stampedUrl,
       job: job ? {
         id: job.id,
         title: (job as any).title,
@@ -129,21 +140,16 @@ export async function DELETE(
       );
     }
 
+    // extractStoragePath handles both legacy rows (full URLs) and new rows (paths)
     const pathsToDelete: string[] = [];
     const originalFileUrl = exhibit.original_file_url || (exhibit as any).originalFileUrl;
     if (originalFileUrl) {
-      const urlMatch = originalFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
-      if (urlMatch) {
-        pathsToDelete.push(urlMatch[1]);
-      }
+      pathsToDelete.push(extractStoragePath(originalFileUrl));
     }
 
     const stampedFileUrl = exhibit.stamped_file_url || (exhibit as any).stampedFileUrl;
     if (stampedFileUrl) {
-      const urlMatch = stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
-      if (urlMatch) {
-        pathsToDelete.push(urlMatch[1]);
-      }
+      pathsToDelete.push(extractStoragePath(stampedFileUrl));
     }
 
     if (pathsToDelete.length > 0) {

@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { deleteExhibitFiles } from '@/lib/exhibits/storage';
+import { extractStoragePath } from '@/lib/storage/url';
 
 // GET /api/jobs/[id]/exhibits/[exhibitId] - Get single exhibit
 export async function GET(
@@ -187,26 +188,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Extract paths from URLs for deletion
+    // Extract storage paths for deletion (handles both legacy full URLs and new path-only values)
     const pathsToDelete: string[] = [];
 
-    // Extract path from originalFileUrl (Supabase storage path)
     const originalFileUrl = exhibit.original_file_url || exhibit.originalFileUrl;
     if (originalFileUrl) {
-      // Extract path from Supabase URL format: https://.../storage/v1/object/public/bucket/path
-      const urlMatch = originalFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
-      if (urlMatch) {
-        pathsToDelete.push(urlMatch[1]);
-      }
+      pathsToDelete.push(extractStoragePath(originalFileUrl));
     }
 
-    // Extract path from stampedFileUrl if exists
     const stampedFileUrl = exhibit.stamped_file_url || exhibit.stampedFileUrl;
     if (stampedFileUrl) {
-      const urlMatch = stampedFileUrl.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
-      if (urlMatch) {
-        pathsToDelete.push(urlMatch[1]);
-      }
+      pathsToDelete.push(extractStoragePath(stampedFileUrl));
     }
 
     // Delete from storage

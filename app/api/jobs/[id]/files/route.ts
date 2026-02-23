@@ -99,7 +99,7 @@ export async function POST(
     const isAudio = file.type.startsWith('audio/') || file.type.startsWith('video/');
     const supabaseStoragePath = `${jobId}/${Date.now()}-${file.name}`;
 
-    const publicUrl = await uploadFileToSupabase(
+    const uploadResult = await uploadFileToSupabase(
       buffer,
       file.name,
       supabaseStoragePath,
@@ -108,14 +108,16 @@ export async function POST(
     );
 
     // 💿 Save file metadata to database using query module
+    // Store the storage PATH (not the URL) so the DB column never holds expiring signed URLs.
+    // Fresh URLs are generated at access time via lib/storage/url.ts.
     const uploadedFile = await createFile(supabase, {
       job_id: jobId,
       file_name: file.name,
       mime_type: file.type,
       file_size: buffer.length,
       type: getFileType(file.type),
-      storage_path: supabaseStoragePath,
-      storage_url: publicUrl,
+      storage_path: uploadResult.storagePath,
+      storage_url: uploadResult.storagePath,
     });
 
     return NextResponse.json({ file: uploadedFile }, { status: 201 });

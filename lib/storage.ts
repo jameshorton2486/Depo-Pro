@@ -9,10 +9,19 @@ import { createAdminClient } from '@/lib/supabase/admin';
 const AUDIO_BUCKET = 'depo-audio';
 const FILES_BUCKET = 'depo-files';
 
+export interface UploadResult {
+  /** Storage path relative to bucket root — store this in the database. */
+  storagePath: string;
+  /** Immediate-use URL. Public for audio; 1-hour signed for private files.
+   *  Do NOT persist this in the database — use storagePath for DB columns. */
+  url: string;
+}
+
 /**
  * Upload a file to Supabase Storage.
- * - Audio files (public bucket): returns a permanent public URL for streaming.
- * - Non-audio files (private bucket): returns a 1-hour signed URL.
+ * Returns { storagePath, url } where:
+ * - storagePath should be stored in the database column
+ * - url is for immediate use only (public URL for audio, 1-hour signed for private files)
  */
 export async function uploadFileToSupabase(
   buffer: Buffer,
@@ -20,7 +29,7 @@ export async function uploadFileToSupabase(
   storagePath: string,
   mimeType: string,
   isAudio: boolean = false,
-): Promise<string> {
+): Promise<UploadResult> {
   const supabase = createAdminClient();
   const bucket = isAudio ? AUDIO_BUCKET : FILES_BUCKET;
 
@@ -36,17 +45,17 @@ export async function uploadFileToSupabase(
   }
 
   if (isAudio) {
-    // Public bucket — stable permanent URL for audio streaming
+    // Public bucket — permanent URL safe for streaming and storage
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-    return publicUrl;
+    return { storagePath, url: publicUrl };
   }
 
-  // Private bucket — signed URL with 1-hour expiry
+  // Private bucket — 1-hour signed URL for immediate display only
   const { data, error: signErr } = await supabase.storage
     .from(bucket)
     .createSignedUrl(storagePath, 3600);
   if (signErr) throw new Error(`Storage sign failed: ${signErr.message}`);
-  return data.signedUrl;
+  return { storagePath, url: data.signedUrl };
 }
 
 

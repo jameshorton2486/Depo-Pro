@@ -176,8 +176,8 @@ export async function POST(
         exhibit_label: `Exhibit ${exhibitNumber}`, // Required
         exhibit_number: exhibitNumber,
         description,
-        original_file_url: originalUpload.url,
-        stamped_file_url: stampedUpload?.url || null,
+        original_file_url: originalUpload.path,
+        stamped_file_url: stampedUpload?.path || null,
         file_type: fileType,
         mime_type: file.type,
         file_name: file.name,
