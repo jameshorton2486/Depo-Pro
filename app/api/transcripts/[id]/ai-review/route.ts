@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
+import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -40,6 +41,9 @@ export async function POST(
       logger.warn('[ai-review] Unauthorized access attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const rateLimit = checkUserRateLimit(user.id, 'AI_REVIEW');
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
     const { id: transcriptId } = await context.params;
 

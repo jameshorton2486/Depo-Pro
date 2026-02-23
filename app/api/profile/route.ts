@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { UserRole } from '@/lib/enums/roles';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ensureUserProfile } from '@/lib/auth/profile-guard';
+import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 
 /**
  * GET /api/profile
@@ -44,6 +45,9 @@ export async function POST(request: Request) {
     if (error || !user) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
+
+    const rateLimit = checkUserRateLimit(user.id, 'PROFILE_UPDATE');
+    if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
     const body = await request.json();
     const { userId, role, firstName, lastName, agencyName, phone, targetUserId } = body;

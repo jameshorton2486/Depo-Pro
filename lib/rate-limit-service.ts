@@ -20,6 +20,8 @@ export const RateLimitConfig = {
     TRANSCRIPT_EXPORT: { requests: 10, windowMs: 60 * 1000 }, // 10/min
     TRANSCRIPTION: { requests: 5, windowMs: 60 * 1000 },      // 5/min
     LOGIN: { requests: 5, windowMs: 15 * 60 * 1000 },         // 5/15min
+    PROFILE_UPDATE: { requests: 10, windowMs: 60 * 1000 },    // 10/min
+    AI_REVIEW: { requests: 5, windowMs: 60 * 60 * 1000 },     // 5/hr
   },
   
   // Per-firm limits (aggregate across all users)
