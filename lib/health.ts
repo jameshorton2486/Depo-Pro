@@ -114,7 +114,7 @@ export async function getHealthStatus(): Promise<HealthCheckResult> {
   // Check 3: Environment variables
   const requiredEnvVars = [
     'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
     'DEEPGRAM_API_KEY',
     'ANTHROPIC_API_KEY',
@@ -183,7 +183,7 @@ export async function checkDatabase(): Promise<boolean> {
 export function checkEnvironment(): { valid: boolean; missing: string[] } {
   const requiredEnvVars = [
     'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
     'SUPABASE_SERVICE_ROLE_KEY',
     'DEEPGRAM_API_KEY',
     'ANTHROPIC_API_KEY',

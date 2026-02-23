@@ -87,8 +87,10 @@ function log(level: LogLevel, message: string, context?: LogContext, err?: Error
 
   switch (level) {
     case 'debug':
+      console.debug(output);
+      break;
     case 'info':
-      logger.debug(output);
+      console.info(output);
       break;
     case 'warn':
       console.warn(output);
