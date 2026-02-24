@@ -30,6 +30,7 @@ interface SyncedTranscriptViewerProps {
   onWordEdit?: (wordIndex: number, segmentIndex: number, newText: string) => void;
   highlightLowConfidence?: boolean;
   showHeatmap?: boolean; // Feature 3: Inline Confidence Heatmap toggle
+  corrections?: Map<number, string>; // global word index → corrected text
 }
 
 export function SyncedTranscriptViewer({
@@ -41,6 +42,7 @@ export function SyncedTranscriptViewer({
   onWordEdit,
   highlightLowConfidence = true,
   showHeatmap = false, // Feature 3: Default to false (user can toggle)
+  corrections,
 }: SyncedTranscriptViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeWordRef = useRef<HTMLSpanElement>(null);
@@ -49,6 +51,17 @@ export function SyncedTranscriptViewer({
     wordIndex: number;
   } | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+
+  // Pre-compute global word index offset for each segment
+  const segmentStartIndices = useMemo(() => {
+    const offsets: number[] = [];
+    let total = 0;
+    for (const seg of segments) {
+      offsets.push(total);
+      total += seg.words.length;
+    }
+    return offsets;
+  }, [segments]);
 
   // Find the currently active word based on audio time
   const activeWordPosition = useMemo(() => {
@@ -178,15 +191,17 @@ export function SyncedTranscriptViewer({
           {/* Words */}
           <div className="text-lg leading-relaxed">
             {segment.words.map((word, wordIndex) => {
-              const isActive = 
+              const isActive =
                 activeWordPosition?.segmentIndex === segmentIndex &&
                 activeWordPosition?.wordIndex === wordIndex;
-              
-              const isEditing = 
+
+              const isEditing =
                 editingWord?.segmentIndex === segmentIndex &&
                 editingWord?.wordIndex === wordIndex;
-              
+
               const isLowConfidence = word.confidence < confidenceThreshold;
+              const globalWordIdx = (segmentStartIndices[segmentIndex] ?? 0) + wordIndex;
+              const correction = corrections?.get(globalWordIdx);
 
               if (isEditing) {
                 return (
@@ -196,6 +211,30 @@ export function SyncedTranscriptViewer({
                     onComplete={(text) => handleEditComplete(text, segmentIndex, wordIndex)}
                     onCancel={() => setEditingWord(null)}
                   />
+                );
+              }
+
+              // Inline correction display: strikethrough original + green new text
+              if (correction) {
+                return (
+                  <span key={`word-${segmentIndex}-${wordIndex}`}>
+                    <span
+                      ref={isActive ? activeWordRef : undefined}
+                      onClick={() => handleWordClick(word, segmentIndex, wordIndex)}
+                      className={cn(
+                        'cursor-pointer rounded px-0.5',
+                        isActive && 'bg-blue-600/40 ring-2 ring-blue-500 ring-offset-1 ring-offset-slate-900',
+                      )}
+                      title={`Corrected: "${word.punctuated_word || word.word}" → "${correction}"`}
+                    >
+                      <span className="line-through text-slate-500 text-base opacity-70">
+                        {word.punctuated_word || word.word}
+                      </span>
+                      {' '}
+                      <span className="text-green-400 font-medium">{correction}</span>
+                    </span>
+                    {wordIndex < segment.words.length - 1 && ' '}
+                  </span>
                 );
               }
 

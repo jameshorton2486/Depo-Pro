@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useReviewSession } from '@/hooks/use-review-session';
@@ -97,6 +97,21 @@ export function ReviewClientNew({
 
   // Flatten all words from segments for transcript viewer
   const allWords = segments.flatMap(s => s.words);
+
+  // Map global word index → corrected text for inline correction display in transcript
+  const correctionsMap = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const fw of flaggedWords) {
+      if (
+        (fw.status === 'CORRECTED' || fw.status === 'CONFIRMED') &&
+        fw.corrected_word &&
+        typeof (fw as any).word_index === 'number'
+      ) {
+        map.set((fw as any).word_index, fw.corrected_word);
+      }
+    }
+    return map;
+  }, [flaggedWords]);
 
   // Session resume notification — show once on mount if work was already done
   useEffect(() => {
@@ -572,6 +587,7 @@ export function ReviewClientNew({
             confidenceThreshold={0.85}
             highlightLowConfidence={true}
             showHeatmap={showHeatmap}
+            corrections={correctionsMap}
           />
         </div>
 
