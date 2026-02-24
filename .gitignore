@@ -124,6 +124,9 @@ debug*.ps1
 /*.md
 !/README.md
 !/CONTRIBUTING.md
+!/MANUAL_STEPS.md
+!/CHANGELOG.md
+!/PHASE_B_HARDENING_MVP_PREP.md
 
 # =============================================================================
 # Supabase temp artifacts

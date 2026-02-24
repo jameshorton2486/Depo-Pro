@@ -50,7 +50,22 @@
       "Bash(git -C \"C:/Users/james/depo-pro\" push -u origin crm-rebuild-phase0)",
       "Bash(node:*)",
       "Bash(wc:*)",
-      "Bash(del \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarEventCard.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarShell.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarTimeline.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarView.tsx\")"
+      "Bash(del \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarEventCard.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarShell.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarTimeline.tsx\" \"C:\\\\Users\\\\james\\\\depo-pro\\\\components\\\\calendar\\\\CalendarView.tsx\")",
+      "Bash(git cherry-pick:*)",
+      "Bash(gh run:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(gh:*)",
+      "Bash(supabase --version:*)",
+      "Bash(claude:*)",
+      "Bash(supabase projects list:*)",
+      "Bash(supabase login:*)",
+      "Bash(supabase db execute:*)",
+      "Bash(cat:*)",
+      "Bash(tail:*)",
+      "Bash(cd:*)",
+      "Bash(curl:*)",
+      "Bash(head:*)",
+      "Bash(cd /c/Users/james/depo-pro && supabase db push --dry-run 2>&1)"
     ]
   }
 }

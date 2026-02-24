@@ -6,13 +6,17 @@
  *
  * Usage:
  *   npx tsx scripts/create-test-users.ts
+ *   npm run create-test-users
  *
- * Requires (in .env.local or environment):
- *   NEXT_PUBLIC_SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
+ * Prerequisites — add to .env.local:
+ *   NEXT_PUBLIC_SUPABASE_URL=https://ildhcfspbmhuemzgvzyx.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
  */
 
+import * as dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+
+dotenv.config({ path: '.env.local' });
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
