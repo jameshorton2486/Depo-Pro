@@ -169,6 +169,25 @@ const PATCHHandler = async (
       );
     }
 
+    // Write audit trail entry for word corrections
+    if (action === 'correct' && correctedWord) {
+      const { error: auditError } = await supabase
+        .from('transcription_edits')
+        .insert({
+          transcription_id: flaggedWord.transcription_id,
+          editor_id: currentUser.id,
+          edit_type: 'WORD_CORRECTION' as const,
+          original_value: flaggedWord.original_word,
+          new_value: correctedWord.trim(),
+          word_index: flaggedWord.word_index,
+        });
+
+      if (auditError) {
+        // Non-fatal: log but don't fail the request
+        console.error('Failed to write transcription_edits audit entry:', auditError);
+      }
+    }
+
     // Get all words for context extraction
     let allWords: any[] = [];
     try {

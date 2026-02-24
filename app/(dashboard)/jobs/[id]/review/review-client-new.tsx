@@ -98,6 +98,16 @@ export function ReviewClientNew({
   // Flatten all words from segments for transcript viewer
   const allWords = segments.flatMap(s => s.words);
 
+  // Session resume notification — show once on mount if work was already done
+  useEffect(() => {
+    const reviewed = initialStats.corrected + initialStats.confirmed + initialStats.skipped;
+    if (reviewed > 0 && initialStats.pending > 0) {
+      toast.info('Resuming review session', {
+        description: `${reviewed} of ${initialStats.total} words already reviewed, ${initialStats.pending} remaining.`,
+      });
+    }
+  }, []); // intentional: fire once on mount
+
   // Fetch exhibits on mount
   useEffect(() => {
     const fetchExhibits = async () => {
@@ -276,6 +286,29 @@ export function ReviewClientNew({
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        if (response.status === 409) {
+          // Optimistic lock conflict — another save landed first.
+          // Sync our timestamp so the next action succeeds without a refresh.
+          if (errorData.serverUpdatedAt) {
+            setLatestUpdatedAt(errorData.serverUpdatedAt);
+          }
+          toast.warning('Concurrent edit detected', {
+            description: 'Another change was saved first. Please try again.',
+          });
+          return;
+        }
+
+        if (response.status === 423) {
+          // Job locked by another user — switch to read-only.
+          setIsLocked(false);
+          setIsReadOnly(true);
+          toast.error('Lock lost', {
+            description: 'Another user is now reviewing this transcript. Switching to read-only.',
+          });
+          return;
+        }
+
         throw new Error(errorData.error || 'Failed to save correction');
       }
 

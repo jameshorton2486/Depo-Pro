@@ -240,7 +240,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     corrected: initialFlaggedWords.filter((w: any) => w.status === 'CORRECTED').length,
     skipped: initialFlaggedWords.filter((w: any) => w.status === 'SKIPPED').length,
     pending: initialFlaggedWords.filter((w: any) => w.status === 'PENDING').length,
-    confirmed: initialFlaggedWords.filter((w: any) => w.is_confirmed === true).length,
+    confirmed: initialFlaggedWords.filter((w: any) => w.status === 'CONFIRMED').length,
   };
 
   // Check lock status (table may not exist yet — default to no lock on error)
