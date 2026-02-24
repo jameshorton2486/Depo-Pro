@@ -54,7 +54,22 @@ export default function TranscriptionUploadPage() {
     }
   }
 
-  function handleUploadComplete() {
+  async function handleUploadComplete() {
+    // Trigger transcription pipeline immediately after file upload
+    if (jobId) {
+      try {
+        const res = await fetch(`/api/jobs/${jobId}/transcribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        if (!res.ok) {
+          console.warn('Transcription trigger failed:', await res.text());
+        }
+      } catch (err) {
+        console.warn('Transcription trigger error:', err);
+      }
+    }
     setStep('processing');
     // Redirect to status page after a moment
     setTimeout(() => {

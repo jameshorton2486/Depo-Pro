@@ -158,6 +158,16 @@ feature-deep-dive-extracted.txt
 # Codex local workspace data
 .codex/
 
+# Development prompts
+CODEX_MEGA_PROMPT_PHASE_B.txt
+PHASE_B_HARDENING_MVP_PREP.md
+
+# Migration backups (local repair artifacts)
+supabase/migrations_backup/
+
+# Audit reports (may contain secrets from MCP/config dumps)
+reports/
+
 # Playwright outputs
 playwright-report/
 playwright-results.json

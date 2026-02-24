@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { getTranscriptionQueue } from '@/lib/queue/transcription-queue';
 import { logger } from '@/lib/logger';
 import { getJobForTranscription, markJobFilesUploaded } from '@/lib/supabase/queries/transcription';
+import { processTranscriptionJob } from '@/lib/transcription/pipeline';
 
 // Simple request logging wrapper (replaces withRequestLogging)
 const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
@@ -87,35 +88,42 @@ async function postTranscribeStartHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Get queue (may be null if Redis unavailable)
-    const queue = getTranscriptionQueue();
-    if (!queue) {
-      logger.warn('Transcription queue not available');
-      return NextResponse.json(
-        { error: 'Transcription service temporarily unavailable' },
-        { status: 503 },
-      );
-    }
-
-    // Update job status via query layer (behavior preserved: errors are not surfaced)
     await markJobFilesUploaded(validated.jobId);
 
-    // Add to queue
-    await queue.add('transcribe', {
-      jobId: validated.jobId,
-      audioFileId: validated.jobId, // Use jobId as fileId for now
-      audioFileUrl: validated.audioFileUrl,
-      audioFileName: 'audio', // We might want to get this from the file URL or metadata
-      firmId: (currentUser as { firmId?: string }).firmId || '',
-      userId: currentUser.id,
-      modelType: (validated.options?.model as 'STANDARD' | 'MEDICAL' | 'BILINGUAL') || 'MEDICAL',
-    });
+    // Try queue first; fall back to direct processing (MVP mode, no Redis required)
+    const queue = getTranscriptionQueue();
 
-    logger.info('Transcription added to queue', { jobId: validated.jobId });
+    if (queue) {
+      await queue.add('transcribe', {
+        jobId: validated.jobId,
+        audioFileId: validated.jobId,
+        audioFileUrl: validated.audioFileUrl,
+        audioFileName: 'audio',
+        firmId: (currentUser as { firmId?: string }).firmId || '',
+        userId: currentUser.id,
+        modelType: (validated.options?.model as 'STANDARD' | 'MEDICAL' | 'BILINGUAL') || 'MEDICAL',
+      });
+
+      logger.info('Transcription added to queue', { jobId: validated.jobId });
+
+      return NextResponse.json({
+        message: 'Transcription started (queued)',
+        jobId: validated.jobId,
+        mode: 'queued',
+      }, { status: 200 });
+    }
+
+    // No queue available — direct processing
+    logger.info('No queue available, processing directly', { jobId: validated.jobId });
+
+    processTranscriptionJob(validated.jobId, validated.audioFileUrl)
+      .then(() => logger.info('Direct transcription completed', { jobId: validated.jobId }))
+      .catch((err: Error) => logger.error('Direct transcription failed', err, { jobId: validated.jobId }));
 
     return NextResponse.json({
-      message: 'Transcription started',
+      message: 'Transcription started (direct)',
       jobId: validated.jobId,
+      mode: 'direct',
     }, { status: 200 });
   } catch (error) {
     logger.error('Transcription start error', error as Error, {
