@@ -175,24 +175,27 @@ export async function GET(
       // Apply edit history oldest -> newest so the newest value wins deterministically.
       const chronologicalEdits = [...edits].reverse();
       for (const edit of chronologicalEdits) {
-        if (!edit?.edited_text || !edit?.metadata) {
+        if (!edit?.new_value) {
           continue;
         }
 
-        const metadata = edit.metadata as { wordIndex?: number };
-        if (typeof metadata.wordIndex !== 'number' || !Number.isInteger(metadata.wordIndex)) {
+        // word_index is a direct column; fall back to metadata.wordIndex for legacy rows
+        const rawWordIndex = typeof edit.word_index === 'number'
+          ? edit.word_index
+          : (edit.metadata as { wordIndex?: number } | null)?.wordIndex;
+        if (typeof rawWordIndex !== 'number' || !Number.isInteger(rawWordIndex)) {
           continue;
         }
-        const wordIndex = metadata.wordIndex;
+        const wordIndex = rawWordIndex;
         if (wordIndex < 0 || wordIndex >= words.length) {
           continue;
         }
 
-        words[wordIndex].correctedWord = edit.edited_text;
+        words[wordIndex].correctedWord = edit.new_value;
         words[wordIndex].isEdited = true;
       }
 
-      // Apply in-record review corrections (new shape and legacy array shape) last.
+      // Apply in-record review corrections (legacy JSONB shape) — lower priority than flagged_words table.
       const flaggedCorrections = getFlaggedCorrections(transcription.flagged_segments);
       for (const [wordIndex, correctedWord] of flaggedCorrections.entries()) {
         if (wordIndex < 0 || wordIndex >= words.length) {
@@ -200,6 +203,29 @@ export async function GET(
         }
         words[wordIndex].correctedWord = correctedWord;
         words[wordIndex].isEdited = true;
+      }
+
+      // Apply flagged_words table corrections last — highest priority (final reviewer decisions).
+      const { data: flaggedWordRows } = await supabase
+        .from('flagged_words')
+        .select('word_index, corrected_word')
+        .eq('transcription_id', transcriptId)
+        .in('status', ['CORRECTED', 'CONFIRMED'])
+        .not('corrected_word', 'is', null);
+
+      if (flaggedWordRows) {
+        for (const fw of flaggedWordRows) {
+          if (
+            typeof fw.word_index !== 'number' ||
+            fw.word_index < 0 ||
+            fw.word_index >= words.length ||
+            !fw.corrected_word
+          ) {
+            continue;
+          }
+          words[fw.word_index].correctedWord = fw.corrected_word;
+          words[fw.word_index].isEdited = true;
+        }
       }
 
       exportText = words.map((w) => w.correctedWord || w.word).join(' ').trim();

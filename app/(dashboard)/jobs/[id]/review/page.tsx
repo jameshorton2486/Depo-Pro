@@ -231,7 +231,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     .from('flagged_words')
     .select('*')
     .eq('transcription_id', transcription.id)
-    .order('timestamp', { ascending: true });
+    .order('sort_order', { ascending: true, nullsFirst: false });
 
   // Calculate stats from flagged words
   const initialFlaggedWords = flaggedWords || [];
