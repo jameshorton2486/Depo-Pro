@@ -19,7 +19,7 @@
 -- HELPER: ensure the user_belongs_to_firm() function exists
 -- (no-op if already present from security_hardening migration)
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.user_belongs_to_firm(firm_id uuid)
+CREATE OR REPLACE FUNCTION public.user_belongs_to_firm(check_firm_id uuid)
 RETURNS boolean
 LANGUAGE sql
 STABLE
