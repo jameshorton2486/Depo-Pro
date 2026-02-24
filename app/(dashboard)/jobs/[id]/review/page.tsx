@@ -15,6 +15,7 @@ import type { TranscriptSegment } from '@/components/transcripts/synced-transcri
 import type { ConfidenceAnalytics, RiskScoreResult } from '@/types/analytics';
 import { ReviewClientNew } from './review-client-new';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { getFileUrl, extractStoragePath } from '@/lib/storage/url';
 
 export const dynamic = 'force-dynamic';
 
@@ -171,8 +172,23 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     (f: any) => f.type === 'AUDIO' || f.mime_type?.startsWith('audio/'),
   );
 
-  if (!audioFile) {
+  // Determine raw audio path — prefer job_files record, fall back to jobs.audio_file_url
+  const rawAudioPath: string =
+    audioFile?.storage_url ||
+    audioFile?.storageUrl ||
+    (job as any).audio_file_url ||
+    '';
+
+  if (!rawAudioPath) {
     redirect(`/jobs/${jobId}?error=no_audio`);
+  }
+
+  // Generate a fresh public URL for the audio file (depo-audio is a public bucket)
+  let audioUrl = rawAudioPath;
+  try {
+    audioUrl = await getFileUrl(extractStoragePath(rawAudioPath), 'depo-audio');
+  } catch {
+    // Fallback to raw path — may still work if it's already a full public URL
   }
 
   // Parse transcript segments from transcription
@@ -257,7 +273,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       <ReviewClientNew
         jobId={job.id}
         transcriptionId={transcription.id}
-        audioUrl={audioFile.storage_url || audioFile.storageUrl}
+        audioUrl={audioUrl}
         segments={segments}
         caseName={job.case_name || 'Untitled Case'}
         deponentName={job.deponent_name || undefined}

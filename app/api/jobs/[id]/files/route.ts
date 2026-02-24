@@ -120,7 +120,16 @@ export async function POST(
       storage_url: uploadResult.storagePath,
     });
 
-    return NextResponse.json({ file: uploadedFile }, { status: 201 });
+    // Persist audio path to jobs.audio_file_url so the transcription pipeline
+    // and review page can find it even when the job_files query stub returns [].
+    if (isAudio) {
+      await supabase
+        .from('jobs')
+        .update({ audio_file_url: uploadResult.storagePath, updated_at: new Date().toISOString() })
+        .eq('id', jobId);
+    }
+
+    return NextResponse.json({ file: uploadedFile }, { status: 200 });
   } catch (error) {
     const { id: jobId } = await params;
     logger.error('File upload error', error instanceof Error ? error : new Error(String(error)), { jobId });

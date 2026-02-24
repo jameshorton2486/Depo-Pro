@@ -73,12 +73,14 @@ const POSTHandler = async (
     // Get files for job
     const files = await listFilesForJob(supabase, jobId);
 
-    // Check for audio file
+    // Check for audio file — fall back to jobs.audio_file_url when file list stub returns []
     const audioFile = files.find(
       (f: any) => f.type === 'AUDIO' || f.mime_type?.startsWith('audio/') || f.mime_type?.startsWith('video/'),
     );
 
-    if (!audioFile) {
+    const audioUrlFromJob = (job as any).audio_file_url as string | undefined;
+
+    if (!audioFile && !audioUrlFromJob) {
       return NextResponse.json(
         { error: 'No audio file found for this job' },
         { status: 400 },
@@ -116,7 +118,9 @@ const POSTHandler = async (
       // Add job to RX queue instead of starting transcription
       const queueResult = await AudioEnhancementService.addToRxQueue({
         jobId,
-        audioUrl: audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath,
+        audioUrl: audioFile
+          ? audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath
+          : audioUrlFromJob || '',
         priority: 'NORMAL',
       });
 
@@ -151,7 +155,9 @@ const POSTHandler = async (
 
     // Start automated enhancement
     const enhancementResult = await AudioEnhancementService.enhanceWithDolby(
-      audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath,
+      audioFile
+        ? audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath
+        : audioUrlFromJob || '',
       {},
     );
 
@@ -169,9 +175,12 @@ const POSTHandler = async (
     await updateJobStatus(supabase, jobId, 'TRANSCRIBING');
 
     // Determine audio URL for transcription (enhanced or original)
+    const baseAudioUrl = audioFile
+      ? audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath
+      : audioUrlFromJob || '';
     const audioUrlForTranscription = enhancementResult.success && enhancementResult.enhancedFileUrl
       ? enhancementResult.enhancedFileUrl
-      : audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath;
+      : baseAudioUrl;
 
     // Start transcription pipeline (async, fire and forget)
     setImmediate(() => {
