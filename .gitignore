@@ -172,3 +172,9 @@ reports/
 playwright-report/
 playwright-results.json
 test-results/
+
+# Development prompts
+CODEX_MEGA_PROMPT_PHASE_B.txt
+PHASE_B_HARDENING_MVP_PREP.md
+supabase/migrations_backup/
+reports/
