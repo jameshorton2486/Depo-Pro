@@ -65,7 +65,9 @@
       "Bash(cd:*)",
       "Bash(curl:*)",
       "Bash(head:*)",
-      "Bash(cd /c/Users/james/depo-pro && supabase db push --dry-run 2>&1)"
+      "Bash(cd /c/Users/james/depo-pro && supabase db push --dry-run 2>&1)",
+      "Bash(cd /c/Users/james/depo-pro && npx tsx scripts/test-transcription-pipeline.ts 2>&122)",
+      "Bash(cd /c/Users/james/depo-pro && npx tsx scripts/test-transcription-pipeline.ts 2>&1)"
     ]
   }
 }

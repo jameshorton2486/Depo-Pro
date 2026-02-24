@@ -84,7 +84,7 @@ async function postTranscribeStartHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if (job.reporter_id !== currentUser.id && currentUser.role !== 'ADMIN') {
+    if ((job as any).reporter_id !== currentUser.id && currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
