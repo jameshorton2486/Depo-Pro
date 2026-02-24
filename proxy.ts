@@ -1,5 +1,5 @@
 // =============================================================================
-// MIDDLEWARE - Gold-Standard Supabase Auth
+// PROXY - Gold-Standard Supabase Auth (Next.js 16 proxy convention)
 // =============================================================================
 // Single security boundary for authentication
 //
@@ -260,9 +260,9 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 }
 
 /**
- * Middleware function
+ * Proxy function (replaces deprecated middleware convention in Next.js 16)
  */
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
   // Skip static files, Next internals, and public assets

@@ -142,7 +142,7 @@ export default [
     },
   },
   {
-    files: ['middleware.ts'],
+    files: ['middleware.ts', 'proxy.ts'],
     rules: {
       'no-restricted-globals': 'off',
       'no-console': 'off',
