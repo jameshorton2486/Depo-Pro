@@ -33,6 +33,12 @@ interface FlaggedWordRowCompat {
   context_after: string;
   status: string;
   corrected_word?: string | null;
+  alternatives?: unknown; // Json from DB — cast at point of use as {word:string,confidence:number}[]
+}
+
+interface DeepgramAlternative {
+  word: string;
+  confidence: number;
 }
 
 interface FlaggedWordStatsCompat {
@@ -862,8 +868,12 @@ function LowConfidencePanelNew({
             <div
               key={word.id}
               className={cn(
-                'bg-slate-900 rounded p-3 space-y-2 border border-slate-800 cursor-pointer',
-                selectedIndex === index && 'ring-2 ring-blue-500 ring-offset-1 ring-offset-slate-950 border-blue-500/50'
+                'bg-slate-900 rounded p-3 space-y-2 border border-slate-800 cursor-pointer border-l-4',
+                word.status === 'CORRECTED' ? 'border-l-green-500' :
+                word.status === 'CONFIRMED' ? 'border-l-blue-500' :
+                word.status === 'SKIPPED' ? 'border-l-slate-600' :
+                'border-l-yellow-500',
+                selectedIndex === index && 'ring-2 ring-blue-500 ring-offset-1 ring-offset-slate-950'
               )}
               onClick={() => {
                 setSelectedIndex(index);
@@ -895,35 +905,57 @@ function LowConfidencePanelNew({
 
               {/* Actions */}
               {!isReadOnly && word.status === 'PENDING' && (
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   {editingId === word.id ? (
                     <>
-                      <input
-                        type="text"
-                        value={correctionText}
-                        onChange={(e) => setCorrectionText(e.target.value)}
-                        placeholder="Enter correction"
-                        className="flex-1 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => handleCorrect(word.id)}
-                        className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingId(null);
-                          setCorrectionText('');
-                        }}
-                        className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded"
-                      >
-                        Cancel
-                      </button>
+                      {/* Deepgram alternatives as clickable chips */}
+                      {Array.isArray(word.alternatives) && (word.alternatives as DeepgramAlternative[]).length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          <span className="text-xs text-slate-500 w-full">Alternatives:</span>
+                          {(word.alternatives as DeepgramAlternative[]).slice(0, 5).map((alt, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setCorrectionText(alt.word)}
+                              className="px-2 py-0.5 text-xs bg-slate-700 hover:bg-blue-700 text-slate-300 hover:text-white rounded border border-slate-600 transition-colors"
+                              title={`${Math.round(alt.confidence * 100)}% confidence`}
+                            >
+                              {alt.word} <span className="opacity-60">{Math.round(alt.confidence * 100)}%</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={correctionText}
+                          onChange={(e) => setCorrectionText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') { e.preventDefault(); void handleCorrect(word.id); }
+                            if (e.key === 'Escape') { e.preventDefault(); setEditingId(null); setCorrectionText(''); }
+                          }}
+                          placeholder="Enter correction"
+                          className="flex-1 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleCorrect(word.id)}
+                          className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingId(null);
+                            setCorrectionText('');
+                          }}
+                          className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </>
                   ) : (
-                    <>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => {
                           setEditingId(word.id);
@@ -945,7 +977,7 @@ function LowConfidencePanelNew({
                       >
                         Skip
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
@@ -955,11 +987,13 @@ function LowConfidencePanelNew({
                 <div className={cn(
                   'text-xs px-2 py-1 rounded text-center',
                   word.status === 'CORRECTED' && 'bg-green-900/30 text-green-400',
+                  word.status === 'CONFIRMED' && 'bg-blue-900/30 text-blue-400',
                   word.status === 'SKIPPED' && 'bg-slate-800 text-slate-400'
                 )}>
                   {word.status === 'CORRECTED' && word.corrected_word
-                    ? `Corrected to: ${word.corrected_word}`
-                    : word.status}
+                    ? `✓ Corrected to: "${word.corrected_word}"`
+                    : word.status === 'CONFIRMED' ? '✓ Confirmed as correct'
+                    : 'Skipped'}
                 </div>
               )}
             </div>
