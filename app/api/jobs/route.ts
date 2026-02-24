@@ -80,6 +80,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] jobs list failure', error);
+    }
     logger.error('Error fetching jobs', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to fetch jobs' },
@@ -155,6 +158,9 @@ const POSTHandler = async (request: NextRequest) => {
       message: 'Job created successfully',
     });
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] job create failure', error);
+    }
     logger.error('Error creating job', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Failed to create job' },

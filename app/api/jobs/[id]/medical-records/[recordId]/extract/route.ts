@@ -82,6 +82,9 @@ const POSTHandler = async (
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Extraction failed';
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] medical extraction failure', error);
+    }
     logger.error('[api/extract] POST error', error instanceof Error ? error : new Error(message));
     return NextResponse.json(
       { error: message },

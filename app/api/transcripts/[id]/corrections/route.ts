@@ -62,6 +62,9 @@ export async function GET(
       updatedAt: reviewSession.lastSavedAt || transcript.updated_at,
     });
   } catch (_error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] review session load failure', _error);
+    }
     console.error('Error loading review session:', _error);
     return NextResponse.json(
       { error: 'Failed to load review session' },
@@ -232,6 +235,9 @@ const POSTHandler = async (
       updatedAt: new Date().toISOString(),
     });
   } catch (_error) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[CRITICAL] corrections save failure', _error);
+    }
     console.error('Error saving corrections:', _error);
     return NextResponse.json(
       { error: 'Failed to save corrections' },
