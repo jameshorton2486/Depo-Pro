@@ -1,73 +1,89 @@
 # Depo-Pro Beta Testing Guide
 
-Welcome. You are part of the first Depo-Pro beta cohort.
+Welcome! You are one of our first beta testers. This guide walks you through the workflows available during beta.
 
 ## Getting Started
-1. Log in at `https://depo-pro.com/login`
-2. Use the dashboard for your assigned role
+1. Log in at `https://depo-pro.com/login`.
+2. Confirm your dashboard and sidebar match your assigned role.
 
 ## For Court Reporters
 
 ### Upload A Deposition
-1. Click `New Job`
-2. Fill case metadata
-3. Upload audio (`MP3`, `WAV`, `MP4`, up to 2 GB)
-4. Click `Create Job`
-5. Wait for transcription processing
+1. Click `New Job` in the sidebar.
+2. Fill in `Case Name`, `Case Number`, `Deponent Name`, and `Deposition Date`.
+3. Upload audio/video (`MP3`, `WAV`, or `MP4`, up to `2 GB`).
+4. Click `Create Job`.
+5. Transcription starts automatically (`~3-5 min` per hour of audio).
 
 ### Review Flagged Words
-1. Open a completed job
-2. Click `Review Transcript`
-3. Review low-confidence words
-4. Confirm, correct, or skip each word
+1. Open a completed job.
+2. Click `Review Transcript`.
+3. Low-confidence words are highlighted in orange.
+4. Click a word to hear audio at that timestamp.
+5. Confirm, correct, or skip each word.
 
 Keyboard shortcuts:
-- `ArrowUp` / `ArrowDown`: navigate words
-- `Space`: play/seek audio
-- `Enter`: edit selected word
-- `Escape`: deselect/close edit
+1. `ArrowUp` / `ArrowDown`: Navigate flagged words
+2. `Space`: Play audio at selected word
+3. `Enter`: Edit selected word
+4. `C`: Confirm selected word
+5. `S`: Skip selected word
+6. `Escape`: Close edit/deselect
 
 ### Export Transcript
-1. Click `Export` on review page
-2. Select `DOCX`, `PDF`, or `TXT`
-3. Download includes saved corrections
+1. From the review page, click `Export`.
+2. Choose `DOCX (legal)`, `PDF`, or `TXT`.
+3. Exports include saved corrections.
 
 ### Assign A Scopist
-1. Open job
-2. Click `Assign Scopist`
-3. Select assignee
+1. Open a job.
+2. Click `Assign Scopist`.
+3. Select a scopist from the dropdown.
+4. The scopist will see the job in their queue.
 
 ## For Scopists
-1. Open assigned jobs from queue
-2. Review flagged words
-3. Save/correct words
-4. Submit review when complete
+
+### Review Queue Workflow
+1. Log in and open your assigned queue.
+2. Select a job and open `Review Transcript`.
+3. Review flagged words with the same correction workflow as reporters.
+4. Corrections save automatically.
+5. Submit review when complete.
 
 ## For Attorneys
-1. Log in to attorney dashboard
-2. Access shared transcript data and exports
-3. Use read-focused workflow during beta
+1. Log in to the attorney dashboard.
+2. Open transcripts and exports shared to your firm/workflow.
+3. Validate case content in read-only/review-focused mode.
+4. Report any data visibility or permission issues immediately.
 
 ## Reporting Bugs
-Send reports to `beta-feedback@depo-pro.com` (or your configured support address).
+Send reports to `beta-feedback@depo-pro.com` (or your configured support alias).
 
 Include:
 1. What you were doing
 2. What happened
 3. What you expected
-4. Browser/device
-5. Screenshots if available
+4. Browser and device
+5. Screenshots or screen recordings if available
+6. Approximate time the issue occurred
 
-## Known Beta Limitations
-- Max upload size: 2 GB
-- Processing speed depends on recording length/quality
-- Export formats: DOCX/PDF/TXT only
-- Medical chronology available, still being refined
+## Known Limitations (Beta)
+1. Maximum upload size: `2 GB`
+2. Processing time: approximately `3-5 minutes` per hour of audio
+3. Export formats: `DOCX`, `PDF`, and `TXT` only
+4. Medical chronology is available but still being refined
 
-## Sample Audio Set
-Prepare and share links for:
-1. Short sample (~5 min)
-2. Medium sample (~30 min)
-3. Long sample (~2 hr)
-4. Medical terminology sample
-5. Noisy sample
+## Sample Audio Files
+Upload these files to your shared Drive and distribute links to testers:
+1. `short-depo-sample.mp3` (5 min, simple Q&A)
+2. `medium-depo-sample.mp3` (30 min, multi-speaker)
+3. `long-depo-sample.mp3` (2 hr, stress test)
+4. `medical-depo-sample.mp3` (15 min, medical terminology)
+5. `noisy-depo-sample.mp3` (10 min, background noise)
+
+Drive links:
+1. Short: `[ADD LINK]`
+2. Medium: `[ADD LINK]`
+3. Long: `[ADD LINK]`
+4. Medical: `[ADD LINK]`
+5. Noisy: `[ADD LINK]`

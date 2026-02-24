@@ -4,9 +4,9 @@
 **Duration:** Until beta feedback is collected (minimum 2 weeks)
 
 ## Rules
-1. No new features
-2. Bug fixes only
-3. Security patches only
+1. NO new features may be added
+2. Bug fixes ONLY
+3. Security patches ONLY
 4. All changes require review before merge
 
 ## What Counts As A Bug Fix
@@ -17,7 +17,7 @@
 - Authentication/authorization failures
 
 ## What Does Not Count As A Bug Fix
-- New feature requests
+- "It would be nice if..." requests
 - New export formats
 - New dashboard widgets
 - UI redesign work
@@ -25,7 +25,7 @@
 
 ## Bug Fix Process
 1. Reproduce issue
-2. Implement minimal focused fix
-3. Run verification (`tsc`, tests, build as applicable)
-4. Merge to `main`
+2. Create a focused fix (minimal changes)
+3. Test the fix
+4. Push to `main`
 5. Verify on production
