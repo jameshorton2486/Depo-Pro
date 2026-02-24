@@ -4,6 +4,18 @@
  * Production-hardened implementation with real Deepgram API calls.
  * Provides word-level timestamps, confidence scores, and speaker diarization.
  *
+ * ARCHITECTURE NOTE (FROZEN):
+ * This module is part of the sealed transcription pipeline:
+ *   Audio upload → Supabase Storage (depo-audio bucket)
+ *     → app/api/jobs/[id]/transcribe/route.ts
+ *     → transcribeAudio() [this file]
+ *     → TranscriptionResult stored in transcriptions.words + utterances
+ *     → Flagged words written to flagged_words table (confidence < 0.85)
+ *
+ * DO NOT modify the TranscriptionResult shape — it is consumed by
+ * the review pipeline (review-client-new.tsx → SyncedTranscriptViewer)
+ * and the export pipeline (lib/export.ts → exportTranscript()).
+ *
  * INSTALLATION: npm install @deepgram/sdk
  */
 

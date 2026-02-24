@@ -1,5 +1,16 @@
 // lib/export.ts
 // Document export service for legal transcripts
+//
+// ARCHITECTURE NOTE (FROZEN):
+// Entry point: exportTranscript(text, metadata, options) → { buffer, filename, contentType }
+// Called exclusively by app/api/transcripts/[id]/export/route.ts after the route
+// has merged all correction layers (transcription_edits → flagged_segments → flagged_words).
+//
+// Supported formats: docx (default), pdf, txt
+// Legal formatting: 25 lines/page, 65 chars/line, line numbers every 5 lines (Q&A mode)
+//
+// DO NOT add new format handlers here without a matching canExportFormat() entry in
+// lib/export/permissions.ts and a format test in tests/integration/export.test.ts.
 
 import {
   Document,
