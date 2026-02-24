@@ -7,7 +7,7 @@ import os from 'os';
 
 import { validateAudio } from './validate';
 import { chunkAudio, cleanupChunks, DEFAULT_CHUNKING_CONFIG } from './chunking';
-import { transcribeAudio, DEFAULT_DEEPGRAM_OPTIONS } from './deepgram';
+import { transcribeAudio, toPipelineFormat } from '@/lib/transcription';
 import { reassembleChunks } from './reassemble';
 import {
   normalizeAudioForTranscription,
@@ -141,11 +141,11 @@ export async function processTranscriptionJob(
         // Read chunk audio into buffer
         const audioBuffer = fs.readFileSync(chunk.filePath);
 
-        // Transcribe via Deepgram
-        const result = await transcribeAudio(audioBuffer, {
-          ...DEFAULT_DEEPGRAM_OPTIONS,
-          keywords,
+        // Transcribe via Deepgram (lib/transcription.ts)
+        const transcriptionResult = await transcribeAudio(audioBuffer, {
+          customKeyterms: keywords,
         });
+        const result = toPipelineFormat(transcriptionResult);
 
         // Store chunk result in database
         await storeChunkResult(jobId, i, result);

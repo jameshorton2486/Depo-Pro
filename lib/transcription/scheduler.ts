@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateAudio, extractAudioFromVideo } from './validate';
 import { chunkAudio, DEFAULT_CHUNKING_CONFIG } from './chunking';
-import { transcribeFile, DEFAULT_DEEPGRAM_OPTIONS } from './deepgram';
+import { transcribeFile, toPipelineFormat } from '@/lib/transcription';
 import { reassembleChunks } from './reassemble';
 import path from 'path';
 import os from 'os';
@@ -243,11 +243,11 @@ export async function processChunk(
       // Get vocabulary keywords
       const keywords = await getVocabularyKeywords(jobId, job.firm_id);
 
-      // Transcribe
-      const result = await transcribeFile(audioPath, {
-        ...DEFAULT_DEEPGRAM_OPTIONS,
-        keywords,
+      // Transcribe via lib/transcription.ts
+      const transcriptionResult = await transcribeFile(audioPath, {
+        customKeyterms: keywords,
       });
+      const result = toPipelineFormat(transcriptionResult);
 
       // Store result
       await supabase

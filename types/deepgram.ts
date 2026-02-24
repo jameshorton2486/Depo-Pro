@@ -93,6 +93,12 @@ export interface TranscriptWord {
 
   /** Word with punctuation applied */
   punctuated_word?: string;
+
+  /** Zero-based index in transcript */
+  index?: number;
+
+  /** True if confidence < LOW_CONFIDENCE_THRESHOLD (needs review) */
+  flagged?: boolean;
 }
 
 // ============================================

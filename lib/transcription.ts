@@ -1,14 +1,15 @@
 /**
  * Deepgram Transcription Service for Depo-Pro
  *
- * This replaces the mock implementation with real Deepgram API calls.
+ * Production-hardened implementation with real Deepgram API calls.
  * Provides word-level timestamps, confidence scores, and speaker diarization.
  *
  * INSTALLATION: npm install @deepgram/sdk
  */
 
+import fs from 'fs';
 import type { PrerecordedSchema, SyncPrerecordedResponse } from '@deepgram/sdk';
-import { getDeepgramClient, LEGAL_TRANSCRIPTION_OPTIONS, LEGAL_VOCABULARY } from './deepgram/client';
+import { LEGAL_TRANSCRIPTION_OPTIONS, LEGAL_VOCABULARY } from './deepgram/client';
 import type {
   TranscriptionResult,
   TranscriptWord,
@@ -17,8 +18,16 @@ import type {
   QualityReport,
 } from '@/types/deepgram';
 
-// Low confidence threshold - words below this are flagged for review
-const LOW_CONFIDENCE_THRESHOLD = parseFloat(process.env.LOW_CONFIDENCE_THRESHOLD || '0.85');
+/** Words below this confidence are flagged for scopist review */
+const LOW_CONFIDENCE_THRESHOLD = 0.85;
+
+function requireDeepgramKey(): string {
+  const key = process.env.DEEPGRAM_API_KEY;
+  if (!key || key.trim() === '') {
+    throw new Error('DEEPGRAM_API_KEY is required for transcription');
+  }
+  return key.trim();
+}
 
 /**
  * Transcribe audio using Deepgram with legal-optimized settings
@@ -32,48 +41,41 @@ export async function transcribeAudio(
     modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
   } = {},
 ): Promise<TranscriptionResult> {
-  const deepgram = getDeepgramClient();
+  const apiKey = requireDeepgramKey();
+  const { createClient } = await import('@deepgram/sdk');
+  const deepgram = createClient(apiKey);
 
-  // For Nova-3: Use keyterm (max 100 terms)
-  // For Nova-2: Use keywords (up to 1000 terms)
   const isNova3 = !options.modelPreference || options.modelPreference === 'nova-3';
-
-  // Prioritize custom terms, then add legal vocabulary up to limit
   const customTerms = options.customKeyterms || [];
   const allTerms = [...customTerms, ...LEGAL_VOCABULARY];
 
-  // Build transcription options
   const transcriptionOptions: PrerecordedSchema = {
     ...LEGAL_TRANSCRIPTION_OPTIONS,
     model: options.modelPreference || 'nova-3',
   };
 
   if (isNova3) {
-    // Nova-3: Use keyterm parameter (max 100 terms)
     transcriptionOptions.keyterm = allTerms.slice(0, 100);
   } else {
-    // Nova-2: Use keywords parameter (up to 1000 terms)
     transcriptionOptions.keywords = allTerms.slice(0, 1000);
   }
 
-  try {
-    // Call Deepgram API
-    const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
-      audioBuffer,
-      transcriptionOptions,
-    );
+  const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
+    audioBuffer,
+    transcriptionOptions,
+  );
 
-    if (error) {
-      console.error('❌ Deepgram API error:', error);
-      throw new Error(`Deepgram transcription failed: ${error.message}`);
-    }
-
-    // Process the response
-    return processDeepgramResponse(result);
-  } catch (err) {
-    console.error('❌ Transcription error:', err);
-    throw err;
+  if (error) {
+    console.error('[Deepgram] API error', { message: error.message, code: (error as { code?: string }).code });
+    throw new Error(`Deepgram transcription failed: ${error.message}`);
   }
+
+  if (!result) {
+    console.error('[Deepgram] No result returned');
+    throw new Error('Deepgram returned no result');
+  }
+
+  return processDeepgramResponse(result);
 }
 
 /**
@@ -86,7 +88,9 @@ export async function transcribeFromUrl(
     modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
   } = {},
 ): Promise<TranscriptionResult> {
-  const deepgram = getDeepgramClient();
+  const apiKey = requireDeepgramKey();
+  const { createClient } = await import('@deepgram/sdk');
+  const deepgram = createClient(apiKey);
 
   const isNova3 = !options.modelPreference || options.modelPreference === 'nova-3';
   const customTerms = options.customKeyterms || [];
@@ -103,21 +107,127 @@ export async function transcribeFromUrl(
     transcriptionOptions.keywords = allTerms.slice(0, 1000);
   }
 
-  try {
-    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
-      { url: audioUrl },
-      transcriptionOptions,
-    );
+  const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
+    { url: audioUrl },
+    transcriptionOptions,
+  );
 
-    if (error) {
-      throw new Error(`Deepgram transcription failed: ${error.message}`);
-    }
-
-    return processDeepgramResponse(result);
-  } catch (err) {
-    console.error('❌ Transcription error:', err);
-    throw err;
+  if (error) {
+    console.error('[Deepgram] API error', { message: error.message, code: (error as { code?: string }).code });
+    throw new Error(`Deepgram transcription failed: ${error.message}`);
   }
+
+  if (!result) {
+    console.error('[Deepgram] No result returned');
+    throw new Error('Deepgram returned no result');
+  }
+
+  return processDeepgramResponse(result);
+}
+
+/**
+ * Transcribe from a file path (reads file into buffer and calls transcribeAudio).
+ * Used by pipeline and scheduler.
+ */
+export async function transcribeFile(
+  filePath: string,
+  options: {
+    customKeyterms?: string[];
+    modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
+  } = {},
+): Promise<TranscriptionResult> {
+  const buffer = fs.readFileSync(filePath);
+  return transcribeAudio(buffer, options);
+}
+
+/**
+ * Convert TranscriptionResult to pipeline format (DeepgramChunkResult).
+ * Maps words, utterances→segments, speakers, fullTranscript, rawJson.
+ */
+export function toPipelineFormat(result: TranscriptionResult): {
+  words: Array<{
+    word: string;
+    punctuated_word: string;
+    start: number;
+    end: number;
+    confidence: number;
+    speaker: string;
+    speaker_channel: number;
+    is_flagged: boolean;
+  }>;
+  segments: Array<{
+    text: string;
+    speaker: string;
+    start: number;
+    end: number;
+    channel: number;
+    original_text: string;
+  }>;
+  speakers: Array<{
+    id: string;
+    label: string;
+    channel: number;
+    original_label: string;
+  }>;
+  fullTranscript: string;
+  rawJson: SyncPrerecordedResponse;
+  confidence: number;
+} {
+  const speakerSet = new Set<number>();
+  for (const w of result.words) {
+    if (w.speaker !== undefined) speakerSet.add(w.speaker);
+  }
+  for (const u of result.utterances) {
+    speakerSet.add(u.speaker);
+  }
+
+  const speakers = Array.from(speakerSet)
+    .sort((a, b) => a - b)
+    .map((ch) => {
+      const label = `SPEAKER_${String(ch).padStart(2, '0')}`;
+      return { id: label, label, channel: ch, original_label: label };
+    });
+
+  const words = result.words.map((w) => {
+    const speakerNum = w.speaker ?? 0;
+    const speakerLabel = `SPEAKER_${String(speakerNum).padStart(2, '0')}`;
+    return {
+      word: w.word,
+      punctuated_word: w.punctuated_word ?? w.word,
+      start: w.start,
+      end: w.end,
+      confidence: w.confidence,
+      speaker: speakerLabel,
+      speaker_channel: speakerNum,
+      is_flagged: w.flagged ?? w.confidence < LOW_CONFIDENCE_THRESHOLD,
+    };
+  });
+
+  const segments = result.utterances.map((u) => {
+    const speakerLabel = `SPEAKER_${String(u.speaker).padStart(2, '0')}`;
+    return {
+      text: u.transcript,
+      speaker: speakerLabel,
+      start: u.start,
+      end: u.end,
+      channel: u.speaker,
+      original_text: u.transcript,
+    };
+  });
+
+  const fullTranscript =
+    segments.length > 0
+      ? segments.map((s) => `${s.speaker}: ${s.text}`).join('\n\n')
+      : result.transcript;
+
+  return {
+    words,
+    segments,
+    speakers,
+    fullTranscript: fullTranscript || result.transcript,
+    rawJson: result.rawResponse,
+    confidence: result.confidence,
+  };
 }
 
 /**
@@ -128,37 +238,52 @@ function processDeepgramResponse(result: SyncPrerecordedResponse): Transcription
     throw new Error('Deepgram response missing results payload');
   }
 
-  const channel = result.results?.channels?.[0];
+  const channels = result.results.channels;
+  if (!channels || !Array.isArray(channels) || channels.length === 0) {
+    throw new Error('Deepgram response missing or empty results.channels');
+  }
+
+  const channel = channels[0];
   const alternative = channel?.alternatives?.[0];
 
   if (!alternative) {
     throw new Error('No transcription results returned from Deepgram');
   }
 
-  // Extract words with our format
-  const words: TranscriptWord[] = (alternative.words || []).map((word) => ({
-    word: word.word || '',
-    start: word.start || 0,
-    end: word.end || 0,
-    confidence: word.confidence || 0,
-    speaker: word.speaker,
-    punctuated_word: word.punctuated_word,
-  }));
-
-  // Extract utterances (speaker segments)
-  const utterances: Utterance[] = (result.results?.utterances || []).map((utt) => ({
-    speaker: utt.speaker || 0,
-    start: utt.start || 0,
-    end: utt.end || 0,
-    transcript: utt.transcript || '',
-    confidence: utt.confidence || 0,
-    words: (utt.words || []).map((w) => ({
-      word: w.word || '',
-      start: w.start || 0,
-      end: w.end || 0,
-      confidence: w.confidence || 0,
+  const rawWords = alternative.words ?? [];
+  const words: TranscriptWord[] = rawWords.map((w, i) => {
+    const conf = typeof w.confidence === 'number' ? w.confidence : 0;
+    return {
+      word: w.word ?? '',
+      punctuated_word: w.punctuated_word ?? w.word ?? '',
+      start: typeof w.start === 'number' ? w.start : 0,
+      end: typeof w.end === 'number' ? w.end : 0,
+      confidence: conf,
       speaker: w.speaker,
-    })),
+      index: i,
+      flagged: conf < LOW_CONFIDENCE_THRESHOLD,
+    };
+  });
+
+  const utterances: Utterance[] = (result.results?.utterances ?? []).map((utt) => ({
+    speaker: utt.speaker ?? 0,
+    start: utt.start ?? 0,
+    end: utt.end ?? 0,
+    transcript: utt.transcript ?? '',
+    confidence: utt.confidence ?? 0,
+    words: (utt.words ?? []).map((w, i) => {
+      const conf = typeof w.confidence === 'number' ? w.confidence : 0;
+      return {
+        word: w.word ?? '',
+        punctuated_word: w.punctuated_word ?? w.word ?? '',
+        start: typeof w.start === 'number' ? w.start : 0,
+        end: typeof w.end === 'number' ? w.end : 0,
+        confidence: conf,
+        speaker: w.speaker,
+        index: i,
+        flagged: conf < LOW_CONFIDENCE_THRESHOLD,
+      };
+    }),
   }));
 
   // Flag low-confidence words for scopist review
@@ -188,8 +313,8 @@ function processDeepgramResponse(result: SyncPrerecordedResponse): Transcription
 
     // Metadata
     metadata: {
-      duration: result.metadata?.duration || 0,
-      channels: result.metadata?.channels || 1,
+      duration: result.metadata?.duration ?? 0,
+      channels: result.metadata?.channels ?? 1,
       modelInfo: result.metadata?.model_info,
       requestId: result.metadata?.request_id,
     },

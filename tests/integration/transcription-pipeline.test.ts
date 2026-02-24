@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { transcribeAudio } from '@/lib/transcription/deepgram';
+import { transcribeAudio, toPipelineFormat } from '@/lib/transcription';
 import { reassembleChunks } from '@/lib/transcription/reassemble';
 import type { ProcessedChunk } from '@/types/transcription';
+
+vi.hoisted(() => {
+  process.env.DEEPGRAM_API_KEY = 'test-key';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-secret';
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_test';
+});
 
 const { transcribeFileMock, createClientMock } = vi.hoisted(() => {
   const transcribeFileMock = vi.fn();
@@ -53,7 +60,8 @@ describe('Transcription Pipeline', () => {
     const result = await transcribeAudio(Buffer.from('fake-audio'));
     expect(result.words.length).toBe(2);
     expect(result.words[0].word).toBe('Please');
-    expect(result.fullTranscript).toContain('SPEAKER_00');
+    const pipelineFormat = toPipelineFormat(result);
+    expect(pipelineFormat.fullTranscript).toContain('SPEAKER_00');
   });
 
   it('should identify low-confidence words below 0.85 threshold', async () => {
@@ -150,6 +158,8 @@ describe('Transcription Pipeline', () => {
     });
 
     const result = await transcribeAudio(Buffer.from('fake-audio'));
-    expect(result.words[0].speaker).toBe('SPEAKER_01');
+    expect(result.words[0].speaker).toBe(1);
+    const pipelineFormat = toPipelineFormat(result);
+    expect(pipelineFormat.words[0].speaker).toBe('SPEAKER_01');
   });
 });
