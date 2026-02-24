@@ -128,13 +128,20 @@ async function step2_createTestFirmAndUser() {
     userId = authUser.user.id;
     pass('Create test user', userId!);
 
-    // Ensure profile row
-    await supabase.from('profiles').upsert({
+    // Ensure profile row (full_name is required)
+    const { error: profileErr } = await supabase.from('profiles').upsert({
       id: userId,
       email: `${TEST_PREFIX}@depo-pro.test`,
-      role: 'COURT_REPORTER',
+      full_name: 'Pipeline Smoke Test User',
+      role: 'COURT_REPORTER' as const,
       firm_id: firmId,
     });
+
+    if (profileErr) {
+      fail('Create test profile', profileErr.message);
+      return false;
+    }
+    pass('Create test profile', 'full_name set');
 
     return true;
   } catch (e: any) {
@@ -150,10 +157,9 @@ async function step3_createJob() {
       .from('jobs')
       .insert({
         case_name: `${TEST_PREFIX}-case`,
-        title: 'Pipeline Smoke Test',
-        status: 'PENDING',
-        reporter_id: userId,
-        firm_id: firmId,
+        status: 'DRAFT' as const,
+        reporter_id: userId!,
+        firm_id: firmId!,
         audio_file_url: `${TEST_PREFIX}/audio/test-audio.wav`,
       })
       .select('id')
@@ -201,9 +207,8 @@ async function step5_createTranscription() {
       .insert({
         job_id: jobId,
         status: 'COMPLETE',
-        content: SAMPLE_WORDS.map((w) => w.punctuated_word).join(' '),
-        words: JSON.stringify(SAMPLE_WORDS),
-        utterances: JSON.stringify([]),
+        full_transcript: SAMPLE_WORDS.map((w) => w.punctuated_word).join(' '),
+        words: SAMPLE_WORDS,
         total_word_count: SAMPLE_WORDS.length,
         flagged_word_count: SAMPLE_WORDS.filter((w) => w.confidence < 0.85).length,
       })
@@ -253,10 +258,10 @@ async function step6_extractFlaggedWords() {
           confidence: word.confidence,
           start_time: word.start,
           end_time: word.end,
-          speaker: word.speaker,
+          speaker: String(word.speaker),
           context_before: contextBefore,
           context_after: contextAfter,
-          status: 'PENDING',
+          status: 'PENDING' as const,
           sort_order: idx,
         };
       });
@@ -319,11 +324,10 @@ async function step8_saveCorrection() {
     const { error } = await supabase.from('transcription_edits').insert({
       transcription_id: transcriptionId,
       word_index: 4,
-      original_text: 'neim',
-      edited_text: 'name',
-      edit_type: 'WORD_CORRECTION',
-      editor_id: userId,
-      editor_role: 'COURT_REPORTER',
+      original_value: 'neim',
+      new_value: 'name',
+      edit_type: 'WORD_CORRECTION' as const,
+      editor_id: userId!,
     });
 
     if (error) {
@@ -343,14 +347,14 @@ async function step9_verifyJobStatusUpdatable() {
   try {
     const { error } = await supabase
       .from('jobs')
-      .update({ status: 'COMPLETE', updated_at: new Date().toISOString() })
+      .update({ status: 'COMPLETED' as const, updated_at: new Date().toISOString() })
       .eq('id', jobId!);
 
     if (error) {
       fail('Update job status', error.message);
       return false;
     }
-    pass('Job status updated to COMPLETE');
+    pass('Job status updated to COMPLETED');
     return true;
   } catch (e: any) {
     fail('Update job status', e.message);
