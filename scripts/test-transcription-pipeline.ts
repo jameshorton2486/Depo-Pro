@@ -152,7 +152,7 @@ async function step3_createJob() {
         case_name: `${TEST_PREFIX}-case`,
         title: 'Pipeline Smoke Test',
         status: 'PENDING',
-        created_by_id: userId,
+        reporter_id: userId,
         firm_id: firmId,
         audio_file_url: `${TEST_PREFIX}/audio/test-audio.wav`,
       })
