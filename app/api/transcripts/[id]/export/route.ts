@@ -12,6 +12,7 @@ import { canExportFormat, canUseProfile } from '@/lib/export/permissions';
 import { getExportProfile } from '@/lib/export/profiles';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 import { logger } from '@/lib/logger';
+import { captureError } from '@/lib/error-capture';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -303,13 +304,13 @@ export async function GET(
       },
     });
   } catch (error) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[CRITICAL] transcript export failure', error);
-    }
-    console.error('Export error:', error);
+    captureError(error, { route: 'GET /api/transcripts/[id]/export' });
     return NextResponse.json({ error: 'Failed to export transcript' }, { status: 500 });
   } finally {
     const duration = Math.round(performance.now() - startTime);
+    if (duration > 5000) {
+      console.warn(`[perf:slow] GET /api/transcripts/[id]/export ${duration}ms`);
+    }
     console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 }

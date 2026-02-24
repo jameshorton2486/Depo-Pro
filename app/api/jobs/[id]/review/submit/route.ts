@@ -7,6 +7,7 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { captureError } from '@/lib/error-capture';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -16,6 +17,7 @@ const POSTHandler = async (
   _req: NextRequest,
   context: RouteContext,
 ) => {
+  const startTime = performance.now();
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser?.id) {
@@ -115,11 +117,13 @@ const POSTHandler = async (
       message: 'Review submitted successfully.',
     });
   } catch (error) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[CRITICAL] review submit failure', error);
-    }
-    console.error('Error submitting review:', error);
+    captureError(error, { route: 'POST /api/jobs/[id]/review/submit' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } finally {
+    const duration = Math.round(performance.now() - startTime);
+    if (duration > 2000) {
+      console.warn(`[perf:slow] POST /api/jobs/[id]/review/submit ${duration}ms`);
+    }
   }
 };
 

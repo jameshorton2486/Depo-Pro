@@ -10,6 +10,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { logCorrection, getWordContext } from '@/lib/services/correction-logger';
+import { captureError } from '@/lib/error-capture';
 
 export const dynamic = 'force-dynamic';
 
@@ -260,16 +261,16 @@ const PATCHHandler = async (
       updatedAt: responseUpdatedAt,
     });
   } catch (error) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[CRITICAL] review mutation failure', error);
-    }
-    console.error('Error in review API:', error);
+    captureError(error, { route: 'PATCH /api/jobs/[id]/review', jobId: 'unknown' });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   } finally {
     const duration = Math.round(performance.now() - startTime);
+    if (duration > 1000) {
+      console.warn(`[perf:slow] PATCH /api/jobs/[id]/review ${duration}ms`);
+    }
     console.log(`[perf] ${req.method} ${req.nextUrl.pathname} ${duration}ms`);
   }
 }

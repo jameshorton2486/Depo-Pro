@@ -16,6 +16,9 @@ import type { JobExhibitRow } from '@/lib/supabase/queries/exhibits';
 import type { ConfidenceAnalytics, RiskScoreResult } from '@/types/analytics';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { fetchWithRetry } from '@/lib/client/fetch-with-retry';
+import { ConnectionStatus } from '@/components/review/connection-status';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import {
   Dialog,
   DialogContent,
@@ -288,16 +291,20 @@ export function ReviewClientNew({
   ) => {
     savesInFlightRef.current++;
     try {
-      const response = await fetch(`/api/jobs/${jobId}/review`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          wordId,
-          action,
-          correctedWord,
-          expectedUpdatedAt: latestUpdatedAt,
-        }),
-      });
+      const response = await fetchWithRetry(
+        `/api/jobs/${jobId}/review`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wordId,
+            action,
+            correctedWord,
+            expectedUpdatedAt: latestUpdatedAt,
+          }),
+        },
+        { maxRetries: 2 }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -406,9 +413,10 @@ export function ReviewClientNew({
 
     setIsExporting(true);
     try {
-      const response = await fetch(
+      const response = await fetchWithRetry(
         `/api/transcripts/${transcriptionId}/export?format=${format}`,
-        { method: 'GET' }
+        { method: 'GET' },
+        { maxRetries: 1, baseDelayMs: 1000 }
       );
 
       if (!response.ok) {
@@ -462,6 +470,8 @@ export function ReviewClientNew({
   }
 
   return (
+    <>
+      <ConnectionStatus pingIntervalMs={30000} />
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
       <header className="h-14 px-4 flex items-center justify-between border-b border-border bg-card shrink-0">
@@ -580,15 +590,33 @@ export function ReviewClientNew({
       <div className="flex-1 flex overflow-hidden">
         {/* Transcript (2/3 width) */}
         <div className="w-2/3 border-r border-border overflow-hidden">
-          <SyncedTranscriptViewer
-            segments={segments}
-            currentTime={currentTime}
-            onWordClick={handleWordClick}
-            confidenceThreshold={0.85}
-            highlightLowConfidence={true}
-            showHeatmap={showHeatmap}
-            corrections={correctionsMap}
-          />
+          <ErrorBoundary
+            pageName="transcript-viewer"
+            fallback={
+              <div className="flex-1 flex items-center justify-center p-8 text-muted-foreground">
+                <div className="text-center">
+                  <p className="text-lg font-medium mb-2">Transcript viewer encountered an error</p>
+                  <p className="text-sm mb-4">Your corrections are saved. Refresh to continue.</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+            }
+          >
+            <SyncedTranscriptViewer
+              segments={segments}
+              currentTime={currentTime}
+              onWordClick={handleWordClick}
+              confidenceThreshold={0.85}
+              highlightLowConfidence={true}
+              showHeatmap={showHeatmap}
+              corrections={correctionsMap}
+            />
+          </ErrorBoundary>
         </div>
 
         {/* Review Panel (1/3 width) - Tabbed */}
@@ -606,16 +634,34 @@ export function ReviewClientNew({
               </TabsTrigger>
             </TabsList>
             <TabsContent value="flagged" className="flex-1 overflow-hidden m-0">
-              <LowConfidencePanel
-                flaggedWords={flaggedWords}
-                stats={stats}
-                currentAudioTime={currentTime}
-                onSeekAudio={handleSeekAudio}
-                onCorrection={handleCorrection}
-                isReadOnly={isReadOnly}
-                isLoading={false}
-                onFilterUsed={trackFilterUsed}
-              />
+              <ErrorBoundary
+                pageName="flagged-words-panel"
+                fallback={
+                  <div className="flex items-center justify-center p-8 text-muted-foreground h-full">
+                    <div className="text-center">
+                      <p className="text-lg font-medium mb-2">Flagged words panel error</p>
+                      <p className="text-sm mb-4">Corrections saved so far are safe.</p>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+                }
+              >
+                <LowConfidencePanel
+                  flaggedWords={flaggedWords}
+                  stats={stats}
+                  currentAudioTime={currentTime}
+                  onSeekAudio={handleSeekAudio}
+                  onCorrection={handleCorrection}
+                  isReadOnly={isReadOnly}
+                  isLoading={false}
+                  onFilterUsed={trackFilterUsed}
+                />
+              </ErrorBoundary>
             </TabsContent>
             <TabsContent value="exhibits" className="flex-1 overflow-hidden m-0">
               <ExhibitTimelinePanel
@@ -709,5 +755,6 @@ export function ReviewClientNew({
         </DialogContent>
       </Dialog>
     </div>
+    </>
   );
 }
