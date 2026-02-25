@@ -1,7 +1,7 @@
 // lib/health.ts
 // Beta Hardening Plan - Phase 5.3: Health Check Service
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
 
 interface HealthCheckResult {
@@ -48,7 +48,7 @@ export async function getHealthStatus(): Promise<HealthCheckResult> {
 
   // Check 1: Database connectivity
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = getSupabaseAdmin();
     const dbStart = Date.now();
     const { error } = await supabase.from('firms').select('id').limit(1);
     const dbLatency = Date.now() - dbStart;
@@ -75,7 +75,7 @@ export async function getHealthStatus(): Promise<HealthCheckResult> {
 
   // Check 2: Storage buckets
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.storage.listBuckets();
 
     if (error) {
@@ -169,7 +169,7 @@ export async function getHealthStatus(): Promise<HealthCheckResult> {
  */
 export async function checkDatabase(): Promise<boolean> {
   try {
-    const supabase = await createSupabaseServerClient();
+    const supabase = getSupabaseAdmin();
     const { error } = await supabase.from('firms').select('id').limit(1);
     return !error;
   } catch {
