@@ -74,7 +74,7 @@ describe('Auth Flow', () => {
       })),
     }));
 
-    const { middleware } = await import('@/middleware');
+    const { proxy: middleware } = await import('@/proxy');
     const req = new NextRequest('http://localhost/dashboard');
     const res = await middleware(req);
 
@@ -136,7 +136,7 @@ describe('Auth Flow', () => {
       })),
     }));
 
-    const { middleware } = await import('@/middleware');
+    const { proxy: middleware } = await import('@/proxy');
     const req = new NextRequest('http://localhost/login');
     const res = await middleware(req);
 

@@ -56,9 +56,24 @@ vi.mock('@/lib/audit-service', () => ({
 }));
 
 describe('Export Integration', () => {
+  let flaggedWordsRows: Array<{ word_index: number; corrected_word: string }> = [];
+
+  function makeSupabaseClientForExport() {
+    const chain: any = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      not: vi.fn().mockResolvedValue({ data: flaggedWordsRows, error: null }),
+    };
+    return {
+      from: vi.fn(() => chain),
+    };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
-    createSupabaseServerClientMock.mockResolvedValue({});
+    flaggedWordsRows = [];
+    createSupabaseServerClientMock.mockResolvedValue(makeSupabaseClientForExport());
     checkUserRateLimitMock.mockReturnValue({ allowed: true });
     useQuotaMock.mockResolvedValue({ allowed: true });
     canExportFormatMock.mockReturnValue(true);
@@ -161,5 +176,51 @@ describe('Export Integration', () => {
     expect(res.status).toBe(403);
     expect(exportTranscriptMock).not.toHaveBeenCalled();
   });
-});
 
+  it('prefers flagged_words table corrections over edit history and legacy review corrections', async () => {
+    flaggedWordsRows = [{ word_index: 1, corrected_word: 'BETA_TABLE' }];
+    createSupabaseServerClientMock.mockResolvedValueOnce(makeSupabaseClientForExport());
+
+    getCurrentUserMock.mockResolvedValueOnce({
+      id: 'user-1',
+      role: 'REPORTER',
+      firmId: 'firm-1',
+      email: 'test@example.com',
+    });
+
+    getTranscriptForExportMock.mockResolvedValueOnce({
+      id: 'tx-1',
+      full_transcript: 'alpha beta gamma',
+      words: [{ word: 'alpha' }, { word: 'beta' }, { word: 'gamma' }],
+      flagged_segments: {
+        reviewSession: {
+          corrections: { '1': 'BETA_REVIEW' },
+        },
+      },
+      job: {
+        created_by_id: 'user-1',
+        firm_id: 'firm-1',
+        title: 'Case A',
+        case_number: 'CASE-1',
+        deposition_date: '2026-02-22',
+        location: 'Remote',
+        createdBy: { firstName: 'Test', lastName: 'User' },
+        firm: { name: 'Firm 1' },
+      },
+    });
+
+    getTranscriptEditsMock.mockResolvedValueOnce([
+      { edited_text: 'BETA_EDIT', metadata: { wordIndex: 1 } },
+    ]);
+
+    const route = await import('@/app/api/transcripts/[id]/export/route');
+    const req = new NextRequest('http://localhost/api/transcripts/t1/export?format=docx');
+    const res = await route.GET(req, { params: Promise.resolve({ id: 't1' }) });
+
+    expect(res.status).toBe(200);
+    const exportedText = exportTranscriptMock.mock.calls[0][0];
+    expect(exportedText).toContain('BETA_TABLE');
+    expect(exportedText).not.toContain('BETA_EDIT');
+    expect(exportedText).not.toContain('BETA_REVIEW');
+  });
+});

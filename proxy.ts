@@ -19,8 +19,6 @@
 // ❌ No business rules
 // =============================================================================
 
-export const runtime = 'nodejs';
-
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';

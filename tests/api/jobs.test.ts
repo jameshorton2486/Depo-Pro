@@ -1,25 +1,48 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createMockRequest } from '../utils/test-helpers';
+import { NextRequest } from 'next/server';
 
-// Mock the auth module
-vi.mock('@/lib/auth', () => ({
-  auth: vi.fn(),
-}));
+const createSupabaseServerClientMock = vi.fn();
+const listJobsMock = vi.fn();
+const createJobMock = vi.fn();
 
-// Mock Supabase
 vi.mock('@/lib/supabase/server', () => ({
-  createSupabaseServerClient: vi.fn(() => ({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-    },
-  })),
+  createSupabaseServerClient: createSupabaseServerClientMock,
 }));
 
-// Mock jobs queries
 vi.mock('@/lib/supabase/queries/jobs', () => ({
-  listJobs: vi.fn(),
-  createJob: vi.fn(),
+  listJobs: listJobsMock,
+  createJob: createJobMock,
 }));
+
+vi.mock('@/lib/middleware/withRouteProtection', () => ({
+  withRouteProtection: (_options: unknown, handler: any) => handler,
+}));
+
+function makeSupabaseClient(role: string | null, userId = 'user-123') {
+  return {
+    auth: {
+      getUser: vi.fn().mockResolvedValue(
+        role
+          ? {
+              data: { user: { id: userId, user_metadata: { firmId: 'firm-1' } } },
+              error: null,
+            }
+          : {
+              data: { user: null },
+              error: null,
+            }
+      ),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: role ? { role } : null,
+        error: null,
+      }),
+    })),
+  };
+}
 
 describe('Jobs API', () => {
   beforeEach(() => {
@@ -27,124 +50,85 @@ describe('Jobs API', () => {
   });
 
   describe('GET /api/jobs', () => {
-    it('should return jobs for authenticated user', async () => {
-      const { auth } = await import('@/lib/auth');
-      vi.mocked(auth).mockResolvedValue({
-        user: { id: 'user-123', email: 'test@example.com', role: 'REPORTER' },
-      } as any);
-
-      const mockJobs = [
-        { id: 'job-1', case_name: 'Case 1', status: 'PENDING' },
-        { id: 'job-2', case_name: 'Case 2', status: 'AI_COMPLETE' },
-      ];
-
-      const { createSupabaseServerClient } = await import('@/lib/supabase/server');
-      vi.mocked(createSupabaseServerClient).mockResolvedValue({
-        auth: {
-          getUser: vi.fn().mockResolvedValue({
-            data: {
-              user: {
-                id: 'user-123',
-                user_metadata: { role: 'REPORTER' },
-              },
-            },
-            error: null,
-          }),
-        },
-      } as any);
-
-      const { listJobs } = await import('@/lib/supabase/queries/jobs');
-      vi.mocked(listJobs).mockResolvedValue({
-        jobs: mockJobs,
-        count: mockJobs.length,
+    it('returns jobs for authenticated user', async () => {
+      createSupabaseServerClientMock.mockResolvedValueOnce(makeSupabaseClient('REPORTER'));
+      listJobsMock.mockResolvedValueOnce({
+        jobs: [
+          {
+            id: 'job-1',
+            title: 'Case 1',
+            case_name: 'Case 1',
+            case_number: 'C-1',
+            deposition_date: '2026-02-01',
+            location: 'Remote',
+            status: 'CREATED',
+            created_by_id: 'user-123',
+            firm_id: 'firm-1',
+            created_at: '2026-02-01T00:00:00Z',
+            updated_at: '2026-02-01T00:00:00Z',
+            createdBy: null,
+            assignments: [],
+          },
+        ],
+        count: 1,
+        totalCount: 1,
+        pageCount: 1,
       });
 
-      // Import route handler
       const { GET } = await import('@/app/api/jobs/route');
-      const request = createMockRequest('GET');
-      const response = await GET(request);
-      const data = await response.json();
+      const req = new NextRequest('http://localhost/api/jobs?page=1&limit=10');
+      const res = await GET(req);
+      const json = await res.json();
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(data.jobs) || Array.isArray(data)).toBe(true);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(json.jobs)).toBe(true);
+      expect(json.jobs).toHaveLength(1);
     });
 
-    it('should return 401 for unauthenticated request', async () => {
-      const { auth } = await import('@/lib/auth');
-      vi.mocked(auth).mockResolvedValue(null);
-
-      const { createSupabaseServerClient } = await import('@/lib/supabase/server');
-      vi.mocked(createSupabaseServerClient).mockResolvedValue({
-        auth: {
-          getUser: vi.fn().mockResolvedValue({
-            data: { user: null },
-            error: null,
-          }),
-        },
-      } as any);
+    it('returns 401 when unauthenticated', async () => {
+      createSupabaseServerClientMock.mockResolvedValueOnce(makeSupabaseClient(null));
 
       const { GET } = await import('@/app/api/jobs/route');
-      const request = createMockRequest('GET');
-      const response = await GET(request);
+      const req = new NextRequest('http://localhost/api/jobs');
+      const res = await GET(req);
 
-      expect(response.status).toBe(401);
+      expect(res.status).toBe(401);
     });
   });
 
   describe('POST /api/jobs', () => {
-    it('should create job with valid data', async () => {
-      const { auth } = await import('@/lib/auth');
-      vi.mocked(auth).mockResolvedValue({
-        user: { id: 'user-123', email: 'test@example.com', role: 'REPORTER' },
-      } as any);
-
-      const jobData = {
-        caseName: 'New Case v. Defendant',
-        caseNumber: '2024-CV-99999',
-        depositionDate: '2026-02-01',
-      };
-
-      const { createSupabaseServerClient } = await import('@/lib/supabase/server');
-      vi.mocked(createSupabaseServerClient).mockResolvedValue({
-        auth: {
-          getUser: vi.fn().mockResolvedValue({
-            data: {
-              user: {
-                id: 'user-123',
-                user_metadata: { role: 'REPORTER' },
-              },
-            },
-            error: null,
-          }),
-        },
-      } as any);
-
-      const { createJob } = await import('@/lib/supabase/queries/jobs');
-      vi.mocked(createJob).mockResolvedValue({ id: 'job-new' });
+    it('creates job for allowed role', async () => {
+      createSupabaseServerClientMock.mockResolvedValueOnce(makeSupabaseClient('REPORTER'));
+      createJobMock.mockResolvedValueOnce({ id: 'job-new' });
 
       const { POST } = await import('@/app/api/jobs/route');
-      const request = createMockRequest('POST', jobData);
-      const response = await POST(request);
+      const req = new NextRequest('http://localhost/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          caseName: 'New Case v. Defendant',
+          caseNumber: '2026-CV-100',
+          depositionDate: '2026-02-01',
+        }),
+        headers: { 'content-type': 'application/json' },
+      });
+      const res = await POST(req as any, { params: Promise.resolve({}) } as any);
 
-      expect(response.status).toBe(200);
+      expect(res.status).toBe(200);
+      expect(createJobMock).toHaveBeenCalledTimes(1);
     });
 
-    it('should reject invalid data', async () => {
-      const { auth } = await import('@/lib/auth');
-      vi.mocked(auth).mockResolvedValue({
-        user: { id: 'user-123', email: 'test@example.com', role: 'REPORTER' },
-      } as any);
-
-      const invalidData = {
-        // Missing required case_name
-        caseNumber: '2024-CV-99999',
-      };
+    it('rejects disallowed role', async () => {
+      createSupabaseServerClientMock.mockResolvedValueOnce(makeSupabaseClient('ATTORNEY'));
 
       const { POST } = await import('@/app/api/jobs/route');
-      const request = createMockRequest('POST', invalidData);
-      const response = await POST(request);
+      const req = new NextRequest('http://localhost/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify({ caseName: 'Case A' }),
+        headers: { 'content-type': 'application/json' },
+      });
+      const res = await POST(req as any, { params: Promise.resolve({}) } as any);
 
-      expect([400, 422]).toContain(response.status);
+      expect(res.status).toBe(403);
     });
   });
 });

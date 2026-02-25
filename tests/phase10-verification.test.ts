@@ -3,19 +3,18 @@
  * Run with: npm test tests/phase10-verification.test.ts
  */
 
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
-import fs from 'fs';
-import path from 'path';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const runPhase10Verification = process.env.RUN_PHASE10_VERIFICATION === 'true';
+const describeIfEnabled = runPhase10Verification ? describe : describe.skip;
 
-describe('Phase 10 - Medical Extraction Verification', () => {
+describeIfEnabled('Phase 10 - Medical Extraction Verification', () => {
   let supabase: any;
   let testJobId: string;
-  let testRecordId: string;
   let authToken: string;
 
   beforeAll(async () => {
@@ -152,8 +151,8 @@ describe('Phase 10 - Medical Extraction Verification', () => {
       // This will fail at compile time if types are missing
       const testImport = require('@/types/medical');
 
-      expect(testImport.MedicalRecordRow).toBeDefined;
-      expect(testImport.ChronologyEntryRow).toBeDefined;
+      expect(testImport.MedicalRecordRow).toBeDefined();
+      expect(testImport.ChronologyEntryRow).toBeDefined();
     });
   });
 
@@ -215,7 +214,7 @@ describe('Phase 10 - Medical Extraction Verification', () => {
   });
 });
 
-describe('Phase 10 - Pre-flight Checklist', () => {
+describeIfEnabled('Phase 10 - Pre-flight Checklist', () => {
   it('Environment: ANTHROPIC_API_KEY is set', () => {
     expect(process.env.ANTHROPIC_API_KEY).toBeDefined();
   });

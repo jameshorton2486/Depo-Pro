@@ -13,7 +13,7 @@
 
 import { NextRequest } from 'next/server';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { middleware } from '@/middleware';
+import { proxy as middleware } from '@/proxy';
 import { createServerClient } from '@supabase/ssr';
 
 // Mock Supabase client for testing
@@ -78,6 +78,42 @@ describe('middleware auth session parsing', () => {
       expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('redirect=%2Fdashboard%3Ftab%3Dsettings');
+    });
+
+    it('uses /wkt redirect shortcut for unauthenticated WKT requests', async () => {
+      const req = new NextRequest(`${baseUrl}/wkt/practice`);
+      const res = await middleware(req);
+
+      expectRedirectStatus(res.status);
+      const location = res.headers.get('location');
+      expect(location).toContain('/login');
+      expect(location).toContain('redirect=%2Fwkt');
+    });
+
+    it('allows authenticated users to access WKT routes without role metadata', async () => {
+      const mockSupabase = {
+        auth: {
+          getSession: vi.fn().mockResolvedValue({
+            data: {
+              session: {
+                user: {
+                  id: 'user-123',
+                  email: 'user@example.com',
+                  user_metadata: {},
+                },
+              },
+            },
+            error: null,
+          }),
+        },
+      };
+
+      mockCreateServerClient.mockReturnValue(mockSupabase as any);
+
+      const req = new NextRequest(`${baseUrl}/wkt/practice`);
+      const res = await middleware(req);
+      expect(res.status).not.toBe(302);
+      expect(res.status).not.toBe(307);
     });
   });
 

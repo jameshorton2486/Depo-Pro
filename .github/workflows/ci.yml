@@ -44,6 +44,9 @@ jobs:
       - name: Verify Next.js version (enforcement)
         run: npm run check:version
 
+      - name: Secret scan
+        run: npm run security:scan
+
       - name: Lint (must be clean)
         run: npm run lint -- --max-warnings=0
 

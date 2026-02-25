@@ -26,7 +26,7 @@ npx supabase db push
 ## Option 3: Direct SQL via psql
 
 ```bash
-psql "postgresql://postgres.zgttwmgfxbphymtcttii:Sinbad1234!@aws-0-us-west-1.pooler.supabase.com:6543/postgres" \
+psql "$DATABASE_URL" \
   -f supabase/migrations/20260211_review_sessions_tracking.sql
 ```
 

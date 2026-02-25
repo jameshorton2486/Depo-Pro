@@ -14,6 +14,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { updateFlaggedWordSchema } from '@/lib/api/schemas';
+import { toValidationErrorPayload } from '@/lib/api/validation';
 
 export const runtime = 'nodejs';
 
@@ -220,7 +221,7 @@ const PATCHHandler = async (
       parsed = updateFlaggedWordSchema.parse(body);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 });
+        return NextResponse.json(toValidationErrorPayload(err), { status: 400 });
       }
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }

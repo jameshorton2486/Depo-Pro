@@ -1,5 +1,12 @@
 echo "🔍 Running pre-commit checks..."
 
+# Scan staged files for secrets
+echo "🔐 Running secret scan..."
+npm run security:scan:staged || {
+  echo "❌ Secret scan failed. Remove hardcoded credentials before committing."
+  exit 1
+}
+
 # Run linting
 echo "📝 Running ESLint..."
 npm run lint || {

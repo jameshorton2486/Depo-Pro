@@ -30,6 +30,9 @@ jobs:
       
       - name: Verify Next.js version
         run: npm run check:version
+
+      - name: Secret scan
+        run: npm run security:scan
       
       - name: Run ESLint
         run: npm run lint

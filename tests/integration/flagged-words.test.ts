@@ -154,6 +154,8 @@ describe('Flagged Words API', () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error).toContain('expectedUpdatedAt');
+    expect(json.code).toBe('VALIDATION_ERROR');
+    expect(json.fieldErrors.expectedUpdatedAt).toBeDefined();
   });
 
   it('PATCH returns 409 for stale optimistic lock timestamp', async () => {

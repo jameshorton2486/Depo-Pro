@@ -10,3 +10,7 @@ These documents reflect the current production architecture.
 Historical or deprecated documentation preserved for reference.
 These files are no longer authoritative but are retained for auditability
 and context.
+
+## docs/security/
+Operational security runbooks (secret rotation, incident-driven remediation,
+and hardening procedures).
