@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import MedicalRecordsPanel from '@/components/medical/MedicalRecordsPanel';
 import ChronologyViewer from '@/components/medical/ChronologyViewer';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 interface JobInfo {
   id: string;
@@ -54,7 +55,8 @@ export default function MedicalChronologyPage() {
   const caseName = job?.caseName || job?.case_name || 'Job';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <ErrorBoundary pageName="medical-chronology">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500">
         <button
@@ -114,6 +116,7 @@ export default function MedicalChronologyPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

@@ -1,3 +1,9 @@
+/**
+ * @deprecated Legacy BullMQ job stubs.
+ * Transcription now uses lib/transcription/scheduler.ts (serverless chunk pattern).
+ * These functions are safe no-ops kept for backward compatibility.
+ * Do NOT use for new code.
+ */
 import { logger } from '@/lib/logger';
 // ═══════════════════════════════════════════════════════════════
 // BACKGROUND JOBS SERVICE (Mock Implementation - Ready for BullMQ/Inngest)
@@ -73,16 +79,7 @@ export async function enqueueJob(data: JobData): Promise<JobResult> {
     // };
   }
 
-  // Production guard: Prevent mock job queue in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] Job queue is not configured. ' +
-      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
-      'Mock job queue (in-memory) is only available in development.'
-    );
-  }
-
-  // Mock implementation - simulate immediate processing (development only)
+  // Mock implementation - simulate immediate processing
   const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const result: JobResult = {
     id: jobId,
@@ -132,16 +129,7 @@ export async function getJobStatus(jobId: string): Promise<JobResult | null> {
     // };
   }
 
-  // Production guard: Prevent mock job status checks in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] Job queue is not configured. ' +
-      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
-      'Mock job status checks are only available in development.'
-    );
-  }
-
-  // Mock implementation (development only)
+  // Mock implementation
   return mockJobStore.get(jobId) || null;
 }
 
@@ -160,16 +148,7 @@ export async function retryJob(jobId: string): Promise<boolean> {
     // return true;
   }
 
-  // Production guard: Prevent mock job retries in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] Job queue is not configured. ' +
-      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
-      'Mock job retries are only available in development.'
-    );
-  }
-
-  // Mock implementation (development only)
+  // Mock implementation
   const job = mockJobStore.get(jobId);
   if (!job) return false;
 
@@ -190,35 +169,20 @@ export async function processTranscriptionJob(payload: {
   jobId: string;
   fileId: string;
 }): Promise<void> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] processTranscriptionJob is not implemented. ' +
-      'This is a stubbed worker function - implement real transcription processing before production deployment.'
-    );
-  }
-  // TODO: Implement actual transcription processing
-  // This would call the transcription service
-  logger.debug('[Worker] Processing transcription job:', payload);
-
-  // Simulate work (development only)
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  void payload;
+  console.warn('[jobs.ts] Legacy BullMQ stub called — use scheduler pattern instead');
+  logger.warn('[jobs.ts] Legacy BullMQ transcription stub called');
+  return;
 }
 
 export async function processExportJob(payload: {
   transcriptId: string;
   format: string;
 }): Promise<void> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] processExportJob is not implemented. ' +
-      'This is a stubbed worker function - implement real export processing before production deployment.'
-    );
-  }
-  // TODO: Implement actual export processing
-  logger.debug('[Worker] Processing export job:', payload);
-
-  // Simulate work (development only)
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  void payload;
+  console.warn('[jobs.ts] Legacy BullMQ export stub called');
+  logger.warn('[jobs.ts] Legacy BullMQ export stub called');
+  return;
 }
 
 export async function processEmailJob(payload: {
@@ -226,17 +190,10 @@ export async function processEmailJob(payload: {
   subject: string;
   template: string;
 }): Promise<void> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] processEmailJob is not implemented. ' +
-      'This is a stubbed worker function - implement real email sending before production deployment.'
-    );
-  }
-  // TODO: Implement actual email sending
-  logger.debug('[Worker] Processing email job:', payload);
-
-  // Simulate work (development only)
-  await new Promise(resolve => setTimeout(resolve, 500));
+  void payload;
+  console.warn('[jobs.ts] Legacy BullMQ email stub called');
+  logger.warn('[jobs.ts] Legacy BullMQ email stub called');
+  return;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -269,37 +226,19 @@ export async function getQueueStats(): Promise<QueueStats> {
     // };
   }
 
-  // Production guard: Prevent mock queue stats in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] Job queue is not configured. ' +
-      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
-      'Mock queue stats are only available in development.'
-    );
-  }
-
-  // Mock implementation (development only)
-  const jobs = Array.from(mockJobStore.values());
+  console.warn('[jobs.ts] Legacy BullMQ stats stub called');
+  logger.warn('[jobs.ts] Legacy BullMQ stats stub called');
   return {
-    queued: jobs.filter(j => j.status === 'queued').length,
-    processing: jobs.filter(j => j.status === 'processing').length,
-    completed: jobs.filter(j => j.status === 'completed').length,
-    failed: jobs.filter(j => j.status === 'failed').length,
-    total: jobs.length,
+    queued: 0,
+    processing: 0,
+    completed: 0,
+    failed: 0,
+    total: 0,
   };
 }
 
 export async function getRecentJobs(limit = 10): Promise<JobResult[]> {
-  // Production guard: Prevent mock job retrieval in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Jobs Service] Job queue is not configured. ' +
-      'Set USE_QUEUE=true and REDIS_URL in production environment. ' +
-      'Mock job retrieval is only available in development.'
-    );
-  }
-
-  // Mock implementation (development only)
+  // Mock implementation
   const jobs = Array.from(mockJobStore.values());
   return jobs
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())

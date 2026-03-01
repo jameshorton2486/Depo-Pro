@@ -1,4 +1,10 @@
 /**
+ * @deprecated Use withRouteProtection from '@/lib/middleware/withRouteProtection' instead.
+ * This file is maintained for backward compatibility with existing routes.
+ * All new routes MUST use withRouteProtection.
+ * See: docs/ARCHITECTURE_OVERVIEW.md — Auth Pattern Standard
+ */
+/**
  * Security utilities for production hardening
  * Phase 5: Production Hardening
  */

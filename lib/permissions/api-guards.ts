@@ -1,3 +1,9 @@
+/**
+ * @deprecated Use withRouteProtection from '@/lib/middleware/withRouteProtection' instead.
+ * This file is maintained for backward compatibility with existing routes.
+ * All new routes MUST use withRouteProtection.
+ * See: docs/ARCHITECTURE_OVERVIEW.md — Auth Pattern Standard
+ */
 // ═══════════════════════════════════════════════════════════════
 // API GUARDS v2 — Auth + Role + Org enforcement for API routes
 // Depo-Pro Architecture Blueprint v2.2

@@ -16,6 +16,7 @@ import {
 import { StatCard } from '@/components/dashboard/stat-card';
 import { startOfMonth } from 'date-fns';
 import type { FlaggedWord } from '@/types/transcript';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 export const dynamic = 'force-dynamic';
 
@@ -159,7 +160,8 @@ export default async function ScopistDashboard() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <ErrorBoundary pageName="scopist-dashboard">
+      <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -345,6 +347,7 @@ export default async function ScopistDashboard() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

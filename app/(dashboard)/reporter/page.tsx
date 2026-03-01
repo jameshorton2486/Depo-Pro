@@ -17,6 +17,7 @@ import {
 import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
 import { getCachedJobCounts, getCachedRecentJobs } from '@/lib/cache/dashboard';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,8 @@ export default async function ReporterDashboard() {
   }));
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <ErrorBoundary pageName="reporter-dashboard">
+      <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -224,7 +226,7 @@ export default async function ReporterDashboard() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
-
