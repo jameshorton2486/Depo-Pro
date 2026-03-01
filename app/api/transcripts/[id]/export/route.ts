@@ -5,7 +5,9 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript } from '@/lib/export';
+import { exportLegalDocx } from '@/lib/services/export';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
+import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 import { useQuota } from '@/lib/cost-control-service';
 import { canExportFormat, canUseProfile } from '@/lib/export/permissions';
@@ -266,12 +268,34 @@ export async function GET(
       }
     }
 
-    // Generate export with corrected text
-    const { buffer, filename, contentType } = await exportTranscript(
-      exportText,
-      metadata,
-      exportOptions,
-    );
+    let buffer: Buffer;
+    let filename: string;
+    let contentType: string;
+
+    if (format === 'docx' && transcription.job_id) {
+      const { data: jobSettings } = await supabase
+        .from('jobs')
+        .select('format_settings, case_name')
+        .eq('id', transcription.job_id)
+        .single();
+
+      const formatConfig =
+        (jobSettings?.format_settings as TranscriptFormatConfig | null) ?? null;
+      buffer = await exportLegalDocx(transcription.job_id, formatConfig);
+      filename = `${(jobSettings?.case_name || metadata.caseName || 'transcript')
+        .replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+      contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else {
+      // Generate export with corrected text
+      const result = await exportTranscript(
+        exportText,
+        metadata,
+        exportOptions,
+      );
+      buffer = result.buffer;
+      filename = result.filename;
+      contentType = result.contentType;
+    }
 
     // Phase 3C-3: Log export to audit trail
     await createAuditLog({

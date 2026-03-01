@@ -17,6 +17,11 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin';
 import { calculateConfidenceAnalytics } from '@/lib/services/confidence-analytics';
 import { calculateRiskScore, extractRiskInputs } from '@/lib/services/risk-score';
+import { postProcessSegments } from '@/src/lib/transcription/post-process';
+import {
+  DEFAULT_PROCESSING_RULES,
+  type TranscriptSegment,
+} from '@/src/types/transcript-format';
 
 import type {
   AudioChunk,
@@ -199,6 +204,26 @@ export async function processTranscriptionJob(
 
     console.log(`Reassembly complete: ${finalResult.words.length} words total`);
 
+    // --- STAGE 4.5: POST-PROCESSING ---
+    // Apply text cleanup rules while preserving original transcript verbatim.
+    const rawSegments: TranscriptSegment[] = (finalResult.segments || []).map((seg: any) => ({
+      speakerId: `Speaker ${seg.speaker ?? 0}`,
+      text: seg.text ?? '',
+      startTime: typeof seg.start === 'number' ? seg.start : undefined,
+      endTime: typeof seg.end === 'number' ? seg.end : undefined,
+    }));
+
+    const processedSegments = postProcessSegments(
+      rawSegments,
+      DEFAULT_PROCESSING_RULES,
+      2,
+    );
+
+    const processedTranscript = processedSegments
+      .map((seg) => seg.text)
+      .join(' ')
+      .trim();
+
     // Compute integrity hash of original transcript
     const integrityHash = createHash('sha256')
       .update(finalResult.fullTranscript)
@@ -208,7 +233,7 @@ export async function processTranscriptionJob(
     await storeTranscriptionResult(jobId, {
       deepgram_raw_json: finalResult.rawJson,
       original_transcript: finalResult.fullTranscript,
-      full_transcript: finalResult.fullTranscript,
+      full_transcript: processedTranscript || finalResult.fullTranscript,
       original_integrity_hash: integrityHash,
       words: finalResult.words,
       segments: finalResult.segments,

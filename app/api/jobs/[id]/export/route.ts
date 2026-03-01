@@ -12,7 +12,9 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript } from '@/lib/export';
+import { exportLegalDocx } from '@/lib/services/export';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
+import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -112,6 +114,21 @@ async function executeExport(jobId: string, format: ExportFormat, optionOverride
   };
 
   const wordData = parseWordData((transcription as any)?.words);
+
+  if (format === 'docx') {
+    const formatConfig = ((job as any).format_settings as TranscriptFormatConfig | null) ?? null;
+    const buffer = await exportLegalDocx(jobId, formatConfig);
+    const filename = `${(metadata.caseName || 'Transcript').replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+
+    return new NextResponse(buffer as unknown as BodyInit, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': buffer.length.toString(),
+      },
+    });
+  }
+
   const result = await exportTranscript(transcriptText, metadata, exportOptions, wordData);
 
   return new NextResponse(result.buffer as unknown as BodyInit, {

@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import FormatSettingsPanel from '@/components/transcripts/FormatSettingsPanel';
 import {
   Calendar,
   MapPin,
@@ -67,6 +68,20 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   if (!job) {
     notFound();
   }
+
+  const { data: transcription } = await supabase
+    .from('transcriptions')
+    .select('segments')
+    .eq('job_id', id)
+    .single();
+
+  const detectedSpeakers = Array.from(
+    new Set(
+      ((transcription?.segments as Array<{ speaker?: number }> | null) || [])
+        .filter((segment) => typeof segment?.speaker === 'number')
+        .map((segment) => `Speaker ${segment.speaker}`),
+    ),
+  );
 
   // 🔒 Security: Verify access rights
   const hasAccess =
@@ -242,6 +257,18 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           />
         </div>
       )}
+
+      {job.status !== 'PENDING' &&
+        job.status !== 'PROCESSING' &&
+        job.status !== 'TRANSCRIBING' &&
+        detectedSpeakers.length > 0 && (
+          <div className="mt-6">
+            <FormatSettingsPanel
+              jobId={job.id}
+              detectedSpeakers={detectedSpeakers}
+            />
+          </div>
+        )}
 
       {/* Live Deposition Notes (Legacy - can be removed if not needed) */}
       {/* {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') ? (
