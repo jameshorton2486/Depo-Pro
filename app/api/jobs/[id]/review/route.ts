@@ -3,11 +3,10 @@
 // Integrates with Accuracy Intelligence Plan - Step 2: Correction Logging
 
 import type { NextRequest } from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { logCorrection, getWordContext } from '@/lib/services/correction-logger';
 import { captureError } from '@/lib/error-capture';
@@ -28,16 +27,13 @@ interface ReviewRequest {
  */
 const PATCHHandler = async (
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: ProtectedContext
 ) => {
   const startTime = performance.now();
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const currentUser = context.user;
 
-    const { id: jobId } = await context.params;
+    const { id: jobId } = context.params;
     const body: ReviewRequest = await req.json();
     const { wordId, action, correctedWord, expectedUpdatedAt } = body;
 
@@ -61,7 +57,7 @@ const PATCHHandler = async (
       );
     }
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
 
     // Get the flagged word
     const { data: flaggedWord, error: flaggedError } = await supabase
@@ -249,10 +245,10 @@ const PATCHHandler = async (
 
     const stats = {
       total: allFlaggedWords?.length || 0,
-      corrected: allFlaggedWords?.filter(w => w.status === 'CORRECTED').length || 0,
-      confirmed: allFlaggedWords?.filter(w => w.status === 'CONFIRMED').length || 0,
-      skipped: allFlaggedWords?.filter(w => w.status === 'SKIPPED').length || 0,
-      pending: allFlaggedWords?.filter(w => w.status === 'PENDING').length || 0,
+      corrected: allFlaggedWords?.filter((w: any) => w.status === 'CORRECTED').length || 0,
+      confirmed: allFlaggedWords?.filter((w: any) => w.status === 'CONFIRMED').length || 0,
+      skipped: allFlaggedWords?.filter((w: any) => w.status === 'SKIPPED').length || 0,
+      pending: allFlaggedWords?.filter((w: any) => w.status === 'PENDING').length || 0,
     };
 
     return NextResponse.json({
@@ -280,8 +276,8 @@ const PATCHHandler = async (
 export const PATCH = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 60, windowMs: 60_000 },
   },
-  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+  PATCHHandler
 );

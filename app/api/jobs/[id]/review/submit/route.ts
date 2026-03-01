@@ -2,30 +2,22 @@
 // Complete the review for a job — transitions job to SCOPIST_COMPLETE
 
 import type { NextRequest } from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { captureError } from '@/lib/error-capture';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
 const POSTHandler = async (
-  _req: NextRequest,
-  context: RouteContext,
+  req: NextRequest,
+  context: ProtectedContext,
 ) => {
   const startTime = performance.now();
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const currentUser = context.user;
 
-    const { id: jobId } = await context.params;
-    const supabase = await createSupabaseServerClient();
+    const { id: jobId } = context.params;
+    const supabase = context.supabase;
 
     // Fetch the job
     const { data: job, error: jobError } = await supabase
@@ -130,8 +122,8 @@ const POSTHandler = async (
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 10, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler
 );

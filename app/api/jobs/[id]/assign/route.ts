@@ -7,25 +7,16 @@
 // ═══════════════════════════════════════════════════════════════
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobForAccessCheck } from '@/lib/supabase/queries/jobs';
 import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
 import { assignScopistSchema } from '@/lib/validations/job';
 import { logAudit } from '@/lib/audit';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
 import { logger } from '@/lib/logger';
-
-// ------------------------------------------------------------
-// ROUTE PARAMS TYPE
-// ------------------------------------------------------------
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 // ------------------------------------------------------------
 // ALLOWED ROLES FOR ASSIGNMENT
@@ -40,23 +31,15 @@ const ASSIGNMENT_ALLOWED_ROLES = ['ADMIN', 'AGENCY', 'COURT_REPORTER'] as const;
 
 const POSTHandler = async (
   request: NextRequest,
-  { params }: RouteParams,
+  context: ProtectedContext,
 ) => {
   try {
     // 1. AUTHENTICATION CHECK
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
-        { status: 401 }
-      );
-    }
-
-    const { id: jobId } = await params;
+    const currentUser = context.user;
+    const { id: jobId } = context.params;
 
     // 2. GET USER WITH FIRM CONTEXT (Tenant Isolation)
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
     const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
@@ -72,7 +55,7 @@ const POSTHandler = async (
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
     };
 
-    if (!currentUser.firmId) {
+    if (!currentUser.firm_id) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }
@@ -128,7 +111,7 @@ const POSTHandler = async (
 
     // 7. SCOPIST VALIDATION WITH TENANT ISOLATION
     // Scopist must exist, have SCOPIST role, AND belong to the same firm
-    const scopists = await getUsersByRole(supabase, 'SCOPIST', currentUser.firmId);
+    const scopists = await getUsersByRole(supabase, 'SCOPIST', currentUser.firm_id);
     const scopistData = scopists.find((s: any) => s.id === validatedData.scopistId);
 
     if (!scopistData) {
@@ -232,22 +215,14 @@ const POSTHandler = async (
 // DELETE - Remove scopist assignment
 // ------------------------------------------------------------
 
-export async function DELETE(
+const DELETEHandler = async (
   request: NextRequest,
-  { params }: RouteParams,
-) {
+  context: ProtectedContext,
+) => {
   try {
     // 1. AUTHENTICATION CHECK
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHENTICATED' },
-        { status: 401 }
-      );
-    }
-
-    const { id: jobId } = await params;
+    const currentUser = context.user;
+    const { id: jobId } = context.params;
     const url = new URL(request.url);
     const scopistId = url.searchParams.get('scopistId');
 
@@ -259,7 +234,7 @@ export async function DELETE(
     }
 
     // 2. GET USER WITH FIRM CONTEXT
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
     const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
@@ -275,7 +250,7 @@ export async function DELETE(
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
     };
 
-    if (!currentUser.firmId) {
+    if (!currentUser.firm_id) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }
@@ -356,15 +331,24 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+};
 
 
 
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 30, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler
+);
+
+export const DELETE = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  DELETEHandler
 );

@@ -2,41 +2,30 @@
 // API route for getting and updating job status
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { JobStatus } from '@/types/database';
 import { getJobById, updateJobStatus, updateJob, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { logger } from '@/lib/logger';
 import { jobStatusSchema } from '@/lib/api/schemas';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
 /**
  * GET /api/jobs/[id]/status
  * Get job status and transcription progress
  */
-export async function GET(
+const GETHandler = async (
   request: NextRequest,
-  context: RouteContext,
-) {
+  context: ProtectedContext,
+) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await context.params;
-    const user = currentUser as { id: string; role: string };
+    const { id: jobId } = context.params;
+    const user = context.user as { id: string; role: string };
 
     // Get job using query module
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -94,14 +83,14 @@ export async function GET(
       transcriptId,
     });
   } catch (error) {
-    const { id: jobId } = await context.params;
+    const { id: jobId } = context.params;
     logger.error('Error fetching job status', error instanceof Error ? error : new Error(String(error)), { jobId });
     return NextResponse.json(
       { error: 'Failed to fetch status' },
       { status: 500 }
     );
   }
-}
+};
 
 /**
  * PATCH /api/jobs/[id]/status
@@ -109,16 +98,11 @@ export async function GET(
  */
 const PATCHHandler = async (
   request: NextRequest,
-  context: RouteContext,
+  context: ProtectedContext,
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await context.params;
+    const currentUser = context.user;
+    const { id: jobId } = context.params;
     const body = await request.json();
     const parsed = jobStatusSchema.safeParse(body);
     if (!parsed.success) {
@@ -127,7 +111,7 @@ const PATCHHandler = async (
     const { status } = parsed.data;
 
     // Get job to check permissions using query module
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -176,8 +160,17 @@ const PATCHHandler = async (
 export const PATCH = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER, GuardRole.SCOPIST],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
     rateLimit: { limit: 30, windowMs: 60_000 },
   },
-  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+  PATCHHandler
+);
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  GETHandler
 );

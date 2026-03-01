@@ -6,10 +6,10 @@
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listJobs, createJob } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 
@@ -17,23 +17,10 @@ import { logger } from '@/lib/logger';
  * GET /api/jobs
  * List jobs (filtered by user role)
  */
-export async function GET(request: NextRequest) {
+const GETHandler = async (request: NextRequest, { user, supabase }: ProtectedContext) => {
   const startTime = performance.now();
   try {
-    const supabase = await createSupabaseServerClient();
-
-    // Validate auth using getUser() (not getSession())
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (!profile?.role) {
-      return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
-    }
-    const userRole = profile.role as string;
+    const userRole = user.role as string;
     const userId = user.id;
 
     const searchParams = request.nextUrl.searchParams;
@@ -92,29 +79,16 @@ export async function GET(request: NextRequest) {
     const duration = Math.round(performance.now() - startTime);
     console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
-}
+};
 
 /**
  * POST /api/jobs
  * Create a new job
  */
-const POSTHandler = async (request: NextRequest) => {
+const POSTHandler = async (request: NextRequest, { user, supabase }: ProtectedContext) => {
   const startTime = performance.now();
   try {
-    const supabase = await createSupabaseServerClient();
-
-    // Validate auth using getUser() (not getSession())
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (!profile?.role) {
-      return NextResponse.json({ error: 'User profile incomplete: no role assigned' }, { status: 401 });
-    }
-    const userRole = profile.role as string;
+    const userRole = user.role as string;
     const userId = user.id;
 
     // Only reporters and admins can create jobs
@@ -137,7 +111,7 @@ const POSTHandler = async (request: NextRequest) => {
     }
 
     // Get user's firm ID from user_metadata (can be null)
-    const firmId = (user.user_metadata?.firmId as string) || null;
+    const firmId = user.firm_id || null;
 
     // Create job using query function
     const job = await createJob(supabase, {
@@ -170,18 +144,22 @@ const POSTHandler = async (request: NextRequest) => {
     const duration = Math.round(performance.now() - startTime);
     console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
-}
+};
 
-
-
-
-
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  GETHandler
+);
 
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 20, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler
 );

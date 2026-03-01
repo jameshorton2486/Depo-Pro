@@ -7,9 +7,11 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import type { JobStatus } from '@/types/database';
 import { logger } from '@/lib/logger';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   getJobById,
   getJobForAccessCheck,
@@ -45,7 +47,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
     }
   }) as T;
 };
-import { checkRateLimit, requireAuth } from '@/lib/security';
+import { checkRateLimit } from '@/lib/security';
 import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
 // TODO: Re-implement note locking - lib/phase6a/note-locking was deleted
 // import { lockNotesForJob } from '@/lib/phase6a/note-locking';
@@ -54,17 +56,16 @@ import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
 // GET /api/jobs/[id] - Get single job
 // ───────────────────────────────────────────────────────────────
 
-export const GET = withRequestLogging(async (
+const GETHandler = withRequestLogging(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { user, supabase, params }: ProtectedContext,
 ) => {
   const startTime = performance.now();
   try {
-    const session = await requireAuth(request);
-    const { id } = await params;
+    const { id } = params;
 
     // Rate limiting
-    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    const rateLimit = checkRateLimit(user.id, 'API_GLOBAL');
     if (!rateLimit.allowed) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
@@ -74,8 +75,6 @@ export const GET = withRequestLogging(async (
     const includeParam = searchParams.get('include');
     const includes = includeParam ? includeParam.split(',') : [];
 
-    const supabase = await createSupabaseServerClient();
-
     // Get job with requested includes
     const job = await getJobById(supabase, id, {
       includeCreatedBy: true,
@@ -83,7 +82,7 @@ export const GET = withRequestLogging(async (
       includeFiles: includes.includes('files'),
       includeTranscripts: true,
       includeTranscription: includes.includes('transcription'),
-      verifyAccessForUserId: session.user.id,
+      verifyAccessForUserId: user.id,
     });
 
     if (!job) {
@@ -120,11 +119,6 @@ export const GET = withRequestLogging(async (
 
     return NextResponse.json(response);
 
-  } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    throw error;
   } finally {
     const duration = Math.round(performance.now() - startTime);
     console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
@@ -135,25 +129,22 @@ export const GET = withRequestLogging(async (
 // PUT /api/jobs/[id] - Update job
 // ───────────────────────────────────────────────────────────────
 
-export const PUT = withRequestLogging(async (
+const PUTHandler = withRequestLogging(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { user, supabase, params }: ProtectedContext,
 ) => {
   try {
-    const session = await requireAuth(request);
-    const { id } = await params;
+    const { id } = params;
 
     // Rate limiting
-    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    const rateLimit = checkRateLimit(user.id, 'API_GLOBAL');
     if (!rateLimit.allowed) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const supabase = await createSupabaseServerClient();
-
     // Check if job exists and user has access
     const existingJob = await getJobForAccessCheck(supabase, id, {
-      verifyAccessForUserId: session.user.id,
+      verifyAccessForUserId: user.id,
     });
 
     if (!existingJob) {
@@ -162,8 +153,8 @@ export const PUT = withRequestLogging(async (
 
     // 🔒 Security: Only reporter or admin can update
     const canUpdate =
-      session.user.role === 'ADMIN' ||
-      existingJob.created_by_id === session.user.id;
+      user.role === 'ADMIN' ||
+      existingJob.created_by_id === user.id;
 
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -192,7 +183,7 @@ export const PUT = withRequestLogging(async (
     // Fetch updated job with createdBy
     const job = await getJobById(supabase, id, {
       includeCreatedBy: true,
-      verifyAccessForUserId: session.user.id,
+      verifyAccessForUserId: user.id,
     });
 
     if (!job) {
@@ -222,9 +213,6 @@ export const PUT = withRequestLogging(async (
     return NextResponse.json(response);
 
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json(
         { error: 'Validation failed', details: error },
@@ -239,16 +227,14 @@ export const PUT = withRequestLogging(async (
 // PATCH /api/jobs/[id] - Update job status only
 // ───────────────────────────────────────────────────────────────
 
-export const PATCH = withRequestLogging(async (
+const PATCHHandler = withRequestLogging(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { user, supabase, params }: ProtectedContext,
 ) => {
-  try {
-    const session = await requireAuth(request);
-    const { id } = await params;
+  const { id } = params;
 
     // Rate limiting
-    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    const rateLimit = checkRateLimit(user.id, 'API_GLOBAL');
     if (!rateLimit.allowed) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
@@ -282,21 +268,19 @@ export const PATCH = withRequestLogging(async (
       return NextResponse.json({ error: 'Invalid status value' }, { status: 400 });
     }
 
-    const supabase = await createSupabaseServerClient();
-
     const job = await getJobWithAssignments(supabase, id, {
-      verifyAccessForUserId: session.user.id,
+      verifyAccessForUserId: user.id,
     });
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const isOwner = job.created_by_id === session.user.id;
-    const isAdmin = session.user.role === 'ADMIN';
+    const isOwner = job.created_by_id === user.id;
+    const isAdmin = user.role === 'ADMIN';
     const isAssignedScopist =
-      session.user.role === 'SCOPIST' &&
-      job.assignments.some((assignment: any) => assignment.scopist_id === session.user.id);
+      user.role === 'SCOPIST' &&
+      job.assignments.some((assignment: any) => assignment.scopist_id === user.id);
 
     if (!isOwner && !isAdmin && !isAssignedScopist) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -323,41 +307,31 @@ export const PATCH = withRequestLogging(async (
     invalidateDashboardCache();
     invalidateEntityCache('job', id);
 
-    return NextResponse.json({
-      id: updatedJob.id,
-      status: updatedJob.status,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    throw error;
-  }
+  return NextResponse.json({
+    id: updatedJob.id,
+    status: updatedJob.status,
+  });
 });
 
 // ───────────────────────────────────────────────────────────────
 // DELETE /api/jobs/[id] - Delete job
 // ───────────────────────────────────────────────────────────────
 
-export const DELETE = withRequestLogging(async (
+const DELETEHandler = withRequestLogging(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { user, supabase, params }: ProtectedContext,
 ) => {
-  try {
-    const session = await requireAuth(request);
-    const { id } = await params;
+  const { id } = params;
 
     // Rate limiting
-    const rateLimit = checkRateLimit(session.user.id, 'API_GLOBAL');
+    const rateLimit = checkRateLimit(user.id, 'API_GLOBAL');
     if (!rateLimit.allowed) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
 
-    const supabase = await createSupabaseServerClient();
-
     // Check if job exists and user has access
     const existingJob = await getJobForAccessCheck(supabase, id, {
-      verifyAccessForUserId: session.user.id,
+      verifyAccessForUserId: user.id,
     });
 
     if (!existingJob) {
@@ -366,25 +340,54 @@ export const DELETE = withRequestLogging(async (
 
     // 🔒 Security: Only reporter or admin can delete
     const canDelete =
-      session.user.role === 'ADMIN' ||
-      existingJob.created_by_id === session.user.id;
+      user.role === 'ADMIN' ||
+      existingJob.created_by_id === user.id;
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await deleteJob(supabase, id);
+  await deleteJob(supabase, id);
 
     // Invalidate caches
     invalidateDashboardCache();
     invalidateEntityCache('job', id);
 
-    return NextResponse.json({ success: true });
-
-  } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHENTICATED') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    throw error;
-  }
+  return NextResponse.json({ success: true });
 });
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  GETHandler as any
+);
+
+export const PUT = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  PUTHandler as any
+);
+
+export const PATCH = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  PATCHHandler as any
+);
+
+export const DELETE = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    rateLimit: { limit: 20, windowMs: 60_000 },
+  },
+  DELETEHandler as any
+);
