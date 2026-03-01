@@ -17,11 +17,11 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin';
 import { calculateConfidenceAnalytics } from '@/lib/services/confidence-analytics';
 import { calculateRiskScore, extractRiskInputs } from '@/lib/services/risk-score';
-import { postProcessSegments } from '@/src/lib/transcription/post-process';
+import { postProcessSegments } from '@/lib/transcription/post-process';
 import {
   DEFAULT_PROCESSING_RULES,
   type TranscriptSegment,
-} from '@/src/types/transcript-format';
+} from '@/types/transcript-format';
 
 import type {
   AudioChunk,

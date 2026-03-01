@@ -1,21 +1,15 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { UserRole } from '@/lib/enums/roles';
-import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
-import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   DEFAULT_FORMAT_OPTIONS,
   DEFAULT_PROCESSING_RULES,
   type TranscriptFormatConfig,
-} from '@/src/types/transcript-format';
+} from '@/types/transcript-format';
 
-function hasJobAccess(job: any, currentUser: { id: string; role: string; firm_id?: string | null }) {
-  const isOwner = job?.created_by_id === currentUser.id;
-  const isReporter = job?.reporter_id === currentUser.id;
-  const isScopist = job?.scopist_id === currentUser.id;
-  const isAdmin = currentUser.role === 'ADMIN';
-  const isSameFirm = !!job?.firm_id && job.firm_id === currentUser.firm_id;
-  return isOwner || isReporter || isScopist || isAdmin || isSameFirm;
+interface RouteContext {
+  params: Promise<{ id: string }>;
 }
 
 function getDefaultSettings(): TranscriptFormatConfig {
@@ -27,14 +21,38 @@ function getDefaultSettings(): TranscriptFormatConfig {
   };
 }
 
-const GETHandler = async (
-  _request: NextRequest,
-  context: ProtectedContext,
-) => {
-  const currentUser = context.user;
+function hasJobAccess(
+  job: {
+    created_by_id?: string | null;
+    reporter_id?: string | null;
+    scopist_id?: string | null;
+    firm_id?: string | null;
+  },
+  currentUser: { id: string; role: string; firmId?: string | null }
+) {
+  const isOwner = job.created_by_id === currentUser.id;
+  const isReporter = job.reporter_id === currentUser.id;
+  const isScopist = job.scopist_id === currentUser.id;
+  const isAdmin = currentUser.role === 'ADMIN';
+  const isSameFirm =
+    !!job.firm_id &&
+    !!currentUser.firmId &&
+    job.firm_id === currentUser.firmId;
 
-  const { id } = context.params;
-  const supabase = context.supabase;
+  return isOwner || isReporter || isScopist || isAdmin || isSameFirm;
+}
+
+export async function GET(
+  _request: NextRequest,
+  context: RouteContext
+) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await context.params;
+  const supabase = await createSupabaseServerClient();
 
   const { data: job, error } = await supabase
     .from('jobs')
@@ -50,20 +68,23 @@ const GETHandler = async (
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const settings: TranscriptFormatConfig =
+  const settings =
     (job.format_settings as TranscriptFormatConfig | null) ?? getDefaultSettings();
 
   return NextResponse.json({ data: settings });
-};
+}
 
-const PATCHHandler = async (
+export async function PATCH(
   request: NextRequest,
-  context: ProtectedContext,
-) => {
-  const currentUser = context.user;
+  context: RouteContext
+) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  const { id } = context.params;
-  const supabase = context.supabase;
+  const { id } = await context.params;
+  const supabase = await createSupabaseServerClient();
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
@@ -91,22 +112,5 @@ const PATCHHandler = async (
   }
 
   return NextResponse.json({ success: true });
-};
+}
 
-export const GET = withRouteProtection(
-  {
-    requireAuth: true,
-    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
-    rateLimit: { limit: 60, windowMs: 60_000 },
-  },
-  GETHandler
-);
-
-export const PATCH = withRouteProtection(
-  {
-    requireAuth: true,
-    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
-    rateLimit: { limit: 30, windowMs: 60_000 },
-  },
-  PATCHHandler
-);

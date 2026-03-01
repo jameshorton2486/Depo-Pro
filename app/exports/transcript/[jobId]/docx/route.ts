@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { exportLegalDocx } from '@/lib/services/export';
-import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
+import type { TranscriptFormatConfig } from '@/types/transcript-format';
 
 interface RouteContext {
   params: Promise<{ jobId: string }>;

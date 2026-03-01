@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import type {
   SpeakerMapping,
   TranscriptFormatConfig,
-} from '@/src/types/transcript-format';
+} from '@/types/transcript-format';
 import {
   DEFAULT_FORMAT_OPTIONS,
   DEFAULT_PROCESSING_RULES,
-} from '@/src/types/transcript-format';
+} from '@/types/transcript-format';
 
 interface FormatSettingsPanelProps {
   jobId: string;

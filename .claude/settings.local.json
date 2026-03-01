@@ -68,7 +68,8 @@
       "Bash(cd /c/Users/james/depo-pro && supabase db push --dry-run 2>&1)",
       "Bash(cd /c/Users/james/depo-pro && npx tsx scripts/test-transcription-pipeline.ts 2>&122)",
       "Bash(cd /c/Users/james/depo-pro && npx tsx scripts/test-transcription-pipeline.ts 2>&1)",
-      "Bash(cd /c/Users/james/DEPO-PRO && npx vitest run tests/security/integrity.test.ts tests/security/rls.test.ts tests/performance/flagged-words.test.ts 2>&1)"
+      "Bash(cd /c/Users/james/DEPO-PRO && npx vitest run tests/security/integrity.test.ts tests/security/rls.test.ts tests/performance/flagged-words.test.ts 2>&1)",
+      "Bash(npx next:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

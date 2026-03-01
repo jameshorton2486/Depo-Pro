@@ -1,13 +1,13 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { exportToDocx } from '@/lib/export';
-import { generateLegalTranscriptDocx } from '@/src/lib/transcription/legal-formatter';
-import { postProcessSegments } from '@/src/lib/transcription/post-process';
+import { generateLegalTranscriptDocx } from '@/lib/transcription/legal-formatter';
+import { postProcessSegments } from '@/lib/transcription/post-process';
 import {
   DEFAULT_FORMAT_OPTIONS,
   DEFAULT_PROCESSING_RULES,
   type TranscriptFormatConfig,
   type TranscriptSegment,
-} from '@/src/types/transcript-format';
+} from '@/types/transcript-format';
 
 interface StoredSegment {
   speaker?: number;
