@@ -6,17 +6,13 @@
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptByJobId, getTranscriptById, updateTranscriptStatus } from '@/lib/supabase/queries/transcripts';
 import { getJobById } from '@/lib/supabase/queries/jobs';
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * POST /api/transcripts/[id]/finalize
@@ -24,16 +20,10 @@ interface RouteContext {
  */
 const POSTHandler = async (
   request: NextRequest,
-  context: RouteContext
+  { user, params }: ProtectedContext
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id } = await context.params;
+    const id = params.id;
     const supabase = await createSupabaseServerClient();
     
     // Try to find by job ID first (since pages use jobId)
@@ -57,9 +47,9 @@ const POSTHandler = async (
 
     // Check access
     if (
-      currentUser.role !== 'ADMIN' &&
-      job.created_by_id !== currentUser.id &&
-      (job as any).scopist_id !== currentUser.id
+      user.role !== 'ADMIN' &&
+      job.created_by_id !== user.id &&
+      (job as any).scopist_id !== user.id
     ) {
       return NextResponse.json(
         { error: 'Forbidden' },
@@ -95,8 +85,8 @@ const POSTHandler = async (
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
     rateLimit: { limit: 30, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler as any
 );

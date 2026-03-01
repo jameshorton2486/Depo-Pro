@@ -6,10 +6,10 @@
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
 // Stub for restoreVersion (replaces _future/transcripts/version-service)
 async function restoreVersion(
   _transcriptId: string,
@@ -22,26 +22,17 @@ async function restoreVersion(
   return { success: false, error: 'Version restoration not yet implemented' };
 }
 
-interface RouteContext {
-  params: Promise<{ id: string; version: string }>;
-}
-
 /**
  * POST /api/transcripts/[id]/versions/[version]/restore
  * Restore a version (creates new version, doesn't overwrite)
  */
 const POSTHandler = async (
   request: NextRequest,
-  context: RouteContext
+  { user, params }: ProtectedContext
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId, version } = await context.params;
+    const transcriptId = params.id;
+    const version = params.version;
     const body = await request.json();
     const { reason } = body;
 
@@ -63,7 +54,7 @@ const POSTHandler = async (
     const result = await restoreVersion(
       transcriptId,
       versionNumber.toString(),
-      currentUser.id,
+      user.id,
       undefined // reason parameter
     );
 
@@ -85,8 +76,8 @@ const POSTHandler = async (
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 30, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler as any
 );

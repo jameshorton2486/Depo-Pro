@@ -6,10 +6,10 @@
 // Access: Court reporters (own jobs) and assigned scopists
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
@@ -53,15 +53,10 @@ function normalizeThreshold(threshold: number | undefined): number {
 
 const PATCHHandler = async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { user, params }: ProtectedContext,
 ) => {
   try {
-    const { id: transcriptionId } = await params;
-
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const transcriptionId = params.id;
 
     const body: SaveReviewRequest = await request.json();
     const {
@@ -79,7 +74,7 @@ const PATCHHandler = async (
 
     // Fetch transcription with job
     const supabase = await createSupabaseServerClient();
-    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, user.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
@@ -126,7 +121,7 @@ const PATCHHandler = async (
     }
 
     const jobId = transcription.job.id;
-    const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+    const isLocked = await isJobLockedByOther(jobId, user.id);
     if (isLocked) {
       return NextResponse.json(
         { error: 'Job is locked by another user', code: 'LOCKED' },
@@ -135,7 +130,7 @@ const PATCHHandler = async (
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
-    if (!hasTranscriptReviewAccess(transcription, currentUser.id, currentUser.role, Role.ADMIN)) {
+    if (!hasTranscriptReviewAccess(transcription, user.id, user.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     const isAssignedScopist = Array.isArray(transcription.job.assignments)
@@ -188,7 +183,7 @@ const PATCHHandler = async (
           correctedWord: correction.correctedWord,
           reviewed: true,
           editedAt: new Date().toISOString(),
-          editedBy: currentUser.id,
+          editedBy: user.id,
         };
       } else if (isReviewed) {
         return {
@@ -204,9 +199,9 @@ const PATCHHandler = async (
     if (corrections.length > 0) {
       const newEditRecords = corrections.map((c) => ({
         transcription_id: transcriptionId,
-        editor_id: currentUser.id,
-        editor_email: currentUser.email || null,
-        editor_role: currentUser.role || null,
+        editor_id: user.id,
+        editor_email: null,
+        editor_role: user.role || null,
         edit_type: 'WORD_CORRECTION',
         original_text: currentWords[c.wordIndex]?.word || '',
         edited_text: c.correctedWord,
@@ -237,7 +232,7 @@ const PATCHHandler = async (
             version_number: ((transcription as any).chain_version ?? 0) + 1,
             transcript_hash: snapshotHash,
             previous_hash: (transcription as any).current_integrity_hash ?? null,
-            created_by: currentUser.id,
+            created_by: user.id,
           });
         } catch (chainErr) {
           console.error('Error inserting integrity chain entry:', chainErr);
@@ -278,7 +273,7 @@ const PATCHHandler = async (
         originalWord: currentWords[c.wordIndex]?.word || '',
         correctedWord: c.correctedWord,
         timestamp: new Date().toISOString(),
-        userId: currentUser.id,
+        userId: user.id,
       })),
       reviewedIndices,
       lastSavedAt: new Date().toISOString(),
@@ -311,7 +306,7 @@ const PATCHHandler = async (
             submitted_at: new Date().toISOString(),
           })
           .eq('job_id', transcription.job.id)
-          .eq('scopist_id', currentUser.id);
+          .eq('scopist_id', user.id);
 
         if (assignmentError) {
           console.error('Error updating assignment:', assignmentError);
@@ -341,28 +336,23 @@ const PATCHHandler = async (
 }
 
 // GET: Retrieve current review progress
-export async function GET(
+const GETHandler = async (
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+  { user, params }: ProtectedContext,
+) => {
   try {
-    const { id: transcriptionId } = await params;
-
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const transcriptionId = params.id;
 
     // Fetch transcription with job
     const supabase = await createSupabaseServerClient();
-    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, user.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
     }
 
     // Check access
-    if (!hasTranscriptReviewAccess(transcription, currentUser.id, currentUser.role, Role.ADMIN)) {
+    if (!hasTranscriptReviewAccess(transcription, user.id, user.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -397,14 +387,23 @@ export async function GET(
       { status: 500 },
     );
   }
-}
+};
 
 
 export const PATCH = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 60, windowMs: 60_000 },
   },
-  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+  PATCHHandler as any
+);
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  GETHandler as any
 );

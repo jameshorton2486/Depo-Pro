@@ -6,19 +6,15 @@
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { unlockTranscript } from '@/lib/supabase/queries/transcripts';
 import { createAuditLog, AuditTargetType } from '@/lib/audit-service';
 import { logger } from '@/lib/logger';
 import { unlockTranscriptSchema } from '@/lib/api/schemas';
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * POST /api/transcripts/[id]/unlock
@@ -26,20 +22,14 @@ interface RouteContext {
  */
 const POSTHandler = async (
   request: NextRequest,
-  context: RouteContext
+  { user, params }: ProtectedContext
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (currentUser.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 });
     }
 
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
     const body = await request.json();
     const parsed = unlockTranscriptSchema.safeParse(body);
     if (!parsed.success) {
@@ -58,8 +48,8 @@ const POSTHandler = async (
     }
 
     await createAuditLog({
-      actorUserId: currentUser.id,
-      firmId: currentUser.firmId || null,
+      actorUserId: user.id,
+      firmId: user.firm_id || null,
       action: 'TRANSCRIPT_UNLOCKED',
       targetType: AuditTargetType.TRANSCRIPT,
       targetId: transcriptId,
@@ -89,8 +79,8 @@ const POSTHandler = async (
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 30, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler as any
 );

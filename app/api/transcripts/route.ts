@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import {
@@ -185,7 +186,11 @@ const getTranscriptHandler = async (
 };
 
 export const GET = withRouteProtection(
-  { requireAuth: true, enforceTenant: true },
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+  },
   getTranscriptHandler
 );
 
@@ -319,16 +324,28 @@ const deleteTranscriptHandler = async (
 };
 
 export const POST = withRouteProtection(
-  { requireAuth: true, enforceTenant: true },
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+  },
   postTranscriptHandler
 );
 
 export const PUT = withRouteProtection(
-  { requireAuth: true, enforceTenant: true },
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+  },
   putTranscriptHandler
 );
 
 export const DELETE = withRouteProtection(
-  { requireAuth: true, enforceTenant: true },
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    requireRole: [UserRole.ADMIN],
+  },
   deleteTranscriptHandler
 );

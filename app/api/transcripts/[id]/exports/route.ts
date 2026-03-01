@@ -7,42 +7,34 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptWithTokensAndJob } from '@/lib/supabase/queries/transcripts';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
 /**
  * GET /api/transcripts/[id]/exports
  * Get export history for a transcript
  */
-export async function GET(
-  request: NextRequest,
-  context: RouteContext
-) {
+const GETHandler = async (
+  _request: NextRequest,
+  { user, supabase, params }: ProtectedContext
+) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
 
     // Verify transcript exists and user has access
-    const supabase = await createSupabaseServerClient();
-    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, currentUser.id);
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptId, user.id);
 
     if (!transcript) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
     // Check access
-    const isCreator = transcript.job.createdById === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
+    const isCreator = transcript.job.createdById === user.id;
+    const isAdmin = user.role === 'ADMIN';
 
     if (!isCreator && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -78,4 +70,9 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);

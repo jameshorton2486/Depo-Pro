@@ -1,23 +1,16 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptBookmarks, createTranscriptBookmark } from '@/lib/supabase/queries/transcripts';
 import { createBookmarkSchema } from '@/lib/api/schemas';
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
-export async function POST(request: NextRequest, { params }: Props) {
-  const { id } = await params;
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser?.id || !currentUser?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+const POSTHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
+  const id = params.id;
   let data: z.infer<typeof createBookmarkSchema>;
   try {
     const body = await request.json();
@@ -29,27 +22,28 @@ export async function POST(request: NextRequest, { params }: Props) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const supabase = await createSupabaseServerClient();
   const bookmark = await createTranscriptBookmark(supabase, {
     transcription_id: id,
-    user_id: currentUser.id,
+    user_id: user.id,
     line_number: data.lineNumber,
     label: data.label || null,
   });
 
   return NextResponse.json(bookmark);
-}
+};
 
-export async function GET(_request: NextRequest, { params }: Props) {
-  const { id } = await params;
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const bookmarks = await getTranscriptBookmarks(supabase, id, currentUser.id);
+const GETHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
+  const bookmarks = await getTranscriptBookmarks(supabase, params.id, user.id);
 
   return NextResponse.json(bookmarks);
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  POSTHandler
+);
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);

@@ -1,23 +1,16 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptNotes } from '@/lib/supabase/queries/transcripts';
 import { createNoteSchema } from '@/lib/api/schemas';
 
-interface Props {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
-export async function POST(request: NextRequest, { params }: Props) {
-  const { id } = await params;
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser?.id || !currentUser?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+const POSTHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
+  const id = params.id;
   let data: z.infer<typeof createNoteSchema>;
   try {
     const body = await request.json();
@@ -29,13 +22,11 @@ export async function POST(request: NextRequest, { params }: Props) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const supabase = await createSupabaseServerClient();
-
   const { data: note, error } = await supabase
     .from('transcript_note')
     .insert({
       transcript_id: id,
-      user_id: currentUser.id,
+      user_id: user.id,
       content: data.content,
       line_number: data.lineNumber,
       page_number: data.pageNumber,
@@ -48,18 +39,20 @@ export async function POST(request: NextRequest, { params }: Props) {
   }
 
   return NextResponse.json(note);
-}
+};
 
-export async function GET(_request: NextRequest, { params }: Props) {
-  const { id } = await params;
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const notes = await getTranscriptNotes(supabase, id, currentUser.id);
+const GETHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
+  const notes = await getTranscriptNotes(supabase, params.id, user.id);
 
   return NextResponse.json(notes);
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  POSTHandler
+);
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);

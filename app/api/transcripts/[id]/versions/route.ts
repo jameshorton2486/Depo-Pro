@@ -8,31 +8,22 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
 /**
  * GET /api/transcripts/[id]/versions
  * Returns all integrity chain entries for a transcript, ordered by version.
  */
-export async function GET(
+const GETHandler = async (
   _request: NextRequest,
-  context: RouteContext
-) {
+  { supabase, params }: ProtectedContext
+) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
-
-    const supabase = await createSupabaseServerClient();
+    const transcriptId = params.id;
 
     // Fetch integrity chain entries with creator profile
     const { data: chain, error } = await supabase
@@ -78,4 +69,9 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);

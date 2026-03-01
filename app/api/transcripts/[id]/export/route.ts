@@ -1,8 +1,9 @@
 // app/api/transcripts/[id]/export/route.ts
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript } from '@/lib/export';
 import { exportLegalDocx } from '@/lib/services/export';
@@ -16,9 +17,7 @@ import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-servic
 import { logger } from '@/lib/logger';
 import { captureError } from '@/lib/error-capture';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
 interface ExportWord {
   word: string;
@@ -92,29 +91,24 @@ function getFlaggedCorrections(value: unknown): Map<number, string> {
   return corrections;
 }
 
-export async function GET(
+const GETHandler = async (
   request: NextRequest,
-  context: RouteContext,
-) {
+  { user, supabase, params }: ProtectedContext,
+) => {
   const startTime = performance.now();
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
 
     // Rate limit check
-    const rateLimit = checkUserRateLimit(currentUser.id, 'TRANSCRIPT_EXPORT');
+    const rateLimit = checkUserRateLimit(user.id, 'TRANSCRIPT_EXPORT');
     if (!rateLimit.allowed) {
       return rateLimitResponse(rateLimit);
     }
 
     // Quota check
-    if (currentUser.firmId) {
+    if (user.firm_id) {
       const _tier = 'FREE'; // TODO: Get from subscription
-      const quotaCheck = await useQuota(currentUser.firmId, 'exports', 1);
+      const quotaCheck = await useQuota(user.firm_id, 'exports', 1);
       if (!quotaCheck.allowed) {
         return NextResponse.json(
           { error: 'Export quota exceeded', ...quotaCheck },
@@ -129,7 +123,6 @@ export async function GET(
     const lineNumbering = searchParams.get('lineNumbers') !== 'false';
 
     // Fetch transcript with job details
-    const supabase = await createSupabaseServerClient();
     const transcription = await getTranscriptForExport(supabase, transcriptId);
 
     if (!transcription) {
@@ -137,16 +130,16 @@ export async function GET(
     }
 
     // Check permissions
-    const isOwner = transcription.job.created_by_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-    const isSameFirm = transcription.job.firm_id === currentUser.firmId;
+    const isOwner = transcription.job.created_by_id === user.id;
+    const isAdmin = user.role === 'ADMIN';
+    const isSameFirm = transcription.job.firm_id === user.firm_id;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Phase 3C-2: Check export format permissions
-    const userRole = currentUser.role as any;
+    const userRole = user.role as any;
     if (!canExportFormat(userRole, format)) {
       return NextResponse.json(
         { error: `Export format ${format} not allowed for your role` },
@@ -299,7 +292,7 @@ export async function GET(
 
     // Phase 3C-3: Log export to audit trail
     await createAuditLog({
-      actorUserId: currentUser.id,
+      actorUserId: user.id,
       firmId: transcription.job.firm_id || undefined,
       action: AuditAction.TRANSCRIPT_EXPORTED,
       targetType: AuditTargetType.TRANSCRIPT,
@@ -337,4 +330,9 @@ export async function GET(
     }
     console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
-}
+};
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);

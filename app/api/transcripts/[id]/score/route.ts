@@ -10,14 +10,14 @@ export const runtime = 'nodejs';
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
 const ScoreSchema = z.object({
   revisionId: z.string().uuid().optional(),
@@ -31,22 +31,12 @@ const ScoreSchema = z.object({
  * POST /api/transcripts/[id]/score
  * Submit AI quality score for a transcript
  */
-export async function POST(
+const POSTHandler = async (
   req: NextRequest,
-  context: RouteContext
-) {
+  { user, supabase, params }: ProtectedContext
+) => {
   try {
-    const supabase = await createSupabaseServerClient();
-    
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      logger.warn('[transcript/score] Unauthorized access attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
 
     // Verify transcript exists and user has access (RLS enforced)
     const { data: transcript, error: transcriptError } = await supabase
@@ -158,28 +148,18 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+};
 
 /**
  * GET /api/transcripts/[id]/score
  * Get AI quality scores for a transcript
  */
-export async function GET(
-  req: NextRequest,
-  context: RouteContext
-) {
+const GETHandler = async (
+  _req: NextRequest,
+  { user, supabase, params }: ProtectedContext
+) => {
   try {
-    const supabase = await createSupabaseServerClient();
-    
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      logger.warn('[transcript/score] Unauthorized access attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
 
     // Fetch scores (RLS enforces access)
     const { data: scores, error: scoresError } = await supabase
@@ -205,4 +185,14 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  POSTHandler
+);
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);

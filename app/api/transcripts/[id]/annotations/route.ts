@@ -7,14 +7,13 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptById, getTranscriptAnnotations, createTranscriptAnnotation } from '@/lib/supabase/queries/transcripts';
 import { z } from 'zod';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
 const createAnnotationSchema = z.object({
   type: z.enum(['comment', 'flag', 'correction']),
@@ -28,23 +27,16 @@ const createAnnotationSchema = z.object({
  * POST /api/transcripts/[id]/annotations
  * Create a new annotation (comment, flag, or correction)
  */
-export async function POST(
+const POSTHandler = async (
   request: NextRequest,
-  context: RouteContext
-) {
+  { user, supabase, params }: ProtectedContext
+) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
     const body = await request.json();
     const data = createAnnotationSchema.parse(body);
 
     // Verify transcript exists and user has access
-    const supabase = await createSupabaseServerClient();
     const transcript = await getTranscriptById(supabase, transcriptId);
 
     if (!transcript) {
@@ -62,7 +54,7 @@ export async function POST(
       page_end: data.segmentEnd || data.segmentStart || null,
       line_end: data.wordIndex || null,
       note: data.content || null,
-      created_by_id: currentUser.id,
+      created_by_id: user.id,
     });
 
     return NextResponse.json({
@@ -82,27 +74,20 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+};
 
 /**
  * GET /api/transcripts/[id]/annotations
  * Get all annotations for a transcript
  */
-export async function GET(
-  request: NextRequest,
-  context: RouteContext
-) {
+const GETHandler = async (
+  _request: NextRequest,
+  { supabase, params }: ProtectedContext
+) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
 
     // Get annotations
-    const supabase = await createSupabaseServerClient();
     const annotations = await getTranscriptAnnotations(supabase, transcriptId);
 
     return NextResponse.json({
@@ -115,4 +100,14 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  POSTHandler
+);
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);

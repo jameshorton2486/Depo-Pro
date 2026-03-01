@@ -6,18 +6,14 @@
 // =============================================================================
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
 import { transitionTranscriptStatus } from '@/lib/services/transcript-status';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptById } from '@/lib/supabase/queries/transcripts';
 import { transcriptStatusSchema } from '@/lib/api/schemas';
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * PATCH /api/transcripts/[id]/status
@@ -25,16 +21,10 @@ interface RouteContext {
  */
 const PATCHHandler = async (
   request: NextRequest,
-  context: RouteContext
+  { user, params }: ProtectedContext
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
     const body = await request.json();
     const parsed = transcriptStatusSchema.safeParse(body);
     if (!parsed.success) {
@@ -46,7 +36,7 @@ const PATCHHandler = async (
     const result = await transitionTranscriptStatus(
       transcriptId,
       status,
-      currentUser.role as string
+      user.role as string
     );
 
     if (!result.success) {
@@ -89,8 +79,8 @@ const PATCHHandler = async (
 export const PATCH = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
     rateLimit: { limit: 30, windowMs: 60_000 },
   },
-  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+  PATCHHandler as any
 );

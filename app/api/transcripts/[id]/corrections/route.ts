@@ -5,10 +5,10 @@
  */
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
@@ -20,21 +20,16 @@ import {
   mergeReviewSession,
 } from '@/lib/transcripts/review-session';
 
-export async function GET(
+const GETHandler = async (
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+  { user, params }: ProtectedContext,
+) => {
   try {
-    const { id: transcriptionId } = await params;
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const transcriptionId = params.id;
 
     // Fetch existing review session from transcript's flagged_segments
     const supabase = await createSupabaseServerClient();
-    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
+    const transcript = await getTranscriptWithTokensAndJob(supabase, transcriptionId, user.id);
 
     if (!transcript) {
       return NextResponse.json({
@@ -71,20 +66,15 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
 
 const POSTHandler = async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { user, params }: ProtectedContext,
 ) => {
   const startTime = performance.now();
   try {
-    const { id: transcriptionId } = await params;
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const transcriptionId = params.id;
 
     const body = await request.json();
     const {
@@ -95,14 +85,14 @@ const POSTHandler = async (
 
     // Fetch transcription with job
     const supabase = await createSupabaseServerClient();
-    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, currentUser.id);
+    const transcription = await getTranscriptWithTokensAndJob(supabase, transcriptionId, user.id);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
     }
 
     // Check access: user must be the creator OR an assigned scopist OR admin
-    if (!hasTranscriptReviewAccess(transcription, currentUser.id, currentUser.role, Role.ADMIN)) {
+    if (!hasTranscriptReviewAccess(transcription, user.id, user.role, Role.ADMIN)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -129,7 +119,7 @@ const POSTHandler = async (
 
     const jobId = transcription.job?.id;
     if (jobId) {
-      const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+      const isLocked = await isJobLockedByOther(jobId, user.id);
       if (isLocked) {
         return NextResponse.json(
           { error: 'Job is locked by another user', code: 'LOCKED' },
@@ -177,7 +167,7 @@ const POSTHandler = async (
     // Build review session data and merge into flagged_segments
     const reviewSession = {
       transcriptionId,
-      userId: currentUser.id,
+      userId: user.id,
       reviewedIndices: reviewedWordIndices,
       corrections: Object.fromEntries(corrections) as Record<string, string>,
       lastSavedAt: new Date().toISOString(),
@@ -201,9 +191,9 @@ const POSTHandler = async (
           const originalWord = currentWords[wordIndex];
           return {
             transcription_id: transcriptionId,
-            editor_id: currentUser.id,
-            editor_email: currentUser.email || null,
-            editor_role: currentUser.role || null,
+            editor_id: user.id,
+            editor_email: null,
+            editor_role: user.role || null,
             edit_type: 'WORD_CORRECTION',
             original_text: originalWord?.word || '',
             edited_text: correctedWord,
@@ -253,8 +243,17 @@ const POSTHandler = async (
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 60, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler as any
+);
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  GETHandler as any
 );

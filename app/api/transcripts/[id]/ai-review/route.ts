@@ -10,14 +10,14 @@ export const runtime = 'nodejs';
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
+const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
 /**
  * POST /api/transcripts/[id]/ai-review
@@ -27,25 +27,15 @@ interface RouteContext {
  * - prompt: Optional custom prompt for AI (default: review for accuracy)
  * - options: AI processing options
  */
-export async function POST(
+const POSTHandler = async (
   req: NextRequest,
-  context: RouteContext
-) {
+  { user, supabase, params }: ProtectedContext
+) => {
   try {
-    const supabase = await createSupabaseServerClient();
-    
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      logger.warn('[ai-review] Unauthorized access attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const rateLimit = checkUserRateLimit(user.id, 'AI_REVIEW');
     if (!rateLimit.allowed) return rateLimitResponse(rateLimit);
 
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
 
     // Fetch transcript (RLS enforces access)
     const { data: transcript, error: transcriptError } = await supabase
@@ -142,28 +132,18 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+};
 
 /**
  * GET /api/transcripts/[id]/ai-review
  * Get AI review revisions for a transcript
  */
-export async function GET(
-  req: NextRequest,
-  context: RouteContext
-) {
+const GETHandler = async (
+  _req: NextRequest,
+  { user, supabase, params }: ProtectedContext
+) => {
   try {
-    const supabase = await createSupabaseServerClient();
-    
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      logger.warn('[ai-review] Unauthorized access attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptId } = await context.params;
+    const transcriptId = params.id;
 
     // Fetch AI revisions (RLS enforces access)
     const { data: revisions, error: revisionsError } = await supabase
@@ -200,4 +180,14 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  POSTHandler
+);
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  GETHandler
+);
