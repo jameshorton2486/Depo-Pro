@@ -531,6 +531,7 @@ function LowConfidencePanelNew({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [correctionText, setCorrectionText] = useState('');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Filter flagged words (Feature 2.2 & 2.3)
   const filteredWords = useMemo(() => {
@@ -711,6 +712,14 @@ function LowConfidencePanelNew({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [filteredWords, jumpToHighestRisk, onCorrection, onFilterUsed, onSeekAudio, selectedIndex]);
 
+  // Auto-scroll selected word into view when keyboard navigation changes the selection
+  useEffect(() => {
+    if (selectedIndex !== null && containerRef.current) {
+      const el = containerRef.current.querySelector<HTMLElement>(`[data-word-index="${selectedIndex}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedIndex]);
+
   const handleCorrect = async (wordId: string) => {
     if (!correctionText.trim()) return;
     try {
@@ -857,7 +866,7 @@ function LowConfidencePanelNew({
       </div>
 
       {/* Word list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-3 space-y-2">
         {filteredWords.length === 0 ? (
           <div className="text-center text-slate-500 py-8">
             <div className="text-2xl mb-2">✨</div>
@@ -867,6 +876,7 @@ function LowConfidencePanelNew({
           filteredWords.map((word, index) => (
             <div
               key={word.id}
+              data-word-index={index}
               className={cn(
                 'bg-slate-900 rounded p-3 space-y-2 border border-slate-800 cursor-pointer border-l-4',
                 word.status === 'CORRECTED' ? 'border-l-green-500' :
