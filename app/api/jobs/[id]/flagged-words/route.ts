@@ -6,12 +6,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { updateFlaggedWordSchema } from '@/lib/api/schemas';
 import { toValidationErrorPayload } from '@/lib/api/validation';
@@ -43,22 +42,19 @@ interface FlaggedSegment {
 
 // GET /api/jobs/[id]/flagged-words
 // Returns flagged low-confidence words for scopist review
-export async function GET(
+const GETHandler = async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context: ProtectedContext,
+) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const currentUser = context.user;
 
-    const { id: jobId } = await params;
+    const { id: jobId } = context.params;
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter') || 'pending';
     const sortBy = searchParams.get('sort') || 'confidence';
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
 
     // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
@@ -126,7 +122,7 @@ export async function GET(
       .eq('transcription_id', transcription.id);
 
     const editMap = new Map<number, { editedText: string | null; editType: string }>();
-    (edits || []).forEach((edit) => {
+    (edits || []).forEach((edit: { word_index: number | null; edited_text: string | null; edit_type: string }) => {
       if (edit.word_index !== null) {
         editMap.set(edit.word_index, {
           editedText: edit.edited_text,
@@ -200,21 +196,18 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
 
 // PATCH /api/jobs/[id]/flagged-words
 // Update a flagged word (mark as reviewed, correct text)
 const PATCHHandler = async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: ProtectedContext
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const currentUser = context.user;
 
-    const { id: jobId } = await params;
+    const { id: jobId } = context.params;
     let parsed: z.infer<typeof updateFlaggedWordSchema>;
     try {
       const body = await request.json();
@@ -227,7 +220,7 @@ const PATCHHandler = async (
     }
     const { wordId, correctedText, expectedUpdatedAt } = parsed;
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
 
     // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
@@ -345,17 +338,12 @@ const PATCHHandler = async (
 
 // DELETE /api/jobs/[id]/flagged-words
 // Remove a word edit (un-review)
-export async function DELETE(
+const DELETEHandler = async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context: ProtectedContext
+) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await params;
+    const { id: jobId } = context.params;
     const { searchParams } = new URL(request.url);
     const wordId = searchParams.get('wordId');
 
@@ -363,7 +351,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
     }
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
 
     // Get transcription
     const { data: transcription } = await supabase
@@ -400,16 +388,31 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+};
 
-
-
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  GETHandler
+);
 
 export const PATCH = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.SCOPIST, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 60, windowMs: 60_000 },
   },
-  async (request, { params }) => ((PATCHHandler) as any)(request, { params: Promise.resolve(params as any) })
+  PATCHHandler
+);
+
+export const DELETE = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    rateLimit: { limit: 60, windowMs: 60_000 },
+  },
+  DELETEHandler
 );

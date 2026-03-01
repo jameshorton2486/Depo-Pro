@@ -3,11 +3,10 @@
 // POST: Upload a new medical record (PDF)
 
 import type { NextRequest } from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import {
   listMedicalRecordsByJob,
@@ -15,18 +14,15 @@ import {
 } from '@/lib/supabase/queries/medical';
 import { logger } from '@/lib/logger';
 
-export async function GET(
+const GETHandler = async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+  context: ProtectedContext,
+) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    void request;
 
-    const { id: jobId } = await params;
-    const supabase = await createSupabaseServerClient();
+    const { id: jobId } = context.params;
+    const supabase = context.supabase;
 
     // Verify job exists
     const job = await getJobById(supabase, jobId);
@@ -44,19 +40,17 @@ export async function GET(
       { status: 500 },
     );
   }
-}
+};
 
 const POSTHandler = async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  context: ProtectedContext,
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const currentUser = context.user;
 
-    const { id: jobId } = await params;    const supabase = await createSupabaseServerClient();
+    const { id: jobId } = context.params;
+    const supabase = context.supabase;
 
     // Verify job exists
     const job = await getJobById(supabase, jobId);
@@ -142,14 +136,22 @@ const POSTHandler = async (
       { status: 500 },
     );
   }
-}
+};
 
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  GETHandler
+);
 
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER, GuardRole.SCOPIST],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
     rateLimit: { limit: 5, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler
 );

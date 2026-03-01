@@ -16,7 +16,7 @@ interface StoredSegment {
   end?: number;
 }
 
-function toTranscriptSegments(value: unknown): TranscriptSegment[] {
+export function toTranscriptSegments(value: unknown): TranscriptSegment[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -32,7 +32,7 @@ function toTranscriptSegments(value: unknown): TranscriptSegment[] {
     .filter((seg) => seg.text.length > 0);
 }
 
-function normalizeFormatConfig(
+export function normalizeFormatConfig(
   formatConfig: TranscriptFormatConfig,
 ): TranscriptFormatConfig {
   return {

@@ -2,11 +2,10 @@
 // Trigger transcription for a job
 
 import type { NextRequest} from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById, updateJobStatus, updateJob } from '@/lib/supabase/queries/jobs';
 import { listFilesForJob } from '@/lib/supabase/queries/files';
 import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
@@ -14,23 +13,13 @@ import { AudioEnhancementService } from '@/lib/services/audio-enhancement-servic
 import type { AudioProcessingMode } from '@/lib/services/audio-enhancement-service';
 import { processTranscriptionJob } from '@/lib/transcription/pipeline';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
 const POSTHandler = async (
   request: NextRequest,
-  context: RouteContext,
+  context: ProtectedContext,
 ) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = currentUser as { id: string; role: string; firmId?: string };
-    const { id: jobId } = await context.params;
+    const user = { ...context.user, firmId: context.user.firm_id } as { id: string; role: string; firmId?: string };
+    const { id: jobId } = context.params;
 
     // Rate limit check
     if (user.firmId) {
@@ -49,7 +38,7 @@ const POSTHandler = async (
     // Get request body for model selection (optional)
     const body = await request.json().catch(() => ({}));
 
-    const supabase = await createSupabaseServerClient();
+    const supabase = context.supabase;
 
     // Fetch job
     const job = await getJobById(supabase, jobId, {
@@ -216,8 +205,8 @@ const POSTHandler = async (
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
     rateLimit: { limit: 10, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
+  POSTHandler
 );

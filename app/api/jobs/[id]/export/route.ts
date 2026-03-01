@@ -4,21 +4,16 @@
 // =============================================================================
 
 import type { NextRequest } from 'next/server';
-import { UserRole as GuardRole } from '@/lib/enums/roles';
+import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript } from '@/lib/export';
 import { exportLegalDocx } from '@/lib/services/export';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
 import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 type ExportFormat = 'docx' | 'pdf' | 'txt' | 'google-docs';
 
@@ -70,11 +65,13 @@ function hasJobExportAccess(job: any, currentUser: { id: string; role: string; f
   return isOwner || isAdmin || isSameFirm;
 }
 
-async function executeExport(jobId: string, format: ExportFormat, optionOverrides: Partial<ExportOptions>) {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function executeExport(
+  jobId: string,
+  format: ExportFormat,
+  optionOverrides: Partial<ExportOptions>,
+  currentUser: { id: string; role: string; firm_id: string },
+  supabase: any
+) {
 
   if (format === 'google-docs') {
     return NextResponse.json(
@@ -86,14 +83,13 @@ async function executeExport(jobId: string, format: ExportFormat, optionOverride
     );
   }
 
-  const supabase = await createSupabaseServerClient();
   const job = await getJobById(supabase, jobId, { includeCreatedBy: true });
 
   if (!job) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
 
-  if (!hasJobExportAccess(job, currentUser)) {
+  if (!hasJobExportAccess(job, { ...currentUser, firmId: currentUser.firm_id })) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -140,12 +136,9 @@ async function executeExport(jobId: string, format: ExportFormat, optionOverride
   });
 }
 
-export async function GET(
-  request: NextRequest,
-  context: RouteContext,
-) {
+const GETHandler = async (request: NextRequest, context: ProtectedContext) => {
   try {
-    const { id: jobId } = await context.params;
+    const { id: jobId } = context.params;
     const searchParams = request.nextUrl.searchParams;
     const format = parseFormat(searchParams.get('format'));
     const lineNumbering = searchParams.get('lineNumbers') !== 'false';
@@ -154,7 +147,7 @@ export async function GET(
       lineNumbering,
       includeSpeakerLabels: true,
       useQAFormat: true,
-    });
+    }, context.user, context.supabase);
   } catch (error: any) {
     if (process.env.NODE_ENV === 'production') {
       console.error('[CRITICAL] job export GET failure', error);
@@ -165,14 +158,14 @@ export async function GET(
       { status: 500 },
     );
   }
-}
+};
 
 const POSTHandler = async (
   request: NextRequest,
-  context: RouteContext,
+  context: ProtectedContext,
 ) => {
   try {
-    const { id: jobId } = await context.params;
+    const { id: jobId } = context.params;
     const body = await request.json().catch(() => ({}));
     const format = parseFormat(body.format);
 
@@ -182,7 +175,7 @@ const POSTHandler = async (
       lineNumbering: body.includeLineNumbers !== false,
       useQAFormat: true,
       linesPerPage: body.linesPerPage || 25,
-    });
+    }, context.user, context.supabase);
   } catch (error: any) {
     if (process.env.NODE_ENV === 'production') {
       console.error('[CRITICAL] job export POST failure', error);
@@ -195,11 +188,20 @@ const POSTHandler = async (
   }
 };
 
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    rateLimit: { limit: 30, windowMs: 60_000 },
+  },
+  GETHandler
+);
+
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
     rateLimit: { limit: 10, windowMs: 60_000 },
   },
-  async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) }),
+  POSTHandler,
 );
