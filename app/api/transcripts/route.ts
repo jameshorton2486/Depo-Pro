@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import {
   getById,
   create,
@@ -109,14 +110,10 @@ async function checkJobAccess(
   return { hasAccess: true, job };
 }
 
-export async function GET(request: NextRequest) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+const getTranscriptHandler = async (
+  request: NextRequest,
+  { user, supabase }: ProtectedContext
+) => {
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get('id');
   const jobId = searchParams.get('jobId');
@@ -185,16 +182,17 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
 
-export async function POST(request: NextRequest) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+export const GET = withRouteProtection(
+  { requireAuth: true, enforceTenant: true },
+  getTranscriptHandler
+);
 
-  if (error || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+const postTranscriptHandler = async (
+  request: NextRequest,
+  { user, supabase }: ProtectedContext
+) => {
   try {
     const payload = await request.json();
 
@@ -223,15 +221,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
 
-export async function PUT(request: NextRequest) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+const putTranscriptHandler = async (
+  request: NextRequest,
+  { user, supabase }: ProtectedContext
+) => {
 
   try {
     const payload = await request.json();
@@ -275,15 +270,12 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
 
-export async function DELETE(request: NextRequest) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+const deleteTranscriptHandler = async (
+  request: NextRequest,
+  { user, supabase }: ProtectedContext
+) => {
 
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get('id');
@@ -324,4 +316,19 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, enforceTenant: true },
+  postTranscriptHandler
+);
+
+export const PUT = withRouteProtection(
+  { requireAuth: true, enforceTenant: true },
+  putTranscriptHandler
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, enforceTenant: true },
+  deleteTranscriptHandler
+);

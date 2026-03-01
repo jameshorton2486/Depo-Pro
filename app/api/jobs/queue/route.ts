@@ -8,8 +8,9 @@
 
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
 import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import {
   enqueueJob,
   getJobStatus,
@@ -37,18 +38,9 @@ const enqueueJobSchema = z.object({
 // POST - Enqueue Job
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
+const postQueueHandler = async (request: NextRequest, { user }: ProtectedContext) => {
   // Only admins and certain roles can enqueue jobs directly
-  if (!['ADMIN', 'REPORTER', 'COURT_REPORTER'].includes(currentUser.role as string)) {
+  if (!['ADMIN', 'REPORTER', 'COURT_REPORTER'].includes(user.role)) {
     return NextResponse.json(
       { error: 'Forbidden' },
       { status: 403 }
@@ -85,22 +77,13 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
 
 // =============================================================================
 // GET - Queue Stats or Job Status
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
+const getQueueHandler = async (request: NextRequest, { user }: ProtectedContext) => {
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get('jobId');
 
@@ -120,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Otherwise, return queue statistics (admin only)
-    if (currentUser.role !== UserRole.ADMIN) {
+    if (user.role !== UserRole.ADMIN) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -138,5 +121,15 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, enforceTenant: true },
+  postQueueHandler
+);
+
+export const GET = withRouteProtection(
+  { requireAuth: true, enforceTenant: true },
+  getQueueHandler
+);
 
