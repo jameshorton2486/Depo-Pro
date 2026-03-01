@@ -41,11 +41,10 @@ function InviteAcceptContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-        <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold mb-4">Invitation Acceptance</h1>
+        <AlertCircle className="w-16 h-16 text-indigo-500 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold mb-4">Welcome to Depo-Pro Beta</h1>
         <p className="text-gray-600 mb-6">
-          User invitations are not yet available in beta.
-          Please register directly or contact your administrator.
+          Welcome to the Depo-Pro beta! Please register for an account below. Your administrator will assign your role after registration.
         </p>
         <div className="space-y-2">
           <Link
@@ -54,6 +53,12 @@ function InviteAcceptContent() {
           >
             Register Account
           </Link>
+          <p className="text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link href="/login" className="text-indigo-600 hover:text-indigo-700 font-semibold">
+              Log in
+            </Link>
+          </p>
           <Link
             href="/contact"
             className="block text-indigo-600 hover:text-indigo-700 font-semibold"

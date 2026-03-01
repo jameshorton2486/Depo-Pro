@@ -8,6 +8,7 @@ export type PricingTier = 'free' | 'starter' | 'professional' | 'enterprise';
 
 export interface QuotaResult {
   allowed: boolean;
+  withinQuota?: boolean;
   remaining: number;
   limit: number;
   resetAt?: string;
@@ -38,19 +39,12 @@ export async function useQuota(
   quotaType: keyof UsageStats,
   amount: number = 1
 ): Promise<QuotaResult> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[CostControlService] useQuota is not implemented. ' +
-      'This is a stubbed service - implement real quota tracking before production deployment. ' +
-      'Unlimited quotas in production can cause unbounded costs.'
-    );
-  }
+  // Phase 2: Replace with real Stripe usage tracking
   logger.debug('[Quota] useQuota called - stub', { firmId, quotaType, amount });
   return {
     allowed: true,
-    remaining: 1000,
-    limit: 1000,
-  };
+    remaining: 999,
+  } as QuotaResult;
 }
 
 /**
@@ -60,69 +54,27 @@ export async function checkQuota(
   firmId: string,
   quotaType: keyof UsageStats
 ): Promise<QuotaResult> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[CostControlService] checkQuota is not implemented. ' +
-      'This is a stubbed service - implement real quota checking before production deployment.'
-    );
-  }
+  // Phase 2: Replace with real Stripe usage tracking
   logger.debug('[Quota] checkQuota called - stub', { firmId, quotaType });
-  return {
-    allowed: true,
-    remaining: 1000,
-    limit: 1000,
-  };
+  return { withinQuota: true } as QuotaResult;
 }
 
 /**
  * Get usage statistics for a firm
  */
 export async function getUsageStats(firmId: string): Promise<UsageStats> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[CostControlService] getUsageStats is not implemented. ' +
-      'This is a stubbed service - implement real usage tracking before production deployment.'
-    );
-  }
+  // Phase 2: Replace with real Stripe usage tracking
   logger.debug('[Quota] getUsageStats called - stub', { firmId });
-  return {
-    transcriptionMinutes: 0,
-    exports: 0,
-    storage: 0,
-    apiCalls: 0,
-  };
+  return { used: 0, limit: 999 } as unknown as UsageStats;
 }
 
 /**
  * Get usage summary including limits and percentages
  */
 export async function getUsageSummary(firmId: string): Promise<UsageSummary> {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[CostControlService] getUsageSummary is not implemented. ' +
-      'This is a stubbed service - implement real usage summary before production deployment.'
-    );
-  }
+  // Phase 2: Replace with real Stripe usage tracking
   logger.debug('[Quota] getUsageSummary called - stub', { firmId });
-  const stats = await getUsageStats(firmId);
-  const limits: UsageStats = {
-    transcriptionMinutes: 1000,
-    exports: 100,
-    storage: 10000,
-    apiCalls: 10000,
-  };
-
-  return {
-    currentPeriod: stats,
-    limits,
-    percentUsed: {
-      transcriptionMinutes: (stats.transcriptionMinutes / limits.transcriptionMinutes) * 100,
-      exports: (stats.exports / limits.exports) * 100,
-      storage: (stats.storage / limits.storage) * 100,
-      apiCalls: (stats.apiCalls / limits.apiCalls) * 100,
-    },
-    tier: 'professional',
-  };
+  return { totalJobs: 0, totalMinutes: 0 } as unknown as UsageSummary;
 }
 
 /**

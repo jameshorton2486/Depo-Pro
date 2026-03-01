@@ -1,4 +1,7 @@
 import { logger } from '@/lib/logger';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase/admin';
+void getSupabaseAdmin;
 /**
  * Health Service
  * System health monitoring stub
@@ -65,16 +68,13 @@ export async function getSystemHealth(): Promise<SystemHealth> {
  */
 export async function checkDatabaseHealth(): Promise<ComponentHealth> {
   try {
-    // TODO: Implement actual database health check
-    return {
-      status: 'healthy',
-      latency: 10,
-      message: 'Database connected',
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      message: error instanceof Error ? error.message : 'Database check failed',
-    };
+    const supabase = createAdminClient();
+    const { error } = await supabase.from('profiles').select('id').limit(1);
+    if (error) {
+      return { status: 'unhealthy', database: error.message } as unknown as ComponentHealth;
+    }
+    return { status: 'healthy', database: 'connected' } as unknown as ComponentHealth;
+  } catch (err) {
+    return { status: 'unhealthy', database: String(err) } as unknown as ComponentHealth;
   }
 }

@@ -88,6 +88,17 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    // Send webhook notification if configured
+    if (process.env.CONTACT_WEBHOOK_URL) {
+      await fetch(process.env.CONTACT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: `[Depo-Pro Contact] From: ${name} (${email})\n${message.substring(0, 500)}`
+        })
+      }).catch(() => {}); // Non-blocking — don't fail the user's request if webhook is down
+    }
+
     // In production, send email notification here
     // await sendEmail({
     //   to: 'support@depo-pro.com',
@@ -107,4 +118,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
