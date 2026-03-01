@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -14,7 +16,7 @@ import { logger } from '@/lib/logger';
 // fields don't exist in schema yet)
 // ============================================
 
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -243,3 +245,9 @@ export async function POST(
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+

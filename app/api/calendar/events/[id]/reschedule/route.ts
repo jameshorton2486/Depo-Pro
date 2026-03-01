@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // RESCHEDULE EVENT API ROUTE
 // Path: app/api/calendar/events/[id]/reschedule/route.ts
@@ -24,7 +26,7 @@ const rescheduleSchema = z.object({
 /**
  * POST - Perform reschedule
  */
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
@@ -104,7 +106,7 @@ export async function POST(
 /**
  * PUT - Preview reschedule (dry run)
  */
-export async function PUT(
+async function PUTHandler(
   request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
@@ -172,3 +174,14 @@ export async function PUT(
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+
+export const PUT = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  PUTHandler as any
+);
+

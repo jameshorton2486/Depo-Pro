@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -19,7 +21,7 @@ const updateEventSchema = z.object({
 });
 
 // GET - Get single event
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -54,7 +56,7 @@ export async function GET(
 }
 
 // PATCH - Update event
-export async function PATCH(
+async function PATCHHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -166,7 +168,7 @@ export async function PATCH(
 }
 
 // DELETE - Delete event
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -219,3 +221,19 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  GETHandler as any
+);
+
+export const PATCH = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  PATCHHandler as any
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  DELETEHandler as any
+);
+

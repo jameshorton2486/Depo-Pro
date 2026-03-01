@@ -1,3 +1,4 @@
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // RATE LIMIT STATUS API ROUTE
 // =============================================================================
@@ -18,7 +19,7 @@ import {
 // GET - Get Rate Limit Stats (Admin Only)
 // =============================================================================
 
-export async function GET(_request: NextRequest) {
+async function GETHandler(_request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -65,3 +66,9 @@ export async function GET(_request: NextRequest) {
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN] },
+  GETHandler as any
+);
+

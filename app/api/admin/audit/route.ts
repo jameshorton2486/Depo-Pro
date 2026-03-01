@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // ADMIN AUDIT DASHBOARD API
 // app/api/admin/audit/route.ts
@@ -27,7 +29,7 @@ import { parseOptionalIsoDate, parsePagination } from '@/lib/api/validation';
  * - startDate: Filter by start date (ISO string)
  * - endDate: Filter by end date (ISO string)
  */
-export async function GET(req: NextRequest) {
+async function GETHandler(req: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
     
@@ -101,3 +103,9 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN] },
+  GETHandler as any
+);
+

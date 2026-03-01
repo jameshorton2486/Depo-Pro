@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY TRANSCRIPT API (Single)
 // ═══════════════════════════════════════════════════════════════
@@ -12,7 +14,7 @@ import { Role } from '@/lib/constants';
  * GET /api/attorney/transcripts/[id]
  * Get a single transcript with annotations
  */
-export async function GET(
+async function GETHandler(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -76,3 +78,9 @@ export async function GET(
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
+

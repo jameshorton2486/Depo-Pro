@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ============================================================
 // REPORTER AVAILABILITY API ROUTES
 // Path: app/api/calendar/availability/route.ts
@@ -37,7 +39,7 @@ const querySchema = z.object({
 // GET - Fetch availability slots
 // ------------------------------------------------------------
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -174,7 +176,7 @@ export async function GET(request: NextRequest) {
 // POST - Create availability slot
 // ------------------------------------------------------------
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -305,7 +307,7 @@ export async function POST(request: NextRequest) {
 // DELETE - Bulk delete availability (by date range)
 // ------------------------------------------------------------
 
-export async function DELETE(request: NextRequest) {
+async function DELETEHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -366,4 +368,19 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete availability' }, { status: 500 });
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  DELETEHandler as any
+);
 

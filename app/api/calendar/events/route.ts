@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // CALENDAR EVENTS API ROUTE (RLS-Safe)
 // app/api/calendar/events/route.ts
@@ -37,7 +39,7 @@ const EventSchema = z.object({
 // POST - Create calendar event (RLS-enforced)
 // =============================================================================
 
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
     
@@ -139,7 +141,7 @@ export async function POST(req: NextRequest) {
 // GET - Fetch calendar events (RLS-enforced)
 // =============================================================================
 
-export async function GET(req: NextRequest) {
+async function GETHandler(req: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
     
@@ -187,3 +189,14 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+

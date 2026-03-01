@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // USER ROLE HISTORY API
 // app/api/admin/users/[id]/role-history/route.ts
@@ -20,7 +22,7 @@ interface RouteContext {
  * GET /api/admin/users/[id]/role-history
  * Get role change history (Admin only)
  */
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   context: RouteContext
 ) {
@@ -84,3 +86,9 @@ export async function GET(
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN] },
+  GETHandler as any
+);
+

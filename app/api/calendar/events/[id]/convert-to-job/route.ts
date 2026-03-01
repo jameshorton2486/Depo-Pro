@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ============================================================
 // CONVERT CALENDAR EVENT TO JOB API ROUTE
 // Path: app/api/calendar/events/[id]/convert-to-job/route.ts
@@ -17,7 +19,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
@@ -180,3 +182,9 @@ export async function POST(
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+

@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // CHECK CONFLICTS API ROUTE
 // Path: app/api/calendar/events/check-conflicts/route.ts
@@ -23,7 +25,7 @@ const checkConflictsSchema = z.object({
 /**
  * POST - Check for scheduling conflicts
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function POSTHandler(request: NextRequest): Promise<NextResponse> {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
@@ -87,3 +89,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+

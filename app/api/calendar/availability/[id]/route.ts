@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // DELETE AVAILABILITY BLOCK
 // app/api/calendar/availability/[id]/route.ts
@@ -15,7 +17,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   context: RouteContext
 ) {
@@ -81,4 +83,9 @@ export async function DELETE(
     );
   }
 }
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  DELETEHandler as any
+);
 

@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.2: ATTORNEY DASHBOARD API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -14,7 +16,7 @@ import { listCases } from '@/lib/supabase/queries/cases';
 
 // GET /api/attorney/dashboard
 // Returns dashboard data for the authenticated attorney
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     
@@ -352,4 +354,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
 

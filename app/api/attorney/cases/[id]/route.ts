@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.3: ATTORNEY CASE DETAIL API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -14,7 +16,7 @@ import { getCaseById } from '@/lib/supabase/queries/cases';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 
 // GET /api/attorney/cases/[id]
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -298,3 +300,9 @@ export async function GET(
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
+

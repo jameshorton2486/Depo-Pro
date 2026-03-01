@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ============================================================
 // BOOKING REQUEST DETAIL API ROUTE
 // Path: app/api/calendar/booking-requests/[id]/route.ts
@@ -31,7 +33,7 @@ const updateRequestSchema = z.object({
 // GET - Fetch single booking request
 // ------------------------------------------------------------
 
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -126,7 +128,7 @@ export async function GET(
 // PATCH - Update booking request (approve/reject/modify)
 // ------------------------------------------------------------
 
-export async function PATCH(
+async function PATCHHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -386,7 +388,7 @@ export async function PATCH(
 // DELETE - Delete booking request (cancel)
 // ------------------------------------------------------------
 
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -452,4 +454,19 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete request' }, { status: 500 });
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  GETHandler as any
+);
+
+export const PATCH = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  PATCHHandler as any
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  DELETEHandler as any
+);
 

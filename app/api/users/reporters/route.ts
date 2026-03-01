@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -9,7 +11,7 @@ import { logger } from '@/lib/logger';
 // GET /api/users/reporters - List reporters for assignment
 // ============================================
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) {
@@ -79,4 +81,9 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN] },
+  GETHandler as any
+);
 

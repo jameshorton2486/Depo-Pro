@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin';
@@ -5,7 +7,7 @@ import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
+async function GETHandler() {
   try {
     await requireAdmin();
 
@@ -77,3 +79,9 @@ function calculateAverage<T>(arr: T[], key: keyof T): number {
   const sum = values.reduce((acc, v) => acc + v, 0);
   return sum / values.length;
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN] },
+  GETHandler as any
+);
+

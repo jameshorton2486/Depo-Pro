@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // UNDO RESCHEDULE API ROUTE
 // Path: app/api/calendar/events/[id]/undo-reschedule/route.ts
@@ -22,7 +24,7 @@ const undoSchema = z.object({
 /**
  * POST - Undo a recent reschedule
  */
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
@@ -74,4 +76,9 @@ export async function POST(
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
 

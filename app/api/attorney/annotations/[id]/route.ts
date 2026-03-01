@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY ANNOTATION API (Single)
 // ═══════════════════════════════════════════════════════════════
@@ -13,7 +15,7 @@ import { requireAuth, requireTranscriptAnnotation } from '@/lib/permissions/api-
  * DELETE /api/attorney/annotations/[id]
  * Delete an annotation
  */
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -61,4 +63,9 @@ export async function DELETE(
     );
   }
 }
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  DELETEHandler as any
+);
 

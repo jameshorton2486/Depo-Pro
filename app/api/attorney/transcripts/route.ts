@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY TRANSCRIPTS API
 // ═══════════════════════════════════════════════════════════════
@@ -14,7 +16,7 @@ import { logger } from '@/lib/logger';
  * GET /api/attorney/transcripts
  * List all transcripts for the current attorney
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -98,7 +100,7 @@ export async function GET(request: NextRequest) {
  * POST /api/attorney/transcripts
  * Create a new transcript (upload)
  */
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -152,3 +154,14 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  POSTHandler as any
+);
+

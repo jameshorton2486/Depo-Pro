@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════
 // TRANSCRIPT ANNOTATION EXHIBIT LINKS API
 // ═══════════════════════════════════════════════════════════════
@@ -14,7 +16,7 @@ import { Role } from '@/lib/constants';
  * POST /api/attorney/annotations/[id]/exhibits
  * Link one or more exhibits to a transcript annotation
  */
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -113,7 +115,7 @@ export async function POST(
  * DELETE /api/attorney/annotations/[id]/exhibits
  * Unlink an exhibit from an annotation (exhibitId in request body)
  */
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -172,3 +174,14 @@ export async function DELETE(
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  POSTHandler as any
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  DELETEHandler as any
+);
+

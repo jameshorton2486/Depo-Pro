@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // GOOGLE CALENDAR SYNC ROUTE (Server-Only, Safe)
 // app/api/calendar/google/sync/route.ts
@@ -20,7 +22,7 @@ import { logger } from '@/lib/logger';
  * POST /api/calendar/google/sync
  * Sync calendar events from Google Calendar
  */
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
     
@@ -131,3 +133,9 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+

@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.1: ATTORNEY PROFILE API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -29,7 +31,7 @@ const attorneyProfileSchema = z.object({
 
 // GET /api/attorney/profile
 // Returns the attorney's profile
-export async function GET(_request: NextRequest) {
+async function GETHandler(_request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -79,7 +81,7 @@ export async function GET(_request: NextRequest) {
 
 // POST /api/attorney/profile
 // Creates attorney profile (onboarding)
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -164,7 +166,7 @@ export async function POST(request: NextRequest) {
 
 // PATCH /api/attorney/profile
 // Updates attorney profile
-export async function PATCH(request: NextRequest) {
+async function PATCHHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -248,4 +250,19 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  POSTHandler as any
+);
+
+export const PATCH = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  PATCHHandler as any
+);
 

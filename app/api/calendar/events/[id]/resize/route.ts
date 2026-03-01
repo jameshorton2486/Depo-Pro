@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // =============================================================================
 // RESIZE EVENT API ROUTE
 // Path: app/api/calendar/events/[id]/resize/route.ts
@@ -22,7 +24,7 @@ const resizeSchema = z.object({
 /**
  * POST - Resize event (change duration)
  */
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   context: RouteContext
 ): Promise<NextResponse> {
@@ -97,3 +99,9 @@ export async function POST(
     );
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+

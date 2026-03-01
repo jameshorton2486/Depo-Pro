@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
@@ -13,7 +15,7 @@ import { logger } from '@/lib/logger';
 // Uses the existing notes or internalNotes field
 // ============================================
 
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -132,7 +134,7 @@ export async function POST(
 // Get notes for an event (parsed from notes/internalNotes)
 // ============================================
 
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -181,4 +183,14 @@ export async function GET(
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
 

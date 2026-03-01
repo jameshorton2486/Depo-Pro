@@ -1,3 +1,4 @@
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ============================================================
 // SCHEDULING SUGGESTIONS API
 // File: app/api/calendar/suggestions/route.ts
@@ -36,7 +37,7 @@ const _applySuggestionSchema = z.object({
 // POST - Generate suggestions
 // ============================================================
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   // Feature flag guard
   if (!FEATURES.SCHEDULING_SUGGESTIONS) {
     return NextResponse.json({ suggestions: [] }, { status: 200 });
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
 // PATCH - Apply/reject suggestion
 // ============================================================
 
-export async function PATCH(_request: NextRequest) {
+async function PATCHHandler(_request: NextRequest) {
   // Phase 5 feature - disabled
   return NextResponse.json({ error: 'Suggestions feature is disabled' }, { status: 403 });
 }
@@ -126,7 +127,7 @@ export async function PATCH(_request: NextRequest) {
 // GET - Get saved suggestions for an event
 // ============================================================
 
-export async function GET(_request: NextRequest) {
+async function GETHandler(_request: NextRequest) {
   // Feature flag guard
   if (!FEATURES.SCHEDULING_SUGGESTIONS) {
     return NextResponse.json({ suggestions: [] }, { status: 200 });
@@ -174,4 +175,18 @@ export async function GET(_request: NextRequest) {
   }
 }
 
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
+
+export const PATCH = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  PATCHHandler as any
+);
 

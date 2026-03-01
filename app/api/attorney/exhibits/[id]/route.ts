@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY EXHIBIT API (Single)
 // ═══════════════════════════════════════════════════════════════
@@ -18,7 +20,7 @@ import { getFileUrl, extractStoragePath } from '@/lib/storage/url';
  * GET /api/attorney/exhibits/[id]
  * Get a single exhibit with full details
  */
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -100,7 +102,7 @@ export async function GET(
  * DELETE /api/attorney/exhibits/[id]
  * Delete an exhibit (only if uploaded by attorney)
  */
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -172,3 +174,14 @@ export async function DELETE(
     );
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  DELETEHandler as any
+);
+

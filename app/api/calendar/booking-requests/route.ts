@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ============================================================
 // BOOKING REQUEST API ROUTES
 // Path: app/api/calendar/booking-requests/route.ts
@@ -43,7 +45,7 @@ const querySchema = z.object({
 // GET - Fetch booking requests
 // ------------------------------------------------------------
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -147,7 +149,7 @@ export async function GET(request: NextRequest) {
 // POST - Create booking request (Attorneys)
 // ------------------------------------------------------------
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -241,4 +243,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create request' }, { status: 500 });
   }
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
 

@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════
 // ATTORNEY EXHIBITS API
 // ═══════════════════════════════════════════════════════════════
@@ -27,7 +29,7 @@ import {
  *   - caseId: Filter by case
  *   - depositionId: Filter by deposition (optional)
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Require authentication
     const user = await requireAuth(request);
@@ -142,7 +144,7 @@ export async function GET(request: NextRequest) {
  * POST /api/attorney/exhibits
  * Upload a new exhibit (attorney can upload globally or per-deposition)
  */
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Require authentication
     const user = await requireAuth(request);
@@ -298,7 +300,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
 
-
-
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  POSTHandler as any
+);
 

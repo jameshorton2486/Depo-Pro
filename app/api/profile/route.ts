@@ -1,3 +1,4 @@
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { UserRole } from '@/lib/enums/roles';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -8,7 +9,7 @@ import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service'
  * GET /api/profile
  * Get current user's profile
  */
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const token = extractToken(request);
     if (!token) {
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
  * Create or update user profile
  * ⚠️ SECURITY: Role updates require ADMIN privilege
  */
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   try {
     const token = extractToken(request);
     if (!token) {
@@ -198,3 +199,14 @@ async function validateToken(token: string) {
   const { data, error } = await supabase.auth.getUser(token);
   return { user: data?.user, error };
 }
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY] },
+  GETHandler as any
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY] },
+  POSTHandler as any
+);
+

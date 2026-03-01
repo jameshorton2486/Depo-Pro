@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ============================================================
 // DRAG-DROP VALIDATION API
 // File: app/api/calendar/events/[id]/validate-move/route.ts
@@ -27,7 +29,7 @@ const validateMoveSchema = z.object({
 // POST - Validate a drag-drop move
 // ============================================================
 
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -115,4 +117,9 @@ export async function POST(
     return NextResponse.json({ error: 'Validation failed' }, { status: 500 });
   }
 }
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.SCOPIST] },
+  POSTHandler as any
+);
 

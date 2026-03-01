@@ -1,3 +1,5 @@
+import { UserRole } from '@/lib/enums/roles';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 // ═══════════════════════════════════════════════════════════════════════════════
 // PHASE 3.2.3: ATTORNEY CASES API ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -13,7 +15,7 @@ import { listCases, type CaseFilter, type CaseSort } from '@/lib/supabase/querie
 
 // GET /api/attorney/cases
 // Returns paginated list of cases the attorney has access to
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser();
 
@@ -121,4 +123,9 @@ export async function GET(request: NextRequest) {
 
 // GET /api/attorney/cases/[id]
 // Get single case detail (separate file: app/api/attorney/cases/[id]/route.ts)
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.ATTORNEY, UserRole.COURT_REPORTER] },
+  GETHandler as any
+);
 
