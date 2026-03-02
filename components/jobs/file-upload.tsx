@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -37,11 +37,22 @@ interface FileUploadProps {
 export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  useEffect(() => {
+    return () => { abortControllerRef.current?.abort(); };
+  }, []);
+
   const handleFileSelect = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleCancelUpload = () => {
+    abortControllerRef.current?.abort();
+    setUploading(false);
+    toast.info('Upload cancelled');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,6 +60,7 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
     if (!file) return;
 
     setUploading(true);
+    abortControllerRef.current = new AbortController();
 
     try {
       const formData = new FormData();
@@ -57,6 +69,7 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
       const response = await fetch(`/api/jobs/${jobId}/files`, {
         method: 'POST',
         body: formData,
+        signal: abortControllerRef.current.signal,
       });
 
       if (!response.ok) {
@@ -67,7 +80,11 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
       router.refresh();
       toast.success('File uploaded successfully');
     } catch (error) {
-      console.error('Upload error:', error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        // User cancelled — already handled by handleCancelUpload
+        return;
+      }
+      console.error('[upload] Upload error:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to upload file');
     } finally {
       setUploading(false);
@@ -118,14 +135,21 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
             Files ({files.length})
           </CardTitle>
           {canUpload && (
-            <Button
-              onClick={handleFileSelect}
-              disabled={uploading}
-              size="sm"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {uploading ? 'Uploading...' : 'Upload File'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleFileSelect}
+                disabled={uploading}
+                size="sm"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploading ? 'Uploading...' : 'Upload File'}
+              </Button>
+              {uploading && (
+                <Button variant="ghost" size="sm" onClick={handleCancelUpload}>
+                  <X className="h-4 w-4 mr-1" /> Cancel
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </CardHeader>
