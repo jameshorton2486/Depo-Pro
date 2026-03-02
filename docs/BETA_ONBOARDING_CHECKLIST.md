@@ -1,5 +1,10 @@
 # Beta Onboarding Checklist
 
+## App Access URLs
+1. App: `https://app.depo-pro.com`
+2. Login: `https://app.depo-pro.com/login`
+3. Register: `https://app.depo-pro.com/register`
+
 ## F.1 Beta User Accounts (Supabase Dashboard)
 
 Create auth users:
