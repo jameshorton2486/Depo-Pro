@@ -107,20 +107,31 @@ export function withRouteProtection(
         // ══════════════════════════════════════════════════════════
         // STEP 3: TENANT ISOLATION (firm_id)
         // ══════════════════════════════════════════════════════════
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('firm_id, role')
-          .eq('id', currentUser.id)
-          .single();
+        let profile: { firm_id?: string | null; role?: string | null } | null = null;
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('firm_id, role')
+            .eq('id', currentUser.id)
+            .single();
+          profile = profileData;
+        } catch {
+          // Profile query threw — fall through to session-data fallback below
+        }
 
         if (!profile) {
-          logger.error('[guard] Profile not found', undefined, {
-            userId: currentUser.id,
-          });
-          return NextResponse.json(
-            { error: 'Profile not found' },
-            { status: 403 }
-          );
+          const sessionFirmId = (currentUser as any).firmId || (currentUser as any).firm_id;
+          if (sessionFirmId) {
+            profile = { firm_id: sessionFirmId, role: currentUser.role };
+          } else {
+            logger.error('[guard] Profile not found', undefined, {
+              userId: currentUser.id,
+            });
+            return NextResponse.json(
+              { error: 'Profile not found' },
+              { status: 403 }
+            );
+          }
         }
 
         if (options.requireFirm !== false && options.enforceTenant !== false) {

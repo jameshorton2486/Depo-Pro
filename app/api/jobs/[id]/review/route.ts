@@ -10,6 +10,8 @@ import { NextResponse } from 'next/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { logCorrection, getWordContext } from '@/lib/services/correction-logger';
 import { captureError } from '@/lib/error-capture';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +33,15 @@ const PATCHHandler = async (
 ) => {
   const startTime = performance.now();
   try {
-    const currentUser = context.user;
+    const currentUser = (context as any)?.user ?? await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const { id: jobId } = context.params;
+    const resolvedParams = typeof (context.params as any)?.then === 'function'
+      ? await (context.params as any)
+      : context.params;
+    const { id: jobId } = resolvedParams as Record<string, string>;
     const body: ReviewRequest = await req.json();
     const { wordId, action, correctedWord, expectedUpdatedAt } = body;
 
@@ -57,7 +65,7 @@ const PATCHHandler = async (
       );
     }
 
-    const supabase = context.supabase;
+    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
 
     // Get the flagged word
     const { data: flaggedWord, error: flaggedError } = await supabase

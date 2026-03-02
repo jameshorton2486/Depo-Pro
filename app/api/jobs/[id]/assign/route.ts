@@ -11,6 +11,8 @@ import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobForAccessCheck } from '@/lib/supabase/queries/jobs';
 import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
 import { assignScopistSchema } from '@/lib/validations/job';
@@ -35,11 +37,14 @@ const POSTHandler = async (
 ) => {
   try {
     // 1. AUTHENTICATION CHECK
-    const currentUser = context.user;
+    const currentUser = (context as any)?.user ?? await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { id: jobId } = context.params;
 
     // 2. GET USER WITH FIRM CONTEXT (Tenant Isolation)
-    const supabase = context.supabase;
+    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
     const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
@@ -55,7 +60,8 @@ const POSTHandler = async (
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
     };
 
-    if (!currentUser.firm_id) {
+    const userFirmId = currentUser.firm_id ?? (currentUser as any).firmId ?? null;
+    if (!userFirmId) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }
@@ -111,7 +117,7 @@ const POSTHandler = async (
 
     // 7. SCOPIST VALIDATION WITH TENANT ISOLATION
     // Scopist must exist, have SCOPIST role, AND belong to the same firm
-    const scopists = await getUsersByRole(supabase, 'SCOPIST', currentUser.firm_id);
+    const scopists = await getUsersByRole(supabase, 'SCOPIST', userFirmId);
     const scopistData = scopists.find((s: any) => s.id === validatedData.scopistId);
 
     if (!scopistData) {
@@ -221,7 +227,10 @@ const DELETEHandler = async (
 ) => {
   try {
     // 1. AUTHENTICATION CHECK
-    const currentUser = context.user;
+    const currentUser = (context as any)?.user ?? await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { id: jobId } = context.params;
     const url = new URL(request.url);
     const scopistId = url.searchParams.get('scopistId');
@@ -234,7 +243,7 @@ const DELETEHandler = async (
     }
 
     // 2. GET USER WITH FIRM CONTEXT
-    const supabase = context.supabase;
+    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
     const userData = await getUserById(supabase, currentUser.id);
 
     if (!userData) {
@@ -250,7 +259,7 @@ const DELETEHandler = async (
       firmId: userData.user_metadata?.firmId || userData.user_metadata?.firm_id as string | null,
     };
 
-    if (!currentUser.firm_id) {
+    if (!currentUser.firm_id && !(currentUser as any).firmId) {
       return NextResponse.json(
         { error: 'User not associated with a firm', code: 'NO_FIRM' },
         { status: 403 }

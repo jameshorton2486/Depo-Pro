@@ -14,6 +14,8 @@ import { z } from 'zod';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { updateFlaggedWordSchema } from '@/lib/api/schemas';
 import { toValidationErrorPayload } from '@/lib/api/validation';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -47,14 +49,17 @@ const GETHandler = async (
   context: ProtectedContext,
 ) => {
   try {
-    const currentUser = context.user;
+    const currentUser = (context as any)?.user ?? await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { id: jobId } = context.params;
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter') || 'pending';
     const sortBy = searchParams.get('sort') || 'confidence';
 
-    const supabase = context.supabase;
+    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
 
     // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
@@ -205,7 +210,10 @@ const PATCHHandler = async (
   context: ProtectedContext
 ) => {
   try {
-    const currentUser = context.user;
+    const currentUser = (context as any)?.user ?? await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { id: jobId } = context.params;
     let parsed: z.infer<typeof updateFlaggedWordSchema>;
@@ -220,7 +228,7 @@ const PATCHHandler = async (
     }
     const { wordId, correctedText, expectedUpdatedAt } = parsed;
 
-    const supabase = context.supabase;
+    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
 
     // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
@@ -351,7 +359,7 @@ const DELETEHandler = async (
       return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
     }
 
-    const supabase = context.supabase;
+    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
 
     // Get transcription
     const { data: transcription } = await supabase

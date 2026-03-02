@@ -7,6 +7,8 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { captureError } from '@/lib/error-capture';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const POSTHandler = async (
   req: NextRequest,
@@ -14,10 +16,16 @@ const POSTHandler = async (
 ) => {
   const startTime = performance.now();
   try {
-    const currentUser = context.user;
+    const currentUser = (context as any)?.user ?? await getCurrentUser();
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const { id: jobId } = context.params;
-    const supabase = context.supabase;
+    const resolvedParams = typeof (context.params as any)?.then === 'function'
+      ? await (context.params as any)
+      : context.params;
+    const { id: jobId } = resolvedParams as Record<string, string>;
+    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
     const body = await req.json().catch(() => ({}));
     const { expectedVersion } = body as { expectedVersion?: string };
 
