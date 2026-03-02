@@ -32,18 +32,22 @@ npm run dev
 
 ## Required Environment Variables
 
-Set these values in `.env.local`:
+Template files:
 
-- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL (`https://<project>.supabase.co`)
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key (`sb_publishable_*`)
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (`sb_secret_*`)
-- `DEEPGRAM_API_KEY`: Deepgram API key
+- `.env.example`
+- `.env.production.example`
 
-Optional but commonly used:
+Set these in `.env.local`:
 
-- `REDIS_URL`: Redis connection URL for queue/rate-limit paths
-- `ANTHROPIC_API_KEY`: Anthropic API key for extraction features
-- `CONTACT_WEBHOOK_URL`: contact-form notification webhook endpoint
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL (`https://<project>.supabase.co`) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase publishable key (`sb_publishable_*`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (`sb_secret_*`) |
+| `DEEPGRAM_API_KEY` | Yes | Deepgram API key |
+| `REDIS_URL` | No | Redis connection URL for queue/rate-limit paths |
+| `ANTHROPIC_API_KEY` | No | Anthropic API key for extraction features |
+| `CONTACT_WEBHOOK_URL` | No | Contact-form notification webhook endpoint |
 
 ## Scripts
 
@@ -69,4 +73,3 @@ Optional but commonly used:
 - Main docs index: `docs/README.md`
 - Beta testing guide: `docs/BETA_TESTING_GUIDE.md`
 - Deployment docs: `docs/deployment/`
-
