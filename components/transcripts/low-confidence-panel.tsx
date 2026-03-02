@@ -298,10 +298,15 @@ export function LowConfidencePanel(props: LowConfidencePanelProps) {
         {wordsWithContext.length === 0 ? (
           <div className="text-center text-slate-500 py-8">
             {totalFlagged === 0 ? (
-              <div>
+              <div className="space-y-2">
                 <div className="text-2xl mb-2">✨</div>
-                <div>No low-confidence words found!</div>
-                <div className="text-xs mt-1">Confidence threshold: {Math.round(confidenceThreshold * 100)}%</div>
+                <div className="font-medium">No low-confidence words found!</div>
+                <div className="text-xs text-slate-400">
+                  AI confidence was above {Math.round(confidenceThreshold * 100)}% for all words.
+                </div>
+                <div className="text-xs text-slate-500 mt-3 border-t border-slate-700 pt-3">
+                  You can still review the full transcript manually. When ready, export using the buttons above.
+                </div>
               </div>
             ) : filter === 'pending' ? (
               <div>
@@ -889,8 +894,20 @@ function LowConfidencePanelNew({
       <div ref={containerRef} className="flex-1 overflow-y-auto p-3 space-y-2">
         {filteredWords.length === 0 ? (
           <div className="text-center text-slate-500 py-8">
-            <div className="text-2xl mb-2">✨</div>
-            <div>No {filter === 'all' ? '' : filter} words to show</div>
+            {flaggedWords.length === 0 ? (
+              <div className="space-y-2">
+                <div className="text-2xl mb-2">✨</div>
+                <div className="font-medium">No low-confidence words found!</div>
+                <div className="text-xs text-slate-400">
+                  AI confidence was above {Math.round(0.85 * 100)}% for all words.
+                </div>
+                <div className="text-xs text-slate-500 mt-3 border-t border-slate-700 pt-3">
+                  You can still review the full transcript manually. When ready, export using the buttons above.
+                </div>
+              </div>
+            ) : (
+              <div>No {filter === 'all' ? '' : filter} words to show</div>
+            )}
           </div>
         ) : (
           filteredWords.map((word, index) => (
