@@ -56,16 +56,13 @@ Keyboard shortcuts:
 3. Validate case content in read-only/review-focused mode.
 4. Report any data visibility or permission issues immediately.
 
-## Reporting Bugs
-Send reports to `beta-feedback@depo-pro.com` (or your configured support alias).
+## Reporting Issues
 
-Include:
-1. What you were doing
-2. What happened
-3. What you expected
-4. Browser and device
-5. Screenshots or screen recordings if available
-6. Approximate time the issue occurred
+If you encounter a bug or confusing behavior:
+1. Note what you were doing when it happened
+2. Take a screenshot if possible
+3. Email **support@depo-pro.com** with the details
+4. Include your role (Reporter / Scopist / Attorney) and the job ID if applicable
 
 ## Known Limitations (Beta)
 1. Maximum upload size: `2 GB`
