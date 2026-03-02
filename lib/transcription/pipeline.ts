@@ -166,8 +166,10 @@ export async function processTranscriptionJob(
           overlapSeconds: chunk.overlapSeconds,
         });
 
-        // Update progress
+        // Update progress — chunkProgress is 0-100 per-chunk, overall maps to 10-70%
+        const chunkProgress = Math.round(((i + 1) / totalChunks) * 100);
         const progress = 10 + Math.round(((i + 1) / totalChunks) * 60); // 10-70%
+        console.log(`[pipeline] Job ${jobId}: Chunk ${i + 1}/${totalChunks} complete (${chunkProgress}%)`);
         await updateTranscriptionStatus(jobId, 'TRANSCRIBING', progress, i + 1, totalChunks);
 
       } catch (chunkError: any) {
