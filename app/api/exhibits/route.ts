@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuthV2 } from '@/lib/permissions/api-guards';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 
 /**
  * Exhibits API (Global) - Not Implemented
@@ -8,42 +8,25 @@ import { requireAuthV2 } from '@/lib/permissions/api-guards';
  * Use job-specific endpoints: /api/jobs/[id]/exhibits
  */
 
-export async function GET() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
-
-  return NextResponse.json(
+export const GET = withRouteProtection(
+  { requireAuth: true, enforceTenant: false },
+  async () => NextResponse.json(
     { error: 'Global exhibits API is not available. Use /api/jobs/[id]/exhibits instead.' },
     { status: 501 }
-  );
-}
+  )
+);
 
-export async function POST() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
+export const POST = withRouteProtection(
+  { requireAuth: true, enforceTenant: false },
+  async () => NextResponse.json({ error: 'This feature is not implemented' }, { status: 501 })
+);
 
-  return NextResponse.json(
-    { error: 'This feature is not implemented' },
-    { status: 501 }
-  );
-}
+export const PUT = withRouteProtection(
+  { requireAuth: true, enforceTenant: false },
+  async () => NextResponse.json({ error: 'This feature is not implemented' }, { status: 501 })
+);
 
-export async function PUT() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
-
-  return NextResponse.json(
-    { error: 'This feature is not implemented' },
-    { status: 501 }
-  );
-}
-
-export async function DELETE() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
-
-  return NextResponse.json(
-    { error: 'This feature is not implemented' },
-    { status: 501 }
-  );
-}
+export const DELETE = withRouteProtection(
+  { requireAuth: true, enforceTenant: false },
+  async () => NextResponse.json({ error: 'This feature is not implemented' }, { status: 501 })
+);

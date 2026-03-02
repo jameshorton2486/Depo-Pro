@@ -10,7 +10,6 @@
 import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { requireAuthV2 } from '@/lib/permissions/api-guards';
 import { UserRole } from '@/lib/enums';
 import type {
   AuditLogQuery} from '@/lib/audit-service';
@@ -146,8 +145,8 @@ export async function GET(request: NextRequest) {
 // =============================================================================
 
 export async function POST() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   return NextResponse.json(
     { error: 'Audit logs cannot be created via API' },
@@ -160,8 +159,8 @@ export async function POST() {
 // =============================================================================
 
 export async function DELETE() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   return NextResponse.json(
     { error: 'Audit logs cannot be deleted' },
@@ -174,8 +173,8 @@ export async function DELETE() {
 // =============================================================================
 
 export async function PATCH() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   return NextResponse.json(
     { error: 'Audit logs cannot be modified' },
@@ -184,8 +183,8 @@ export async function PATCH() {
 }
 
 export async function PUT() {
-  const auth = await requireAuthV2();
-  if (!auth.authorized) return auth.response;
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   return NextResponse.json(
     { error: 'Audit logs cannot be modified' },
