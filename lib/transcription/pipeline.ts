@@ -15,6 +15,7 @@ import {
   cleanupPreprocessedFile,
 } from './preprocessor';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { captureError } from '@/lib/error-capture';
 import { calculateConfidenceAnalytics } from '@/lib/services/confidence-analytics';
 import { calculateRiskScore, extractRiskInputs } from '@/lib/services/risk-score';
 import { postProcessSegments } from '@/src/lib/transcription/post-process';
@@ -167,11 +168,45 @@ export async function processTranscriptionJob(
         await updateTranscriptionStatus(jobId, 'TRANSCRIBING', progress, i + 1, totalChunks);
 
       } catch (chunkError: any) {
-        console.error(`Chunk ${i} failed:`, chunkError.message);
-        await logProcessingError(jobId, `Chunk ${i} failed: ${chunkError.message}`);
+        // Classify Deepgram errors for specific user-facing messages
+        const msg: string = chunkError.message || '';
+        let userMessage: string;
 
-        // Mark this chunk as failed but continue to see if resumable
-        throw new Error(`Transcription failed at chunk ${i}/${totalChunks}: ${chunkError.message}`);
+        if (
+          chunkError.name === 'AbortError' ||
+          msg.includes('ECONNRESET') ||
+          msg.includes('ETIMEDOUT') ||
+          msg.includes('network') ||
+          msg.includes('fetch failed') ||
+          msg.includes('socket hang up')
+        ) {
+          userMessage = 'Transcription service temporarily unavailable. Your audio file is saved — please try again in a few minutes.';
+        } else if (
+          msg.includes('401') ||
+          msg.includes('403') ||
+          msg.includes('Unauthorized') ||
+          msg.includes('Forbidden')
+        ) {
+          userMessage = 'Transcription service authentication failed. Please contact support.';
+        } else if (
+          msg.includes('429') ||
+          msg.includes('rate limit') ||
+          msg.includes('Too Many Requests')
+        ) {
+          userMessage = 'Transcription service rate limit reached. Please wait a few minutes and try again.';
+        } else {
+          userMessage = `Transcription failed: ${msg}`;
+        }
+
+        captureError(chunkError, {
+          route: 'pipeline/transcribeAudio',
+          jobId,
+          metadata: { chunkIndex: i, totalChunks },
+        });
+        console.error(`[pipeline] Chunk ${i} failed:`, msg);
+        await logProcessingError(jobId, `Chunk ${i} failed: ${msg}`);
+
+        throw new Error(userMessage);
       }
     }
 

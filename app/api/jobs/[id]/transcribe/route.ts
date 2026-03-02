@@ -85,6 +85,11 @@ const POSTHandler = async (
       );
     }
 
+    // PIPELINE_FAILED jobs are retryable — reset job status so pipeline starts clean
+    if (jobStatus === 'FAILED') {
+      await updateJobStatus(supabase, jobId, 'PENDING');
+    }
+
     // Get processing mode from job's internalNotes
     let processingMode: AudioProcessingMode = 'AUTOMATED';
     let modelTier: 'STANDARD' | 'ENHANCED' = 'STANDARD';
