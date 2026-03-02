@@ -160,11 +160,11 @@ export function registerProvider(
 
 export function getProvider(
   provider: ExternalCalendarProvider
-): ExternalCalendarProviderInterface {
+): ExternalCalendarProviderInterface | null {
   const impl = providers.get(provider);
   if (!impl) {
-    logger.warn(`[ExternalCalendarProviderRegistry] Provider ${provider} is not registered; returning safe empty provider`);
-    return {} as ExternalCalendarProviderInterface;
+    logger.warn(`[ExternalCalendarProviderRegistry] Provider ${provider} is not registered; returning null`);
+    return null;
   }
   return impl;
 }

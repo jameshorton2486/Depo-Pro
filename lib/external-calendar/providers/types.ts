@@ -26,8 +26,8 @@ const providers: Map<ExternalCalendarProvider, any> = new Map();
 export function getProvider(provider: ExternalCalendarProvider) {
   const impl = providers.get(provider);
   if (!impl) {
-    logger.warn(`[ExternalCalendarProviderRegistry] Provider ${provider} is not registered; returning safe empty provider`);
-    return {} as any;
+    logger.warn(`[ExternalCalendarProviderRegistry] Provider ${provider} is not registered; returning null`);
+    return null;
   }
   return impl;
 }
