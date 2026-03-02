@@ -8,6 +8,7 @@
 import type { ExternalCalendarProvider} from '@/lib/enums';
 import { ExternalCalendarSyncMode } from '@/lib/enums';
 import type { ExternalEvent as ExternalEventType, SyncResult as SyncResultType, SyncError as SyncErrorType } from '../types';
+import { logger } from '@/lib/logger';
 
 /**
  * External calendar provider type.
@@ -25,7 +26,8 @@ const providers: Map<ExternalCalendarProvider, any> = new Map();
 export function getProvider(provider: ExternalCalendarProvider) {
   const impl = providers.get(provider);
   if (!impl) {
-    throw new Error(`Provider ${provider} is not registered`);
+    logger.warn(`[ExternalCalendarProviderRegistry] Provider ${provider} is not registered; returning safe empty provider`);
+    return {} as any;
   }
   return impl;
 }
@@ -38,4 +40,3 @@ export function _canWriteExternal(mode: ExternalCalendarSyncMode): boolean {
   return mode === ExternalCalendarSyncMode.PUSH_INTERNAL || 
          mode === ExternalCalendarSyncMode.BIDIRECTIONAL;
 }
-

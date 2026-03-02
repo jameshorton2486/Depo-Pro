@@ -6,6 +6,7 @@
 
 import type { ExternalCalendarProvider} from '@/lib/enums';
 import { ExternalCalendarSyncMode } from '@/lib/enums';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // EXTERNAL EVENT TYPES
@@ -162,7 +163,8 @@ export function getProvider(
 ): ExternalCalendarProviderInterface {
   const impl = providers.get(provider);
   if (!impl) {
-    throw new Error(`Provider ${provider} is not registered`);
+    logger.warn(`[ExternalCalendarProviderRegistry] Provider ${provider} is not registered; returning safe empty provider`);
+    return {} as ExternalCalendarProviderInterface;
   }
   return impl;
 }
