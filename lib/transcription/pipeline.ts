@@ -72,6 +72,9 @@ export async function processTranscriptionJob(
     }
 
     console.log(`Audio validated: ${validation.duration}s, ${validation.format}, ${validation.channels} channels`);
+    if (validation.warning) {
+      console.warn(`[pipeline] Audio warning for job ${jobId}: ${validation.warning}`);
+    }
 
     // --- STAGE 1b: NORMALIZING ---
     // Normalize ALL audio to 16kHz mono WAV for optimal Deepgram accuracy.

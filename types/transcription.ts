@@ -184,6 +184,7 @@ export interface AudioValidation {
   sampleRate: number; // Hz
   fileSize: number; // bytes
   error?: string;
+  warning?: string;
 }
 
 /**

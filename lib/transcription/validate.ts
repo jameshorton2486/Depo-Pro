@@ -99,6 +99,13 @@ export async function validateAudio(filePath: string): Promise<AudioValidation> 
       }
     }
 
+    // Warn (but do not block) for very short audio
+    const MIN_RECOMMENDED_DURATION = 10; // seconds
+    let warning: string | undefined;
+    if (metadata.duration > 0 && metadata.duration < MIN_RECOMMENDED_DURATION) {
+      warning = `Audio is very short (${Math.round(metadata.duration)}s). Transcription accuracy may be limited.`;
+    }
+
     // All checks passed
     return {
       valid: true,
@@ -107,6 +114,7 @@ export async function validateAudio(filePath: string): Promise<AudioValidation> 
       channels: metadata.channels,
       sampleRate: metadata.sampleRate,
       fileSize,
+      warning,
     };
   } catch (error: any) {
     return {
