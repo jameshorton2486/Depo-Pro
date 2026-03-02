@@ -31,7 +31,7 @@ const ENV_VARS: EnvVar[] = [
     validate: (v) => v.startsWith('sb_secret_'),
   },
 
-  // Auth - Supabase only
+  // Auth — Supabase Auth (session managed via createSupabaseServerClient)
 
   // Deepgram - Required for transcription
   {
