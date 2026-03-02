@@ -80,7 +80,7 @@ const POSTHandler = async (
     const {
       corrections = [], // Array of [wordIndex, correction] pairs
       reviewedWordIndices = [], // Array of word indices marked as reviewed
-      expectedUpdatedAt,  // ISO string of last known updatedAt
+      expectedVersion,  // ISO string of last known updatedAt (optional — backward compatible)
     } = body;
 
     // Fetch transcription with job
@@ -96,26 +96,21 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    if (!expectedUpdatedAt) {
-      return NextResponse.json(
-        { error: 'expectedUpdatedAt is required to prevent concurrent edit conflicts' },
-        { status: 400 },
-      );
+    // --- Optimistic Locking Check ---
+    if (expectedVersion) {
+      if (transcription.updated_at !== expectedVersion) {
+        return NextResponse.json(
+          {
+            error: 'Conflict — this transcript was modified by another user since you loaded it. Please reload the page to see the latest version.',
+            code: 'CONFLICT',
+            serverVersion: transcription.updated_at,
+            clientVersion: expectedVersion,
+          },
+          { status: 409 },
+        );
+      }
     }
-
-    const expectedDate = new Date(expectedUpdatedAt);
-    const actualDate = new Date(transcription.updated_at || transcription.updatedAt);
-    if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
-      return NextResponse.json(
-        {
-          error: 'Conflict detected',
-          code: 'CONFLICT',
-          message: 'This transcript was modified since you loaded it. Refresh to see the latest version.',
-          serverUpdatedAt: actualDate.toISOString(),
-        },
-        { status: 409 },
-      );
-    }
+    // --- End Optimistic Locking Check ---
 
     const jobId = transcription.job?.id;
     if (jobId) {
@@ -217,12 +212,18 @@ const POSTHandler = async (
       }
     }
 
+    const { data: refreshed } = await supabase
+      .from('transcriptions')
+      .select('updated_at')
+      .eq('id', transcriptionId)
+      .single();
+
     return NextResponse.json({
       success: true,
       correctionsApplied: corrections.length,
       reviewedCount: reviewedWordIndices.length,
       remainingFlagged: remainingFlagged,
-      updatedAt: new Date().toISOString(),
+      updatedAt: refreshed?.updated_at,
     });
   } catch (_error) {
     if (process.env.NODE_ENV === 'production') {

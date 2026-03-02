@@ -18,6 +18,8 @@ const POSTHandler = async (
 
     const { id: jobId } = context.params;
     const supabase = context.supabase;
+    const body = await req.json().catch(() => ({}));
+    const { expectedVersion } = body as { expectedVersion?: string };
 
     // Fetch the job
     const { data: job, error: jobError } = await supabase
@@ -48,13 +50,29 @@ const POSTHandler = async (
     // Get the transcription for this job
     const { data: transcription, error: transError } = await supabase
       .from('transcriptions')
-      .select('id')
+      .select('id, updated_at')
       .eq('job_id', jobId)
       .maybeSingle();
 
     if (transError || !transcription) {
       return NextResponse.json({ error: 'No transcription found for this job' }, { status: 400 });
     }
+
+    // --- Optimistic Locking Check ---
+    if (expectedVersion) {
+      if (transcription.updated_at !== expectedVersion) {
+        return NextResponse.json(
+          {
+            error: 'Conflict — this transcript was modified by another user since you loaded it. Please reload the page to see the latest version.',
+            code: 'CONFLICT',
+            serverVersion: transcription.updated_at,
+            clientVersion: expectedVersion,
+          },
+          { status: 409 },
+        );
+      }
+    }
+    // --- End Optimistic Locking Check ---
 
     // Check for pending flagged words — block completion if any remain
     const { count: pendingCount, error: pendingError } = await supabase
@@ -107,6 +125,7 @@ const POSTHandler = async (
       jobId,
       newStatus: 'SCOPIST_COMPLETE',
       message: 'Review submitted successfully.',
+      updatedAt: transcription.updated_at,
     });
   } catch (error) {
     captureError(error, { route: 'POST /api/jobs/[id]/review/submit' });
