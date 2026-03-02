@@ -31,6 +31,7 @@ import {
   PlusCircle,
   type LucideIcon,
 } from 'lucide-react';
+import { PRE_BETA_MODE } from '@/lib/config/features';
 
 // =============================================================================
 // TYPES
@@ -335,8 +336,42 @@ export const NAVIGATION: Record<UserRole, NavigationSchema> = {
 // HELPERS
 // =============================================================================
 
+/**
+ * Nav item IDs hidden during pre-beta.
+ * Routes remain accessible via direct URL.
+ * To restore: remove ID from this set or set DISABLE_PRE_BETA=true.
+ */
+const PRE_BETA_HIDDEN_IDS = new Set([
+  // Billing — fully stubbed (Stripe not wired)
+  'admin-billing',
+  'agency-billing',
+  // Admin system pages — no page.tsx yet
+  'admin-settings-firm',
+  'admin-settings-security',
+  'admin-settings-integrations',
+  // Reports — placeholder stubs
+  'admin-reports',
+  'attorney-reports',
+  // Attorney-specific pages — not built
+  'attorney-cases',
+  'attorney-transcripts',
+  'attorney-recent',
+  'attorney-exhibits',
+  'attorney-issues',
+]);
+
+function applyPreBetaFilter(schema: NavigationSchema): NavigationSchema {
+  return schema
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => !PRE_BETA_HIDDEN_IDS.has(item.id)),
+    }))
+    .filter(section => section.items.length > 0);
+}
+
 export function getNavigationForRole(role: UserRole): NavigationSchema {
-  return NAVIGATION[role] ?? REPORTER_NAV;
+  const schema = NAVIGATION[role] ?? REPORTER_NAV;
+  return PRE_BETA_MODE ? applyPreBetaFilter(schema) : schema;
 }
 
 export function getNavigationItemsForRole(role: UserRole): NavItem[] {

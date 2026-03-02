@@ -74,6 +74,14 @@ export const FEATURES = {
 } as const;
 
 /**
+ * Pre-beta mode: hides unfinished pages from sidebar navigation.
+ * Pages remain accessible via direct URL for development.
+ * To re-enable: set env DISABLE_PRE_BETA=true
+ */
+export const PRE_BETA_MODE: boolean =
+  process.env.DISABLE_PRE_BETA !== 'true';
+
+/**
  * Check if a feature is enabled
  */
 export function isFeatureEnabled(feature: keyof typeof FEATURES): boolean {
