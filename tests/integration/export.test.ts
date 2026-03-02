@@ -59,24 +59,14 @@ describe('Export Integration', () => {
   let flaggedWordsRows: Array<{ word_index: number; corrected_word: string }> = [];
 
   function makeSupabaseClientForExport() {
-    const profileChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({
-        data: { firm_id: 'firm-1', role: 'REPORTER' },
-        error: null,
-      }),
-    };
-    const flaggedWordsChain = {
+    const chain: any = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
       not: vi.fn().mockResolvedValue({ data: flaggedWordsRows, error: null }),
     };
     return {
-      from: vi.fn((table: string) =>
-        table === 'profiles' ? profileChain : flaggedWordsChain
-      ),
+      from: vi.fn(() => chain),
     };
   }
 

@@ -20,14 +20,6 @@
  * - Add: ENABLE_MEDICAL_CHRONOLOGY=false
  * - Restart (no redeploy needed)
  */
-/**
- * Pre-beta mode: hides unfinished pages from sidebar navigation.
- * Pages remain accessible via direct URL for development.
- * To re-enable hidden items: set PRE_BETA_MODE = false (or env DISABLE_PRE_BETA=true).
- */
-export const PRE_BETA_MODE: boolean =
-  process.env.DISABLE_PRE_BETA !== 'true';
-
 export const FEATURES = {
   /**
    * Phase 10: Medical Chronology

@@ -98,10 +98,9 @@ describe('Export with Flagged Word Corrections', () => {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({
-            data: { firm_id: 'firm-1', role: 'REPORTER' },
-            error: null,
-          }),
+          in: vi.fn().mockReturnThis(),
+          not: vi.fn().mockResolvedValue({ data: [], error: null }),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
         };
       }),
     };
@@ -140,24 +139,12 @@ describe('Export with Flagged Word Corrections', () => {
     getTranscriptEditsMock.mockResolvedValueOnce([]);
 
     const mockSupabase = {
-      from: vi.fn((table: string) => {
-        if (table === 'profiles') {
-          return {
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({
-              data: { firm_id: 'firm-1', role: 'REPORTER' },
-              error: null,
-            }),
-          };
-        }
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          in: vi.fn().mockReturnThis(),
-          not: vi.fn().mockResolvedValue({ data: [], error: null }),
-        };
-      }),
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        not: vi.fn().mockResolvedValue({ data: [], error: null }),
+      })),
     };
     createSupabaseServerClientMock.mockResolvedValueOnce(mockSupabase);
 
