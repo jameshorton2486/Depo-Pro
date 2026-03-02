@@ -532,6 +532,7 @@ function LowConfidencePanelNew({
   const [correctionText, setCorrectionText] = useState('');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasUnsavedChangesRef = useRef(false);
 
   // Filter flagged words (Feature 2.2 & 2.3)
   const filteredWords = useMemo(() => {
@@ -720,10 +721,29 @@ function LowConfidencePanelNew({
     }
   }, [selectedIndex]);
 
+  // Track unsaved changes: set dirty when editing, clear after successful save
+  useEffect(() => {
+    if (editingId && correctionText.trim()) {
+      hasUnsavedChangesRef.current = true;
+    }
+  }, [editingId, correctionText]);
+
+  // Warn user before navigating away with unsaved corrections
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChangesRef.current) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   const handleCorrect = async (wordId: string) => {
     if (!correctionText.trim()) return;
     try {
       await onCorrection(wordId, 'correct', correctionText);
+      hasUnsavedChangesRef.current = false;
       setEditingId(null);
       setCorrectionText('');
     } catch (error) {
