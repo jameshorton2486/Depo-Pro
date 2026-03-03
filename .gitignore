@@ -179,3 +179,4 @@ PHASE_B_HARDENING_MVP_PREP.md
 supabase/migrations_backup/
 reports/
 .aider*
+.claude/
