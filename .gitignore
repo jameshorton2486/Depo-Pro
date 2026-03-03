@@ -180,3 +180,4 @@ supabase/migrations_backup/
 reports/
 .aider*
 .claude/
+.claude/
