@@ -2,7 +2,7 @@
 // CANONICAL CALENDAR ENUMS
 // =============================================================================
 // Single source of truth for calendar-related enums
-// These MUST match Prisma schema.prisma enums exactly
+// These MUST match the Supabase migration enum definitions exactly
 // =============================================================================
 
 export enum CalendarEventStatus {
@@ -122,4 +122,3 @@ export enum SuggestionConfidence {
 
 // Re-export UserRole for convenience
 export { UserRole } from './roles';
-

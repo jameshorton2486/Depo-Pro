@@ -5,7 +5,7 @@
 // NEVER hardcode enum strings elsewhere in the codebase.
 // ALWAYS import from this file.
 // 
-// Last synced with prisma/schema.prisma
+// Canonical enum source — keep in sync with supabase/migrations/
 // 
 // NOTE: Calendar and Role enums are now imported from canonical sources
 // See lib/enums/calendar.ts and lib/enums/roles.ts

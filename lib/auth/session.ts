@@ -1,7 +1,7 @@
 // =============================================================================
 // SESSION HELPERS
 // Wrapper around Supabase auth to match user's expected interface
-// Returns NextAuth-compatible format: { user: {...} }
+// Returns authenticated user from Supabase session
 // =============================================================================
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
