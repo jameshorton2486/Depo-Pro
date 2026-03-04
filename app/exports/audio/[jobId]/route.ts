@@ -2,23 +2,22 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
-import { listFilesForJob } from '@/lib/supabase/queries/files';
-
 /**
  * GET /exports/audio/[jobId]
  * Download audio file for a job.
  *
  * Guard: withRouteProtection — auth + firm_id tenant isolation enforced before handler.
+ * Uses jobs.audio_file_url (set at upload time) to locate the Storage object.
  */
 const GETHandler = async (
-  request: NextRequest,
+  _request: NextRequest,
   { user, supabase, params }: ProtectedContext,
 ): Promise<NextResponse> => {
   const { jobId } = params;
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
-    .select('id, created_by_id, scopist_id')
+    .select('id, created_by_id, scopist_id, audio_file_url')
     .eq('id', jobId)
     .eq('firm_id', user.firm_id)
     .single();
@@ -35,19 +34,28 @@ const GETHandler = async (
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const files = await listFilesForJob(supabase, jobId);
-  const audioFiles = (files as any[]).filter((f) => f.type === 'AUDIO');
-
-  if (!audioFiles || audioFiles.length === 0) {
+  const audioPath = job.audio_file_url as string | null;
+  if (!audioPath) {
     return NextResponse.json(
       { error: 'Audio file not found for this job' },
       { status: 404 },
     );
   }
 
-  return NextResponse.redirect(
-    new URL(`/api/files/${audioFiles[0].id}/download`, request.url),
-  );
+  // Generate a signed download URL from Supabase Storage
+  const { data: signedUrl, error: signError } = await supabase
+    .storage
+    .from('depo-audio')
+    .createSignedUrl(audioPath, 3600); // 1-hour expiry
+
+  if (signError || !signedUrl?.signedUrl) {
+    return NextResponse.json(
+      { error: 'Failed to generate download URL' },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.redirect(signedUrl.signedUrl);
 };
 
 export const GET = withRouteProtection(
