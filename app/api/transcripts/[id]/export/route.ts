@@ -282,12 +282,22 @@ const GETHandler = async (
 
       const formatConfig =
         (jobSettings?.format_settings as TranscriptFormatConfig | null) ?? null;
-      buffer = await exportLegalDocx(transcription.job_id, formatConfig);
+
+      if (formatConfig?.speakerMappings?.length) {
+        // Legal formatter with speaker mappings — uses segment-based formatting.
+        // Corrections are applied via exportText for the fallback path inside exportLegalDocx.
+        buffer = await exportLegalDocx(transcription.job_id, formatConfig);
+      } else {
+        // Standard DOCX: use exportText which has all corrections applied
+        // (transcription_edits → flagged_segments → flagged_words).
+        buffer = (await exportTranscript(exportText, metadata, { ...exportOptions, format: 'docx' })).buffer;
+      }
+
       filename = `${(jobSettings?.case_name || metadata.caseName || 'transcript')
         .replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     } else {
-      // Generate export with corrected text
+      // Generate export with corrected text (PDF, TXT)
       const result = await exportTranscript(
         exportText,
         metadata,
