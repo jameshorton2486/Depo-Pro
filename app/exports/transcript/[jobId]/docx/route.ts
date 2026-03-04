@@ -1,78 +1,72 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { exportLegalDocx } from '@/lib/services/export';
 import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
-
-interface RouteContext {
-  params: Promise<{ jobId: string }>;
-}
 
 /**
  * GET /exports/transcript/[jobId]/docx
  * Export transcript as DOCX using legal formatter when settings are configured.
+ *
+ * Guard: withRouteProtection — auth + firm_id tenant isolation enforced before handler.
  */
-export async function GET(
+const GETHandler = async (
   _request: NextRequest,
-  context: RouteContext,
-) {
-  try {
-    const currentUser = await getCurrentUser();
+  { user, supabase, params }: ProtectedContext,
+): Promise<NextResponse> => {
+  const { jobId } = params;
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, case_name, created_by_id, scopist_id, format_settings')
+    .eq('id', jobId)
+    .eq('firm_id', user.firm_id)
+    .single();
 
-    const { jobId } = await context.params;
-    const supabase = await createSupabaseServerClient();
+  if (jobError || !job) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  }
 
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, case_name, created_by_id, scopist_id, format_settings')
-      .eq('id', jobId)
-      .single();
+  const { data: transcript } = await supabase
+    .from('transcriptions')
+    .select('id')
+    .eq('job_id', jobId)
+    .single();
 
-    if (jobError || !job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    const { data: transcript } = await supabase
-      .from('transcriptions')
-      .select('id')
-      .eq('job_id', jobId)
-      .single();
-
-    if (!transcript) {
-      return NextResponse.json(
-        { error: 'Transcript not found for this job' },
-        { status: 404 },
-      );
-    }
-
-    const isCreator = job.created_by_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-    const isScopist = job.scopist_id === currentUser.id;
-
-    if (!isCreator && !isAdmin && !isScopist) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const formatConfig = (job.format_settings as TranscriptFormatConfig | null) ?? null;
-    const buffer = await exportLegalDocx(jobId, formatConfig);
-
-    return new NextResponse(buffer as unknown as BodyInit, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${job.case_name || 'transcript'}.docx"`,
-        'Content-Length': buffer.length.toString(),
-      },
-    });
-  } catch (error) {
-    console.error('Error in DOCX export route:', error);
+  if (!transcript) {
     return NextResponse.json(
-      { error: 'Failed to export transcript' },
-      { status: 500 },
+      { error: 'Transcript not found for this job' },
+      { status: 404 },
     );
   }
-}
+
+  const isCreator = job.created_by_id === user.id;
+  const isAdmin = user.role === 'ADMIN';
+  const isScopist = job.scopist_id === user.id;
+
+  if (!isCreator && !isAdmin && !isScopist) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const formatConfig = (job.format_settings as TranscriptFormatConfig | null) ?? null;
+  const buffer = await exportLegalDocx(jobId, formatConfig);
+
+  return new NextResponse(buffer as unknown as BodyInit, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="${job.case_name || 'transcript'}.docx"`,
+      'Content-Length': buffer.length.toString(),
+    },
+  });
+};
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    rateLimit: { limit: 20, windowMs: 60_000 },
+    auditAction: 'DOCX_EXPORT',
+  },
+  GETHandler,
+);

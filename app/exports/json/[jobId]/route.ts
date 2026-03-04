@@ -1,92 +1,87 @@
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getJobById } from '@/lib/supabase/queries/jobs';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { getUserById } from '@/lib/supabase/queries/users';
 
-interface RouteContext {
-  params: Promise<{ jobId: string }>;
-}
-
 /**
  * GET /exports/json/[jobId]
- * Export transcript as JSON
- * Redirects to the main export API with JSON format (or returns JSON directly)
+ * Export transcript as JSON.
+ *
+ * Guard: withRouteProtection — auth + firm_id tenant isolation enforced before handler.
  */
-export async function GET(
-  request: NextRequest,
-  context: RouteContext
-) {
-  try {
-    const currentUser = await getCurrentUser();
+const GETHandler = async (
+  _request: NextRequest,
+  { user, supabase, params }: ProtectedContext,
+): Promise<NextResponse> => {
+  const { jobId } = params;
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, case_name, case_number, deposition_date, created_by_id, scopist_id')
+    .eq('id', jobId)
+    .eq('firm_id', user.firm_id)
+    .single();
 
-    const { jobId } = await context.params;
+  if (jobError || !job) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  }
 
-    const supabase = await createSupabaseServerClient();
+  const transcript = await getTranscriptByJobId(supabase, jobId);
 
-    // Verify job exists and get transcript
-    const job = await getJobById(supabase, jobId);
-    const transcript = await getTranscriptByJobId(supabase, jobId);
-
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    if (!transcript) {
-      return NextResponse.json(
-        { error: 'Transcript not found for this job' },
-        { status: 404 }
-      );
-    }
-
-    // Check access    const isCreator = (job as any).created_by_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-    const isScopist = (job as any).scopist_id === currentUser.id;
-
-    if (!isCreator && !isAdmin && !isScopist) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get created by info
-    const createdBy = await getUserById(supabase, (job as any).created_by_id);
-
-    // Return JSON export
-    const jsonData = {
-      jobId: job.id,
-      caseName: (job as any).case_name || (job as any).caseName,
-      caseNumber: (job as any).case_number || (job as any).caseNumber,
-      depositionDate: (job as any).deposition_date || (job as any).depositionDate,
-      transcript: {
-        id: transcript.id,
-        content: (transcript as any).full_transcript || (transcript as any).fullTranscript || (transcript as any).content,
-        wordCount: (transcript as any).word_count || (transcript as any).wordCount,
-        flaggedWordCount: (transcript as any).flagged_word_count || (transcript as any).flaggedWordCount || 0,
-        status: (transcript as any).status,
-      },
-      reporter: createdBy ? {
-        id: createdBy.id,
-        name: `${createdBy.user_metadata?.firstName || ''} ${createdBy.user_metadata?.lastName || ''}`.trim(),
-      } : null,
-      exportedAt: new Date().toISOString(),
-    };
-
-    return NextResponse.json(jsonData, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="${(job as any).case_name || 'transcript'}-${jobId}.json"`,
-      },
-    });
-  } catch (error) {
-    console.error('Error in JSON export route:', error);
+  if (!transcript) {
     return NextResponse.json(
-      { error: 'Failed to export transcript' },
-      { status: 500 }
+      { error: 'Transcript not found for this job' },
+      { status: 404 },
     );
   }
-}
+
+  const isCreator = job.created_by_id === user.id;
+  const isAdmin = user.role === 'ADMIN';
+  const isScopist = job.scopist_id === user.id;
+
+  if (!isCreator && !isAdmin && !isScopist) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const createdBy = await getUserById(supabase, job.created_by_id);
+
+  const jsonData = {
+    jobId: job.id,
+    caseName: job.case_name,
+    caseNumber: job.case_number,
+    depositionDate: job.deposition_date,
+    transcript: {
+      id: transcript.id,
+      content: transcript.full_transcript ?? transcript.original_transcript ?? transcript.content,
+      wordCount: transcript.word_count,
+      flaggedWordCount: transcript.flagged_word_count ?? 0,
+      status: transcript.status,
+    },
+    reporter: createdBy
+      ? {
+          id: createdBy.id,
+          name: `${createdBy.user_metadata?.firstName ?? ''} ${createdBy.user_metadata?.lastName ?? ''}`.trim(),
+        }
+      : null,
+    exportedAt: new Date().toISOString(),
+  };
+
+  return NextResponse.json(jsonData, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Disposition': `attachment; filename="${job.case_name || 'transcript'}-${jobId}.json"`,
+    },
+  });
+};
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    rateLimit: { limit: 20, windowMs: 60_000 },
+    auditAction: 'JSON_EXPORT',
+  },
+  GETHandler,
+);

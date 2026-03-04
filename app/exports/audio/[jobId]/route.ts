@@ -1,68 +1,61 @@
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getJobById } from '@/lib/supabase/queries/jobs';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { listFilesForJob } from '@/lib/supabase/queries/files';
-
-interface RouteContext {
-  params: Promise<{ jobId: string }>;
-}
 
 /**
  * GET /exports/audio/[jobId]
- * Download audio file for a job
+ * Download audio file for a job.
+ *
+ * Guard: withRouteProtection — auth + firm_id tenant isolation enforced before handler.
  */
-export async function GET(
+const GETHandler = async (
   request: NextRequest,
-  context: RouteContext
-) {
-  try {
-    const currentUser = await getCurrentUser();
+  { user, supabase, params }: ProtectedContext,
+): Promise<NextResponse> => {
+  const { jobId } = params;
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, created_by_id, scopist_id')
+    .eq('id', jobId)
+    .eq('firm_id', user.firm_id)
+    .single();
 
-    const { jobId } = await context.params;
+  if (jobError || !job) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  }
 
-    const supabase = await createSupabaseServerClient();
+  const isCreator = job.created_by_id === user.id;
+  const isAdmin = user.role === 'ADMIN';
+  const isScopist = job.scopist_id === user.id;
 
-    // Verify job exists
-    const job = await getJobById(supabase, jobId);
+  if (!isCreator && !isAdmin && !isScopist) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
+  const files = await listFilesForJob(supabase, jobId);
+  const audioFiles = (files as any[]).filter((f) => f.type === 'AUDIO');
 
-    // Check access    const isCreator = (job as any).created_by_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-    const isScopist = (job as any).scopist_id === currentUser.id;
-
-    if (!isCreator && !isAdmin && !isScopist) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Get audio files
-    const files = await listFilesForJob(supabase, jobId);
-    const audioFiles = files.filter((f: any) => f.type === 'AUDIO');
-
-    if (!audioFiles || audioFiles.length === 0) {
-      return NextResponse.json(
-        { error: 'Audio file not found for this job' },
-        { status: 404 }
-      );
-    }
-
-    const audioFile = audioFiles[0];
-
-    // Redirect to file download endpoint
-    return NextResponse.redirect(new URL(`/api/files/${audioFile.id}/download`, request.url));
-  } catch (error) {
-    console.error('Error in audio export route:', error);
+  if (!audioFiles || audioFiles.length === 0) {
     return NextResponse.json(
-      { error: 'Failed to download audio' },
-      { status: 500 }
+      { error: 'Audio file not found for this job' },
+      { status: 404 },
     );
   }
-}
+
+  return NextResponse.redirect(
+    new URL(`/api/files/${audioFiles[0].id}/download`, request.url),
+  );
+};
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    rateLimit: { limit: 20, windowMs: 60_000 },
+    auditAction: 'AUDIO_DOWNLOAD',
+  },
+  GETHandler,
+);

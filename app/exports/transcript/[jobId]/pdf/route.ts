@@ -1,68 +1,59 @@
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getJobById } from '@/lib/supabase/queries/jobs';
+import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
+import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
-
-interface RouteContext {
-  params: Promise<{ jobId: string }>;
-}
 
 /**
  * GET /exports/transcript/[jobId]/pdf
- * Export transcript as PDF
- * Redirects to the main export API with format parameter
+ * Export transcript as PDF — redirects to the main export API with format parameter.
+ *
+ * Guard: withRouteProtection — auth + firm_id tenant isolation enforced before handler.
  */
-export async function GET(
+const GETHandler = async (
   request: NextRequest,
-  context: RouteContext
-) {
-  try {
-    const currentUser = await getCurrentUser();
+  { user, supabase, params }: ProtectedContext,
+): Promise<NextResponse> => {
+  const { jobId } = params;
 
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, created_by_id, scopist_id')
+    .eq('id', jobId)
+    .eq('firm_id', user.firm_id)
+    .single();
 
-    const { jobId } = await context.params;
+  if (jobError || !job) {
+    return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+  }
 
-    const supabase = await createSupabaseServerClient();
+  const transcript = await getTranscriptByJobId(supabase, jobId);
 
-    // Verify job exists and get transcript ID
-    const job = await getJobById(supabase, jobId, {
-      includeTranscripts: true,
-    });
-
-    if (!job) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    const transcript = await getTranscriptByJobId(supabase, jobId);
-
-    if (!transcript) {
-      return NextResponse.json(
-        { error: 'Transcript not found for this job' },
-        { status: 404 }
-      );
-    }
-
-    // Check access    const isCreator = (job as any).created_by_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-    const isScopist = (job as any).scopist_id === currentUser.id;
-
-    if (!isCreator && !isAdmin && !isScopist) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // Redirect to the main export API with PDF format
-    const exportUrl = `/api/transcripts/${transcript.id}/export?format=pdf&lineNumbers=true`;
-    return NextResponse.redirect(new URL(exportUrl, request.url));
-  } catch (error) {
-    console.error('Error in PDF export route:', error);
+  if (!transcript) {
     return NextResponse.json(
-      { error: 'Failed to export transcript' },
-      { status: 500 }
+      { error: 'Transcript not found for this job' },
+      { status: 404 },
     );
   }
-}
+
+  const isCreator = job.created_by_id === user.id;
+  const isAdmin = user.role === 'ADMIN';
+  const isScopist = job.scopist_id === user.id;
+
+  if (!isCreator && !isAdmin && !isScopist) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const exportUrl = `/api/transcripts/${transcript.id}/export?format=pdf&lineNumbers=true`;
+  return NextResponse.redirect(new URL(exportUrl, request.url));
+};
+
+export const GET = withRouteProtection(
+  {
+    requireAuth: true,
+    enforceTenant: true,
+    rateLimit: { limit: 20, windowMs: 60_000 },
+    auditAction: 'PDF_EXPORT',
+  },
+  GETHandler,
+);
