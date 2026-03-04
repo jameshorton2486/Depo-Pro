@@ -169,8 +169,9 @@ const POSTHandler = async (
     };
 
     // Update transcription with review session stored in flagged_segments
+    // Note: content_json is not a real DB column — corrections persist via
+    // transcription_edits table (inserted below) and flagged_words table.
     await updateTranscript(supabase, transcriptionId, {
-      content_json: updatedWords as any,
       flagged_word_count: remainingFlagged,
       flagged_segments: mergeReviewSession(transcription.flagged_segments, reviewSession) as any,
     });

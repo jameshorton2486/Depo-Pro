@@ -266,6 +266,60 @@ function buildPdf(
  * Generate a legal-grade PDF transcript from a job's transcription data.
  * Falls back to plain text layout if no format config is provided.
  */
+/**
+ * Fetch corrections from transcription_edits and flagged_words tables,
+ * then apply them to a flat transcript text in priority order.
+ */
+async function applyPdfCorrections(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  transcriptionId: string,
+  rawText: string,
+): Promise<string> {
+  const tokens = rawText.split(/(\s+)/);
+  const wordTokens: { index: number; tokenIndex: number }[] = [];
+  tokens.forEach((tok, i) => {
+    if (tok.trim().length > 0) {
+      wordTokens.push({ index: wordTokens.length, tokenIndex: i });
+    }
+  });
+  if (wordTokens.length === 0) return rawText;
+
+  const { data: edits } = await supabase
+    .from('transcription_edits')
+    .select('word_index, edited_text, new_value, metadata')
+    .eq('transcription_id', transcriptionId)
+    .order('created_at', { ascending: true });
+
+  if (edits) {
+    for (const edit of edits) {
+      const correctedWord = edit.new_value || edit.edited_text;
+      if (!correctedWord) continue;
+      const wordIndex = typeof edit.word_index === 'number'
+        ? edit.word_index
+        : (edit.metadata as { wordIndex?: number } | null)?.wordIndex;
+      if (typeof wordIndex !== 'number' || wordIndex < 0 || wordIndex >= wordTokens.length) continue;
+      tokens[wordTokens[wordIndex].tokenIndex] = correctedWord;
+    }
+  }
+
+  const { data: flaggedRows } = await supabase
+    .from('flagged_words')
+    .select('word_index, corrected_word')
+    .eq('transcription_id', transcriptionId)
+    .in('status', ['CORRECTED', 'CONFIRMED'])
+    .not('corrected_word', 'is', null);
+
+  if (flaggedRows) {
+    for (const fw of flaggedRows) {
+      if (typeof fw.word_index !== 'number' || fw.word_index < 0 || fw.word_index >= wordTokens.length) continue;
+      if (!fw.corrected_word) continue;
+      tokens[wordTokens[fw.word_index].tokenIndex] = fw.corrected_word;
+    }
+  }
+
+  return tokens.join('');
+}
+
 export async function exportLegalPdf(
   jobId: string,
   formatConfig: TranscriptFormatConfig | null,
@@ -274,13 +328,20 @@ export async function exportLegalPdf(
 
   const { data: transcription } = await supabase
     .from('transcriptions')
-    .select('segments, full_transcript, original_transcript')
+    .select('id, segments, full_transcript, original_transcript')
     .eq('job_id', jobId)
     .single();
 
   if (!transcription) {
     throw new Error('Transcription not found');
   }
+
+  // Apply corrections from transcription_edits + flagged_words
+  const correctedText = await applyPdfCorrections(
+    supabase,
+    transcription.id,
+    transcription.full_transcript || transcription.original_transcript || '',
+  );
 
   // Resolve format config — use defaults when none provided
   const resolvedConfig: TranscriptFormatConfig = formatConfig && formatConfig.speakerMappings.length > 0
@@ -302,11 +363,10 @@ export async function exportLegalPdf(
   // Fall back to plain-text lines when there are no structured segments
   let lines: RenderedLine[];
   if (processedSegments.length > 0) {
+    // TODO P1: apply flagged_words corrections to segment text
     lines = renderSegmentsToLines(processedSegments, resolvedConfig);
   } else {
-    const rawText: string =
-      transcription.full_transcript || transcription.original_transcript || '';
-    const textLines = rawText.split('\n').filter(Boolean);
+    const textLines = correctedText.split('\n').filter(Boolean);
     lines = textLines.map((t, i) => ({
       text: `${String(i + 1).padStart(2)}   ${t}`,
       bold: false,
@@ -356,11 +416,18 @@ export async function exportLegalPdfWithMeta(
     const supabase2 = await createSupabaseServerClient();
     const { data: transcription } = await supabase2
       .from('transcriptions')
-      .select('segments, full_transcript, original_transcript')
+      .select('id, segments, full_transcript, original_transcript')
       .eq('job_id', transcript.job_id)
       .single();
 
     if (transcription) {
+      // Apply corrections to the meta-aware export path too
+      const correctedMeta = await applyPdfCorrections(
+        supabase2,
+        transcription.id,
+        transcription.full_transcript || transcription.original_transcript || '',
+      );
+
       const rawSegments = toTranscriptSegments(transcription.segments);
       const processedSegments = postProcessSegments(
         rawSegments,
@@ -370,7 +437,7 @@ export async function exportLegalPdfWithMeta(
 
       const lines = processedSegments.length > 0
         ? renderSegmentsToLines(processedSegments, resolvedConfig)
-        : (transcription.full_transcript || '').split('\n').filter(Boolean).map((t: string, i: number) => ({
+        : correctedMeta.split('\n').filter(Boolean).map((t: string, i: number) => ({
             text: `${String(i + 1).padStart(2)}   ${t}`,
             bold: false,
           }));

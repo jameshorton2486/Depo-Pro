@@ -179,15 +179,6 @@ const PATCHHandler = withRequestLogging(async (
     job_id: existingTranscript.job_id,
     status: existingTranscript.status || 'DRAFT',
     full_transcript: content,
-    content_json: {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: content }],
-        },
-      ],
-    },
     word_count: content.split(/\s+/).length,
     created_by_id: user.id,
   });
@@ -214,9 +205,9 @@ const PUTHandler = withRequestLogging(async (
   }
 
   const data = await request.json();
-  const { content, contentJson } = data;
+  const { content } = data;
 
-  if (!content && !contentJson) {
+  if (!content) {
     return NextResponse.json({ error: 'Missing content' }, { status: 400 });
   }
 
@@ -250,7 +241,6 @@ const PUTHandler = withRequestLogging(async (
 
   const updatedTranscript = await updateTranscript(supabase, transcriptId, {
     full_transcript: content || undefined,
-    content_json: contentJson || undefined,
   });
 
   return NextResponse.json({

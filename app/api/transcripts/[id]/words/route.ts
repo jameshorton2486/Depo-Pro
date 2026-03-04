@@ -280,10 +280,10 @@ const PATCHHandler = async (
       audioPosition,
     };
 
-    // Update transcription (only words and review data, not base text)
-    // Store review session in flagged_segments for resume functionality
+    // Update transcription review metadata in flagged_segments for resume.
+    // Note: content_json is not a real DB column — word corrections persist
+    // via transcription_edits table and flagged_words table.
     await updateTranscript(supabase, transcriptionId, {
-      content_json: updatedWords as any,
       flagged_word_count: remainingCount,
       flagged_segments: mergeReviewSession(transcription.flagged_segments, reviewSession) as any,
     });
