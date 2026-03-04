@@ -127,6 +127,9 @@ debug*.ps1
 !/MANUAL_STEPS.md
 !/CHANGELOG.md
 !/PHASE_B_HARDENING_MVP_PREP.md
+!/INFRASTRUCTURE_STABILITY_REPORT.md
+!/go-no-go-checklist.sh
+!/go-no-go-manual-checklist.md
 
 # =============================================================================
 # Supabase temp artifacts
