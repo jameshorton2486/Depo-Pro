@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { CommandPalette } from '@/components/command/command-palette';
@@ -33,6 +34,7 @@ export default function RootLayout({
           {children}
           <Toaster position="top-right" richColors />
           <CommandPalette />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

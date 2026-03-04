@@ -106,6 +106,7 @@
     "@types/nodemailer": "^7.0.9",
     "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.16.0",
+    "@vercel/analytics": "^1.6.1",
     "archiver": "^4.0.2",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.63.0",
