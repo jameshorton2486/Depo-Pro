@@ -130,6 +130,10 @@ debug*.ps1
 !/INFRASTRUCTURE_STABILITY_REPORT.md
 !/go-no-go-checklist.sh
 !/go-no-go-manual-checklist.md
+!/AI_AUTONOMOUS_RULES.md
+!/MASTER_CONTROL.md
+!/AI_MASTER_ORCHESTRATOR.md
+!/BETA_FREEZE.md
 
 # =============================================================================
 # Supabase temp artifacts
