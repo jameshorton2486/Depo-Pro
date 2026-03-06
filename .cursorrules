@@ -1,0 +1,19 @@
+Depo-Pro Cursor Rules
+
+Architecture documentation:
+docs/DEPO_AUTH_ARCHITECTURE.md
+
+Security rules:
+
+* Supabase SSR auth only
+* middleware.ts required
+* No NextAuth
+
+Multi-tenancy:
+All queries must include organization_id.
+
+Secrets:
+Never expose SUPABASE_SERVICE_ROLE_KEY.
+
+TypeScript:
+Strict mode required.
