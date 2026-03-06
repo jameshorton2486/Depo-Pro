@@ -1,86 +1,302 @@
-# AI MASTER ORCHESTRATOR — Depo-Pro
-# Version: 1.0
-# Status: ACTIVE
+# Depo-Pro AI Master Orchestrator
 
-## Purpose
+This file governs all AI agents interacting with the Depo-Pro repository.
 
-This document tells Claude Code how to behave as an autonomous agent
-on the Depo-Pro codebase. Read it at the start of every session.
+**Agents include:**
 
-## Session Protocol
+- Claude Code
+- Codex CLI
+- Cursor AI
+- VS Code Copilot
+- Automated build agents
 
-Every Claude Code session on this project follows this exact sequence:
+All AI agents must follow the rules defined here before modifying the repository.
 
-  1. Read AI_AUTONOMOUS_RULES.md
-  2. Read MASTER_CONTROL.md
-  3. Read AI_MASTER_ORCHESTRATOR.md (this file)
-  4. Read BETA_FREEZE.md
-  5. Run bash scripts/repo-audit.sh
-  6. Output confirmation:
-     "Bootstrap complete. Constraints loaded. Beta freeze active.
-      Ready for task."
-  7. Read the task prompt provided by James
-  8. Execute the task within the defined scope
-  9. Append session log to ai_logs/change_log.md
-  10. Output the task's final status block
+---
 
-## Decision-Making Rules
+## 1. Project Overview
 
-James has explicitly instructed: make decisions independently.
-Do NOT present multiple options and ask James to choose.
-Pick the safest, most production-conservative approach and execute it.
+**Project:** Depo-Pro
 
-Exception: if a decision involves deleting production data,
-dropping database tables, or changing RLS policies in a way that
-could lock users out — STOP and ask James before proceeding.
+**Purpose:**
 
-## Commit Discipline
+Depo-Pro is a legal transcription SaaS platform that:
 
-- One commit per numbered task or pass
-- Commit message format: "type: description (scope)"
-  Examples:
-    "fix: enforce firm_id filter on export routes (app/exports/*)"
-    "feat: add ExportButton component to review page"
-    "test: add flagged word correction tests"
-    "chore: delete old-prisma-backup dead code (~2,000 lines)"
-    "docs: add beta readiness gate report"
-- Run npm run build before every push
-- Run npx tsc --noEmit after every file change
+- converts deposition audio to transcripts
+- allows scopists to review and correct transcripts
+- exports finalized transcripts for legal use
 
-## Change Log Protocol
+**Technology stack:**
 
-At the end of every session, append to ai_logs/change_log.md:
+- Next.js (App Router)
+- Supabase Auth
+- Supabase Postgres
+- Supabase Storage
+- Supabase RLS
+- Deepgram speech-to-text
+- TypeScript strict mode
 
-  ### Task [N] — [Task Name]
-  Date: [DATE]
-  Tool: Claude Code
+---
 
-  Files created: [list]
-  Files modified: [list]
-  Files deleted: [list]
-  Files NOT touched: [list frozen files confirmed untouched]
-  Commits: [list commit hashes]
-  Final build: [PASS | FAIL]
-  Beta freeze still active: YES
+## 2. Architecture Documents
 
-## Runaway Prevention
+AI agents must read these documents before performing tasks:
 
-Claude Code must NOT:
-  - Execute work it decides would be "helpful" beyond the task scope
-  - Modify files not listed in the task's PERMITTED CHANGES section
-  - Combine multiple tasks into one session without explicit instruction
-  - Create new branches (work on main unless James says otherwise)
-  - Install packages not already in package.json
+- **docs/DEPO_AUTH_ARCHITECTURE.md**
 
-If Claude Code finds a bug outside the task scope:
-  Document it in the session log as a deferred item.
-  Do NOT fix it in the current session.
+Future architecture docs may include:
 
-## Windows Path Note
+- docs/TRANSCRIPTION_ARCHITECTURE.md
+- docs/EDITOR_ARCHITECTURE.md
+- docs/STREAMING_ARCHITECTURE.md
 
-James works on Windows 11. File downloads go to:
-  C:/Users/james/Downloads/
+---
 
-When James references a file path, interpret it as a Windows path.
-When Claude Code runs shell commands, use forward slashes or PowerShell
-syntax as appropriate for the environment.
+## 3. Authentication Architecture
+
+Depo-Pro uses Supabase SSR authentication.
+
+**Requirements:**
+
+- middleware.ts refreshes session cookies
+- Supabase sessions stored in cookies
+- OAuth callbacks handled in /auth/callback
+- No NextAuth or alternate auth frameworks allowed
+
+AI agents must never replace the auth system.
+
+---
+
+## 4. Multi-Tenant Security
+
+Depo-Pro is a multi-tenant application.
+
+Every database query must include:
+
+- **organization_id** (or firm_id where applicable)
+
+Example:
+
+```sql
+SELECT * FROM transcripts
+WHERE organization_id = auth.jwt().org_id
+```
+
+AI agents must never write queries without tenant filtering.
+
+---
+
+## 5. Database Rules
+
+The following rules apply to all database interactions.
+
+**Required:**
+
+- Supabase RLS must be enabled
+- organization_id filtering required
+- user_id filtering required where applicable
+
+**Forbidden:**
+
+- raw SQL queries without tenant filtering
+- exposing service role keys in frontend
+- bypassing RLS policies
+
+---
+
+## 6. Secrets and Environment Variables
+
+**Allowed in client code:**
+
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- NEXT_PUBLIC_SITE_URL
+
+**Server-only secrets:**
+
+- SUPABASE_SERVICE_ROLE_KEY
+- DEEPGRAM_API_KEY
+- CRON_SECRET
+
+AI agents must never expose server secrets in frontend code.
+
+---
+
+## 7. TypeScript Standards
+
+Depo-Pro uses strict TypeScript rules.
+
+**Requirements:**
+
+- TypeScript strict mode enabled
+- no implicit any
+- async functions must define return types
+- API routes must validate inputs
+
+**Validation command:**
+
+```bash
+npx tsc --noEmit
+```
+
+---
+
+## 8. Route Protection
+
+Protected routes must be guarded by:
+
+- **middleware.ts**
+- OR **withRouteProtection()**
+
+**Protected examples:**
+
+- /dashboard
+- /jobs
+- /transcripts
+- /admin
+
+**Public routes:**
+
+- /login
+- /register
+- /forgot-password
+- /reset-password
+- /auth/*
+
+---
+
+## 9. API Route Security
+
+All API routes must:
+
+- verify authenticated user
+- enforce organization_id isolation
+- validate request payloads
+- return typed responses
+
+---
+
+## 10. AI Development Workflow
+
+AI agents must follow this workflow when making changes.
+
+| Step | Action |
+|------|--------|
+| 1 | Read architecture documentation |
+| 2 | Analyze the task |
+| 3 | Identify files that need modification |
+| 4 | Make minimal changes |
+| 5 | Run TypeScript validation |
+| 6 | Run build validation |
+
+**Commands:**
+
+```bash
+npx tsc --noEmit
+npm run build
+```
+
+---
+
+## 11. Forbidden AI Actions
+
+AI agents must not:
+
+- modify database schema without approval
+- remove authentication middleware
+- expose service role keys
+- disable TypeScript strict mode
+- bypass tenant filtering
+- introduce new auth systems
+
+---
+
+## 12. AI Commit Rules
+
+AI commits must:
+
+- modify minimal files
+- include descriptive commit messages
+- avoid unrelated refactoring
+
+**Example commit message:**
+
+```
+fix: ensure Supabase middleware refreshes session cookies
+```
+
+---
+
+## 13. High-Risk Areas
+
+AI agents must be cautious when modifying:
+
+- middleware.ts
+- lib/supabase/*
+- auth callback routes
+- database queries
+
+These areas can break authentication or tenant isolation.
+
+---
+
+## 14. AI Task Categories
+
+AI agents may perform tasks in these categories:
+
+- Architecture review
+- Security audit
+- API implementation
+- Transcription pipeline development
+- Editor UI improvements
+- Export engine improvements
+
+---
+
+## 15. Repository Health Commands
+
+Run these commands before closing an AI session.
+
+**TypeScript check:**
+
+```bash
+npx tsc --noEmit
+```
+
+**Lint:**
+
+```bash
+npm run lint
+```
+
+**Build:**
+
+```bash
+npm run build
+```
+
+---
+
+## 16. Future System Components
+
+Planned architecture components include:
+
+- Deepgram transcription worker
+- Transcript editor UI
+- Zoom live transcription engine
+- DOCX transcript export system
+
+These systems must integrate with the existing architecture.
+
+---
+
+## 17. AI Behavior Policy
+
+AI agents must:
+
+- prioritize stability
+- avoid breaking architecture
+- follow repository rules
+- document significant changes
+
+If uncertain, AI agents must request clarification rather than guessing.
