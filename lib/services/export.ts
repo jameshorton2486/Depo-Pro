@@ -158,11 +158,21 @@ export async function exportLegalDocx(
     );
   }
 
-  // TODO P1: apply flagged_words corrections to segment text
+  // Apply corrections to segment text using the corrected flat transcript.
+  // correctedText has all edits applied; redistribute words back to segments.
   const resolvedConfig = normalizeFormatConfig(formatConfig);
   const rawSegments = toTranscriptSegments(transcription.segments);
+  const correctedWords = correctedText.split(/\s+/).filter(Boolean);
+  let wordOffset = 0;
+  const correctedSegments = rawSegments.map((seg) => {
+    const segWordCount = seg.text.split(/\s+/).filter(Boolean).length;
+    const segWords = correctedWords.slice(wordOffset, wordOffset + segWordCount);
+    wordOffset += segWordCount;
+    return { ...seg, text: segWords.join(' ') || seg.text };
+  });
+
   const processedSegments = postProcessSegments(
-    rawSegments,
+    correctedSegments,
     resolvedConfig.processingRules,
     resolvedConfig.formatOptions.sentenceSpaces,
   );
