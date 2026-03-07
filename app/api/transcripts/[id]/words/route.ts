@@ -85,6 +85,11 @@ const PATCHHandler = async (
 
     const transcriptFirmId = (transcription as { job?: { firm_id?: string | null } }).job?.firm_id ?? null;
     if (userFirmId && transcriptFirmId && userFirmId !== transcriptFirmId) {
+      console.warn('[TENANT_VIOLATION]', {
+        userId: user.id,
+        transcriptFirmId,
+        userFirmId,
+      });
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -364,6 +369,11 @@ const GETHandler = async (
 
     const transcriptFirmId = (transcription as { job?: { firm_id?: string | null } }).job?.firm_id ?? null;
     if (userFirmId && transcriptFirmId && userFirmId !== transcriptFirmId) {
+      console.warn('[TENANT_VIOLATION]', {
+        userId: user.id,
+        transcriptFirmId,
+        userFirmId,
+      });
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

@@ -98,6 +98,7 @@ const GETHandler = async (
   context: ProtectedContext,
 ) => {
   const startTime = performance.now();
+  let transcriptId = '';
   try {
     const user = (context as any)?.user ?? await getCurrentUser();
     if (!user) {
@@ -105,7 +106,10 @@ const GETHandler = async (
     }
     const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
     const params = (context as any)?.params;
-    const transcriptId = params?.id;
+    transcriptId = params?.id ?? '';
+    if (!transcriptId) {
+      return NextResponse.json({ error: 'Transcript ID is required' }, { status: 400 });
+    }
 
     // Rate limit check
     const rateLimit = checkUserRateLimit(user.id, 'TRANSCRIPT_EXPORT');
@@ -355,6 +359,7 @@ const GETHandler = async (
       },
     });
   } catch (error) {
+    console.error('[EXPORT_ERROR]', transcriptId, error);
     captureError(error, { route: 'GET /api/transcripts/[id]/export' });
     return NextResponse.json({ error: 'Failed to export transcript' }, { status: 500 });
   } finally {

@@ -50,6 +50,11 @@ const POSTHandler = async (
     : transcriptFirmId?.firm_id ?? null;
 
   if (userFirmId && resolvedTranscriptFirmId && userFirmId !== resolvedTranscriptFirmId) {
+    console.warn('[TENANT_VIOLATION]', {
+      userId: user.id,
+      transcriptFirmId: resolvedTranscriptFirmId,
+      userFirmId,
+    });
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
