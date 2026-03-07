@@ -57,23 +57,26 @@ const nextConfig: NextConfig = {
 
   // Security headers (Security Audit D.10)
   async headers() {
+    const csp = [
+      `default-src 'self'`,
+      `script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.vercel.live https://*.vercel-scripts.com`,
+      `script-src-elem 'self' 'unsafe-inline' https://vercel.live https://*.vercel.live https://*.vercel-scripts.com`,
+      `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live wss://ws-us3.pusher.com https://*.pusher.com`,
+      `style-src 'self' 'unsafe-inline' https://vercel.live`,
+      `img-src 'self' data: blob: https://*.supabase.co https://vercel.live`,
+      `frame-src 'self' https://vercel.live`,
+      `font-src 'self' data: https://vercel.live`,
+      `media-src 'self' blob: https://*.supabase.co`,
+      `worker-src 'self' blob:`,
+    ].join('; ');
+
     return [
       {
         source: '/(.*)',
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co https://api.deepgram.com https://api.anthropic.com",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; '),
+            value: csp,
           },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
@@ -94,5 +97,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
 

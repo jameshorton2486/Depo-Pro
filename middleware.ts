@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = [
 
 export async function middleware(request: NextRequest) {
   const { supabase, supabaseResponse } = createMiddlewareClient(request);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
 
   // CRITICAL: Always call getUser() to refresh the session token.
   // Never skip this call  it keeps the session cookie alive.
@@ -28,7 +29,7 @@ export async function middleware(request: NextRequest) {
   );
 
   if (!user && !isPublicRoute) {
-    const loginUrl = new URL('/login', request.url);
+    const loginUrl = new URL('/login', siteUrl);
     loginUrl.searchParams.set('redirectTo', pathname);
     return NextResponse.redirect(loginUrl);
   }

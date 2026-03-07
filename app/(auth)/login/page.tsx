@@ -8,13 +8,13 @@
 // =============================================================================
 
 import { useState, Suspense, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
 import { loginSchema, type LoginInput } from '@/lib/validations/user';
-import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { parseAuthError } from '@/lib/supabase/parse-auth-error';
 
 import { Button } from '@/components/ui/button';
@@ -28,13 +28,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // Login Form Component
 // -----------------------------------------------------------------------------
 
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Check for error/message from URL params (auth callback redirects)
@@ -44,6 +45,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(errorParam);
   const [successMessage, setSuccessMessage] = useState<string | null>(messageParam);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showResendConfirmation, setShowResendConfirmation] = useState(false);
   const [lastAttemptedEmail, setLastAttemptedEmail] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState(false);
@@ -70,7 +72,7 @@ function LoginForm() {
 
     try {
       // Get client lazily - ensures env vars are loaded
-      const supabase = getSupabaseBrowserClient();
+      const supabase = createSupabaseBrowserClient();
 
       const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
@@ -103,17 +105,18 @@ function LoginForm() {
         return;
       }
 
-      // Get redirect URL from params or default to dashboard
-      const callbackUrl =
-        searchParams.get('redirectTo') ||
-        searchParams.get('callbackUrl') ||
-        '/dashboard';
+      const redirectTo = searchParams.get('redirectTo');
+      const safePath =
+        redirectTo?.startsWith('/') &&
+        !redirectTo.startsWith('//') &&
+        !redirectTo.includes('://')
+          ? redirectTo
+          : '/dashboard';
 
       // Small delay to ensure cookies are set before redirect
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Use window.location for hard redirect to ensure middleware sees new session
-      window.location.href = callbackUrl;
+      router.push(safePath);
     } catch (err) {
       console.error('[Login] Unexpected error:', err);
       
@@ -126,7 +129,7 @@ function LoginForm() {
       
       setIsLoading(false);
     }
-  }, [searchParams]);
+  }, [router, searchParams]);
 
   // ---------------------------------------------------------------------------
   // Resend Confirmation Email
@@ -140,7 +143,7 @@ function LoginForm() {
     setResendSuccess(false);
 
     try {
-      const supabase = getSupabaseBrowserClient();
+      const supabase = createSupabaseBrowserClient();
 
       const { error: resendError } = await supabase.auth.resend({
         type: 'signup',
@@ -175,7 +178,7 @@ function LoginForm() {
           Welcome to Depo-Pro
         </CardTitle>
         <CardDescription className="text-center">
-          Sign in to your account to continue
+          The complete platform for the deposition process — from audio to certified transcript.
         </CardDescription>
       </CardHeader>
 
@@ -258,14 +261,25 @@ function LoginForm() {
           {/* Password Field */}
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              disabled={isLoading}
-              {...register('password')}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                disabled={isLoading}
+                {...register('password')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {errors.password && (
               <p className="text-sm text-red-600">{errors.password.message}</p>
             )}
@@ -309,6 +323,9 @@ function LoginForm() {
           </div>
         </CardFooter>
       </form>
+      <p className="text-xs text-center text-slate-500 mt-1 px-6 pb-4">
+        Secure access — all transcripts are encrypted and access-controlled.
+      </p>
     </Card>
   );
 }
@@ -343,7 +360,7 @@ function LoginSkeleton() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center px-4">
       <Suspense fallback={<LoginSkeleton />}>
         <LoginForm />
       </Suspense>

@@ -217,24 +217,24 @@ export function createLoggedAuthClient(supabase: SupabaseClient) {
       }
     },
 
-    async getSession() {
+    async getUser() {
       try {
-        const result = await originalAuth.getSession();
+        const result = await originalAuth.getUser();
 
         if (result.error) {
-          enhancedLogger.auth.warn('Get session failed', {
+          enhancedLogger.auth.warn('Get user failed', {
             error: parseAuthError(result.error).technicalDetails,
           });
         } else {
-          enhancedLogger.auth.debug('Session retrieved', {
-            hasSession: !!result.data.session,
-            userId: result.data.session?.user?.id,
+          enhancedLogger.auth.debug('User retrieved', {
+            hasUser: !!result.data.user,
+            userId: result.data.user?.id,
           });
         }
 
         return result;
       } catch (error) {
-        enhancedLogger.auth.error('Get session exception', {
+        enhancedLogger.auth.error('Get user exception', {
           error: parseAuthError(error).technicalDetails,
         });
         throw error;
@@ -280,4 +280,3 @@ export function createLoggedAuthClient(supabase: SupabaseClient) {
     },
   };
 }
-
