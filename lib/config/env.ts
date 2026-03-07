@@ -159,15 +159,15 @@ export function getOptionalEnv(key: string, defaultValue: string): string {
 export function printEnvSummary(): void {
   if (process.env.NODE_ENV !== 'development') return;
 
-  console.log('\n═══════════════════════════════════════════════');
-  console.log('  ENVIRONMENT SUMMARY');
-  console.log('═══════════════════════════════════════════════');
-  console.log(`Environment: ${getEnvironment()}`);
-  console.log(`Node Version: ${process.version}`);
-  console.log(`\nSupabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
-  console.log(`Supabase Anon Key: ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.substring(0, 20)}...`);
-  console.log(`Service Role Key: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing'}`);
-  console.log(`Deepgram API Key: ${process.env.DEEPGRAM_API_KEY ? '✓ Set' : '✗ Missing'}`);
-  console.log(`Anthropic API Key: ${process.env.ANTHROPIC_API_KEY ? '✓ Set' : '✗ Missing'}`);
-  console.log('═══════════════════════════════════════════════\n');
+  console.warn('\n═══════════════════════════════════════════════');
+  console.warn('  ENVIRONMENT SUMMARY');
+  console.warn('═══════════════════════════════════════════════');
+  console.warn(`Environment: ${getEnvironment()}`);
+  console.warn(`Node Version: ${process.version}`);
+  console.warn(`\nSupabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
+  console.warn(`Supabase Anon Key: ${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.substring(0, 20)}...`);
+  console.warn(`Service Role Key: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ Missing'}`);
+  console.warn(`Deepgram API Key: ${process.env.DEEPGRAM_API_KEY ? '✓ Set' : '✗ Missing'}`);
+  console.warn(`Anthropic API Key: ${process.env.ANTHROPIC_API_KEY ? '✓ Set' : '✗ Missing'}`);
+  console.warn('═══════════════════════════════════════════════\n');
 }

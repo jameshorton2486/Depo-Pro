@@ -91,7 +91,7 @@ const GETHandler = async (request: NextRequest, context?: ProtectedContext) => {
     );
   } finally {
     const duration = Math.round(performance.now() - startTime);
-    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
+    console.warn(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 };
 
@@ -169,7 +169,7 @@ const POSTHandler = async (request: NextRequest, context?: ProtectedContext) => 
     );
   } finally {
     const duration = Math.round(performance.now() - startTime);
-    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
+    console.warn(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 };
 

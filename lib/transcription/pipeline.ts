@@ -71,7 +71,7 @@ export async function processTranscriptionJob(
       throw new Error(`Audio validation failed: ${validation.error}`);
     }
 
-    console.log(`Audio validated: ${validation.duration}s, ${validation.format}, ${validation.channels} channels`);
+    console.warn(`Audio validated: ${validation.duration}s, ${validation.format}, ${validation.channels} channels`);
     if (validation.warning) {
       console.warn(`[pipeline] Audio warning for job ${jobId}: ${validation.warning}`);
     }
@@ -82,13 +82,13 @@ export async function processTranscriptionJob(
     const shouldNormalize = await needsNormalization(audioFilePath);
 
     if (shouldNormalize) {
-      console.log('Normalizing audio to 16kHz mono WAV for high-accuracy transcription...');
+      console.warn('Normalizing audio to 16kHz mono WAV for high-accuracy transcription...');
       const preprocessResult = await normalizeAudioForTranscription(audioFilePath);
       normalizedPath = preprocessResult.outputPath;
       audioFilePath = normalizedPath;
-      console.log(`Audio normalized in ${preprocessResult.processingTimeMs}ms`);
+      console.warn(`Audio normalized in ${preprocessResult.processingTimeMs}ms`);
     } else {
-      console.log('Audio already in optimal format, skipping normalization');
+      console.warn('Audio already in optimal format, skipping normalization');
     }
 
     // Update job with audio metadata
@@ -104,7 +104,7 @@ export async function processTranscriptionJob(
       await updateTranscriptionStatus(jobId, 'CHUNKING', 5);
       chunks = await chunkAudio(audioFilePath, DEFAULT_CHUNKING_CONFIG);
       await createChunkRecords(jobId, chunks);
-      console.log(`Audio chunked into ${chunks.length} pieces`);
+      console.warn(`Audio chunked into ${chunks.length} pieces`);
     } else {
       // Single file — treat as one "chunk"
       chunks = [{
@@ -115,7 +115,7 @@ export async function processTranscriptionJob(
         overlapSeconds: 0,
         durationSeconds: validation.duration,
       }];
-      console.log('Audio fits in single chunk');
+      console.warn('Audio fits in single chunk');
     }
 
     const totalChunks = chunks.length;
@@ -131,12 +131,12 @@ export async function processTranscriptionJob(
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
 
-      console.log(`Processing chunk ${i + 1}/${totalChunks}...`);
+      console.warn(`Processing chunk ${i + 1}/${totalChunks}...`);
 
       // RESUMABILITY CHECK: skip already-completed chunks
       const existingResult = await getChunkResult(jobId, i);
       if (existingResult) {
-        console.log(`  Chunk ${i}/${totalChunks} already complete, skipping`);
+        console.warn(`  Chunk ${i}/${totalChunks} already complete, skipping`);
         processedChunks.push({
           index: i,
           result: existingResult,
@@ -169,7 +169,7 @@ export async function processTranscriptionJob(
         // Update progress — chunkProgress is 0-100 per-chunk, overall maps to 10-70%
         const chunkProgress = Math.round(((i + 1) / totalChunks) * 100);
         const progress = 10 + Math.round(((i + 1) / totalChunks) * 60); // 10-70%
-        console.log(`[pipeline] Job ${jobId}: Chunk ${i + 1}/${totalChunks} complete (${chunkProgress}%)`);
+        console.warn(`[pipeline] Job ${jobId}: Chunk ${i + 1}/${totalChunks} complete (${chunkProgress}%)`);
         await updateTranscriptionStatus(jobId, 'TRANSCRIBING', progress, i + 1, totalChunks);
 
       } catch (chunkError: any) {
@@ -242,7 +242,7 @@ export async function processTranscriptionJob(
       };
     }
 
-    console.log(`Reassembly complete: ${finalResult.words.length} words total`);
+    console.warn(`Reassembly complete: ${finalResult.words.length} words total`);
 
     // --- STAGE 4.5: POST-PROCESSING ---
     // Apply text cleanup rules while preserving original transcript verbatim.
@@ -301,7 +301,7 @@ export async function processTranscriptionJob(
     // Log audit event
     await logAuditEvent(jobId, 'TRANSCRIPTION_COMPLETED');
 
-    console.log(`Pipeline complete for job ${jobId}`);
+    console.warn(`Pipeline complete for job ${jobId}`);
 
   } catch (error: any) {
     console.error(`Pipeline failed for job ${jobId}:`, error.message);
@@ -356,7 +356,7 @@ async function downloadAudioFromStorage(audioFileUrl: string, tempDir: string): 
       storagePath = audioFileUrl;
     }
 
-    console.log(`Downloading audio from storage: ${storagePath}`);
+    console.warn(`Downloading audio from storage: ${storagePath}`);
 
     const { data, error } = await supabase.storage
       .from('depo-audio')
@@ -380,7 +380,7 @@ async function downloadAudioFromStorage(audioFileUrl: string, tempDir: string): 
     // Write to temp file
     fs.writeFileSync(outputPath, buffer);
 
-    console.log(`Audio downloaded: ${outputPath} (${buffer.length} bytes)`);
+    console.warn(`Audio downloaded: ${outputPath} (${buffer.length} bytes)`);
 
     return outputPath;
   } catch (error: any) {
@@ -427,7 +427,7 @@ async function updateTranscriptionStatus(
         });
     }
 
-    console.log(`  Status: ${status} (${progress}%)`);
+    console.warn(`  Status: ${status} (${progress}%)`);
   } catch (error: any) {
     console.error('Failed to update transcription status:', error.message);
   }
@@ -480,7 +480,7 @@ async function createChunkRecords(jobId: string, chunks: AudioChunk[]): Promise<
     .from('transcription_chunks')
     .insert(chunkRecords);
 
-  console.log(`Created ${chunkRecords.length} chunk records`);
+  console.warn(`Created ${chunkRecords.length} chunk records`);
 }
 
 async function getChunkResult(jobId: string, chunkIndex: number): Promise<DeepgramResult | null> {
@@ -591,7 +591,7 @@ async function getVocabularyKeywords(jobId: string): Promise<string[]> {
       // Table doesn't exist
     }
 
-    console.log(`Loaded ${keywords.length} vocabulary keywords`);
+    console.warn(`Loaded ${keywords.length} vocabulary keywords`);
     return keywords;
   } catch {
     return [];
@@ -656,7 +656,7 @@ async function extractFlaggedWords(
       // Fall back to manual extraction
       await extractFlaggedWordsManually(transcription.id, words, confidenceThreshold);
     } else {
-      console.log('Flagged words extracted via SQL function');
+      console.warn('Flagged words extracted via SQL function');
     }
   } catch (error: any) {
     console.error('Failed to extract flagged words:', error.message);
@@ -674,11 +674,11 @@ async function extractFlaggedWordsManually(
   const flaggedWords = words.filter(w => w.confidence < confidenceThreshold);
 
   if (flaggedWords.length === 0) {
-    console.log('No flagged words found');
+    console.warn('No flagged words found');
     return;
   }
 
-  console.log(`Extracting ${flaggedWords.length} flagged words manually...`);
+  console.warn(`Extracting ${flaggedWords.length} flagged words manually...`);
 
   const records = flaggedWords.map((word, idx) => {
     // Get context (5 words before and after)
@@ -715,7 +715,7 @@ async function extractFlaggedWordsManually(
     await supabase.from('flagged_words').insert(batch);
   }
 
-  console.log(`Inserted ${records.length} flagged words`);
+  console.warn(`Inserted ${records.length} flagged words`);
 }
 
 async function updateJobStatus(jobId: string, status: string): Promise<void> {
@@ -840,7 +840,7 @@ async function calculateAndStoreAnalytics(
       })
       .eq('job_id', jobId);
 
-    console.log(`Analytics stored: Risk Score = ${riskScore.score} (${riskScore.label}), Flagged = ${analytics.flagged_percentage}%`);
+    console.warn(`Analytics stored: Risk Score = ${riskScore.score} (${riskScore.label}), Flagged = ${analytics.flagged_percentage}%`);
   } catch (error: any) {
     console.error('Failed to calculate analytics:', error.message);
     // Don't throw — this is not critical enough to fail the pipeline

@@ -29,6 +29,6 @@ export async function transitionStatus(
   const from = 'UNKNOWN';
   const to = newStatus;
   void userId;
-  console.log('[TranscriptStatusService] Status transition', { transcriptId, from, to });
+  console.warn('[TranscriptStatusService] Status transition', { transcriptId, from, to });
   return { success: true, previousStatus: from, newStatus: to };
 }

@@ -362,7 +362,7 @@ const GETHandler = async (
     if (duration > 5000) {
       console.warn(`[perf:slow] GET /api/transcripts/[id]/export ${duration}ms`);
     }
-    console.log(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
+    console.warn(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
   }
 };
 

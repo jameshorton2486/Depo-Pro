@@ -34,7 +34,7 @@ export async function reassembleChunks(
     };
   }
 
-  console.log(`Reassembling ${chunks.length} chunks with ${overlapSeconds}s overlap...`);
+  console.warn(`Reassembling ${chunks.length} chunks with ${overlapSeconds}s overlap...`);
 
   // Sort chunks by index
   const sorted = [...chunks].sort((a, b) => a.index - b.index);
@@ -54,7 +54,7 @@ export async function reassembleChunks(
     const chunk = sorted[i];
     const _prevChunk = sorted[i - 1];
 
-    console.log(`  Merging chunk ${chunk.index}...`);
+    console.warn(`  Merging chunk ${chunk.index}...`);
 
     // Offset all timestamps in this chunk by its audioStartSeconds
     const offsetWords = offsetWordsTimestamps(chunk.result.words, chunk.audioStartSeconds);
@@ -72,7 +72,7 @@ export async function reassembleChunks(
       overlapEnd
     );
 
-    console.log(`    Deduplicated ${duplicateCount} words in overlap zone`);
+    console.warn(`    Deduplicated ${duplicateCount} words in overlap zone`);
 
     // Build speaker mapping for this boundary
     const speakerMapping = buildSpeakerMapping(
@@ -83,7 +83,7 @@ export async function reassembleChunks(
     );
 
     if (speakerMapping.size > 0) {
-      console.log(`    Remapping ${speakerMapping.size} speaker labels`);
+      console.warn(`    Remapping ${speakerMapping.size} speaker labels`);
     }
 
     // Apply speaker mapping to this chunk's words and segments
@@ -117,7 +117,7 @@ export async function reassembleChunks(
   // Rebuild full transcript from merged segments
   const fullTranscript = buildTranscriptFromSegments(mergedSegments);
 
-  console.log(`Reassembly complete: ${mergedWords.length} words, ${mergedSegments.length} segments`);
+  console.warn(`Reassembly complete: ${mergedWords.length} words, ${mergedSegments.length} segments`);
 
   return {
     words: mergedWords,

@@ -83,7 +83,7 @@ export async function validateAudio(filePath: string): Promise<AudioValidation> 
     // For video files, extract audio to temp MP3
     const videoFormats = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
     if (videoFormats.includes(format)) {
-      console.log(`Video format detected (${format}), extracting audio...`);
+      console.warn(`Video format detected (${format}), extracting audio...`);
       // Note: The pipeline orchestrator will handle extraction
       // For now, just validate that the video has an audio track
       if (metadata.hasAudioTrack === false) {
@@ -141,7 +141,7 @@ export async function extractAudioFromVideo(videoPath: string): Promise<string> 
       const fileName = `audio-extracted-${Date.now()}.mp3`;
       const outputPath = path.join(tempDir, fileName);
 
-      console.log(`Extracting audio from ${videoPath} to ${outputPath}...`);
+      console.warn(`Extracting audio from ${videoPath} to ${outputPath}...`);
 
       // Use ffmpeg to extract audio:
       // -vn: no video
@@ -152,15 +152,15 @@ export async function extractAudioFromVideo(videoPath: string): Promise<string> 
         .audioCodec('libmp3lame')
         .audioBitrate('128k')
         .on('start', (commandLine) => {
-          console.log('FFmpeg command:', commandLine);
+          console.warn('FFmpeg command:', commandLine);
         })
         .on('progress', (progress) => {
           if (progress.percent) {
-            console.log(`Extraction progress: ${progress.percent.toFixed(1)}%`);
+            console.warn(`Extraction progress: ${progress.percent.toFixed(1)}%`);
           }
         })
         .on('end', () => {
-          console.log(`Audio extraction complete: ${outputPath}`);
+          console.warn(`Audio extraction complete: ${outputPath}`);
           resolve(outputPath);
         })
         .on('error', (err) => {

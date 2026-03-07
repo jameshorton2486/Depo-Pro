@@ -214,7 +214,7 @@ export async function processChunk(
 
     // If already complete, skip to next
     if (chunkRecord?.status === 'COMPLETE') {
-      console.log(`Chunk ${chunkIndex} already complete`);
+      console.warn(`Chunk ${chunkIndex} already complete`);
       if (chunkIndex + 1 < totalChunks) {
         return { completed: false, nextChunkIndex: chunkIndex + 1 };
       } else {
@@ -261,7 +261,7 @@ export async function processChunk(
         .eq('transcription_id', transcriptionId)
         .eq('chunk_index', chunkIndex);
 
-      console.log(`Chunk ${chunkIndex}/${totalChunks} complete`);
+      console.warn(`Chunk ${chunkIndex}/${totalChunks} complete`);
 
       // If more chunks remain, trigger next
       if (chunkIndex + 1 < totalChunks) {
@@ -363,7 +363,7 @@ async function finalizePipeline(
   const supabase = createAdminClient();
 
   try {
-    console.log('All chunks complete, finalizing pipeline...');
+    console.warn('All chunks complete, finalizing pipeline...');
 
     await updateTranscriptionStatus(jobId, 'REASSEMBLING');
 
@@ -455,7 +455,7 @@ async function finalizePipeline(
       })
       .eq('id', jobId);
 
-    console.log(`Pipeline complete for job ${jobId}`);
+    console.warn(`Pipeline complete for job ${jobId}`);
 
     return { completed: true, nextChunkIndex: null };
   } catch (error: any) {

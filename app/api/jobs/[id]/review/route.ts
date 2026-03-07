@@ -275,7 +275,7 @@ const PATCHHandler = async (
     if (duration > 1000) {
       console.warn(`[perf:slow] PATCH /api/jobs/[id]/review ${duration}ms`);
     }
-    console.log(`[perf] ${req.method} ${req.nextUrl.pathname} ${duration}ms`);
+    console.warn(`[perf] ${req.method} ${req.nextUrl.pathname} ${duration}ms`);
   }
 }
 

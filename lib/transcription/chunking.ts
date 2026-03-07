@@ -30,11 +30,11 @@ export async function chunkAudio(
     // Get total duration via ffprobe
     const duration = await getAudioDuration(inputPath);
 
-    console.log(`Audio duration: ${duration}s, chunk size: ${config.chunkDurationSeconds}s`);
+    console.warn(`Audio duration: ${duration}s, chunk size: ${config.chunkDurationSeconds}s`);
 
     // If duration <= chunk size, return single chunk pointing to original file
     if (duration <= config.chunkDurationSeconds) {
-      console.log('Audio fits in single chunk, no splitting needed');
+      console.warn('Audio fits in single chunk, no splitting needed');
       return [{
         index: 0,
         filePath: inputPath,
@@ -53,7 +53,7 @@ export async function chunkAudio(
     // Create temp directory for chunks
     const tempDir = path.join(os.tmpdir(), `depo-chunks-${Date.now()}`);
     fs.mkdirSync(tempDir, { recursive: true });
-    console.log(`Created temp directory: ${tempDir}`);
+    console.warn(`Created temp directory: ${tempDir}`);
 
     let currentStart = 0;
     let chunkIndex = 0;
@@ -86,7 +86,7 @@ export async function chunkAudio(
         durationSeconds: actualDuration,
       });
 
-      console.log(`Created chunk ${chunkIndex}: ${currentStart}s - ${currentEnd}s (${actualDuration}s)`);
+      console.warn(`Created chunk ${chunkIndex}: ${currentStart}s - ${currentEnd}s (${actualDuration}s)`);
 
       // Move to next chunk start (accounting for overlap)
       // Next chunk starts at (currentEnd - overlap) to create the overlap region
@@ -98,7 +98,7 @@ export async function chunkAudio(
       chunkIndex++;
     }
 
-    console.log(`Audio split into ${chunks.length} chunks`);
+    console.warn(`Audio split into ${chunks.length} chunks`);
     return chunks;
   } catch (error: any) {
     throw new Error(`Audio chunking failed: ${error.message}`);
@@ -145,19 +145,19 @@ async function extractAudioSegment(
       .audioCodec('libmp3lame')
       .audioBitrate(bitrate)
       .on('start', (commandLine) => {
-        console.log(`FFmpeg: ${commandLine}`);
+        console.warn(`FFmpeg: ${commandLine}`);
       })
       .on('progress', (progress) => {
         if (progress.percent) {
           // Only log every 10% to reduce noise
           const percent = Math.floor(progress.percent / 10) * 10;
           if (percent > 0 && progress.percent >= percent && progress.percent < percent + 2) {
-            console.log(`  Chunk extraction progress: ${percent}%`);
+            console.warn(`  Chunk extraction progress: ${percent}%`);
           }
         }
       })
       .on('end', () => {
-        console.log(`  Chunk extraction complete: ${outputPath}`);
+        console.warn(`  Chunk extraction complete: ${outputPath}`);
         resolve();
       })
       .on('error', (err) => {
@@ -191,17 +191,17 @@ export async function cleanupChunks(chunks: AudioChunk[]): Promise<void> {
     for (const chunk of chunks) {
       if (fs.existsSync(chunk.filePath)) {
         fs.unlinkSync(chunk.filePath);
-        console.log(`Deleted chunk file: ${chunk.filePath}`);
+        console.warn(`Deleted chunk file: ${chunk.filePath}`);
       }
     }
 
     // Delete the temp directory
     if (fs.existsSync(tempDir)) {
       fs.rmdirSync(tempDir);
-      console.log(`Deleted temp directory: ${tempDir}`);
+      console.warn(`Deleted temp directory: ${tempDir}`);
     }
 
-    console.log('Chunk cleanup complete');
+    console.warn('Chunk cleanup complete');
   } catch (error: any) {
     console.error('Chunk cleanup error:', error.message);
     // Don't throw — cleanup errors shouldn't fail the pipeline

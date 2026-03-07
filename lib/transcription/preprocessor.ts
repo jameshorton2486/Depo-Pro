@@ -141,11 +141,11 @@ export async function normalizeAudioForTranscription(
   const fileName = `normalized-${Date.now()}.${cfg.outputFormat}`;
   const outputPath = path.join(tempDir, fileName);
 
-  console.log(`[Preprocessor] Normalizing audio:`);
-  console.log(`  Input:  ${inputPath}`);
-  console.log(`  Format: ${inputMetadata.format} → ${cfg.outputFormat}`);
-  console.log(`  Rate:   ${inputMetadata.sampleRate}Hz → ${cfg.sampleRate}Hz`);
-  console.log(`  Channels: ${inputMetadata.channels} → ${cfg.channels}`);
+  console.warn(`[Preprocessor] Normalizing audio:`);
+  console.warn(`  Input:  ${inputPath}`);
+  console.warn(`  Format: ${inputMetadata.format} → ${cfg.outputFormat}`);
+  console.warn(`  Rate:   ${inputMetadata.sampleRate}Hz → ${cfg.sampleRate}Hz`);
+  console.warn(`  Channels: ${inputMetadata.channels} → ${cfg.channels}`);
 
   return new Promise((resolve, reject) => {
     let command = ffmpeg(inputPath)
@@ -183,16 +183,16 @@ export async function normalizeAudioForTranscription(
 
     command
       .on('start', (commandLine) => {
-        console.log(`[Preprocessor] FFmpeg command: ${commandLine}`);
+        console.warn(`[Preprocessor] FFmpeg command: ${commandLine}`);
       })
       .on('progress', (progress) => {
         if (progress.percent && progress.percent % 25 < 1) {
-          console.log(`[Preprocessor] Progress: ${Math.round(progress.percent)}%`);
+          console.warn(`[Preprocessor] Progress: ${Math.round(progress.percent)}%`);
         }
       })
       .on('end', async () => {
         const processingTimeMs = Date.now() - startTime;
-        console.log(`[Preprocessor] Normalization complete in ${processingTimeMs}ms: ${outputPath}`);
+        console.warn(`[Preprocessor] Normalization complete in ${processingTimeMs}ms: ${outputPath}`);
 
         // Verify output
         try {
@@ -235,7 +235,7 @@ export async function extractAndNormalizeFromVideo(
     throw new Error('Video file has no audio track');
   }
 
-  console.log(`[Preprocessor] Extracting + normalizing audio from video (${metadata.format})`);
+  console.warn(`[Preprocessor] Extracting + normalizing audio from video (${metadata.format})`);
 
   // normalizeAudioForTranscription already handles video input via -vn flag
   return normalizeAudioForTranscription(videoPath, config);
@@ -254,7 +254,7 @@ export async function needsNormalization(filePath: string): Promise<boolean> {
       metadata.sampleRate === 16000 &&
       metadata.channels === 1
     ) {
-      console.log('[Preprocessor] Audio already in optimal format, skipping normalization');
+      console.warn('[Preprocessor] Audio already in optimal format, skipping normalization');
       return false;
     }
 
@@ -272,7 +272,7 @@ export function cleanupPreprocessedFile(filePath: string): void {
   try {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-      console.log(`[Preprocessor] Cleaned up: ${filePath}`);
+      console.warn(`[Preprocessor] Cleaned up: ${filePath}`);
     }
   } catch (err: any) {
     console.error(`[Preprocessor] Cleanup failed for ${filePath}: ${err.message}`);
