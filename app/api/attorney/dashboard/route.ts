@@ -23,6 +23,11 @@ async function GETHandler(request: NextRequest) {
     if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const firmId = currentUser.firmId ?? null;
+    if (!firmId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     
     const supabase = await createSupabaseServerClient();
     
@@ -77,7 +82,7 @@ async function GETHandler(request: NextRequest) {
           supabase,
           currentUser.id,
           currentUser.email,
-          {},
+          { firm_id: firmId },
           { field: 'created_at', order: 'desc' },
           { skip: 0, limit: 50 }
         );
@@ -99,13 +104,15 @@ async function GETHandler(request: NextRequest) {
               .from('jobs')
               .select('id, case_name, deposition_date, status, title')
               .eq('case_id', c.id)
+              .eq('firm_id', firmId)
               .order('deposition_date', { ascending: false })
               .limit(5);
             
             const { count: jobCount } = await supabase
               .from('jobs')
               .select('*', { count: 'exact', head: true })
-              .eq('case_id', c.id);
+              .eq('case_id', c.id)
+              .eq('firm_id', firmId);
             
             return {
               case: {
@@ -138,8 +145,9 @@ async function GETHandler(request: NextRequest) {
         const transcriptIds = transcriptAccess.map((ta: any) => ta.transcription_id);
         const { data: transcripts } = await supabase
           .from('transcriptions')
-          .select('*, jobs(*)')
-          .in('id', transcriptIds);
+          .select('*, jobs!inner(*)')
+          .in('id', transcriptIds)
+          .eq('jobs.firm_id', firmId);
         
         // Get granted by info
         const grantedByIds = [...new Set(transcriptAccess.map((ta: any) => ta.granted_by_id))];
@@ -183,6 +191,7 @@ async function GETHandler(request: NextRequest) {
         const { data: events } = await supabase
           .from('calendar_events')
           .select('*, jobs(*)')
+          .eq('firm_id', firmId)
           .gte('start_time', new Date().toISOString())
           .in('event_type', ['DEPOSITION', 'HEARING', 'ARBITRATION', 'MEDIATION', 'EUO'])
           .order('start_time', { ascending: true })
@@ -242,8 +251,9 @@ async function GETHandler(request: NextRequest) {
         const transcriptIds = shares.map((s: any) => s.transcription_id);
         const { data: transcripts } = await supabase
           .from('transcriptions')
-          .select('*, jobs(*)')
-          .in('id', transcriptIds);
+          .select('*, jobs!inner(*)')
+          .in('id', transcriptIds)
+          .eq('jobs.firm_id', firmId);
         
         const sharedByIds = [...new Set(shares.map((s: any) => s.created_by_id))];
         const sharedByUsers = await Promise.all(
