@@ -79,14 +79,14 @@ export default function ResetPasswordPage() {
         // Small delay to allow cookies to be set after redirect
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { user }, error: sessionError } = await supabase.auth.getUser();
 
         if (!mounted) return;
 
         if (sessionError) {
           setError('Unable to verify your session. Please request a new password reset link.');
           setHasValidSession(false);
-        } else if (!session) {
+        } else if (!user) {
           setError('Your password reset link has expired or is invalid. Please request a new one.');
           setHasValidSession(false);
         } else {

@@ -1,75 +1,104 @@
 # Depo-Pro
 
-Depo-Pro is a Next.js application for deposition workflow management, transcription, review, and exports.
+AI-assisted deposition transcript management for court reporters and scopists.
 
-## Prerequisites
+## What It Does
 
+Depo-Pro processes deposition audio through Deepgram Nova-3, identifies
+low-confidence words, and provides scopists with a synchronized audio review
+interface to correct uncertain transcriptions before export.
+
+**Core workflow:**
+1. Court reporter uploads audio and creates a job
+2. AI transcribes audio and flags low-confidence words
+3. Scopist reviews flagged words with audio playback
+4. Corrections are applied and transcript is exported as DOCX or PDF
+
+## Tech Stack
+
+- **Frontend:** Next.js 16, React, Tailwind CSS, shadcn/ui
+- **Database:** Supabase (PostgreSQL + RLS + Storage)
+- **Auth:** Supabase Auth (SSR)
+- **Transcription:** Deepgram Nova-3
+- **AI:** Anthropic Claude API (correction suggestions, medical extraction)
+- **Hosting:** Vercel
+- **Export:** docx npm package, pdfkit
+
+## Local Development
+
+### Prerequisites
 - Node.js 20+
-- npm 10+
-- Supabase project (URL + keys)
-- Deepgram API key (for transcription features)
+- A Supabase project
+- Deepgram API key
+- Anthropic API key
 
-## Local Setup
+### Setup
 
-1. Install dependencies:
 ```bash
+git clone https://github.com/jameshorton2486/depo-pro.git
+cd depo-pro
 npm install
-```
-
-2. Create local environment file:
-```bash
 cp .env.example .env.local
-```
-
-3. Set required environment variables in `.env.local`.
-
-4. Start development server:
-```bash
+# Fill in your values in .env.local
 npm run dev
 ```
 
-5. Open `http://localhost:3000`.
+### Environment Variables
 
-## Required Environment Variables
+See `.env.example` for all required variables. Key ones:
 
-Template files:
+| Variable | Description |
+|----------|-------------|
+| NEXT_PUBLIC_SUPABASE_URL | Your Supabase project URL |
+| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | Supabase publishable key |
+| SUPABASE_SERVICE_ROLE_KEY | Supabase service role key (server only) |
+| DEEPGRAM_API_KEY | Deepgram API key for transcription |
+| ANTHROPIC_API_KEY | Anthropic API key for AI corrections |
+| NEXT_PUBLIC_SITE_URL | Your deployment URL |
 
-- `.env.example`
-- `.env.production.example`
+## Database
 
-Set these in `.env.local`:
+Migrations are in `supabase/migrations/`. Apply them via:
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL (`https://<project>.supabase.co`) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Supabase publishable key (`sb_publishable_*`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (`sb_secret_*`) |
-| `DEEPGRAM_API_KEY` | Yes | Deepgram API key |
-| `REDIS_URL` | No | Redis connection URL for queue/rate-limit paths |
-| `ANTHROPIC_API_KEY` | No | Anthropic API key for extraction features |
-| `CONTACT_WEBHOOK_URL` | No | Contact-form notification webhook endpoint |
+```bash
+supabase db push
+```
 
-## Scripts
+## Testing
 
-- `npm run dev`: Start local development
-- `npm run build`: Production build
-- `npm run start`: Run production server
-- `npm run typecheck`: TypeScript checks
-- `npm run test`: Test suite
-- `npm run lint`: ESLint checks
+```bash
+npm run test          # Unit tests (vitest)
+npm run test:e2e      # E2E tests (playwright)
+npm run typecheck     # TypeScript check
+npm run lint          # ESLint
+```
+
+## Deployment
+
+Deployed automatically to Vercel on push to `main`.
+Production URL: https://app.depo-pro.com
+
+## User Roles
+
+| Role | Access |
+|------|--------|
+| Court Reporter | Create jobs, upload audio, assign scopists, export |
+| Scopist | Review flagged words, submit corrections |
+| Attorney | View completed transcripts |
+| Admin | Full access |
 
 ## Project Structure
 
-- `app/`: Next.js App Router routes and API handlers
-- `components/`: UI and feature components
-- `lib/`: Shared services, integrations, utils, and domain logic
-- `types/`: TypeScript types
-- `docs/`: Technical documentation and guides
-- `scripts/`: Maintenance and utility scripts
-- `tests/`: Automated test suites
+- `app/` — Next.js App Router routes and API handlers
+- `components/` — UI and feature components
+- `lib/` — Shared services, integrations, utils, and domain logic
+- `types/` — TypeScript types
+- `supabase/migrations/` — Database migrations
+- `docs/` — Technical documentation
+- `scripts/` — Maintenance and utility scripts
+- `tests/` — Automated test suites
 
-## Documentation
+## Legal
 
-- Main docs index: `docs/README.md`
-- Beta testing guide: `docs/BETA_TESTING_GUIDE.md`
-- Deployment docs: `docs/deployment/`
+All transcripts maintain verbatim integrity. The `original_transcript` field
+is immutable — corrections are tracked separately and applied at export time.

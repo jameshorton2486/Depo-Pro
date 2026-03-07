@@ -104,7 +104,10 @@ function LoginForm() {
       }
 
       // Get redirect URL from params or default to dashboard
-      const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+      const callbackUrl =
+        searchParams.get('redirectTo') ||
+        searchParams.get('callbackUrl') ||
+        '/dashboard';
 
       // Small delay to ensure cookies are set before redirect
       await new Promise(resolve => setTimeout(resolve, 150));

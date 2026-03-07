@@ -27,22 +27,22 @@ export default function WKTLayout({
   useEffect(() => {
     async function checkAuth() {
       const supabase = getSupabaseBrowserClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!session) {
+      if (!user) {
         router.push('/login');
         return;
       }
 
       // Check if user has WKT access
-      const role = session.user.user_metadata?.role || session.user.user_metadata?.user_role;
+      const role = user.user_metadata?.role || user.user_metadata?.user_role;
       if (!canAccessWKT(role)) {
         router.push('/dashboard');
         return;
       }
 
       setIsAuthenticated(true);
-      setUserEmail(session.user.email || '');
+      setUserEmail(user.email || '');
     }
 
     checkAuth();

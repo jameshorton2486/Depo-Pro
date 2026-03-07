@@ -15,7 +15,11 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type');
-  const next = searchParams.get('next') ?? '/dashboard';
+  const redirectTo = searchParams.get('redirectTo');
+  const next = searchParams.get('next');
+  const targetPath =
+    (redirectTo && redirectTo.startsWith('/') ? redirectTo :
+      next && next.startsWith('/') ? next : '/dashboard');
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
 
@@ -55,7 +59,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL('/reset-password', origin));
       }
 
-      return NextResponse.redirect(new URL(next, origin));
+      return NextResponse.redirect(new URL(targetPath, origin));
     }
 
     // -------------------------------------------------------------------------
@@ -107,7 +111,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(inviteUrl);
       }
 
-      return NextResponse.redirect(new URL(next, origin));
+      return NextResponse.redirect(new URL(targetPath, origin));
     }
 
     // -------------------------------------------------------------------------

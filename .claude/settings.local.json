@@ -72,7 +72,11 @@
       "Bash(powershell.exe:*)",
       "Bash(npm run:*)",
       "Bash(npx vitest:*)",
-      "mcp__vercel__getDeployment"
+      "mcp__vercel__getDeployment",
+      "Bash(chmod +x:*)",
+      "Bash(bash:*)",
+      "mcp__vercel__listProjects",
+      "Bash(sort:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

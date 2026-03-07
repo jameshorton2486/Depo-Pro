@@ -26,12 +26,12 @@ export function useAuth() {
     let mounted = true;
     const supabase = getSupabaseBrowserClient();
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data }) => {
+    // Get initial user
+    supabase.auth.getUser().then(({ data }) => {
       if (!mounted) return;
       setState({
-        user: data.session?.user ?? null,
-        session: data.session ?? null,
+        user: data.user ?? null,
+        session: null,
         loading: false,
       });
     });
