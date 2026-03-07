@@ -4,6 +4,39 @@
 
 ---
 
+### Task 12 — Code Cleanup & Technical Debt
+Date: 2026-03-07
+Tool: Claude Code
+
+Passes completed:
+  E.1 old-prisma-backup:     SKIPPED — not found (already deleted)
+  E.2 lib/auth-compat.ts:    SKIPPED — not found (already deleted)
+  E.3 dead export helpers:   SKIPPED — not found (already deleted)
+  E.4 root doc archive:      NONE FOUND (no .sql or .docx at root)
+  E.5 .gitignore hardened:   DONE — deduplicated 50 lines of cruft
+  E.6 legacy ref scan:       CLEAN — 0 files reference auth-compat/NextAuth/PrismaClient/DATABASE_URL
+  E.7 .env.example:          REWRITTEN — 8 required vars, deprecated section
+
+Files modified:
+  - .gitignore (deduplicated, consolidated sections)
+  - .env.example (rewritten to spec)
+
+Files deleted: none
+Files NOT touched: prisma/schema.prisma, supabase/migrations/*,
+                   lib/transcription/*, lib/export.ts, lib/auth/*,
+                   all governance documents
+
+Commits:
+  787326a chore: harden .gitignore — deduplicate entries, consolidate sections
+  7580274 chore: rewrite .env.example — 8 required vars, deprecated vars documented
+
+Build: PASS
+Typecheck: PASS
+Frozen files untouched: CONFIRMED
+Beta freeze still active: YES
+
+---
+
 ### Task 8 — Deployment Lockdown
 Date: 2026-03-06
 Tool: Claude Code
