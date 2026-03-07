@@ -196,3 +196,7 @@ reports/
 .env.vercel.dev
 .env.vercel.preview
 .env.vercel.prod
+
+.env.vercel.dev
+.env.vercel.preview
+.env.vercel.prod
