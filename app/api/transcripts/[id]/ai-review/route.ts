@@ -16,6 +16,7 @@ import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { logger } from '@/lib/logger';
 import { auditLog } from '@/lib/audit';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
+import { runAICorrection } from '@/lib/ai/correctionWorker';
 
 const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
@@ -39,8 +40,8 @@ const POSTHandler = async (
 
     // Fetch transcript (RLS enforces access)
     const { data: transcript, error: transcriptError } = await supabase
-      .from('transcripts')
-      .select('*')
+      .from('transcriptions')
+      .select('id, status')
       .eq('id', transcriptId)
       .single();
 
@@ -49,80 +50,24 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
     }
 
-    // Parse request body
-    const body = await req.json().catch(() => ({}));
-    const prompt = body.prompt || 'Review this transcript for accuracy, clarity, and completeness. Provide suggestions for improvements.';
-    const options = body.options || {};
-
-    // Log audit event - transcript viewed for AI review
+    // Log audit event
     await auditLog('transcript.ai_review_requested', {
       entity: 'transcript',
       entityId: transcriptId,
-      metadata: {
-        promptLength: prompt.length,
-        hasCustomPrompt: body.prompt !== undefined,
-      },
+      metadata: { userId: user.id },
     });
 
-    // TODO: Integrate with AI service (OpenAI, Claude, etc.)
-    // For now, return a placeholder response
-    // This is where you would:
-    // 1. Call AI service with transcript content and prompt
-    // 2. Store AI response as a revision (not applied)
-    // 3. Return diff/preview to user for review
-
-    logger.info('[ai-review] AI review requested', {
-      transcriptId,
-      userId: user.id,
-      hasCustomPrompt: body.prompt !== undefined,
+    // Trigger AI correction asynchronously (fire and forget)
+    // Results are stored in ai_suggestions table with applied=false
+    runAICorrection(transcriptId).catch((err) => {
+      logger.error('[ai-review] AI correction failed', err instanceof Error ? err : new Error(String(err)), { transcriptId });
     });
 
-    // Create a placeholder revision (not applied)
-    const { data: revision, error: revisionError } = await supabase
-      .from('transcript_revisions')
-      .insert({
-        transcript_id: transcriptId,
-        revised_content: transcript.content, // Placeholder - would be AI output
-        source: 'ai',
-        created_by: user.id,
-        metadata: {
-          prompt,
-          options,
-          model: options.model || 'default',
-        },
-        diff_summary: 'AI review pending implementation',
-        applied: false,
-      })
-      .select()
-      .single();
-
-    if (revisionError) {
-      logger.error('[ai-review] Failed to create revision', revisionError, { transcriptId, userId: user.id });
-      return NextResponse.json({ error: 'Failed to create revision' }, { status: 500 });
-    }
-
-    // Log audit event - revision created
-    await auditLog('transcript_revision.created', {
-      entity: 'transcript_revision',
-      entityId: revision.id,
-      metadata: {
-        source: 'ai',
-        transcriptId,
-        applied: false,
-      },
-    });
+    logger.info('[ai-review] AI review triggered', { transcriptId, userId: user.id });
 
     return NextResponse.json({
-      success: true,
-      revision: {
-        id: revision.id,
-        transcriptId: revision.transcript_id,
-        source: revision.source,
-        diffSummary: revision.diff_summary,
-        applied: revision.applied,
-        createdAt: revision.created_at,
-      },
-      message: 'AI review requested. Please implement AI service integration.',
+      triggered: true,
+      message: 'AI review started. Check /api/transcripts/{id}/suggestions for results.',
     });
 
   } catch (error) {

@@ -25,6 +25,69 @@ import {
 import PDFDocument from 'pdfkit';
 import { format } from 'date-fns';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+// ============================================
+// PRE-FLIGHT CHECKS
+// ============================================
+
+export class PreflightError extends Error {
+  checks: string[];
+  constructor(checks: string[]) {
+    super(`Pre-flight checks failed: ${checks.join(', ')}`);
+    this.name = 'PreflightError';
+    this.checks = checks;
+  }
+}
+
+/**
+ * Run pre-flight checks before exporting a transcript.
+ * Throws PreflightError if any check fails.
+ */
+export async function runPreflightChecks(transcriptId: string): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const failedChecks: string[] = [];
+
+  // 1. Check transcript status
+  const { data: transcript, error: transcriptError } = await supabase
+    .from('transcriptions')
+    .select('status, speakers')
+    .eq('id', transcriptId)
+    .single();
+
+  if (transcriptError || !transcript) {
+    throw new PreflightError(['Transcript not found']);
+  }
+
+  const status = (transcript.status || '').toUpperCase();
+  if (status !== 'COMPLETE' && status !== 'COMPLETED' && status !== 'CERTIFIED') {
+    failedChecks.push(`Transcript status is "${transcript.status}" — must be complete or certified`);
+  }
+
+  // 2. Count unreviewed flagged words
+  const { count: unreviewedCount, error: flaggedError } = await supabase
+    .from('flagged_words')
+    .select('id', { count: 'exact', head: true })
+    .eq('transcription_id', transcriptId)
+    .eq('status', 'PENDING');
+
+  if (!flaggedError && unreviewedCount && unreviewedCount > 0) {
+    failedChecks.push(`${unreviewedCount} flagged word(s) still need review`);
+  }
+
+  // 3. Check speakers have labels
+  const speakers = Array.isArray(transcript.speakers) ? transcript.speakers : [];
+  const unlabeled = speakers.filter(
+    (s: any) => !s.label || s.label === s.original_label || /^SPEAKER_\d+$/i.test(s.label)
+  );
+  if (speakers.length > 0 && unlabeled.length > 0) {
+    failedChecks.push(`${unlabeled.length} speaker(s) missing labels`);
+  }
+
+  if (failedChecks.length > 0) {
+    throw new PreflightError(failedChecks);
+  }
+}
 
 // Legal formatting constants
 const LINES_PER_PAGE = 25;

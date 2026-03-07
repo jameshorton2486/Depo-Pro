@@ -30,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { canExportFormat } from '@/lib/export/permissions';
 import type { UserRole } from '@/lib/enums/roles';
+import { CertificationPanel } from '@/components/transcript/CertificationPanel';
 
 interface ReviewClientNewProps {
   jobId: string;
@@ -77,6 +78,8 @@ export function ReviewClientNew({
 
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const [showCertifyDialog, setShowCertifyDialog] = useState(false);
+  const [isCertified, setIsCertified] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const savesInFlightRef = useRef(0);
   const [latestUpdatedAt, setLatestUpdatedAt] = useState<string | null>(initialUpdatedAt);
@@ -546,6 +549,25 @@ export function ReviewClientNew({
             ?
           </button>
 
+          {/* Certify & Export / Download Export */}
+          {isCertified ? (
+            <button
+              onClick={() => handleExport('docx')}
+              disabled={isExporting}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm disabled:opacity-50 transition-colors"
+            >
+              {isExporting ? 'Downloading...' : 'Download Export'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowCertifyDialog(true)}
+              disabled={isReadOnly || isExporting}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50 transition-colors"
+            >
+              Certify & Export
+            </button>
+          )}
+
           {/* Complete Button */}
           <button
             onClick={() => setShowCompleteDialog(true)}
@@ -752,6 +774,25 @@ export function ReviewClientNew({
           <DialogFooter>
             <Button onClick={() => setShowShortcutsDialog(false)}>Close</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Certification Dialog */}
+      <Dialog open={showCertifyDialog} onOpenChange={setShowCertifyDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Certify Transcript</DialogTitle>
+            <DialogDescription>
+              Complete pre-flight checks and certify this transcript for export.
+            </DialogDescription>
+          </DialogHeader>
+          <CertificationPanel
+            transcriptId={transcriptionId}
+            onCertified={() => {
+              setIsCertified(true);
+              setShowCertifyDialog(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>

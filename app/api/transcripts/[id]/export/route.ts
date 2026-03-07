@@ -7,7 +7,7 @@ import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
-import { exportTranscript } from '@/lib/export';
+import { exportTranscript, runPreflightChecks, PreflightError } from '@/lib/export';
 import { exportLegalDocx } from '@/lib/services/export';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
 import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
@@ -162,6 +162,22 @@ const GETHandler = async (
         { error: `Export profile ${profileId} not allowed for your role` },
         { status: 403 }
       );
+    }
+
+    // Run pre-flight checks (skip if explicitly bypassed for draft exports)
+    const skipPreflight = searchParams.get('skipPreflight') === 'true';
+    if (!skipPreflight) {
+      try {
+        await runPreflightChecks(transcriptId);
+      } catch (error) {
+        if (error instanceof PreflightError) {
+          return NextResponse.json(
+            { error: 'Pre-flight checks failed', checks: error.checks },
+            { status: 422 }
+          );
+        }
+        throw error;
+      }
     }
 
     if (!transcription.full_transcript) {
