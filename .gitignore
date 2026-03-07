@@ -134,6 +134,10 @@ debug*.ps1
 !/MASTER_CONTROL.md
 !/AI_MASTER_ORCHESTRATOR.md
 !/BETA_FREEZE.md
+!/CLAUDE.md
+!/CURSOR_PROMPT_AI_DOCS_IMPLEMENTATION.md
+!/REPO_INTELLIGENCE_MAP.md
+!/AI_TASK_QUEUE.md
 
 # =============================================================================
 # Supabase temp artifacts
@@ -188,3 +192,7 @@ reports/
 .aider*
 .claude/
 .claude/
+
+.env.vercel.dev
+.env.vercel.preview
+.env.vercel.prod
