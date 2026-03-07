@@ -18,6 +18,9 @@ out/
 # =============================================================================
 coverage/
 test-env.js
+playwright-report/
+playwright-results.json
+test-results/
 
 # =============================================================================
 # Logs
@@ -34,10 +37,13 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
-.env.development.local
-.env.production.local
-.env.test.local
 .env*.local
+.env*.backup
+.env.backup
+.env.local.backup
+.env.vercel.dev
+.env.vercel.preview
+.env.vercel.prod
 
 # =============================================================================
 # Database
@@ -59,9 +65,6 @@ app_backup_*
 .backup-phase*/
 .backup-unified*/
 *.backup
-.env*.backup
-.env.backup
-.env.local.backup
 
 # =============================================================================
 # User Uploads (Local Dev Only)
@@ -100,12 +103,10 @@ Thumbs.db
 # =============================================================================
 .vercel
 
-# Work files
+# =============================================================================
+# Work / Sandbox / Temp
+# =============================================================================
 work_files/
-
-# =============================================================================
-# Temporary & Sandbox Files
-# =============================================================================
 test/
 sandbox/
 scratch/
@@ -124,18 +125,12 @@ debug*.ps1
 /*.md
 !/README.md
 !/CONTRIBUTING.md
-!/MANUAL_STEPS.md
 !/CHANGELOG.md
-!/PHASE_B_HARDENING_MVP_PREP.md
-!/INFRASTRUCTURE_STABILITY_REPORT.md
-!/go-no-go-checklist.sh
-!/go-no-go-manual-checklist.md
 !/AI_AUTONOMOUS_RULES.md
 !/MASTER_CONTROL.md
 !/AI_MASTER_ORCHESTRATOR.md
 !/BETA_FREEZE.md
 !/CLAUDE.md
-!/CURSOR_PROMPT_AI_DOCS_IMPLEMENTATION.md
 !/REPO_INTELLIGENCE_MAP.md
 !/AI_TASK_QUEUE.md
 
@@ -144,59 +139,43 @@ debug*.ps1
 # =============================================================================
 supabase/.temp/
 supabase.txt
-.vercel
+supabase/migrations_backup/
 
-# Windows reserved names
+# =============================================================================
+# Windows reserved names / one-off extraction scripts
+# =============================================================================
 nul
 NUL
 *.extracted.txt
 extract-doc.ps1
 extract-docx-content.ps1
-feature-deep-dive-extracted.txt
 
-# Reference documents
+# =============================================================================
+# Reference documents (keep docs/ subfolder)
+# =============================================================================
 *.docx
 !docs/**/*.docx
 
-.vercel
-.env*.local
-
+# =============================================================================
 # MCP config (may contain tokens)
+# =============================================================================
 .cursor/mcp.json
 .vscode/mcp.json
 .mcp.json
 
-# Codex local workspace data
+# =============================================================================
+# AI tool workspace data
+# =============================================================================
 .codex/
-
-# Development prompts
-CODEX_MEGA_PROMPT_PHASE_B.txt
-PHASE_B_HARDENING_MVP_PREP.md
-
-# Migration backups (local repair artifacts)
-supabase/migrations_backup/
-
-# Audit reports (may contain secrets from MCP/config dumps)
-reports/
-
-# Playwright outputs
-playwright-report/
-playwright-results.json
-test-results/
-
-# Development prompts
-CODEX_MEGA_PROMPT_PHASE_B.txt
-PHASE_B_HARDENING_MVP_PREP.md
-supabase/migrations_backup/
-reports/
 .aider*
 .claude/
-.claude/
 
-.env.vercel.dev
-.env.vercel.preview
-.env.vercel.prod
+# =============================================================================
+# Development prompts
+# =============================================================================
+CODEX_MEGA_PROMPT_PHASE_B.txt
 
-.env.vercel.dev
-.env.vercel.preview
-.env.vercel.prod
+# =============================================================================
+# Audit reports (may contain secrets from MCP/config dumps)
+# =============================================================================
+reports/
