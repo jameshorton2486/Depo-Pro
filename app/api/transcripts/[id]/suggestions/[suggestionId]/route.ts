@@ -20,12 +20,37 @@ const POSTHandler = async (
   const transcriptId = params.id;
   const suggestionId = params.suggestionId;
   const action = request.nextUrl.searchParams.get('action');
+  const userFirmId = (user as { firmId?: string | null; firm_id?: string | null }).firmId
+    ?? (user as { firmId?: string | null; firm_id?: string | null }).firm_id
+    ?? null;
 
   if (action !== 'apply' && action !== 'dismiss') {
     return NextResponse.json(
       { error: 'Invalid action. Use ?action=apply or ?action=dismiss' },
       { status: 400 },
     );
+  }
+
+  // Enforce tenant boundary before processing suggestion updates.
+  const { data: transcriptTenant, error: tenantError } = await supabase
+    .from('transcriptions')
+    .select('id, job:jobs!inner(firm_id)')
+    .eq('id', transcriptId)
+    .single();
+
+  if (tenantError || !transcriptTenant) {
+    return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
+  }
+
+  const transcriptFirmId = (
+    transcriptTenant as { job?: { firm_id?: string | null } | Array<{ firm_id?: string | null }> }
+  ).job;
+  const resolvedTranscriptFirmId = Array.isArray(transcriptFirmId)
+    ? transcriptFirmId[0]?.firm_id ?? null
+    : transcriptFirmId?.firm_id ?? null;
+
+  if (userFirmId && resolvedTranscriptFirmId && userFirmId !== resolvedTranscriptFirmId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Fetch suggestion

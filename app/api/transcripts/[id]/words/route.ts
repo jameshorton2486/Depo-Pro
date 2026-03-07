@@ -57,6 +57,9 @@ const PATCHHandler = async (
 ) => {
   try {
     const transcriptionId = params.id;
+    const userFirmId = (user as { firmId?: string | null; firm_id?: string | null }).firmId
+      ?? (user as { firmId?: string | null; firm_id?: string | null }).firm_id
+      ?? null;
 
     const body: SaveReviewRequest = await request.json();
     const {
@@ -78,6 +81,11 @@ const PATCHHandler = async (
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
+    }
+
+    const transcriptFirmId = (transcription as { job?: { firm_id?: string | null } }).job?.firm_id ?? null;
+    if (userFirmId && transcriptFirmId && userFirmId !== transcriptFirmId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Check lock status - CRITICAL: Prevent edits to locked transcripts
@@ -342,6 +350,9 @@ const GETHandler = async (
 ) => {
   try {
     const transcriptionId = params.id;
+    const userFirmId = (user as { firmId?: string | null; firm_id?: string | null }).firmId
+      ?? (user as { firmId?: string | null; firm_id?: string | null }).firm_id
+      ?? null;
 
     // Fetch transcription with job
     const supabase = await createSupabaseServerClient();
@@ -349,6 +360,11 @@ const GETHandler = async (
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcription not found' }, { status: 404 });
+    }
+
+    const transcriptFirmId = (transcription as { job?: { firm_id?: string | null } }).job?.firm_id ?? null;
+    if (userFirmId && transcriptFirmId && userFirmId !== transcriptFirmId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Check access
