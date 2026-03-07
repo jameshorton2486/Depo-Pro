@@ -36,7 +36,7 @@ export async function POST(
     }
 
     // Get base URL for chaining
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:3000`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com');
 
     // Process this chunk
     const result = await processChunk(jobId, chunkIndex, baseUrl);

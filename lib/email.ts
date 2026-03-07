@@ -157,7 +157,7 @@ export function jobAssignedEmail(data: {
         ${data.notes ? `<li><strong>Notes:</strong> ${data.notes}</li>` : ''}
       </ul>
       <p style="margin-top: 30px;">
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard" class="button">View Assignment</a>
+        <a href="${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com'}/dashboard" class="button">View Assignment</a>
       </p>
     </div>
     <div class="footer">
@@ -179,7 +179,7 @@ Job Details:
 ${data.depositionDate ? `- Deposition Date: ${data.depositionDate.toLocaleDateString()}` : ''}
 ${data.notes ? `- Notes: ${data.notes}` : ''}
 
-View your assignment at: ${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard
+View your assignment at: ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com'}/dashboard
 
 ---
 Depo-Pro Court Reporting Management System
@@ -225,7 +225,7 @@ export function transcriptReadyEmail(data: {
         <li><strong>Case Number:</strong> ${data.caseNumber}</li>
       </ul>
       <p style="margin-top: 30px;">
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/transcripts/${data.transcriptId}" class="button">View Transcript</a>
+        <a href="${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com'}/transcripts/${data.transcriptId}" class="button">View Transcript</a>
       </p>
     </div>
     <div class="footer">
@@ -244,7 +244,7 @@ Your transcript is now ready for review!
 
 Case Number: ${data.caseNumber}
 
-View transcript at: ${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/transcripts/${data.transcriptId}
+View transcript at: ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com'}/transcripts/${data.transcriptId}
 
 ---
 Depo-Pro Court Reporting Management System
@@ -297,7 +297,7 @@ export function invoiceEmail(data: {
         <li><strong>Due Date:</strong> ${data.dueDate.toLocaleDateString()}</li>
       </ul>
       <p style="margin-top: 30px;">
-        <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/invoices/${data.invoiceNumber}" class="button">View & Pay Invoice</a>
+        <a href="${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com'}/invoices/${data.invoiceNumber}" class="button">View & Pay Invoice</a>
       </p>
     </div>
     <div class="footer">
@@ -318,7 +318,7 @@ Invoice Number: ${data.invoiceNumber}
 Amount Due: ${formattedAmount}
 Due Date: ${data.dueDate.toLocaleDateString()}
 
-View and pay invoice at: ${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/invoices/${data.invoiceNumber}
+View and pay invoice at: ${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com'}/invoices/${data.invoiceNumber}
 
 Questions? Contact us at ${adminEmail}
 

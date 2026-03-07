@@ -50,7 +50,7 @@ function buildInternalHeaders(): Record<string, string> {
 export async function startTranscriptionPipeline(
   jobId: string,
   audioFileUrl: string,
-  baseUrl: string  // e.g., process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  baseUrl: string  // e.g., process.env.NEXT_PUBLIC_APP_URL || (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com')
 ): Promise<{ transcriptionId: string; totalChunks: number }> {
   const supabase = createAdminClient();
 
