@@ -23,24 +23,24 @@ export interface SessionUser {
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
   try {
-    console.log('[auth/session] getCurrentUser called');
+    console.warn('[auth/session] getCurrentUser called');
 
     const supabase = await createSupabaseServerClient();
-    console.log('[auth/session] supabase client created');
+    console.warn('[auth/session] supabase client created');
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    console.log('[auth/session] getUser result:', {
+    console.warn('[auth/session] getUser result:', {
       hasUser: !!user,
       userId: user?.id ?? 'none',
       error: userError?.message ?? 'none',
     });
 
     if (userError || !user) {
-      console.log('[auth/session] returning null — no user or error');
+      console.warn('[auth/session] returning null — no user or error');
       return null;
     }
 
-    console.log('[auth/session] fetching profile for userId:', user.id);
+    console.warn('[auth/session] fetching profile for userId:', user.id);
     // Fetch user profile from profiles table
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -48,7 +48,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       .eq('id', user.id)
       .single();
 
-    console.log('[auth/session] profile result:', {
+    console.warn('[auth/session] profile result:', {
       hasProfile: !!profile,
       role: profile?.role ?? 'none',
       isActive: (profile as { is_active?: boolean } | null)?.is_active ?? false,

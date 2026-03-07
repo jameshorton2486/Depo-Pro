@@ -11,7 +11,7 @@ const PUBLIC_ROUTES = [
   '/api/health',
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabase, supabaseResponse } = createMiddlewareClient(request);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
 
