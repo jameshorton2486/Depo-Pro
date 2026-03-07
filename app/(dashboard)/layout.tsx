@@ -18,9 +18,16 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  console.log('[dashboard/layout] rendering — calling getCurrentUser');
   const currentUser = await getCurrentUser();
+  console.log('[dashboard/layout] getCurrentUser result:', {
+    hasUser: !!currentUser,
+    userId: currentUser?.id ?? 'none',
+    role: currentUser?.role ?? 'none',
+  });
 
   if (!currentUser) {
+    console.log('[dashboard/layout] no user — redirecting to login');
     redirect('/login');
   }
 
