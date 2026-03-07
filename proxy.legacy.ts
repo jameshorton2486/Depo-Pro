@@ -83,10 +83,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   });
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const user = session?.user ?? null;
+    data: { user },
+  } = await supabase.auth.getUser();
   const meta = user?.user_metadata ?? {};
 
   // --- Public path — allow through ---
