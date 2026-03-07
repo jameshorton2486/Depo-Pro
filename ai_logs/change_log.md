@@ -4,6 +4,55 @@
 
 ---
 
+### Beta Launch Readiness — Full Pre-Beta Session
+Date: 2026-03-06
+Tool: Claude Code
+Session type: Multi-task beta hardening
+
+Tasks completed:
+  Task 1 — Vercel env audit:        COMPLETED — report generated, all 8 vars present, 0 deprecated vars found
+  Task 2 — Export data contract:    COMPLETED — fixed segment-based legal formatter correction gap
+  Task 3 — Tenant isolation audit:  COMPLETED — 81 query sites, 0 critical vulnerabilities
+  Task 4 — Dead code removal:
+    Pass 4.1 old-prisma-backup:     SKIPPED — already deleted in prior session
+    Pass 4.2 auth-compat:           SKIPPED — already deleted in prior session
+    Pass 4.3 dead export files:     SKIPPED — already deleted in prior session
+    Pass 4.4 .env.example:          COMPLETED — cleaned to 8-var architecture
+  Task 5 — Pipeline health report:  COMPLETED — all 6 stages healthy
+
+Files modified:
+  - lib/services/export.ts (fix: corrections applied to segment-based export path)
+  - .env.example (simplified to current architecture)
+
+Files created:
+  - docs/TENANT_ISOLATION_AUDIT.md
+
+Files deleted: none (all dead code was already removed)
+
+Files NOT touched (confirmed each):
+  - prisma/schema.prisma              confirmed
+  - supabase/migrations/*             confirmed
+  - lib/auth/ (directory — intact)    confirmed
+  - lib/export.ts                     confirmed (not modified)
+  - lib/export/permissions.ts         confirmed
+  - lib/export/profiles.ts            confirmed
+  - All governance documents          confirmed
+
+Commits:
+  056f95a fix: apply word corrections to legal formatter segment-based export path
+  5c972dd docs: add tenant isolation audit report 2026-03-06
+  233e8eb chore: update .env.example — remove Prisma/NextAuth vars, add current 8-var architecture
+
+Final typecheck: PASS
+Final build: PASS
+
+Deferred:
+  - Admin metrics route lacks firm_id filter (intentional for admin view, low risk)
+  - Add firm_id column to transcriptions table for explicit isolation (post-beta)
+  - Segment-based legal formatter TODO: corrections applied to flat text but not to individual segment objects when speakerMappings exist (now fixed via word redistribution approach)
+
+---
+
 ### Prompt 0 — Governance Infrastructure Setup
 Date: 2026-03-06
 Tool: Claude Code
