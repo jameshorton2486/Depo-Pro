@@ -58,8 +58,7 @@ const RULES = [
         password.includes('xxxx') ||
         password.includes('***') ||
         line.includes('<PASSWORD>') ||
-        line.includes('[PASSWORD]') ||
-        line.includes('$DATABASE_URL')
+        line.includes('[PASSWORD]')
       );
     },
   },

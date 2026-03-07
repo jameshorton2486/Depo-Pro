@@ -25,7 +25,7 @@ if (fs.existsSync(envLocalPath)) {
   console.error('❌ No .env.local or .env file found!');
   console.error('   Create .env.local in the project root with:');
   console.error('   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co');
-  console.error('   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...');
+  console.error('   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...');
   process.exit(1);
 }
 
@@ -41,8 +41,8 @@ for (const line of envLines) {
   const trimmed = line.trim();
   if (trimmed.startsWith('NEXT_PUBLIC_SUPABASE_URL=')) {
     supabaseUrl = trimmed.substring('NEXT_PUBLIC_SUPABASE_URL='.length).trim();
-  } else if (trimmed.startsWith('NEXT_PUBLIC_SUPABASE_ANON_KEY=')) {
-    supabaseAnonKey = trimmed.substring('NEXT_PUBLIC_SUPABASE_ANON_KEY='.length).trim();
+  } else if (trimmed.startsWith('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=')) {
+    supabaseAnonKey = trimmed.substring('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='.length).trim();
   }
 }
 
@@ -69,18 +69,18 @@ if (!supabaseUrl) {
 
 // Check Anon Key
 if (!supabaseAnonKey) {
-  console.error('❌ NEXT_PUBLIC_SUPABASE_ANON_KEY: NOT SET');
+  console.error('❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: NOT SET');
 } else {
   if (supabaseAnonKey.startsWith('"') || supabaseAnonKey.endsWith('"')) {
-    console.error('❌ NEXT_PUBLIC_SUPABASE_ANON_KEY: Has quotes (remove quotes!)');
+    console.error('❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: Has quotes (remove quotes!)');
     hasQuotes = true;
   } else if (supabaseAnonKey === '') {
-    console.error('❌ NEXT_PUBLIC_SUPABASE_ANON_KEY: Empty value');
+    console.error('❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: Empty value');
   } else if (!supabaseAnonKey.startsWith('eyJ')) {
-    console.warn('⚠️  NEXT_PUBLIC_SUPABASE_ANON_KEY: Does not start with "eyJ" (JWT format)');
+    console.warn('⚠️  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: Does not start with "eyJ" (JWT format)');
     console.log(`   Value: ${supabaseAnonKey.substring(0, 30)}...`);
   } else {
-    console.log('✅ NEXT_PUBLIC_SUPABASE_ANON_KEY: Set correctly');
+    console.log('✅ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: Set correctly');
     console.log(`   Value: ${supabaseAnonKey.substring(0, 30)}...`);
     console.log(`   Length: ${supabaseAnonKey.length} characters`);
   }
@@ -95,7 +95,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('1. Create or edit .env.local in the project root');
   console.error('2. Add these lines (without quotes):');
   console.error('   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co');
-  console.error('   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...');
+  console.error('   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...');
   console.error('3. Restart your dev server (npm run dev)');
   process.exit(1);
 }

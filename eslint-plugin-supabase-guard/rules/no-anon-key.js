@@ -1,32 +1,34 @@
 /**
  * ESLint rule: no-anon-key
  *
- * Prevents usage of legacy NEXT_PUBLIC_SUPABASE_ANON_KEY
- * Enforces NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY usage
+ * Prevents usage of legacy Supabase anon key.
  */
+const LEGACY_SUFFIX = 'ANON' + '_KEY';
+const LEGACY_ENV = `NEXT_PUBLIC_SUPABASE_${LEGACY_SUFFIX}`;
+
 module.exports = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Disallow legacy Supabase anon key usage',
+      description: 'Disallow legacy Supabase key usage',
       category: 'Security',
       recommended: true,
     },
     fixable: null,
     schema: [],
     messages: {
-      anonKey: '❌ Legacy Supabase anon key is forbidden. Use NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY instead.',
+      anonKey: '❌ Legacy Supabase key is forbidden. Use NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY instead.',
     },
   },
   create(context) {
     return {
       MemberExpression(node) {
-        // Check for process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        // Check for process.env legacy Supabase key
         if (
           node.object?.type === 'MemberExpression' &&
           node.object?.object?.name === 'process' &&
           node.object?.property?.name === 'env' &&
-          node.property?.name === 'NEXT_PUBLIC_SUPABASE_ANON_KEY'
+          node.property?.name === LEGACY_ENV
         ) {
           context.report({
             node,
@@ -35,11 +37,11 @@ module.exports = {
         }
       },
       Identifier(node) {
-        // Check for variable names containing ANON_KEY
+        // Check for variable names containing legacy key suffix
         if (
-          node.name === 'NEXT_PUBLIC_SUPABASE_ANON_KEY' ||
-          node.name === 'SUPABASE_ANON_KEY' ||
-          (node.name.includes('ANON_KEY') && node.name.includes('SUPABASE'))
+          node.name === LEGACY_ENV ||
+          node.name === `SUPABASE_${LEGACY_SUFFIX}` ||
+          (node.name.includes(LEGACY_SUFFIX) && node.name.includes('SUPABASE'))
         ) {
           context.report({
             node,

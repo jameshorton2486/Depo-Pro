@@ -25,7 +25,7 @@ if (fs.existsSync(envLocalPath)) {
   console.error('❌ No .env.local or .env file found!');
   console.error('   Create .env.local in the project root with:');
   console.error('   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co');
-  console.error('   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...');
+  console.error('   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...');
   process.exit(1);
 }
 

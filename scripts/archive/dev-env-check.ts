@@ -55,18 +55,18 @@ export function validateSupabaseEnvVars(): void {
     }
   }
 
-  // Check NEXT_PUBLIC_SUPABASE_ANON_KEY
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Check NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!anonKey || anonKey.trim() === '') {
     errors.push(
-      '❌ NEXT_PUBLIC_SUPABASE_ANON_KEY is missing or empty.\n' +
+      '❌ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is missing or empty.\n' +
       '   Add it to your .env.local file:\n' +
-      '   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+      '   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
     );
   } else if (anonKey.length < 50) {
     // Basic sanity check - anon keys are typically 200+ characters
     errors.push(
-      '⚠️  NEXT_PUBLIC_SUPABASE_ANON_KEY appears to be too short.\n' +
+      '⚠️  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY appears to be too short.\n' +
       '   Verify you copied the complete key from Supabase Dashboard.'
     );
   }
