@@ -4,6 +4,43 @@
 
 ---
 
+### Task 8 — Deployment Lockdown
+Date: 2026-03-06
+Tool: Claude Code
+
+Passes completed:
+  Pass 1 — Config audit (read only): COMPLETE
+  Pass 2 — vercel.json:              PATCHED (added 7 route maxDuration entries)
+  Pass 3 — next.config.ts:           PATCHED (bodySizeLimit + upload route maxDuration)
+  Pass 4 — Build verification:       CLEAN (0 errors, 0 warnings)
+  Pass 5 — Deployment checklist:     COMPLETE
+
+Deployment risks resolved:
+  Transcription timeout (10s default): RESOLVED (300s in vercel.json)
+  Large upload rejection (413):        RESOLVED (2gb bodySizeLimit + maxDuration=300)
+  ffmpeg externals misconfiguration:   WAS ALREADY OK (already in serverExternalPackages)
+
+Files modified:
+  - vercel.json (added maxDuration for 9 routes)
+  - next.config.ts (added serverActions.bodySizeLimit)
+  - app/api/jobs/[id]/files/route.ts (added maxDuration=300 export)
+
+Files created:
+  - docs/DEPLOYMENT_CHECKLIST.md
+
+Files NOT touched: prisma/schema.prisma, supabase/migrations/*,
+                   lib/transcription/*, lib/export.ts, lib/auth/*,
+                   all governance documents
+
+Commits:
+  699d201 config: set vercel.json maxDuration
+  7dbc07a config: add body size limit and upload maxDuration
+  30d813f docs: add deployment checklist
+
+Final build: PASS
+
+---
+
 ### Beta Launch Readiness — Full Pre-Beta Session
 Date: 2026-03-06
 Tool: Claude Code
