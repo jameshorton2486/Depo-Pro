@@ -13,6 +13,7 @@ import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
+export const maxDuration = 300;
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const ALLOWED_TYPES = [

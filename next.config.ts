@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
   // Experimental optimizations
   experimental: {
     optimizePackageImports: [],
+    serverActions: {
+      bodySizeLimit: '2gb',
+    },
   },
 
   // Turbopack configuration (Next.js 16+)
