@@ -123,9 +123,8 @@ const PATCHHandler = async (
       if (Math.abs(actualDate.getTime() - expectedDate.getTime()) > 1000) {
         return NextResponse.json(
           {
-            error: 'Conflict detected',
-            code: 'CONFLICT',
-            message: 'This transcript was modified since you loaded it. Refresh to see changes.',
+            error: 'STALE_DATA',
+            message: 'Transcript has been updated by another user. Refresh to see changes.',
             serverUpdatedAt: actualDate.toISOString(),
           },
           { status: 409 },

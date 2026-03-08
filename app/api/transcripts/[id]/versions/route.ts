@@ -49,18 +49,48 @@ const GETHandler = async (
       return NextResponse.json({ versions: [] });
     }
 
+    // Fetch transcript metadata for wordCount/flaggedCount
+    const { data: transcript } = await supabase
+      .from('transcriptions')
+      .select('word_count, flagged_word_count')
+      .eq('id', transcriptId)
+      .single();
+
+    const wordCount = transcript?.word_count ?? 0;
+    const flaggedCount = transcript?.flagged_word_count ?? 0;
+
     return NextResponse.json({
-      versions: (chain ?? []).map((entry: any) => ({
-        id: entry.id,
-        versionNumber: entry.version_number,
-        transcriptHash: entry.transcript_hash,
-        previousHash: entry.previous_hash,
-        editId: entry.edit_id ?? null,
-        createdBy: entry.creator
-          ? { id: entry.creator.id, name: entry.creator.full_name, email: entry.creator.email }
-          : { id: entry.created_by, name: null, email: null },
-        createdAt: entry.created_at,
-      })),
+      versions: (chain ?? []).map((entry: any) => {
+        const fullName: string = entry.creator?.full_name ?? '';
+        const nameParts = fullName.trim().split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+        return {
+          id: entry.id,
+          // Legacy timeline fields
+          version: entry.version_number,
+          versionType: entry.edit_id ? 'edit' : 'snapshot',
+          wordCount,
+          flaggedCount,
+          // Integrity chain fields
+          versionNumber: entry.version_number,
+          transcriptHash: entry.transcript_hash,
+          previousHash: entry.previous_hash,
+          previousVersionHash: entry.previous_hash,
+          currentVersionHash: entry.transcript_hash,
+          integrityStatus: entry.previous_hash || entry.version_number === 1 ? 'valid' : 'unknown',
+          editId: entry.edit_id ?? null,
+          createdBy: {
+            id: entry.creator?.id ?? entry.created_by,
+            email: entry.creator?.email ?? null,
+            name: fullName || null,
+            firstName,
+            lastName,
+          },
+          createdAt: entry.created_at,
+        };
+      }),
     });
   } catch (error) {
     console.error('Error fetching versions:', error);
