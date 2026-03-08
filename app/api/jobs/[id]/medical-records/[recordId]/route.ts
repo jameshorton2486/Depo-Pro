@@ -10,6 +10,7 @@ import {
   getMedicalRecordById,
   deleteMedicalRecord,
 } from '@/lib/supabase/queries/medical';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 
 export async function GET(
@@ -22,11 +23,17 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { recordId } = await params;
+    const { id: jobId, recordId } = await params;
     const supabase = await createSupabaseServerClient();
 
+    // Verify job exists and belongs to user's firm
+    const job = await getJobById(supabase, jobId);
+    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const record = await getMedicalRecordById(supabase, recordId);
-    if (!record) {
+    if (!record || record.job_id !== jobId) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
 
@@ -50,10 +57,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { recordId } = await params;    const supabase = await createSupabaseServerClient();
+    const { id: jobId, recordId } = await params;
+    const supabase = await createSupabaseServerClient();
+
+    // Verify job exists and belongs to user's firm
+    const job = await getJobById(supabase, jobId);
+    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
     const record = await getMedicalRecordById(supabase, recordId);
-    if (!record) {
+    if (!record || record.job_id !== jobId) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
 

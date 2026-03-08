@@ -13,9 +13,26 @@ const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTE
 
 const GETHandler = async (
   _req: NextRequest,
-  { supabase, params }: ProtectedContext,
+  { supabase, user, params }: ProtectedContext,
 ) => {
   const transcriptId = params.id;
+
+  // Tenant isolation: verify transcript belongs to user's firm
+  const { data: transcript } = await supabase
+    .from('transcriptions')
+    .select('id, job:jobs!inner(firm_id)')
+    .eq('id', transcriptId)
+    .single();
+
+  if (!transcript) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const jobFirmId = (transcript as any).job?.firm_id ?? null;
+  const userFirmId = (user as any).firmId ?? (user as any).firm_id ?? null;
+  if (userFirmId && jobFirmId && userFirmId !== jobFirmId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const { data: suggestions, error } = await supabase
     .from('ai_suggestions')

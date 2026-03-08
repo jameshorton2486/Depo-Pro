@@ -1,64 +1,72 @@
 // =============================================================================
 // STRIPE WEBHOOK API ROUTE
 // =============================================================================
-// Location: app/api/webhooks/stripe/route.ts
-// Purpose: Handle Stripe webhook events
-//
-// SETUP:
-// 1. Create webhook endpoint in Stripe Dashboard
-// 2. Point to: https://yourdomain.com/api/webhooks/stripe
-// 3. Enable events: invoice.paid, invoice.payment_failed, invoice.voided
-// 4. Copy signing secret to STRIPE_WEBHOOK_SECRET
+// FAIL-CLOSED: Stripe signature verification is mandatory.
+// If STRIPE_WEBHOOK_SECRET is missing, all requests are rejected (503).
+// If signature is invalid, request is rejected (401).
 // =============================================================================
 
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { processWebhookRequest } from '@/lib/services/webhook-verification-service';
-
-// =============================================================================
-// POST Handler
-// =============================================================================
+import Stripe from 'stripe';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
-  // Check if Stripe is configured
-  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-    console.warn('⚠️ Stripe not configured - webhook ignored');
-    return NextResponse.json(
-      { error: 'Stripe not configured' },
-      { status: 503 }
-    );
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+
+  // FAIL-CLOSED: Missing config = reject all
+  if (!stripeKey || !webhookSecret) {
+    console.error('[stripe-webhook] STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET not configured');
+    return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
   }
+
+  const rawBody = await request.text();
+  const signatureHeader = request.headers.get('stripe-signature');
+
+  if (!signatureHeader) {
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 401 });
+  }
+
+  const stripe = new Stripe(stripeKey);
+  let event: Stripe.Event;
 
   try {
-    // Get the raw body
-    const rawBody = await request.text();
-
-    // Get the signature header
-    const signature = request.headers.get('stripe-signature');
-
-    // Process webhook using verification service (Phase 4.4: Billing Completion)
-    const result = await processWebhookRequest(rawBody, signature);
-
-    return NextResponse.json(result.body || { received: result.success }, { status: result.status });
-
-  } catch (error) {
-    console.error('❌ Webhook error:', error);
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 }
+    // constructEvent throws on invalid signature — this IS the verification
+    event = stripe.webhooks.constructEvent(rawBody, signatureHeader, webhookSecret);
+  } catch (err) {
+    // FAIL-CLOSED: Invalid signature = immediate 401, no processing
+    console.error(
+      '[stripe-webhook] Signature verification failed:',
+      err instanceof Error ? err.message : 'unknown',
     );
+    return NextResponse.json({ error: 'Webhook signature invalid' }, { status: 401 });
   }
-}
 
-// =============================================================================
-// GET Handler (for webhook verification)
-// =============================================================================
+  // Safe to process — signature verified
+  logger.info('Stripe webhook verified', { type: event.type, id: event.id });
+
+  switch (event.type) {
+    case 'invoice.paid':
+    case 'invoice.payment_failed':
+    case 'invoice.voided':
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+    case 'customer.subscription.deleted':
+      // TODO: Implement billing event handlers when Stripe billing goes live
+      logger.info('Stripe event received (handler pending)', { type: event.type });
+      break;
+    default:
+      logger.info('Unhandled Stripe event type', { type: event.type });
+  }
+
+  return NextResponse.json({ received: true });
+}
 
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
     endpoint: '/api/webhooks/stripe',
     configured: !!process.env.STRIPE_SECRET_KEY && !!process.env.STRIPE_WEBHOOK_SECRET,
-    message: 'Stripe webhook endpoint is active',
   });
 }

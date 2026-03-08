@@ -63,18 +63,18 @@ async function handleDeepgramWebhook(
   body: string,
   headers: Headers
 ): Promise<NextResponse> {
-  // Verify signature if configured
+  // FAIL-CLOSED: Verify signature — reject ALL requests if secret is missing
   const deepgramSecret = process.env.DEEPGRAM_WEBHOOK_SECRET;
 
-  if (deepgramSecret) {
-    const result = verifyWebhookRequest(body, headers, deepgramSecret);
-    if (!result.valid) {
-      logger.warn('Invalid Deepgram webhook signature', { error: result.error });
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      );
-    }
+  if (!deepgramSecret) {
+    logger.error('DEEPGRAM_WEBHOOK_SECRET not configured — rejecting all webhook requests');
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+
+  const result = verifyWebhookRequest(body, headers, deepgramSecret);
+  if (!result.valid) {
+    logger.warn('Invalid Deepgram webhook signature', { error: result.error });
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
   const payload = JSON.parse(body);
@@ -175,26 +175,18 @@ async function handleDeepgramWebhook(
 }
 
 // =============================================================================
-// STRIPE WEBHOOK HANDLER (PLACEHOLDER)
+// STRIPE WEBHOOK HANDLER
 // =============================================================================
+// Stripe webhooks should use /api/webhooks/stripe directly.
+// This handler rejects to prevent unverified processing via the [provider] route.
 
 async function handleStripeWebhook(
   _body: string,
   _headers: Headers
 ): Promise<NextResponse> {
-  // Verify Stripe signature
-  const stripeSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (!stripeSecret) {
-    return NextResponse.json(
-      { error: 'Stripe not configured' },
-      { status: 500 }
-    );
-  }
-
-  logger.info('Stripe webhook received (not implemented)', {
-    type: 'stripe.webhook',
-  });
-
-  return NextResponse.json({ received: true });
+  logger.warn('Stripe webhook hit [provider] route — should use /api/webhooks/stripe');
+  return NextResponse.json(
+    { error: 'Use /api/webhooks/stripe endpoint' },
+    { status: 400 }
+  );
 }

@@ -8,6 +8,7 @@ import {
   DEFAULT_PROCESSING_RULES,
   type TranscriptFormatConfig,
 } from '@/src/types/transcript-format';
+import { handleSupabaseError } from '@/lib/errors/api-error';
 
 function hasJobAccess(job: any, currentUser: { id: string; role: string; firm_id?: string | null }) {
   const isOwner = job?.created_by_id === currentUser.id;
@@ -43,7 +44,7 @@ const GETHandler = async (
     .single();
 
   if (error || !job) {
-    return NextResponse.json({ error: error?.message || 'Job not found' }, { status: 404 });
+    return error ? handleSupabaseError(error, 'jobs/format-settings') : NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
 
   if (!hasJobAccess(job, currentUser)) {
@@ -72,7 +73,7 @@ const PATCHHandler = async (
     .single();
 
   if (jobError || !job) {
-    return NextResponse.json({ error: jobError?.message || 'Job not found' }, { status: 404 });
+    return jobError ? handleSupabaseError(jobError, 'jobs/format-settings') : NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
 
   if (!hasJobAccess(job, currentUser)) {
@@ -87,7 +88,7 @@ const PATCHHandler = async (
     .eq('id', id);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleSupabaseError(error, 'jobs/format-settings');
   }
 
   return NextResponse.json({ success: true });

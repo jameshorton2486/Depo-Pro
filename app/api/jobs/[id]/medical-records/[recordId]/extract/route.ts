@@ -10,6 +10,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   getMedicalRecordById,
 } from '@/lib/supabase/queries/medical';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 import { processMedicalRecord } from '@/lib/services/medical-extraction';
 import { logger } from '@/lib/logger';
 
@@ -25,11 +26,18 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId, recordId } = await params;    const supabase = await createSupabaseServerClient();
+    const { id: jobId, recordId } = await params;
+    const supabase = await createSupabaseServerClient();
 
     // Only reporters and admins can trigger extraction
     if (!['ADMIN', 'REPORTER', 'COURT_REPORTER'].includes(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Verify job exists and belongs to user's firm
+    const job = await getJobById(supabase, jobId);
+    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     // Verify record exists and belongs to this job

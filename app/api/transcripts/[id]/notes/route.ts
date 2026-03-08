@@ -6,6 +6,7 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptNotes } from '@/lib/supabase/queries/transcripts';
 import { createNoteSchema } from '@/lib/api/schemas';
+import { handleSupabaseError } from '@/lib/errors/api-error';
 
 const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
@@ -17,7 +18,7 @@ const POSTHandler = async (request: NextRequest, { user, supabase, params }: Pro
     data = createNoteSchema.parse(body);
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Validation failed', details: err.issues }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
@@ -35,7 +36,7 @@ const POSTHandler = async (request: NextRequest, { user, supabase, params }: Pro
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return handleSupabaseError(error, 'transcripts/notes');
   }
 
   return NextResponse.json(note);

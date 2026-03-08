@@ -15,6 +15,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin, requireAdminUserId } from '@/lib/admin';
 import { logger } from '@/lib/logger';
 import { parseOptionalIsoDate, parsePagination } from '@/lib/api/validation';
+import { handleSupabaseError } from '@/lib/errors/api-error';
 
 /**
  * GET /api/admin/incidents
@@ -73,7 +74,7 @@ async function GETHandler(req: NextRequest) {
 
     if (error) {
       logger.error('[admin/incidents] Query failed', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleSupabaseError(error, 'admin/incidents');
     }
 
     logger.info('[admin/incidents] Incidents fetched', {

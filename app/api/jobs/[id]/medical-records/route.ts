@@ -30,6 +30,13 @@ const GETHandler = async (
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
+    // Tenant isolation: verify job belongs to user's firm
+    const userFirmId = (context.user as any).firmId ?? context.user.firm_id ?? null;
+    const jobFirmId = (job as any).firm_id ?? null;
+    if (userFirmId && jobFirmId && userFirmId !== jobFirmId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const records = await listMedicalRecordsByJob(supabase, jobId);
 
     return NextResponse.json({ data: records });

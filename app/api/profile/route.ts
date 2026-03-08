@@ -4,6 +4,7 @@ import { UserRole } from '@/lib/enums/roles';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ensureUserProfile } from '@/lib/auth/profile-guard';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
+import { rotateUserSessions } from '@/lib/auth/rotate-session';
 
 /**
  * GET /api/profile
@@ -157,6 +158,12 @@ async function POSTHandler(request: Request) {
           { error: 'Failed to update profile' },
           { status: 500 }
         );
+      }
+
+      // Session rotation: invalidate old sessions after role change
+      if (role !== undefined && allowedUpdates.role) {
+        const oldRole = currentMetadata.role ?? 'unknown';
+        await rotateUserSessions(updateTargetId, `role_change:${oldRole}_to_${role}`);
       }
 
       const updatedUser = updatedUserData.user;

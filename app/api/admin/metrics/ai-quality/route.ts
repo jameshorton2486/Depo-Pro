@@ -15,6 +15,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin';
 import { logger } from '@/lib/logger';
 import { parseOptionalIsoDate, parsePagination } from '@/lib/api/validation';
+import { handleSupabaseError } from '@/lib/errors/api-error';
 
 /**
  * GET /api/admin/metrics/ai-quality
@@ -58,7 +59,7 @@ async function GETHandler(req: NextRequest) {
 
     if (error) {
       logger.error('[admin/metrics/ai-quality] Query failed', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleSupabaseError(error, 'admin/metrics/ai-quality');
     }
 
     logger.info('[admin/metrics/ai-quality] Metrics fetched', {

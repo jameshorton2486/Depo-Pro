@@ -191,7 +191,13 @@ const POSTHandler = async (request: NextRequest) => {
     }
 
     // --- UPLOAD TO SUPABASE STORAGE ---
-    const storagePath = `${user.firmId || 'no-firm'}/${targetJobId}/${Date.now()}-${file.name}`;
+    if (!user.firmId) {
+      return NextResponse.json(
+        { error: 'User must belong to a firm to upload files' },
+        { status: 403 },
+      );
+    }
+    const storagePath = `${user.firmId}/${targetJobId}/${Date.now()}-${file.name}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await adminClient.storage

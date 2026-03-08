@@ -12,6 +12,7 @@ import {
   deleteChronologyEntry,
   verifyChronologyEntry,
 } from '@/lib/supabase/queries/medical';
+import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 
 export async function PATCH(
@@ -24,10 +25,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { entryId } = await params;    const supabase = await createSupabaseServerClient();
+    const { id: jobId, entryId } = await params;
+    const supabase = await createSupabaseServerClient();
+
+    // Verify job exists and belongs to user's firm
+    const job = await getJobById(supabase, jobId);
+    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
     const existing = await getChronologyEntryById(supabase, entryId);
-    if (!existing) {
+    if (!existing || existing.job_id !== jobId) {
       return NextResponse.json({ error: 'Entry not found' }, { status: 404 });
     }
 
@@ -95,10 +103,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { entryId } = await params;    const supabase = await createSupabaseServerClient();
+    const { id: jobId, entryId } = await params;
+    const supabase = await createSupabaseServerClient();
+
+    // Verify job exists and belongs to user's firm
+    const job = await getJobById(supabase, jobId);
+    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
 
     const existing = await getChronologyEntryById(supabase, entryId);
-    if (!existing) {
+    if (!existing || existing.job_id !== jobId) {
       return NextResponse.json({ error: 'Entry not found' }, { status: 404 });
     }
 
