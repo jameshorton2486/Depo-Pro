@@ -76,7 +76,20 @@ export default function ResetPasswordPage() {
 
     const checkSession = async () => {
       try {
-        // Small delay to allow cookies to be set after redirect
+        // Handle PKCE code exchange if present in URL
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get('code');
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            console.error('[RESET_PASSWORD] Code exchange failed:', exchangeError.message);
+          }
+          // Remove code from URL to prevent re-exchange on refresh
+          url.searchParams.delete('code');
+          window.history.replaceState({}, '', url.pathname + url.search);
+        }
+
+        // Small delay to allow cookies/hash fragment to be processed
         await new Promise(resolve => setTimeout(resolve, 500));
 
         const { data: { user }, error: sessionError } = await supabase.auth.getUser();

@@ -43,13 +43,20 @@ export function parseAuthError(error: AuthError | Error | unknown): {
   
   // Find matching error message
   let userMessage = 'An error occurred. Please try again.';
+  let matched = false;
   for (const [key, value] of Object.entries(errorMap)) {
     if (message.includes(key)) {
       userMessage = value;
+      matched = true;
       break;
     }
   }
-  
+
+  // Log unmatched errors so we can add them to the map
+  if (!matched) {
+    console.error('[parseAuthError] Unmatched error:', message, 'code:', code);
+  }
+
   return {
     userMessage,
     technicalDetails: message,

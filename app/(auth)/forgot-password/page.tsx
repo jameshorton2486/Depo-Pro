@@ -70,11 +70,12 @@ export default function ForgotPasswordPage() {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         data.email,
         {
-          redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+          redirectTo: `${window.location.origin}/reset-password`,
         }
       );
 
       if (resetError) {
+        console.error('[FORGOT_PASSWORD_ERROR]', resetError.message, resetError);
         const parsed = parseAuthError(resetError);
         setError(parsed.userMessage);
         setIsLoading(false);
@@ -85,16 +86,19 @@ export default function ForgotPasswordPage() {
       setSuccess(true);
       setIsLoading(false);
     } catch (err) {
-      console.error('[ForgotPassword] Error:', err);
-      
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[FORGOT_PASSWORD_ERROR] Caught exception:', errMsg, err);
+
       // Check if it's an env var error
       if (err instanceof Error && err.message.includes('SUPABASE')) {
         setError('Configuration error. Please contact support.');
       } else {
         const parsed = parseAuthError(err);
+        // Log the technical details so we can diagnose
+        console.error('[FORGOT_PASSWORD_ERROR] Parsed:', parsed.code, parsed.technicalDetails);
         setError(parsed.userMessage);
       }
-      
+
       setIsLoading(false);
     }
   }, []);
