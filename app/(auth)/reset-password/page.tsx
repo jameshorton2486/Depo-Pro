@@ -7,7 +7,7 @@
 // Includes session verification to prevent AbortError
 // =============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -57,7 +57,8 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [hasValidSession, setHasValidSession] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const sessionReadyRef = useRef(false);
 
   const {
     register,
@@ -68,15 +69,31 @@ export default function ResetPasswordPage() {
   });
 
   // ---------------------------------------------------------------------------
-  // Session verification on mount
+  // Wait for PASSWORD_RECOVERY event before enabling the form.
+  // The listener MUST be registered synchronously before any async work
+  // so it doesn't miss the event fired when Supabase processes the hash fragment.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     let mounted = true;
     const supabase = getSupabaseBrowserClient();
 
-    const checkSession = async () => {
+    // 1. Register auth state listener FIRST (synchronous)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event: AuthChangeEvent, _session: Session | null) => {
+        if (!mounted) return;
+
+        if (event === 'PASSWORD_RECOVERY') {
+          sessionReadyRef.current = true;
+          setSessionReady(true);
+          setError(null);
+          setIsCheckingSession(false);
+        }
+      }
+    );
+
+    // 2. Handle PKCE code exchange if present in URL
+    const handleCodeExchange = async () => {
       try {
-        // Handle PKCE code exchange if present in URL
         const url = new URL(window.location.href);
         const code = url.searchParams.get('code');
         if (code) {
@@ -87,54 +104,28 @@ export default function ResetPasswordPage() {
           // Remove code from URL to prevent re-exchange on refresh
           url.searchParams.delete('code');
           window.history.replaceState({}, '', url.pathname + url.search);
+          // exchangeCodeForSession fires PASSWORD_RECOVERY via onAuthStateChange
+          return;
         }
+      } catch (err) {
+        console.error('[RESET_PASSWORD] Code exchange error:', err);
+      }
 
-        // Small delay to allow cookies/hash fragment to be processed
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const { data: { user }, error: sessionError } = await supabase.auth.getUser();
-
-        if (!mounted) return;
-
-        if (sessionError) {
-          setError('Unable to verify your session. Please request a new password reset link.');
-          setHasValidSession(false);
-        } else if (!user) {
-          setError('Your password reset link has expired or is invalid. Please request a new one.');
-          setHasValidSession(false);
-        } else {
-          setHasValidSession(true);
-          setError(null);
-        }
-      } catch {
-        if (!mounted) return;
-        setError('An error occurred. Please request a new password reset link.');
-        setHasValidSession(false);
-      } finally {
-        if (mounted) {
-          setIsCheckingSession(false);
-        }
+      // 3. If no code param and no PASSWORD_RECOVERY event after timeout, show error
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (mounted && !sessionReadyRef.current) {
+        setError('Your password reset link has expired or is invalid. Please request a new one.');
+        setIsCheckingSession(false);
       }
     };
 
-    checkSession();
-
-    // Listen for auth state changes (catches PASSWORD_RECOVERY event)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      if (!mounted) return;
-
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-        setHasValidSession(true);
-        setError(null);
-        setIsCheckingSession(false);
-      }
-    });
+    handleCodeExchange();
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []); // ✅ Empty dependency array - client is lazy singleton
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Form submission with retry logic for AbortError
@@ -231,7 +222,7 @@ export default function ResetPasswordPage() {
   // ---------------------------------------------------------------------------
   // No valid session - show error
   // ---------------------------------------------------------------------------
-  if (!hasValidSession) {
+  if (!sessionReady) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
