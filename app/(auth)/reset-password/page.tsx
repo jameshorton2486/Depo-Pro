@@ -3,19 +3,19 @@
 // =============================================================================
 // RESET PASSWORD PAGE
 // =============================================================================
-// Session is established by /auth/callback before redirect here.
-// This page only presents the form and calls updateUser({ password }).
+// Session is established by /auth/callback BEFORE the user arrives here.
+// This page ONLY shows a new-password form and calls updateUser({ password }).
+// No token verification, no session checking, no spinner.
 // =============================================================================
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
-import { parseAuthError } from '@/lib/supabase/parse-auth-error';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,13 +50,9 @@ type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
-  const [sessionReady, setSessionReady] = useState(false);
 
   const {
     register,
@@ -67,188 +63,26 @@ export default function ResetPasswordPage() {
   });
 
   // ---------------------------------------------------------------------------
-  // Establish session via one of three paths:
-  //   1. PKCE flow: /auth/callback already exchanged code → session exists
-  //   2. Implicit flow: Supabase redirects with #access_token → onAuthStateChange
-  //   3. Legacy: ?code= in URL → redirect to /auth/callback to exchange
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
-    const code = searchParams.get('code');
-
-    // Legacy flow: ?code= in URL → redirect through /auth/callback
-    if (code) {
-      const callbackUrl = new URL('/auth/callback', window.location.origin);
-      callbackUrl.searchParams.set('next', '/reset-password');
-      callbackUrl.searchParams.set('code', code);
-      window.location.href = callbackUrl.toString();
-      return;
-    }
-
-    // Listen for PASSWORD_RECOVERY event (implicit grant flow — token in URL hash)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'PASSWORD_RECOVERY' && session) {
-          setSessionReady(true);
-          setError(null);
-          setIsCheckingSession(false);
-        }
-      }
-    );
-
-    // Also check for an existing session (PKCE flow — already exchanged)
-    async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setSessionReady(true);
-        setError(null);
-      }
-      setIsCheckingSession(false);
-    }
-
-    checkSession();
-
-    // Safety timeout: if onAuthStateChange hasn't fired after 8s, stop spinning
-    const timeout = setTimeout(() => {
-      setIsCheckingSession(false);
-    }, 8000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
-  }, [searchParams]);
-
-  // ---------------------------------------------------------------------------
-  // Form submission with retry logic for AbortError
+  // Submit — just call updateUser({ password })
   // ---------------------------------------------------------------------------
   const onSubmit = async (data: ResetPasswordInput) => {
     setIsLoading(true);
     setError(null);
 
     const supabase = getSupabaseBrowserClient();
-    const maxRetries = 3;
-    let lastError: Error | null = null;
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: data.password,
+    });
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: data.password,
-        });
-
-        if (updateError) {
-          const parsed = parseAuthError(updateError);
-
-          // Check if it's an AbortError or network error (retryable)
-          const isRetryableError =
-            parsed.technicalDetails.toLowerCase().includes('abort') ||
-            parsed.technicalDetails.toLowerCase().includes('network') ||
-            parsed.technicalDetails.toLowerCase().includes('fetch') ||
-            parsed.code === 'network_error';
-
-          if (isRetryableError && attempt < maxRetries) {
-            // Exponential backoff: 1s, 2s, 4s
-            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
-
-          lastError = updateError;
-          break;
-        }
-
-        // Success!
-        setSuccess(true);
-        setIsLoading(false);
-        return;
-
-      } catch (err) {
-        lastError = err as Error;
-
-        // Check if it's an AbortError by name or message
-        const isAbortError =
-          err instanceof Error &&
-          (err.name === 'AbortError' ||
-           err.message.toLowerCase().includes('abort') ||
-           err.message.toLowerCase().includes('timeout'));
-
-        if (isAbortError && attempt < maxRetries) {
-          // Exponential backoff: 1s, 2s, 4s
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        break;
-      }
+    if (updateError) {
+      setError(updateError.message);
+      setIsLoading(false);
+      return;
     }
 
-    // All retries failed
-    const parsed = parseAuthError(lastError);
-    setError(parsed.userMessage || 'Failed to update password. Please try again.');
+    setSuccess(true);
     setIsLoading(false);
   };
-
-  // ---------------------------------------------------------------------------
-  // Loading state while checking session
-  // ---------------------------------------------------------------------------
-  if (isCheckingSession) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <Loader2 className="h-12 w-12 text-accent animate-spin" />
-            </div>
-            <CardTitle className="text-h2 font-bold text-ink">
-              Verifying Your Link
-            </CardTitle>
-            <CardDescription className="text-body text-slate">
-              Please wait while we verify your password reset link...
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // No valid session - show error
-  // ---------------------------------------------------------------------------
-  if (!sessionReady) {
-    return (
-      <div className="min-h-screen bg-bg flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <AlertCircle className="h-12 w-12 text-danger" />
-            </div>
-            <CardTitle className="text-h2 font-bold text-ink">
-              Link Invalid or Expired
-            </CardTitle>
-            <CardDescription className="text-body text-slate">
-              {error || 'Your password reset link has expired or is invalid.'}
-            </CardDescription>
-          </CardHeader>
-
-          <CardFooter className="flex flex-col space-y-4">
-            <Button
-              className="w-full"
-              onClick={() => router.push('/forgot-password')}
-            >
-              Request New Reset Link
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => router.push('/login')}
-            >
-              Return to Sign In
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // Success state
@@ -283,7 +117,7 @@ export default function ResetPasswordPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Form state
+  // Form
   // ---------------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-4">
