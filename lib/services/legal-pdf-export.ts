@@ -323,8 +323,9 @@ async function applyPdfCorrections(
 export async function exportLegalPdf(
   jobId: string,
   formatConfig: TranscriptFormatConfig | null,
+  supabaseClient?: Awaited<ReturnType<typeof createSupabaseServerClient>>,
 ): Promise<Buffer> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = supabaseClient ?? await createSupabaseServerClient();
 
   const { data: transcription } = await supabase
     .from('transcriptions')
@@ -381,8 +382,9 @@ export async function exportLegalPdf(
  */
 export async function exportLegalPdfWithMeta(
   transcriptId: string,
+  supabaseClient?: Awaited<ReturnType<typeof createSupabaseServerClient>>,
 ): Promise<Buffer> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = supabaseClient ?? await createSupabaseServerClient();
 
   const { data: transcript } = await supabase
     .from('transcriptions')
@@ -400,7 +402,7 @@ export async function exportLegalPdfWithMeta(
 
   const formatConfig = (job?.format_settings as TranscriptFormatConfig | null) ?? null;
 
-  const buf = await exportLegalPdf(transcript.job_id, formatConfig);
+  const buf = await exportLegalPdf(transcript.job_id, formatConfig, supabase);
 
   // Re-build with proper metadata if job data is available
   if (job) {
@@ -413,8 +415,7 @@ export async function exportLegalPdfWithMeta(
           processingRules: DEFAULT_PROCESSING_RULES,
         };
 
-    const supabase2 = await createSupabaseServerClient();
-    const { data: transcription } = await supabase2
+    const { data: transcription } = await supabase
       .from('transcriptions')
       .select('id, segments, full_transcript, original_transcript')
       .eq('job_id', transcript.job_id)
@@ -423,7 +424,7 @@ export async function exportLegalPdfWithMeta(
     if (transcription) {
       // Apply corrections to the meta-aware export path too
       const correctedMeta = await applyPdfCorrections(
-        supabase2,
+        supabase,
         transcription.id,
         transcription.full_transcript || transcription.original_transcript || '',
       );

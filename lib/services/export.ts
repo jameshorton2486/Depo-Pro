@@ -119,8 +119,9 @@ async function applyCorrections(
 export async function exportLegalDocx(
   jobId: string,
   formatConfig: TranscriptFormatConfig | null,
+  supabaseClient?: Awaited<ReturnType<typeof createSupabaseServerClient>>,
 ): Promise<Buffer> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = supabaseClient ?? await createSupabaseServerClient();
 
   const { data: transcription } = await supabase
     .from('transcriptions')

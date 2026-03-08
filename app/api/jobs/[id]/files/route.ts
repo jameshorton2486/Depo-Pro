@@ -58,6 +58,13 @@ export async function POST(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
+    // Tenant isolation: ensure job belongs to the user's firm
+    const userFirmId = (session as any).firmId ?? null;
+    const jobFirmId = (job as any).firm_id ?? null;
+    if (userFirmId && jobFirmId && userFirmId !== jobFirmId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     // 🔒 Security: Verify access rights via query layer
     const isAssigned = await isUserAssignedToJob(jobId, session.id);
     const hasAccess =
@@ -159,6 +166,13 @@ export async function GET(
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    // Tenant isolation: ensure job belongs to the user's firm
+    const userFirmId = (session as any).firmId ?? null;
+    const jobFirmId = (job as any).firm_id ?? null;
+    if (userFirmId && jobFirmId && userFirmId !== jobFirmId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     // 🔒 Security: Verify access rights via query layer
