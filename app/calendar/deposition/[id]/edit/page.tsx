@@ -14,7 +14,8 @@ export default async function EditDepositionPage({ params }: EditDepositionPageP
 
   if (!currentUser) {
     redirect('/login');
-  }  const { id } = await params;
+  }
+  const { id } = await params;
 
   // Only reporters and admins can edit depositions
   if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN' && currentUser.role !== 'COURT_REPORTER') {

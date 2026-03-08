@@ -76,7 +76,14 @@
       "Bash(chmod +x:*)",
       "Bash(bash:*)",
       "mcp__vercel__listProjects",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(sed:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm audit:*)",
+      "Read(//tmp/**)",
+      "Bash(do echo:*)",
+      "Bash(echo === $f ===:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

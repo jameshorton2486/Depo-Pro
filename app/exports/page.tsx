@@ -20,7 +20,8 @@ export default async function ExportsPage() {
 
   if (!currentUser) {
     redirect('/login');
-  }  const supabase = await createSupabaseServerClient();
+  }
+  const supabase = await createSupabaseServerClient();
 
   // Build filters based on role
   let jobsQuery = supabase

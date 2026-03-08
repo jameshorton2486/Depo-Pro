@@ -18,6 +18,7 @@ export default async function ReportsPage() {
   if (!currentUser) {
     redirect('/login');
   }
+
   if (currentUser.role !== 'ADMIN') {
     redirect('/unauthorized');
   }

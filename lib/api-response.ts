@@ -1,4 +1,4 @@
-﻿// lib/api-response.ts
+// lib/api-response.ts
 // API response helpers with flexible signatures for backward compatibility
 import { NextResponse } from 'next/server';
 

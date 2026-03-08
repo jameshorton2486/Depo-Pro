@@ -293,7 +293,7 @@ if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
 fi
 
 # 4.5 Production site reachable
-PROD_URL="${NEXT_PUBLIC_SITE_URL:-https://app.depo-pro.com}"
+PROD_URL="${NEXT_PUBLIC_SITE_URL:-https://depo-pro.com}"
 SITE_HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" 2>/dev/null || echo "000")
 if [ "$SITE_HTTP" = "200" ] || [ "$SITE_HTTP" = "302" ] || [ "$SITE_HTTP" = "307" ]; then
   pass "Production site reachable: $PROD_URL (HTTP $SITE_HTTP)"

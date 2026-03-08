@@ -1,7 +1,7 @@
 # Depo-Pro Deployment Checklist
 **Last updated:** 2026-03-06
 **Platform:** Vercel + Supabase
-**Live URL:** https://app.depo-pro.com
+**Live URL:** https://depo-pro.com
 
 This checklist must be completed before every production deployment.
 
@@ -30,7 +30,7 @@ Verify ALL of these are set in:
   Vercel -> Project -> Settings -> Environment Variables -> Production
 
   - [ ] CRON_SECRET
-  - [ ] NEXT_PUBLIC_SITE_URL              = https://app.depo-pro.com
+  - [ ] NEXT_PUBLIC_SITE_URL              = https://depo-pro.com
   - [ ] NEXT_PUBLIC_SUPABASE_URL
   - [ ] NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   - [ ] SUPABASE_SERVICE_ROLE_KEY
@@ -55,10 +55,10 @@ Confirm these are NOT present (deprecated -- delete if found):
 ## SUPABASE CONFIGURATION
 
 ### Auth Settings
-  - [ ] Site URL: https://app.depo-pro.com
+  - [ ] Site URL: https://depo-pro.com
   - [ ] Redirect URLs include:
-      https://app.depo-pro.com/**
-      https://app.depo-pro.com/auth/callback
+      https://depo-pro.com/**
+      https://depo-pro.com/auth/callback
   Verify: Supabase -> Authentication -> URL Configuration
 
 ### Storage Buckets
@@ -76,7 +76,7 @@ Confirm these are NOT present (deprecated -- delete if found):
 
 ## POST-DEPLOYMENT VERIFICATION
 
-  - [ ] https://app.depo-pro.com loads -- no 404 or blank page
+  - [ ] https://depo-pro.com loads -- no 404 or blank page
   - [ ] GET /api/health returns { "status": "healthy" }
   - [ ] Log in as test reporter -- dashboard loads without console errors
   - [ ] Vercel -> Logs -> Functions -- no [CRITICAL] lines on first load
@@ -88,7 +88,7 @@ Confirm these are NOT present (deprecated -- delete if found):
 If a deployment breaks production:
   1. Vercel -> Deployments -> find last known-good deployment
   2. Click ... -> "Promote to Production"
-  3. Verify https://app.depo-pro.com is restored
+  3. Verify https://depo-pro.com is restored
   4. Identify the breaking commit and fix locally
   5. Run full pre-deployment checklist before redeploying
 

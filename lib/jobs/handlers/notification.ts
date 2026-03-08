@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Notification Job Handlers
  */
 

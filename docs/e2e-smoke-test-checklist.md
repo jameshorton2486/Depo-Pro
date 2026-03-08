@@ -1,5 +1,5 @@
 # E2E Smoke Test Checklist — Pre-Beta
-# Run on: https://app.depo-pro.com
+# Run on: https://depo-pro.com
 # Complete all steps before sending beta invitations
 
 ## Setup

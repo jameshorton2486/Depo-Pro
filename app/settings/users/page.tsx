@@ -20,6 +20,7 @@ export default async function UsersSettingsPage() {
   if (!currentUser) {
     redirect('/login');
   }
+
   if (currentUser.role !== 'ADMIN') {
     redirect('/unauthorized');
   }

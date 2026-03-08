@@ -14,7 +14,8 @@ export default async function ConfirmDepositionPage({ params }: ConfirmDepositio
 
   if (!currentUser) {
     redirect('/login');
-  }  const { id } = await params;
+  }
+  const { id } = await params;
 
   // Only reporters and admins can confirm depositions
   if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN' && currentUser.role !== 'COURT_REPORTER') {

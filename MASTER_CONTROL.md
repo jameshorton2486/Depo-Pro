@@ -11,7 +11,7 @@ Backend:      Next.js API Routes · Supabase (PostgreSQL + Storage)
 AI/Speech:    Deepgram Nova-3 · Anthropic Claude API
 Export:       docx npm package (DOCX) · pdfkit (PDF)
 Hosting:      Vercel
-Domain:       app.depo-pro.com
+Domain:       depo-pro.com
 
 ## Current Phase
 

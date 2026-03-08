@@ -3,12 +3,12 @@
 // =============================================================================
 // RESET PASSWORD PAGE
 // =============================================================================
-// Supabase-only password update after recovery email
-// Includes session verification to prevent AbortError
+// Session is established by /auth/callback before redirect here.
+// This page only presents the form and calls updateUser({ password }).
 // =============================================================================
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,6 @@ import Link from 'next/link';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { parseAuthError } from '@/lib/supabase/parse-auth-error';
-import type { AuthChangeEvent } from '@supabase/supabase-js';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,7 @@ type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  // Use canonical browser client
+  const searchParams = useSearchParams();
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -68,25 +67,33 @@ export default function ResetPasswordPage() {
   });
 
   // ---------------------------------------------------------------------------
-  // Wait for PASSWORD_RECOVERY event before enabling the form.
-  // Supabase automatically processes the #access_token hash fragment and
-  // fires PASSWORD_RECOVERY via onAuthStateChange. No PKCE code exchange needed.
+  // Session is established by /auth/callback before redirect. Check for session.
+  // If user landed with ?code= (old email link), redirect to callback to exchange it.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
+    const code = searchParams.get('code');
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          setSessionReady(true);
-          setError(null);
-          setIsCheckingSession(false);
-        }
+    // Old flow: user landed with code in URL (e.g. from email before we fixed redirectTo)
+    if (code) {
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      callbackUrl.searchParams.set('next', '/reset-password');
+      callbackUrl.searchParams.set('code', code);
+      window.location.href = callbackUrl.toString();
+      return;
+    }
+
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setSessionReady(true);
+        setError(null);
       }
-    );
+      setIsCheckingSession(false);
+    }
 
-    return () => subscription.unsubscribe();
-  }, []);
+    checkSession();
+  }, [searchParams]);
 
   // ---------------------------------------------------------------------------
   // Form submission with retry logic for AbortError

@@ -604,7 +604,7 @@ Est:        30 min
 
 ```
 Action:     MANUAL TEST — not a code change
-  Step 1: Open incognito browser → app.depo-pro.com/register
+  Step 1: Open incognito browser → depo-pro.com/register
   Step 2: Register with email + password, select COURT_REPORTER role
   Step 3: Check email for verification → click link
   Step 4: Log in → verify reporter dashboard appears with correct navigation
@@ -672,7 +672,7 @@ Est:        4 hrs
 ### TST-02 ⬜ 10 consecutive jobs stability test `HIGH`
 
 ```
-Action:     MANUAL TEST on production (app.depo-pro.com)
+Action:     MANUAL TEST on production (depo-pro.com)
   Upload 10 different audio files. For each, verify all 5 stages complete.
 
   | Job | Upload | Transcribe | Flags | Review | Export | Pass |
@@ -863,7 +863,7 @@ Action:     MANUAL verification
   - [ ] npm run build → zero errors
   - [ ] vercel.json maxDuration: transcription 300s, medical 120s
   - [ ] Cron job /api/cron/process-jobs running
-  - [ ] HTTPS/SSL on app.depo-pro.com verified
+  - [ ] HTTPS/SSL on depo-pro.com verified
   - [ ] Security headers in browser Network tab (CSP, HSTS, X-Frame-Options)
 Validation: All items checked
 Tool:       Manual

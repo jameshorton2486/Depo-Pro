@@ -58,5 +58,5 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_placeholder-for-ci-build
           SUPABASE_SERVICE_ROLE_KEY: sb_secret_placeholder-service-role-key-for-ci-build
-          NEXT_PUBLIC_SITE_URL: https://app.depo-pro.com
+          NEXT_PUBLIC_SITE_URL: https://depo-pro.com
         run: npm run build

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dashboard Cache Service
  * Stub implementation - TODO: Add Redis caching
  */

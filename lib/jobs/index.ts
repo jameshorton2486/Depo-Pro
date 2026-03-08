@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Jobs Module Exports
  */
 

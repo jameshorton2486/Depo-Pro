@@ -262,7 +262,7 @@ Stop all AI agents immediately if:
 2. A tool modifies a file in the Frozen Layer
 3. A tool introduces database schema changes
 4. A tool creates files outside the task's scope
-5. Production (app.depo-pro.com) shows errors after a deploy
+5. Production (depo-pro.com) shows errors after a deploy
 6. Two agents have uncommitted changes in the same directory
 
 **After emergency stop:** Run rollback protocol above, then resume from last commit.

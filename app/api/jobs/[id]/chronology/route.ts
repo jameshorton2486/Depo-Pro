@@ -92,7 +92,8 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId } = await params;    const supabase = await createSupabaseServerClient();
+    const { id: jobId } = await params;
+    const supabase = await createSupabaseServerClient();
 
     // Verify job exists
     const job = await getJobById(supabase, jobId);

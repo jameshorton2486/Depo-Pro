@@ -69,7 +69,7 @@
 - [ ] `/api/health` returns all services healthy including database check
 - [ ] Vercel `maxDuration` configured: transcription 300s, medical extraction 120s
 - [ ] Cron job `/api/cron/process-jobs` running and processing
-- [ ] HTTPS/SSL verified on app.depo-pro.com
+- [ ] HTTPS/SSL verified on depo-pro.com
 - [ ] Security headers present in production (CSP, HSTS, X-Frame-Options)
 
 ---

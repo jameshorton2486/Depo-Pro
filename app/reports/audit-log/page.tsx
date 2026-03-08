@@ -26,7 +26,8 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
 
   if (!currentUser) {
     redirect('/login');
-  }  const params = await searchParams;
+  }
+  const params = await searchParams;
 
   if (currentUser.role !== 'ADMIN') {
     redirect('/unauthorized');

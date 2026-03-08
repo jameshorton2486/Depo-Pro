@@ -138,7 +138,7 @@ Configured in `next.config.ts` (**FROZEN — do not modify**):
 
 **Verify in production:**
 ```bash
-curl -I https://app.depo-pro.com
+curl -I https://depo-pro.com
 ```
 
 ---

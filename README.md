@@ -76,7 +76,7 @@ npm run lint          # ESLint
 ## Deployment
 
 Deployed automatically to Vercel on push to `main`.
-Production URL: https://app.depo-pro.com
+Production URL: https://depo-pro.com
 
 ## User Roles
 

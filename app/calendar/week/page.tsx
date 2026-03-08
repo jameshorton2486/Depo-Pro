@@ -17,6 +17,7 @@ export default async function CalendarWeekPage() {
   if (!currentUser) {
     redirect('/login');
   }
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Calendar - Week View</h1>

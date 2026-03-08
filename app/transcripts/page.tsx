@@ -28,7 +28,8 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
 
   if (!currentUser) {
     redirect('/login');
-  }  const params = await searchParams;
+  }
+  const params = await searchParams;
 
   const page = parseInt(params.page || '1');
   const status = params.status;

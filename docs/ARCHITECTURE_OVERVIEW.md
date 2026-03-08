@@ -106,7 +106,7 @@ If any of these fail, the change is not complete.
 | Medical AI | Anthropic Claude API |
 | Storage | Supabase Storage (4 buckets) |
 | Hosting | Vercel (serverless) |
-| Domain | app.depo-pro.com |
+| Domain | depo-pro.com |
 
 ---
 

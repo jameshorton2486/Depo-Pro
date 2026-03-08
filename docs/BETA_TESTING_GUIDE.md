@@ -3,7 +3,7 @@
 Welcome! You are one of our first beta testers. This guide walks you through the workflows available during beta.
 
 ## Getting Started
-1. Log in at `https://app.depo-pro.com/login`.
+1. Log in at `https://depo-pro.com/login`.
 2. Confirm your dashboard and sidebar match your assigned role.
 
 ## For Court Reporters

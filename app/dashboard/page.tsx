@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    redirect('/login');
+    redirect('/unauthorized?reason=missing_role');
   }
 
   const role = currentUser.role;

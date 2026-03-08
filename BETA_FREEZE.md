@@ -43,12 +43,12 @@ To qualify as a bug fix (permitted during freeze):
 
 ## Bug Fix Process
 
-  1. Reproduce the issue on app.depo-pro.com
+  1. Reproduce the issue on depo-pro.com
   2. Create a focused fix (minimal file changes)
   3. Run npx tsc --noEmit && npm run build (both must pass)
   4. Commit with message: "fix: [description of bug fixed]"
   5. Push to main — Vercel deploys automatically
-  6. Verify the fix on app.depo-pro.com
+  6. Verify the fix on depo-pro.com
 
 ## How Claude Code Reads This File
 

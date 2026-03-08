@@ -11,6 +11,7 @@ export default async function CreateDepositionPage() {
   if (!currentUser) {
     redirect('/login');
   }
+
   // Only reporters and admins can create depositions
   if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN' && currentUser.role !== 'COURT_REPORTER') {
     redirect('/unauthorized');

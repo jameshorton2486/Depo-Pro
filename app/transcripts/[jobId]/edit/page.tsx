@@ -27,6 +27,7 @@ export default async function TranscriptEditPage({ params }: PageProps) {
   }
 
   const { jobId } = await params;
+
   const supabase = await createSupabaseServerClient();
 
   const job = await getJobById(supabase, jobId, {
