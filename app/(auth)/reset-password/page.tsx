@@ -67,14 +67,16 @@ export default function ResetPasswordPage() {
   });
 
   // ---------------------------------------------------------------------------
-  // Session is established by /auth/callback before redirect. Check for session.
-  // If user landed with ?code= (old email link), redirect to callback to exchange it.
+  // Establish session via one of three paths:
+  //   1. PKCE flow: /auth/callback already exchanged code → session exists
+  //   2. Implicit flow: Supabase redirects with #access_token → onAuthStateChange
+  //   3. Legacy: ?code= in URL → redirect to /auth/callback to exchange
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     const code = searchParams.get('code');
 
-    // Old flow: user landed with code in URL (e.g. from email before we fixed redirectTo)
+    // Legacy flow: ?code= in URL → redirect through /auth/callback
     if (code) {
       const callbackUrl = new URL('/auth/callback', window.location.origin);
       callbackUrl.searchParams.set('next', '/reset-password');
@@ -83,6 +85,18 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    // Listen for PASSWORD_RECOVERY event (implicit grant flow — token in URL hash)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'PASSWORD_RECOVERY' && session) {
+          setSessionReady(true);
+          setError(null);
+          setIsCheckingSession(false);
+        }
+      }
+    );
+
+    // Also check for an existing session (PKCE flow — already exchanged)
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -93,6 +107,16 @@ export default function ResetPasswordPage() {
     }
 
     checkSession();
+
+    // Safety timeout: if onAuthStateChange hasn't fired after 8s, stop spinning
+    const timeout = setTimeout(() => {
+      setIsCheckingSession(false);
+    }, 8000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [searchParams]);
 
   // ---------------------------------------------------------------------------
