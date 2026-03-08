@@ -14,12 +14,8 @@ declare global {
       MICROSOFT_CLIENT_ID?: string;
       MICROSOFT_CLIENT_SECRET?: string;
 
-      // Email (Zoho Mail SMTP)
-      EMAIL_HOST?: string;
-      EMAIL_PORT?: string;
-      EMAIL_USER?: string;
-      EMAIL_PASSWORD?: string;
-      EMAIL_FROM?: string;
+      // Email (Resend)
+      RESEND_API_KEY?: string;
       ADMIN_EMAIL?: string;
 
       // Transcription

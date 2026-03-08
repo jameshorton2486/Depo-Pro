@@ -270,25 +270,6 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           </div>
         )}
 
-      {/* Live Deposition Notes (Legacy - can be removed if not needed) */}
-      {/* {(session.user.role === 'REPORTER' || session.user.role === 'ADMIN') ? (
-        <div className="mt-6">
-          <DepositionNotesPanel
-            jobId={job.id}
-            userRole={session.user.role as 'REPORTER' | 'ADMIN'}
-            userId={session.user.id}
-            className="h-[500px]"
-          />
-        </div>
-      ) : session.user.role === 'SCOPIST' ? (
-        <div className="mt-6">
-          <ScopistNotesView
-            jobId={job.id}
-            className="h-[400px]"
-          />
-        </div>
-      ) : null} */}
-
       {/* Legacy Notes (keep for backward compatibility) */}
       {job.notes && (
         <Card className="mt-6">

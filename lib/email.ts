@@ -1,39 +1,24 @@
 // ═══════════════════════════════════════════════════════════════
-// EMAIL SERVICE (Zoho Mail SMTP via Nodemailer)
+// EMAIL SERVICE (Resend API)
 // ═══════════════════════════════════════════════════════════════
 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { logger } from '@/lib/logger';
 
-const EMAIL_HOST = process.env.EMAIL_HOST || 'smtp.zoho.com';
-const EMAIL_PORT = parseInt(process.env.EMAIL_PORT || '587');
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASSWORD = process.env.EMAIL_PASSWORD;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Depo-Pro <info@depo-pro.com>';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const EMAIL_FROM = 'Depo-Pro <notifications@depo-pro.com>';
+const EMAIL_ENABLED = !!RESEND_API_KEY;
 
-const EMAIL_ENABLED = !!(EMAIL_USER && EMAIL_PASSWORD);
+let resendClient: Resend | null = null;
 
-let transporter: nodemailer.Transporter | null = null;
-
-function getTransporter(): nodemailer.Transporter | null {
+function getResendClient(): Resend | null {
   if (!EMAIL_ENABLED) {
-    console.warn('[Email Service] Email not configured - emails will be logged only');
     return null;
   }
-
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: EMAIL_HOST,
-      port: EMAIL_PORT,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: EMAIL_USER,
-        pass: EMAIL_PASSWORD,
-      },
-    });
+  if (!resendClient) {
+    resendClient = new Resend(RESEND_API_KEY);
   }
-
-  return transporter;
+  return resendClient;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -59,50 +44,41 @@ export interface EmailResult {
 // ═══════════════════════════════════════════════════════════════
 
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
-  const transport = getTransporter();
+  const client = getResendClient();
 
-  if (!transport) {
-    // Development mode: log email instead of sending
+  if (!client) {
     if (process.env.NODE_ENV === 'production') {
-      console.error('[Email Service] Email sending is not configured in production');
-      return {
-        id: '',
-        success: false,
-        error: 'Email service not configured',
-      };
+      console.error('[Email Service] RESEND_API_KEY not configured in production');
+      return { id: '', success: false, error: 'Email service not configured' };
     }
 
-    // Development: log email
-    logger.debug('📧 [MOCK EMAIL] Email service not configured', {
+    logger.debug('[MOCK EMAIL] Resend not configured', {
       from: EMAIL_FROM,
       to: options.to,
       subject: options.subject,
-      preview: options.text || 'HTML email (text not provided)',
     });
 
-    return {
-      id: `mock_email_${Date.now()}`,
-      success: true,
-    };
+    return { id: `mock_email_${Date.now()}`, success: true };
   }
 
   try {
     const recipients = Array.isArray(options.to) ? options.to : [options.to];
 
-    const info = await transport.sendMail({
+    const { data, error } = await client.emails.send({
       from: EMAIL_FROM,
-      to: recipients.join(', '),
+      to: recipients,
       subject: options.subject,
       html: options.html,
       text: options.text,
       replyTo: options.replyTo,
     });
 
-    logger.debug('✅ Email sent via SMTP', { messageId: info.messageId });
-    return {
-      id: info.messageId || `email_${Date.now()}`,
-      success: true,
-    };
+    if (error) {
+      console.error('[Email Service] Resend error:', error);
+      return { id: '', success: false, error: error.message };
+    }
+
+    return { id: data?.id ?? `email_${Date.now()}`, success: true };
   } catch (error) {
     console.error('[Email Service] Failed to send email:', error);
     return {
@@ -145,7 +121,7 @@ export function jobAssignedEmail(data: {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎯 New Job Assignment</h1>
+      <h1>New Job Assignment</h1>
     </div>
     <div class="content">
       <p>Hello ${data.scopistName},</p>
@@ -215,7 +191,7 @@ export function transcriptReadyEmail(data: {
 <body>
   <div class="container">
     <div class="header">
-      <h1>✅ Transcript Ready</h1>
+      <h1>Transcript Ready</h1>
     </div>
     <div class="content">
       <p>Hello ${data.reporterName},</p>
@@ -285,7 +261,7 @@ export function invoiceEmail(data: {
 <body>
   <div class="container">
     <div class="header">
-      <h1>💰 Invoice</h1>
+      <h1>Invoice</h1>
     </div>
     <div class="content">
       <p>Hello ${data.clientName},</p>
@@ -333,5 +309,3 @@ Depo-Pro Court Reporting Management System
     text,
   };
 }
-
-

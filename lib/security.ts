@@ -9,9 +9,6 @@
  * Phase 5: Production Hardening
  */
 
-import type { NextRequest } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { UserRole } from '@/lib/enums/roles';
 import { logger } from '@/lib/logger';
 
 // Rate limiting store (in production, use Redis)
@@ -88,103 +85,8 @@ export function cleanupRateLimits() {
   }
 }
 
-/**
- * Authentication guard for API routes
- * Returns user with profile or throws error
- */
-export async function requireAuth(_request?: NextRequest) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    throw new Error('UNAUTHENTICATED');
-  }
-
-  // Fetch user profile from profiles table
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role, full_name, firm_id')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile) {
-    throw new Error('UNAUTHENTICATED');
-  }
-
-  if (!profile.role) {
-    throw new Error('UNAUTHENTICATED');
-  }
-
-  // Return user with profile
-  return {
-    user: {
-      id: user.id,
-      email: user.email || '',
-      role: profile.role as UserRole,
-      name: profile.full_name || null,
-      firmId: profile.firm_id || null,
-    },
-  };
-}
-
-/**
- * Role-based authorization guard
- */
-export async function requireRole(
-  request: NextRequest,
-  allowedRoles: UserRole[]
-) {
-  const session = await requireAuth(request);
-
-  if (!allowedRoles.includes(session.user.role)) {
-    throw new Error('UNAUTHORIZED');
-  }
-
-  return session;
-}
-
-/**
- * Firm membership guard (multi-tenant)
- */
-export async function requireFirmAccess(
-  request: NextRequest,
-  firmId: string
-) {
-  const session = await requireAuth(request);
-
-  // Admin can access all firms
-  if (session.user.role === 'ADMIN') {
-    return session;
-  }
-
-  // Check if user belongs to the firm
-  if (session.user.firmId !== firmId) {
-    throw new Error('FIRM_ACCESS_DENIED');
-  }
-
-  return session;
-}
-
-/**
- * Case membership guard (case-level permissions)
- */
-export async function requireCaseAccess(
-  request: NextRequest,
-  _caseId: string,
-  _requiredRole?: 'ATTORNEY' | 'PARALEGAL'
-) {
-  const session = await requireAuth(request);
-
-  // Admin can access all cases
-  if (session.user.role === 'ADMIN') {
-    return session;
-  }
-
-  // For now, check firm membership (Phase 3 will add case-level permissions)
-  // TODO: Implement case membership checks when CaseMembership is fully implemented
-
-  return session;
-}
+// NOTE: requireAuth, requireRole, requireFirmAccess, requireCaseAccess
+// were removed — use withRouteProtection from '@/lib/middleware/withRouteProtection' instead.
 
 /**
  * Input validation helpers
