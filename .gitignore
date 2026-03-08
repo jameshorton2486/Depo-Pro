@@ -41,9 +41,9 @@ yarn-error.log*
 .env*.backup
 .env.backup
 .env.local.backup
-.env.vercel.dev
-.env.vercel.preview
-.env.vercel.prod
+.env.*.check
+.env.vercel.*
+.env.production.example
 
 # =============================================================================
 # Database
