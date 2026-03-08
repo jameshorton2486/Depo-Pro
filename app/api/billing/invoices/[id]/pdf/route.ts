@@ -46,6 +46,13 @@ export async function GET(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
+    // Tenant isolation: ensure invoice belongs to the user's firm
+    const userFirmId = (currentUser as any).firmId ?? null;
+    const invoiceFirmId = (invoice.billing_accounts as any)?.firm_id ?? null;
+    if (userFirmId && invoiceFirmId && userFirmId !== invoiceFirmId) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
     // Transform to match expected format
     const transformedInvoice = {
       ...invoice,

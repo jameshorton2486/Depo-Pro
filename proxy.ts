@@ -9,6 +9,7 @@ const PUBLIC_ROUTES = [
   '/auth/callback',
   '/unauthorized',
   '/api/health',
+  '/api/cron', // Cron jobs use CRON_SECRET in Authorization header, not session
 ];
 
 export async function proxy(request: NextRequest) {

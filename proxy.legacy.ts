@@ -23,7 +23,7 @@ const ORG_PREFIX = '/org';
 const CASES_PREFIX = '/cases';
 
 const PUBLIC_PATHS = ['/', '/login', '/register', '/forgot-password', '/reset-password'];
-const BYPASS_PREFIXES = ['/_next', '/api/health', '/favicon.ico', '/api/auth'];
+const BYPASS_PREFIXES = ['/_next', '/api/health', '/api/cron', '/favicon.ico', '/api/auth'];
 const BYPASS_EXTENSIONS = ['.ico', '.png', '.jpg', '.svg', '.webp', '.css', '.js'];
 
 function bypass(pathname: string): boolean {
