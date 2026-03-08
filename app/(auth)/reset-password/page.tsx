@@ -7,7 +7,7 @@
 // Includes session verification to prevent AbortError
 // =============================================================================
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -16,7 +16,7 @@ import Link from 'next/link';
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { parseAuthError } from '@/lib/supabase/parse-auth-error';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import type { AuthChangeEvent } from '@supabase/supabase-js';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,6 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [sessionReady, setSessionReady] = useState(false);
-  const sessionReadyRef = useRef(false);
 
   const {
     register,
@@ -70,20 +69,15 @@ export default function ResetPasswordPage() {
 
   // ---------------------------------------------------------------------------
   // Wait for PASSWORD_RECOVERY event before enabling the form.
-  // The listener MUST be registered synchronously before any async work
-  // so it doesn't miss the event fired when Supabase processes the hash fragment.
+  // Supabase automatically processes the #access_token hash fragment and
+  // fires PASSWORD_RECOVERY via onAuthStateChange. No PKCE code exchange needed.
   // ---------------------------------------------------------------------------
   useEffect(() => {
-    let mounted = true;
     const supabase = getSupabaseBrowserClient();
 
-    // 1. Register auth state listener FIRST (synchronous)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, _session: Session | null) => {
-        if (!mounted) return;
-
+      (event: AuthChangeEvent) => {
         if (event === 'PASSWORD_RECOVERY') {
-          sessionReadyRef.current = true;
           setSessionReady(true);
           setError(null);
           setIsCheckingSession(false);
@@ -91,40 +85,7 @@ export default function ResetPasswordPage() {
       }
     );
 
-    // 2. Handle PKCE code exchange if present in URL
-    const handleCodeExchange = async () => {
-      try {
-        const url = new URL(window.location.href);
-        const code = url.searchParams.get('code');
-        if (code) {
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          if (exchangeError) {
-            console.error('[RESET_PASSWORD] Code exchange failed:', exchangeError.message);
-          }
-          // Remove code from URL to prevent re-exchange on refresh
-          url.searchParams.delete('code');
-          window.history.replaceState({}, '', url.pathname + url.search);
-          // exchangeCodeForSession fires PASSWORD_RECOVERY via onAuthStateChange
-          return;
-        }
-      } catch (err) {
-        console.error('[RESET_PASSWORD] Code exchange error:', err);
-      }
-
-      // 3. If no code param and no PASSWORD_RECOVERY event after timeout, show error
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      if (mounted && !sessionReadyRef.current) {
-        setError('Your password reset link has expired or is invalid. Please request a new one.');
-        setIsCheckingSession(false);
-      }
-    };
-
-    handleCodeExchange();
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   // ---------------------------------------------------------------------------
