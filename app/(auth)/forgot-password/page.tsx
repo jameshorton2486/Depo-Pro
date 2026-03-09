@@ -75,7 +75,7 @@ export default function ForgotPasswordPage() {
       );
 
       if (resetError) {
-        console.error('[FORGOT_PASSWORD_ERROR]', resetError.message, resetError);
+        console.error('[FORGOT_PASSWORD_ERROR]', resetError.message);
         const parsed = parseAuthError(resetError);
         setError(parsed.userMessage);
         setIsLoading(false);

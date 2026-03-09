@@ -119,14 +119,14 @@ function LoginForm() {
       router.push(safePath);
     } catch (err) {
       console.error('[Login] Unexpected error:', err);
-      
+
       // Check if it's an env var error
       if (err instanceof Error && err.message.includes('SUPABASE')) {
         setError('Configuration error. Please contact support.');
       } else {
         setError('An unexpected error occurred. Please try again.');
       }
-      
+
       setIsLoading(false);
     }
   }, [router, searchParams]);
