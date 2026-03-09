@@ -295,6 +295,8 @@ export function DepositionNotesPanel({
         {isCreating && (
           <div className="border rounded-lg p-3 bg-muted/50 space-y-3">
             <Textarea
+              id="new-note"
+              aria-label="New note"
               placeholder="Enter your note..."
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
@@ -382,6 +384,8 @@ export function DepositionNotesPanel({
                     // Edit mode
                     <div className="space-y-3">
                       <Textarea
+                        id={`edit-note-${note.id}`}
+                        aria-label="Edit note"
                         value={editContent}
                         onChange={(e) => setEditContent(e.target.value)}
                         className="min-h-[80px] resize-none"

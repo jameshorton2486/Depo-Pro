@@ -38,7 +38,7 @@ export function ConfidenceThresholdControl({
   return (
     <div className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
       <div className="flex items-center justify-between mb-3">
-        <label className="text-sm font-medium text-gray-700">
+        <label htmlFor="confidence-threshold" className="text-sm font-medium text-gray-700">
           Confidence Threshold
         </label>
         <span className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">
@@ -48,6 +48,7 @@ export function ConfidenceThresholdControl({
 
       {/* Slider */}
       <input
+        id="confidence-threshold"
         type="range"
         min="50"
         max="100"

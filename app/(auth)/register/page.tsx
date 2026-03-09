@@ -143,7 +143,7 @@ export default function RegisterPage() {
 
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
-              <Input {...register('firstName')} disabled={isLoading} />
+              <Input id="firstName" {...register('firstName')} disabled={isLoading} />
               {errors.firstName && (
                 <p className="text-sm text-danger">{errors.firstName.message}</p>
               )}
@@ -151,7 +151,7 @@ export default function RegisterPage() {
 
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
-              <Input {...register('lastName')} disabled={isLoading} />
+              <Input id="lastName" {...register('lastName')} disabled={isLoading} />
               {errors.lastName && (
                 <p className="text-sm text-danger">{errors.lastName.message}</p>
               )}
@@ -160,6 +160,7 @@ export default function RegisterPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
+                id="email"
                 type="email"
                 autoComplete="email"
                 {...register('email')}
@@ -171,12 +172,12 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label htmlFor="role">Role</Label>
               <Select
                 disabled={isLoading}
                 onValueChange={(value) => setValue('role', value as RegisterInput['role'])}
               >
-                <SelectTrigger>
+                <SelectTrigger id="role">
                   <SelectValue placeholder="Select your role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -199,13 +200,14 @@ export default function RegisterPage() {
             {selectedRole === Role.COURT_REPORTER && (
               <div className="space-y-2">
                 <Label htmlFor="agencyName">Agency Name (optional)</Label>
-                <Input {...register('agencyName')} disabled={isLoading} />
+                <Input id="agencyName" {...register('agencyName')} disabled={isLoading} />
               </div>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
+                id="password"
                 type="password"
                 autoComplete="new-password"
                 {...register('password')}
@@ -219,6 +221,7 @@ export default function RegisterPage() {
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
+                id="confirmPassword"
                 type="password"
                 autoComplete="new-password"
                 {...register('confirmPassword')}

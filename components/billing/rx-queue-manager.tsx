@@ -450,11 +450,12 @@ export function RxQueueManager({ firmId, operatorMode = false }: RxQueueManagerP
           <div className="space-y-4 py-4">
             {/* Time Spent */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label htmlFor="rx-time-spent" className="flex items-center gap-2">
                 <Timer className="h-4 w-4" />
                 Time Spent (minutes)
               </Label>
               <Input
+                id="rx-time-spent"
                 type="number"
                 min="1"
                 value={completionData.timeSpentMinutes || ''}
@@ -468,11 +469,12 @@ export function RxQueueManager({ firmId, operatorMode = false }: RxQueueManagerP
 
             {/* Enhanced File URL */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label htmlFor="rx-enhanced-url" className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
                 Enhanced File URL
               </Label>
               <Input
+                id="rx-enhanced-url"
                 value={completionData.enhancedFileUrl}
                 onChange={(e) => setCompletionData({
                   ...completionData,
