@@ -83,7 +83,22 @@
       "Bash(npm audit:*)",
       "Read(//tmp/**)",
       "Bash(do echo:*)",
-      "Bash(echo === $f ===:*)"
+      "Bash(echo === $f ===:*)",
+      "Bash(git:*)",
+      "Bash(npx vercel:*)",
+      "Bash(npm:*)",
+      "Bash(prisma:*)",
+      "Bash(tsx:*)",
+      "Bash(pnpm:*)",
+      "Bash(resend:*)",
+      "Bash(stripe config:*)",
+      "Bash(stripe version:*)",
+      "Bash(supabase:*)",
+      "Bash(xxd:*)",
+      "Bash(npx playwright:*)",
+      "Bash(do cat:*)",
+      "Bash(npx next:*)",
+      "Bash(cp:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
