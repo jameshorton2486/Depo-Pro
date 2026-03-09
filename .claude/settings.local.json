@@ -98,7 +98,8 @@
       "Bash(npx playwright:*)",
       "Bash(do cat:*)",
       "Bash(npx next:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(rm:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
