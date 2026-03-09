@@ -26,7 +26,7 @@
     "promote-to-admin": "tsx scripts/promote-to-admin.ts",
     "setup-admin": "tsx scripts/setup-admin.ts",
     "list-users": "tsx scripts/list-users.ts",
-    "test-auth": "tsx scripts/test-supabase-auth.ts",
+    "test-auth": "node scripts/test-auth-system.mjs",
     "diagnose-auth": "tsx scripts/diagnose-auth.ts",
     "diagnose:supabase": "powershell -ExecutionPolicy Bypass -File scripts/supabase-diagnostic.ps1",
     "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/supabase-backup.ps1",

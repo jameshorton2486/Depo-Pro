@@ -18,6 +18,7 @@ out/
 # =============================================================================
 coverage/
 test-env.js
+AUTH_DIAGNOSTIC_LOG.txt
 playwright-report/
 playwright-results.json
 test-results/
