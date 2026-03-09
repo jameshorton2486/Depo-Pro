@@ -286,6 +286,27 @@ export function ReviewClientNew({
     handleSeekAudio(word.start);
   }, [handleSeekAudio]);
 
+  const refreshFlaggedWords = useCallback(async () => {
+    const response = await fetchWithRetry(
+      `/api/jobs/${jobId}/flagged-words?filter=all&sort=confidence`,
+      { method: 'GET' },
+      { maxRetries: 1, baseDelayMs: 500 },
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to refresh flagged words');
+    }
+
+    const data = await response.json();
+    setFlaggedWords(data.flaggedWords || []);
+    if (data.stats) {
+      setStats(data.stats);
+    }
+    if (data.updatedAt) {
+      setLatestUpdatedAt(data.updatedAt);
+    }
+  }, [jobId]);
+
   // Correction handler - calls API and updates local state
   const handleCorrection = useCallback(async (
     wordId: string,
@@ -313,25 +334,26 @@ export function ReviewClientNew({
         const errorData = await response.json();
 
         if (response.status === 409) {
-          // Optimistic lock conflict — another save landed first.
-          // Sync our timestamp so the next action succeeds without a refresh.
           if (errorData.serverUpdatedAt) {
             setLatestUpdatedAt(errorData.serverUpdatedAt);
           }
-          toast.warning('Concurrent edit detected', {
-            description: 'Another change was saved first. Please try again.',
+          await refreshFlaggedWords().catch((refreshError) => {
+            console.error('Failed to refresh flagged words after conflict:', refreshError);
           });
-          return;
+          const conflictError = new Error('CONFLICT');
+          (conflictError as Error & { code?: string }).code = 'CONFLICT';
+          throw conflictError;
         }
 
         if (response.status === 423) {
-          // Job locked by another user — switch to read-only.
           setIsLocked(false);
           setIsReadOnly(true);
           toast.error('Lock lost', {
             description: 'Another user is now reviewing this transcript. Switching to read-only.',
           });
-          return;
+          const lockError = new Error('LOCKED');
+          (lockError as Error & { code?: string }).code = 'LOCKED';
+          throw lockError;
         }
 
         throw new Error(errorData.error || 'Failed to save correction');

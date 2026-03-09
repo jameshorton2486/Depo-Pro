@@ -418,7 +418,9 @@ export const GET = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    requireFirm: true,
     rateLimit: { limit: 60, windowMs: 60_000 },
+    auditAction: 'FLAGGED_WORDS_VIEWED',
   },
   GETHandler
 );
@@ -427,7 +429,9 @@ export const PATCH = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    requireFirm: true,
     rateLimit: { limit: 60, windowMs: 60_000 },
+    auditAction: 'FLAGGED_WORD_UPDATED',
   },
   PATCHHandler
 );
@@ -436,7 +440,9 @@ export const DELETE = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    requireFirm: true,
     rateLimit: { limit: 60, windowMs: 60_000 },
+    auditAction: 'FLAGGED_WORD_RESET',
   },
   DELETEHandler
 );

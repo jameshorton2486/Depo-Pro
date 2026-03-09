@@ -4,8 +4,6 @@ import { NextResponse } from 'next/server';
 import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
 import { exportTranscript, runPreflightChecks, PreflightError } from '@/lib/export';
 import { exportLegalDocx } from '@/lib/services/export';
@@ -100,12 +98,7 @@ const GETHandler = async (
   const startTime = performance.now();
   let transcriptId = '';
   try {
-    const user = (context as any)?.user ?? await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
-    const params = (context as any)?.params;
+    const { user, supabase, params } = context;
     transcriptId = params?.id ?? '';
     if (!transcriptId) {
       return NextResponse.json({ error: 'Transcript ID is required' }, { status: 400 });
@@ -372,6 +365,11 @@ const GETHandler = async (
 };
 
 export const GET = withRouteProtection(
-  { requireAuth: true, requireRole: ALLOWED_ROLES },
+  {
+    requireAuth: true,
+    requireRole: ALLOWED_ROLES,
+    requireFirm: true,
+    auditAction: 'TRANSCRIPT_EXPORTED',
+  },
   GETHandler
 );

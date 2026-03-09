@@ -256,7 +256,9 @@ export const GET = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY],
+    requireFirm: true,
     rateLimit: { limit: 60, windowMs: 60_000 },
+    auditAction: 'TRANSCRIPT_VIEWED',
   },
   GETHandler as any
 );
@@ -265,7 +267,9 @@ export const PATCH = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST],
+    requireFirm: true,
     rateLimit: { limit: 60, windowMs: 60_000 },
+    auditAction: 'TRANSCRIPT_VERSION_CREATED',
   },
   PATCHHandler as any
 );
@@ -274,7 +278,9 @@ export const PUT = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST],
+    requireFirm: true,
     rateLimit: { limit: 60, windowMs: 60_000 },
+    auditAction: 'TRANSCRIPT_UPDATED',
   },
   PUTHandler as any
 );

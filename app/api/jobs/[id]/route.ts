@@ -360,7 +360,9 @@ export const GET = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST, UserRole.ATTORNEY],
+    requireFirm: true,
     rateLimit: { limit: 60, windowMs: 60_000 },
+    auditAction: 'JOB_VIEWED',
   },
   GETHandler as any
 );
@@ -369,7 +371,9 @@ export const PUT = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    requireFirm: true,
     rateLimit: { limit: 30, windowMs: 60_000 },
+    auditAction: 'JOB_UPDATED',
   },
   PUTHandler as any
 );
@@ -378,7 +382,9 @@ export const PATCH = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    requireFirm: true,
     rateLimit: { limit: 30, windowMs: 60_000 },
+    auditAction: 'JOB_STATUS_UPDATED',
   },
   PATCHHandler as any
 );
@@ -387,7 +393,9 @@ export const DELETE = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    requireFirm: true,
     rateLimit: { limit: 20, windowMs: 60_000 },
+    auditAction: 'JOB_DELETED',
   },
   DELETEHandler as any
 );

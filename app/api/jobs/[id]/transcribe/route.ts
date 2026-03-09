@@ -211,7 +211,9 @@ export const POST = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    requireFirm: true,
     rateLimit: { limit: 10, windowMs: 60_000 },
+    auditAction: 'TRANSCRIPTION_STARTED',
   },
   POSTHandler
 );

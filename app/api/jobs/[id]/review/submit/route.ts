@@ -159,7 +159,9 @@ export const POST = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.SCOPIST, UserRole.REPORTER, UserRole.COURT_REPORTER],
+    requireFirm: true,
     rateLimit: { limit: 10, windowMs: 60_000 },
+    auditAction: 'REVIEW_COMPLETED',
   },
   POSTHandler
 );

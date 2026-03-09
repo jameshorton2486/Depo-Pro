@@ -536,6 +536,7 @@ function LowConfidencePanelNew({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [correctionText, setCorrectionText] = useState('');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const hasUnsavedChangesRef = useRef(false);
 
@@ -747,27 +748,54 @@ function LowConfidencePanelNew({
   const handleCorrect = async (wordId: string) => {
     if (!correctionText.trim()) return;
     try {
+      setActionErrors((current) => ({ ...current, [wordId]: '' }));
       await onCorrection(wordId, 'correct', correctionText);
       hasUnsavedChangesRef.current = false;
       setEditingId(null);
       setCorrectionText('');
     } catch (error) {
+      const code = (error as Error & { code?: string }).code;
+      setActionErrors((current) => ({
+        ...current,
+        [wordId]:
+          code === 'CONFLICT'
+            ? 'Another reviewer updated this word. Refreshing...'
+            : 'Failed to save this correction. Please try again.',
+      }));
       console.error('Failed to correct word:', error);
     }
   };
 
   const handleSkip = async (wordId: string) => {
     try {
+      setActionErrors((current) => ({ ...current, [wordId]: '' }));
       await onCorrection(wordId, 'skip');
     } catch (error) {
+      const code = (error as Error & { code?: string }).code;
+      setActionErrors((current) => ({
+        ...current,
+        [wordId]:
+          code === 'CONFLICT'
+            ? 'Another reviewer updated this word. Refreshing...'
+            : 'Failed to save this correction. Please try again.',
+      }));
       console.error('Failed to skip word:', error);
     }
   };
 
   const handleConfirm = async (wordId: string) => {
     try {
+      setActionErrors((current) => ({ ...current, [wordId]: '' }));
       await onCorrection(wordId, 'confirm');
     } catch (error) {
+      const code = (error as Error & { code?: string }).code;
+      setActionErrors((current) => ({
+        ...current,
+        [wordId]:
+          code === 'CONFLICT'
+            ? 'Another reviewer updated this word. Refreshing...'
+            : 'Failed to save this correction. Please try again.',
+      }));
       console.error('Failed to confirm word:', error);
     }
   };
@@ -951,7 +979,7 @@ function LowConfidencePanelNew({
               </div>
 
               {/* Actions */}
-              {!isReadOnly && word.status === 'PENDING' && (
+              {!isReadOnly && (word.status === 'PENDING' || editingId === word.id) && (
                 <div className="flex flex-col gap-2">
                   {editingId === word.id ? (
                     <>
@@ -1026,11 +1054,16 @@ function LowConfidencePanelNew({
                       </button>
                     </div>
                   )}
+                  {actionErrors[word.id] && (
+                    <p className="text-xs text-amber-400" role="status">
+                      {actionErrors[word.id]}
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* Show status if not pending */}
-              {word.status !== 'PENDING' && (
+              {word.status !== 'PENDING' && editingId !== word.id && (
                 <div className={cn(
                   'text-xs px-2 py-1 rounded text-center',
                   word.status === 'CORRECTED' && 'bg-green-900/30 text-green-400',

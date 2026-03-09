@@ -31,6 +31,8 @@ export const GET = withRouteProtection(
   {
     requireAuth: true,
     requireRole: ALLOWED_ROLES,
+    requireFirm: true,
+    auditAction: 'JOB_LOCK_STATUS_VIEWED',
   },
   async (_req: NextRequest, { params }: ProtectedContext): Promise<NextResponse> => {
     const startTime = performance.now();
@@ -75,7 +77,9 @@ export const POST = withRouteProtection(
   {
     requireAuth: true,
     requireRole: ALLOWED_ROLES,
+    requireFirm: true,
     rateLimit: { limit: 30, windowMs: 60_000 },
+    auditAction: 'JOB_LOCK_ACQUIRED',
   },
   async (_req: NextRequest, { user, supabase, params }: ProtectedContext): Promise<NextResponse> => {
     const startTime = performance.now();
@@ -141,6 +145,8 @@ export const DELETE = withRouteProtection(
   {
     requireAuth: true,
     requireRole: ALLOWED_ROLES,
+    requireFirm: true,
+    auditAction: 'JOB_LOCK_RELEASED',
   },
   async (_req: NextRequest, { user, params }: ProtectedContext): Promise<NextResponse> => {
     const startTime = performance.now();

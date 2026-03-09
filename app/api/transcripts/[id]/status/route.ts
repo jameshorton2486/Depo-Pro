@@ -80,7 +80,9 @@ export const PATCH = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    requireFirm: true,
     rateLimit: { limit: 30, windowMs: 60_000 },
+    auditAction: 'TRANSCRIPT_STATUS_UPDATED',
   },
   PATCHHandler as any
 );

@@ -192,7 +192,9 @@ export const GET = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    requireFirm: true,
     rateLimit: { limit: 30, windowMs: 60_000 },
+    auditAction: 'JOB_EXPORT_REQUESTED',
   },
   GETHandler
 );
@@ -201,7 +203,9 @@ export const POST = withRouteProtection(
   {
     requireAuth: true,
     requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.COURT_REPORTER, UserRole.SCOPIST],
+    requireFirm: true,
     rateLimit: { limit: 10, windowMs: 60_000 },
+    auditAction: 'JOB_EXPORT_REQUESTED',
   },
   POSTHandler,
 );
