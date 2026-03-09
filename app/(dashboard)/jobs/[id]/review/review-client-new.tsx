@@ -20,6 +20,12 @@ import { fetchWithRetry } from '@/lib/client/fetch-with-retry';
 import { ConnectionStatus } from '@/components/review/connection-status';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -31,6 +37,7 @@ import { Button } from '@/components/ui/button';
 import { canExportFormat } from '@/lib/export/permissions';
 import type { UserRole } from '@/lib/enums/roles';
 import { CertificationPanel } from '@/components/transcript/CertificationPanel';
+import { ChevronDown, Download, Loader2 } from 'lucide-react';
 
 interface ReviewClientNewProps {
   jobId: string;
@@ -81,6 +88,7 @@ export function ReviewClientNew({
   const [showCertifyDialog, setShowCertifyDialog] = useState(false);
   const [isCertified, setIsCertified] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const savesInFlightRef = useRef(0);
   const [latestUpdatedAt, setLatestUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
@@ -420,6 +428,7 @@ export function ReviewClientNew({
 
   // Handle export from review page
   const handleExport = async (format: 'docx' | 'pdf' | 'txt') => {
+    setExportError(null);
     if (savesInFlightRef.current > 0) {
       toast.info('Saving changes...', {
         description: 'Export will begin once save completes.',
@@ -469,6 +478,7 @@ export function ReviewClientNew({
       });
     } catch (error) {
       console.error('Export failed:', error);
+      setExportError('Export failed. Please try again.');
       toast.error('Export failed', {
         description: 'Please try again.',
       });
@@ -480,7 +490,7 @@ export function ReviewClientNew({
   const exportFormats = [
     { format: 'docx' as const, label: 'Word (.docx)' },
     { format: 'pdf' as const, label: 'PDF (.pdf)' },
-    { format: 'txt' as const, label: 'Text (.txt)' },
+    { format: 'txt' as const, label: 'ASCII/TXT (.txt)' },
   ].filter(({ format }) => canExportFormat(userRole, format));
 
   // Show loading state if segments are empty or acquiring lock
@@ -536,30 +546,40 @@ export function ReviewClientNew({
             Heatmap {showHeatmap ? 'ON' : 'OFF'}
           </button>
 
-          {/* Export Dropdown */}
-          <div className="relative group">
-            <button
-              disabled={isExporting || exportFormats.length === 0}
-              className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm disabled:opacity-50 transition-colors flex items-center gap-1"
-            >
-              {isExporting ? 'Exporting...' : 'Export'} ▼
-            </button>
-            <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              {exportFormats.map(({ format, label }, index) => (
-                <button
-                  key={format}
-                  onClick={() => handleExport(format)}
-                  disabled={isExporting}
-                  className={cn(
-                    'w-full px-3 py-2 text-left text-sm hover:bg-muted transition-colors',
-                    index === 0 && 'rounded-t-lg',
-                    index === exportFormats.length - 1 && 'rounded-b-lg'
-                  )}
+          <div className="flex flex-col items-end gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="secondary"
+                  disabled={isExporting || exportFormats.length === 0}
+                  className="gap-2"
                 >
-                  {label}
-                </button>
-              ))}
-            </div>
+                  {isExporting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {isExporting ? 'Exporting...' : 'Export'}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                {exportFormats.map(({ format, label }) => (
+                  <DropdownMenuItem
+                    key={format}
+                    onClick={() => void handleExport(format)}
+                    disabled={isExporting}
+                  >
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {exportError && (
+              <p className="text-xs text-red-400" role="status">
+                {exportError}
+              </p>
+            )}
           </div>
 
           <button

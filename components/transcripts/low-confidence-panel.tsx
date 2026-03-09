@@ -538,6 +538,7 @@ function LowConfidencePanelNew({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
   const hasUnsavedChangesRef = useRef(false);
 
   // Filter flagged words (Feature 2.2 & 2.3)
@@ -604,6 +605,7 @@ function LowConfidencePanelNew({
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in input/textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement || e.target instanceof HTMLSelectElement) return;
 
       if (e.shiftKey) {
         switch (e.key) {
@@ -638,12 +640,28 @@ function LowConfidencePanelNew({
 
       if (filteredWords.length === 0) return;
 
-      const selectAndSeek = (idx: number) => {
+      const focusWordCard = (idx: number) => {
         setSelectedIndex(idx);
+        cardRefs.current[idx]?.focus();
+      };
+
+      const selectAndSeek = (idx: number) => {
+        focusWordCard(idx);
         const target = filteredWords[idx];
         if (target) {
           onSeekAudio(Math.max(0, target.start_time - 2));
         }
+      };
+
+      const findNextPendingIndex = (startIndex: number, direction: 1 | -1) => {
+        let cursor = startIndex + direction;
+        while (cursor >= 0 && cursor < filteredWords.length) {
+          if (filteredWords[cursor]?.status === 'PENDING') {
+            return cursor;
+          }
+          cursor += direction;
+        }
+        return -1;
       };
 
       switch (e.key) {
@@ -685,15 +703,26 @@ function LowConfidencePanelNew({
         case 'Enter': {
           e.preventDefault();
           if (selectedIndex !== null && filteredWords[selectedIndex]) {
-            setEditingId(filteredWords[selectedIndex].id);
-            setCorrectionText(filteredWords[selectedIndex].corrected_word || '');
+            const selectedWord = filteredWords[selectedIndex];
+            if (editingId === selectedWord.id && correctionText.trim()) {
+              void handleCorrect(selectedWord.id);
+            } else {
+              void handleConfirm(selectedWord.id);
+            }
           }
           break;
         }
         case 'Escape': {
           e.preventDefault();
-          setEditingId(null);
-          setSelectedIndex(null);
+          if (selectedIndex !== null && filteredWords[selectedIndex]?.status === 'PENDING') {
+            const currentWord = filteredWords[selectedIndex];
+            const nextPending = findNextPendingIndex(selectedIndex, 1);
+            void handleSkip(currentWord.id).finally(() => {
+              if (nextPending >= 0) {
+                focusWordCard(nextPending);
+              }
+            });
+          }
           break;
         }
         case 'c':
@@ -919,7 +948,7 @@ function LowConfidencePanelNew({
       </div>
 
       {/* Word list */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-3 space-y-2" role="list" aria-label="Flagged words for review">
         {filteredWords.length === 0 ? (
           <div className="text-center text-slate-500 py-8">
             {flaggedWords.length === 0 ? (
@@ -941,7 +970,13 @@ function LowConfidencePanelNew({
           filteredWords.map((word, index) => (
             <div
               key={word.id}
+              ref={(node) => {
+                cardRefs.current[index] = node;
+              }}
               data-word-index={index}
+              role="listitem"
+              tabIndex={selectedIndex === index ? 0 : -1}
+              aria-label={`Flagged word ${word.original_word} at ${Math.round(word.confidence * 100)} percent confidence`}
               className={cn(
                 'bg-slate-900 rounded p-3 space-y-2 border border-slate-800 cursor-pointer border-l-4',
                 word.status === 'CORRECTED' ? 'border-l-green-500' :
@@ -952,6 +987,7 @@ function LowConfidencePanelNew({
               )}
               onClick={() => {
                 setSelectedIndex(index);
+                cardRefs.current[index]?.focus();
                 onSeekAudio(Math.max(0, word.start_time - 2));
               }}
             >
@@ -973,6 +1009,7 @@ function LowConfidencePanelNew({
                     onSeekAudio(word.start_time);
                   }}
                   className="hover:text-blue-400"
+                  aria-label={`Seek audio to ${Math.floor(word.start_time / 60)}:${String(Math.floor(word.start_time % 60)).padStart(2, '0')}`}
                 >
                   {Math.floor(word.start_time / 60)}:{String(Math.floor(word.start_time % 60)).padStart(2, '0')}
                 </button>
@@ -1010,11 +1047,13 @@ function LowConfidencePanelNew({
                           }}
                           placeholder="Enter correction"
                           className="flex-1 px-2 py-1 text-sm bg-slate-800 border border-slate-700 rounded"
+                          aria-label={`Correction for ${word.original_word}`}
                           autoFocus
                         />
                         <button
                           onClick={() => handleCorrect(word.id)}
                           className="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded"
+                          aria-label={`Apply correction for ${word.original_word}`}
                         >
                           Save
                         </button>
@@ -1024,6 +1063,7 @@ function LowConfidencePanelNew({
                             setCorrectionText('');
                           }}
                           className="px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded"
+                          aria-label={`Cancel correction for ${word.original_word}`}
                         >
                           Cancel
                         </button>
@@ -1037,18 +1077,21 @@ function LowConfidencePanelNew({
                           setCorrectionText(word.original_word);
                         }}
                         className="flex-1 px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded"
+                        aria-label={`Correct ${word.original_word}`}
                       >
                         Correct
                       </button>
                       <button
                         onClick={() => handleConfirm(word.id)}
                         className="flex-1 px-3 py-1 text-xs bg-green-700/70 hover:bg-green-700 rounded"
+                        aria-label={`Confirm ${word.original_word}`}
                       >
                         Confirm
                       </button>
                       <button
                         onClick={() => handleSkip(word.id)}
                         className="flex-1 px-3 py-1 text-xs bg-slate-700 hover:bg-slate-600 rounded"
+                        aria-label={`Skip ${word.original_word}`}
                       >
                         Skip
                       </button>

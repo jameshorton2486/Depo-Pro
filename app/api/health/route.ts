@@ -21,6 +21,12 @@ export async function GET() {
       {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
+        services: {
+          database: 'unhealthy',
+          deepgram: 'unhealthy',
+          anthropic: 'unhealthy',
+        },
+        version: '0.1.0',
         error: error instanceof Error ? error.message : 'Health check failed',
       },
       { status: 503 }

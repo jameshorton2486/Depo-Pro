@@ -157,7 +157,7 @@ export function ExportDialog({ jobId, trigger }: ExportDialogProps) {
                 <Label htmlFor="line-numbers" className="text-sm font-normal">
                   Line Numbers
                 </Label>
-                <p className="text-xs text-muted-foreground">Include line numbers every 5 lines</p>
+                <p className="text-xs text-muted-foreground">Include line numbers 1-25 on each page</p>
               </div>
               <Switch
                 id="line-numbers"

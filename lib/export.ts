@@ -7,7 +7,7 @@
 // has merged all correction layers (transcription_edits → flagged_segments → flagged_words).
 //
 // Supported formats: docx (default), pdf, txt
-// Legal formatting: 25 lines/page, 65 chars/line, line numbers every 5 lines (Q&A mode)
+// Legal formatting: 25 lines/page, 65 chars/line, line numbers 1-25 per page (Q&A mode)
 //
 // DO NOT add new format handlers here without a matching canExportFormat() entry in
 // lib/export/permissions.ts and a format test in tests/integration/export.test.ts.
@@ -92,8 +92,6 @@ export async function runPreflightChecks(transcriptId: string): Promise<void> {
 // Legal formatting constants
 const LINES_PER_PAGE = 25;
 const CHARS_PER_LINE = 65;
-const LINE_NUMBER_INTERVAL = 5;
-
 // Helper: Split text into lines of max length
 function splitIntoLines(text: string, maxChars: number = CHARS_PER_LINE): string[] {
   const words = text.split(' ');
@@ -147,11 +145,7 @@ function formatDate(date: Date): string {
 
 // Helper: Generate line numbers
 function getLineNumber(lineIndex: number): string {
-  const lineNum = lineIndex + 1;
-  if (lineNum % LINE_NUMBER_INTERVAL === 0) {
-    return lineNum.toString().padStart(2, ' ');
-  }
-  return '  ';
+  return (lineIndex + 1).toString().padStart(2, ' ');
 }
 
 // Helper: Detect and format Q/A lines
@@ -363,7 +357,6 @@ export async function exportToDocx(
   });
 
   // Transcript Pages
-  let globalLineNumber = 0;
   const formattedLines = options.useQAFormat ? formatQALines(lines) : null;
 
   for (let pageIndex = 0; pageIndex < paginatedPages.length; pageIndex++) {
@@ -394,9 +387,8 @@ export async function exportToDocx(
     }
 
     for (let lineIndex = 0; lineIndex < pageLines.length; lineIndex++) {
-      globalLineNumber++;
       const line = pageLines[lineIndex];
-      const lineNum = options.lineNumbering ? getLineNumber(globalLineNumber - 1) : '';
+      const lineNum = options.lineNumbering ? getLineNumber(lineIndex) : '';
       
       // Get Q/A formatting info if enabled
       const globalLineIdx = pageIndex * (options.linesPerPage || LINES_PER_PAGE) + lineIndex;
@@ -689,7 +681,7 @@ export async function exportToPdf(
           const lineText = pageLines[lineIndex];
 
           if (options.lineNumbering) {
-            const lineNum = getLineNumber(globalLineIndex);
+            const lineNum = getLineNumber(lineIndex);
             doc.fillColor('#888888').font('Courier').text(lineNum, 40, yPosition);
           }
 
@@ -776,8 +768,7 @@ export function exportToText(
     // Line number
     if (options.lineNumbering) {
       const lineNum = (i % LINES_PER_PAGE) + 1;
-      const displayNum = lineNum % LINE_NUMBER_INTERVAL === 0 ? lineNum.toString().padStart(2, ' ') : '  ';
-      output += `${displayNum} | `;
+      output += `${lineNum.toString().padStart(2, ' ')} | `;
     }
 
     output += `${lines[i]}\n`;
