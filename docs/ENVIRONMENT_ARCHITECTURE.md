@@ -42,16 +42,12 @@ Canonical reference for all environment variables in Depo-Pro.
 | `SUPABASE_PROJECT_ID` | CLI | Project reference ID. Required for CLI `--project-id` flag. |
 | `SUPABASE_DB_PASSWORD` | CLI | Database password. Required for CLI migration pushes. |
 
-### Email (SMTP)
+### Email (Resend)
 
 | Variable | Class | Default | Notes |
 |----------|-------|---------|-------|
-| `EMAIL_HOST` | SRV | `smtp.zoho.com` | SMTP host |
-| `EMAIL_PORT` | SRV | `587` | SMTP port |
-| `EMAIL_USER` | SRV | — | SMTP username. Email disabled if unset. |
-| `EMAIL_PASSWORD` | SRV | — | SMTP password/app-password. Email disabled if unset. |
-| `EMAIL_FROM` | SRV | — | From address (e.g. `Depo-Pro <info@depo-pro.com>`) |
-| `ADMIN_EMAIL` | SRV | — | Admin notification recipient |
+| `RESEND_API_KEY` | SRV | — | Resend API key. Email disabled if unset. Dashboard: https://resend.com/api-keys |
+| `ADMIN_EMAIL` | SRV | `info@depo-pro.com` | Admin notification recipient |
 
 ### Webhooks / Cron / Security
 
@@ -168,10 +164,7 @@ No secrets required.
 
 | Code Reads | .env.example Had | Status |
 |-----------|-----------------|--------|
-| `EMAIL_HOST` | `ZOHO_SMTP_HOST` | Fixed — `.env.example` now uses `EMAIL_*` |
-| `EMAIL_PORT` | `ZOHO_SMTP_PORT` | Fixed |
-| `EMAIL_USER` | `ZOHO_SMTP_USER` | Fixed |
-| `EMAIL_PASSWORD` | `ZOHO_SMTP_PASS` | Fixed |
+| `RESEND_API_KEY` | `ZOHO_SMTP_*` / `EMAIL_*` | Fixed — migrated from Zoho SMTP to Resend API |
 | `NEXT_PUBLIC_APP_URL` | (missing) | Fixed — added |
 | `INTERNAL_API_SECRET` | (missing) | Fixed — added |
 | `DIRECT_URL` | (missing) | Fixed — added under CI section |

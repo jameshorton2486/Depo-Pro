@@ -146,12 +146,11 @@ try {
         if ($errorBody.msg -match "sending" -or $errorBody.error_description -match "sending") {
             Write-Host "  > SMTP email sending failed" -ForegroundColor Yellow
             Write-Host "  > Possible causes:" -ForegroundColor Yellow
-            Write-Host "    1. Zoho Mail SMTP credentials are incorrect" -ForegroundColor Gray
-            Write-Host "    2. Email service not configured (EMAIL_USER, EMAIL_PASSWORD)" -ForegroundColor Gray
-            Write-Host "    3. Sender email 'no-reply@depo-pro.com' not authorized" -ForegroundColor Gray
+            Write-Host "    1. RESEND_API_KEY not set or invalid" -ForegroundColor Gray
+            Write-Host "    2. Resend domain (depo-pro.com) not verified" -ForegroundColor Gray
+            Write-Host "    3. Sender email 'notifications@depo-pro.com' not authorized" -ForegroundColor Gray
             Write-Host ""
-            Write-Host "  FIX: Configure Zoho Mail SMTP in .env.local (EMAIL_HOST, EMAIL_USER, EMAIL_PASSWORD)" -ForegroundColor Cyan
-            Write-Host "  OR: Use Supabase built-in email (Dashboard → Auth → Email Templates)" -ForegroundColor Cyan
+            Write-Host "  FIX: Set RESEND_API_KEY in .env.local (get from https://resend.com/api-keys)" -ForegroundColor Cyan
         }
     } catch {
         Write-Host "  Raw Error: $($_.Exception.Message)"
@@ -274,8 +273,8 @@ Write-Host "   • Email not confirmed → Check Supabase Auth settings (may req
 Write-Host "   • Stale cache → Delete .next folder and restart dev server" -ForegroundColor Gray
 Write-Host ""
 Write-Host "2. Password Reset Fails:" -ForegroundColor White
-Write-Host "   • SMTP not configured → Configure Zoho Mail SMTP (EMAIL_HOST, EMAIL_USER, EMAIL_PASSWORD)" -ForegroundColor Gray
-Write-Host "   • Domain not verified → Verify domain in Zoho Mail settings" -ForegroundColor Gray
+Write-Host "   • RESEND_API_KEY not set → Get from https://resend.com/api-keys" -ForegroundColor Gray
+Write-Host "   • Domain not verified → Verify depo-pro.com in Resend dashboard" -ForegroundColor Gray
 Write-Host ""
 Write-Host "3. Environment Variables:" -ForegroundColor White
 Write-Host "   • Check .env.local exists and has correct values" -ForegroundColor Gray

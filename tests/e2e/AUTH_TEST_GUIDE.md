@@ -4,7 +4,7 @@
  *
  * This document provides manual test steps for authentication flows.
  * Automated testing for these flows is limited because:
- * 1. Email sending requires Zoho Mail SMTP configuration
+ * 1. Email sending requires Resend API key (RESEND_API_KEY)
  * 2. Password reset links are time-sensitive (2-hour expiry)
  * 3. Email confirmation requires external email provider
  *
@@ -85,7 +85,7 @@
 //   ✅ Message says: "If an account exists with that email, a reset link has been sent"
 //   ✅ Success box stays visible (no redirect)
 //   ✅ User can see "Return to Sign In" button
-//   ✅ Reset email sent to auth-test-001@example.com (check Zoho Mail inbox)
+//   ✅ Reset email sent to auth-test-001@example.com (check inbox — sent via Resend)
 
 // ═══════════════════════════════════════════════════════════════
 // TEST CASE 5: FORGOT PASSWORD - INVALID EMAIL

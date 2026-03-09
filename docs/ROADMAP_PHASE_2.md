@@ -38,13 +38,13 @@ Before building any Phase 2 feature:
 
 ### User Invitation System — `DEFERRED`
 - **Current state:** Accept page shows beta workaround message
-- **Scope:** Admin sends invite → Zoho email → accept page creates account with role
+- **Scope:** Admin sends invite → Resend email → accept page creates account with role
 - **Build on:** `app/auth/invite/accept/invite-accept-client.tsx`
 - **Est:** 6–8 hrs
 
 ### Transactional Email — `DEFERRED`
 - **Current state:** Contact form uses webhook; no other email
-- **Scope:** Zoho SMTP for job notifications, status changes, exports ready
+- **Scope:** Resend API for job notifications, status changes, exports ready (lib/email.ts)
 - **Est:** 4–6 hrs
 
 ### Dashboard Analytics — `DEFERRED`

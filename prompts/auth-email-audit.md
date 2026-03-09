@@ -7,7 +7,7 @@ and email delivery flows. The stack is: Next.js 16 App Router, Supabase SSR
 Project ref: ildhcfspbmhuemzgvzyx
 Domain: https://depo-pro.com
 Auth pattern: getCurrentUser() from @/lib/auth/session only
-SMTP: smtp.zoho.com, smtp_user: info@depo-pro.com
+Email: Resend API (notifications@depo-pro.com)
 
 HARD CONSTRAINTS:
 - Do NOT modify supabase/migrations/ or any .sql files
@@ -21,12 +21,9 @@ HARD CONSTRAINTS:
 Using the Supabase Management API or MCP, verify:
 
 1. mailer_autoconfirm = false
-2. smtp_host = smtp.zoho.com
-3. smtp_port = 587
-4. smtp_user = info@depo-pro.com
-5. smtp_admin_email = info@depo-pro.com
-6. smtp_sender_name = Depo-Pro
-7. site_url = https://depo-pro.com
+2. Email provider: Resend (via lib/email.ts, not Supabase SMTP)
+3. From address: notifications@depo-pro.com
+4. site_url = https://depo-pro.com
 8. uri_allow_list contains https://depo-pro.com/** only
    (flag any app.depo-pro.com or localhost entries)
 9. external_email_enabled = true

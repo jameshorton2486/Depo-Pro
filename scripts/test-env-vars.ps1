@@ -23,11 +23,7 @@ $t1=(Test-Var "SUPABASE_SERVICE_ROLE_KEY" $true "Required for server admin ops" 
 $t1=(Test-Var "DEEPGRAM_API_KEY" $true "Required for transcription" "https://console.deepgram.com > API Keys") -and $t1
 Write-Header "TIER 2: FEATURE-SPECIFIC"
 Test-Var "ANTHROPIC_API_KEY" $false "Medical extraction + AI review" "https://console.anthropic.com > API Keys" | Out-Null
-Test-Var "EMAIL_HOST" $false "SMTP for emails" "smtp.zoho.com or similar" | Out-Null
-Test-Var "EMAIL_USER" $false "SMTP username" "Your email login" | Out-Null
-Test-Var "EMAIL_PASSWORD" $false "SMTP password" "Your email password" | Out-Null
-Test-Var "EMAIL_PORT" $false "SMTP port" "465 or 587" | Out-Null
-Test-Var "EMAIL_FROM" $false "Sender address" "noreply@depo-pro.com" | Out-Null
+Test-Var "RESEND_API_KEY" $false "Transactional email (Resend)" "https://resend.com/api-keys" | Out-Null
 Test-Var "STRIPE_SECRET_KEY" $false "Billing (if enabled)" "stripe.com > Developers > API Keys" | Out-Null
 Write-Header "TIER 3: SECURITY SECRETS"
 Test-Var "CRON_SECRET" $false "Protects cron routes" "Generate: [System.Guid]::NewGuid()" | Out-Null
@@ -47,7 +43,7 @@ if($sbUrl){if($sbUrl -match "^https://[\w-]+\.supabase\.co$"){Write-Pass "Supaba
 if($sbKey){if($sbKey -match "^eyJ" -or $sbKey -match "^sb_publishable_"){Write-Pass "Publishable key -- valid format (JWT or sb_publishable_)"}else{Write-Fail "Publishable key -- unexpected format (expect eyJ... or sb_publishable_...)"}}
 if($svcKey){if($svcKey -match "^eyJ" -or $svcKey -match "^sb_secret_"){Write-Pass "Service role key -- valid format (JWT or sb_secret_)"}else{Write-Fail "Service role key -- unexpected format (expect eyJ... or sb_secret_...)"};if($svcKey -eq $sbKey){Write-Fail "Service role key is SAME as publishable key! These must be different."}}
 Write-Header "DEPRECATED CHECK"
-$dep=@{DATABASE_URL="Prisma removed";DIRECT_URL="CI only, not for .env.local";NEXTAUTH_SECRET="NextAuth removed";NEXTAUTH_URL="NextAuth removed";NEXT_PUBLIC_SUPABASE_ANON_KEY="Renamed to PUBLISHABLE_KEY";SUPABASE_URL="Use NEXT_PUBLIC_SUPABASE_URL";ZOHO_SMTP_HOST="Renamed to EMAIL_HOST";ZOHO_SMTP_PORT="Renamed to EMAIL_PORT";ZOHO_SMTP_USER="Renamed to EMAIL_USER";ZOHO_SMTP_PASS="Renamed to EMAIL_PASSWORD"}
+$dep=@{DATABASE_URL="Prisma removed";DIRECT_URL="CI only, not for .env.local";NEXTAUTH_SECRET="NextAuth removed";NEXTAUTH_URL="NextAuth removed";NEXT_PUBLIC_SUPABASE_ANON_KEY="Renamed to PUBLISHABLE_KEY";SUPABASE_URL="Use NEXT_PUBLIC_SUPABASE_URL";ZOHO_SMTP_HOST="Replaced by RESEND_API_KEY";ZOHO_SMTP_PORT="Replaced by RESEND_API_KEY";ZOHO_SMTP_USER="Replaced by RESEND_API_KEY";ZOHO_SMTP_PASS="Replaced by RESEND_API_KEY";EMAIL_HOST="Replaced by RESEND_API_KEY";EMAIL_PORT="Replaced by RESEND_API_KEY";EMAIL_USER="Replaced by RESEND_API_KEY";EMAIL_PASSWORD="Replaced by RESEND_API_KEY"}
 $df=0;foreach($k in $dep.Keys){if(Get-Var $k){Write-Warn "$k is DEPRECATED -- $($dep[$k])";$df++}};if($df -eq 0){Write-Pass "No deprecated vars"}
 Write-Header "SUMMARY"
 if(!$t1){Write-Host "  CRITICAL: Required vars missing -- app will not start" -ForegroundColor Red}else{Write-Host "  All required vars present -- app should start" -ForegroundColor Green}
