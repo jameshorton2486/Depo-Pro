@@ -42,7 +42,7 @@ export default [
       'lib/queue/**',
       'lib/redis.ts',
       'lib/invoice.ts',
-      'proxy.legacy.ts',
+      'proxy.ts',
       '**/*.md',
     ],
   },
