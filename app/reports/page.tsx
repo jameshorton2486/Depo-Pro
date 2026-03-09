@@ -37,23 +37,32 @@ export default async function ReportsPage() {
           <p className="text-sm text-gray-500">View system activity and user actions</p>
         </Link>
 
-        <div className="bg-gray-100 rounded-lg p-6 opacity-50 cursor-not-allowed">
+        <Link
+          href="/reports/usage"
+          className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
+        >
           <BarChart3 className="w-8 h-8 text-gray-400 mb-3" />
-          <h3 className="font-semibold text-lg mb-2 text-gray-500">Usage Report</h3>
-          <p className="text-sm text-gray-400">Coming soon</p>
-        </div>
+          <h3 className="font-semibold text-lg mb-2 text-gray-700">Usage Report</h3>
+          <p className="text-sm text-gray-500">Job counts and workflow status distribution</p>
+        </Link>
 
-        <div className="bg-gray-100 rounded-lg p-6 opacity-50 cursor-not-allowed">
+        <Link
+          href="/reports/accuracy"
+          className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
+        >
           <Activity className="w-8 h-8 text-gray-400 mb-3" />
-          <h3 className="font-semibold text-lg mb-2 text-gray-500">Accuracy Report</h3>
-          <p className="text-sm text-gray-400">Coming soon</p>
-        </div>
+          <h3 className="font-semibold text-lg mb-2 text-gray-700">Accuracy Report</h3>
+          <p className="text-sm text-gray-500">Flagged-word confidence and review completion</p>
+        </Link>
 
-        <div className="bg-gray-100 rounded-lg p-6 opacity-50 cursor-not-allowed">
+        <Link
+          href="/reports/system"
+          className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
+        >
           <FileText className="w-8 h-8 text-gray-400 mb-3" />
-          <h3 className="font-semibold text-lg mb-2 text-gray-500">System Report</h3>
-          <p className="text-sm text-gray-400">Coming soon</p>
-        </div>
+          <h3 className="font-semibold text-lg mb-2 text-gray-700">System Report</h3>
+          <p className="text-sm text-gray-500">Infrastructure and environment health summary</p>
+        </Link>
       </div>
     </div>
   );

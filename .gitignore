@@ -180,4 +180,5 @@ CODEX_MEGA_PROMPT_PHASE_B.txt
 # =============================================================================
 # Audit reports (may contain secrets from MCP/config dumps)
 # =============================================================================
-reports/
+/reports/
+!app/reports/
