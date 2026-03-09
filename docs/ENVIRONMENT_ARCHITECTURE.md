@@ -26,7 +26,6 @@ Canonical reference for all environment variables in Depo-Pro.
 | `NEXT_PUBLIC_SUPABASE_URL` | PUB | `.env.local` | build placeholder | Vercel | REQ | Must be `https://*.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | PUB | `.env.local` | build placeholder (`sb_publishable_*`) | Vercel | REQ | Must start with `sb_publishable_` |
 | `SUPABASE_SERVICE_ROLE_KEY` | SRV | `.env.local` | build placeholder (`sb_secret_*`) | Vercel | REQ | Must start with `sb_secret_`. Never in client code. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | PUB | `.env.local` | — | — | OPT | Legacy alias for publishable key. Scripts only. |
 | `SUPABASE_URL` | SRV | `.env.local` | — | — | OPT | Legacy alias for NEXT_PUBLIC_SUPABASE_URL. Scripts only. |
 | `DEEPGRAM_API_KEY` | SRV | `.env.local` | — | Vercel | REQ | Transcription API |
 | `ANTHROPIC_API_KEY` | SRV | `.env.local` | — | Vercel | REQ | Medical extraction pipeline |

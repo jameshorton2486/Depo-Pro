@@ -13,7 +13,7 @@ This document defines the authentication contract for all developers, contractor
 
 ### Browser Client
 - **File:** `lib/supabase/browser.ts`
-- **Uses:** `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Uses:** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - **Purpose:** Login, logout, session refresh, client-side auth operations
 - **Access:** `getSupabaseBrowserClient()`
 - **Example:**
@@ -25,7 +25,7 @@ This document defines the authentication contract for all developers, contractor
 
 ### Server Client
 - **File:** `lib/supabase/server.ts`
-- **Uses:** `cookies()` from Next.js, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Uses:** `cookies()` from Next.js, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - **Purpose:** SSR, API routes, protected pages, server-side auth checks
 - **Access:** `createSupabaseServerClient()`
 - **Example:**
@@ -37,7 +37,7 @@ This document defines the authentication contract for all developers, contractor
 
 ### Middleware Client
 - **File:** `lib/supabase/middleware.ts`
-- **Uses:** Request cookies, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Uses:** Request cookies, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - **Purpose:** Session refresh, route protection in middleware
 - **Access:** `createMiddlewareClient(request)`
 - **Example:**
@@ -82,7 +82,7 @@ The following patterns are **strictly forbidden** and will cause PR rejection:
 
 **Browser-safe (must start with `NEXT_PUBLIC_`):**
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Supabase publishable key
 
 **Server-only (never exposed to browser):**
 - `SUPABASE_SERVICE_ROLE_KEY` - Admin operations only

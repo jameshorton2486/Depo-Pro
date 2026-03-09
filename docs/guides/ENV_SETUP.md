@@ -11,7 +11,7 @@ Create or update `.env.local` in your project root:
 ```bash
 # Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key_here
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
@@ -48,6 +48,6 @@ The Supabase clients will automatically read from `.env.local`.
 
 ## Current Status
 
-Your code correctly reads from `process.env.NEXT_PUBLIC_SUPABASE_URL` and `process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+Your code correctly reads from `process.env.NEXT_PUBLIC_SUPABASE_URL` and `process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
 Just make sure `.env.local` exists with these values!

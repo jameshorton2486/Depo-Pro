@@ -7,8 +7,32 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { captureError } from '@/lib/error-capture';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+function getJobAccessResult(
+  job: { created_by_id?: string | null; reporter_id?: string | null; scopist_id?: string | null; firm_id?: string | null },
+  user: ProtectedContext['user'],
+) {
+  const userFirmId = user.firm_id || (user as ProtectedContext['user'] & { firmId?: string | null }).firmId || null;
+  if (user.role === 'ADMIN') {
+    return { allowed: true as const };
+  }
+
+  const isReporterOwner = job.created_by_id === user.id || job.reporter_id === user.id;
+  if (isReporterOwner) {
+    return { allowed: true as const };
+  }
+
+  const sameFirm = Boolean(job.firm_id && userFirmId && job.firm_id === userFirmId);
+  if (!sameFirm) {
+    return { allowed: false as const, status: 403, error: 'Forbidden' };
+  }
+
+  if (user.role === 'SCOPIST' && job.scopist_id && job.scopist_id !== user.id) {
+    return { allowed: false as const, status: 403, error: 'Forbidden - not assigned to this job' };
+  }
+
+  return { allowed: true as const };
+}
 
 const POSTHandler = async (
   req: NextRequest,
@@ -16,23 +40,18 @@ const POSTHandler = async (
 ) => {
   const startTime = performance.now();
   try {
-    const currentUser = (context as any)?.user ?? await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { user, supabase } = context;
     const resolvedParams = typeof (context.params as any)?.then === 'function'
       ? await (context.params as any)
       : context.params;
     const { id: jobId } = resolvedParams as Record<string, string>;
-    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
     const body = await req.json().catch(() => ({}));
     const { expectedVersion } = body as { expectedVersion?: string };
 
     // Fetch the job
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('id, firm_id, reporter_id, status')
+      .select('id, created_by_id, firm_id, reporter_id, scopist_id, status')
       .eq('id', jobId)
       .single();
 
@@ -40,19 +59,9 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check access: must be the reporter, an admin, or same firm
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('firm_id')
-      .eq('id', currentUser.id)
-      .single();
-
-    const isSameFirm = profile?.firm_id && profile.firm_id === job.firm_id;
-    const isOwner = job.reporter_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-
-    if (!isOwner && !isAdmin && !isSameFirm) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const access = getJobAccessResult(job, user);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     // Get the transcription for this job
@@ -123,7 +132,7 @@ const POSTHandler = async (
         .from('transcription_locks')
         .update({ is_active: false })
         .eq('transcription_id', transcription.id)
-        .eq('locked_by_id', currentUser.id);
+        .eq('locked_by_id', user.id);
     } catch (_lockErr) {
       console.error('Failed to release lock on submit — continuing anyway');
     }

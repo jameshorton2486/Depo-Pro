@@ -322,7 +322,7 @@ Reference:  lib/config/env.ts
 Action:     MANUAL — not an AI task
   Verify ALL present for Production environment:
   - [ ] NEXT_PUBLIC_SUPABASE_URL
-  - [ ] NEXT_PUBLIC_SUPABASE_ANON_KEY
+  - [ ] NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
   - [ ] SUPABASE_SERVICE_ROLE_KEY
   - [ ] DEEPGRAM_API_KEY
   - [ ] ANTHROPIC_API_KEY

@@ -70,7 +70,7 @@ All deprecated variables have been successfully cleaned up:
 
 | Variable | .env.local | Vercel | Status |
 |---|---|---|---|
-| NEXT_PUBLIC_SUPABASE_ANON_KEY | Not present | Not present | CLEAN |
+| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | Present | Present | ACTIVE |
 | NEXTAUTH_SECRET | Not present | Not present | CLEAN |
 | NEXTAUTH_URL | Not present | Not present | CLEAN |
 | DATABASE_URL | Not present | Not present | CLEAN |
@@ -90,7 +90,7 @@ All deprecated variables have been successfully cleaned up:
 | Supabase | NEXT_PUBLIC_SUPABASE_URL | PASS | https://ildhcfspbmhuemzgvzyx.supabase.co |
 | Supabase | NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | PASS | JS client authenticates successfully (sb_p\*\*\*\*bdY0) |
 | Supabase | SUPABASE_SERVICE_ROLE_KEY | PASS | Admin API accessible (sb_s\*\*\*\*h_9c) |
-| Supabase | NEXT_PUBLIC_SUPABASE_ANON_KEY | PASS | Not present (correct — deprecated) |
+| Supabase | NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | PASS | Present (correct — active) |
 | Deepgram | DEEPGRAM_API_KEY | PASS | 1 project found (a496\*\*\*\*6731) |
 | Deepgram | DEEPGRAM_WEBHOOK_SECRET | PASS | Present (b338\*\*\*\*879e) |
 | Deepgram | USE_DEEPGRAM | PASS | Set to: true |

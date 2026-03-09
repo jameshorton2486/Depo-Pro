@@ -157,7 +157,7 @@ curl -I https://depo-pro.com
 | Variable | Type | Verified? |
 |----------|------|-----------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | [ ] |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | [ ] |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public | [ ] |
 | `NEXT_PUBLIC_APP_URL` | Public | [ ] |
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret | [ ] |
 | `DEEPGRAM_API_KEY` | Secret | [ ] |

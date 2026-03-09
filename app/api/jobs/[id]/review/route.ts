@@ -10,8 +10,6 @@ import { NextResponse } from 'next/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { logCorrection, getWordContext } from '@/lib/services/correction-logger';
 import { captureError } from '@/lib/error-capture';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +18,32 @@ interface ReviewRequest {
   action: 'correct' | 'confirm' | 'skip';
   correctedWord?: string;
   expectedUpdatedAt?: string;
+}
+
+function getJobAccessResult(
+  job: { created_by_id?: string | null; reporter_id?: string | null; scopist_id?: string | null; firm_id?: string | null },
+  user: ProtectedContext['user'],
+) {
+  const userFirmId = user.firm_id || (user as ProtectedContext['user'] & { firmId?: string | null }).firmId || null;
+  if (user.role === 'ADMIN') {
+    return { allowed: true as const };
+  }
+
+  const isReporterOwner = job.created_by_id === user.id || job.reporter_id === user.id;
+  if (isReporterOwner) {
+    return { allowed: true as const };
+  }
+
+  const sameFirm = Boolean(job.firm_id && userFirmId && job.firm_id === userFirmId);
+  if (!sameFirm) {
+    return { allowed: false as const, status: 403, error: 'Forbidden' };
+  }
+
+  if (user.role === 'SCOPIST' && job.scopist_id && job.scopist_id !== user.id) {
+    return { allowed: false as const, status: 403, error: 'Forbidden - not assigned to this job' };
+  }
+
+  return { allowed: true as const };
 }
 
 /**
@@ -33,11 +57,7 @@ const PATCHHandler = async (
 ) => {
   const startTime = performance.now();
   try {
-    const currentUser = (context as any)?.user ?? await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { user, supabase } = context;
     const resolvedParams = typeof (context.params as any)?.then === 'function'
       ? await (context.params as any)
       : context.params;
@@ -64,8 +84,6 @@ const PATCHHandler = async (
         { status: 400 },
       );
     }
-
-    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
 
     // Get the flagged word
     const { data: flaggedWord, error: flaggedError } = await supabase
@@ -98,12 +116,17 @@ const PATCHHandler = async (
     // Get job to verify access and get firm_id
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('id, firm_id, reporter_id')
+      .select('id, created_by_id, firm_id, reporter_id, scopist_id')
       .eq('id', jobId)
       .single();
 
     if (jobError || !job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    const access = getJobAccessResult(job, user);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     // Verify job matches transcription
@@ -128,7 +151,7 @@ const PATCHHandler = async (
       );
     }
 
-    const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+    const isLocked = await isJobLockedByOther(jobId, user.id);
     if (isLocked) {
       return NextResponse.json(
         { error: 'Job is locked by another user', code: 'LOCKED' },
@@ -137,13 +160,13 @@ const PATCHHandler = async (
     }
 
     // Get firm_id from user
-    const { data: user } = await supabase
+    const { data: userProfile } = await supabase
       .from('profiles')
       .select('firm_id')
-      .eq('id', currentUser.id)
+      .eq('id', user.id)
       .single();
 
-    const firmId = user?.firm_id || job.firm_id;
+    const firmId = userProfile?.firm_id || job.firm_id;
 
     // Update flagged word status
     const newStatus =
@@ -154,7 +177,7 @@ const PATCHHandler = async (
     const updateData: any = {
       status: newStatus,
       reviewed_at: new Date().toISOString(),
-      reviewed_by: currentUser.id,
+      reviewed_by: user.id,
     };
 
     if (action === 'correct' && correctedWord) {
@@ -180,7 +203,7 @@ const PATCHHandler = async (
         .from('transcription_edits')
         .insert({
           transcription_id: flaggedWord.transcription_id,
-          editor_id: currentUser.id,
+          editor_id: user.id,
           edit_type: 'WORD_CORRECTION' as const,
           original_value: flaggedWord.original_word,
           new_value: correctedWord.trim(),
@@ -220,7 +243,7 @@ const PATCHHandler = async (
       transcriptionId: flaggedWord.transcription_id,
       jobId,
       firmId,
-      reviewerId: currentUser.id,
+      reviewerId: user.id,
       wordIndex: wordIndex >= 0 ? wordIndex : -1,
       originalWord: flaggedWord.original_word,
       correctedWord: action === 'correct' ? correctedWord : undefined,

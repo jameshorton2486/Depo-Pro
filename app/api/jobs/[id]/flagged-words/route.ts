@@ -14,8 +14,6 @@ import { z } from 'zod';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { updateFlaggedWordSchema } from '@/lib/api/schemas';
 import { toValidationErrorPayload } from '@/lib/api/validation';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const runtime = 'nodejs';
 
@@ -42,6 +40,32 @@ interface FlaggedSegment {
   words?: Array<{ word: string; start: number; end: number; confidence: number }>;
 }
 
+function getJobAccessResult(
+  job: { created_by_id?: string | null; reporter_id?: string | null; scopist_id?: string | null; firm_id?: string | null },
+  user: ProtectedContext['user'],
+) {
+  const userFirmId = user.firm_id || (user as ProtectedContext['user'] & { firmId?: string | null }).firmId || null;
+  if (user.role === 'ADMIN') {
+    return { allowed: true as const };
+  }
+
+  const isReporterOwner = job.created_by_id === user.id || job.reporter_id === user.id;
+  if (isReporterOwner) {
+    return { allowed: true as const };
+  }
+
+  const sameFirm = Boolean(job.firm_id && userFirmId && job.firm_id === userFirmId);
+  if (!sameFirm) {
+    return { allowed: false as const, status: 403, error: 'Forbidden' };
+  }
+
+  if (user.role === 'SCOPIST' && job.scopist_id && job.scopist_id !== user.id) {
+    return { allowed: false as const, status: 403, error: 'Forbidden - not assigned to this job' };
+  }
+
+  return { allowed: true as const };
+}
+
 // GET /api/jobs/[id]/flagged-words
 // Returns flagged low-confidence words for scopist review
 const GETHandler = async (
@@ -49,22 +73,15 @@ const GETHandler = async (
   context: ProtectedContext,
 ) => {
   try {
-    const currentUser = (context as any)?.user ?? await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { user, supabase } = context;
     const { id: jobId } = context.params;
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter') || 'pending';
     const sortBy = searchParams.get('sort') || 'confidence';
 
-    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
-
-    // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('id, created_by_id, firm_id')
+      .select('id, created_by_id, reporter_id, scopist_id, firm_id')
       .eq('id', jobId)
       .single();
 
@@ -72,13 +89,9 @@ const GETHandler = async (
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check access (owner, admin, or same firm)
-    const isOwner = job.created_by_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-    const sameFirm = job.firm_id === (currentUser as any).firmId;
-
-    if (!isOwner && !isAdmin && !sameFirm) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    const access = getJobAccessResult(job, user);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     // Get transcription with flagged segments
@@ -210,11 +223,7 @@ const PATCHHandler = async (
   context: ProtectedContext
 ) => {
   try {
-    const currentUser = (context as any)?.user ?? await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const { user, supabase } = context;
     const { id: jobId } = context.params;
     let parsed: z.infer<typeof updateFlaggedWordSchema>;
     try {
@@ -228,12 +237,9 @@ const PATCHHandler = async (
     }
     const { wordId, correctedText, expectedUpdatedAt } = parsed;
 
-    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
-
-    // Verify user has access to this job
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('id, created_by_id, firm_id')
+      .select('id, created_by_id, reporter_id, scopist_id, firm_id')
       .eq('id', jobId)
       .single();
 
@@ -241,13 +247,9 @@ const PATCHHandler = async (
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Check edit access (scopist, reporter owner, or admin)
-    const isOwner = job.created_by_id === currentUser.id;
-    const isAdmin = currentUser.role === 'ADMIN';
-    const isScopist = currentUser.role === 'SCOPIST';
-
-    if (!isOwner && !isAdmin && !isScopist) {
-      return NextResponse.json({ error: 'Unauthorized to edit' }, { status: 403 });
+    const access = getJobAccessResult(job, user);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     // Get transcription
@@ -275,7 +277,7 @@ const PATCHHandler = async (
       );
     }
 
-    const isLocked = await isJobLockedByOther(jobId, currentUser.id);
+    const isLocked = await isJobLockedByOther(jobId, user.id);
     if (isLocked) {
       return NextResponse.json(
         { error: 'Job is locked by another user', code: 'LOCKED' },
@@ -300,8 +302,8 @@ const PATCHHandler = async (
           word_index: wordIndex,
           edited_text: correctedText || null,
           edit_type: 'WORD_CORRECTION',
-          editor_id: currentUser.id,
-          editor_role: currentUser.role,
+          editor_id: user.id,
+          editor_role: user.role,
           created_at: new Date().toISOString(),
         },
         {
@@ -329,7 +331,7 @@ const PATCHHandler = async (
       success: true,
       wordId,
       correctedText,
-      reviewedBy: currentUser.id,
+      reviewedBy: user.id,
       updatedAt: touchedTranscription?.updated_at || new Date().toISOString(),
     });
   } catch (error) {
@@ -351,6 +353,7 @@ const DELETEHandler = async (
   context: ProtectedContext
 ) => {
   try {
+    const { user, supabase } = context;
     const { id: jobId } = context.params;
     const { searchParams } = new URL(request.url);
     const wordId = searchParams.get('wordId');
@@ -359,7 +362,20 @@ const DELETEHandler = async (
       return NextResponse.json({ error: 'wordId is required' }, { status: 400 });
     }
 
-    const supabase = (context as any)?.supabase ?? await createSupabaseServerClient();
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('id, created_by_id, reporter_id, scopist_id, firm_id')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    const access = getJobAccessResult(job, user);
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
 
     // Get transcription
     const { data: transcription } = await supabase
