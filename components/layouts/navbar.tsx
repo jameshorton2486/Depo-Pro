@@ -149,9 +149,9 @@ export function Navbar({ user: userProp }: NavbarProps) {
             )}
             {(user.role === Role.ADMIN) && (
               <Link
-                href="/calendar/requests"
+                href="/calendar"
                 className={`text-sm font-medium transition-colors hover:text-[var(--color-primary)] ${
-                  isActive('/calendar/requests') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
+                  isActive('/calendar') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-secondary)]'
                 }`}
               >
                 Booking Requests

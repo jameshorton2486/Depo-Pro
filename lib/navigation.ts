@@ -24,7 +24,6 @@ import {
   Clock,
   FolderOpen,
   Upload,
-  Webhook,
   FileAudio,
   Scale,
   MessageSquare,
@@ -88,7 +87,7 @@ const ADMIN_NAV: NavigationSchema = [
     section: 'Cases & Jobs',
     icon: Briefcase,
     items: [
-      { id: 'admin-jobs', label: 'All Jobs', href: '/jobs', icon: Briefcase },
+      { id: 'admin-jobs', label: 'All Jobs', href: '/admin/jobs', icon: Briefcase },
       { id: 'admin-new-case', label: 'New Case', href: '/cases/new', icon: PlusCircle },
       { id: 'admin-new-job', label: 'New Job', href: '/jobs/new', icon: Upload },
       { id: 'admin-calendar', label: 'Calendar', href: '/calendar', icon: Calendar },
@@ -112,6 +111,7 @@ const ADMIN_NAV: NavigationSchema = [
       { id: 'admin-users-scopists', label: 'Scopists', href: '/admin/users?role=SCOPIST', icon: UserCircle },
       { id: 'admin-users-attorneys', label: 'Attorneys', href: '/admin/users?role=ATTORNEY', icon: Scale },
       { id: 'admin-users-agencies', label: 'Agencies', href: '/admin/users?role=AGENCY', icon: Building2 },
+      { id: 'admin-organizations', label: 'Organizations', href: '/admin/organizations', icon: Building2 },
     ],
   },
   {
@@ -128,9 +128,7 @@ const ADMIN_NAV: NavigationSchema = [
     icon: Settings,
     items: [
       { id: 'admin-settings-profile', label: 'Profile', href: '/settings/profile', icon: Settings },
-      { id: 'admin-settings-firm', label: 'Firm Settings', href: '/admin/firm', icon: Building2 },
-      { id: 'admin-settings-security', label: 'Security', href: '/admin/security', icon: Shield },
-      { id: 'admin-settings-integrations', label: 'Integrations', href: '/admin/integrations', icon: Webhook },
+      { id: 'admin-system', label: 'System', href: '/admin/system', icon: Shield },
     ],
   },
 ];
@@ -346,9 +344,6 @@ const PRE_BETA_HIDDEN_IDS = new Set([
   'admin-billing',
   'agency-billing',
   // Admin system pages — no page.tsx yet
-  'admin-settings-firm',
-  'admin-settings-security',
-  'admin-settings-integrations',
   // Reports — placeholder stubs
   'admin-reports',
   'attorney-reports',
