@@ -5,10 +5,20 @@
 // Version comparison feature (coming soon)
 // =============================================================================
 
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth/session';
 import Link from 'next/link';
 import { GitCompare } from 'lucide-react';
 
-export default function TranscriptComparePage() {
+export const dynamic = 'force-dynamic';
+
+export default async function TranscriptComparePage() {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    redirect('/login');
+  }
+
   return (
     <div className="p-6 text-center max-w-2xl mx-auto">
       <GitCompare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
