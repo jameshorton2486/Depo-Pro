@@ -1,86 +1,136 @@
 # Depo-Pro Beta Testing Guide
 
-Welcome! You are one of our first beta testers. This guide walks you through the workflows available during beta.
+Welcome to the Depo-Pro beta program. Thank you for helping us test the platform
+before we launch to the wider legal community.
+
+**Your beta access:** https://depo-pro.com
+**Beta period:** [Start Date] — [End Date]
+**Support contact:** info@depo-pro.com
+
+---
 
 ## Getting Started
-1. Log in at `https://depo-pro.com/login`.
-2. Confirm your dashboard and sidebar match your assigned role.
+
+### Logging In
+1. Go to https://depo-pro.com/login
+2. Enter the email and password provided to you separately
+3. You will be taken to your role-specific dashboard
+
+If you see an "Unauthorized" or "Profile not found" error, email info@depo-pro.com
+immediately — this means your account needs to be configured.
+
+---
 
 ## For Court Reporters
 
-### Upload A Deposition
-1. Click `New Job` in the sidebar.
-2. Fill in `Case Name`, `Case Number`, `Deponent Name`, and `Deposition Date`.
-3. Upload audio/video (`MP3`, `WAV`, or `MP4`, up to `2 GB`).
-4. Click `Create Job`.
-5. Transcription starts automatically (`~3-5 min` per hour of audio).
+### Uploading Audio and Starting Transcription
 
-### Review Flagged Words
-1. Open a completed job.
-2. Click `Review Transcript`.
-3. Low-confidence words are highlighted in orange.
-4. Click a word to hear audio at that timestamp.
-5. Confirm, correct, or skip each word.
+1. From your dashboard, click **New Job**
+2. Fill in the case name, deponent name, and deposition date
+3. Click **Upload Audio** and select your audio file
+   - Supported formats: MP3, WAV, M4A, MP4
+   - Maximum file size: 2 GB
+4. Click **Start Transcription**
+5. The status will show: Uploading → Processing → Complete
+   - Short files (under 5 min): typically 1-2 minutes
+   - Standard files (30-60 min): typically 5-10 minutes
+   - Large files (2+ hours): up to 30 minutes
+6. When complete, you will see a notification in your dashboard
+7. Open the job and click **Review Transcript**
 
-Keyboard shortcuts:
-1. `ArrowUp` / `ArrowDown`: Navigate flagged words
-2. `Space`: Play audio at selected word
-3. `Enter`: Edit selected word
-4. `C`: Confirm selected word
-5. `S`: Skip selected word
-6. `Escape`: Close edit/deselect
+### Assigning a Scopist
 
-### Export Transcript
-1. From the review page, click `Export`.
-2. Choose `DOCX (legal)`, `PDF`, or `TXT`.
-3. Exports include saved corrections.
+1. Open a completed job
+2. Click **Assign Scopist**
+3. Select a scopist from the dropdown
+4. They will see the job in their review queue automatically
 
-### Assign A Scopist
-1. Open a job.
-2. Click `Assign Scopist`.
-3. Select a scopist from the dropdown.
-4. The scopist will see the job in their queue.
+---
 
 ## For Scopists
 
-### Review Queue Workflow
-1. Log in and open your assigned queue.
-2. Select a job and open `Review Transcript`.
-3. Review flagged words with the same correction workflow as reporters.
-4. Corrections save automatically.
-5. Submit review when complete.
+### Reviewing Flagged Words
 
-## For Attorneys
-1. Log in to the attorney dashboard.
-2. Open transcripts and exports shared to your firm/workflow.
-3. Validate case content in read-only/review-focused mode.
-4. Report any data visibility or permission issues immediately.
+1. Log in — your assigned jobs appear in your queue
+2. Click a job to open the review page
+3. The screen has three sections:
+   - **Left panel:** the full transcript text
+   - **Right panel:** words flagged for review (low confidence)
+   - **Bottom bar:** audio player
+
+### Working Through Flagged Words
+
+Each flagged word shows:
+- The word as Deepgram heard it
+- A confidence percentage (lower = more likely wrong)
+- The surrounding context (words before and after)
+- The timestamp in the audio
+
+**To review a word:**
+- Click its timestamp to jump the audio to that moment
+- Listen to the audio
+- If the word is correct: click **Confirm**
+- If the word is wrong: type the correct word and click **Correct**
+- If you want to come back later: click **Skip**
+
+**Keyboard shortcuts (for faster review):**
+- Arrow keys: navigate between words
+- Space: play audio from the current word
+- Enter: confirm the word (or apply your correction)
+- Escape: skip the word
+
+Your corrections save automatically — you do not need to click a Save button.
+
+### Exporting the Transcript
+
+1. From the review page, click **Export** (top right)
+2. Choose your format:
+   - **DOCX** — standard legal transcript format (recommended)
+   - **PDF** — for sharing or printing
+   - **ASCII/TXT** — for Case Catalyst or Eclipse import
+3. The file will download automatically
+
+---
 
 ## Reporting Issues
 
-If you encounter a bug or confusing behavior:
-1. Note what you were doing when it happened
-2. Take a screenshot if possible
-3. Email **support@depo-pro.com** with the details
-4. Include your role (Reporter / Scopist / Attorney) and the job ID if applicable
+If something doesn't work the way you expect, please tell us. Your feedback
+directly improves the platform.
 
-## Known Limitations (Beta)
-1. Maximum upload size: `2 GB`
-2. Processing time: approximately `3-5 minutes` per hour of audio
-3. Export formats: `DOCX`, `PDF`, and `TXT` only
-4. Medical chronology is available but still being refined
+**Email:** info@depo-pro.com
+**Subject line:** [Beta Feedback] followed by a brief description
 
-## Sample Audio Files
-Upload these files to your shared Drive and distribute links to testers:
-1. `short-depo-sample.mp3` (5 min, simple Q&A)
-2. `medium-depo-sample.mp3` (30 min, multi-speaker)
-3. `long-depo-sample.mp3` (2 hr, stress test)
-4. `medical-depo-sample.mp3` (15 min, medical terminology)
-5. `noisy-depo-sample.mp3` (10 min, background noise)
+**Please include:**
+- What you were trying to do
+- What happened instead
+- The job name or ID (visible in the URL)
+- Your browser (Chrome, Firefox, Edge, Safari)
+- A screenshot if possible
 
-Drive links:
-1. Short: `[ADD LINK]`
-2. Medium: `[ADD LINK]`
-3. Long: `[ADD LINK]`
-4. Medical: `[ADD LINK]`
-5. Noisy: `[ADD LINK]`
+---
+
+## Known Limitations During Beta
+
+- Maximum audio file size: 2 GB
+- Video files (MP4, MOV): supported but transcription may be slower
+- Medical chronology feature is available but still being refined
+- Mobile device support is limited — desktop browser recommended
+- Internet Explorer is not supported
+
+---
+
+## What We Are Testing
+
+We want to know:
+1. Does the upload and transcription process work reliably?
+2. Is the flagged word review interface intuitive to use?
+3. Do corrections save correctly and appear in the export?
+4. Does the DOCX export meet your formatting standards?
+5. Are there any crashes, freezes, or confusing error messages?
+
+There are no wrong answers. If something seems off, tell us — even if you are
+not sure whether it is a bug or expected behavior.
+
+Thank you for your time and expertise.
+
+— The Depo-Pro Team

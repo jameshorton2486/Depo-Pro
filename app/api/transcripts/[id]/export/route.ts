@@ -4,8 +4,10 @@ import { NextResponse } from 'next/server';
 import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
-import { exportTranscript, runPreflightChecks, PreflightError } from '@/lib/export';
+import * as exportLib from '@/lib/export';
 import { exportLegalDocx } from '@/lib/services/export';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
 import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
@@ -16,14 +18,26 @@ import { getExportProfile } from '@/lib/export/profiles';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 import { logger } from '@/lib/logger';
 import { captureError } from '@/lib/error-capture';
+import { logRouteError, logSlowRequest } from '@/lib/monitoring';
 
 const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
+const exportTranscript = exportLib.exportTranscript;
+const runPreflightChecks = 'runPreflightChecks' in exportLib
+  ? (exportLib.runPreflightChecks as ((transcriptId: string) => Promise<void>) | undefined)
+  : undefined;
 
 interface ExportWord {
   word: string;
   correctedWord?: string;
   isEdited?: boolean;
 }
+
+type RouteUser = {
+  id: string;
+  role: string;
+  firm_id?: string | null;
+  firmId?: string | null;
+};
 
 function parseUnknownJson<T>(value: unknown, fallback: T): T {
   if (value === null || value === undefined) {
@@ -93,12 +107,17 @@ function getFlaggedCorrections(value: unknown): Map<number, string> {
 
 const GETHandler = async (
   request: NextRequest,
-  context: ProtectedContext,
+  context?: ProtectedContext,
 ) => {
   const startTime = performance.now();
   let transcriptId = '';
   try {
-    const { user, supabase, params } = context;
+    const user = (context?.user ?? await getCurrentUser()) as RouteUser | null;
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const supabase = context?.supabase ?? await createSupabaseServerClient();
+    const params = context?.params;
     transcriptId = params?.id ?? '';
     if (!transcriptId) {
       return NextResponse.json({ error: 'Transcript ID is required' }, { status: 400 });
@@ -111,9 +130,10 @@ const GETHandler = async (
     }
 
     // Quota check
-    if (user.firm_id) {
+    const userFirmId = user.firm_id || user.firmId || null;
+    if (userFirmId) {
       const _tier = 'FREE'; // TODO: Get from subscription
-      const quotaCheck = await useQuota(user.firm_id, 'exports', 1);
+      const quotaCheck = await useQuota(userFirmId, 'exports', 1);
       if (!quotaCheck.allowed) {
         return NextResponse.json(
           { error: 'Export quota exceeded', ...quotaCheck },
@@ -137,7 +157,7 @@ const GETHandler = async (
     // Check permissions
     const isOwner = transcription.job.created_by_id === user.id;
     const isAdmin = user.role === 'ADMIN';
-    const isSameFirm = transcription.job.firm_id === user.firm_id;
+    const isSameFirm = transcription.job.firm_id === userFirmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -163,13 +183,17 @@ const GETHandler = async (
 
     // Run pre-flight checks (skip if explicitly bypassed for draft exports)
     const skipPreflight = searchParams.get('skipPreflight') === 'true';
-    if (!skipPreflight) {
+    if (!skipPreflight && runPreflightChecks) {
       try {
         await runPreflightChecks(transcriptId);
       } catch (error) {
-        if (error instanceof PreflightError) {
+        if (
+          error &&
+          typeof error === 'object' &&
+          (error as Error).name === 'PreflightError'
+        ) {
           return NextResponse.json(
-            { error: 'Pre-flight checks failed', checks: error.checks },
+            { error: 'Pre-flight checks failed', checks: (error as { checks?: string[] }).checks ?? [] },
             { status: 422 }
           );
         }
@@ -352,15 +376,12 @@ const GETHandler = async (
       },
     });
   } catch (error) {
-    console.error('[EXPORT_ERROR]', transcriptId, error);
+    logRouteError('GET /api/transcripts/[id]/export', error, { transcriptId });
     captureError(error, { route: 'GET /api/transcripts/[id]/export' });
     return NextResponse.json({ error: 'Failed to export transcript' }, { status: 500 });
   } finally {
     const duration = Math.round(performance.now() - startTime);
-    if (duration > 5000) {
-      console.warn(`[perf:slow] GET /api/transcripts/[id]/export ${duration}ms`);
-    }
-    console.warn(`[perf] ${request.method} ${request.nextUrl.pathname} ${duration}ms`);
+    logSlowRequest('GET /api/transcripts/[id]/export', duration, 5000);
   }
 };
 

@@ -12,16 +12,14 @@ interface TimedServiceResult {
 export interface HealthCheckResult {
   status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
-  services: {
-    database: ServiceState;
-    deepgram: ServiceState;
-    anthropic: ServiceState;
-  };
   version: string;
-  checks: {
+  environment: string;
+  uptime_seconds: number;
+  services: {
     database: TimedServiceResult;
     deepgram: TimedServiceResult;
     anthropic: TimedServiceResult;
+    storage: TimedServiceResult;
   };
 }
 
@@ -138,58 +136,74 @@ async function checkAnthropicService(): Promise<TimedServiceResult> {
   }
 }
 
+async function checkStorageService(): Promise<TimedServiceResult> {
+  const start = Date.now();
+  try {
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.storage.getBucket('depo-audio');
+
+    if (error) {
+      return { status: 'unhealthy', latencyMs: Date.now() - start, error: error.message };
+    }
+
+    return { status: 'healthy', latencyMs: Date.now() - start };
+  } catch (error) {
+    return {
+      status: 'unhealthy',
+      latencyMs: Date.now() - start,
+      error: error instanceof Error ? error.message : 'Unknown storage error',
+    };
+  }
+}
+
 function summarizeStatus(services: HealthCheckResult['services']): HealthCheckResult['status'] {
-  const states = Object.values(services);
+  const states = Object.values(services).map((s) => s.status);
   if (states.every((state) => state === 'healthy')) {
     return 'healthy';
   }
-  if (services.database === 'unhealthy') {
+  const unhealthyCount = states.filter((s) => s === 'unhealthy').length;
+  if (services.database.status === 'unhealthy' || unhealthyCount >= 3) {
     return 'unhealthy';
   }
   return 'degraded';
 }
 
 export async function getHealthStatus(): Promise<HealthCheckResult> {
-  const [databaseResult, deepgramResult, anthropicResult] = await Promise.allSettled([
+  const [databaseResult, deepgramResult, anthropicResult, storageResult] = await Promise.allSettled([
     checkDatabaseService(),
     checkDeepgramService(),
     checkAnthropicService(),
+    checkStorageService(),
   ]);
 
-  const database =
-    databaseResult.status === 'fulfilled'
-      ? databaseResult.value
-      : { status: 'unhealthy' as const, error: databaseResult.reason instanceof Error ? databaseResult.reason.message : 'Database check failed' };
-  const deepgram =
-    deepgramResult.status === 'fulfilled'
-      ? deepgramResult.value
-      : { status: 'unhealthy' as const, error: deepgramResult.reason instanceof Error ? deepgramResult.reason.message : 'Deepgram check failed' };
-  const anthropic =
-    anthropicResult.status === 'fulfilled'
-      ? anthropicResult.value
-      : { status: 'unhealthy' as const, error: anthropicResult.reason instanceof Error ? anthropicResult.reason.message : 'Anthropic check failed' };
+  function resolve(result: PromiseSettledResult<TimedServiceResult>, label: string): TimedServiceResult {
+    return result.status === 'fulfilled'
+      ? result.value
+      : { status: 'unhealthy' as const, error: result.reason instanceof Error ? result.reason.message : `${label} check failed` };
+  }
 
   const services = {
-    database: database.status,
-    deepgram: deepgram.status,
-    anthropic: anthropic.status,
+    database: resolve(databaseResult, 'Database'),
+    deepgram: resolve(deepgramResult, 'Deepgram'),
+    anthropic: resolve(anthropicResult, 'Anthropic'),
+    storage: resolve(storageResult, 'Storage'),
   };
 
   const health: HealthCheckResult = {
     status: summarizeStatus(services),
     timestamp: new Date().toISOString(),
-    services,
     version: APP_VERSION,
-    checks: {
-      database,
-      deepgram,
-      anthropic,
-    },
+    environment: process.env.NODE_ENV || 'unknown',
+    uptime_seconds: Math.floor(process.uptime()),
+    services,
   };
 
   logger.info('[health] Health check completed', {
     status: health.status,
-    services,
+    db: services.database.status,
+    deepgram: services.deepgram.status,
+    anthropic: services.anthropic.status,
+    storage: services.storage.status,
   });
 
   return health;

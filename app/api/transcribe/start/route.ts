@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { z } from 'zod';
 import { getTranscriptionQueue } from '@/lib/queue/transcription-queue';
 import { logger } from '@/lib/logger';
+import { logRouteError } from '@/lib/monitoring';
 import { getJobForTranscription, markJobFilesUploaded } from '@/lib/supabase/queries/transcription';
 import { processTranscriptionJob } from '@/lib/transcription/pipeline';
 
@@ -126,16 +127,14 @@ async function postTranscribeStartHandler(request: NextRequest) {
       mode: 'direct',
     }, { status: 200 });
   } catch (error) {
-    logger.error('Transcription start error', error as Error, {
-      userId: (await getCurrentUser())?.id,
-    });
-
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request', details: error.issues },
         { status: 400 },
       );
     }
+
+    logRouteError('POST /api/transcribe/start', error);
 
     return NextResponse.json(
       { error: 'Failed to start transcription' },

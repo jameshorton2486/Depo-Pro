@@ -14,6 +14,9 @@ import { z } from 'zod';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { updateFlaggedWordSchema } from '@/lib/api/schemas';
 import { toValidationErrorPayload } from '@/lib/api/validation';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { logRouteError } from '@/lib/monitoring';
 
 export const runtime = 'nodejs';
 
@@ -40,11 +43,21 @@ interface FlaggedSegment {
   words?: Array<{ word: string; start: number; end: number; confidence: number }>;
 }
 
+type RouteUser = {
+  id: string;
+  role: string;
+  firm_id?: string | null;
+  firmId?: string | null;
+};
+
 function getJobAccessResult(
   job: { created_by_id?: string | null; reporter_id?: string | null; scopist_id?: string | null; firm_id?: string | null },
-  user: ProtectedContext['user'],
+  user: RouteUser,
 ) {
   const userFirmId = user.firm_id || (user as ProtectedContext['user'] & { firmId?: string | null }).firmId || null;
+  if (!['ADMIN', 'SCOPIST', 'REPORTER', 'COURT_REPORTER'].includes(user.role)) {
+    return { allowed: false as const, status: 403, error: 'Forbidden' };
+  }
   if (user.role === 'ADMIN') {
     return { allowed: true as const };
   }
@@ -70,11 +83,15 @@ function getJobAccessResult(
 // Returns flagged low-confidence words for scopist review
 const GETHandler = async (
   request: NextRequest,
-  context: ProtectedContext,
+  context?: ProtectedContext,
 ) => {
   try {
-    const { user, supabase } = context;
-    const { id: jobId } = context.params;
+    const user = context?.user ?? await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const supabase = context?.supabase ?? await createSupabaseServerClient();
+    const { id: jobId } = (context?.params ?? {}) as Record<string, string>;
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter') || 'pending';
     const sortBy = searchParams.get('sort') || 'confidence';
@@ -205,10 +222,7 @@ const GETHandler = async (
       updatedAt: transcription.updated_at,
     });
   } catch (error) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[CRITICAL] flagged words read failure', error);
-    }
-    console.error('Flagged words GET error:', error);
+    logRouteError('GET /api/jobs/[id]/flagged-words', error);
     return NextResponse.json(
       { error: 'Failed to load flagged words' },
       { status: 500 }
@@ -220,11 +234,15 @@ const GETHandler = async (
 // Update a flagged word (mark as reviewed, correct text)
 const PATCHHandler = async (
   request: NextRequest,
-  context: ProtectedContext
+  context?: ProtectedContext
 ) => {
   try {
-    const { user, supabase } = context;
-    const { id: jobId } = context.params;
+    const user = context?.user ?? await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const supabase = context?.supabase ?? await createSupabaseServerClient();
+    const { id: jobId } = (context?.params ?? {}) as Record<string, string>;
     let parsed: z.infer<typeof updateFlaggedWordSchema>;
     try {
       const body = await request.json();
@@ -335,10 +353,7 @@ const PATCHHandler = async (
       updatedAt: touchedTranscription?.updated_at || new Date().toISOString(),
     });
   } catch (error) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[CRITICAL] flagged words mutation failure', error);
-    }
-    console.error('Flagged words PATCH error:', error);
+    logRouteError('PATCH /api/jobs/[id]/flagged-words', error);
     return NextResponse.json(
       { error: 'Failed to update flagged word' },
       { status: 500 }
@@ -350,11 +365,15 @@ const PATCHHandler = async (
 // Remove a word edit (un-review)
 const DELETEHandler = async (
   request: NextRequest,
-  context: ProtectedContext
+  context?: ProtectedContext
 ) => {
   try {
-    const { user, supabase } = context;
-    const { id: jobId } = context.params;
+    const user = context?.user ?? await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const supabase = context?.supabase ?? await createSupabaseServerClient();
+    const { id: jobId } = (context?.params ?? {}) as Record<string, string>;
     const { searchParams } = new URL(request.url);
     const wordId = searchParams.get('wordId');
 
@@ -403,10 +422,7 @@ const DELETEHandler = async (
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('[CRITICAL] flagged words delete failure', error);
-    }
-    console.error('Flagged words DELETE error:', error);
+    logRouteError('DELETE /api/jobs/[id]/flagged-words', error);
     return NextResponse.json(
       { error: 'Failed to remove edit' },
       { status: 500 }
