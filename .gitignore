@@ -135,6 +135,10 @@ debug*.ps1
 !/CLAUDE.md
 !/REPO_INTELLIGENCE_MAP.md
 !/AI_TASK_QUEUE.md
+!/BUGS_FOUND.md
+!/REVIEW_NEEDED.md
+!/PREFLIGHT_REPORT.md
+!/DEPLOYMENT_CHECKLIST.md
 
 # =============================================================================
 # Supabase temp artifacts

@@ -1,4 +1,4 @@
-# Database Connection Setup for Prisma Migrations
+# Database Connection Setup for Supabase
 
 ## Quick Fix for P1000 Errors
 
@@ -39,6 +39,6 @@ DIRECT_URL="postgresql://postgres:password@db.xxx.supabase.co:5432/postgres"
 ## Verify
 
 ```powershell
-npx prisma db pull  # Should work without P1000
-npx prisma migrate dev --name test
+# Test direct connection
+psql "$DIRECT_URL" -c "SELECT 1"
 ```

@@ -480,7 +480,7 @@ CHECKS TO PERFORM:
 2. API Security:
    - All /api routes require authentication (except auth routes)
    - Role-based access enforced (e.g., /api/admin/* requires ADMIN role)
-   - No SQL injection vulnerabilities (using Prisma = safe)
+   - No SQL injection vulnerabilities (using Supabase with parameterized queries)
    - Rate limiting configured
 
 3. Supabase Security:
