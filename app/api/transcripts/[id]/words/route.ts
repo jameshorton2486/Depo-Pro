@@ -11,7 +11,7 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getTranscriptWithTokensAndJob, updateTranscript } from '@/lib/supabase/queries/transcripts';
+import { getTranscriptWithTokensAndJob } from '@/lib/supabase/queries/transcripts';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { Role, JobStatus } from '@/lib/constants';
 import type { ReviewState } from '@/types/review';
@@ -295,10 +295,41 @@ const PATCHHandler = async (
     // Update transcription review metadata in flagged_segments for resume.
     // Note: content_json is not a real DB column — word corrections persist
     // via transcription_edits table and flagged_words table.
-    await updateTranscript(supabase, transcriptionId, {
+    const transcriptUpdate = {
       flagged_word_count: remainingCount,
       flagged_segments: mergeReviewSession(transcription.flagged_segments, reviewSession) as any,
-    });
+    };
+
+    let updateQuery = supabase
+      .from('transcriptions')
+      .update(transcriptUpdate)
+      .eq('id', transcriptionId);
+
+    if (clientUpdatedAt && (transcription as any).updated_at) {
+      // Enforce optimistic lock at write-time to prevent lost updates in races.
+      updateQuery = updateQuery.eq('updated_at', (transcription as any).updated_at);
+    }
+
+    const { data: updatedTranscription, error: updateError } = await updateQuery
+      .select('id, updated_at')
+      .maybeSingle();
+
+    if (updateError) {
+      console.error('Error updating transcript:', updateError);
+      return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
+    }
+
+    if (!updatedTranscription) {
+      return NextResponse.json(
+        {
+          error: 'Transcript has been modified by another user',
+          code: 'STALE_DATA',
+          serverUpdatedAt: (transcription as any).updated_at,
+          details: { message: 'Please reload the page to get the latest version before saving.' },
+        },
+        { status: 409 },
+      );
+    }
 
     // If marking complete, update job status
     if (complete && reviewState === 'COMPLETED') {
