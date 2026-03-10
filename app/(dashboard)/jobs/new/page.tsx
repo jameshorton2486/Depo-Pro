@@ -4,7 +4,7 @@
 
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
-import { JobForm } from '@/components/jobs/job-form';
+import { JobRequestWizard } from '@/components/intake/JobRequestWizard';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,15 +21,15 @@ export default async function NewJobPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="container max-w-5xl py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Create New Job</h1>
+        <h1 className="text-3xl font-bold">New Transcript Intake</h1>
         <p className="text-muted-foreground mt-1">
-          Add a new deposition or transcription job
+          Upload a notice, review extracted data, and create a job or submit a request.
         </p>
       </div>
 
-      <JobForm mode="create" />
+      <JobRequestWizard role={session.role} />
     </div>
   );
 }

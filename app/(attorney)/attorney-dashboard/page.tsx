@@ -11,6 +11,7 @@ import { FileText, Flag, CalendarClock, Scale } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { EmptyTranscripts } from '@/components/ui/empty-states';
+import { MyRequestsPanel } from '@/components/dashboard/MyRequestsPanel';
 
 interface DashboardStats {
   totalCases: number;
@@ -243,6 +244,8 @@ export default function AttorneyDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <MyRequestsPanel />
     </div>
   );
 }

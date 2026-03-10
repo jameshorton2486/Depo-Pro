@@ -63,6 +63,8 @@ export type UserRole =
   | 'REPORTER'
   | 'SCOPIST'
   | 'ATTORNEY'
+  | 'PARALEGAL'
+  | 'LAW_FIRM'
   | 'AGENCY';
 
 // =============================================================================
@@ -88,6 +90,7 @@ const ADMIN_NAV: NavigationSchema = [
     icon: Briefcase,
     items: [
       { id: 'admin-jobs', label: 'All Jobs', href: '/admin/jobs', icon: Briefcase },
+      { id: 'admin-requests', label: 'Transcript Requests', href: '/admin/requests', icon: MessageSquare },
       { id: 'admin-new-case', label: 'New Case', href: '/cases/new', icon: PlusCircle },
       { id: 'admin-new-job', label: 'New Job', href: '/jobs/new', icon: Upload },
       { id: 'admin-calendar', label: 'Calendar', href: '/calendar', icon: Calendar },
@@ -240,6 +243,8 @@ const ATTORNEY_NAV: NavigationSchema = [
     items: [
       { id: 'attorney-cases', label: 'My Cases', href: '/attorney/cases', icon: Briefcase },
       { id: 'attorney-calendar', label: 'Calendar', href: '/calendar', icon: Calendar },
+      { id: 'attorney-requests', label: 'My Requests', href: '/requests', icon: MessageSquare },
+      { id: 'attorney-new-request', label: 'New Transcript Request', href: '/jobs/new', icon: Upload },
     ],
   },
   {
@@ -292,6 +297,8 @@ const AGENCY_NAV: NavigationSchema = [
     items: [
       { id: 'agency-jobs', label: 'All Jobs', href: '/jobs', icon: Briefcase },
       { id: 'agency-new-case', label: 'New Case', href: '/cases/new', icon: PlusCircle },
+      { id: 'agency-requests', label: 'My Requests', href: '/requests', icon: MessageSquare },
+      { id: 'agency-new-request', label: 'New Transcript Request', href: '/jobs/new', icon: Upload },
     ],
   },
   {
@@ -327,6 +334,8 @@ export const NAVIGATION: Record<UserRole, NavigationSchema> = {
   REPORTER: REPORTER_NAV,
   SCOPIST: SCOPIST_NAV,
   ATTORNEY: ATTORNEY_NAV,
+  PARALEGAL: ATTORNEY_NAV,
+  LAW_FIRM: ATTORNEY_NAV,
   AGENCY: AGENCY_NAV,
 };
 
@@ -452,5 +461,7 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   REPORTER: 'Court Reporter',
   SCOPIST: 'Scopist',
   ATTORNEY: 'Attorney',
+  PARALEGAL: 'Paralegal',
+  LAW_FIRM: 'Law Firm',
   AGENCY: 'Agency Admin',
 };

@@ -24,6 +24,8 @@ import {
   type TranscriptSegment,
 } from '@/src/types/transcript-format';
 import { buildKeywordsForJob } from './buildKeywords';
+import { hydrateWords } from './hydrateWords';
+import { formatTranscriptWithAdmin } from './formatter';
 
 import type {
   AudioChunk,
@@ -292,6 +294,27 @@ export async function processTranscriptionJob(
       words: finalResult.words,
       segments: finalResult.segments,
     });
+
+    // --- STAGE 5.5: HYDRATE transcript_words + FORMAT ---
+    const supabase = createAdminClient();
+    const { data: transcription } = await supabase
+      .from('transcriptions')
+      .select('id')
+      .eq('job_id', jobId)
+      .single();
+    const { data: job } = transcription
+      ? await supabase.from('jobs').select('firm_id').eq('id', jobId).single()
+      : { data: null };
+
+    if (transcription?.id && job?.firm_id) {
+      try {
+        await hydrateWords(transcription.id, job.firm_id, finalResult.words);
+        await formatTranscriptWithAdmin(transcription.id);
+        console.warn(`Formatter pipeline complete for transcription ${transcription.id}`);
+      } catch (formatErr: any) {
+        console.error(`Formatter failed (non-fatal): ${formatErr.message}`);
+      }
+    }
 
     // --- STAGE 6: COMPLETE ---
     await updateTranscriptionStatus(jobId, 'COMPLETE', 100);

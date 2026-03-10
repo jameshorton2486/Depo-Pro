@@ -74,28 +74,27 @@ CREATE OR REPLACE FUNCTION get_review_progress(
 RETURNS JSONB AS $$
 SELECT jsonb_build_object(
   'total', COUNT(*),
-  'pending', COUNT(*) FILTER (WHERE status = 'PENDING'),
-  'corrected', COUNT(*) FILTER (WHERE status = 'CORRECTED'),
-  'confirmed', COUNT(*) FILTER (WHERE status = 'CONFIRMED'),
-  'skipped', COUNT(*) FILTER (WHERE status = 'SKIPPED'),
-  'reviewed', COUNT(*) FILTER (WHERE status != 'PENDING'),
+  'pending', COUNT(*) FILTER (WHERE fw.status = 'PENDING'),
+  'corrected', COUNT(*) FILTER (WHERE fw.status = 'CORRECTED'),
+  'confirmed', COUNT(*) FILTER (WHERE fw.status = 'CONFIRMED'),
+  'skipped', COUNT(*) FILTER (WHERE fw.status = 'SKIPPED'),
+  'reviewed', COUNT(*) FILTER (WHERE fw.status != 'PENDING'),
   'percentComplete', COALESCE(
     ROUND(
-      COUNT(*) FILTER (WHERE status != 'PENDING')::NUMERIC
+      COUNT(*) FILTER (WHERE fw.status != 'PENDING')::NUMERIC
       / NULLIF(COUNT(*), 0) * 100
     ),
     0
   ),
   'verifyTagsUnresolved', 0,
   'lowConfidenceUnreviewed', COUNT(*) FILTER (
-    WHERE status = 'PENDING'
-      AND (
-        confidence_class IN ('LOW', 'CRITICAL')
-        OR confidence < 0.80
-      )
+    WHERE fw.status = 'PENDING'
+      AND fw.confidence < 0.80
   )
 )
-FROM flagged_words
-WHERE transcription_id = p_transcription_id
-  AND firm_id = p_firm_id;
+FROM flagged_words fw
+JOIN transcriptions t ON t.id = fw.transcription_id
+JOIN jobs j ON j.id = t.job_id
+WHERE fw.transcription_id = p_transcription_id
+  AND j.firm_id = p_firm_id;
 $$ LANGUAGE SQL STABLE;

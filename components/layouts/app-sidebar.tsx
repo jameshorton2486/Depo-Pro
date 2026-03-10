@@ -200,6 +200,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [requestCount, setRequestCount] = useState<number | null>(null);
   const pathname = usePathname();
 
   // Support both controlled and uncontrolled modes
@@ -207,12 +208,47 @@ export function AppSidebar({
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
 
   // Get navigation schema for user's role
-  const navigation = getNavigationForRole(userRole);
+  const baseNavigation = getNavigationForRole(userRole);
 
   // Close mobile nav on route change
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!(userRole === 'ADMIN' || userRole === 'ATTORNEY' || userRole === 'PARALEGAL' || userRole === 'LAW_FIRM' || userRole === 'AGENCY')) {
+      setRequestCount(null);
+      return;
+    }
+
+    let active = true;
+    fetch('/api/intake/requests?status=PENDING_REVIEW&count=true', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (active) {
+          setRequestCount(typeof data.count === 'number' ? data.count : null);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRequestCount(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userRole]);
+
+  const navigation = baseNavigation.map((section) => ({
+    ...section,
+    items: section.items.map((item) => {
+      if ((userRole === 'ADMIN' && item.href === '/admin/requests') || (userRole !== 'ADMIN' && item.href === '/requests')) {
+        return { ...item, badge: requestCount ?? item.badge };
+      }
+      return item;
+    }),
+  }));
 
   return (
     <>

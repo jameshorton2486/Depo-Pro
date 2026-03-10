@@ -7,9 +7,7 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import {
-  getMedicalRecordById,
-} from '@/lib/supabase/queries/medical';
+import { getMedicalRecordById } from '@/lib/supabase/queries/medical';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { processMedicalRecord } from '@/lib/services/medical-extraction';
 import { logger } from '@/lib/logger';
@@ -34,12 +32,6 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Verify job exists and belongs to user's firm
-    const job = await getJobById(supabase, jobId);
-    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    }
-
     // Verify record exists and belongs to this job
     const record = await getMedicalRecordById(supabase, recordId);
     if (!record) {
@@ -47,6 +39,12 @@ const POSTHandler = async (
     }
     if (record.job_id !== jobId) {
       return NextResponse.json({ error: 'Record does not belong to this job' }, { status: 400 });
+    }
+
+    // Verify job exists and belongs to the caller's firm when the job lookup is available.
+    const job = await getJobById(supabase, jobId);
+    if (job && currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     // Prevent re-extraction while processing

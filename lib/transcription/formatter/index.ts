@@ -1,4 +1,6 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { buildParagraphs } from './paragraph-builder';
 import { paginateParagraphs } from './paginator';
 import { postProcessParagraphs } from './post-processor';
@@ -12,11 +14,11 @@ import type {
   TranscriptWord,
 } from './types';
 
-export async function formatTranscript(
+async function formatTranscriptInternal(
+  supabase: SupabaseClient,
   transcriptionId: string,
-  options: FormatterOptions = {}
+  options: FormatterOptions
 ): Promise<FormatterResult> {
-  const supabase = await createSupabaseServerClient();
   const jurisdictionCode = options.jurisdiction ?? 'TX';
 
   const { data: words, error: wordsError } = await supabase
@@ -111,4 +113,21 @@ export async function formatTranscript(
     pageCount: paginated.at(-1)?.page_number ?? 1,
     qualityGate,
   };
+}
+
+export async function formatTranscript(
+  transcriptionId: string,
+  options: FormatterOptions = {}
+): Promise<FormatterResult> {
+  const supabase = await createSupabaseServerClient();
+  return formatTranscriptInternal(supabase, transcriptionId, options);
+}
+
+/** For pipeline/worker context — uses admin client (no request). */
+export async function formatTranscriptWithAdmin(
+  transcriptionId: string,
+  options: FormatterOptions = {}
+): Promise<FormatterResult> {
+  const supabase = createAdminClient();
+  return formatTranscriptInternal(supabase, transcriptionId, options);
 }

@@ -1,11 +1,12 @@
 -- Phase B: certification records for legal discovery and export workflow
+-- Note: export_id removed until exports table exists; transcription_id is primary link
 
 CREATE TABLE IF NOT EXISTS export_certifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  export_id UUID NOT NULL REFERENCES exports(id) ON DELETE CASCADE,
   transcription_id UUID NOT NULL REFERENCES transcriptions(id) ON DELETE CASCADE,
   firm_id UUID NOT NULL REFERENCES firms(id) ON DELETE RESTRICT,
   certified_by UUID NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  export_format TEXT NOT NULL DEFAULT 'DOCX',
   certification_body TEXT,
   certification_state CHAR(2),
   certified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -13,8 +14,8 @@ CREATE TABLE IF NOT EXISTS export_certifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_export_certifications_export
-  ON export_certifications(export_id, transcription_id);
+CREATE INDEX IF NOT EXISTS idx_export_certifications_transcription
+  ON export_certifications(transcription_id, certified_at);
 
 ALTER TABLE export_certifications ENABLE ROW LEVEL SECURITY;
 
