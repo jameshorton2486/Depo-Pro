@@ -12,15 +12,28 @@ import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { NextResponse } from 'next/server';
 import { listJobs, createJob } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/jobs
  * List jobs (filtered by user role)
  */
-const GETHandler = async (request: NextRequest, context: ProtectedContext) => {
+const GETHandler = async (request: NextRequest, context?: ProtectedContext) => {
   const startTime = performance.now();
   try {
-    const { supabase, user } = context;
+    const supabase = context?.supabase ?? await createSupabaseServerClient();
+    let user: any = context?.user;
+    if (!user) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const { data: profile } = await supabase.from('profiles').select('role, firm_id').eq('id', authUser.id).single();
+      if (!profile?.role) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      user = { id: authUser.id, role: profile.role, firm_id: profile.firm_id ?? null };
+    }
     const userRole = user.role as string;
     const userId = user.id;
 
@@ -86,10 +99,22 @@ const GETHandler = async (request: NextRequest, context: ProtectedContext) => {
  * POST /api/jobs
  * Create a new job
  */
-const POSTHandler = async (request: NextRequest, context: ProtectedContext) => {
+const POSTHandler = async (request: NextRequest, context?: ProtectedContext) => {
   const startTime = performance.now();
   try {
-    const { supabase, user } = context;
+    const supabase = context?.supabase ?? await createSupabaseServerClient();
+    let user: any = context?.user;
+    if (!user) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const { data: profile } = await supabase.from('profiles').select('role, firm_id').eq('id', authUser.id).single();
+      if (!profile?.role) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      user = { id: authUser.id, role: profile.role, firm_id: profile.firm_id ?? authUser.user_metadata?.firmId ?? null };
+    }
     const userRole = user.role as string;
     const userId = user.id;
 

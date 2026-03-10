@@ -9,6 +9,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptForExport, getTranscriptEdits } from '@/lib/supabase/queries/transcripts';
 import * as exportLib from '@/lib/export';
 import { exportLegalDocx } from '@/lib/services/export';
+import { runQualityGate } from '@/lib/transcription/formatter/quality-gate';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
 import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
@@ -146,12 +147,41 @@ const GETHandler = async (
     const searchParams = request.nextUrl.searchParams;
     const format = (searchParams.get('format') || 'docx') as 'docx' | 'pdf' | 'txt';
     const lineNumbering = searchParams.get('lineNumbers') !== 'false';
+    const qualityGateEnabled = searchParams.get('skipQualityGate') !== 'true';
 
     // Fetch transcript with job details
     const transcription = await getTranscriptForExport(supabase, transcriptId);
 
     if (!transcription) {
       return NextResponse.json({ error: 'Transcript not found' }, { status: 404 });
+    }
+
+    if (format === 'docx' && qualityGateEnabled) {
+      let paragraphQuery = supabase
+        .from('transcript_paragraphs')
+        .select('paragraph_index, paragraph_type, section_type, speaker_index, speaker_label, text, word_ids, line_count, page_number, line_number_start, line_number_end')
+        .eq('transcription_id', transcriptId);
+
+      if (userFirmId) {
+        paragraphQuery = paragraphQuery.eq('firm_id', userFirmId);
+      }
+
+      const { data: paragraphRows } = await paragraphQuery;
+      const qualityGate = await runQualityGate(transcriptId, {
+        firmId: userFirmId ?? undefined,
+        paragraphs: (paragraphRows ?? []) as any,
+        supabase,
+      });
+
+      if (qualityGate.exportBlocked) {
+        return NextResponse.json(
+          {
+            error: 'Quality gate failed',
+            qualityGate,
+          },
+          { status: 422 }
+        );
+      }
     }
 
     // Check permissions

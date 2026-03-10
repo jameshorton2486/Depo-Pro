@@ -10,6 +10,8 @@ import { NextResponse } from 'next/server';
 import { isJobLockedByOther } from '@/lib/supabase/queries/locks';
 import { logCorrection, getWordContext } from '@/lib/services/correction-logger';
 import { captureError } from '@/lib/error-capture';
+import { getCurrentUser } from '@/lib/auth/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,11 +22,21 @@ interface ReviewRequest {
   expectedUpdatedAt?: string;
 }
 
+type RouteUser = {
+  id: string;
+  role: string;
+  firm_id?: string | null;
+  firmId?: string | null;
+};
+
 function getJobAccessResult(
   job: { created_by_id?: string | null; reporter_id?: string | null; scopist_id?: string | null; firm_id?: string | null },
-  user: ProtectedContext['user'],
+  user: RouteUser,
 ) {
   const userFirmId = user.firm_id || (user as ProtectedContext['user'] & { firmId?: string | null }).firmId || null;
+  if (!['ADMIN', 'SCOPIST', 'REPORTER', 'COURT_REPORTER'].includes(user.role)) {
+    return { allowed: false as const, status: 403, error: 'Forbidden' };
+  }
   if (user.role === 'ADMIN') {
     return { allowed: true as const };
   }
@@ -53,14 +65,19 @@ function getJobAccessResult(
  */
 const PATCHHandler = async (
   req: NextRequest,
-  context: ProtectedContext
+  context?: ProtectedContext
 ) => {
   const startTime = performance.now();
   try {
-    const { user, supabase } = context;
-    const resolvedParams = typeof (context.params as any)?.then === 'function'
-      ? await (context.params as any)
-      : context.params;
+    const user = context?.user ?? await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const supabase = context?.supabase ?? await createSupabaseServerClient();
+    const routeParams = context?.params as Record<string, string> | Promise<Record<string, string>> | undefined;
+    const resolvedParams = typeof (routeParams as any)?.then === 'function'
+      ? await (routeParams as any)
+      : routeParams;
     const { id: jobId } = resolvedParams as Record<string, string>;
     const body: ReviewRequest = await req.json();
     const { wordId, action, correctedWord, expectedUpdatedAt } = body;

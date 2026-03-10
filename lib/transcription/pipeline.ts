@@ -23,6 +23,7 @@ import {
   DEFAULT_PROCESSING_RULES,
   type TranscriptSegment,
 } from '@/src/types/transcript-format';
+import { buildKeywordsForJob } from './buildKeywords';
 
 import type {
   AudioChunk,
@@ -124,7 +125,7 @@ export async function processTranscriptionJob(
     await updateTranscriptionStatus(jobId, 'TRANSCRIBING', 10);
 
     // Get vocabulary keywords for this job
-    const keywords = await getVocabularyKeywords(jobId);
+    const keywords = await buildKeywordsForJob(jobId);
 
     const processedChunks: ProcessedChunk[] = [];
 
@@ -152,7 +153,7 @@ export async function processTranscriptionJob(
 
         // Transcribe via Deepgram (lib/transcription.ts)
         const transcriptionResult = await transcribeAudio(audioBuffer, {
-          customKeyterms: keywords,
+          customKeyterms: keywords.map((keyword) => keyword.word),
         });
         const result = toPipelineFormat(transcriptionResult);
 
@@ -546,57 +547,6 @@ async function storeChunkResult(jobId: string, chunkIndex: number, result: Deepg
     .eq('chunk_index', chunkIndex);
 }
 
-async function getVocabularyKeywords(jobId: string): Promise<string[]> {
-  const supabase = createAdminClient();
-
-  try {
-    // Get job to find firm_id
-    const { data: job } = await supabase
-      .from('jobs')
-      .select('firm_id')
-      .eq('id', jobId)
-      .single();
-
-    if (!job) {
-      return [];
-    }
-
-    const keywords: string[] = [];
-
-    // Get job-specific vocabulary (if table exists)
-    try {
-      const { data: jobVocab } = await supabase
-        .from('job_vocabulary')
-        .select('term')
-        .eq('job_id', jobId);
-
-      if (jobVocab) {
-        keywords.push(...jobVocab.map((v: any) => v.term));
-      }
-    } catch {
-      // Table doesn't exist
-    }
-
-    // Get firm-wide vocabulary (if table exists)
-    try {
-      const { data: firmVocab } = await supabase
-        .from('firm_vocabulary')
-        .select('term')
-        .eq('firm_id', job.firm_id);
-
-      if (firmVocab) {
-        keywords.push(...firmVocab.map((v: any) => v.term));
-      }
-    } catch {
-      // Table doesn't exist
-    }
-
-    console.warn(`Loaded ${keywords.length} vocabulary keywords`);
-    return keywords;
-  } catch {
-    return [];
-  }
-}
 
 async function storeTranscriptionResult(jobId: string, data: {
   deepgram_raw_json: any;

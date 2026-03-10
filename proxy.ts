@@ -82,9 +82,18 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { user_metadata?: Record<string, unknown> } | null = null;
+  if (typeof supabase.auth.getUser === 'function') {
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+    user = currentUser;
+  } else if (typeof supabase.auth.getSession === 'function') {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    user = session?.user ?? null;
+  }
   const meta = user?.user_metadata ?? {};
 
   // --- Public path — allow through ---
@@ -108,7 +117,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
     if (isProtected) {
       const redirectUrl = new URL('/login', request.url);
-      redirectUrl.searchParams.set('redirect', pathname + (url.search || ''));
+      const redirectPath = pathname.startsWith(WKT_PREFIX) ? WKT_PREFIX : pathname + (url.search || '');
+      redirectUrl.searchParams.set('redirect', redirectPath);
       return applySecurityHeaders(NextResponse.redirect(redirectUrl, { status: 307 }));
     }
     return applySecurityHeaders(response);

@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "request_id": "test-olivarez-phase1-001",
+    "model_info": {
+      "name": "nova-3",
+      "version": "2024-01-18"
+    }
+  },
+  "results": {
+    "channels": [
+      {
+        "alternatives": [
+          {
+            "transcript": "Please state your name for the record. Maria Dolores Olivarez. Where do you live today. I live in Houston Texas. The reporter noted the time is 2:12 PM and Miyamardeau is present -- for the record. Did you meet Doctor Salinas after the crash. Yes I met Doctor Salinas the next day. Off the record. Back on the record. Thank you Ms. Olivarez.",
+            "words": [
+              { "word": "Please", "punctuated_word": "Please", "start": 0.5, "end": 0.8, "confidence": 0.99, "speaker": 0 },
+              { "word": "state", "punctuated_word": "state", "start": 0.8, "end": 1.0, "confidence": 0.99, "speaker": 0 },
+              { "word": "your", "punctuated_word": "your", "start": 1.0, "end": 1.2, "confidence": 0.99, "speaker": 0 },
+              { "word": "name", "punctuated_word": "name", "start": 1.2, "end": 1.5, "confidence": 0.98, "speaker": 0 },
+              { "word": "for", "punctuated_word": "for", "start": 1.5, "end": 1.7, "confidence": 0.98, "speaker": 0 },
+              { "word": "the", "punctuated_word": "the", "start": 1.7, "end": 1.8, "confidence": 0.99, "speaker": 0 },
+              { "word": "record", "punctuated_word": "record.", "start": 1.8, "end": 2.2, "confidence": 0.97, "speaker": 0 },
+              { "word": "Maria", "punctuated_word": "Maria", "start": 3.0, "end": 3.3, "confidence": 0.95, "speaker": 1 },
+              { "word": "Dolores", "punctuated_word": "Dolores", "start": 3.3, "end": 3.8, "confidence": 0.94, "speaker": 1 },
+              { "word": "Olivarez", "punctuated_word": "Olivarez.", "start": 3.8, "end": 4.4, "confidence": 0.61, "speaker": 1 },
+              { "word": "Where", "punctuated_word": "Where", "start": 5.0, "end": 5.2, "confidence": 0.99, "speaker": 0 },
+              { "word": "do", "punctuated_word": "do", "start": 5.2, "end": 5.3, "confidence": 0.99, "speaker": 0 },
+              { "word": "you", "punctuated_word": "you", "start": 5.3, "end": 5.5, "confidence": 0.99, "speaker": 0 },
+              { "word": "live", "punctuated_word": "live", "start": 5.5, "end": 5.8, "confidence": 0.98, "speaker": 0 },
+              { "word": "today", "punctuated_word": "today?", "start": 5.8, "end": 6.2, "confidence": 0.98, "speaker": 0 },
+              { "word": "I", "punctuated_word": "I", "start": 6.8, "end": 6.9, "confidence": 0.97, "speaker": 1 },
+              { "word": "live", "punctuated_word": "live", "start": 6.9, "end": 7.2, "confidence": 0.96, "speaker": 1 },
+              { "word": "in", "punctuated_word": "in", "start": 7.2, "end": 7.3, "confidence": 0.99, "speaker": 1 },
+              { "word": "Houston", "punctuated_word": "Houston,", "start": 7.3, "end": 7.8, "confidence": 0.92, "speaker": 1 },
+              { "word": "Texas", "punctuated_word": "Texas.", "start": 7.8, "end": 8.3, "confidence": 0.93, "speaker": 1 },
+              { "word": "The", "punctuated_word": "THE", "start": 9.0, "end": 9.1, "confidence": 0.99, "speaker": 2 },
+              { "word": "court", "punctuated_word": "COURT", "start": 9.1, "end": 9.4, "confidence": 0.98, "speaker": 2 },
+              { "word": "reporter", "punctuated_word": "REPORTER", "start": 9.4, "end": 9.8, "confidence": 0.98, "speaker": 2 },
+              { "word": "noted", "punctuated_word": "noted", "start": 9.8, "end": 10.1, "confidence": 0.95, "speaker": 2 },
+              { "word": "the", "punctuated_word": "the", "start": 10.1, "end": 10.2, "confidence": 0.99, "speaker": 2 },
+              { "word": "time", "punctuated_word": "time", "start": 10.2, "end": 10.5, "confidence": 0.98, "speaker": 2 },
+              { "word": "is", "punctuated_word": "is", "start": 10.5, "end": 10.7, "confidence": 0.99, "speaker": 2 },
+              { "word": "2:12", "punctuated_word": "2:12", "start": 10.7, "end": 11.0, "confidence": 0.97, "speaker": 2 },
+              { "word": "PM", "punctuated_word": "PM", "start": 11.0, "end": 11.3, "confidence": 0.96, "speaker": 2 },
+              { "word": "and", "punctuated_word": "and", "start": 11.3, "end": 11.4, "confidence": 0.98, "speaker": 2 },
+              { "word": "Miyamardeau", "punctuated_word": "Miyamardeau", "start": 11.4, "end": 12.1, "confidence": 0.42, "speaker": 2 },
+              { "word": "is", "punctuated_word": "is", "start": 12.1, "end": 12.3, "confidence": 0.98, "speaker": 2 },
+              { "word": "present", "punctuated_word": "present—", "start": 12.3, "end": 12.8, "confidence": 0.95, "speaker": 2 },
+              { "word": "for", "punctuated_word": "for", "start": 12.8, "end": 13.0, "confidence": 0.98, "speaker": 2 },
+              { "word": "the", "punctuated_word": "the", "start": 13.0, "end": 13.1, "confidence": 0.99, "speaker": 2 },
+              { "word": "record", "punctuated_word": "record.", "start": 13.1, "end": 13.5, "confidence": 0.97, "speaker": 2 },
+              { "word": "Did", "punctuated_word": "Did", "start": 14.0, "end": 14.2, "confidence": 0.99, "speaker": 0 },
+              { "word": "you", "punctuated_word": "you", "start": 14.2, "end": 14.3, "confidence": 0.99, "speaker": 0 },
+              { "word": "meet", "punctuated_word": "meet", "start": 14.3, "end": 14.6, "confidence": 0.98, "speaker": 0 },
+              { "word": "Doctor", "punctuated_word": "Doctor", "start": 14.6, "end": 15.0, "confidence": 0.96, "speaker": 0 },
+              { "word": "Salinas", "punctuated_word": "Salinas", "start": 15.0, "end": 15.4, "confidence": 0.94, "speaker": 0 },
+              { "word": "after", "punctuated_word": "after", "start": 15.4, "end": 15.6, "confidence": 0.99, "speaker": 0 },
+              { "word": "the", "punctuated_word": "the", "start": 15.6, "end": 15.7, "confidence": 0.99, "speaker": 0 },
+              { "word": "crash", "punctuated_word": "crash?", "start": 15.7, "end": 16.1, "confidence": 0.98, "speaker": 0 },
+              { "word": "Yes", "punctuated_word": "Yes,", "start": 16.7, "end": 17.0, "confidence": 0.98, "speaker": 1 },
+              { "word": "I", "punctuated_word": "I", "start": 17.0, "end": 17.1, "confidence": 0.99, "speaker": 1 },
+              { "word": "met", "punctuated_word": "met", "start": 17.1, "end": 17.4, "confidence": 0.97, "speaker": 1 },
+              { "word": "Doctor", "punctuated_word": "Doctor", "start": 17.4, "end": 17.8, "confidence": 0.95, "speaker": 1 },
+              { "word": "Salinas", "punctuated_word": "Salinas", "start": 17.8, "end": 18.2, "confidence": 0.95, "speaker": 1 },
+              { "word": "the", "punctuated_word": "the", "start": 18.2, "end": 18.3, "confidence": 0.99, "speaker": 1 },
+              { "word": "next", "punctuated_word": "next", "start": 18.3, "end": 18.5, "confidence": 0.98, "speaker": 1 },
+              { "word": "day", "punctuated_word": "day.", "start": 18.5, "end": 18.8, "confidence": 0.97, "speaker": 1 },
+              { "word": "Off", "punctuated_word": "Off", "start": 19.5, "end": 19.7, "confidence": 0.98, "speaker": 2 },
+              { "word": "the", "punctuated_word": "the", "start": 19.7, "end": 19.8, "confidence": 0.99, "speaker": 2 },
+              { "word": "record", "punctuated_word": "record.", "start": 19.8, "end": 20.1, "confidence": 0.98, "speaker": 2 },
+              { "word": "Back", "punctuated_word": "Back", "start": 21.0, "end": 21.2, "confidence": 0.97, "speaker": 2 },
+              { "word": "on", "punctuated_word": "on", "start": 21.2, "end": 21.3, "confidence": 0.98, "speaker": 2 },
+              { "word": "the", "punctuated_word": "the", "start": 21.3, "end": 21.4, "confidence": 0.99, "speaker": 2 },
+              { "word": "record", "punctuated_word": "record.", "start": 21.4, "end": 21.8, "confidence": 0.98, "speaker": 2 },
+              { "word": "Thank", "punctuated_word": "Thank", "start": 22.2, "end": 22.5, "confidence": 0.99, "speaker": 0 },
+              { "word": "you", "punctuated_word": "you", "start": 22.5, "end": 22.7, "confidence": 0.99, "speaker": 0 },
+              { "word": "Ms.", "punctuated_word": "Ms.", "start": 22.7, "end": 22.9, "confidence": 0.99, "speaker": 0 },
+              { "word": "Olivarez", "punctuated_word": "Olivarez.", "start": 22.9, "end": 23.4, "confidence": 0.62, "speaker": 0 }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -13,6 +13,7 @@ const checkUserRateLimitMock = vi.fn();
 const rateLimitResponseMock = vi.fn();
 const useQuotaMock = vi.fn();
 const createAuditLogMock = vi.fn();
+const runQualityGateMock = vi.fn();
 
 vi.mock('@/lib/auth/session', () => ({
   getCurrentUser: getCurrentUserMock,
@@ -55,6 +56,10 @@ vi.mock('@/lib/audit-service', () => ({
   AuditTargetType: { TRANSCRIPT: 'TRANSCRIPT' },
 }));
 
+vi.mock('@/lib/transcription/formatter/quality-gate', () => ({
+  runQualityGate: runQualityGateMock,
+}));
+
 describe('Export Integration', () => {
   let flaggedWordsRows: Array<{ word_index: number; corrected_word: string }> = [];
 
@@ -80,6 +85,16 @@ describe('Export Integration', () => {
     canUseProfileMock.mockReturnValue(true);
     getExportProfileMock.mockReturnValue(null);
     createAuditLogMock.mockResolvedValue(undefined);
+    runQualityGateMock.mockResolvedValue({
+      passed: true,
+      exportBlocked: false,
+      checks: [],
+      errors: [],
+      warnings: [],
+      errorCount: 0,
+      warningCount: 0,
+      canExportWithAcknowledgment: false,
+    });
     exportTranscriptMock.mockResolvedValue({
       buffer: Buffer.from('file'),
       filename: 'transcript.docx',
@@ -222,5 +237,50 @@ describe('Export Integration', () => {
     expect(exportedText).toContain('BETA_TABLE');
     expect(exportedText).not.toContain('BETA_EDIT');
     expect(exportedText).not.toContain('BETA_REVIEW');
+  });
+
+  it('returns 422 when the quality gate blocks DOCX export', async () => {
+    getCurrentUserMock.mockResolvedValueOnce({
+      id: 'user-1',
+      role: 'REPORTER',
+      firmId: 'firm-1',
+      email: 'test@example.com',
+    });
+
+    runQualityGateMock.mockResolvedValueOnce({
+      passed: false,
+      exportBlocked: true,
+      checks: [{ code: 'QG-001', severity: 'ERROR', passed: false, message: 'Blocked' }],
+      errors: [{ code: 'QG-001', severity: 'ERROR', passed: false, message: 'Blocked' }],
+      warnings: [],
+      errorCount: 1,
+      warningCount: 0,
+      canExportWithAcknowledgment: false,
+    });
+
+    getTranscriptForExportMock.mockResolvedValueOnce({
+      id: 'tx-1',
+      full_transcript: 'alpha beta gamma',
+      words: [{ word: 'alpha' }, { word: 'beta' }, { word: 'gamma' }],
+      flagged_segments: null,
+      job: {
+        created_by_id: 'user-1',
+        firm_id: 'firm-1',
+        title: 'Case A',
+        case_number: 'CASE-1',
+        deposition_date: '2026-02-22',
+        location: 'Remote',
+        createdBy: { firstName: 'Test', lastName: 'User' },
+        firm: { name: 'Firm 1' },
+      },
+    });
+    getTranscriptEditsMock.mockResolvedValueOnce([]);
+
+    const route = await import('@/app/api/transcripts/[id]/export/route');
+    const req = new NextRequest('http://localhost/api/transcripts/t1/export?format=docx');
+    const res = await route.GET(req, { params: Promise.resolve({ id: 't1' }) });
+
+    expect(res.status).toBe(422);
+    expect(exportTranscriptMock).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,7 @@ const createSupabaseServerClientMock = vi.fn();
 const getTranscriptForExportMock = vi.fn();
 const getTranscriptEditsMock = vi.fn();
 const exportTranscriptMock = vi.fn();
+const runQualityGateMock = vi.fn();
 
 vi.mock('@/lib/auth/session', () => ({
   getCurrentUser: getCurrentUserMock,
@@ -43,10 +44,24 @@ vi.mock('@/lib/error-capture', () => ({
   captureError: vi.fn(),
 }));
 
+vi.mock('@/lib/transcription/formatter/quality-gate', () => ({
+  runQualityGate: runQualityGateMock,
+}));
+
 describe('Export with Flagged Word Corrections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    runQualityGateMock.mockResolvedValue({
+      passed: true,
+      exportBlocked: false,
+      checks: [],
+      errors: [],
+      warnings: [],
+      errorCount: 0,
+      warningCount: 0,
+      canExportWithAcknowledgment: false,
+    });
     exportTranscriptMock.mockResolvedValue({
       buffer: Buffer.from('file-content'),
       filename: 'transcript.docx',

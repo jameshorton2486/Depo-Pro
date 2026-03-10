@@ -15,6 +15,7 @@ import type {
   ProcessedChunk,
   DeepgramResult,
 } from '@/types/transcription';
+import { buildKeywordsForJob } from './buildKeywords';
 
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET;
 
@@ -241,11 +242,11 @@ export async function processChunk(
       const audioPath = await downloadAudioFromStorage(job.audio_file_url, tempDir);
 
       // Get vocabulary keywords
-      const keywords = await getVocabularyKeywords(jobId, job.firm_id);
+      const keywords = await buildKeywordsForJob(jobId);
 
       // Transcribe via lib/transcription.ts
       const transcriptionResult = await transcribeFile(audioPath, {
-        customKeyterms: keywords,
+        customKeyterms: keywords.map((keyword) => keyword.word),
       });
       const result = toPipelineFormat(transcriptionResult);
 
@@ -511,34 +512,6 @@ async function updateTranscriptionStatus(jobId: string, status: string): Promise
     .eq('job_id', jobId);
 }
 
-async function getVocabularyKeywords(jobId: string, firmId: string): Promise<string[]> {
-  const supabase = createAdminClient();
-  const keywords: string[] = [];
-
-  try {
-    const { data: jobVocab } = await supabase
-      .from('job_vocabulary')
-      .select('term')
-      .eq('job_id', jobId);
-
-    if (jobVocab) {
-      keywords.push(...jobVocab.map((v: any) => v.term));
-    }
-  } catch { /* ignore */ }
-
-  try {
-    const { data: firmVocab } = await supabase
-      .from('firm_vocabulary')
-      .select('term')
-      .eq('firm_id', firmId);
-
-    if (firmVocab) {
-      keywords.push(...firmVocab.map((v: any) => v.term));
-    }
-  } catch { /* ignore */ }
-
-  return keywords;
-}
 
 async function extractFlaggedWords(
   transcriptionId: string,

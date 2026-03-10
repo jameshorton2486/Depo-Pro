@@ -89,6 +89,8 @@ export function ReviewClientNew({
   const [isCertified, setIsCertified] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [isFormatting, setIsFormatting] = useState(false);
+  const [formatterMessage, setFormatterMessage] = useState<string | null>(null);
   const savesInFlightRef = useRef(0);
   const [latestUpdatedAt, setLatestUpdatedAt] = useState<string | null>(initialUpdatedAt);
 
@@ -487,6 +489,37 @@ export function ReviewClientNew({
     }
   };
 
+  const handleRunFormatter = useCallback(async () => {
+    setIsFormatting(true);
+    setFormatterMessage(null);
+
+    try {
+      const response = await fetch(`/api/transcriptions/${transcriptionId}/format`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jurisdiction: 'TX', dryRun: false }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || 'Formatter run failed');
+      }
+
+      const summary = `${data.paragraphCount} paragraphs • ${data.pageCount} pages`;
+      setFormatterMessage(summary);
+      toast.success('Formatter completed', {
+        description: summary,
+      });
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Formatter run failed';
+      setFormatterMessage(message);
+      toast.error('Formatter failed', { description: message });
+    } finally {
+      setIsFormatting(false);
+    }
+  }, [router, transcriptionId]);
+
   const exportFormats = [
     { format: 'docx' as const, label: 'Word (.docx)' },
     { format: 'pdf' as const, label: 'PDF (.pdf)' },
@@ -531,6 +564,25 @@ export function ReviewClientNew({
         </div>
 
         <div className="flex items-center gap-2">
+          {(userRole === 'ADMIN' || userRole === 'COURT_REPORTER' || userRole === 'REPORTER') && (
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant="secondary"
+                onClick={() => void handleRunFormatter()}
+                disabled={isFormatting}
+                className="gap-2"
+              >
+                {isFormatting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {isFormatting ? 'Running Formatter...' : 'Run Formatter'}
+              </Button>
+              {formatterMessage ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {formatterMessage}
+                </p>
+              ) : null}
+            </div>
+          )}
+
           {/* Feature 3: Confidence Heatmap Toggle */}
           <button
             onClick={() => setShowHeatmap(!showHeatmap)}

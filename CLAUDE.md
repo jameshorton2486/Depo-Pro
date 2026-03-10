@@ -1,5 +1,11 @@
 # Depo-Pro AI Agent Rules
 
+This project follows the architecture defined in:
+
+**docs/architecture/DEPO_PRO_CORE_ARCHITECTURE_RULES.md**
+
+Never violate those rules.
+
 Full architecture and security rules: **AI_MASTER_CONTROL.md** (read first)
 Auth architecture: **docs/DEPO_AUTH_ARCHITECTURE.md**
 

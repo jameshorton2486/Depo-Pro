@@ -99,7 +99,12 @@
       "Bash(do cat:*)",
       "Bash(npx next:*)",
       "Bash(cp:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Read(//c/Users/james/depo-pro/$APPDATA/supabase/**)",
+      "Read(//c/Users/james/depo-pro/$LOCALAPPDATA/supabase/**)",
+      "Read(//c/Users/james/depo-pro/$APPDATA/**)",
+      "Read(//c/Users/james/depo-pro/$LOCALAPPDATA/**)",
+      "Bash(cmdkey:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
