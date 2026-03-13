@@ -90,7 +90,11 @@ export function withRouteProtection(
         // STEP 2: ROLE-BASED AUTHORIZATION
         // ══════════════════════════════════════════════════════════
         if (options.requireRole?.length) {
-          if (!options.requireRole.includes(currentUser.role as UserRole)) {
+          // SUPER_ADMIN inherits ADMIN access everywhere
+          const effectiveRoles = currentUser.role === 'SUPER_ADMIN'
+            ? [currentUser.role as UserRole, 'ADMIN' as UserRole]
+            : [currentUser.role as UserRole];
+          if (!effectiveRoles.some(r => options.requireRole!.includes(r))) {
             logger.warn('[guard] Role denied', {
               userId: currentUser.id,
               role: currentUser.role,

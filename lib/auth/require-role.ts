@@ -72,9 +72,9 @@ export function requireRole(allowed: UserRole[]) {
  * Returns true if allowed, false if not
  */
 export function canAccessRoute(userRole: UserRole, allowedRoles: UserRole[]): boolean {
-  // Admin can access everything
-  if (userRole === UserRole.ADMIN) return true;
-  
+  // Admin and Super Admin can access everything
+  if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN) return true;
+
   return allowedRoles.includes(userRole);
 }
 
@@ -106,8 +106,8 @@ export async function protectRoute(
 
   const userRole = currentUser.role as UserRole;
 
-  // Check role access (admin always has access)
-  if (userRole !== UserRole.ADMIN && !allowedRoles.includes(userRole)) {
+  // Check role access (admin and super admin always have access)
+  if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPER_ADMIN && !allowedRoles.includes(userRole)) {
     redirect(redirectTo);
   }
 

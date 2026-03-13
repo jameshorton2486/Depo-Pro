@@ -169,7 +169,10 @@ export async function requireRole(allowedRoles: (UserRole | string)[]): Promise<
   if (!auth.authorized) return auth;
 
   const userRole = auth.user.role;
-  if (!allowedRoles.includes(userRole)) {
+  // SUPER_ADMIN inherits ADMIN access
+  const hasAccess = allowedRoles.includes(userRole) ||
+    (userRole === UserRole.SUPER_ADMIN && allowedRoles.includes(UserRole.ADMIN as any));
+  if (!hasAccess) {
     // Check legacy mapping
     const mappedRole = LEGACY_ROLE_MAP[userRole];
     if (!mappedRole || !allowedRoles.includes(mappedRole)) {
