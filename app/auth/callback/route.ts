@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import type { EmailOtpType } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 import { env } from 'node:process';
@@ -21,14 +22,10 @@ function getSafeNextPath(nextParam: string | null): string {
 export async function GET(request: NextRequest) {
   const siteUrl = env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
   const code = request.nextUrl.searchParams.get('code');
+  const tokenHash = request.nextUrl.searchParams.get('token_hash');
+  const type = request.nextUrl.searchParams.get('type');
   const nextParam = request.nextUrl.searchParams.get('next');
   const nextPath = getSafeNextPath(nextParam);
-
-  if (!code) {
-    return NextResponse.redirect(
-      new URL('/login?error=auth_callback_failed', siteUrl)
-    );
-  }
 
   const cookieStore = await cookies();
   const supabaseResponse = NextResponse.redirect(new URL(nextPath, siteUrl));
@@ -53,9 +50,22 @@ export async function GET(request: NextRequest) {
     }
   );
 
-  const {
-    error,
-  } = await supabase.auth.exchangeCodeForSession(code);
+  let error: Error | null = null;
+
+  if (code) {
+    const exchangeResult = await supabase.auth.exchangeCodeForSession(code);
+    error = exchangeResult.error;
+  } else if (tokenHash && type) {
+    const verifyResult = await supabase.auth.verifyOtp({
+      type: type as EmailOtpType,
+      token_hash: tokenHash,
+    });
+    error = verifyResult.error;
+  } else {
+    return NextResponse.redirect(
+      new URL('/login?error=auth_callback_failed', siteUrl)
+    );
+  }
 
   if (error) {
     return NextResponse.redirect(
