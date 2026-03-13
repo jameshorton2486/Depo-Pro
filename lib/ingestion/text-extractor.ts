@@ -1,5 +1,7 @@
 import mammoth from 'mammoth';
 import { PDFParse } from 'pdf-parse';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export interface ExtractionResult {
   text: string;
@@ -14,6 +16,18 @@ const DOC_MIME = 'application/msword';
 const PDF_MIME = 'application/pdf';
 const TXT_MIME = 'text/plain';
 const RTF_MIMES = new Set(['application/rtf', 'text/rtf']);
+
+let pdfWorkerConfigured = false;
+
+function configurePdfWorker(): void {
+  if (pdfWorkerConfigured) {
+    return;
+  }
+
+  const workerPath = path.join(process.cwd(), 'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs');
+  PDFParse.setWorker(pathToFileURL(workerPath).toString());
+  pdfWorkerConfigured = true;
+}
 
 export async function extractText(
   buffer: Buffer,
@@ -84,6 +98,7 @@ async function extractFromPdf(buffer: Buffer): Promise<ExtractionResult> {
     };
   }
 
+  configurePdfWorker();
   const parser = new PDFParse({ data: buffer });
   const result = await parser.getText();
   return {
