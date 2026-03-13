@@ -18,6 +18,7 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { RecentJobs } from '@/components/dashboard/recent-jobs';
 import { getCachedJobCounts, getCachedRecentJobs } from '@/lib/cache/dashboard';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export default async function ReporterDashboard() {
     redirect('/login');
   }
 
-  if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN') {
+  if (currentUser.role !== 'REPORTER' && !isAdminRole(currentUser.role)) {
     redirect('/dashboard');
   }
 

@@ -9,6 +9,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById, getUsersByRole } from '@/lib/supabase/queries/users';
 import { canPerformAction } from '@/lib/permissions/rbac';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
     const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '25', 10), 1), 100);
     const offset = (page - 1) * limit;
-    const effectiveFirmId = user.role === 'ADMIN' ? (searchParams.get('firmId') || user.firmId) : user.firmId;
+    const effectiveFirmId = isAdminRole(user.role) ? (searchParams.get('firmId') || user.firmId) : user.firmId;
 
     // Get reporters by role and firm
     let reporters = await getUsersByRole(supabase, 'REPORTER', effectiveFirmId || undefined);

@@ -11,6 +11,7 @@ import { UserRole } from '@/lib/enums/roles';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptWithTokensAndJob } from '@/lib/supabase/queries/transcripts';
+import { isAdminRole } from '@/lib/admin';
 
 const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
@@ -34,7 +35,7 @@ const GETHandler = async (
 
     // Check access
     const isCreator = transcript.job.createdById === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = isAdminRole(user.role);
 
     if (!isCreator && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

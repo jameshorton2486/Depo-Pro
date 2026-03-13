@@ -8,6 +8,7 @@ import { canAssignPersonnel } from '@/lib/calendar/permissions';
 import { createAuditLog } from '@/lib/calendar/audit';
 import { getCalendarEventById, updateCalendarEvent } from '@/lib/supabase/queries/calendar';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 // ============================================
 // POST /api/calendar/[id]/assign
@@ -115,7 +116,7 @@ async function POSTHandler(
       const agencyId = personnel.user_metadata?.agencyId || null;
 
       // Validate role is REPORTER
-      if (!role || (role !== 'REPORTER' && role !== 'ADMIN' && role !== 'AGENCY_ADMIN')) {
+      if (!role || (role !== 'REPORTER' && !isAdminRole(role) && role !== 'AGENCY_ADMIN')) {
         return NextResponse.json(
           { 
             error: 'Invalid personnel role', 

@@ -10,6 +10,7 @@ import { getFileWithJob, deleteFile } from '@/lib/supabase/queries/files';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 export const runtime = 'nodejs'; // Required for fs/path usage
 
@@ -37,7 +38,7 @@ export async function DELETE(
 
     // 🔒 Security: Only uploader, reporter, or admin can delete
     const canDelete =
-      session.role === 'ADMIN' ||
+      isAdminRole(session.role) ||
       file.job.createdById === session.id;
 
     if (!canDelete) {
@@ -89,7 +90,7 @@ export async function GET(
 
     // 🔒 Security: Verify access rights
     const hasAccess =
-      session.role === 'ADMIN' ||
+      isAdminRole(session.role) ||
       file.job.createdById === session.id ||
       file.job.assignments.some((a: any) => a.scopistId === session.id);
 

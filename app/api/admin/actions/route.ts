@@ -14,6 +14,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listAuditLogs } from '@/lib/supabase/queries/audit';
 import { subDays } from 'date-fns';
 import { z } from 'zod';
+import { isAdminRole } from '@/lib/admin';
 
 // RouteContext interface removed - not used
 
@@ -44,7 +45,7 @@ async function GETHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (currentUser.role !== 'ADMIN') {
+    if (!isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 });
     }
 

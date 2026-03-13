@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listUsers } from '@/lib/supabase/queries/admin';
 import { Plus, Edit, Trash2 } from 'lucide-react';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export default async function UsersSettingsPage() {
     redirect('/login');
   }
 
-  if (currentUser.role !== 'ADMIN') {
+  if (!isAdminRole(currentUser.role)) {
     redirect('/unauthorized');
   }
 

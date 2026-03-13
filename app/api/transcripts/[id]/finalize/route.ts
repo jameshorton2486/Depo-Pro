@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getTranscriptByJobId, getTranscriptById, updateTranscriptStatus } from '@/lib/supabase/queries/transcripts';
 import { getJobById } from '@/lib/supabase/queries/jobs';
+import { isAdminRole } from '@/lib/admin';
 
 /**
  * POST /api/transcripts/[id]/finalize
@@ -47,7 +48,7 @@ const POSTHandler = async (
 
     // Check access
     if (
-      user.role !== 'ADMIN' &&
+      !isAdminRole(user.role) &&
       job.created_by_id !== user.id &&
       (job as any).scopist_id !== user.id
     ) {

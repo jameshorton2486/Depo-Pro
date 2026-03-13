@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export default async function UsageReportPage() {
     redirect('/login');
   }
 
-  if (currentUser.role !== 'ADMIN') {
+  if (!isAdminRole(currentUser.role)) {
     redirect('/unauthorized');
   }
 

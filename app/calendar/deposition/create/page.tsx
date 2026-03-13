@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import Link from 'next/link';
 import { Calendar, ArrowLeft } from 'lucide-react';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export default async function CreateDepositionPage() {
   }
 
   // Only reporters and admins can create depositions
-  if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN' && currentUser.role !== 'COURT_REPORTER') {
+  if (currentUser.role !== 'REPORTER' && !isAdminRole(currentUser.role) && currentUser.role !== 'COURT_REPORTER') {
     redirect('/unauthorized');
   }
 

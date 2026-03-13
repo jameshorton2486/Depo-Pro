@@ -11,6 +11,7 @@ import { uploadFileToSupabase } from '@/lib/storage';
 import { listFilesForJob, createFile } from '@/lib/supabase/queries/files';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -68,7 +69,7 @@ export async function POST(
     // 🔒 Security: Verify access rights via query layer
     const isAssigned = await isUserAssignedToJob(jobId, session.id);
     const hasAccess =
-      session.role === 'ADMIN' ||
+      isAdminRole(session.role) ||
       (job as any).created_by_id === session.id ||
       isAssigned;
 
@@ -178,7 +179,7 @@ export async function GET(
     // 🔒 Security: Verify access rights via query layer
     const isAssigned = await isUserAssignedToJob(jobId, session.id);
     const hasAccess =
-      session.role === 'ADMIN' ||
+      isAdminRole(session.role) ||
       (job as any).created_by_id === session.id ||
       isAssigned;
 

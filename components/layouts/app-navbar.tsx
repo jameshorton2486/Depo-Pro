@@ -162,7 +162,7 @@ export function AppNavbar({ user: userProp }: AppNavbarProps) {
                   </DropdownMenuItem>
                 ))}
 
-                {(role === 'ADMIN' || role === 'AGENCY') && (
+                {(role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'AGENCY') && (
                   <>
                     <DropdownMenuSeparator />
                     {ADMIN_MENU_ITEMS.map((item) => (

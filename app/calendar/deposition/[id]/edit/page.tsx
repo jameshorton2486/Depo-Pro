@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import Link from 'next/link';
 import { Calendar, ArrowLeft } from 'lucide-react';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ export default async function EditDepositionPage({ params }: EditDepositionPageP
   const { id } = await params;
 
   // Only reporters and admins can edit depositions
-  if (currentUser.role !== 'REPORTER' && currentUser.role !== 'ADMIN' && currentUser.role !== 'COURT_REPORTER') {
+  if (currentUser.role !== 'REPORTER' && !isAdminRole(currentUser.role) && currentUser.role !== 'COURT_REPORTER') {
     redirect('/unauthorized');
   }
 

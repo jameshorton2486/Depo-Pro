@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { JobForm } from '@/components/jobs/job-form';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,7 @@ export default async function EditJobPage({ params }: EditJobPageProps) {
 
   // 🔒 Security: Only reporter or admin can edit
   const canEdit =
-    session.role === 'ADMIN' ||
+    isAdminRole(session.role) ||
     job.reporter_id === session.id;
 
   if (!canEdit) {

@@ -12,6 +12,7 @@ import {
 } from '@/lib/supabase/queries/medical';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 export async function GET(
   request: NextRequest,
@@ -72,7 +73,7 @@ export async function DELETE(
     }
 
     // Only uploader or admin can delete
-    if (record.uploaded_by_id !== currentUser.id && currentUser.role !== 'ADMIN') {
+    if (record.uploaded_by_id !== currentUser.id && !isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

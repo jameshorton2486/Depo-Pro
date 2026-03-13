@@ -13,6 +13,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { listAuditLogs } from '@/lib/supabase/queries/audit';
+import { isAdminRole } from '@/lib/admin';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -33,7 +34,7 @@ async function GETHandler(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (currentUser.role !== 'ADMIN') {
+    if (!isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 });
     }
 

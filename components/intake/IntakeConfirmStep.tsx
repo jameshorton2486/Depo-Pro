@@ -13,7 +13,7 @@ interface IntakeConfirmStepProps {
 }
 
 export function IntakeConfirmStep({ role, values, isSubmitting, onBack, onSubmit }: IntakeConfirmStepProps) {
-  const isDirectCreate = role === 'ADMIN' || role === 'COURT_REPORTER' || role === 'REPORTER';
+  const isDirectCreate = role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'COURT_REPORTER' || role === 'REPORTER';
 
   return (
     <Card data-testid="intake-confirm-step">

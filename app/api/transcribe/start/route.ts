@@ -37,6 +37,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
   }) as T;
 };
 import { checkRateLimit } from '@/lib/security';
+import { isAdminRole } from '@/lib/admin';
 
 // Build-time guard
 const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
@@ -85,7 +86,7 @@ async function postTranscribeStartHandler(request: NextRequest) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    if ((job as any).reporter_id !== currentUser.id && currentUser.role !== 'ADMIN') {
+    if ((job as any).reporter_id !== currentUser.id && !isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DepositionExtractionResult } from '@/lib/ingestion/types';
+import { isAdminRole } from '@/lib/admin';
 
 export interface IntakeSubmissionPayload {
   jobTitle: string;
@@ -89,7 +90,7 @@ export async function createJobFromSubmission(
       firm_id: user.firm_id,
       created_by_id: user.id,
       created_by_role: user.role,
-      reporter_id: user.role === 'ADMIN' ? null : user.id,
+      reporter_id: isAdminRole(user.role) ? null : user.id,
       notes: payload.notes ?? null,
       audio_processing_mode: mapAudioProcessingMode(payload.audioProcessing),
       status: 'CREATED',

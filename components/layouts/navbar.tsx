@@ -157,7 +157,7 @@ export function Navbar({ user: userProp }: NavbarProps) {
                 Booking Requests
               </Link>
             )}
-            {user.role === 'ADMIN' && (
+            {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
               <Link
                 href="/admin"
                 className={`text-sm font-medium transition-colors hover:text-[var(--color-primary)] ${

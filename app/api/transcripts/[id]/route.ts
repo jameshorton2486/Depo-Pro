@@ -7,6 +7,7 @@ import { getTranscriptWithTokensAndJob, createTranscript, updateTranscript } fro
 import { logger } from '@/lib/logger';
 import { checkRateLimit } from '@/lib/security';
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
+import { isAdminRole } from '@/lib/admin';
 
 const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
   return ((...args: any[]) => {
@@ -83,7 +84,7 @@ const GETHandler = withRequestLogging(async (
     (Array.isArray(transcript.job.assignments) &&
       transcript.job.assignments.some((assignment: any) => assignment.scopist_id === user.id));
 
-  if (!isCreator && !isAssignedScopist && user.role !== 'ADMIN') {
+  if (!isCreator && !isAssignedScopist && !isAdminRole(user.role)) {
     await createAuditLog({
       actorUserId: user.id,
       firmId: user.firm_id || null,
@@ -227,7 +228,7 @@ const PUTHandler = withRequestLogging(async (
     (Array.isArray(transcript.job.assignments) &&
       transcript.job.assignments.some((assignment: any) => assignment.scopist_id === user.id));
 
-  if (!isCreator && !isAssignedScopist && user.role !== 'ADMIN') {
+  if (!isCreator && !isAssignedScopist && !isAdminRole(user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 

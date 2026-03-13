@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getFileWithJob } from '@/lib/supabase/queries/files';
 import { downloadFile } from '@/lib/storage';
+import { isAdminRole } from '@/lib/admin';
 
 export async function GET(
   request: NextRequest,
@@ -31,7 +32,7 @@ export async function GET(
 
     // 🔒 Security: Verify access rights
     const hasAccess =
-      session.role === 'ADMIN' ||
+      isAdminRole(session.role) ||
       file.job.createdById === session.id ||
       file.job.assignments.some((a: any) => a.scopistId === session.id);
 

@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
+import { isAdminRole } from '@/lib/admin';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -46,7 +47,7 @@ export async function GET(
     }
 
     const hasAccess =
-      currentUser.role === 'ADMIN' ||
+      isAdminRole(currentUser.role) ||
       (job as any).created_by_id === currentUser.id ||
       await isUserAssignedToJob(transcription.job_id, currentUser.id);
 

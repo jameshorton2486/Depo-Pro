@@ -14,6 +14,7 @@ import { logAudit } from '@/lib/audit';
 import { canAssignReporter } from '@/lib/permissions/rbac';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
 import { z } from 'zod';
+import { isAdminRole } from '@/lib/admin';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -160,7 +161,7 @@ export async function DELETE(
       lastName: userData.user_metadata?.lastName || '',
     };
 
-    if (!currentUser.firmId || !['ADMIN', 'AGENCY'].includes(currentUser.role)) {
+    if (!currentUser.firmId || (!isAdminRole(currentUser.role) && !['AGENCY', 'AGENCY_ADMIN'].includes(currentUser.role))) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
@@ -171,7 +172,7 @@ export async function DELETE(
     }
 
     const jobFirmId = (job as any).firm_id || (job as any).firmId;
-    if (currentUser.role !== 'ADMIN' && currentUser.firmId !== jobFirmId) {
+    if (!isAdminRole(currentUser.role) && currentUser.firmId !== jobFirmId) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

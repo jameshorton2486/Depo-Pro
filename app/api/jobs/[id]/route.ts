@@ -47,6 +47,7 @@ const withRequestLogging = <T extends (...args: any[]) => any>(fn: T): T => {
     }
   }) as T;
 };
+import { isAdminRole } from '@/lib/admin';
 import { checkRateLimit } from '@/lib/security';
 import { invalidateDashboardCache, invalidateEntityCache } from '@/lib/cache';
 // TODO: Re-implement note locking - lib/phase6a/note-locking was deleted
@@ -153,7 +154,7 @@ const PUTHandler = withRequestLogging(async (
 
     // 🔒 Security: Only reporter or admin can update
     const canUpdate =
-      user.role === 'ADMIN' ||
+      isAdminRole(user.role) ||
       existingJob.created_by_id === user.id;
 
     if (!canUpdate) {
@@ -277,7 +278,7 @@ const PATCHHandler = withRequestLogging(async (
     }
 
     const isOwner = job.created_by_id === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = isAdminRole(user.role);
     const isAssignedScopist =
       user.role === 'SCOPIST' &&
       job.assignments.some((assignment: any) => assignment.scopist_id === user.id);
@@ -340,7 +341,7 @@ const DELETEHandler = withRequestLogging(async (
 
     // 🔒 Security: Only reporter or admin can delete
     const canDelete =
-      user.role === 'ADMIN' ||
+      isAdminRole(user.role) ||
       existingJob.created_by_id === user.id;
 
     if (!canDelete) {

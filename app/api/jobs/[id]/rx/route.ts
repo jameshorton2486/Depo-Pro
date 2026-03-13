@@ -22,6 +22,7 @@ import {
   createRXSession,
   getActiveRXSession,
 } from '@/lib/services/rx-session-service';
+import { isAdminRole } from '@/lib/admin';
 
 // -----------------------------------------------------------------------------
 // GET /api/jobs/[id]/rx - Check RX Eligibility
@@ -78,7 +79,7 @@ export async function POST(
     }
 
     // Only reporters and admins can request RX
-    if (user.role !== 'REPORTER' && user.role !== 'ADMIN') {
+    if (user.role !== 'REPORTER' && !isAdminRole(user.role)) {
       return NextResponse.json(
         { error: 'Only reporters and admins can request RX processing' },
         { status: 403 }

@@ -17,6 +17,7 @@ import { toValidationErrorPayload } from '@/lib/api/validation';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logRouteError } from '@/lib/monitoring';
+import { isAdminRole } from '@/lib/admin';
 
 export const runtime = 'nodejs';
 
@@ -58,7 +59,7 @@ function getJobAccessResult(
   if (!['ADMIN', 'SCOPIST', 'REPORTER', 'COURT_REPORTER'].includes(user.role)) {
     return { allowed: false as const, status: 403, error: 'Forbidden' };
   }
-  if (user.role === 'ADMIN') {
+  if (isAdminRole(user.role)) {
     return { allowed: true as const };
   }
 

@@ -9,6 +9,7 @@ import type { NextRequest} from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getSystemHealth } from '@/lib/monitoring/health-service';
+import { isAdminRole } from '@/lib/admin';
 
 export async function GET(_request: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (currentUser.role !== 'ADMIN') {
+    if (!isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

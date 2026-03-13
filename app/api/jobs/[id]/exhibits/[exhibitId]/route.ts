@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { deleteExhibitFiles } from '@/lib/exhibits/storage';
 import { extractStoragePath } from '@/lib/storage/url';
+import { isAdminRole } from '@/lib/admin';
 
 // GET /api/jobs/[id]/exhibits/[exhibitId] - Get single exhibit
 export async function GET(
@@ -50,7 +51,7 @@ export async function GET(
     const hasAccess =
       (job as any).created_by_id === currentUser.id ||
       ((job as any).assignments && (job as any).assignments.some((a: any) => a.scopist_id === currentUser.id)) ||
-      currentUser.role === 'ADMIN';
+      isAdminRole(currentUser.role);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -115,7 +116,7 @@ export async function PATCH(
     // Check permissions (only reporter who created job, or admin can edit)
     const canEdit =
       (job as any).created_by_id === currentUser.id ||
-      currentUser.role === 'ADMIN';
+      isAdminRole(currentUser.role);
 
     if (!canEdit) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -182,7 +183,7 @@ export async function DELETE(
     const canDelete =
       (job as any).created_by_id === currentUser.id ||
       exhibit.created_by_id === currentUser.id ||
-      currentUser.role === 'ADMIN';
+      isAdminRole(currentUser.role);
 
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

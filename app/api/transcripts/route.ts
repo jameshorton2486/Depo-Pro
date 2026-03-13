@@ -9,6 +9,7 @@ import {
   update,
   delete as deleteTranscript,
 } from '@/lib/supabase/queries/transcripts';
+import { isAdminRole } from '@/lib/admin';
 
 /**
  * Check if user has access to a transcript's job
@@ -58,7 +59,7 @@ async function checkTranscriptAccess(
   // 3. Scopist assigned to job
   // 4. User from same firm
   const hasAccess =
-    (profile.role === 'ADMIN' && profile.firm_id === job.firm_id) ||
+    (isAdminRole(profile.role) && profile.firm_id === job.firm_id) ||
     job.reporter_id === userId ||
     job.scopist_id === userId ||
     profile.firm_id === job.firm_id;
@@ -99,7 +100,7 @@ async function checkJobAccess(
   }
 
   const hasAccess =
-    (profile.role === 'ADMIN' && profile.firm_id === job.firm_id) ||
+    (isAdminRole(profile.role) && profile.firm_id === job.firm_id) ||
     job.reporter_id === userId ||
     job.scopist_id === userId ||
     profile.firm_id === job.firm_id;

@@ -13,6 +13,7 @@ import { getJobById } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import Link from 'next/link';
 import { Download, Edit, Lock, CheckCircle } from 'lucide-react';
+import { isAdminRole } from '@/lib/admin';
 
 interface PageProps {
   params: Promise<{ jobId: string }>;
@@ -44,7 +45,7 @@ export default async function TranscriptViewPage({ params }: PageProps) {
 
   // Check access
   if (
-    currentUser.role !== 'ADMIN' &&
+    !isAdminRole(currentUser.role) &&
     currentUser.role !== 'ATTORNEY' &&
     job.created_by_id !== currentUser.id &&
     !(job.assignments || []).some((a: any) => a.scopist_id === currentUser.id)
@@ -54,7 +55,7 @@ export default async function TranscriptViewPage({ params }: PageProps) {
 
   const transcript = transcription;
   const canEdit =
-    currentUser.role === 'ADMIN' ||
+    isAdminRole(currentUser.role) ||
     (currentUser.role === 'REPORTER' && job.created_by_id === currentUser.id) ||
     (currentUser.role === 'SCOPIST' && (job.assignments || []).some((a: any) => a.scopist_id === currentUser.id));
   const canReview = canEdit;

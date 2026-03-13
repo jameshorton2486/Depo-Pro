@@ -10,6 +10,7 @@ import type { JobStatus } from '@/types/database';
 import { getJobById, updateJobStatus, updateJob, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 import { jobStatusSchema } from '@/lib/api/schemas';
 
 /**
@@ -37,7 +38,7 @@ const GETHandler = async (
 
     // Check access
     if (
-      user.role !== 'ADMIN' &&
+      !isAdminRole(user.role) &&
       (job as any).created_by_id !== user.id &&
       (job as any).scopist_id !== user.id
     ) {
@@ -121,7 +122,7 @@ const PATCHHandler = async (
     // Check permissions via query layer
     const isOwner = (job as any).created_by_id === currentUser.id;
     const isAssignedScopist = await isUserAssignedToJob(jobId, currentUser.id);
-    const isAdmin = currentUser.role === 'ADMIN';
+    const isAdmin = isAdminRole(currentUser.role);
 
     if (!isOwner && !isAssignedScopist && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Only admin and operators can view queue
-    if (currentUser.role !== 'ADMIN' && currentUser.role !== 'REPORTER') {
+    if (!isAdminRole(currentUser.role) && currentUser.role !== 'REPORTER') {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const queue = await AudioEnhancementService.getRxQueue();
 
-    const effectiveFirmId = currentUser.role === 'ADMIN'
+    const effectiveFirmId = isAdminRole(currentUser.role)
       ? requestedFirmId
       : currentUser.firmId || undefined;
 

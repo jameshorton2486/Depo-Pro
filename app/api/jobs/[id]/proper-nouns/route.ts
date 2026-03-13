@@ -15,6 +15,7 @@ import { getProperNounsByJob, createProperNoun, getOrCreateCsrRecordId, bulkDele
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 import { properNounSchema } from '@/lib/api/schemas';
+import { isAdminRole } from '@/lib/admin';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -48,7 +49,7 @@ export async function GET(
     const user = currentUser as any;
     const userFirmId = user.firmId || null;
     const hasAccess =
-      user.role === 'ADMIN' ||
+      isAdminRole(user.role) ||
       (job as any).created_by_id === user.id ||
       ((job as any).firm_id && (job as any).firm_id === userFirmId);
 
@@ -118,7 +119,7 @@ export async function POST(
     const user = currentUser as any;
     const userFirmId = user.firmId || null;
     const hasAccess =
-      user.role === 'ADMIN' ||
+      isAdminRole(user.role) ||
       (job as any).created_by_id === user.id ||
       ((job as any).firm_id && (job as any).firm_id === userFirmId);
 
@@ -208,7 +209,7 @@ export async function DELETE(
     const user = currentUser as any;
     const userFirmId = user.firmId || null;
     const hasAccess =
-      user.role === 'ADMIN' ||
+      isAdminRole(user.role) ||
       (job as any).created_by_id === user.id ||
       ((job as any).firm_id && (job as any).firm_id === userFirmId);
 

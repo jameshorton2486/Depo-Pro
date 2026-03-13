@@ -12,6 +12,7 @@ import { logCorrection, getWordContext } from '@/lib/services/correction-logger'
 import { captureError } from '@/lib/error-capture';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,7 @@ function getJobAccessResult(
   if (!['ADMIN', 'SCOPIST', 'REPORTER', 'COURT_REPORTER'].includes(user.role)) {
     return { allowed: false as const, status: 403, error: 'Forbidden' };
   }
-  if (user.role === 'ADMIN') {
+  if (isAdminRole(user.role)) {
     return { allowed: true as const };
   }
 

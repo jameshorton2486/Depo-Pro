@@ -12,6 +12,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getAssignmentById, getJobById, updateJobAssignment, deleteJobAssignment } from '@/lib/supabase/queries/jobs';
 import { updateAssignmentSchema } from '@/lib/validations/job';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 // ───────────────────────────────────────────────────────────────
 // PATCH /api/assignments/[id] - Update assignment status
@@ -50,7 +51,7 @@ export async function PATCH(
 
     // 🔒 Security: Scopist can update their own assignments, reporter/admin can update any
     const canUpdate =
-      currentUser.role === 'ADMIN' ||
+      isAdminRole(currentUser.role) ||
       assignment.scopist_id === currentUser.id ||
       job.created_by_id === currentUser.id;
 
@@ -134,7 +135,7 @@ export async function DELETE(
 
     // 🔒 Security: Only reporter or admin can delete assignments
     const canDelete =
-      currentUser.role === 'ADMIN' ||
+      isAdminRole(currentUser.role) ||
       job.created_by_id === currentUser.id;
 
     if (!canDelete) {

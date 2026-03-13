@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { isAdminRole } from '@/lib/admin';
 
 const handler = async (request: NextRequest, { supabase, user }: ProtectedContext) => {
   const status = request.nextUrl.searchParams.get('status');
@@ -7,7 +8,7 @@ const handler = async (request: NextRequest, { supabase, user }: ProtectedContex
 
   let query = supabase.from('transcript_requests').select('*', { count: 'exact' }).eq('firm_id', user.firm_id);
 
-  if (user.role !== 'ADMIN') {
+  if (!isAdminRole(user.role)) {
     query = query.eq('submitted_by', user.id);
   }
   if (status) {

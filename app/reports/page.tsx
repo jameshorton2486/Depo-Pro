@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/session';
 import Link from 'next/link';
 import { FileText, Activity, BarChart3, Database } from 'lucide-react';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export default async function ReportsPage() {
     redirect('/login');
   }
 
-  if (currentUser.role !== 'ADMIN') {
+  if (!isAdminRole(currentUser.role)) {
     redirect('/unauthorized');
   }
 

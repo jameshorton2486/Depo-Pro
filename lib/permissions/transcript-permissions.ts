@@ -1,7 +1,10 @@
 // lib/permissions/transcript-permissions.ts
 
+import { isAdminRole } from '@/lib/admin';
+
 export type TranscriptRole =
   | 'ADMIN'
+  | 'SUPER_ADMIN'
   | 'REPORTER'
   | 'COURT_REPORTER' // @deprecated legacy alias — treat same as REPORTER
   | 'SCOPIST'
@@ -21,7 +24,7 @@ export interface TranscriptAccessContext {
 export function canEditTranscript(ctx: TranscriptAccessContext): boolean {
   if (ctx.isReadOnly) return false;
 
-  if (ctx.role === 'ADMIN') return true;
+  if (isAdminRole(ctx.role)) return true;
 
   if ((ctx.role === 'REPORTER' || ctx.role === 'COURT_REPORTER') && ctx.isOwner) {
     return true;
@@ -38,7 +41,7 @@ export function canEditTranscript(ctx: TranscriptAccessContext): boolean {
  * Determines whether a user may view a transcript.
  */
 export function canViewTranscript(ctx: TranscriptAccessContext): boolean {
-  if (ctx.role === 'ADMIN') return true;
+  if (isAdminRole(ctx.role)) return true;
   if (ctx.isOwner) return true;
   if (ctx.isAssignedScopist) return true;
   return false;

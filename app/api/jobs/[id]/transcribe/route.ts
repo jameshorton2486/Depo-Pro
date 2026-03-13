@@ -12,6 +12,7 @@ import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-serv
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
 import type { AudioProcessingMode } from '@/lib/services/audio-enhancement-service';
 import { processTranscriptionJob } from '@/lib/transcription/pipeline';
+import { isAdminRole } from '@/lib/admin';
 
 const POSTHandler = async (
   request: NextRequest,
@@ -51,7 +52,7 @@ const POSTHandler = async (
 
     // Check permissions
     const isOwner = (job as any).created_by_id === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = isAdminRole(user.role);
     const jobFirmId = (job as any).firm_id || (job as any).firmId;
     const isSameFirm = jobFirmId && jobFirmId === user.firmId;
 

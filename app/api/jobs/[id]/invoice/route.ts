@@ -14,6 +14,7 @@ import {
   type InvoiceData,
 } from '@/lib/invoice';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 // ═══════════════════════════════════════════════════════════════
 // POST /api/jobs/[id]/invoice - Generate invoice for job
@@ -25,7 +26,7 @@ const POSTHandler = async (
 ) => {
   try {
     const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.role !== 'ADMIN') {
+    if (!currentUser || !isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

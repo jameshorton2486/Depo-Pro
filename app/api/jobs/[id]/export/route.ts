@@ -14,6 +14,7 @@ import { exportTranscript } from '@/lib/export';
 import { exportLegalDocx } from '@/lib/services/export';
 import type { ExportOptions, ExportMetadata } from '@/types/transcript';
 import type { TranscriptFormatConfig } from '@/src/types/transcript-format';
+import { isAdminRole } from '@/lib/admin';
 
 type ExportFormat = 'docx' | 'pdf' | 'txt' | 'google-docs';
 
@@ -59,7 +60,7 @@ function parseWordData(words: unknown): Array<{ word: string; start: number; end
 
 function hasJobExportAccess(job: any, currentUser: { id: string; role: string; firmId?: string | null }) {
   const isOwner = (job as any).created_by_id === currentUser.id;
-  const isAdmin = currentUser.role === 'ADMIN';
+  const isAdmin = isAdminRole(currentUser.role);
   const jobFirmId = (job as any).firm_id || (job as any).firmId;
   const isSameFirm = jobFirmId === currentUser.firmId;
   return isOwner || isAdmin || isSameFirm;

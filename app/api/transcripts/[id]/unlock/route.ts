@@ -15,6 +15,7 @@ import { unlockTranscript } from '@/lib/supabase/queries/transcripts';
 import { createAuditLog, AuditTargetType } from '@/lib/audit-service';
 import { logger } from '@/lib/logger';
 import { unlockTranscriptSchema } from '@/lib/api/schemas';
+import { isAdminRole } from '@/lib/admin';
 
 /**
  * POST /api/transcripts/[id]/unlock
@@ -25,7 +26,7 @@ const POSTHandler = async (
   { user, params }: ProtectedContext
 ) => {
   try {
-    if (user.role !== 'ADMIN') {
+    if (!isAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 });
     }
 

@@ -11,6 +11,7 @@ import { buildKnowledgeGraph } from '@/lib/services/knowledge-graph';
 import { logger } from '@/lib/logger';
 import type { TranscriptionWord } from '@/types/transcription';
 import { entityExtractionSchema } from '@/lib/api/schemas';
+import { isAdminRole } from '@/lib/admin';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 1 minute
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check firm access
-    if (job.firm_id !== user.firmId && user.role !== 'ADMIN') {
+    if (job.firm_id !== user.firmId && !isAdminRole(user.role)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

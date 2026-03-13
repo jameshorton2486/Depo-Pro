@@ -5,6 +5,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { ensureUserProfile } from '@/lib/auth/profile-guard';
 import { checkUserRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 import { rotateUserSessions } from '@/lib/auth/rotate-session';
+import { isAdminRole } from '@/lib/admin';
 
 /**
  * GET /api/profile
@@ -63,7 +64,7 @@ async function POSTHandler(request: Request) {
     const currentProfile = await ensureUserProfile(user);
 
     // Determine if this is a self-update or admin updating another user
-    const isAdminRequest = currentProfile.role === 'ADMIN';
+    const isAdminRequest = isAdminRole(currentProfile.role);
     const updateTargetId = targetUserId && isAdminRequest ? targetUserId : user.id;
     const isSelfUpdate = updateTargetId === user.id;
 

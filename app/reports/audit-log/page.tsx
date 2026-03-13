@@ -11,6 +11,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listAuditLogs } from '@/lib/supabase/queries/audit';
 import { getUserById } from '@/lib/supabase/queries/users';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export default async function AuditLogPage({ searchParams }: PageProps) {
   }
   const params = await searchParams;
 
-  if (currentUser.role !== 'ADMIN') {
+  if (!isAdminRole(currentUser.role)) {
     redirect('/unauthorized');
   }
 

@@ -15,6 +15,7 @@ import { stampExhibitPdf } from '@/lib/exhibits/pdf-stamper';
 import { listExhibitsByJob, createExhibit } from '@/lib/supabase/queries/exhibits';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 // GET /api/jobs/[id]/exhibits - List all exhibits for a job
 export async function GET(
@@ -42,10 +43,10 @@ export async function GET(
     if (currentUser.role === 'REPORTER' || currentUser.role === 'COURT_REPORTER') {
       const accessCheck = await requireReporterDepositionAccess(currentUser.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
-    } else if (currentUser.role !== 'ADMIN') {
+    } else if (!isAdminRole(currentUser.role)) {
       // Allow scopists assigned to the job via query layer
       const isAssigned = await isUserAssignedToJob(jobId, currentUser.id);
-      
+
       if (!isAssigned) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
@@ -90,7 +91,7 @@ export async function POST(
     if (currentUser.role === 'REPORTER' || currentUser.role === 'COURT_REPORTER') {
       const accessCheck = await requireReporterDepositionAccess(currentUser.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
-    } else if (currentUser.role !== 'ADMIN') {
+    } else if (!isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

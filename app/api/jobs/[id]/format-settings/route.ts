@@ -9,12 +9,13 @@ import {
   type TranscriptFormatConfig,
 } from '@/src/types/transcript-format';
 import { handleSupabaseError } from '@/lib/errors/api-error';
+import { isAdminRole } from '@/lib/admin';
 
 function hasJobAccess(job: any, currentUser: { id: string; role: string; firm_id?: string | null }) {
   const isOwner = job?.created_by_id === currentUser.id;
   const isReporter = job?.reporter_id === currentUser.id;
   const isScopist = job?.scopist_id === currentUser.id;
-  const isAdmin = currentUser.role === 'ADMIN';
+  const isAdmin = isAdminRole(currentUser.role);
   const isSameFirm = !!job?.firm_id && job.firm_id === currentUser.firm_id;
   return isOwner || isReporter || isScopist || isAdmin || isSameFirm;
 }

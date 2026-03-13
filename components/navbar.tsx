@@ -134,7 +134,7 @@ export function PublicNavbar() {
    Used in dashboard after login
    ============================================================================= */
 
-type UserRole = "ADMIN" | "COURT_REPORTER" | "SCOPIST" | "ATTORNEY";
+type UserRole = "ADMIN" | "SUPER_ADMIN" | "COURT_REPORTER" | "SCOPIST" | "ATTORNEY";
 
 interface User {
   name: string;
@@ -149,6 +149,13 @@ interface AppNavbarProps {
 
 // Role-specific navigation links
 const roleNavLinks: Record<UserRole, Array<{ href: string; label: string; icon: React.ReactNode }>> = {
+  SUPER_ADMIN: [
+    { href: "/dashboard", label: "Dashboard", icon: <DashboardIcon className="w-4 h-4" /> },
+    { href: "/jobs", label: "All Jobs", icon: <FileIcon className="w-4 h-4" /> },
+    { href: "/users", label: "Users", icon: <UsersIcon className="w-4 h-4" /> },
+    { href: "/billing", label: "Billing", icon: <BillingIcon className="w-4 h-4" /> },
+    { href: "/audit", label: "Audit Logs", icon: <AuditIcon className="w-4 h-4" /> },
+  ],
   COURT_REPORTER: [
     { href: "/dashboard", label: "Dashboard", icon: <DashboardIcon className="w-4 h-4" /> },
     { href: "/calendar", label: "Calendar", icon: <CalendarIcon className="w-4 h-4" /> },
@@ -288,7 +295,7 @@ export function AppNavbar({ user }: AppNavbarProps) {
                     <MenuLink href="/settings" icon={<SettingsIcon className="w-4 h-4" />}>
                       Settings
                     </MenuLink>
-                    {user.role === "ADMIN" && (
+                    {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
                       <MenuLink href="/settings/organization" icon={<BuildingIcon className="w-4 h-4" />}>
                         Organization
                       </MenuLink>
@@ -349,6 +356,7 @@ function MenuLink({
 function RoleBadge({ role }: { role: UserRole }) {
   const config: Record<UserRole, { label: string; className: string }> = {
     ADMIN: { label: "Admin", className: "badge-admin" },
+    SUPER_ADMIN: { label: "Super Admin", className: "badge-admin" },
     COURT_REPORTER: { label: "Reporter", className: "badge-reporter" },
     SCOPIST: { label: "Scopist", className: "badge-scopist" },
     ATTORNEY: { label: "Attorney", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },

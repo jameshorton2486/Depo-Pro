@@ -13,6 +13,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { createCalendarEvent, getCalendarEventById, updateCalendarEvent } from '@/lib/supabase/queries/calendar';
 import { z } from 'zod';
+import { isAdminRole } from '@/lib/admin';
 
 // ------------------------------------------------------------
 // VALIDATION SCHEMAS
@@ -425,7 +426,7 @@ async function DELETEHandler(
     }
 
     // Only requesting attorney or admin can delete
-    if (existing.requested_by_id !== currentUser.id && currentUser.role !== 'ADMIN') {
+    if (existing.requested_by_id !== currentUser.id && !isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

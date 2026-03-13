@@ -14,6 +14,7 @@ import { getTranscriptWithTokensAndJob, getTranscriptShares, createTranscriptSha
 import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-service';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
+import { isAdminRole } from '@/lib/admin';
 
 const createShareSchema = z.object({
   recipientEmail: z.string().email(),
@@ -37,7 +38,7 @@ const POSTHandler = async (request: NextRequest, { user, supabase, params }: Pro
     // Check permissions (Creator, Admin, or same Firm)
     const canShare = 
       transcript.job.createdById === user.id || 
-      user.role === 'ADMIN' ||
+      isAdminRole(user.role) ||
       (transcript.job.firmId && transcript.job.firmId === user.firm_id);
 
     if (!canShare) {

@@ -17,6 +17,7 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { startOfMonth } from 'date-fns';
 import type { FlaggedWord } from '@/types/transcript';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export default async function ScopistDashboard() {
     redirect('/login');
   }
 
-  if (currentUser.role !== 'SCOPIST' && currentUser.role !== 'ADMIN') {
+  if (currentUser.role !== 'SCOPIST' && !isAdminRole(currentUser.role)) {
     redirect('/dashboard');
   }
 

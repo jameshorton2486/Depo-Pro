@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
+import { isAdminRole } from '@/lib/admin';
 
 /**
  * GET /exports/transcript/[jobId]/pdf
@@ -37,7 +38,7 @@ const GETHandler = async (
   }
 
   const isCreator = job.created_by_id === user.id;
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = isAdminRole(user.role);
   const isScopist = job.scopist_id === user.id;
 
   if (!isCreator && !isAdmin && !isScopist) {

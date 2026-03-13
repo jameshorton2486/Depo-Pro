@@ -28,6 +28,7 @@ import {
   Trash2,
   FileText,
 } from 'lucide-react';
+import { isAdminRole } from '@/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +86,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   // 🔒 Security: Verify access rights
   const hasAccess =
-    session.role === 'ADMIN' ||
+    isAdminRole(session.role) ||
     job.reporter_id === session.id ||
     job.assignments.some((a: any) => a.scopist_id === session.id);
 
@@ -94,7 +95,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
   }
 
   const canEdit =
-    session.role === 'ADMIN' ||
+    isAdminRole(session.role) ||
     job.reporter_id === session.id;
 
   const canAssign = canEdit;
@@ -242,14 +243,14 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
       />
 
       {/* Live Notes Capture (Reporter Only) */}
-      {(session.role === 'REPORTER' || session.role === 'ADMIN') && (
+      {(session.role === 'REPORTER' || isAdminRole(session.role)) && (
         <div className="mt-6">
           <LiveNotesCapture jobId={job.id} />
         </div>
       )}
 
       {/* Proper Nouns & Spellings (Reporter Only) */}
-      {(session.role === 'REPORTER' || session.role === 'ADMIN') && (
+      {(session.role === 'REPORTER' || isAdminRole(session.role)) && (
         <div className="mt-6">
           <ReporterProperNounsPanel
             jobId={job.id}

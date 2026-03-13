@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getTranscriptByJobId } from '@/lib/supabase/queries/transcripts';
+import { isAdminRole } from '@/lib/admin';
 
 export async function GET(
   request: NextRequest,
@@ -29,7 +30,7 @@ export async function GET(
     }
 
     const hasAccess =
-      currentUser.role === 'ADMIN' ||
+      isAdminRole(currentUser.role) ||
       (job as any).created_by_id === currentUser.id ||
       await isUserAssignedToJob(jobId, currentUser.id);
 

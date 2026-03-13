@@ -19,6 +19,7 @@ import { assignScopistSchema } from '@/lib/validations/job';
 import { logAudit } from '@/lib/audit';
 import { AuditAction, AuditEntityType } from '@/lib/enums';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 // ------------------------------------------------------------
 // ALLOWED ROLES FOR ASSIGNMENT
@@ -91,7 +92,7 @@ const POSTHandler = async (
     // Admin/Agency can assign to any job in their firm
     // Court Reporter can only assign to their own jobs
     const canAssign =
-      user.role === 'ADMIN' ||
+      isAdminRole(user.role) ||
       user.role === 'AGENCY' ||
       (job as any).created_by_id === currentUser.id;
 

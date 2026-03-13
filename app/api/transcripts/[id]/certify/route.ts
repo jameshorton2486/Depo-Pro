@@ -10,6 +10,7 @@ import { withRouteProtection } from '@/lib/middleware/withRouteProtection';
 import type { ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { runPreflightChecks, PreflightError } from '@/lib/export';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 
@@ -57,7 +58,7 @@ const POSTHandler = async (
 
     const isOwner = job.created_by_id === user.id;
     const isSameFirm = job.firm_id === user.firm_id;
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = isAdminRole(user.role);
     if (!isOwner && !isSameFirm && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

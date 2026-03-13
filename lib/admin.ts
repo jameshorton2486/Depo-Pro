@@ -10,7 +10,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-function isAdminRole(role: unknown): boolean {
+export function isAdminRole(role: unknown): boolean {
   return role === 'admin' || role === 'ADMIN' || role === 'SUPER_ADMIN';
 }
 

@@ -14,6 +14,7 @@ import {
 } from '@/lib/supabase/queries/medical';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
+import { isAdminRole } from '@/lib/admin';
 
 export async function PATCH(
   request: NextRequest,
@@ -118,7 +119,7 @@ export async function DELETE(
     }
 
     // Only creator or admin can delete
-    if (existing.created_by_id !== currentUser.id && currentUser.role !== 'ADMIN') {
+    if (existing.created_by_id !== currentUser.id && !isAdminRole(currentUser.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

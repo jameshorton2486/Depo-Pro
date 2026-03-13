@@ -20,6 +20,7 @@ import { createAuditLog, AuditAction, AuditTargetType } from '@/lib/audit-servic
 import { logger } from '@/lib/logger';
 import { captureError } from '@/lib/error-capture';
 import { logRouteError, logSlowRequest } from '@/lib/monitoring';
+import { isAdminRole } from '@/lib/admin';
 
 const ALLOWED_ROLES = [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.SCOPIST];
 const exportTranscript = exportLib.exportTranscript;
@@ -186,7 +187,7 @@ const GETHandler = async (
 
     // Check permissions
     const isOwner = transcription.job.created_by_id === user.id;
-    const isAdmin = user.role === 'ADMIN';
+    const isAdmin = isAdminRole(user.role);
     const isSameFirm = transcription.job.firm_id === userFirmId;
 
     if (!isOwner && !isAdmin && !isSameFirm) {
