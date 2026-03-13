@@ -45,7 +45,7 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 
 /**
  * Auth proxy middleware.
- * - Unauthenticated → /login?redirect=<url>
+ * - Unauthenticated → /login?redirectTo=<url>
  * - Authenticated on /login → /dashboard
  * - Missing role → /unauthorized?reason=missing_role
  * - Insufficient role → /unauthorized?reason=insufficient_role
@@ -118,7 +118,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     if (isProtected) {
       const redirectUrl = new URL('/login', request.url);
       const redirectPath = pathname.startsWith(WKT_PREFIX) ? WKT_PREFIX : pathname + (url.search || '');
-      redirectUrl.searchParams.set('redirect', redirectPath);
+      redirectUrl.searchParams.set('redirectTo', redirectPath);
       return applySecurityHeaders(NextResponse.redirect(redirectUrl, { status: 307 }));
     }
     return applySecurityHeaders(response);
