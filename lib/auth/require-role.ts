@@ -127,6 +127,7 @@ export async function protectRoute(
  */
 export function getDefaultRedirectForRole(role: UserRole): string {
   switch (role) {
+    case UserRole.SUPER_ADMIN:
     case UserRole.ADMIN:
       return '/admin';
     case UserRole.REPORTER:

@@ -12,7 +12,7 @@ export default async function RxQueuePage() {
     redirect('/login');
   }
 
-  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'REPORTER') {
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'REPORTER') {
     redirect('/dashboard');
   }
 

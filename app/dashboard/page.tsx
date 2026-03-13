@@ -22,20 +22,20 @@ export default async function DashboardPage() {
   // Redirect based on role
   // Routes are defined in app/(dashboard)/ which creates routes WITHOUT /dashboard prefix
   switch (role) {
+    case 'SUPER_ADMIN':
     case 'ADMIN':
       redirect('/admin');
       break;
     case 'REPORTER':
-      redirect('/reporter');  // Fixed: was /dashboard/reporter
+      redirect('/reporter');
       break;
     case 'SCOPIST':
-      redirect('/scopist');   // Fixed: was /dashboard/scopist
+      redirect('/scopist');
       break;
     case 'ATTORNEY':
-      redirect('/attorney-dashboard');  // This route exists in app/(attorney)/
+      redirect('/attorney-dashboard');
       break;
     default:
-      // Default to reporter dashboard for unknown roles
-      redirect('/reporter');  // Fixed: was /dashboard/reporter
+      redirect('/reporter');
   }
 }

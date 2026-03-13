@@ -168,7 +168,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       url.searchParams.set('reason', 'missing_role');
       return applySecurityHeaders(NextResponse.redirect(url, { status: 307 }));
     }
-    if (isAdminRoute && role !== 'ADMIN') {
+    if (isAdminRoute && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
       url.pathname = '/unauthorized';
       url.searchParams.set('reason', 'insufficient_role');
       return applySecurityHeaders(NextResponse.redirect(url, { status: 307 }));

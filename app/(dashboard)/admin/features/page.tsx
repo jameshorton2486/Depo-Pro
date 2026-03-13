@@ -22,7 +22,7 @@ export default async function FeaturesPage() {
     redirect('/login');
   }
 
-  if (session.role !== 'ADMIN') {
+  if (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN') {
     redirect('/dashboard');
   }
 

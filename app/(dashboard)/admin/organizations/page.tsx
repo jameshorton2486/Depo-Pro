@@ -12,7 +12,7 @@ export default async function AdminOrganizationsPage() {
   if (!currentUser) {
     redirect('/login');
   }
-  if (currentUser.role !== 'ADMIN') {
+  if (currentUser.role !== 'ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
     redirect('/dashboard');
   }
 

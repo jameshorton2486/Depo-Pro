@@ -23,7 +23,7 @@ export default async function PermissionsPage() {
     redirect('/login');
   }
 
-  if (session.role !== 'ADMIN') {
+  if (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN') {
     redirect('/dashboard');
   }
 

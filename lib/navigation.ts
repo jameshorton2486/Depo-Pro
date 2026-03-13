@@ -59,6 +59,7 @@ export type NavigationSchema = NavSection[];
  * Must align with types/database.ts UserRole
  */
 export type UserRole =
+  | 'SUPER_ADMIN'
   | 'ADMIN'
   | 'REPORTER'
   | 'SCOPIST'
@@ -330,6 +331,7 @@ const AGENCY_NAV: NavigationSchema = [
 // =============================================================================
 
 export const NAVIGATION: Record<UserRole, NavigationSchema> = {
+  SUPER_ADMIN: ADMIN_NAV,
   ADMIN: ADMIN_NAV,
   REPORTER: REPORTER_NAV,
   SCOPIST: SCOPIST_NAV,
@@ -457,6 +459,7 @@ export const PUBLIC_NAV_ITEMS: NavItem[] = [
 ];
 
 export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
+  SUPER_ADMIN: 'Super Administrator',
   ADMIN: 'Administrator',
   REPORTER: 'Court Reporter',
   SCOPIST: 'Scopist',
