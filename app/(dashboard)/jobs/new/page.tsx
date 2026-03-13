@@ -23,7 +23,7 @@ export default async function NewJobPage() {
   return (
     <div className="container max-w-5xl py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">New Transcript Intake</h1>
+        <h1 className="text-3xl font-bold">New Deposition Intake</h1>
         <p className="text-muted-foreground mt-1">
           Upload a notice, review extracted data, and create a job or submit a request.
         </p>
