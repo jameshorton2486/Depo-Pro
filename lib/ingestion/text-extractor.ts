@@ -1,3 +1,4 @@
+import 'server-only';
 import mammoth from 'mammoth';
 
 // Suppress pdfjs-dist worker warning in Node.js server environment.
@@ -6,7 +7,13 @@ import mammoth from 'mammoth';
 import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 GlobalWorkerOptions.workerSrc = '';
 
-import { PDFParse } from 'pdf-parse';
+// pdf-parse v2 uses a class-based API not covered by @types/pdf-parse (v1 types).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { PDFParse } = require('pdf-parse') as {
+  PDFParse: new (opts: { data: Buffer }) => {
+    getText: () => Promise<{ text: string; pages: { pageIndex: number }[] }>;
+  };
+};
 
 export interface ExtractionResult {
   text: string;

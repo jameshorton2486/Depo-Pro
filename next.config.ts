@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
     '@dolbyio/media-apis', // Optional - may not be installed
     '@ffmpeg-installer/ffmpeg',
     'fluent-ffmpeg',
+    'pdf-parse',
+    'pdfjs-dist',
+    'mammoth',
   ],
 
   // Webpack configuration
