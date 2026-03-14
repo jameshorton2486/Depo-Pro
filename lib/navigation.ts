@@ -90,20 +90,20 @@ const ADMIN_NAV: NavigationSchema = [
     section: 'Cases & Jobs',
     icon: Briefcase,
     items: [
-      { id: 'admin-jobs', label: 'All Jobs', href: '/admin/jobs', icon: Briefcase },
+      { id: 'admin-jobs', label: 'All Depositions', href: '/admin/jobs', icon: Briefcase },
       { id: 'admin-requests', label: 'Transcript Requests', href: '/admin/requests', icon: MessageSquare },
       { id: 'admin-new-case', label: 'New Case', href: '/cases/new', icon: PlusCircle },
-      { id: 'admin-new-job', label: 'New Job', href: '/jobs/new', icon: Upload },
-      { id: 'admin-calendar', label: 'Calendar', href: '/calendar', icon: Calendar },
+      { id: 'admin-new-job', label: 'New Deposition', href: '/jobs/new', icon: Upload },
+      { id: 'admin-calendar', label: 'Deposition Calendar', href: '/calendar', icon: Calendar },
     ],
   },
   {
     section: 'Transcripts',
     icon: FileText,
     items: [
-      { id: 'admin-transcripts-in-edit', label: 'In Progress', href: '/jobs?status=IN_EDIT', icon: Clock },
-      { id: 'admin-transcripts-ready', label: 'Ready', href: '/jobs?status=READY_FOR_EDIT', icon: FileAudio },
-      { id: 'admin-transcripts-completed', label: 'Completed', href: '/jobs?status=COMPLETED', icon: CheckCircle },
+      { id: 'admin-transcripts-in-edit', label: 'In Proofing', href: '/jobs?status=IN_EDIT', icon: Clock },
+      { id: 'admin-transcripts-ready', label: 'Ready for Proofing', href: '/jobs?status=READY_FOR_EDIT', icon: FileAudio },
+      { id: 'admin-transcripts-completed', label: 'Delivered', href: '/jobs?status=COMPLETED', icon: CheckCircle },
     ],
   },
   {
@@ -153,16 +153,16 @@ const REPORTER_NAV: NavigationSchema = [
     section: 'Jobs',
     icon: Briefcase,
     items: [
-      { id: 'reporter-jobs', label: 'My Jobs', href: '/jobs', icon: Briefcase },
+      { id: 'reporter-jobs', label: 'My Depositions', href: '/jobs', icon: Briefcase },
       { id: 'reporter-new-case', label: 'New Case', href: '/cases/new', icon: PlusCircle },
-      { id: 'reporter-new-job', label: 'New Job', href: '/jobs/new', icon: Upload },
+      { id: 'reporter-new-job', label: 'New Deposition', href: '/jobs/new', icon: Upload },
     ],
   },
   {
     section: 'Schedule',
     icon: Calendar,
     items: [
-      { id: 'reporter-calendar', label: 'Calendar', href: '/calendar', icon: Calendar },
+      { id: 'reporter-calendar', label: 'Deposition Calendar', href: '/calendar', icon: Calendar },
       { id: 'reporter-availability', label: 'Availability', href: '/calendar/availability', icon: Clock },
     ],
   },
@@ -170,9 +170,9 @@ const REPORTER_NAV: NavigationSchema = [
     section: 'Transcripts',
     icon: FileText,
     items: [
-      { id: 'reporter-ready', label: 'Ready', href: '/jobs?status=READY_FOR_EDIT', icon: FileAudio },
+      { id: 'reporter-ready', label: 'Ready for Proofing', href: '/jobs?status=READY_FOR_EDIT', icon: FileAudio },
       { id: 'reporter-with-scopist', label: 'With Scopist', href: '/jobs?status=ASSIGNED', icon: UserCircle },
-      { id: 'reporter-completed', label: 'Completed', href: '/jobs?status=COMPLETED', icon: CheckCircle },
+      { id: 'reporter-completed', label: 'Delivered', href: '/jobs?status=COMPLETED', icon: CheckCircle },
     ],
   },
   {
