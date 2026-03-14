@@ -133,16 +133,16 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
                 <span>or</span>
                 <div className="h-px flex-1 bg-slate-200" />
               </div>
-              <Label htmlFor="google-doc-link">Google Docs URL</Label>
+              <Label htmlFor="document-url">Document URL</Label>
               <div className="flex gap-3">
                 <div className="relative flex-1">
                   <LinkIcon className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
                   <Input
-                    id="google-doc-link"
+                    id="document-url"
                     className="pl-9"
                     value={sourceUrl}
                     onChange={(event) => setSourceUrl(event.target.value)}
-                    placeholder="https://docs.google.com/document/d/..."
+                    placeholder="https://example.com/notice.pdf"
                   />
                 </div>
                 <Button
@@ -153,6 +153,9 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
                   Import
                 </Button>
               </div>
+              <p className="text-xs text-slate-400">
+                Supports Google Docs, Dropbox, SharePoint, and direct links to PDF, DOCX, DOC, TXT, or RTF files.
+              </p>
             </div>
           </>
         )}

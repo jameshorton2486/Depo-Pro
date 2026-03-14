@@ -19,15 +19,15 @@ const handler = async (request: NextRequest, { user }: ProtectedContext) => {
   const jobId = formData.get('job_id');
   const sourceUrl = formData.get('source_url');
 
-  if (typeof sourceUrl === 'string' && sourceUrl.includes('docs.google.com')) {
+  if (typeof sourceUrl === 'string' && sourceUrl.trim()) {
     const result = await ingestDocument({
       buffer: Buffer.alloc(0),
       mimeType: 'text/plain',
-      originalFileName: 'google-doc.txt',
+      originalFileName: 'document-from-url',
       firmId: user.firm_id,
       uploadedBy: user.id,
       jobId: typeof jobId === 'string' ? jobId : undefined,
-      sourceUrl,
+      sourceUrl: sourceUrl.trim(),
     });
     return NextResponse.json(result, { status: result.success ? 200 : 422 });
   }
