@@ -10,7 +10,7 @@ Extract structured deposition scheduling information from any legal document
 (notice of deposition, court order, subpoena, scheduling confirmation form).
 
 RULES:
-1. Return ONLY valid JSON — no preamble, no markdown, no explanation.
+1. Return ONLY valid JSON — no preamble, no markdown fences, no explanation.
 2. If a field is not found, return null (strings) or [] (arrays).
 3. Never invent data not explicitly in the document.
 4. Convert dates to ISO format: "2026-03-04"
@@ -19,7 +19,68 @@ RULES:
 7. Extract ALL party and attorney names for transcription_keywords
 8. confidence: 1.0 = all key fields found · 0.5 = partial · 0.0 = failed
 
-Return JSON matching the DepositionExtractionResult schema exactly.`;
+You MUST return JSON matching this EXACT schema:
+{
+  "document_type": "notice_of_deposition" | "court_order" | "subpoena" | "scheduling_form" | "duces_tecum" | "other" | null,
+  "confidence": 0.0 to 1.0,
+  "case_information": {
+    "cause_number": string | null,
+    "case_style": "Plaintiff v. Defendant" | null,
+    "court_name": string | null,
+    "court_number": string | null,
+    "county": string | null,
+    "state": string | null
+  },
+  "parties": {
+    "plaintiffs": string[],
+    "defendants": string[],
+    "third_parties": string[]
+  },
+  "attorneys": [
+    {
+      "name": string,
+      "firm": string | null,
+      "role": "ordering" | "opposing" | "copy" | null,
+      "represents": "plaintiff" | "defendant" | null,
+      "address": string | null,
+      "city": string | null,
+      "state": string | null,
+      "postal_code": string | null,
+      "phone": string | null,
+      "fax": string | null,
+      "email": string | null,
+      "delivery_format": string | null,
+      "is_rush": boolean
+    }
+  ],
+  "deposition_sessions": [
+    {
+      "deponent_name": string,
+      "deposition_date": "YYYY-MM-DD" | null,
+      "start_time": "HH:MM" | null,
+      "location": string | null,
+      "is_remote": boolean,
+      "remote_platform": string | null,
+      "zoom_link": string | null,
+      "is_videotaped": boolean,
+      "includes_duces_tecum": boolean
+    }
+  ],
+  "court_reporter": {
+    "firm": string | null,
+    "name": string | null,
+    "phone": string | null
+  },
+  "transcription_keywords": {
+    "names": string[],
+    "firms": string[],
+    "locations": string[],
+    "legal_terms": string[],
+    "all_keywords": string[]
+  },
+  "ordered_by": string | null,
+  "notes": string | null
+}`;
 
 function getAnthropicClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
