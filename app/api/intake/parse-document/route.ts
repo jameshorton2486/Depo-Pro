@@ -15,6 +15,7 @@ const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const ROLES = ['ADMIN', 'REPORTER', 'COURT_REPORTER', 'ATTORNEY', 'PARALEGAL', 'LAW_FIRM', 'AGENCY'] as const;
 
 const handler = async (request: NextRequest, _context: ProtectedContext) => {
+  console.log('parse-document called — method:', request.method, 'content-type:', request.headers.get('content-type'), 'url:', request.nextUrl.pathname);
   const contentType = request.headers.get('content-type') ?? '';
 
   if (contentType.includes('application/json')) {
