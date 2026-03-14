@@ -1,10 +1,9 @@
 import mammoth from 'mammoth';
 
 // Suppress pdfjs-dist worker warning in Node.js server environment.
-// pdfjs tries to spawn a Web Worker which doesn't exist server-side;
-// setting workerSrc to empty string prevents the "fake worker failed" warning.
+// MUST use the legacy build — the standard build requires DOMMatrix (browser-only).
 // Must run BEFORE pdf-parse import (which triggers pdfjs-dist load).
-import { GlobalWorkerOptions } from 'pdfjs-dist';
+import { GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs';
 GlobalWorkerOptions.workerSrc = '';
 
 import { PDFParse } from 'pdf-parse';
