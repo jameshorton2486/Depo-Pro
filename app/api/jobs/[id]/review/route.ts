@@ -52,7 +52,7 @@ function getJobAccessResult(
     return { allowed: false as const, status: 403, error: 'Forbidden' };
   }
 
-  if (user.role === 'SCOPIST' && job.scopist_id && job.scopist_id !== user.id) {
+  if (user.role === 'SCOPIST' && job.scopist_id !== user.id) {
     return { allowed: false as const, status: 403, error: 'Forbidden - not assigned to this job' };
   }
 

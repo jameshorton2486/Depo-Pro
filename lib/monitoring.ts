@@ -26,9 +26,9 @@ export function logEvent(event: LogEvent): void {
     : '[INFO]'
 
   if (process.env.NODE_ENV === 'development') {
-    console.log(`${prefix} ${event.message}`, event)
+    console.warn(`${prefix} ${event.message}`, event)
   } else {
-    console.log(JSON.stringify({ prefix, timestamp: new Date().toISOString(), ...event }))
+    console.warn(JSON.stringify({ prefix, timestamp: new Date().toISOString(), ...event }))
   }
 }
 

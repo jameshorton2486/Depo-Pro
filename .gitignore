@@ -175,6 +175,7 @@ extract-docx-content.ps1
 .codex/
 .aider*
 .claude/
+.claude/settings.local.json
 
 # =============================================================================
 # Development prompts
