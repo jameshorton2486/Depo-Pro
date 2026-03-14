@@ -23,37 +23,18 @@ export interface SessionUser {
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
   try {
-    console.warn('[auth/session] getCurrentUser called');
-
     const supabase = await createSupabaseServerClient();
-    console.warn('[auth/session] supabase client created');
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-    console.warn('[auth/session] getUser result:', {
-      hasUser: !!user,
-      userId: user?.id ?? 'none',
-      error: userError?.message ?? 'none',
-    });
-
     if (userError || !user) {
-      console.warn('[auth/session] returning null — no user or error');
       return null;
     }
 
-    console.warn('[auth/session] fetching profile for userId:', user.id);
-    // Fetch user profile from profiles table
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role, full_name, firm_id')
       .eq('id', user.id)
       .single();
-
-    console.warn('[auth/session] profile result:', {
-      hasProfile: !!profile,
-      role: profile?.role ?? 'none',
-      isActive: (profile as { is_active?: boolean } | null)?.is_active ?? false,
-      error: profileError?.message ?? 'none',
-    });
 
     if (profileError || !profile) {
       return null;
@@ -70,8 +51,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       name: profile.full_name || null,
       firmId: profile.firm_id || null,
     };
-  } catch (e) {
-    console.error('[auth/session] unexpected error:', e);
+  } catch {
     return null;
   }
 }
