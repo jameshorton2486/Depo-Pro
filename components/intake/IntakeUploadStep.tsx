@@ -1,14 +1,16 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { CheckCircle, Link as LinkIcon, Loader2, Upload, XCircle } from 'lucide-react';
+import { CheckCircle, ClipboardPaste, Link as LinkIcon, Loader2, Upload, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { DepositionExtractionResult } from '@/lib/ingestion/types';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +25,7 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState('');
+  const [pastedText, setPastedText] = useState('');
   const [extraction, setExtraction] = useState<DepositionExtractionResult | null>(null);
   const [selectedSessionIndex, setSelectedSessionIndex] = useState(0);
 
@@ -40,7 +43,7 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
     ].filter(Boolean) as string[];
   }, [extraction, orderingAttorney]);
 
-  async function parseBody(body: FormData | { source_url: string }) {
+  async function parseBody(body: FormData | { source_url: string } | { raw_text: string }) {
     setIsUploading(true);
     setError(null);
 
@@ -74,90 +77,132 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
       <CardHeader>
         <CardTitle>Upload Deposition Document</CardTitle>
         <CardDescription>
-          Upload a notice, order, subpoena, or document URL to pre-fill the intake form.
+          Upload a file, paste a URL, or paste text from a deposition notice to pre-fill the intake form.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {!extraction && (
-          <>
-            <div
-              data-testid="intake-upload-dropzone"
-              className={cn(
-                'rounded-xl border-2 border-dashed p-8 text-center transition-colors',
-                isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50/60',
-                error && 'border-red-400 bg-red-50',
-              )}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={async (event) => {
-                event.preventDefault();
-                setIsDragging(false);
-                const file = event.dataTransfer.files.item(0);
-                if (file) {
-                  await handleFile(file);
-                }
-              }}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".doc,.docx,.pdf,.txt,.rtf"
-                onChange={async (event) => {
-                  const file = event.target.files?.item(0);
+          <Tabs defaultValue="upload" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="upload" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Upload File
+              </TabsTrigger>
+              <TabsTrigger value="url" className="gap-2">
+                <LinkIcon className="h-4 w-4" />
+                Document URL
+              </TabsTrigger>
+              <TabsTrigger value="paste" className="gap-2">
+                <ClipboardPaste className="h-4 w-4" />
+                Paste Text
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="space-y-4 pt-4">
+              <div
+                data-testid="intake-upload-dropzone"
+                className={cn(
+                  'rounded-xl border-2 border-dashed p-8 text-center transition-colors',
+                  isDragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50/60',
+                  error && 'border-red-400 bg-red-50',
+                )}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={async (event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                  const file = event.dataTransfer.files.item(0);
                   if (file) {
                     await handleFile(file);
                   }
                 }}
-              />
-              <div className="mx-auto flex max-w-lg flex-col items-center gap-3">
-                <div className="rounded-full bg-blue-100 p-4 text-blue-700">
-                  <Upload className="h-6 w-6" />
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".doc,.docx,.pdf,.txt,.rtf"
+                  onChange={async (event) => {
+                    const file = event.target.files?.item(0);
+                    if (file) {
+                      await handleFile(file);
+                    }
+                  }}
+                />
+                <div className="mx-auto flex max-w-lg flex-col items-center gap-3">
+                  <div className="rounded-full bg-blue-100 p-4 text-blue-700">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">Drop your file here or browse</p>
+                    <p className="text-sm text-slate-500">Supported: DOCX, PDF, TXT, RTF. Max file size: 10MB.</p>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    Choose File
+                  </Button>
                 </div>
-                <div>
-                  <p className="font-medium text-slate-900">Drop your file here or browse</p>
-                  <p className="text-sm text-slate-500">Supported: DOCX, PDF, TXT, RTF. Max file size: 10MB.</p>
-                </div>
-                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                  Choose File
-                </Button>
               </div>
-            </div>
+            </TabsContent>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-sm text-slate-400">
-                <div className="h-px flex-1 bg-slate-200" />
-                <span>or</span>
-                <div className="h-px flex-1 bg-slate-200" />
+            <TabsContent value="url" className="space-y-4 pt-4">
+              <div className="space-y-3">
+                <Label htmlFor="document-url">Document URL</Label>
+                <div className="flex gap-3">
+                  <div className="relative flex-1">
+                    <LinkIcon className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                    <Input
+                      id="document-url"
+                      className="pl-9"
+                      value={sourceUrl}
+                      onChange={(event) => setSourceUrl(event.target.value)}
+                      placeholder="https://example.com/notice.pdf"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => parseBody({ source_url: sourceUrl })}
+                    disabled={!sourceUrl.trim() || isUploading}
+                  >
+                    Import
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Supports Google Docs, Dropbox, SharePoint, and direct links to PDF, DOCX, DOC, TXT, or RTF files.
+                </p>
               </div>
-              <Label htmlFor="document-url">Document URL</Label>
-              <div className="flex gap-3">
-                <div className="relative flex-1">
-                  <LinkIcon className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="document-url"
-                    className="pl-9"
-                    value={sourceUrl}
-                    onChange={(event) => setSourceUrl(event.target.value)}
-                    placeholder="https://example.com/notice.pdf"
-                  />
+            </TabsContent>
+
+            <TabsContent value="paste" className="space-y-4 pt-4">
+              <div className="space-y-3">
+                <Label htmlFor="paste-text">Paste deposition notice text</Label>
+                <Textarea
+                  id="paste-text"
+                  value={pastedText}
+                  onChange={(event) => setPastedText(event.target.value)}
+                  placeholder="Paste the full text of a deposition notice, subpoena, or scheduling order here..."
+                  className="min-h-[200px] font-mono text-sm"
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-slate-400">
+                    Paste text from an email, PDF, or Word document. AI will extract case details automatically.
+                  </p>
+                  <span className="text-xs text-slate-400">
+                    {pastedText.length.toLocaleString()} chars
+                  </span>
                 </div>
                 <Button
                   type="button"
-                  onClick={() => parseBody({ source_url: sourceUrl })}
-                  disabled={!sourceUrl.trim() || isUploading}
+                  onClick={() => parseBody({ raw_text: pastedText })}
+                  disabled={pastedText.trim().length < 20 || isUploading}
                 >
-                  Import
+                  Extract Data
                 </Button>
               </div>
-              <p className="text-xs text-slate-400">
-                Supports Google Docs, Dropbox, SharePoint, and direct links to PDF, DOCX, DOC, TXT, or RTF files.
-              </p>
-            </div>
-          </>
+            </TabsContent>
+          </Tabs>
         )}
 
         {isUploading && (

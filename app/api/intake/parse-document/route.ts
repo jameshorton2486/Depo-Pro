@@ -86,10 +86,27 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
 
     if (contentType.includes('application/json')) {
       const body = await request.json();
+      const rawText = typeof body?.raw_text === 'string' ? body.raw_text.trim() : '';
       const sourceUrl = typeof body?.source_url === 'string' ? body.source_url.trim() : '';
 
+      // Paste Text mode — send raw text directly to AI extraction
+      if (rawText) {
+        if (rawText.length < 20) {
+          return NextResponse.json({ error: 'Text is too short to extract deposition data' }, { status: 400 });
+        }
+        if (rawText.length > 500_000) {
+          return NextResponse.json({ error: 'Text exceeds 500,000 character limit' }, { status: 413 });
+        }
+        const result = await parseDocument({
+          buffer: Buffer.from(rawText, 'utf-8'),
+          mimeType: 'text/plain',
+          fileName: 'pasted-text.txt',
+        });
+        return NextResponse.json(result, { status: result.success ? 200 : 422 });
+      }
+
       if (!sourceUrl) {
-        return NextResponse.json({ error: 'No source_url provided' }, { status: 400 });
+        return NextResponse.json({ error: 'No source_url or raw_text provided' }, { status: 400 });
       }
 
       // SSRF protection
