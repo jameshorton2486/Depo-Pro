@@ -74,7 +74,7 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
       <CardHeader>
         <CardTitle>Upload Deposition Document</CardTitle>
         <CardDescription>
-          Upload a notice, order, subpoena, or Google Docs link to pre-fill the intake form.
+          Upload a notice, order, subpoena, or document URL to pre-fill the intake form.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
