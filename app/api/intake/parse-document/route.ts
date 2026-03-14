@@ -183,12 +183,9 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
     });
 
     return NextResponse.json(result, { status: result.success ? 200 : 422 });
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.error('[parse-document] UNHANDLED ERROR:', err.message);
-    console.error('[parse-document] Stack:', err.stack);
+  } catch {
     return NextResponse.json(
-      { error: 'Internal server error', detail: err.message },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

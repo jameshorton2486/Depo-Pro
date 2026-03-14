@@ -82,8 +82,6 @@ async function extractFromDocx(buffer: Buffer): Promise<ExtractionResult> {
 }
 
 async function extractFromPdf(buffer: Buffer): Promise<ExtractionResult> {
-  console.log('[PDF] extractFromPdf called — buffer size:', buffer.length);
-
   if (!buffer.length) {
     return {
       text: '',
@@ -93,24 +91,14 @@ async function extractFromPdf(buffer: Buffer): Promise<ExtractionResult> {
     };
   }
 
-  try {
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
-    console.log('[PDF] Extraction OK — pages:', result.pages.length, 'text length:', result.text.length);
-    return {
-      text: result.text.trim(),
-      pageCount: result.pages.length,
-      extractionMethod: 'pdf-parse',
-      warnings: [],
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error('[PDF] extractFromPdf FAILED:', msg);
-    if (msg.includes('pdf.worker') || msg.includes('fake worker')) {
-      console.error('[PDF] WORKER ERROR — pdfjs-dist tried to load a worker in server context');
-    }
-    throw error;
-  }
+  const parser = new PDFParse({ data: buffer });
+  const result = await parser.getText();
+  return {
+    text: result.text.trim(),
+    pageCount: result.pages.length,
+    extractionMethod: 'pdf-parse',
+    warnings: [],
+  };
 }
 
 async function extractFromTxt(buffer: Buffer): Promise<ExtractionResult> {
