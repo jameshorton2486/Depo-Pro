@@ -5,10 +5,8 @@
 // =============================================================================
 
 import type { NextRequest } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getCurrentUser, requireCurrentUser } from '@/lib/auth/session';
-import { requireRole, requireAnyRole, isTranscriptFinalized } from '@/lib/auth/permissions';
-// UserRole type not needed as value import
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { requireAnyRole, isTranscriptFinalized } from '@/lib/auth/permissions';
 import { UserRole } from '@/lib/enums/roles';
 import { DepositionNoteType, JobStatus } from '@/types/database';
 import { handleApiError, success, error } from '@/lib/api-response';
@@ -16,22 +14,23 @@ import { listNotesForJob, createNote } from '@/lib/supabase/queries/notes';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { getCalendarEventByJobId } from '@/lib/supabase/queries/calendar';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 const LOCKED_STATUSES: JobStatus[] = [JobStatus.REVIEW_COMPLETE, JobStatus.COMPLETED];
 
 async function checkReporterJobAccess(reporterId: string, jobId: string): Promise<boolean> {
   const supabase = await createSupabaseServerClient();
   const job = await getJobById(supabase, jobId);
-  
+
   if (!job) return false;
-  
+
   // Check calendar event assignment via query layer
   const calendarEvent = await getCalendarEventByJobId(jobId);
-  
+
   return (job as any).created_by_id === reporterId || calendarEvent?.assigned_reporter_id === reporterId;
 }
 
-async function canViewNotes(user: { id: string; role: UserRole }, job: any, assignments: any[]): Promise<boolean> {
+async function canViewNotes(user: { id: string; role: string }, job: any, assignments: any[]): Promise<boolean> {
   if (user.role === UserRole.ADMIN) return true;
   if (user.role === UserRole.REPORTER && job.created_by_id === user.id) return true;
   if (user.role === UserRole.REPORTER) return await checkReporterJobAccess(user.id, job.id);
@@ -42,28 +41,19 @@ async function canViewNotes(user: { id: string; role: UserRole }, job: any, assi
 }
 
 // GET /api/jobs/[id]/notes - Read notes
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+const getHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return error('UNAUTHENTICATED', 'Authentication required', 401);
-    }
-
-    const { id: jobId } = await params;
+    const jobId = params.id;
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type');
 
     // Only REPORTER and SCOPIST can read notes
     // Attorneys are explicitly blocked
-    if (!requireAnyRole(user.role, [UserRole.REPORTER, UserRole.SCOPIST])) {
+    if (!requireAnyRole(user.role as UserRole, [UserRole.REPORTER, UserRole.SCOPIST])) {
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
     // Fetch job to check access and status using query module
-    const supabase = await createSupabaseServerClient();
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -137,22 +127,20 @@ export async function GET(
   } catch (err) {
     return handleApiError(err);
   }
-}
+};
 
 // POST /api/jobs/[id]/notes - Create note
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+const postHandler = async (req: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const user = await requireCurrentUser();
-    const { id: jobId } = await params;
+    const jobId = params.id;
 
-    // Only reporters can create notes
-    requireRole(user.role, [UserRole.REPORTER, UserRole.ADMIN]);
+    // Only reporters can create notes (role already checked by withRouteProtection,
+    // but we do a stricter check here)
+    if (user.role !== UserRole.REPORTER && user.role !== UserRole.ADMIN) {
+      return error('FORBIDDEN', 'You do not have permission to create notes', 403);
+    }
 
     // Check if transcript is finalized (via Job status)
-    const supabase = await createSupabaseServerClient();
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -178,8 +166,8 @@ export async function POST(
       return error('VALIDATION_ERROR', 'Content required', 400);
     }
 
-    const noteType: string = ['PROPER_NOUN', 'GENERAL_NOTE'].includes(type) 
-      ? (type as string) 
+    const noteType: string = ['PROPER_NOUN', 'GENERAL_NOTE'].includes(type)
+      ? (type as string)
       : 'PROPER_NOUN';
 
     // Create note using query module
@@ -194,7 +182,7 @@ export async function POST(
 
     // Get reporter info using query module
     const reporterUser = await getUserById(supabase, note.reporter_id);
-    
+
     const reporter = reporterUser ? {
       id: reporterUser.id,
       firstName: reporterUser.user_metadata?.firstName || '',
@@ -216,17 +204,16 @@ export async function POST(
       message: 'Note created',
     });
   } catch (err) {
-    if (err instanceof Error) {
-      if (err.message === 'FORBIDDEN') {
-        return error('FORBIDDEN', 'You do not have permission to create notes', 403);
-      }
-      if (err.message === 'TRANSCRIPT_FINALIZED') {
-        return error('FORBIDDEN', 'Notes are locked because the transcript is finalized', 403);
-      }
-      if (err.message === 'UNAUTHENTICATED') {
-        return error('UNAUTHENTICATED', 'Authentication required', 401);
-      }
-    }
     return handleApiError(err);
   }
-}
+};
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST], requireFirm: true },
+  getHandler,
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.REPORTER], requireFirm: true },
+  postHandler,
+);

@@ -4,8 +4,8 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import {
   getChronologyEntryById,
   updateChronologyEntry,
@@ -16,22 +16,14 @@ import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 import { isAdminRole } from '@/lib/admin';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; entryId: string }> },
-) {
+const patchHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId, entryId } = await params;
-    const supabase = await createSupabaseServerClient();
+    const jobId = params.id;
+    const entryId = params.entryId;
 
     // Verify job exists and belongs to user's firm
     const job = await getJobById(supabase, jobId);
-    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+    if (!job || (user.firm_id && (job as any).firm_id && (job as any).firm_id !== user.firm_id)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -44,7 +36,7 @@ export async function PATCH(
 
     // Handle verify action
     if (body.action === 'verify') {
-      const updated = await verifyChronologyEntry(supabase, entryId, currentUser.id);
+      const updated = await verifyChronologyEntry(supabase, entryId, user.id);
       return NextResponse.json({ data: updated });
     }
 
@@ -85,31 +77,23 @@ export async function PATCH(
     const updated = await updateChronologyEntry(supabase, entryId, updateData);
 
     return NextResponse.json({ data: updated });
-  } catch (error) {
-    logger.error('[api/chronology/[entryId]] PATCH error', error instanceof Error ? error : new Error(String(error)));
+  } catch (err) {
+    logger.error('[api/chronology/[entryId]] PATCH error', err instanceof Error ? err : new Error(String(err)));
     return NextResponse.json(
       { error: 'Failed to update chronology entry' },
       { status: 500 },
     );
   }
-}
+};
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; entryId: string }> },
-) {
+const deleteHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId, entryId } = await params;
-    const supabase = await createSupabaseServerClient();
+    const jobId = params.id;
+    const entryId = params.entryId;
 
     // Verify job exists and belongs to user's firm
     const job = await getJobById(supabase, jobId);
-    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+    if (!job || (user.firm_id && (job as any).firm_id && (job as any).firm_id !== user.firm_id)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -119,18 +103,38 @@ export async function DELETE(
     }
 
     // Only creator or admin can delete
-    if (existing.created_by_id !== currentUser.id && !isAdminRole(currentUser.role)) {
+    if (existing.created_by_id !== user.id && !isAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     await deleteChronologyEntry(supabase, entryId);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error('[api/chronology/[entryId]] DELETE error', error instanceof Error ? error : new Error(String(error)));
+  } catch (err) {
+    logger.error('[api/chronology/[entryId]] DELETE error', err instanceof Error ? err : new Error(String(err)));
     return NextResponse.json(
       { error: 'Failed to delete chronology entry' },
       { status: 500 },
     );
   }
-}
+};
+
+const JOB_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
+
+export const PATCH = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  patchHandler,
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  deleteHandler,
+);

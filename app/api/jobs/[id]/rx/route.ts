@@ -10,9 +10,10 @@
 // POST /api/jobs/[id]/rx - Request RX processing
 // =============================================================================
 
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import {
   evaluateRXEligibilityForJob,
   requestRXAdminApprovalForJob,
@@ -28,22 +29,14 @@ import { isAdminRole } from '@/lib/admin';
 // GET /api/jobs/[id]/rx - Check RX Eligibility
 // -----------------------------------------------------------------------------
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+const getHandler = async (_request: NextRequest, { user, params }: ProtectedContext) => {
   try {
-    const session = await getCurrentUser();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await params;
+    const jobId = params.id;
 
     // Check eligibility
     const eligibility = await evaluateRXEligibilityForJob(
       jobId,
-      session.id,
+      user.id,
       false, // userRequested - this is just a check
       false  // adminOverride
     );
@@ -55,29 +48,21 @@ export async function GET(
       eligibility,
       activeSession,
     });
-  } catch (error) {
-    console.error('Error checking RX eligibility:', error);
+  } catch (err) {
+    console.error('Error checking RX eligibility:', err);
     return NextResponse.json(
       { error: 'Failed to check RX eligibility' },
       { status: 500 }
     );
   }
-}
+};
 
 // -----------------------------------------------------------------------------
 // POST /api/jobs/[id]/rx - Request RX Processing
 // -----------------------------------------------------------------------------
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+const postHandler = async (request: NextRequest, { user, params }: ProtectedContext) => {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     // Only reporters and admins can request RX
     if (user.role !== 'REPORTER' && !isAdminRole(user.role)) {
       return NextResponse.json(
@@ -86,7 +71,7 @@ export async function POST(
       );
     }
 
-    const { id: jobId } = await params;
+    const jobId = params.id;
     const body = await request.json();
     const { justification } = body;
 
@@ -160,11 +145,31 @@ export async function POST(
       sessionId: sessionResult.sessionId,
       message: 'RX session created successfully',
     });
-  } catch (error) {
-    console.error('Error creating RX session:', error);
+  } catch (err) {
+    console.error('Error creating RX session:', err);
     return NextResponse.json(
       { error: 'Failed to create RX session' },
       { status: 500 }
     );
   }
-}
+};
+
+const JOB_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  getHandler,
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.REPORTER], requireFirm: true },
+  postHandler,
+);

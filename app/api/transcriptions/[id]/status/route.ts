@@ -3,27 +3,14 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createClient } from '@/lib/supabase/server';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import { getJobById, isUserAssignedToJob } from '@/lib/supabase/queries/jobs';
 import { isAdminRole } from '@/lib/admin';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
-export async function GET(
-  _request: NextRequest,
-  context: RouteContext,
-) {
+const getHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: transcriptionId } = await context.params;
-    const supabase = await createClient();
+    const transcriptionId = params.id;
 
     // Get transcription record
     const { data: transcription, error } = await supabase
@@ -47,9 +34,9 @@ export async function GET(
     }
 
     const hasAccess =
-      isAdminRole(currentUser.role) ||
-      (job as any).created_by_id === currentUser.id ||
-      await isUserAssignedToJob(transcription.job_id, currentUser.id);
+      isAdminRole(user.role) ||
+      (job as any).created_by_id === user.id ||
+      await isUserAssignedToJob(transcription.job_id, user.id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -68,8 +55,8 @@ export async function GET(
         .order('chunk_index', { ascending: true });
 
       if (chunks) {
-        const completedChunks = chunks.filter(c => c.status === 'COMPLETE').length;
-        const processingChunk = chunks.find(c => c.status === 'PROCESSING');
+        const completedChunks = chunks.filter((c: any) => c.status === 'COMPLETE').length;
+        const processingChunk = chunks.find((c: any) => c.status === 'PROCESSING');
 
         currentChunk = processingChunk ? processingChunk.chunk_index : completedChunks;
         progress = Math.round((completedChunks / totalChunks) * 100);
@@ -87,11 +74,26 @@ export async function GET(
       currentChunk,
       totalChunks,
     });
-  } catch (error: any) {
-    console.error('Error fetching transcription status:', error);
+  } catch (err: any) {
+    console.error('Error fetching transcription status:', err);
     return NextResponse.json(
       { error: 'Failed to fetch transcription status' },
       { status: 500 }
     );
   }
-}
+};
+
+const JOB_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  getHandler,
+);

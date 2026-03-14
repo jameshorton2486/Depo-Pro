@@ -6,39 +6,25 @@
 // Used by the Live Notes Capture feature during depositions
 // ═══════════════════════════════════════════════════════════════
 
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-// ProperNounCategory not needed as value - using string validation
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import { getProperNounsByJob, createProperNoun, getOrCreateCsrRecordId, bulkDeleteProperNouns } from '@/lib/supabase/queries/proper-nouns';
 import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 import { properNounSchema } from '@/lib/api/schemas';
 import { isAdminRole } from '@/lib/admin';
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
 // ═══════════════════════════════════════════════════════════════
 // GET - List all proper nouns for a job
 // ═══════════════════════════════════════════════════════════════
 
-export async function GET(
-  request: NextRequest,
-  context: RouteContext,
-): Promise<NextResponse> {
+const getHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await context.params;
+    const jobId = params.id;
 
     // Find the job and verify access using query module
-    const supabase = await createSupabaseServerClient();
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -46,12 +32,10 @@ export async function GET(
     }
 
     // Check access: admin, job owner, or same firm
-    const user = currentUser as any;
-    const userFirmId = user.firmId || null;
     const hasAccess =
       isAdminRole(user.role) ||
       (job as any).created_by_id === user.id ||
-      ((job as any).firm_id && (job as any).firm_id === userFirmId);
+      ((job as any).firm_id && (job as any).firm_id === user.firm_id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -59,7 +43,7 @@ export async function GET(
 
     // Get proper nouns using query module (handles CSR record creation if needed)
     const properNouns = await getProperNounsByJob(supabase, jobId);
-    
+
     // Get CSR record ID for response via query layer
     const csrRecordId = await getOrCreateCsrRecordId(jobId);
 
@@ -75,31 +59,22 @@ export async function GET(
       count: properNouns.length,
     });
 
-  } catch (error) {
-    const { id: jobId } = await context.params;
-    logger.error('Error fetching proper nouns', error instanceof Error ? error : new Error(String(error)), { jobId });
+  } catch (err) {
+    logger.error('Error fetching proper nouns', err instanceof Error ? err : new Error(String(err)), { jobId: params.id });
     return NextResponse.json(
       { error: 'Failed to fetch proper nouns' },
       { status: 500 },
     );
   }
-}
+};
 
 // ═══════════════════════════════════════════════════════════════
 // POST - Create a new proper noun
 // ═══════════════════════════════════════════════════════════════
 
-export async function POST(
-  request: NextRequest,
-  context: RouteContext,
-): Promise<NextResponse> {
+const postHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await context.params;
+    const jobId = params.id;
     const body = await request.json();
     const parsed = properNounSchema.safeParse(body);
     if (!parsed.success) {
@@ -108,7 +83,6 @@ export async function POST(
     const { value, category, phoneticHint, source, useInTranscription, priority } = parsed.data;
 
     // Find the job and verify access using query module
-    const supabase = await createSupabaseServerClient();
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -116,12 +90,10 @@ export async function POST(
     }
 
     // Check access
-    const user = currentUser as any;
-    const userFirmId = user.firmId || null;
     const hasAccess =
       isAdminRole(user.role) ||
       (job as any).created_by_id === user.id ||
-      ((job as any).firm_id && (job as any).firm_id === userFirmId);
+      ((job as any).firm_id && (job as any).firm_id === user.firm_id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -148,45 +120,35 @@ export async function POST(
           createdAt: (properNoun as any).created_at,
         },
       }, { status: 201 });
-    } catch (error) {
-      if (error instanceof Error && error.message === 'This term already exists for this job') {
+    } catch (err) {
+      if (err instanceof Error && err.message === 'This term already exists for this job') {
         return NextResponse.json(
           { error: 'This term already exists for this job' },
           { status: 409 },
         );
       }
-      const { id: jobId } = await context.params;
-      logger.error('Error creating proper noun', error instanceof Error ? error : new Error(String(error)), { jobId });
+      logger.error('Error creating proper noun', err instanceof Error ? err : new Error(String(err)), { jobId });
       return NextResponse.json(
         { error: 'Failed to create proper noun' },
         { status: 500 },
       );
     }
-  } catch (error) {
-    const { id: jobId } = await context.params;
-    logger.error('Error creating proper noun', error instanceof Error ? error : new Error(String(error)), { jobId });
+  } catch (err) {
+    logger.error('Error creating proper noun', err instanceof Error ? err : new Error(String(err)), { jobId: params.id });
     return NextResponse.json(
       { error: 'Failed to create proper noun' },
       { status: 500 },
     );
   }
-}
+};
 
 // ═══════════════════════════════════════════════════════════════
 // DELETE - Bulk delete proper nouns
 // ═══════════════════════════════════════════════════════════════
 
-export async function DELETE(
-  request: NextRequest,
-  context: RouteContext,
-): Promise<NextResponse> {
+const deleteHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await context.params;
+    const jobId = params.id;
     const { searchParams } = new URL(request.url);
     const ids = searchParams.get('ids')?.split(',').filter(Boolean);
 
@@ -198,7 +160,6 @@ export async function DELETE(
     }
 
     // Find the job and verify access using query module
-    const supabase = await createSupabaseServerClient();
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -206,12 +167,10 @@ export async function DELETE(
     }
 
     // Check access
-    const user = currentUser as any;
-    const userFirmId = user.firmId || null;
     const hasAccess =
       isAdminRole(user.role) ||
       (job as any).created_by_id === user.id ||
-      ((job as any).firm_id && (job as any).firm_id === userFirmId);
+      ((job as any).firm_id && (job as any).firm_id === user.firm_id);
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -233,14 +192,36 @@ export async function DELETE(
       deleted: deleteResult.deletedCount || 0,
     });
 
-  } catch (error) {
-    const { id: jobId } = await context.params;
-    logger.error('Error deleting proper nouns', error instanceof Error ? error : new Error(String(error)), { jobId });
+  } catch (err) {
+    logger.error('Error deleting proper nouns', err instanceof Error ? err : new Error(String(err)), { jobId: params.id });
     return NextResponse.json(
       { error: 'Failed to delete proper nouns' },
       { status: 500 },
     );
   }
-}
+};
 
+const JOB_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
 
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  getHandler,
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  postHandler,
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  deleteHandler,
+);

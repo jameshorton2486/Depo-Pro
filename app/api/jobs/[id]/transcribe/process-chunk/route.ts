@@ -1,20 +1,16 @@
 // app/api/jobs/[id]/transcribe/process-chunk/route.ts
 // Process a single transcription chunk (serverless-friendly)
+// NOTE: This is an internal API route authenticated via INTERNAL_API_SECRET,
+// not user session auth. withRouteProtection is used with requireAuth: false.
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { processChunk } from '@/lib/transcription/scheduler';
-
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
 
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || process.env.CRON_SECRET;
 
-export async function POST(
-  request: NextRequest,
-  context: RouteContext,
-) {
+const postHandler = async (request: NextRequest, { params }: ProtectedContext) => {
   try {
     const authHeader = request.headers.get('authorization');
     if (process.env.NODE_ENV === 'production' && !INTERNAL_API_SECRET) {
@@ -24,7 +20,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id: jobId } = await context.params;
+    const jobId = params.id;
     const body = await request.json();
     const { chunkIndex } = body;
 
@@ -54,4 +50,9 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: false },
+  postHandler,
+);

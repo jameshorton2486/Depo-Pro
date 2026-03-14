@@ -1,8 +1,8 @@
 // Migrated from Prisma to Supabase queries — PASS 2A
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import { getAssignmentById, getJobById } from '@/lib/supabase/queries/jobs';
 import { getUserById } from '@/lib/supabase/queries/users';
 import { sendEmail, jobAssignedEmail } from '@/lib/email';
@@ -12,19 +12,9 @@ import { logger } from '@/lib/logger';
 // POST /api/assignments/[id]/notify - Send assignment notification
 // ═══════════════════════════════════════════════════════════════
 
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const postHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: assignmentId } = await params;
-
-    const supabase = await createSupabaseServerClient();
+    const assignmentId = params.id;
 
     // Get assignment details
     const assignment = await getAssignmentById(supabase, assignmentId);
@@ -43,7 +33,7 @@ export async function POST(
     }
 
     // Verify job creator matches session user
-    if (job?.created_by_id !== currentUser.id) {
+    if (job?.created_by_id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -87,12 +77,16 @@ export async function POST(
       );
     }
 
-  } catch (error) {
-    const { id: assignmentId } = await params;
-    logger.error(`Failed to send assignment notification - assignmentId: ${assignmentId}, error: ${error}`);
+  } catch (err) {
+    logger.error(`Failed to send assignment notification - error: ${err}`);
     return NextResponse.json(
       { error: 'Failed to send notification' },
       { status: 500 },
     );
   }
-}
+};
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER], requireFirm: true },
+  postHandler,
+);

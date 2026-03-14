@@ -2,10 +2,10 @@
 // FILE UPLOAD API ENDPOINT
 // ═══════════════════════════════════════════════════════════════
 
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import type { FileType } from '@/types/database';
 import { uploadFileToSupabase } from '@/lib/storage';
 import { listFilesForJob, createFile } from '@/lib/supabase/queries/files';
@@ -39,20 +39,11 @@ function getFileType(mimeType: string): FileType {
   return 'EXHIBIT'; // Default fallback
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const postHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const session = await getCurrentUser();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const jobId = params.id;
 
-    const { id: jobId } = await params;
-
-    // 🔍 Fetch job with access check using query module
-    const supabase = await createSupabaseServerClient();
+    // Fetch job with access check using query module
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -60,24 +51,22 @@ export async function POST(
     }
 
     // Tenant isolation: ensure job belongs to the user's firm
-    const userFirmId = (session as any).firmId ?? null;
-    const jobFirmId = (job as any).firm_id ?? null;
-    if (userFirmId && jobFirmId && userFirmId !== jobFirmId) {
+    if (user.firm_id && (job as any).firm_id && user.firm_id !== (job as any).firm_id) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // 🔒 Security: Verify access rights via query layer
-    const isAssigned = await isUserAssignedToJob(jobId, session.id);
+    // Security: Verify access rights via query layer
+    const isAssigned = await isUserAssignedToJob(jobId, user.id);
     const hasAccess =
-      isAdminRole(session.role) ||
-      (job as any).created_by_id === session.id ||
+      isAdminRole(user.role) ||
+      (job as any).created_by_id === user.id ||
       isAssigned;
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // 📥 Parse multipart form data
+    // Parse multipart form data
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
@@ -85,7 +74,7 @@ export async function POST(
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // ✅ Validate file type
+    // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: `File type ${file.type} not allowed` },
@@ -93,7 +82,7 @@ export async function POST(
       );
     }
 
-    // ✅ Validate file size
+    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit` },
@@ -101,7 +90,7 @@ export async function POST(
       );
     }
 
-    //� Upload file to storage
+    // Upload file to storage
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
@@ -116,7 +105,7 @@ export async function POST(
       isAudio,
     );
 
-    // 💿 Save file metadata to database using query module
+    // Save file metadata to database using query module
     // Store the storage PATH (not the URL) so the DB column never holds expiring signed URLs.
     // Fresh URLs are generated at access time via lib/storage/url.ts.
     const uploadedFile = await createFile(supabase, {
@@ -139,30 +128,20 @@ export async function POST(
     }
 
     return NextResponse.json({ file: uploadedFile }, { status: 200 });
-  } catch (error) {
-    const { id: jobId } = await params;
-    logger.error('File upload error', error instanceof Error ? error : new Error(String(error)), { jobId });
+  } catch (err) {
+    logger.error('File upload error', err instanceof Error ? err : new Error(String(err)), { jobId: params.id });
     return NextResponse.json(
       { error: 'Failed to upload file' },
       { status: 500 },
     );
   }
-}
+};
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const getHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const session = await getCurrentUser();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const jobId = params.id;
 
-    const { id: jobId } = await params;
-
-    // 🔍 Fetch job with access check using query module
-    const supabase = await createSupabaseServerClient();
+    // Fetch job with access check using query module
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -170,33 +149,50 @@ export async function GET(
     }
 
     // Tenant isolation: ensure job belongs to the user's firm
-    const userFirmId = (session as any).firmId ?? null;
-    const jobFirmId = (job as any).firm_id ?? null;
-    if (userFirmId && jobFirmId && userFirmId !== jobFirmId) {
+    if (user.firm_id && (job as any).firm_id && user.firm_id !== (job as any).firm_id) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    // 🔒 Security: Verify access rights via query layer
-    const isAssigned = await isUserAssignedToJob(jobId, session.id);
+    // Security: Verify access rights via query layer
+    const isAssigned = await isUserAssignedToJob(jobId, user.id);
     const hasAccess =
-      isAdminRole(session.role) ||
-      (job as any).created_by_id === session.id ||
+      isAdminRole(user.role) ||
+      (job as any).created_by_id === user.id ||
       isAssigned;
 
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // 📋 Fetch all files for this job using query module
+    // Fetch all files for this job using query module
     const files = await listFilesForJob(supabase, jobId);
 
     return NextResponse.json({ files }, { status: 200 });
-  } catch (error) {
-    const { id: jobId } = await params;
-    logger.error('Fetch files error', error instanceof Error ? error : new Error(String(error)), { jobId });
+  } catch (err) {
+    logger.error('Fetch files error', err instanceof Error ? err : new Error(String(err)), { jobId: params.id });
     return NextResponse.json(
       { error: 'Failed to fetch files' },
       { status: 500 },
     );
   }
-}
+};
+
+const JOB_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  postHandler,
+);
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  getHandler,
+);

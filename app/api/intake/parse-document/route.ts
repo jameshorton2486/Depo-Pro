@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { parseDocument } from '@/lib/ingestion';
+import { UserRole } from '@/lib/enums/roles';
 
 const ACCEPTED_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -20,7 +21,15 @@ const ACCEPTED_URL_CONTENT_TYPES = new Set([
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const URL_FETCH_TIMEOUT_MS = 30_000;
 
-const ROLES = ['ADMIN', 'REPORTER', 'COURT_REPORTER', 'ATTORNEY', 'PARALEGAL', 'LAW_FIRM', 'AGENCY'] as const;
+const ROLES: UserRole[] = [
+  UserRole.ADMIN,
+  UserRole.REPORTER,
+  UserRole.COURT_REPORTER,
+  UserRole.ATTORNEY,
+  UserRole.PARALEGAL,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
 
 /**
  * SSRF protection — block requests to private/internal networks.
@@ -211,7 +220,7 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: ROLES as unknown as any,
+    requireRole: ROLES,
     requireFirm: true,
   },
   handler,

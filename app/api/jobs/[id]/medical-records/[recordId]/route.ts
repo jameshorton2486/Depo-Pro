@@ -4,8 +4,8 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import {
   getMedicalRecordById,
   deleteMedicalRecord,
@@ -14,22 +14,14 @@ import { getJobById } from '@/lib/supabase/queries/jobs';
 import { logger } from '@/lib/logger';
 import { isAdminRole } from '@/lib/admin';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; recordId: string }> },
-) {
+const getHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId, recordId } = await params;
-    const supabase = await createSupabaseServerClient();
+    const jobId = params.id;
+    const recordId = params.recordId;
 
     // Verify job exists and belongs to user's firm
     const job = await getJobById(supabase, jobId);
-    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+    if (!job || (user.firm_id && (job as any).firm_id && (job as any).firm_id !== user.firm_id)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -39,31 +31,23 @@ export async function GET(
     }
 
     return NextResponse.json({ data: record });
-  } catch (error) {
-    logger.error('[api/medical-records/[recordId]] GET error', error instanceof Error ? error : new Error(String(error)));
+  } catch (err) {
+    logger.error('[api/medical-records/[recordId]] GET error', err instanceof Error ? err : new Error(String(err)));
     return NextResponse.json(
       { error: 'Failed to get medical record' },
       { status: 500 },
     );
   }
-}
+};
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; recordId: string }> },
-) {
+const deleteHandler = async (_request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId, recordId } = await params;
-    const supabase = await createSupabaseServerClient();
+    const jobId = params.id;
+    const recordId = params.recordId;
 
     // Verify job exists and belongs to user's firm
     const job = await getJobById(supabase, jobId);
-    if (!job || (currentUser.firmId && (job as any).firm_id && (job as any).firm_id !== currentUser.firmId)) {
+    if (!job || (user.firm_id && (job as any).firm_id && (job as any).firm_id !== user.firm_id)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
@@ -73,7 +57,7 @@ export async function DELETE(
     }
 
     // Only uploader or admin can delete
-    if (record.uploaded_by_id !== currentUser.id && !isAdminRole(currentUser.role)) {
+    if (record.uploaded_by_id !== user.id && !isAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -90,11 +74,31 @@ export async function DELETE(
     await deleteMedicalRecord(supabase, recordId);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error('[api/medical-records/[recordId]] DELETE error', error instanceof Error ? error : new Error(String(error)));
+  } catch (err) {
+    logger.error('[api/medical-records/[recordId]] DELETE error', err instanceof Error ? err : new Error(String(err)));
     return NextResponse.json(
       { error: 'Failed to delete medical record' },
       { status: 500 },
     );
   }
-}
+};
+
+const JOB_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  getHandler,
+);
+
+export const DELETE = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  deleteHandler,
+);

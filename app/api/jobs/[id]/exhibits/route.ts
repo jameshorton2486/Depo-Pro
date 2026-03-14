@@ -1,10 +1,10 @@
 // app/api/jobs/[id]/exhibits/route.ts
 // API routes for exhibit management (list and create)
 
-import type { NextRequest} from 'next/server';
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/session';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
+import { UserRole } from '@/lib/enums/roles';
 import { requireReporterDepositionAccess } from '@/lib/permissions/api-guards';
 import {
   uploadExhibitOriginal,
@@ -18,21 +18,11 @@ import { logger } from '@/lib/logger';
 import { isAdminRole } from '@/lib/admin';
 
 // GET /api/jobs/[id]/exhibits - List all exhibits for a job
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const getHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await params;
+    const jobId = params.id;
 
     // Verify job exists and user has access using query module
-    const supabase = await createSupabaseServerClient();
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -40,12 +30,12 @@ export async function GET(
     }
 
     // SECURITY: Enforce reporter deposition access
-    if (currentUser.role === 'REPORTER' || currentUser.role === 'COURT_REPORTER') {
-      const accessCheck = await requireReporterDepositionAccess(currentUser.id, jobId);
+    if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
+      const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
-    } else if (!isAdminRole(currentUser.role)) {
+    } else if (!isAdminRole(user.role)) {
       // Allow scopists assigned to the job via query layer
-      const isAssigned = await isUserAssignedToJob(jobId, currentUser.id);
+      const isAssigned = await isUserAssignedToJob(jobId, user.id);
 
       if (!isAssigned) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -56,31 +46,21 @@ export async function GET(
     const exhibits = await listExhibitsByJob(supabase, jobId);
 
     return NextResponse.json({ exhibits });
-  } catch (error) {
-    console.error('Error fetching exhibits:', error);
+  } catch (err) {
+    console.error('Error fetching exhibits:', err);
     return NextResponse.json(
       { error: 'Failed to fetch exhibits' },
       { status: 500 },
     );
   }
-}
+};
 
 // POST /api/jobs/[id]/exhibits - Upload new exhibits
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+const postHandler = async (request: NextRequest, { user, supabase, params }: ProtectedContext) => {
   try {
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id: jobId } = await params;
+    const jobId = params.id;
 
     // Get job with case details for stamping using query module
-    const supabase = await createSupabaseServerClient();
     const job = await getJobById(supabase, jobId);
 
     if (!job) {
@@ -88,10 +68,10 @@ export async function POST(
     }
 
     // SECURITY: Enforce reporter deposition access for upload
-    if (currentUser.role === 'REPORTER' || currentUser.role === 'COURT_REPORTER') {
-      const accessCheck = await requireReporterDepositionAccess(currentUser.id, jobId);
+    if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
+      const accessCheck = await requireReporterDepositionAccess(user.id, jobId);
       if (accessCheck instanceof NextResponse) return accessCheck;
-    } else if (!isAdminRole(currentUser.role)) {
+    } else if (!isAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -184,8 +164,8 @@ export async function POST(
         file_name: file.name,
         file_size: file.size,
         stamped: !!stampedUpload,
-        uploaded_by_role: currentUser.role, // Required
-        created_by_id: currentUser.id,
+        uploaded_by_role: user.role, // Required
+        created_by_id: user.id,
       });
 
       createdExhibits.push(exhibit);
@@ -195,12 +175,31 @@ export async function POST(
       exhibits: createdExhibits,
       message: `Successfully uploaded ${createdExhibits.length} exhibit(s)`,
     });
-  } catch (error) {
-    const { id: jobId } = await params;
-    logger.error('Error uploading exhibits', error instanceof Error ? error : new Error(String(error)), { jobId });
+  } catch (err) {
+    logger.error('Error uploading exhibits', err instanceof Error ? err : new Error(String(err)), { jobId: params.id });
     return NextResponse.json(
       { error: 'Failed to upload exhibits' },
       { status: 500 },
     );
   }
-}
+};
+
+const JOB_ROLES = [
+  UserRole.ADMIN,
+  UserRole.COURT_REPORTER,
+  UserRole.REPORTER,
+  UserRole.SCOPIST,
+  UserRole.ATTORNEY,
+  UserRole.AGENCY_OWNER,
+  UserRole.AGENCY_MANAGER,
+];
+
+export const GET = withRouteProtection(
+  { requireAuth: true, requireRole: JOB_ROLES, requireFirm: true },
+  getHandler,
+);
+
+export const POST = withRouteProtection(
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.COURT_REPORTER, UserRole.REPORTER, UserRole.AGENCY_OWNER, UserRole.AGENCY_MANAGER], requireFirm: true },
+  postHandler,
+);
