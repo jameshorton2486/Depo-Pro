@@ -118,8 +118,8 @@ const POSTHandler = async (request: NextRequest, context?: ProtectedContext) => 
     const userRole = user.role as string;
     const userId = user.id;
 
-    // Only reporters and admins can create jobs
-    if (userRole !== 'REPORTER' && userRole !== 'COURT_REPORTER' && userRole !== 'ADMIN') {
+    // Only reporters, admins, and super admins can create jobs
+    if (userRole !== 'REPORTER' && userRole !== 'COURT_REPORTER' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
