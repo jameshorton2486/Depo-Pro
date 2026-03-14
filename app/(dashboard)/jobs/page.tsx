@@ -50,16 +50,16 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     <div className="container py-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Jobs</h1>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Depositions</h1>
           <p className="text-muted-foreground mt-1">
-            Manage depositions and transcription jobs
+            Manage deposition jobs and transcripts
           </p>
         </div>
         {canCreateJobs && (
           <Link href="/jobs/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              New Job
+              New Deposition
             </Button>
           </Link>
         )}
@@ -93,14 +93,18 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           title="Filter by job status"
         >
           <option value="">All Statuses</option>
-          <option value="CREATED">Created</option>
-          <option value="FILES_UPLOADED">Files Uploaded</option>
+          <option value="CREATED">Scheduled – Awaiting Deposition</option>
+          <option value="FILES_UPLOADED">Recording Needed</option>
           <option value="TRANSCRIBING">Transcribing</option>
-          <option value="AI_REVIEWING">AI Reviewing</option>
-          <option value="READY_FOR_EDIT">Ready for Edit</option>
-          <option value="ASSIGNED">Assigned</option>
-          <option value="IN_EDIT">In Edit</option>
-          <option value="COMPLETED">Completed</option>
+          <option value="AI_REVIEWING">AI Formatting</option>
+          <option value="READY_FOR_EDIT">Ready for Proofing</option>
+          <option value="ASSIGNED">Assigned to Scopist</option>
+          <option value="IN_EDIT">In Proofing</option>
+          <option value="SUBMITTED_FOR_REVIEW">Submitted for Reporter Review</option>
+          <option value="IN_REVIEW">Reporter Review</option>
+          <option value="REVIEW_COMPLETE">Pending Delivery</option>
+          <option value="COMPLETED">Delivered</option>
+          <option value="CANCELLED">Cancelled</option>
         </select>
         <Button type="submit">Apply Filters</Button>
       </form>
@@ -141,38 +145,17 @@ async function JobsList({
       deposition_date,
       updated_at,
       created_by_id,
-      job_assignments(
-        scopist_id,
-        job_assignments_scopist:job_assignments!inner(scopist_id)
-      )
+      scopist_id
     `, { count: 'exact' });
 
   // Role-based filtering
-  if (user.role === 'REPORTER') {
+  if (user.role === 'SUPER_ADMIN') {
+    // SUPER_ADMIN sees all jobs across all firms — no filter
+  } else if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
     jobsQuery = jobsQuery.eq('created_by_id', user.id);
   } else if (user.role === 'SCOPIST') {
-    // Get job IDs where this scopist is assigned
-    const { data: assignments } = await supabase
-      .from('job_assignments')
-      .select('job_id')
-      .eq('scopist_id', user.id);
-
-    const assignedJobIds = assignments?.map(a => a.job_id) || [];
-    if (assignedJobIds.length === 0) {
-      // No assignments, return empty
-      return (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No jobs found</h3>
-            <p className="text-muted-foreground">
-              No jobs have been assigned to you yet.
-            </p>
-          </CardContent>
-        </Card>
-      );
-    }
-    jobsQuery = jobsQuery.in('id', assignedJobIds);
+    // Scopist sees only jobs assigned to them via jobs.scopist_id
+    jobsQuery = jobsQuery.eq('scopist_id', user.id);
   }
 
   // Status filter
@@ -248,18 +231,16 @@ async function JobsList({
     }
   }
 
-  // Get scopist info for assignments
+  // Get scopist info from jobs.scopist_id
   const scopistIds = [...new Set(
-    jobsData?.flatMap(j =>
-      (j.job_assignments as any[])?.map(a => a.scopist_id).filter(Boolean) || []
-    ) || []
+    jobsData?.map(j => (j as any).scopist_id).filter(Boolean) || []
   )];
   const scopistUsers: Record<string, any> = {};
 
-  for (const userId of scopistIds) {
-    const { data: userData } = await adminClient.auth.admin.getUserById(userId);
+  for (const scopistId of scopistIds) {
+    const { data: userData } = await adminClient.auth.admin.getUserById(scopistId);
     if (userData?.user) {
-      scopistUsers[userId] = {
+      scopistUsers[scopistId] = {
         id: userData.user.id,
         firstName: userData.user.user_metadata?.firstName || '',
         lastName: userData.user.user_metadata?.lastName || '',
@@ -289,13 +270,9 @@ async function JobsList({
         lastName: '',
         email: '',
       },
-      assignments: (job.job_assignments || []).map((a: any) => ({
-        scopist: scopistUsers[a.scopist_id] || {
-          id: a.scopist_id,
-          firstName: '',
-          lastName: '',
-        },
-      })),
+      assignments: job.scopist_id && scopistUsers[job.scopist_id]
+        ? [{ scopist: scopistUsers[job.scopist_id] }]
+        : [],
       _count: {
         files: fileCount,
         transcripts: transcriptCount,
@@ -352,7 +329,7 @@ async function JobsList({
             <Link href="/jobs/new">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Create Your First Job
+                Create Your First Deposition
               </Button>
             </Link>
           )}
