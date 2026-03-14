@@ -2,25 +2,24 @@
 // JOB STATUS BADGE COMPONENT
 // ═══════════════════════════════════════════════════════════════
 
-import type { JobStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 interface JobStatusBadgeProps {
-  status: JobStatus;
+  status: string;
   className?: string;
 }
 
-const statusConfig: Record<JobStatus, { label: string; className: string }> = {
+const statusConfig: Record<string, { label: string; className: string }> = {
   CREATED: {
-    label: 'Created',
-    className: 'bg-gray-100 text-gray-700 border-gray-300',
+    label: 'Scheduled – Awaiting Deposition',
+    className: 'bg-slate-100 text-slate-700 border-slate-300',
   },
   FILES_UPLOADED: {
-    label: 'Files Uploaded',
-    className: 'bg-blue-100 text-blue-700 border-blue-300',
+    label: 'Recording Needed',
+    className: 'bg-amber-100 text-amber-700 border-amber-300',
   },
   ENHANCING_AUDIO: {
-    label: 'Enhancing Audio',
+    label: 'Processing Audio',
     className: 'bg-indigo-100 text-indigo-700 border-indigo-300',
   },
   TRANSCRIBING: {
@@ -28,39 +27,39 @@ const statusConfig: Record<JobStatus, { label: string; className: string }> = {
     className: 'bg-purple-100 text-purple-700 border-purple-300',
   },
   AI_REVIEWING: {
-    label: 'AI Reviewing',
+    label: 'AI Formatting',
     className: 'bg-pink-100 text-pink-700 border-pink-300',
   },
   READY_FOR_EDIT: {
-    label: 'Ready for Edit',
+    label: 'Ready for Proofing',
     className: 'bg-green-100 text-green-700 border-green-300',
   },
   ASSIGNED: {
-    label: 'Assigned',
+    label: 'Assigned to Scopist',
     className: 'bg-yellow-100 text-yellow-700 border-yellow-300',
   },
   IN_EDIT: {
-    label: 'In Edit',
+    label: 'In Proofing',
     className: 'bg-orange-100 text-orange-700 border-orange-300',
   },
   SUBMITTED_FOR_REVIEW: {
-    label: 'Submitted for Review',
+    label: 'Submitted for Reporter Review',
     className: 'bg-teal-100 text-teal-700 border-teal-300',
-  },
-  IN_REVIEW: {
-    label: 'In Review',
-    className: 'bg-cyan-100 text-cyan-700 border-cyan-300',
   },
   SCOPIST_COMPLETE: {
     label: 'Scopist Complete',
-    className: 'bg-purple-100 text-purple-800 border-purple-300',
+    className: 'bg-teal-100 text-teal-700 border-teal-300',
+  },
+  IN_REVIEW: {
+    label: 'Reporter Review',
+    className: 'bg-cyan-100 text-cyan-700 border-cyan-300',
   },
   REVIEW_COMPLETE: {
-    label: 'Review Complete',
+    label: 'Pending Delivery',
     className: 'bg-emerald-100 text-emerald-800 border-emerald-300',
   },
   COMPLETED: {
-    label: 'Completed',
+    label: 'Delivered',
     className: 'bg-emerald-100 text-emerald-700 border-emerald-300',
   },
   CANCELLED: {
@@ -71,10 +70,19 @@ const statusConfig: Record<JobStatus, { label: string; className: string }> = {
     label: 'Failed',
     className: 'bg-red-100 text-red-800 border-red-400',
   },
+  ARCHIVED: {
+    label: 'Archived',
+    className: 'bg-gray-100 text-gray-600 border-gray-300',
+  },
+};
+
+const FALLBACK_CONFIG = {
+  label: 'Unknown',
+  className: 'bg-gray-100 text-gray-600 border-gray-300',
 };
 
 export function JobStatusBadge({ status, className }: JobStatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] || FALLBACK_CONFIG;
 
   return (
     <span
