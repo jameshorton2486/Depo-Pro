@@ -49,11 +49,11 @@ const ENV_VARS: EnvVar[] = [
     validate: (v) => v.startsWith('redis://') || v.startsWith('rediss://'),
   },
 
-  // Anthropic - Optional
+  // Anthropic - Required for AI extraction + correction features
   {
     name: 'ANTHROPIC_API_KEY',
-    required: false,
-    description: 'Claude API key (for document extraction)',
+    required: true,
+    description: 'Claude API key (for document extraction and AI corrections)',
     validate: (v) => v.startsWith('sk-'),
   },
 ];
