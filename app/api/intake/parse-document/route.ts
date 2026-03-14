@@ -12,7 +12,7 @@ const ACCEPTED_TYPES = [
 ];
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
-const ROLES = ['ADMIN', 'COURT_REPORTER', 'ATTORNEY', 'PARALEGAL', 'LAW_FIRM', 'AGENCY'] as const;
+const ROLES = ['ADMIN', 'REPORTER', 'COURT_REPORTER', 'ATTORNEY', 'PARALEGAL', 'LAW_FIRM', 'AGENCY'] as const;
 
 const handler = async (request: NextRequest, _context: ProtectedContext) => {
   const contentType = request.headers.get('content-type') ?? '';
