@@ -196,8 +196,8 @@ export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
  * Check if a specific route is allowed for a role
  */
 export function isRouteAllowedForRole(route: string, role: UserRole): boolean {
-  // Admin can access everything
-  if (role === UserRole.ADMIN) return true;
+  // Admin and Super Admin can access everything
+  if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN) return true;
 
   // Check exact match first
   if (ROUTE_PERMISSIONS[route]) {
@@ -219,7 +219,7 @@ export function isRouteAllowedForRole(route: string, role: UserRole): boolean {
  * Get all routes a role can access
  */
 export function getRoutesForRole(role: UserRole): string[] {
-  if (role === UserRole.ADMIN) {
+  if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN) {
     return Object.keys(ROUTE_PERMISSIONS);
   }
 
@@ -253,7 +253,7 @@ export async function checkApiRole(
 
   const userRole = currentUser.role as UserRole;
 
-  if (userRole !== UserRole.ADMIN && !allowedRoles.includes(userRole)) {
+  if (userRole !== UserRole.ADMIN && userRole !== UserRole.SUPER_ADMIN && !allowedRoles.includes(userRole)) {
     return { authorized: false, error: 'Insufficient permissions' };
   }
 

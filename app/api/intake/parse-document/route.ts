@@ -20,14 +20,24 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
 
     if (contentType.includes('application/json')) {
       const body = await request.json();
-      const sourceUrl = typeof body?.source_url === 'string' ? body.source_url : '';
-      if (!sourceUrl.includes('docs.google.com')) {
-        return NextResponse.json({ error: 'Invalid Google Docs source_url' }, { status: 400 });
+      const sourceUrl = typeof body?.source_url === 'string' ? body.source_url.trim() : '';
+      if (!sourceUrl) {
+        return NextResponse.json({ error: 'Missing source_url' }, { status: 400 });
       }
+
+      try {
+        const parsedUrl = new URL(sourceUrl);
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+          return NextResponse.json({ error: 'Invalid source_url protocol' }, { status: 400 });
+        }
+      } catch {
+        return NextResponse.json({ error: 'Invalid source_url' }, { status: 400 });
+      }
+
       const result = await parseDocument({
         buffer: Buffer.alloc(0),
         mimeType: 'text/plain',
-        fileName: 'google-doc.txt',
+        fileName: 'source-document.txt',
         sourceUrl,
       });
       return NextResponse.json(result, { status: result.success ? 200 : 422 });
