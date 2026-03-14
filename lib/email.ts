@@ -242,7 +242,7 @@ export function invoiceEmail(data: {
   dueDate: Date;
 }): EmailOptions {
   const formattedAmount = `$${(data.amount / 100).toFixed(2)}`;
-  const adminEmail = process.env.ADMIN_EMAIL || 'info@depo-pro.com';
+  const adminEmail = process.env.ADMIN_EMAIL || 'notifications@depo-pro.com';
 
   const html = `
 <!DOCTYPE html>
@@ -307,5 +307,292 @@ Depo-Pro Court Reporting Management System
     subject: `Invoice ${data.invoiceNumber} - Amount Due: ${formattedAmount}`,
     html,
     text,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LIFECYCLE EMAIL TEMPLATES
+// ═══════════════════════════════════════════════════════════════
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://depo-pro.com';
+
+export function recordingNeededEmail(data: {
+  recipientName: string;
+  recipientEmail: string;
+  caseStyle: string;
+  causeNumber: string;
+  deponentName: string;
+  depositionDate: string;
+  jobId: string;
+}): EmailOptions {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #d97706; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .footer { padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+    .button { display: inline-block; padding: 12px 24px; background: #d97706; color: white; text-decoration: none; border-radius: 6px; }
+    .details { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .details li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Recording Upload Required</h1>
+    </div>
+    <div class="content">
+      <p>Hello ${data.recipientName},</p>
+      <p>The deposition date has passed and a recording has not yet been uploaded. Please upload the audio recording to begin transcription.</p>
+      <div class="details">
+        <h3>Deposition Details</h3>
+        <ul>
+          <li><strong>Case:</strong> ${data.caseStyle}</li>
+          <li><strong>Cause Number:</strong> ${data.causeNumber}</li>
+          <li><strong>Deponent:</strong> ${data.deponentName}</li>
+          <li><strong>Deposition Date:</strong> ${data.depositionDate}</li>
+        </ul>
+      </div>
+      <p style="margin-top: 30px; text-align: center;">
+        <a href="${SITE_URL}/jobs/${data.jobId}" class="button">Upload Recording</a>
+      </p>
+    </div>
+    <div class="footer">
+      <p>Depo-Pro Court Reporting Management System</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+  return {
+    to: data.recipientEmail,
+    subject: `Recording Upload Required – ${data.deponentName} (${data.causeNumber})`,
+    html,
+  };
+}
+
+export function readyForProofingEmail(data: {
+  recipientName: string;
+  recipientEmail: string;
+  caseStyle: string;
+  causeNumber: string;
+  deponentName: string;
+  depositionDate: string;
+  jobId: string;
+  transcriptId: string;
+  flaggedWordCount: number;
+}): EmailOptions {
+  const flagBadge = data.flaggedWordCount > 0
+    ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 16px; margin: 16px 0; text-align: center;">
+        <strong style="color: #92400e;">${data.flaggedWordCount} flagged word${data.flaggedWordCount !== 1 ? 's' : ''}</strong>
+        <span style="color: #78350f;"> require review</span>
+      </div>`
+    : '';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #10b981; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .footer { padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+    .button { display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 6px; }
+    .details { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .details li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Transcript Ready for Proofing</h1>
+    </div>
+    <div class="content">
+      <p>Hello ${data.recipientName},</p>
+      <p>A transcript is ready for proofing and correction.</p>
+      ${flagBadge}
+      <div class="details">
+        <h3>Deposition Details</h3>
+        <ul>
+          <li><strong>Case:</strong> ${data.caseStyle}</li>
+          <li><strong>Cause Number:</strong> ${data.causeNumber}</li>
+          <li><strong>Deponent:</strong> ${data.deponentName}</li>
+          <li><strong>Deposition Date:</strong> ${data.depositionDate}</li>
+        </ul>
+      </div>
+      <p style="margin-top: 30px; text-align: center;">
+        <a href="${SITE_URL}/transcripts/${data.transcriptId}" class="button">Open Transcript</a>
+      </p>
+    </div>
+    <div class="footer">
+      <p>Depo-Pro Court Reporting Management System</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+  return {
+    to: data.recipientEmail,
+    subject: `Ready for Proofing – ${data.deponentName} (${data.causeNumber})`,
+    html,
+  };
+}
+
+export function proofingCompleteEmail(data: {
+  reporterName: string;
+  reporterEmail: string;
+  agencyAdminEmail?: string;
+  caseStyle: string;
+  causeNumber: string;
+  deponentName: string;
+  depositionDate: string;
+  scopistName: string;
+  jobId: string;
+  unresolvedFlagCount: number;
+}): EmailOptions {
+  const flagPanel = data.unresolvedFlagCount > 0
+    ? `<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px 16px; margin: 16px 0;">
+        <strong style="color: #92400e;">Warning:</strong>
+        <span style="color: #78350f;"> ${data.unresolvedFlagCount} flagged word${data.unresolvedFlagCount !== 1 ? 's' : ''} remain unresolved.</span>
+      </div>`
+    : `<div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 6px; padding: 12px 16px; margin: 16px 0;">
+        <strong style="color: #065f46;">All flagged words have been resolved.</strong>
+      </div>`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .footer { padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+    .button { display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; }
+    .details { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .details li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Proofing Complete</h1>
+    </div>
+    <div class="content">
+      <p>Hello ${data.reporterName},</p>
+      <p><strong>${data.scopistName}</strong> has completed proofing and submitted the transcript for your review.</p>
+      ${flagPanel}
+      <div class="details">
+        <h3>Deposition Details</h3>
+        <ul>
+          <li><strong>Case:</strong> ${data.caseStyle}</li>
+          <li><strong>Cause Number:</strong> ${data.causeNumber}</li>
+          <li><strong>Deponent:</strong> ${data.deponentName}</li>
+          <li><strong>Deposition Date:</strong> ${data.depositionDate}</li>
+        </ul>
+      </div>
+      <p style="margin-top: 30px; text-align: center;">
+        <a href="${SITE_URL}/jobs/${data.jobId}" class="button">Review &amp; Certify</a>
+      </p>
+    </div>
+    <div class="footer">
+      <p>Depo-Pro Court Reporting Management System</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+  const recipients: string[] = [data.reporterEmail];
+  if (data.agencyAdminEmail) {
+    recipients.push(data.agencyAdminEmail);
+  }
+
+  return {
+    to: recipients,
+    subject: `Proofing Complete – ${data.deponentName} (${data.causeNumber})`,
+    html,
+  };
+}
+
+export function transcriptDeliveredEmail(data: {
+  recipientName: string;
+  recipientEmail: string;
+  caseStyle: string;
+  causeNumber: string;
+  deponentName: string;
+  depositionDate: string;
+  reporterName: string;
+  downloadToken: string;
+  expiresHours?: number;
+}): EmailOptions {
+  const expiry = data.expiresHours ?? 72;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #1e3a5f; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .footer { padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+    .button { display: inline-block; padding: 12px 24px; background: #1e3a5f; color: white; text-decoration: none; border-radius: 6px; }
+    .details { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .details li { margin-bottom: 8px; }
+    .expiry-notice { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 16px; margin: 16px 0; text-align: center; color: #78350f; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Transcript Delivered</h1>
+    </div>
+    <div class="content">
+      <p>Hello ${data.recipientName},</p>
+      <p>Your certified deposition transcript is ready for download.</p>
+      <div class="details">
+        <h3>Deposition Details</h3>
+        <ul>
+          <li><strong>Case:</strong> ${data.caseStyle}</li>
+          <li><strong>Cause Number:</strong> ${data.causeNumber}</li>
+          <li><strong>Deponent:</strong> ${data.deponentName}</li>
+          <li><strong>Deposition Date:</strong> ${data.depositionDate}</li>
+          <li><strong>Court Reporter:</strong> ${data.reporterName}</li>
+        </ul>
+      </div>
+      <p style="margin-top: 30px; text-align: center;">
+        <a href="${SITE_URL}/download/${data.downloadToken}" class="button">Download Transcript</a>
+      </p>
+      <div class="expiry-notice">
+        This link expires in ${expiry} hours. Please download your transcript promptly.
+      </div>
+    </div>
+    <div class="footer">
+      <p>Depo-Pro Court Reporting Management System</p>
+      <p>This is an automated notification. Please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+  return {
+    to: data.recipientEmail,
+    subject: `Transcript Delivered – ${data.deponentName} (${data.causeNumber})`,
+    html,
   };
 }
