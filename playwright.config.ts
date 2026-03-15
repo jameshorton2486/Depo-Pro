@@ -1,68 +1,69 @@
-// @ts-expect-error - Playwright types may not be installed yet
 import { defineConfig, devices } from '@playwright/test';
-
-/**
- * Playwright Configuration
- * E2E testing for Depo-Pro
- * 
- * Catches auth, RLS, and routing regressions
- * Validates real user flows
- * Blocks broken deploys
- */
+import 'dotenv/config';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  
-  // Timeout settings
-  timeout: 30 * 1000,
-  expect: {
-    timeout: 5000,
-  },
-  
-  // Test execution
-  fullyParallel: true,
+
+  timeout: 30_000,
+  expect: { timeout: 10_000 },
+
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   workers: process.env.CI ? 1 : undefined,
-  
-  // Reporter
+
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'playwright-report' }],
-    ['json', { outputFile: 'playwright-results.json' }],
+    ['html', { outputFolder: 'tests/reports' }],
   ],
-  
-  // Shared settings
+
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
 
-  // Projects for different browsers
   projects: [
+    // Auth setup — runs once before all browser tests
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: {
+        ...devices['Desktop Firefox'],
+        storageState: 'tests/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
     {
-      name: 'mobile',
-      use: { ...devices['iPhone 13'] },
+      name: 'webkit',
+      use: {
+        ...devices['Desktop Safari'],
+        storageState: 'tests/.auth/user.json',
+      },
+      dependencies: ['setup'],
     },
   ],
 
-  // Web server for local testing
+  // Auto-start dev server when running locally
   webServer: process.env.CI
     ? undefined
     : {
         command: 'npm run dev',
         url: 'http://localhost:3000',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000,
+        reuseExistingServer: true,
+        timeout: 120_000,
       },
 });

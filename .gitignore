@@ -188,3 +188,6 @@ CODEX_MEGA_PROMPT_PHASE_B.txt
 # =============================================================================
 /reports/
 !app/reports/
+tests/.auth/
+tests/reports/
+.env.test
