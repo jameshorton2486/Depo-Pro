@@ -60,3 +60,16 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: sb_secret_placeholder-service-role-key-for-ci-build
           NEXT_PUBLIC_SITE_URL: https://depo-pro.com
         run: npm run build
+
+      - name: Run unit and integration tests
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_placeholder-for-ci-build
+          SUPABASE_SERVICE_ROLE_KEY: sb_secret_placeholder-service-role-key-for-ci-build
+          NEXT_PUBLIC_SITE_URL: https://depo-pro.com
+          LOW_CONFIDENCE_THRESHOLD: "0.85"
+          DEEPGRAM_API_KEY: test-key-for-ci
+          ANTHROPIC_API_KEY: test-key-for-ci
+          RESEND_API_KEY: test-key-for-ci
+          CRON_SECRET: test-cron-secret
+        run: npm test -- --reporter=verbose
