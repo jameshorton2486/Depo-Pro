@@ -68,7 +68,7 @@ describe('middleware auth session parsing', () => {
       expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/login');
-      expect(location).toContain('redirect=');
+      expect(location).toContain('redirectTo=');
     });
 
     it('preserves callback URL in redirect', async () => {
@@ -77,7 +77,7 @@ describe('middleware auth session parsing', () => {
 
       expectRedirectStatus(res.status);
       const location = res.headers.get('location');
-      expect(location).toContain('redirect=%2Fdashboard%3Ftab%3Dsettings');
+      expect(location).toContain('redirectTo=%2Fdashboard%3Ftab%3Dsettings');
     });
 
     it('uses /wkt redirect shortcut for unauthenticated WKT requests', async () => {
@@ -87,7 +87,7 @@ describe('middleware auth session parsing', () => {
       expectRedirectStatus(res.status);
       const location = res.headers.get('location');
       expect(location).toContain('/login');
-      expect(location).toContain('redirect=%2Fwkt');
+      expect(location).toContain('redirectTo=%2Fwkt');
     });
 
     it('allows authenticated users to access WKT routes without role metadata', async () => {
