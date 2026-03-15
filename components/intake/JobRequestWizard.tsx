@@ -9,6 +9,7 @@ import type { IntakeSubmissionPayload } from '@/lib/intake/workflow';
 import { IntakeUploadStep } from './IntakeUploadStep';
 import { IntakeFormStep } from './IntakeFormStep';
 import { IntakeConfirmStep } from './IntakeConfirmStep';
+import { IntakeAudioStep } from './IntakeAudioStep';
 
 interface JobRequestWizardProps {
   role: string;
@@ -49,6 +50,7 @@ export function JobRequestWizard({ role }: JobRequestWizardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ type: 'JOB' | 'REQUEST'; id: string } | null>(null);
+  const [showAudioUpload, setShowAudioUpload] = useState(false);
 
   function applyExtraction(extraction: DepositionExtractionResult, sessionIndex: number) {
     const session = extraction.deposition_sessions[sessionIndex] ?? extraction.deposition_sessions[0];
@@ -106,6 +108,10 @@ export function JobRequestWizard({ role }: JobRequestWizardProps) {
         type: data.submissionType,
         id: data.jobId ?? data.requestId,
       });
+      // For direct job creation, show audio upload step before final confirmation
+      if (data.submissionType === 'JOB') {
+        setShowAudioUpload(true);
+      }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Submission failed');
     } finally {
@@ -114,8 +120,20 @@ export function JobRequestWizard({ role }: JobRequestWizardProps) {
   }
 
   if (success) {
-    const href = success.type === 'JOB' ? `/jobs/${success.id}` : '/requests';
+    // Step 4: Audio upload after job created
+    if (success.type === 'JOB' && showAudioUpload) {
+      return (
+        <IntakeAudioStep
+          jobId={success.id}
+          jobTitle={values.jobTitle}
+          onComplete={() => setShowAudioUpload(false)}
+          onSkip={() => setShowAudioUpload(false)}
+        />
+      );
+    }
 
+    // Final success card
+    const href = success.type === 'JOB' ? `/jobs/${success.id}` : '/requests';
     return (
       <Card>
         <CardContent className="space-y-4 p-8 text-center">
@@ -124,7 +142,7 @@ export function JobRequestWizard({ role }: JobRequestWizardProps) {
           </div>
           <div>
             <h2 className="text-xl font-semibold text-slate-900">
-              {success.type === 'JOB' ? 'Job Created' : 'Request Submitted'}
+              {success.type === 'JOB' ? 'Deposition Created' : 'Request Submitted'}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
               {success.type === 'JOB'
@@ -134,10 +152,11 @@ export function JobRequestWizard({ role }: JobRequestWizardProps) {
           </div>
           <div className="flex justify-center gap-3">
             <Button asChild>
-              <a href={href}>{success.type === 'JOB' ? 'View Job' : 'View My Requests'}</a>
+              <a href={href}>{success.type === 'JOB' ? 'View Deposition' : 'View My Requests'}</a>
             </Button>
             <Button variant="outline" onClick={() => {
               setSuccess(null);
+              setShowAudioUpload(false);
               setValues(DEFAULT_VALUES);
               setAutofilled(new Set());
               setStep(1);
