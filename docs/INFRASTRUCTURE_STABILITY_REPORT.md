@@ -86,7 +86,7 @@ gh secret set TEST_USER_B
 ## WORKSTREAM 3 — ENVIRONMENT ARCHITECTURE
 
 ### Before State
-- `.env.example` listed `ZOHO_SMTP_*` variable names but code reads `EMAIL_*` names → email silently broken for anyone copying the example
+- `.env.example` listed legacy SMTP variable names but code reads `RESEND_API_KEY` → email silently broken for anyone copying the example
 - `NEXT_PUBLIC_APP_URL` used by transcription routes but undocumented
 - `INTERNAL_API_SECRET` used by process-chunk endpoint but undocumented
 - `DIRECT_URL`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD` undocumented in example
@@ -102,10 +102,7 @@ gh secret set TEST_USER_B
 
 | Old | New | Impact |
 |-----|-----|--------|
-| `ZOHO_SMTP_HOST` | `EMAIL_HOST` | Email was silently broken |
-| `ZOHO_SMTP_PORT` | `EMAIL_PORT` | Email was silently broken |
-| `ZOHO_SMTP_USER` | `EMAIL_USER` | Email was silently broken |
-| `ZOHO_SMTP_PASS` | `EMAIL_PASSWORD` | Email was silently broken |
+| legacy SMTP vars | `RESEND_API_KEY` | Email was silently broken |
 | (missing) | `NEXT_PUBLIC_APP_URL` | Transcription scheduler base URL |
 | (missing) | `INTERNAL_API_SECRET` | Chunk endpoint auth |
 | (missing) | `DIRECT_URL` | CLI/CI direct DB |

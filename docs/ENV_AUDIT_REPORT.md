@@ -75,7 +75,7 @@ All deprecated variables have been successfully cleaned up:
 | NEXTAUTH_URL | Not present | Not present | CLEAN |
 | DATABASE_URL | Not present | Not present | CLEAN |
 | DIRECT_URL | Not present | Not present | CLEAN |
-| SMTP_* / ZOHO_SMTP_* | Not present | Not present | CLEAN |
+| SMTP_* / legacy SMTP vars | Not present | Not present | CLEAN |
 
 ## Extra Variables (not in master list)
 

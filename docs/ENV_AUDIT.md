@@ -13,9 +13,7 @@
 | Variable | Purpose | Default |
 |---|---|---|
 | `REDIS_URL` | Queue/rate-limit backing store | In-memory fallback |
-| `ZOHO_SMTP_HOST` | SMTP host | none |
-| `ZOHO_SMTP_USER` | SMTP user | none |
-| `ZOHO_SMTP_PASS` | SMTP password/app-password | none |
+| `RESEND_API_KEY` | Resend email API key | none |
 | `CRON_SECRET` | Protects cron endpoints | none |
 | `WEBHOOK_SECRET` | Webhook signing | none |
 | `DEEPGRAM_WEBHOOK_SECRET` | Deepgram callback signing | none |

@@ -195,7 +195,7 @@ Depo-Pro — multi-tenant legal deposition transcription SaaS
 | Transcription | Deepgram Nova-3 |
 | AI | Anthropic Claude API |
 | Deployment | Vercel (auto-deploy on git push) |
-| Email | Zoho SMTP via info@depo-pro.com |
+| Email | Resend via notifications@depo-pro.com |
 
 ## Environment Variables (Required)
 

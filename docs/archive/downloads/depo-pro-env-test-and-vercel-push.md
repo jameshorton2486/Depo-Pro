@@ -226,8 +226,7 @@ in the list above. Print them under this heading:
 
 Then check if any of these known-deprecated names exist in Vercel:
   NEXTAUTH_SECRET, NEXTAUTH_URL, DATABASE_URL, DIRECT_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY, ZOHO_SMTP_HOST, ZOHO_SMTP_PORT,
-  ZOHO_SMTP_USER, ZOHO_SMTP_PASS, SMTP_HOST, SMTP_PORT,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY, SMTP_HOST, SMTP_PORT,
   SMTP_USER, SMTP_PASS, NODE_ENV
 
 If any are found, print:

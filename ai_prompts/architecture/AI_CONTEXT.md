@@ -25,7 +25,7 @@ Firms: Multi-tenant, firm_id-scoped throughout
 | Document AI   | Anthropic Claude (medical extraction, intake parsing)|
 | Export        | docx npm package                                     |
 | Hosting       | Vercel (auto-deploy on git push)                     |
-| Email         | Zoho SMTP via info@depo-pro.com                      |
+| Email         | Resend via notifications@depo-pro.com                |
 | Domain        | depo-pro.com (canonical)                             |
 
 ---

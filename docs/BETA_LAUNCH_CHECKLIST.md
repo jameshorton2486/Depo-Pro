@@ -37,7 +37,7 @@ Generated: 2026-03-10
 - [x] 52 root AI/planning .md files archived to `docs/archive/`
 - [x] Stale Prisma references removed from docs
 - [x] `.gitignore` exceptions for root .md files and `app/reports/`
-- [x] Email provider references updated (Zoho → Resend)
+- [x] Email provider references updated to Resend
 
 ## Known Issues (Pre-Existing, Not Blocking)
 

@@ -163,7 +163,7 @@ No secrets required.
 
 | Code Reads | .env.example Had | Status |
 |-----------|-----------------|--------|
-| `RESEND_API_KEY` | `ZOHO_SMTP_*` / `EMAIL_*` | Fixed — migrated from Zoho SMTP to Resend API |
+| `RESEND_API_KEY` | legacy SMTP vars | Fixed — migrated to Resend API |
 | `NEXT_PUBLIC_APP_URL` | (missing) | Fixed — added |
 | `INTERNAL_API_SECRET` | (missing) | Fixed — added |
 | `DIRECT_URL` | (missing) | Fixed — added under CI section |
