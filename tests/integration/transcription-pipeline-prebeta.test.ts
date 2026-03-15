@@ -77,6 +77,18 @@ vi.mock('@/lib/transcription/preprocessor', () => ({
   needsNormalization: vi.fn(async () => false),
   normalizeAudioForTranscription: vi.fn(),
   cleanupPreprocessedFile: vi.fn(),
+  scoreAudioQuality: vi.fn(async () => ({
+    score: 85,
+    tier: 'EXCELLENT',
+    issues: [],
+    requiresManualReview: false,
+    metadata: { duration: 12, sampleRate: 16000, channels: 1, format: 'mp3', bitrate: 128000, hasAudioTrack: true, codec: 'mp3' },
+  })),
+  AGGRESSIVE_NORMALIZATION_CONFIG: {
+    sampleRate: 16000, channels: 1, outputFormat: 'wav', loudnorm: true,
+    highpassFilter: true, highpassFrequency: 100, arnndn: true, afftdn: true,
+    afftdnStrength: 0.35, compress: true, deess: true,
+  },
 }));
 
 vi.mock('@/lib/transcription/reassemble', () => ({
