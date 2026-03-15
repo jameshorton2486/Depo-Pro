@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withRouteProtection, type ProtectedContext } from '@/lib/middleware/withRouteProtection';
 import { buildAdminOverrides, createJobFromSubmission, writeKeywords, type IntakeSubmissionPayload } from '@/lib/intake/workflow';
 
-const DIRECT_CREATE_ROLES = new Set(['ADMIN', 'COURT_REPORTER', 'REPORTER']);
+const DIRECT_CREATE_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'COURT_REPORTER', 'REPORTER']);
 const PERMITTED_ROLES = ['ADMIN', 'COURT_REPORTER', 'REPORTER', 'ATTORNEY', 'PARALEGAL', 'LAW_FIRM', 'AGENCY'] as const;
 
 const handler = async (request: NextRequest, { supabase, user }: ProtectedContext) => {
