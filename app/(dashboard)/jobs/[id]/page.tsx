@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { isAdminRole } from '@/lib/admin';
 import { DeliverTranscriptButton } from '@/components/jobs/DeliverTranscriptButton';
+import { GenerateInvoiceButton } from '@/components/jobs/GenerateInvoiceButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -291,6 +292,13 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             orderingName={(job as any).ordering_attorney || 'Ordering Attorney'}
             depositionLabel={`${job.deponent_name || job.title} (${job.case_number || 'No case number'})`}
           />
+        </div>
+      )}
+
+      {/* Generate Invoice — shown after delivery */}
+      {job.status === 'COMPLETED' && canEdit && (
+        <div className="mt-3">
+          <GenerateInvoiceButton jobId={job.id} />
         </div>
       )}
 
