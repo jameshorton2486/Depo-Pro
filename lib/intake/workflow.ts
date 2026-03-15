@@ -96,7 +96,7 @@ export async function createJobFromSubmission(
       status: 'CREATED',
       source_request_id: sourceRequestId ?? null,
       intake_document_id: payload.documentId ?? null,
-    } as never)
+    })
     .select('id')
     .single();
 
