@@ -10,6 +10,8 @@ import { captureError } from '@/lib/error-capture';
 import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isAdminRole } from '@/lib/admin';
+import { sendEmail, proofingCompleteEmail } from '@/lib/email';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 type RouteUser = {
   id: string;
@@ -146,6 +148,59 @@ const POSTHandler = async (
     } catch (_lockErr) {
       console.error('Failed to release lock on submit — continuing anyway');
     }
+
+    // Send proofing complete notification — fire and forget, non-blocking
+    setImmediate(async () => {
+      try {
+        const adminClient = createAdminClient();
+
+        const { data: fullJob } = await adminClient
+          .from('jobs')
+          .select(`
+            id, title, case_name, case_number, deposition_date, firm_id,
+            reporter:profiles!jobs_reporter_id_fkey(id, full_name, email),
+            scopist:profiles!jobs_scopist_id_fkey(id, full_name, email)
+          `)
+          .eq('id', jobId)
+          .single();
+
+        if (!fullJob) {
+          console.warn('[notify] Could not fetch job data for proofing complete email');
+          return;
+        }
+
+        const reporter = fullJob.reporter as any;
+        const scopist = fullJob.scopist as any;
+
+        if (!reporter?.email) {
+          console.warn('[notify] No reporter email found for job', jobId);
+          return;
+        }
+
+        const depositionDate = fullJob.deposition_date
+          ? new Date(fullJob.deposition_date).toLocaleDateString('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric',
+            })
+          : 'Date unknown';
+
+        const emailOptions = proofingCompleteEmail({
+          reporterName: reporter.full_name || reporter.email,
+          reporterEmail: reporter.email,
+          caseStyle: fullJob.case_name || fullJob.title || 'Unknown Case',
+          causeNumber: fullJob.case_number || 'N/A',
+          deponentName: fullJob.title?.replace('Deposition of ', '') || 'Unknown Deponent',
+          depositionDate,
+          scopistName: scopist?.full_name || scopist?.email || user.id,
+          jobId,
+          unresolvedFlagCount,
+        });
+
+        await sendEmail(emailOptions);
+        console.warn(`[notify] Proofing complete email sent to ${reporter.email} for job ${jobId}`);
+      } catch (notifyErr: any) {
+        console.error('[notify] Failed to send proofing complete email:', notifyErr.message);
+      }
+    });
 
     return NextResponse.json({
       success: true,
