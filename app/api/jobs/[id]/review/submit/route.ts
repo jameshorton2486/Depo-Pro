@@ -109,7 +109,7 @@ const POSTHandler = async (
     }
     // --- End Optimistic Locking Check ---
 
-    // Check for pending flagged words — block completion if any remain
+    // Count unresolved flagged words — warn reporter but do NOT block submission
     const { count: pendingCount, error: pendingError } = await supabase
       .from('flagged_words')
       .select('*', { count: 'exact', head: true })
@@ -121,17 +121,9 @@ const POSTHandler = async (
       return NextResponse.json({ error: 'Failed to check review status' }, { status: 500 });
     }
 
-    if ((pendingCount ?? 0) > 0) {
-      return NextResponse.json(
-        {
-          error: 'Review incomplete',
-          code: 'PENDING_WORDS',
-          message: `${pendingCount ?? 0} flagged word(s) still require review before submitting.`,
-          pendingCount: pendingCount ?? 0,
-        },
-        { status: 409 },
-      );
-    }
+    // NOTE: pendingCount is included in the response for the reporter notification
+    // but does NOT block submission. The reporter email will show the count.
+    const unresolvedFlagCount = pendingCount ?? 0;
 
     // Update job status to SCOPIST_COMPLETE
     const { error: jobUpdateError } = await supabase
@@ -161,6 +153,7 @@ const POSTHandler = async (
       newStatus: 'SCOPIST_COMPLETE',
       message: 'Review submitted successfully.',
       updatedAt: transcription.updated_at,
+      unresolvedFlagCount,
     });
   } catch (error) {
     captureError(error, { route: 'POST /api/jobs/[id]/review/submit' });
