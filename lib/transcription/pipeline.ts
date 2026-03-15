@@ -13,6 +13,8 @@ import {
   normalizeAudioForTranscription,
   needsNormalization,
   cleanupPreprocessedFile,
+  scoreAudioQuality,
+  AGGRESSIVE_NORMALIZATION_CONFIG,
 } from './preprocessor';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { captureError } from '@/lib/error-capture';
@@ -79,17 +81,44 @@ export async function processTranscriptionJob(
       console.warn(`[pipeline] Audio warning for job ${jobId}: ${validation.warning}`);
     }
 
-    // --- STAGE 1b: NORMALIZING ---
+    // --- STAGE 1b: QUALITY SCORING ---
+    const qualityScore = await scoreAudioQuality(audioFilePath);
+    console.warn(`[pipeline] Audio quality: ${qualityScore.score}/100 (${qualityScore.tier})`);
+
+    if (qualityScore.issues.length > 0) {
+      console.warn(`[pipeline] Quality issues: ${qualityScore.issues.join('; ')}`);
+    }
+
+    // Store quality score in transcription metadata
+    await updateTranscriptionMetadata(jobId, {
+      audio_quality_score: qualityScore.score,
+      audio_quality_tier: qualityScore.tier,
+      audio_quality_issues: qualityScore.issues,
+    });
+
+    // Abort if UNUSABLE
+    if (qualityScore.tier === 'UNUSABLE') {
+      throw new Error(
+        `Audio quality is too low to transcribe (score: ${qualityScore.score}/100). ` +
+        `Issues: ${qualityScore.issues.join(', ')}. ` +
+        'Please run the manual enhancement script (scripts/audio/enhance.py) and re-upload.'
+      );
+    }
+
+    // --- STAGE 1c: NORMALIZING ---
     // Normalize ALL audio to 16kHz mono WAV for optimal Deepgram accuracy.
     // For video files, this also extracts the audio track in the same pass.
-    const shouldNormalize = await needsNormalization(audioFilePath);
+    // Auto-select aggressive config for POOR quality audio.
+    const normConfig = qualityScore.tier === 'POOR' ? AGGRESSIVE_NORMALIZATION_CONFIG : {};
+    const shouldNormalize = qualityScore.tier === 'POOR' || await needsNormalization(audioFilePath);
 
     if (shouldNormalize) {
-      console.warn('Normalizing audio to 16kHz mono WAV for high-accuracy transcription...');
-      const preprocessResult = await normalizeAudioForTranscription(audioFilePath);
+      const configLabel = qualityScore.tier === 'POOR' ? 'AGGRESSIVE' : 'DEFAULT';
+      console.warn(`Normalizing audio (${configLabel} config) to 16kHz mono WAV...`);
+      const preprocessResult = await normalizeAudioForTranscription(audioFilePath, normConfig);
       normalizedPath = preprocessResult.outputPath;
       audioFilePath = normalizedPath;
-      console.warn(`Audio normalized in ${preprocessResult.processingTimeMs}ms`);
+      console.warn(`[pipeline] Audio enhanced in ${preprocessResult.processingTimeMs}ms`);
     } else {
       console.warn('Audio already in optimal format, skipping normalization');
     }
@@ -748,6 +777,37 @@ async function logAuditEvent(jobId: string, action: string): Promise<void> {
     });
   } catch (error: any) {
     console.error('Failed to log audit event:', error.message);
+  }
+}
+
+/**
+ * Update transcription metadata (audio quality, etc.)
+ * Merges with existing metadata to avoid overwriting.
+ */
+async function updateTranscriptionMetadata(
+  jobId: string,
+  newMetadata: Record<string, any>
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  try {
+    const { data: existing } = await supabase
+      .from('transcriptions')
+      .select('metadata')
+      .eq('job_id', jobId)
+      .single();
+
+    const merged = { ...(existing?.metadata as Record<string, any> || {}), ...newMetadata };
+
+    await supabase
+      .from('transcriptions')
+      .update({
+        metadata: merged as any,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('job_id', jobId);
+  } catch (error: any) {
+    console.error('Failed to update transcription metadata:', error.message);
   }
 }
 

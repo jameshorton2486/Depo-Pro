@@ -31,12 +31,15 @@ export interface EnhancementResult {
 
 export const AudioEnhancementService = {
   /**
-   * Enhance audio with Dolby
+   * Enhance audio with Dolby — DEPRECATED.
+   * Audio enhancement is now handled by the FFmpeg pipeline in
+   * lib/transcription/preprocessor.ts (normalizeAudioForTranscription).
+   * This stub is kept for API compatibility only.
    */
   async enhanceWithDolby(audioUrl: string, _options?: Record<string, any>): Promise<EnhancementResult> {
-    logger.debug('[Audio] enhanceWithDolby called - stub', { audioUrl });
-    return { 
-      success: true, 
+    logger.debug('[Audio] enhanceWithDolby called — delegated to FFmpeg preprocessor pipeline', { audioUrl });
+    return {
+      success: true,
       enhancedUrl: audioUrl,
       enhancedFileUrl: audioUrl,
     };
