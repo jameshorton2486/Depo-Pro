@@ -71,42 +71,36 @@ export function calculateInvoiceTotal(items: InvoiceItem[], taxRate = 0): {
 export async function createPaymentIntent(
   amount: number,
   currency = 'usd',
-  _metadata?: Record<string, string>,
+  metadata?: Record<string, string>,
 ): Promise<PaymentIntent> {
   if (USE_STRIPE && STRIPE_SECRET_KEY) {
-    // TODO: Implement real Stripe integration
-    // const stripe = await import('stripe');
-    // const stripeClient = new stripe.default(STRIPE_SECRET_KEY, {
-    //   apiVersion: '2023-10-16',
-    // });
-    //
-    // const paymentIntent = await stripeClient.paymentIntents.create({
-    //   amount,
-    //   currency,
-    //   metadata,
-    // });
-    //
-    // return {
-    //   id: paymentIntent.id,
-    //   amount: paymentIntent.amount,
-    //   currency: paymentIntent.currency,
-    //   status: paymentIntent.status,
-    //   clientSecret: paymentIntent.client_secret,
-    // };
+    const Stripe = (await import('stripe')).default;
+    const stripeClient = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: '2025-01-27.acacia' as any,
+    });
+
+    const paymentIntent = await stripeClient.paymentIntents.create({
+      amount,
+      currency,
+      metadata: metadata ?? {},
+    });
+
+    return {
+      id: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      status: paymentIntent.status as PaymentIntent['status'],
+      clientSecret: paymentIntent.client_secret ?? undefined,
+    };
   }
 
-  // Production guard: Prevent mock payment intents in production
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
-      '[Invoice Service] Stripe payment intent creation is not configured. ' +
-      'Set USE_STRIPE=true and STRIPE_SECRET_KEY in production environment. ' +
-      'Mock payment intents are only available in development.'
+      '[Invoice Service] USE_STRIPE=true and STRIPE_SECRET_KEY are required in production.'
     );
   }
 
-  // Mock payment intent - development only
-  logger.debug('[MOCK] Creating Stripe PaymentIntent', { amount, currency, metadata: _metadata });
-
+  logger.debug('[MOCK] Creating Stripe PaymentIntent', { amount, currency });
   return {
     id: `pi_mock_${Date.now()}`,
     amount,
@@ -118,32 +112,28 @@ export async function createPaymentIntent(
 
 export async function confirmPaymentIntent(paymentIntentId: string): Promise<PaymentIntent> {
   if (USE_STRIPE && STRIPE_SECRET_KEY) {
-    // TODO: Implement real Stripe confirmation
-    // const stripe = await import('stripe');
-    // const stripeClient = new stripe.default(STRIPE_SECRET_KEY, {
-    //   apiVersion: '2023-10-16',
-    // });
-    //
-    // const paymentIntent = await stripeClient.paymentIntents.confirm(paymentIntentId);
-    //
-    // return {
-    //   id: paymentIntent.id,
-    //   amount: paymentIntent.amount,
-    //   currency: paymentIntent.currency,
-    //   status: paymentIntent.status,
-    // };
+    const Stripe = (await import('stripe')).default;
+    const stripeClient = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: '2025-01-27.acacia' as any,
+    });
+
+    const paymentIntent = await stripeClient.paymentIntents.confirm(paymentIntentId);
+
+    return {
+      id: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      status: paymentIntent.status as PaymentIntent['status'],
+    };
   }
 
-  // Production guard: Prevent mock payment confirmations in production
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
-      '[Invoice Service] Stripe payment confirmation is not configured. ' +
-      'Set USE_STRIPE=true and STRIPE_SECRET_KEY in production environment. ' +
-      'Mock payment confirmations are only available in development.'
+      '[Invoice Service] USE_STRIPE=true and STRIPE_SECRET_KEY are required in production.'
     );
   }
 
-  // Mock confirmation - simulate success (development only)
+  logger.debug('[MOCK] Confirming Stripe PaymentIntent', { paymentIntentId });
   return {
     id: paymentIntentId,
     amount: 10000,
