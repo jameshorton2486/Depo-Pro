@@ -28,8 +28,10 @@ const EXTRACTION = {
 
 describe('IntakeUploadStep', () => {
   function setInputValue(input: HTMLInputElement, value: string) {
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-    setter?.call(input, value);
+    // Direct assignment works in jsdom — React synthetic events are not needed
+    // since we dispatch native input+change events below
+    input.setAttribute('value', value);
+    input.value = value;
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
@@ -44,7 +46,7 @@ describe('IntakeUploadStep', () => {
     expect(container.querySelector('[data-testid="intake-upload-dropzone"]')).not.toBeNull();
   });
 
-  it('shows extraction summary after successful parse', async () => {
+  it('shows extraction summary after successful parse via file upload', async () => {
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, extraction: EXTRACTION }),
@@ -56,19 +58,21 @@ describe('IntakeUploadStep', () => {
       root.render(<IntakeUploadStep onParsed={() => undefined} />);
     });
 
-    const importButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Import'));
-    const input = container.querySelector('input[id="google-doc-link"]') as HTMLInputElement;
+    // Use the file input (default "upload" tab) — Radix tabs don't switch in jsdom
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const testFile = new File(['test'], 'notice.pdf', { type: 'application/pdf' });
+    const fileList = { 0: testFile, length: 1, item: (i: number) => i === 0 ? testFile : null };
     await act(async () => {
-      setInputValue(input, 'https://docs.google.com/document/d/test/edit');
-      importButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      await Promise.resolve();
+      Object.defineProperty(fileInput, 'files', { value: fileList, writable: false });
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 10));
     });
 
     expect(container.querySelector('[data-testid="intake-upload-summary"]')).not.toBeNull();
     fetchMock.mockRestore();
   });
 
-  it('shows session selector when multiple sessions found', async () => {
+  it('shows session selector when multiple sessions found via file upload', async () => {
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, extraction: EXTRACTION }),
@@ -80,12 +84,13 @@ describe('IntakeUploadStep', () => {
       root.render(<IntakeUploadStep onParsed={() => undefined} />);
     });
 
-    const importButton = Array.from(container.querySelectorAll('button')).find((button) => button.textContent?.includes('Import'));
-    const input = container.querySelector('input[id="google-doc-link"]') as HTMLInputElement;
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const testFile = new File(['test'], 'notice.pdf', { type: 'application/pdf' });
+    const fileList = { 0: testFile, length: 1, item: (i: number) => i === 0 ? testFile : null };
     await act(async () => {
-      setInputValue(input, 'https://docs.google.com/document/d/test/edit');
-      importButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-      await Promise.resolve();
+      Object.defineProperty(fileInput, 'files', { value: fileList, writable: false });
+      fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 10));
     });
 
     expect(container.textContent).toContain('Which deposition session is this job for?');
