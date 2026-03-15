@@ -107,7 +107,7 @@ describe('Review Submit - POST /api/jobs/[id]/review/submit', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 409 when flagged words are still pending', async () => {
+  it('succeeds with warning when flagged words are still pending (no longer blocks)', async () => {
     getCurrentUserMock.mockResolvedValueOnce({ id: 'user-1', role: 'SCOPIST' });
     createSupabaseServerClientMock.mockResolvedValueOnce(
       createSubmitSupabase({ pendingCount: 5 })
@@ -119,10 +119,10 @@ describe('Review Submit - POST /api/jobs/[id]/review/submit', () => {
     });
     const res = await route.POST(req, { params: Promise.resolve({ id: 'job-1' }) });
 
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.code).toBe('PENDING_WORDS');
-    expect(json.pendingCount).toBe(5);
+    expect(json.success).toBe(true);
+    expect(json.unresolvedFlagCount).toBe(5);
   });
 
   it('succeeds when all words are reviewed', async () => {

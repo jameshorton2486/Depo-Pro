@@ -50,6 +50,7 @@ function createApiState() {
       id: 'job-1',
       created_by_id: 'reporter-1',
       reporter_id: 'reporter-1',
+      scopist_id: 'scopist-1',
       firm_id: 'firm-1',
     },
     profiles: [
