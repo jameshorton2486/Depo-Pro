@@ -356,6 +356,69 @@ export async function processTranscriptionJob(
 
     console.warn(`Pipeline complete for job ${jobId}`);
 
+    // Send "Ready for Proofing" notification — fire and forget
+    setImmediate(async () => {
+      try {
+        const { sendEmail, readyForProofingEmail } = await import('@/lib/email');
+        const notifyClient = createAdminClient();
+
+        const { data: notifyJob } = await notifyClient
+          .from('jobs')
+          .select(`
+            id, title, case_name, case_number, deposition_date,
+            reporter:profiles!jobs_reporter_id_fkey(id, full_name, email),
+            scopist:profiles!jobs_scopist_id_fkey(id, full_name, email)
+          `)
+          .eq('id', jobId)
+          .single();
+
+        if (!notifyJob) return;
+
+        const { data: notifyTranscription } = await notifyClient
+          .from('transcriptions')
+          .select('id')
+          .eq('job_id', jobId)
+          .single();
+
+        const { count: flaggedCount } = await notifyClient
+          .from('flagged_words')
+          .select('*', { count: 'exact', head: true })
+          .eq('transcription_id', notifyTranscription?.id || '')
+          .eq('status', 'PENDING');
+
+        const reporter = notifyJob.reporter as any;
+        const scopist = notifyJob.scopist as any;
+        const recipient = scopist?.email ? scopist : reporter;
+
+        if (!recipient?.email) {
+          console.warn(`[pipeline] No recipient email for ready-for-proofing notification, job ${jobId}`);
+          return;
+        }
+
+        const depositionDate = notifyJob.deposition_date
+          ? new Date(notifyJob.deposition_date).toLocaleDateString('en-US', {
+              month: 'long', day: 'numeric', year: 'numeric',
+            })
+          : 'Unknown date';
+
+        await sendEmail(readyForProofingEmail({
+          recipientName: recipient.full_name || recipient.email,
+          recipientEmail: recipient.email,
+          caseStyle: notifyJob.case_name || notifyJob.title || 'Unknown Case',
+          causeNumber: notifyJob.case_number || 'N/A',
+          deponentName: notifyJob.title?.replace('Deposition of ', '') || 'Unknown Deponent',
+          depositionDate,
+          jobId,
+          transcriptId: notifyTranscription?.id || '',
+          flaggedWordCount: flaggedCount ?? 0,
+        }));
+
+        console.warn(`[pipeline] Ready for proofing email sent to ${recipient.email} for job ${jobId}`);
+      } catch (notifyErr: any) {
+        console.error('[pipeline] Failed to send ready-for-proofing email:', notifyErr.message);
+      }
+    });
+
   } catch (error: any) {
     console.error(`Pipeline failed for job ${jobId}:`, error.message);
 
