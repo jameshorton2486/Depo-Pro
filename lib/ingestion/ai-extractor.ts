@@ -123,6 +123,7 @@ export async function extractDepositionData(
   try {
     const anthropic = getAnthropicClient();
     const truncated = truncateExtractionText(rawText);
+    console.warn(`[intake] AI extraction starting — file: ${fileName}, text length: ${truncated.length}`);
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 4096,
@@ -149,12 +150,14 @@ export async function extractDepositionData(
       });
     }
 
+    console.warn(`[intake] AI extraction complete — parsing response`);
     return parseExtractionResponse(text);
   } catch (error) {
+    console.error(`[intake] AI extraction failed for ${fileName}:`, error instanceof Error ? error.message : error);
     return normalizeExtraction({
       ...EMPTY_EXTRACTION,
       confidence: 0,
-      notes: error instanceof Error ? error.message : 'AI extraction failed',
+      notes: error instanceof Error ? error.message : 'AI extraction failed — please complete intake manually',
     });
   }
 }

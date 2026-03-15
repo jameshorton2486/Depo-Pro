@@ -195,6 +195,7 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
+    console.warn(`[intake] File received: ${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)}KB)`);
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json({ error: 'File exceeds 10MB limit' }, { status: 413 });
     }
@@ -209,7 +210,8 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
     });
 
     return NextResponse.json(result, { status: result.success ? 200 : 422 });
-  } catch {
+  } catch (err) {
+    console.error('[intake] Parse document route error:', err instanceof Error ? err.message : err);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
