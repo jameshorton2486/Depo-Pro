@@ -29,6 +29,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { isAdminRole } from '@/lib/admin';
+import { DeliverTranscriptButton } from '@/components/jobs/DeliverTranscriptButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,7 +73,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   const { data: transcription } = await supabase
     .from('transcriptions')
-    .select('segments, metadata, status')
+    .select('id, segments, metadata, status')
     .eq('job_id', id)
     .single();
 
@@ -278,6 +279,20 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           </p>
         </CardContent>
       </Card>
+
+      {/* Deliver Transcript — shown when ready for delivery */}
+      {(job.status === 'REVIEW_COMPLETE' || job.status === 'SCOPIST_COMPLETE') &&
+       canEdit && (
+        <div className="mt-6">
+          <DeliverTranscriptButton
+            jobId={job.id}
+            transcriptId={transcription?.id || ''}
+            orderingEmail={(job as any).ordering_email || ''}
+            orderingName={(job as any).ordering_attorney || 'Ordering Attorney'}
+            depositionLabel={`${job.deponent_name || job.title} (${job.case_number || 'No case number'})`}
+          />
+        </div>
+      )}
 
       {/* Assignments */}
       <AssignmentManagement
