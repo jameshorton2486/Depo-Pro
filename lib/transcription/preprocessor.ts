@@ -6,6 +6,7 @@
  * 1. normalizeAudioForTranscription() — Convert any audio/video to 16kHz mono WAV
  * 2. extractAndNormalizeFromVideo() — Extract + normalize audio from video files
  * 3. analyzeAudioQuality() — Probe audio metadata via ffprobe
+ * 4. scoreAudioQuality() — Score audio quality 0-100 with tier classification
  *
  * WHY NORMALIZE?
  * - Deepgram works best with consistent input: 16kHz, mono, WAV
@@ -34,6 +35,15 @@ export interface AudioAnalysisMetadata {
   codec: string;
 }
 
+/** Audio quality score result */
+export interface AudioQualityScore {
+  score: number;
+  tier: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'UNUSABLE';
+  issues: string[];
+  requiresManualReview: boolean;
+  metadata: AudioAnalysisMetadata;
+}
+
 /** Result of audio preprocessing */
 export interface PreprocessingResult {
   outputPath: string;
@@ -57,6 +67,16 @@ export interface NormalizationConfig {
   highpassFilter: boolean;
   /** Highpass cutoff frequency in Hz (default: 80) */
   highpassFrequency: number;
+  /** Enable RNN neural noise suppression (default: true) */
+  arnndn: boolean;
+  /** Enable FFT spectral denoising (default: true) */
+  afftdn: boolean;
+  /** FFT denoising strength — nr value (default: 0.15 maps to nr=15) */
+  afftdnStrength: number;
+  /** Enable dynamic range compression (default: true) */
+  compress: boolean;
+  /** Enable de-esser for harsh sibilance (default: false) */
+  deess: boolean;
 }
 
 /** Default normalization config optimized for Deepgram Nova-3 */
@@ -67,7 +87,95 @@ export const DEFAULT_NORMALIZATION_CONFIG: NormalizationConfig = {
   loudnorm: true,
   highpassFilter: true,
   highpassFrequency: 80,
+  arnndn: true,
+  afftdn: true,
+  afftdnStrength: 0.15,
+  compress: true,
+  deess: false,
 };
+
+/** Aggressive normalization for POOR quality audio */
+export const AGGRESSIVE_NORMALIZATION_CONFIG: NormalizationConfig = {
+  ...DEFAULT_NORMALIZATION_CONFIG,
+  highpassFrequency: 100,
+  afftdnStrength: 0.35,
+  deess: true,
+};
+
+// Phone codecs that indicate poor quality source
+const PHONE_CODECS = new Set(['gsm', 'amr_nb', 'amr_wb', 'g726', 'g711', 'g723']);
+
+/**
+ * Score audio quality from 0-100 with tier classification.
+ * Used to determine processing config and abort on UNUSABLE files.
+ */
+export async function scoreAudioQuality(filePath: string): Promise<AudioQualityScore> {
+  const metadata = await analyzeAudioQuality(filePath);
+
+  let score = 100;
+  const issues: string[] = [];
+
+  // No audio track — immediate UNUSABLE
+  if (!metadata.hasAudioTrack) {
+    return {
+      score: 0,
+      tier: 'UNUSABLE',
+      issues: ['No audio track detected — file may be video-only or corrupt'],
+      requiresManualReview: true,
+      metadata,
+    };
+  }
+
+  // Bitrate penalties
+  const bitrateKbps = metadata.bitrate / 1000;
+  if (bitrateKbps > 0 && bitrateKbps < 32) {
+    score -= 35;
+    issues.push(`Very low bitrate (${Math.round(bitrateKbps)}kbps) — likely phone voicemail quality`);
+  } else if (bitrateKbps > 0 && bitrateKbps < 64) {
+    score -= 20;
+    issues.push(`Low bitrate (${Math.round(bitrateKbps)}kbps) — quality may be reduced`);
+  } else if (bitrateKbps > 0 && bitrateKbps < 128) {
+    score -= 8;
+    issues.push(`Slightly low bitrate (${Math.round(bitrateKbps)}kbps)`);
+  }
+
+  // Sample rate penalties
+  if (metadata.sampleRate > 0 && metadata.sampleRate < 8000) {
+    score -= 40;
+    issues.push(`Very low sample rate (${metadata.sampleRate}Hz) — speech may be unintelligible`);
+  } else if (metadata.sampleRate > 0 && metadata.sampleRate < 16000) {
+    score -= 15;
+    issues.push(`Low sample rate (${metadata.sampleRate}Hz)`);
+  }
+
+  // Phone codec penalty
+  if (PHONE_CODECS.has(metadata.codec.toLowerCase())) {
+    score -= 30;
+    issues.push(`Phone codec detected (${metadata.codec}) — expect reduced accuracy`);
+  } else if (metadata.codec === 'unknown') {
+    score -= 10;
+    issues.push('Unknown audio codec — quality cannot be fully assessed');
+  }
+
+  // Clamp score
+  score = Math.max(0, Math.min(100, score));
+
+  // Determine tier
+  let tier: AudioQualityScore['tier'];
+  if (score >= 85) tier = 'EXCELLENT';
+  else if (score >= 70) tier = 'GOOD';
+  else if (score >= 50) tier = 'FAIR';
+  else if (score >= 25) tier = 'POOR';
+  else tier = 'UNUSABLE';
+
+  return {
+    score,
+    tier,
+    issues,
+    requiresManualReview: score < 40,
+    metadata,
+  };
+}
 
 /**
  * Analyze audio file quality using ffprobe.
@@ -113,14 +221,15 @@ export async function analyzeAudioQuality(filePath: string): Promise<AudioAnalys
 /**
  * Normalize audio for optimal Deepgram transcription.
  *
- * Converts any audio input to:
- * - 16kHz sample rate (optimal for speech recognition)
- * - Mono channel (removes stereo noise, consistent input)
- * - WAV format (uncompressed, no codec artifacts)
- * - Loudness normalized (consistent volume levels)
- * - High-pass filtered (removes sub-80Hz rumble)
+ * Filter chain (in order):
+ * 1. highpass — Remove sub-80Hz rumble, handling noise, AC hum
+ * 2. arnndn — RNN neural noise suppression ('cb' model)
+ * 3. afftdn — FFT spectral denoising for stationary noise
+ * 4. acompressor — Dynamic range compression for consistent speaker levels
+ * 5. [deess] — De-esser for harsh sibilance (aggressive config only)
+ * 6. loudnorm — EBU R128 loudness normalization
  *
- * This is the core accuracy improvement function.
+ * Output: 16kHz mono 16-bit PCM WAV
  */
 export async function normalizeAudioForTranscription(
   inputPath: string,
@@ -156,12 +265,33 @@ export async function normalizeAudioForTranscription(
     // Build audio filter chain
     const filters: string[] = [];
 
-    // High-pass filter to remove rumble/hum
+    // 1. High-pass filter to remove rumble/hum
     if (cfg.highpassFilter) {
       filters.push(`highpass=f=${cfg.highpassFrequency}`);
     }
 
-    // Loudness normalization (EBU R128 standard)
+    // 2. RNN neural noise suppression
+    if (cfg.arnndn) {
+      filters.push('arnndn=m=cb');
+    }
+
+    // 3. FFT spectral denoising
+    if (cfg.afftdn) {
+      const nr = Math.round(cfg.afftdnStrength * 100);
+      filters.push(`afftdn=nr=${nr}:nf=-25`);
+    }
+
+    // 4. Dynamic range compression
+    if (cfg.compress) {
+      filters.push('acompressor=threshold=-25dB:ratio=4:attack=5:release=50:makeup=2');
+    }
+
+    // 5. De-esser (aggressive config only)
+    if (cfg.deess) {
+      filters.push('anequalizer=c0 f=6000 w=3000 g=-6 t=0');
+    }
+
+    // 6. Loudness normalization (EBU R128 standard)
     if (cfg.loudnorm) {
       filters.push('loudnorm=I=-16:TP=-1.5:LRA=11');
     }
@@ -281,9 +411,11 @@ export function cleanupPreprocessedFile(filePath: string): void {
 
 export default {
   analyzeAudioQuality,
+  scoreAudioQuality,
   normalizeAudioForTranscription,
   extractAndNormalizeFromVideo,
   needsNormalization,
   cleanupPreprocessedFile,
   DEFAULT_NORMALIZATION_CONFIG,
+  AGGRESSIVE_NORMALIZATION_CONFIG,
 };
