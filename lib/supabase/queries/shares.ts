@@ -51,7 +51,7 @@ export async function getSharesForJob(jobId: string) {
     .from('transcript_shares')
     .select(`
       *,
-      attorney:profiles!transcript_shares_attorney_id_fkey(
+      attorney:profiles!transcript_shares_shared_with_fkey(
         id,
         full_name,
         email,
@@ -65,7 +65,7 @@ export async function getSharesForJob(jobId: string) {
     `)
     .eq('job_id', jobId)
     .is('revoked_at', null)
-    .order('shared_at', { ascending: false });
+    .order('created_at', { ascending: false });
 }
 
 /**
@@ -98,7 +98,7 @@ export async function getSharesForAttorney(
     );
   }
 
-  query = query.order('shared_at', { ascending: false });
+  query = query.order('created_at', { ascending: false });
 
   if (options?.limit) {
     query = query.limit(options.limit);
@@ -130,7 +130,7 @@ export async function getShareById(shareId: string) {
         case_number,
         deposition_date
       ),
-      attorney:profiles!transcript_shares_attorney_id_fkey(
+      attorney:profiles!transcript_shares_shared_with_fkey(
         id,
         full_name,
         email
