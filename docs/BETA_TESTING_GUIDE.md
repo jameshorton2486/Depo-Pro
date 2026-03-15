@@ -4,7 +4,7 @@ Welcome to the Depo-Pro beta program. Thank you for helping us test the platform
 before we launch to the wider legal community.
 
 **Your beta access:** https://depo-pro.com
-**Beta period:** [Start Date] — [End Date]
+**Beta period:** March 2026 — ongoing
 **Support contact:** info@depo-pro.com
 
 ---
@@ -23,20 +23,48 @@ immediately — this means your account needs to be configured.
 
 ## For Court Reporters
 
-### Uploading Audio and Starting Transcription
+### Creating a New Deposition (Intake Wizard)
 
-1. From your dashboard, click **New Job**
-2. Fill in the case name, deponent name, and deposition date
-3. Click **Upload Audio** and select your audio file
-   - Supported formats: MP3, WAV, M4A, MP4
+1. From your dashboard, click **New Deposition**
+2. **Step 1 — Upload Notice:** Upload the Notice of Deposition (NOD) PDF
+   - AI will extract case details, attorney names, and deponent info
+   - You can also skip this step and enter details manually
+3. **Step 2 — Review Details:** Verify the extracted data
+   - AI-filled fields are highlighted — correct anything that looks wrong
+   - Fill in any missing fields (location, Zoom link, etc.)
+4. **Step 3 — Confirm:** Review the summary and submit
+5. **Step 4 — Upload Recording:** Upload your audio or video file
+   - Supported formats: MP3, WAV, M4A, MP4, MOV
    - Maximum file size: 2 GB
-4. Click **Start Transcription**
-5. The status will show: Uploading → Processing → Complete
+   - You can skip this and upload later from the job page
+   - Drag and drop is supported
+
+### Starting Transcription
+
+1. Open the deposition from **My Depositions** or the **Active Depositions** panel
+2. If you haven't uploaded audio yet, use the file upload on the job page
+3. Click **Start Transcription**
+4. The status will show: Processing Audio → Transcribing → AI Formatting → Ready for Proofing
    - Short files (under 5 min): typically 1-2 minutes
    - Standard files (30-60 min): typically 5-10 minutes
    - Large files (2+ hours): up to 30 minutes
-6. When complete, you will see a notification in your dashboard
-7. Open the job and click **Review Transcript**
+5. You will receive an email when the transcript is ready for proofing
+6. An **Audio Quality** badge shows the recording quality score
+   - If quality is POOR or UNUSABLE, consider re-uploading a better recording
+
+### Active Depositions Panel
+
+Your reporter dashboard shows an **Active Depositions** panel grouped by cause
+number. This lets you see all depositions under a case at a glance and quickly
+navigate to any job without searching.
+
+### Delivering the Transcript
+
+1. After you or your scopist completes proofing and you certify the transcript
+2. Click **Deliver Transcript** on the job page
+3. Confirm the attorney's email address
+4. A secure 72-hour download link is sent to the ordering attorney
+5. The job status changes to **Delivered**
 
 ### Assigning a Scopist
 
