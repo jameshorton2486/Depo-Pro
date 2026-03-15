@@ -299,7 +299,7 @@ Commit: `fix: implement billing-rates settings page`
 **File:** `app/settings/integrations/page.tsx`
 
 Replace the StubPage with a read-only server component showing:
-- Current active integrations (Deepgram, Anthropic, Zoho Mail) — static display
+- Current active integrations (Deepgram, Anthropic, Resend) — static display
 - Future integrations roadmap (grayed out)
 - No new API routes or functionality
 
@@ -309,7 +309,7 @@ Replace the StubPage with a read-only server component showing:
 |-------------|--------|---------|
 | Deepgram Nova-3 | ✅ Active | Speech-to-text transcription |
 | Anthropic Claude | ✅ Active | Medical term extraction |
-| Zoho Mail | ✅ Active | Transactional email delivery |
+| Resend | ✅ Active | Transactional email delivery |
 
 **Roadmap (grayed out, "Coming Soon"):**
 - Zoom Live Transcription
