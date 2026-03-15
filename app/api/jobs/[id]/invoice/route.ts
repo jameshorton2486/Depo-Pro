@@ -194,7 +194,7 @@ const POSTHandler = async (
 export const POST = withRouteProtection(
   {
     requireAuth: true,
-    requireRole: [GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
+    requireRole: [GuardRole.SUPER_ADMIN, GuardRole.ADMIN, GuardRole.REPORTER, GuardRole.COURT_REPORTER],
     rateLimit: { limit: 10, windowMs: 60_000 },
   },
   async (request, { params }) => ((POSTHandler) as any)(request, { params: Promise.resolve(params as any) })
