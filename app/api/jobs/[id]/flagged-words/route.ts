@@ -271,6 +271,15 @@ const PATCHHandler = async (
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    // BUG-003 FIX: Explicit scopist assignment check for PATCH mutations.
+    // A SCOPIST must be the assigned scopist (jobs.scopist_id) to edit flagged words.
+    if (user.role === 'SCOPIST' && job.scopist_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Forbidden - you are not the assigned scopist for this job' },
+        { status: 403 },
+      );
+    }
+
     // Get transcription
     const { data: transcription, error: transcriptionError } = await supabase
       .from('transcriptions')
