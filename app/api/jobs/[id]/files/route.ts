@@ -16,7 +16,7 @@ import { isAdminRole } from '@/lib/admin';
 export const runtime = 'nodejs';
 export const maxDuration = 300;
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/msword',
@@ -25,8 +25,12 @@ const ALLOWED_TYPES = [
   'audio/mpeg',
   'audio/wav',
   'audio/x-wav',
+  'audio/x-m4a',
+  'audio/m4a',
+  'audio/mp4',
   'video/mp4',
   'video/quicktime',
+  'video/x-msvideo',
 ];
 
 // Helper function to map MIME type to FileType enum
@@ -85,7 +89,7 @@ const postHandler = async (request: NextRequest, { user, supabase, params }: Pro
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `File size exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit` },
+        { error: 'File size exceeds 2GB limit' },
         { status: 400 },
       );
     }
@@ -127,7 +131,7 @@ const postHandler = async (request: NextRequest, { user, supabase, params }: Pro
         .eq('id', jobId);
     }
 
-    return NextResponse.json({ file: uploadedFile }, { status: 200 });
+    return NextResponse.json({ success: true, file: uploadedFile }, { status: 200 });
   } catch (err) {
     logger.error('File upload error', err instanceof Error ? err : new Error(String(err)), { jobId: params.id });
     return NextResponse.json(
