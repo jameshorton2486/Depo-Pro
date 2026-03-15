@@ -49,6 +49,24 @@ export default async function ReporterDashboard() {
           .limit(5),
   ]);
 
+  // Fetch active depositions grouped by cause number for the directory
+  const { data: activeJobs } = await supabase
+    .from('jobs')
+    .select('id, title, case_name, case_number, deponent_name, deposition_date, status, updated_at')
+    .eq('created_by_id', currentUser.id)
+    .not('status', 'in', '("COMPLETED","CANCELLED","ARCHIVED")')
+    .order('case_number', { ascending: true })
+    .order('deposition_date', { ascending: true })
+    .limit(50);
+
+  // Group by case_number
+  const depositionsByCause = (activeJobs || []).reduce<Record<string, typeof activeJobs>>((acc, job) => {
+    const key = (job.case_number || job.case_name || 'No Case Number').trim();
+    if (!acc[key]) acc[key] = [];
+    acc[key]!.push(job);
+    return acc;
+  }, {});
+
   // Transform recentJobs to match expected format for component
   const recentJobs = currentUser.firmId
     ? recentJobsResult
@@ -131,6 +149,69 @@ export default async function ReporterDashboard() {
         />
       </div>
 
+      {/* Active Depositions Directory */}
+      {Object.keys(depositionsByCause).length > 0 && (
+        <div className="mb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Active Depositions</h2>
+            <Link href="/jobs" className="text-sm text-blue-600 hover:underline">
+              View all
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {Object.entries(depositionsByCause).map(([causeKey, jobs]) => (
+              <div key={causeKey} className="rounded-xl border bg-white dark:bg-slate-800 shadow-sm">
+                <div className="border-b bg-slate-50 dark:bg-slate-700/50 px-4 py-2 rounded-t-xl">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {causeKey}
+                  </p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {jobs?.[0]?.case_name || causeKey}
+                  </p>
+                </div>
+                <ul className="divide-y dark:divide-slate-700">
+                  {(jobs || []).map((job) => (
+                    <li key={job.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                          {job.deponent_name || job.title}
+                        </p>
+                        {job.deposition_date && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {new Date(job.deposition_date).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric'
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      <div className="ml-4 flex items-center gap-3 shrink-0">
+                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                          {job.status?.replace(/_/g, ' ') || 'Unknown'}
+                        </span>
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          className="text-xs text-blue-600 hover:underline font-medium"
+                        >
+                          Open →
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="border-t dark:border-slate-700 px-4 py-2 rounded-b-xl">
+                  <Link
+                    href="/jobs/new"
+                    className="text-xs text-slate-500 hover:text-blue-600 transition-colors"
+                  >
+                    + Add another deponent to this case
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Jobs */}
@@ -146,7 +227,7 @@ export default async function ReporterDashboard() {
           </h3>
           <div className="space-y-3">
             <Link
-              href="/transcription-tool"
+              href="/jobs/new"
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50
                 dark:hover:bg-slate-700/50 transition-colors border-2 border-indigo-200 dark:border-indigo-800"
             >
