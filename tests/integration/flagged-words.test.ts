@@ -29,7 +29,7 @@ function makeSupabaseForConflict() {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           single: vi.fn().mockResolvedValue({
-            data: { id: 'job-1', created_by_id: 'user-1', firm_id: 'firm-1' },
+            data: { id: 'job-1', created_by_id: 'user-1', scopist_id: 'user-1', firm_id: 'firm-1' },
             error: null,
           }),
         };
@@ -68,7 +68,7 @@ function makeSupabaseForHappyPath() {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           single: vi.fn().mockResolvedValue({
-            data: { id: 'job-1', created_by_id: 'user-1', firm_id: 'firm-1' },
+            data: { id: 'job-1', created_by_id: 'user-1', scopist_id: 'user-1', firm_id: 'firm-1' },
             error: null,
           }),
         };
@@ -217,6 +217,127 @@ describe('Flagged Words API', () => {
     expect(afterJson.flaggedWords).toHaveLength(1);
     expect(afterJson.flaggedWords[0].correctedTo).toBe('NAME');
     expect(afterJson.flaggedWords[0].isReviewed).toBe(true);
+  });
+
+  it('BUG-003: PATCH rejects scopist not assigned to the job', async () => {
+    // Simulate a job where scopist_id = 'assigned-scopist' but requesting user is 'other-scopist'
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'jobs') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: {
+                id: 'job-1',
+                created_by_id: 'reporter-1',
+                reporter_id: 'reporter-1',
+                scopist_id: 'assigned-scopist',
+                firm_id: 'firm-1',
+              },
+              error: null,
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }),
+    };
+
+    createSupabaseServerClientMock.mockResolvedValueOnce(supabase);
+    getCurrentUserMock.mockResolvedValueOnce({
+      id: 'other-scopist',
+      role: 'SCOPIST',
+      firmId: 'firm-1',
+    });
+
+    const route = await import('@/app/api/jobs/[id]/flagged-words/route');
+
+    const req = new NextRequest('http://localhost/api/jobs/job-1/flagged-words', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        wordId: 'tx-1-0',
+        correctedText: 'NAME',
+        expectedUpdatedAt: '2026-02-22T12:00:30.000Z',
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const res = await route.PATCH(req, { params: Promise.resolve({ id: 'job-1' }) });
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error).toContain('not assigned');
+  });
+
+  it('BUG-003: PATCH allows the assigned scopist', async () => {
+    // Same job but requesting user IS the assigned scopist
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'jobs') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: {
+                id: 'job-1',
+                created_by_id: 'reporter-1',
+                reporter_id: 'reporter-1',
+                scopist_id: 'assigned-scopist',
+                firm_id: 'firm-1',
+              },
+              error: null,
+            }),
+          };
+        }
+        if (table === 'transcriptions') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            update: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({
+              data: { id: 'tx-1', updated_at: '2026-02-22T12:00:30.000Z' },
+              error: null,
+            }),
+          };
+        }
+        if (table === 'transcription_edits') {
+          return {
+            upsert: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }),
+    };
+
+    createSupabaseServerClientMock.mockResolvedValueOnce(supabase);
+    isJobLockedByOtherMock.mockResolvedValueOnce(false);
+    getCurrentUserMock.mockResolvedValueOnce({
+      id: 'assigned-scopist',
+      role: 'SCOPIST',
+      firmId: 'firm-1',
+    });
+
+    const route = await import('@/app/api/jobs/[id]/flagged-words/route');
+
+    const req = new NextRequest('http://localhost/api/jobs/job-1/flagged-words', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        wordId: 'tx-1-0',
+        correctedText: 'NAME',
+        expectedUpdatedAt: '2026-02-22T12:00:30.000Z',
+      }),
+      headers: { 'content-type': 'application/json' },
+    });
+
+    const res = await route.PATCH(req, { params: Promise.resolve({ id: 'job-1' }) });
+    expect(res.status).toBe(200);
   });
 
   it('PATCH rejects unauthorized roles', async () => {
