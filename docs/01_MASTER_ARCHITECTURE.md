@@ -108,7 +108,7 @@ const user: SessionUser = await getCurrentUser();
 ### Supabase Key Format
 
 ```
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = YOUR_PUBLISHABLE_KEY_HERE
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = sb_publishable_*
 ```
 New format only. Legacy anon key format is rejected.
 
@@ -576,15 +576,15 @@ DEEPGRAM_API_KEY=
 DEEPGRAM_WEBHOOK_SECRET=
 
 # AI
-ANTHROPIC_API_KEY=YOUR_ANTHROPIC_KEY_HERE
+ANTHROPIC_API_KEY=sk-ant-*
 
 # Email (Resend — sole provider, Zoho fully removed)
-RESEND_API_KEY=YOUR_RESEND_KEY_HERE
+RESEND_API_KEY=re_*
 ADMIN_EMAIL=notifications@depo-pro.com
 
 # Billing (Phase 4 — currently USE_STRIPE=false)
-STRIPE_SECRET_KEY=YOUR_STRIPE_SECRET_KEY_HERE        # labeled "depo-pro secret key"
-STRIPE_WEBHOOK_SECRET=YOUR_STRIPE_WEBHOOK_SECRET_HERE      # webhook: https://depo-pro.com/api/webhooks/stripe
+STRIPE_SECRET_KEY=sk_live_*        # labeled "depo-pro secret key"
+STRIPE_WEBHOOK_SECRET=whsec_*      # webhook: https://depo-pro.com/api/webhooks/stripe
 USE_STRIPE=false
 
 # Queue (currently disabled at beta scale)
