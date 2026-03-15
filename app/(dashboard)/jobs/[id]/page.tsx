@@ -72,9 +72,15 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
 
   const { data: transcription } = await supabase
     .from('transcriptions')
-    .select('segments')
+    .select('segments, metadata, status')
     .eq('job_id', id)
     .single();
+
+  const audioQuality = transcription?.metadata as {
+    audio_quality_score?: number;
+    audio_quality_tier?: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'UNUSABLE';
+    audio_quality_issues?: string[];
+  } | null;
 
   const detectedSpeakers = Array.from(
     new Set(
@@ -185,6 +191,46 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Audio Quality Badge */}
+      {audioQuality?.audio_quality_tier && (
+        <div className={`mt-6 rounded-lg border p-4 ${
+          audioQuality.audio_quality_tier === 'EXCELLENT' ? 'border-emerald-200 bg-emerald-50' :
+          audioQuality.audio_quality_tier === 'GOOD'      ? 'border-green-200 bg-green-50' :
+          audioQuality.audio_quality_tier === 'FAIR'      ? 'border-yellow-200 bg-yellow-50' :
+          audioQuality.audio_quality_tier === 'POOR'      ? 'border-orange-200 bg-orange-50' :
+                                                            'border-red-200 bg-red-50'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span className={`text-sm font-semibold ${
+              audioQuality.audio_quality_tier === 'EXCELLENT' ? 'text-emerald-700' :
+              audioQuality.audio_quality_tier === 'GOOD'      ? 'text-green-700' :
+              audioQuality.audio_quality_tier === 'FAIR'      ? 'text-yellow-700' :
+              audioQuality.audio_quality_tier === 'POOR'      ? 'text-orange-700' :
+                                                                'text-red-700'
+            }`}>
+              Audio Quality: {audioQuality.audio_quality_tier}
+              {audioQuality.audio_quality_score !== undefined && (
+                <span className="ml-1 font-normal">
+                  ({audioQuality.audio_quality_score}/100)
+                </span>
+              )}
+            </span>
+          </div>
+          {audioQuality.audio_quality_issues && audioQuality.audio_quality_issues.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {audioQuality.audio_quality_issues.map((issue, i) => (
+                <li key={i} className="text-xs text-slate-600">• {issue}</li>
+              ))}
+            </ul>
+          )}
+          {(audioQuality.audio_quality_tier === 'POOR' || audioQuality.audio_quality_tier === 'UNUSABLE') && (
+            <p className="mt-2 text-xs text-slate-500">
+              Recommendation: Run <code className="font-mono bg-white px-1 rounded">scripts/audio/enhance.py</code> on this file before re-uploading.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* File Upload */}
       <FileUpload
