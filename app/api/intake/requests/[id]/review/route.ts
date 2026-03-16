@@ -81,18 +81,28 @@ const handler = async (request: NextRequest, { supabase, user, params }: Protect
     extractedData: transcriptRequest.extracted_data,
   };
 
-  const jobId = await createJobFromSubmission(supabase, payload, {
-    id: user.id,
-    role: 'ADMIN',
-    firm_id: user.firm_id,
-  }, requestId);
+  let jobId: string;
+  try {
+    jobId = await createJobFromSubmission(supabase, payload, {
+      id: user.id,
+      role: 'ADMIN',
+      firm_id: user.firm_id,
+    }, requestId);
 
-  await writeKeywords(
-    transcriptRequest.extracted_data?.transcription_keywords?.all_keywords ?? [],
-    user.firm_id,
-    jobId,
-    supabase,
-  );
+    await writeKeywords(
+      transcriptRequest.extracted_data?.transcription_keywords?.all_keywords ?? [],
+      user.firm_id,
+      jobId,
+      supabase,
+      user.id,
+    );
+  } catch (err) {
+    console.error('[review] Job creation from request failed:', err);
+    return NextResponse.json(
+      { error: 'Failed to create job from request' },
+      { status: 500 },
+    );
+  }
 
   const nextStatus = action === 'MODIFY_AND_APPROVE' && Object.keys(overrides).length
     ? 'MODIFIED_AND_APPROVED'

@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DepositionExtractionResult } from '@/lib/ingestion/types';
-import { isAdminRole } from '@/lib/admin';
 
 export interface IntakeSubmissionPayload {
   jobTitle: string;
@@ -38,35 +37,37 @@ export function mapAudioProcessingMode(
 
 export async function writeKeywords(
   keywords: string[],
-  firmId: string,
+  _firmId: string,
   jobId: string,
   supabase: SupabaseClient,
+  addedBy: string,
 ): Promise<void> {
-  if (!keywords.length) {
-    return;
-  }
+  try {
+    if (!keywords.length) return;
 
-  const unique = Array.from(new Set(keywords.map((term) => term.trim()).filter(Boolean)));
-  if (!unique.length) {
-    return;
-  }
+    const unique = Array.from(
+      new Set(keywords.map((term) => term.trim()).filter(Boolean)),
+    );
+    if (!unique.length) return;
 
-  const { error } = await supabase.from('vocabulary_terms').upsert(
-    unique.map((term) => ({
-      firm_id: firmId,
-      job_id: jobId,
-      term,
-      source: 'document_ingestion',
-      boost_factor: 1.5,
-    })),
-    {
-      onConflict: 'firm_id,term',
-      ignoreDuplicates: false,
-    },
-  );
+    const { error } = await supabase.from('custom_vocabularies').insert(
+      unique.map((term) => ({
+        job_id: jobId,
+        term,
+        boost: 1.5,
+        category: 'intake',
+        added_by: addedBy,
+      })),
+    );
 
-  if (error) {
-    throw new Error(`Failed to write keywords: ${error.message}`);
+    if (error) {
+      console.error('[writeKeywords] non-fatal insert error:', error.message);
+    }
+  } catch (err) {
+    console.error(
+      '[writeKeywords] non-fatal exception:',
+      err instanceof Error ? err.message : err,
+    );
   }
 }
 
@@ -90,10 +91,10 @@ export async function createJobFromSubmission(
       firm_id: user.firm_id,
       created_by_id: user.id,
       created_by_role: user.role,
-      reporter_id: isAdminRole(user.role) ? null : user.id,
+      reporter_id: user.id,
       notes: payload.notes ?? null,
       audio_processing_mode: mapAudioProcessingMode(payload.audioProcessing),
-      status: 'CREATED',
+      status: 'DRAFT',
       source_request_id: sourceRequestId ?? null,
       intake_document_id: payload.documentId ?? null,
     })
@@ -101,6 +102,12 @@ export async function createJobFromSubmission(
     .single();
 
   if (error || !data?.id) {
+    console.error('[createJobFromSubmission] Supabase insert failed:', {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    });
     throw new Error(error?.message ?? 'Failed to create job');
   }
 

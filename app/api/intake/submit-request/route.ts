@@ -12,8 +12,23 @@ const handler = async (request: NextRequest, { supabase, user }: ProtectedContex
   }
 
   if (DIRECT_CREATE_ROLES.has(user.role)) {
-    const jobId = await createJobFromSubmission(supabase, payload, user);
-    await writeKeywords(payload.extractedData?.transcription_keywords.all_keywords ?? [], user.firm_id, jobId, supabase);
+    let jobId: string;
+    try {
+      jobId = await createJobFromSubmission(supabase, payload, user);
+    } catch (jobError) {
+      const message = jobError instanceof Error ? jobError.message : 'Failed to create job';
+      console.error('[submit-request] Job creation failed:', message);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+
+    // Keywords are non-critical — writeKeywords catches its own errors internally
+    await writeKeywords(
+      payload.extractedData?.transcription_keywords?.all_keywords ?? [],
+      user.firm_id,
+      jobId,
+      supabase,
+      user.id,
+    );
 
     return NextResponse.json({
       success: true,
