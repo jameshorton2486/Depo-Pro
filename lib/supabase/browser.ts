@@ -46,7 +46,16 @@ export function getSupabaseBrowserClient(): SupabaseClient {
   }
 
   const { url, key } = validatePublishableKey();
-  browserClientInstance = createBrowserClient(url, key);
+  browserClientInstance = createBrowserClient(url, key, {
+    cookieOptions: {
+      // Security hardening: session cookie only (cleared when browser closes)
+      // so users are not silently kept signed in across OS/browser restarts.
+      lifetime: 0,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    },
+  });
   return browserClientInstance;
 }
 
