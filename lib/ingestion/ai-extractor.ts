@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { EMPTY_EXTRACTION, normalizeExtraction, type DepositionExtractionResult } from './types';
 
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-3-haiku-20240307';
 const MAX_TEXT_LENGTH = 15000;
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a legal document parser for a court reporting platform.
@@ -84,6 +84,7 @@ You MUST return JSON matching this EXACT schema:
 
 function getAnthropicClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  console.warn('[intake-debug] key prefix:', apiKey?.slice(0, 15), 'length:', apiKey?.length);
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY environment variable is not set');
   }
