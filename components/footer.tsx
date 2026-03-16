@@ -133,7 +133,7 @@ export function PublicFooter() {
             <SocialLink href="https://linkedin.com/company/depopro" aria-label="LinkedIn">
               <LinkedInIcon className="w-5 h-5" />
             </SocialLink>
-            <SocialLink href="https://github.com/depopro" aria-label="GitHub">
+            <SocialLink href="https://github.com/jameshorton2486/depo-pro" aria-label="GitHub">
               <GitHubIcon className="w-5 h-5" />
             </SocialLink>
           </div>
