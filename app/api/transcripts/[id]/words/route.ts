@@ -340,20 +340,9 @@ const PATCHHandler = async (
 
       await updateJobStatus(supabase, transcription.job.id, newStatus);
 
-      // Update assignment if scopist
+      // Scopist assignment is tracked via jobs.scopist_id — no separate table to update
       if (isAssignedScopist) {
-        const { error: assignmentError } = await supabase
-          .from('job_assignments')
-          .update({
-            status: 'SUBMITTED',
-            submitted_at: new Date().toISOString(),
-          })
-          .eq('job_id', transcription.job.id)
-          .eq('scopist_id', user.id);
-
-        if (assignmentError) {
-          console.error('Error updating assignment:', assignmentError);
-        }
+        // Job status already updated above; scopist_id remains on the job
       }
     }
 

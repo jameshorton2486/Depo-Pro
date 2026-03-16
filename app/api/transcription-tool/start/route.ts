@@ -129,16 +129,16 @@ const POSTHandler = async (request: NextRequest) => {
         return NextResponse.json({ error: 'Job not found' }, { status: 404 });
       }
 
-      // Scopists can only attach to jobs assigned to them
+      // Scopists can only attach to jobs assigned to them (via jobs.scopist_id)
       if (user.role === 'SCOPIST') {
-        const { data: assignment } = await supabase
-          .from('job_assignments')
+        const { data: assignedJob } = await supabase
+          .from('jobs')
           .select('id')
-          .eq('job_id', jobId)
+          .eq('id', jobId)
           .eq('scopist_id', user.id)
           .single();
 
-        if (!assignment) {
+        if (!assignedJob) {
           return NextResponse.json(
             { error: 'You can only attach to jobs assigned to you' },
             { status: 403 },

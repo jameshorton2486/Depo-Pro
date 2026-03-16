@@ -36,33 +36,37 @@ export default async function ScopistDashboard() {
   const supabase = await createSupabaseServerClient();
   const startOfMonthDate = startOfMonth(new Date()).toISOString();
 
-  // Get assignments for this scopist
-  const { data: assignments } = await supabase
-    .from('job_assignments')
-    .select('job_id, status, submitted_at')
+  // Get jobs assigned to this scopist via jobs.scopist_id (not job_assignments table — it doesn't exist)
+  const { data: scopistJobs } = await supabase
+    .from('jobs')
+    .select('id, status, updated_at')
     .eq('scopist_id', currentUser.id);
 
-  const assignmentJobIds = assignments?.map(a => a.job_id) || [];
+  const assignmentJobIds = scopistJobs?.map(j => j.id) || [];
 
-  // Active jobs (assigned to me, not completed)
-  const activeJobsCount = assignments?.filter(a => a.status !== 'SUBMITTED').length || 0;
+  // Active jobs (assigned to me, not completed/cancelled)
+  const activeJobsCount = scopistJobs?.filter(j =>
+    j.status !== 'COMPLETED' && j.status !== 'CANCELLED' && j.status !== 'ARCHIVED'
+  ).length || 0;
 
-  // Pending review (AI complete, assigned to me)
+  // Pending review (ready for proofing)
   const { count: pendingReviewCount } = await supabase
     .from('jobs')
     .select('id', { count: 'exact', head: true })
-    .in('id', assignmentJobIds)
+    .eq('scopist_id', currentUser.id)
     .in('status', ['READY_FOR_EDIT', 'ASSIGNED']);
 
   // Completed this month
-  const completedThisMonthCount = assignments?.filter(a =>
-    a.status === 'SUBMITTED' &&
-    a.submitted_at &&
-    new Date(a.submitted_at) >= new Date(startOfMonthDate)
+  const completedThisMonthCount = scopistJobs?.filter(j =>
+    (j.status === 'COMPLETED' || j.status === 'SCOPIST_COMPLETE' || j.status === 'SUBMITTED_FOR_REVIEW') &&
+    j.updated_at &&
+    new Date(j.updated_at) >= new Date(startOfMonthDate)
   ).length || 0;
 
   // Total completed
-  const totalCompletedCount = assignments?.filter(a => a.status === 'SUBMITTED').length || 0;
+  const totalCompletedCount = scopistJobs?.filter(j =>
+    j.status === 'COMPLETED' || j.status === 'SCOPIST_COMPLETE' || j.status === 'SUBMITTED_FOR_REVIEW'
+  ).length || 0;
 
   // Assigned jobs with details
   // Get jobs first, then fetch related data separately (Supabase doesn't support complex nested filters)
@@ -86,13 +90,8 @@ export default async function ScopistDashboard() {
             .select('id, job_id, flagged_segments, flagged_word_count')
             .in('job_id', assignedJobIdsForTranscripts)
         : Promise.resolve({ data: [] }),
-      assignedJobIdsForTranscripts.length > 0
-        ? supabase
-            .from('job_assignments')
-            .select('job_id, status')
-            .in('job_id', assignedJobIdsForTranscripts)
-            .eq('scopist_id', currentUser.id)
-        : Promise.resolve({ data: [] }),
+      // Scopist assignment data comes from jobs.scopist_id, not job_assignments table
+      Promise.resolve({ data: assignedJobIdsForTranscripts.map(id => ({ job_id: id, status: 'ASSIGNED' })) }),
     ]);
 
     // Combine data
