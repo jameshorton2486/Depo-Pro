@@ -17,8 +17,8 @@ interface UploadedFile {
   size: number;
   type: string;
   status: 'uploading' | 'done' | 'error';
+  progress: number; // 0-100
   error?: string;
-  fileId?: string;
 }
 
 const ACCEPTED_AUDIO = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/x-m4a', 'audio/m4a', 'audio/mp4'];
@@ -32,10 +32,47 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+function xhrUpload(
+  url: string,
+  token: string,
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('Content-Type', file.type);
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Upload failed (${xhr.status})`));
+      }
+    });
+
+    xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+    xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+    xhr.send(file);
+  });
+}
+
 export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeAudioStepProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const updateFile = useCallback((name: string, patch: Partial<UploadedFile>) => {
+    setFiles(prev => prev.map(f => (f.name === name && f.status === 'uploading') ? { ...f, ...patch } : f));
+  }, []);
 
   const uploadFile = useCallback(async (file: File) => {
     const entry: UploadedFile = {
@@ -43,32 +80,47 @@ export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeA
       size: file.size,
       type: file.type,
       status: 'uploading',
+      progress: 0,
     };
-
     setFiles(prev => [...prev, entry]);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('fileType', file.type.startsWith('audio/') ? 'AUDIO' : 'VIDEO');
-
-      const res = await fetch(`/api/jobs/${jobId}/files`, {
+      // Step 1: Get signed upload URL
+      const urlRes = await fetch(`/api/jobs/${jobId}/upload-url`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok) throw new Error(urlData.error || 'Failed to get upload URL');
+
+      const { signedUrl, token, storagePath } = urlData;
+
+      // Step 2: Upload directly to Supabase via XHR (for progress)
+      await xhrUpload(signedUrl, token, file, (pct) => {
+        updateFile(file.name, { progress: pct });
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Upload failed');
-      }
+      // Step 3: Notify server that upload is complete
+      const completeRes = await fetch(`/api/jobs/${jobId}/upload-complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storagePath,
+          filename: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+        }),
+      });
+      const completeData = await completeRes.json();
+      if (!completeRes.ok) throw new Error(completeData.error || 'Failed to register upload');
 
       setFiles(prev =>
         prev.map(f =>
           f.name === file.name && f.status === 'uploading'
-            ? { ...f, status: 'done', fileId: data.file?.id }
+            ? { ...f, status: 'done', progress: 100 }
             : f
-        )
+        ),
       );
     } catch (err: any) {
       setFiles(prev =>
@@ -76,10 +128,10 @@ export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeA
           f.name === file.name && f.status === 'uploading'
             ? { ...f, status: 'error', error: err.message }
             : f
-        )
+        ),
       );
     }
-  }, [jobId]);
+  }, [jobId, updateFile]);
 
   const handleFiles = useCallback((incoming: FileList | null) => {
     if (!incoming) return;
@@ -88,14 +140,14 @@ export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeA
       if (!ACCEPTED_ALL.includes(file.type)) {
         setFiles(prev => [
           ...prev,
-          { name: file.name, size: file.size, type: file.type, status: 'error', error: 'Unsupported format. Use MP3, WAV, M4A, MP4, or MOV.' },
+          { name: file.name, size: file.size, type: file.type, status: 'error' as const, progress: 0, error: 'Unsupported format. Use MP3, WAV, M4A, MP4, or MOV.' },
         ]);
         return;
       }
       if (file.size > MAX_SIZE_BYTES) {
         setFiles(prev => [
           ...prev,
-          { name: file.name, size: file.size, type: file.type, status: 'error', error: `File too large (${formatBytes(file.size)}). Max 2GB.` },
+          { name: file.name, size: file.size, type: file.type, status: 'error' as const, progress: 0, error: `File too large (${formatBytes(file.size)}). Max 2GB.` },
         ]);
         return;
       }
@@ -160,24 +212,38 @@ export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeA
             {files.map((f, i) => {
               const Icon = ACCEPTED_VIDEO.includes(f.type) ? FileVideo : FileAudio;
               return (
-                <li key={`${f.name}-${i}`} className="flex items-center gap-3 rounded-lg border bg-white px-4 py-3">
-                  <Icon className="h-5 w-5 shrink-0 text-slate-400" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800">{f.name}</p>
-                    <p className="text-xs text-slate-500">{formatBytes(f.size)}</p>
-                    {f.error && <p className="text-xs text-red-600">{f.error}</p>}
+                <li key={`${f.name}-${i}`} className="rounded-lg border bg-white px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-5 w-5 shrink-0 text-slate-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800">{f.name}</p>
+                      <p className="text-xs text-slate-500">{formatBytes(f.size)}</p>
+                      {f.error && <p className="text-xs text-red-600">{f.error}</p>}
+                    </div>
+                    {f.status === 'uploading' && (
+                      <span className="text-xs font-medium text-blue-600">{f.progress}%</span>
+                    )}
+                    {f.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                    {f.status === 'done' && <CheckCircle className="h-4 w-4 text-emerald-500" />}
+                    {f.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                    {f.status !== 'uploading' && (
+                      <button
+                        type="button"
+                        onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
-                  {f.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                  {f.status === 'done' && <CheckCircle className="h-4 w-4 text-emerald-500" />}
-                  {f.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
-                  {f.status !== 'uploading' && (
-                    <button
-                      type="button"
-                      onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+                  {/* Progress bar */}
+                  {f.status === 'uploading' && (
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                        style={{ width: `${f.progress}%` }}
+                      />
+                    </div>
                   )}
                 </li>
               );

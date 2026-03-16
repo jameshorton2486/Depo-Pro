@@ -54,8 +54,14 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
         headers: body instanceof FormData ? undefined : { 'Content-Type': 'application/json' },
       });
       const data = await response.json();
-      if (!response.ok || !data.success || !data.extraction) {
-        throw new Error(data.error || 'Document parsing failed');
+
+      if (!response.ok) {
+        const msg = data?.error || (typeof data === 'object' ? JSON.stringify(data) : String(data)) || 'Server error';
+        throw new Error(msg);
+      }
+
+      if (!data.success || !data.extraction) {
+        throw new Error(data?.error || 'Document parsing failed');
       }
       setExtraction(data.extraction);
       setSelectedSessionIndex(0);
@@ -123,6 +129,7 @@ export function IntakeUploadStep({ onParsed, onSkip }: IntakeUploadStepProps) {
                 <input
                   ref={fileInputRef}
                   type="file"
+                  suppressHydrationWarning
                   className="hidden"
                   accept=".doc,.docx,.pdf,.txt,.rtf"
                   onChange={async (event) => {
