@@ -130,21 +130,30 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           <p className="text-lg text-muted-foreground">{job.case_name}</p>
         </div>
 
-        {canEdit && (
-          <div className="flex gap-2">
-            <Link href={`/jobs/${job.id}/edit`}>
-              <Button variant="outline">
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
+        <div className="flex gap-2">
+          {['READY_FOR_PROOFING', 'READY_FOR_EDIT', 'IN_PROOFING', 'IN_EDIT', 'COMPLETE', 'COMPLETED'].includes(job.status) && (
+            <Link href={`/jobs/${job.id}/review`}>
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+                Review Transcript
               </Button>
             </Link>
-            <DeleteJobButton
-              jobId={job.id}
-              jobTitle={job.title || job.case_name || 'Untitled Job'}
-              variant="button"
-            />
-          </div>
-        )}
+          )}
+          {canEdit && (
+            <>
+              <Link href={`/jobs/${job.id}/edit`}>
+                <Button variant="outline">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </Link>
+              <DeleteJobButton
+                jobId={job.id}
+                jobTitle={job.title || job.case_name || 'Untitled Job'}
+                variant="button"
+              />
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -189,7 +198,12 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
               <p className="text-sm text-muted-foreground">Created By</p>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{job.createdBy?.full_name ?? 'Unknown'}</p>
+                <p className="font-medium">
+                  {job.createdBy?.full_name ??
+                    (job as any).reporter?.full_name ??
+                    (job as any).createdBy?.email ??
+                    'Unknown'}
+                </p>
               </div>
             </div>
             {job.zoomLink && (
@@ -249,7 +263,24 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         jobId={job.id}
         jobTitle={(job as any).title ?? 'This Deposition'}
         audioFileUrl={(job as any).audio_file_url ?? null}
+        audioFileName={
+          (jobFiles || []).find((f: any) =>
+            f.type === 'AUDIO' || f.mime_type?.startsWith('audio/') || f.mime_type?.startsWith('video/')
+          )?.file_name ?? null
+        }
       />
+
+      {/* Review Transcript — when transcription exists */}
+      {transcription?.id && (
+        <div className="mt-4">
+          <Link href={`/jobs/${job.id}/review`}>
+            <Button>
+              <FileText className="mr-2 h-4 w-4" />
+              Review Transcript
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Start Transcription — when audio exists and not already transcribing */}
       {canEdit &&
