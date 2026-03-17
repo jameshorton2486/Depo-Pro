@@ -10,7 +10,7 @@ export function createMiddlewareClient(request: NextRequest) {
     {
       cookieOptions: {
         // Keep auth session scoped to current browser session.
-        lifetime: 0,
+        maxAge: 0,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
         path: '/',

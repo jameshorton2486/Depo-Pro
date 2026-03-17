@@ -31,7 +31,7 @@ async function checkReporterJobAccess(reporterId: string, jobId: string): Promis
 }
 
 async function canViewNotes(user: { id: string; role: string }, job: any, assignments: any[]): Promise<boolean> {
-  if (user.role === UserRole.ADMIN) return true;
+  if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN) return true;
   if (user.role === UserRole.REPORTER && job.created_by_id === user.id) return true;
   if (user.role === UserRole.REPORTER) return await checkReporterJobAccess(user.id, job.id);
   if (user.role === UserRole.SCOPIST) {
@@ -47,9 +47,9 @@ const getHandler = async (request: NextRequest, { user, supabase, params }: Prot
     const { searchParams } = new URL(request.url);
     const typeFilter = searchParams.get('type');
 
-    // Only REPORTER and SCOPIST can read notes
+    // ADMIN, SUPER_ADMIN, REPORTER, and SCOPIST can read notes
     // Attorneys are explicitly blocked
-    if (!requireAnyRole(user.role as UserRole, [UserRole.REPORTER, UserRole.SCOPIST])) {
+    if (!requireAnyRole(user.role as UserRole, [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.REPORTER, UserRole.SCOPIST])) {
       return error('FORBIDDEN', 'Attorneys cannot access deposition notes', 403);
     }
 
@@ -136,7 +136,7 @@ const postHandler = async (req: NextRequest, { user, supabase, params }: Protect
 
     // Only reporters can create notes (role already checked by withRouteProtection,
     // but we do a stricter check here)
-    if (user.role !== UserRole.REPORTER && user.role !== UserRole.ADMIN) {
+    if (user.role !== UserRole.REPORTER && user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN) {
       return error('FORBIDDEN', 'You do not have permission to create notes', 403);
     }
 
@@ -209,11 +209,11 @@ const postHandler = async (req: NextRequest, { user, supabase, params }: Protect
 };
 
 export const GET = withRouteProtection(
-  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.REPORTER, UserRole.SCOPIST], requireFirm: true },
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.REPORTER, UserRole.SCOPIST], requireFirm: true },
   getHandler,
 );
 
 export const POST = withRouteProtection(
-  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.REPORTER], requireFirm: true },
+  { requireAuth: true, requireRole: [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.REPORTER], requireFirm: true },
   postHandler,
 );

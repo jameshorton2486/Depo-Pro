@@ -50,7 +50,7 @@ export function getSupabaseBrowserClient(): SupabaseClient {
     cookieOptions: {
       // Security hardening: session cookie only (cleared when browser closes)
       // so users are not silently kept signed in across OS/browser restarts.
-      lifetime: 0,
+      maxAge: 0,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
