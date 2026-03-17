@@ -36,7 +36,7 @@ export async function userHasJobAccess(
   // SUPER_ADMIN bypass
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, firm_id')
     .eq('id', userId)
     .single();
 
@@ -50,6 +50,11 @@ export async function userHasJobAccess(
     job.scopist_id === userId ||
     job.created_by_id === userId
   ) {
+    return true;
+  }
+
+  // Firm-based access (Depo-Pro uses firm_id)
+  if (job.firm_id && profile?.firm_id === job.firm_id) {
     return true;
   }
 

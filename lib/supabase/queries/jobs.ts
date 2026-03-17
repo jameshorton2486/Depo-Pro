@@ -136,17 +136,17 @@ export async function getJobById(
     .from('jobs')
     .select(`
       *,
+      createdBy:profiles!jobs_created_by_id_fkey(id, full_name, email),
       reporter:profiles!jobs_reporter_id_fkey(id, full_name, email),
       scopist:profiles!jobs_scopist_id_fkey(id, full_name, email),
       firm:firms(id, name),
       transcription:transcriptions(
         id,
         status,
-        progress,
-        word_count,
-        duration_seconds,
+        total_word_count,
+        audio_duration_seconds,
         created_at,
-        completed_at
+        updated_at
       )
     `)
     .eq('id', jobId)
@@ -509,14 +509,45 @@ export async function deleteJobAssignment(
 }
 
 /**
- * Get job for access check (wrapper around getJobById)
+ * Get job for access check — uses minimal query (no transcription join)
+ * to avoid 404 for jobs without transcription records.
  */
 export async function getJobForAccessCheck(
   supabaseOrId: any,
   _maybeId?: string,
   options?: Record<string, unknown>
 ): Promise<any> {
-  return getJobById(supabaseOrId, _maybeId, options);
+  const isOldPattern = typeof supabaseOrId === 'object' && supabaseOrId.from;
+  let supabase: any;
+  let jobId: string;
+  if (isOldPattern) {
+    supabase = supabaseOrId;
+    jobId = _maybeId as string;
+  } else {
+    supabase = await createClient();
+    jobId = supabaseOrId as string;
+  }
+  const result = await supabase
+    .from('jobs')
+    .select('id, firm_id, org_id, reporter_id, scopist_id, created_by_id')
+    .eq('id', jobId)
+    .is('deleted_at', null)
+    .single();
+  const job = result.data;
+  const verifyUserId = options?.verifyAccessForUserId as string | undefined;
+  if (verifyUserId && job && !result.error) {
+    const hasAccess = await userHasJobAccess(supabase, verifyUserId, {
+      firm_id: job.firm_id,
+      org_id: job.org_id,
+      reporter_id: job.reporter_id,
+      scopist_id: job.scopist_id,
+      created_by_id: job.created_by_id,
+    });
+    if (!hasAccess) {
+      return isOldPattern ? null : { data: null, error: { message: 'Access denied', code: 'PGRST116' } };
+    }
+  }
+  return isOldPattern ? result.data : result;
 }
 
 /**

@@ -234,18 +234,18 @@ const PATCHHandler = async (
       }
     }
 
-    // Get all words for context extraction
+    // Get all words for context extraction (prioritize words — canonical Deepgram output)
     let allWords: any[] = [];
     try {
-      if (transcription.segments) {
-        const segments = Array.isArray(transcription.segments)
-          ? transcription.segments
-          : JSON.parse(transcription.segments as string || '[]');
-        allWords = segments.flatMap((u: any) => u.words || []);
-      } else if (transcription.words) {
+      if (transcription.words) {
         allWords = Array.isArray(transcription.words)
           ? transcription.words
-          : JSON.parse(transcription.words as string || '[]');
+          : (typeof transcription.words === 'string' ? JSON.parse(transcription.words || '[]') : []);
+      } else if (transcription.segments) {
+        const segments = Array.isArray(transcription.segments)
+          ? transcription.segments
+          : JSON.parse((transcription.segments as string) || '[]');
+        allWords = segments.flatMap((s: any) => s.words || []);
       }
     } catch (error) {
       console.error('Error parsing words:', error);
