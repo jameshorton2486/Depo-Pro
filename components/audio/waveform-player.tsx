@@ -36,6 +36,7 @@ export const WaveformPlayer = forwardRef<WaveformPlayerRef, WaveformPlayerProps>
   useEffect(() => {
     if (!containerRef.current || !audioUrl) return;
 
+    let mounted = true;
     setIsLoading(true);
     setIsReady(false);
 
@@ -58,12 +59,11 @@ export const WaveformPlayer = forwardRef<WaveformPlayerRef, WaveformPlayerProps>
     ws.load(audioUrl);
 
     ws.on('ready', () => {
+      if (!mounted) return;
       setDuration(ws.getDuration());
       setIsReady(true);
       setIsLoading(false);
       onReady?.(ws.getDuration());
-      
-      // Seek to initial time if provided
       if (initialTime > 0) {
         ws.seekTo(initialTime / ws.getDuration());
       }
@@ -85,7 +85,9 @@ export const WaveformPlayer = forwardRef<WaveformPlayerRef, WaveformPlayerProps>
     ws.on('pause', () => setIsPlaying(false));
     ws.on('finish', () => setIsPlaying(false));
 
-    ws.on('error', (err) => {
+    ws.on('error', (err: unknown) => {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      if (!mounted) return;
       console.error('WaveSurfer error:', err);
       setIsLoading(false);
     });
@@ -93,7 +95,12 @@ export const WaveformPlayer = forwardRef<WaveformPlayerRef, WaveformPlayerProps>
     wavesurferRef.current = ws;
 
     return () => {
-      ws.destroy();
+      mounted = false;
+      try {
+        ws.destroy();
+      } catch (e) {
+        if (e instanceof Error && e.name !== 'AbortError') console.error('WaveSurfer destroy:', e);
+      }
     };
   }, [audioUrl, initialTime, onReady, onTimeUpdate]);
 

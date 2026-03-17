@@ -51,16 +51,11 @@ export function ConfidenceWord({
   // Get confidence class based on heatmap setting
   const getConfidenceClass = () => {
     if (!showHeatmap) {
-      // Heatmap disabled - minimal styling
       return 'text-slate-200';
     }
 
-    // If not flagged by impact-aware threshold, no highlighting
-    if (!isFlaggedByImpact) {
-      return 'text-slate-200';
-    }
-
-    // Heatmap enabled - color by severity
+    // Heatmap enabled - color by severity for impact-flagged, or by raw confidence for others
+    if (isFlaggedByImpact) {
     switch (severity) {
       case 'critical':
         // Critical: major confidence deficit - RED background + underline
@@ -72,11 +67,18 @@ export function ConfidenceWord({
         // Medium: moderate deficit - YELLOW background
         return 'bg-yellow-500/20 text-yellow-100';
       case 'low':
-        // Low: minor deficit - BLUE background
         return 'bg-blue-500/15 text-blue-100';
       default:
         return 'text-slate-200';
     }
+    }
+
+    // Heatmap ON but not impact-flagged: color by raw confidence
+    if (confidence >= 0.95) return 'text-emerald-300';
+    if (confidence >= 0.85) return 'text-slate-200';
+    if (confidence >= 0.75) return 'text-yellow-300';
+    if (confidence >= 0.6) return 'text-amber-400';
+    return 'text-red-300';
   };
 
   const confidencePercentage = Math.round(confidence * 100);
