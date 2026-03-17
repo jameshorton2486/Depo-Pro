@@ -18,7 +18,6 @@ import {
   getJobWithAssignments,
   updateJob,
   updateJobStatus,
-  deleteJob,
 } from '@/lib/supabase/queries/jobs';
 
 // Simple request logging wrapper (replaces withRequestLogging)
@@ -249,11 +248,14 @@ const PATCHHandler = withRequestLogging(async (
 
     // Validate status enum
     const validStatuses: JobStatus[] = [
+      'DRAFT',
       'CREATED',
+      'PENDING',
       'FILES_UPLOADED',
       'ENHANCING_AUDIO',
       'TRANSCRIBING',
       'AI_REVIEWING',
+      'AI_COMPLETE',
       'READY_FOR_EDIT',
       'ASSIGNED',
       'IN_EDIT',
@@ -263,6 +265,7 @@ const PATCHHandler = withRequestLogging(async (
       'REVIEW_COMPLETE',
       'COMPLETED',
       'CANCELLED',
+      'FAILED',
     ];
 
     if (!validStatuses.includes(status)) {
@@ -348,12 +351,22 @@ const DELETEHandler = withRequestLogging(async (
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-  await deleteJob(supabase, id);
+  // Soft delete — set deleted_at, never hard delete
+  const { error } = await supabase
+    .from('jobs')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    logger.error('[jobs/delete] soft-delete failed', new Error(error.message), { jobId: id });
+    return NextResponse.json({ error: 'Failed to delete job' }, { status: 500 });
+  }
 
     // Invalidate caches
     invalidateDashboardCache();
     invalidateEntityCache('job', id);
 
+  logger.info('[jobs/delete] soft-deleted', { jobId: id, deletedBy: user.id });
   return NextResponse.json({ success: true });
 });
 

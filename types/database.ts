@@ -26,11 +26,14 @@ export type UserRole =
   | 'WKT_STUDENT';
 
 export type JobStatus =
+  | 'DRAFT'
   | 'CREATED'
+  | 'PENDING'
   | 'FILES_UPLOADED'
   | 'ENHANCING_AUDIO'
   | 'TRANSCRIBING'
   | 'AI_REVIEWING'
+  | 'AI_COMPLETE'
   | 'READY_FOR_EDIT'
   | 'ASSIGNED'
   | 'IN_EDIT'
@@ -606,11 +609,14 @@ export const UserRole = {
 } as const
 
 export const JobStatus = {
+  DRAFT: 'DRAFT',
   CREATED: 'CREATED',
+  PENDING: 'PENDING',
   FILES_UPLOADED: 'FILES_UPLOADED',
   ENHANCING_AUDIO: 'ENHANCING_AUDIO',
   TRANSCRIBING: 'TRANSCRIBING',
   AI_REVIEWING: 'AI_REVIEWING',
+  AI_COMPLETE: 'AI_COMPLETE',
   READY_FOR_EDIT: 'READY_FOR_EDIT',
   ASSIGNED: 'ASSIGNED',
   IN_EDIT: 'IN_EDIT',

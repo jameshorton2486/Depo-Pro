@@ -162,12 +162,15 @@ export function JobForm({ initialData, mode }: JobFormProps) {
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={JobStatus.DRAFT}>Draft</SelectItem>
                 <SelectItem value={JobStatus.CREATED}>Created</SelectItem>
+                <SelectItem value={JobStatus.PENDING}>Pending</SelectItem>
                 <SelectItem value={JobStatus.FILES_UPLOADED}>Files Uploaded</SelectItem>
                 <SelectItem value={JobStatus.ENHANCING_AUDIO}>Enhancing Audio</SelectItem>
                 <SelectItem value={JobStatus.TRANSCRIBING}>Transcribing</SelectItem>
                 <SelectItem value={JobStatus.AI_REVIEWING}>AI Reviewing</SelectItem>
-                <SelectItem value={JobStatus.READY_FOR_EDIT}>Ready for Edit</SelectItem>
+                <SelectItem value={JobStatus.AI_COMPLETE}>AI Complete</SelectItem>
+                <SelectItem value={JobStatus.READY_FOR_EDIT}>Ready for Proofing</SelectItem>
                 <SelectItem value={JobStatus.ASSIGNED}>Assigned</SelectItem>
                 <SelectItem value={JobStatus.IN_EDIT}>In Edit</SelectItem>
                 <SelectItem value={JobStatus.SUBMITTED_FOR_REVIEW}>Submitted for Review</SelectItem>
@@ -176,6 +179,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
                 <SelectItem value={JobStatus.REVIEW_COMPLETE}>Review Complete</SelectItem>
                 <SelectItem value={JobStatus.COMPLETED}>Completed</SelectItem>
                 <SelectItem value={JobStatus.CANCELLED}>Cancelled</SelectItem>
+                <SelectItem value={JobStatus.FAILED}>Failed</SelectItem>
               </SelectContent>
             </Select>
             {errors.status && (
