@@ -16,9 +16,6 @@ export async function createSupabaseServerClient(): Promise<SupabaseClient> {
 
   return createServerClient(url, key, {
     cookieOptions: {
-      // Keep auth session scoped to the active browser session.
-      // Users will need to log in again after browser/OS restart.
-      maxAge: 0,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',

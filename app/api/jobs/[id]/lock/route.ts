@@ -137,6 +137,12 @@ export const POST = withRouteProtection(
 );
 
 /**
+ * PATCH /api/jobs/[id]/lock
+ * Acquire lock (alias for POST — some clients use PATCH).
+ */
+export const PATCH = POST;
+
+/**
  * DELETE /api/jobs/[id]/lock
  * Release the lock on the job.
  * Returns 403 if the caller does not hold the lock.
