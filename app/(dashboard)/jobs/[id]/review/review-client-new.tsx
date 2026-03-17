@@ -38,6 +38,12 @@ import { canExportFormat } from '@/lib/export/permissions';
 import type { UserRole } from '@/lib/enums/roles';
 import { CertificationPanel } from '@/components/transcript/CertificationPanel';
 import { ChevronDown, Download, Loader2 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ReviewClientNewProps {
   jobId: string;
@@ -634,16 +640,26 @@ export function ReviewClientNew({
             )}
           </div>
 
-          <button
-            onClick={() => setShowShortcutsDialog(true)}
-            className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm transition-colors"
-            title="Keyboard shortcuts"
-            aria-label="Show keyboard shortcuts"
-          >
-            ?
-          </button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowShortcutsDialog(true)}
+                  className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm transition-colors"
+                  aria-label="Keyboard shortcuts"
+                >
+                  ?
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Keyboard shortcuts</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-          {/* Certify & Export / Download Export */}
+          {/* Certify & Export — reporter/admin only */}
+          {(userRole === 'ADMIN' || userRole === 'REPORTER' || userRole === 'COURT_REPORTER' || userRole === 'SUPER_ADMIN') && (
+          <>
           {isCertified ? (
             <button
               onClick={() => handleExport('docx')}
@@ -660,6 +676,8 @@ export function ReviewClientNew({
             >
               Certify & Export
             </button>
+          )}
+          </>
           )}
 
           {/* Complete Button */}

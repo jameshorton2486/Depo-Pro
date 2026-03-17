@@ -24,6 +24,16 @@ export const EXPORT_PERMISSIONS: Partial<Record<UserRole, ExportPermissions>> = 
     profiles: ['court-standard', 'attorney-review', 'rough-draft', 'archive'],
     restrictions: [],
   },
+  SUPER_ADMIN: {
+    formats: ['docx', 'pdf', 'zip', 'txt'],
+    profiles: ['court-standard', 'attorney-review', 'rough-draft', 'archive'],
+    restrictions: [],
+  },
+  COURT_REPORTER: {
+    formats: ['docx', 'pdf', 'zip', 'txt'],
+    profiles: ['court-standard', 'attorney-review', 'rough-draft', 'archive'],
+    restrictions: [],
+  },
   REPORTER: {
     formats: ['docx', 'pdf', 'zip', 'txt'],
     profiles: ['court-standard', 'attorney-review', 'rough-draft', 'archive'],
