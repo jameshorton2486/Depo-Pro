@@ -120,7 +120,7 @@ const PATCHHandler = async (
     // Get transcription to verify access and get firm_id
     const { data: transcription, error: transcriptionError } = await supabase
       .from('transcriptions')
-      .select('id, job_id, words, utterances, updated_at')
+      .select('id, job_id, words, segments, updated_at')
       .eq('id', flaggedWord.transcription_id)
       .single();
 
@@ -237,11 +237,11 @@ const PATCHHandler = async (
     // Get all words for context extraction
     let allWords: any[] = [];
     try {
-      if (transcription.utterances) {
-        const utterances = Array.isArray(transcription.utterances)
-          ? transcription.utterances
-          : JSON.parse(transcription.utterances as string || '[]');
-        allWords = utterances.flatMap((u: any) => u.words || []);
+      if (transcription.segments) {
+        const segments = Array.isArray(transcription.segments)
+          ? transcription.segments
+          : JSON.parse(transcription.segments as string || '[]');
+        allWords = segments.flatMap((u: any) => u.words || []);
       } else if (transcription.words) {
         allWords = Array.isArray(transcription.words)
           ? transcription.words
