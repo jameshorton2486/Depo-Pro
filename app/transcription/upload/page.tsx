@@ -115,7 +115,7 @@ export default function TranscriptionUploadPage() {
           )}
           <form onSubmit={handleJobSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Case Name *</label>
+              <label className="block text-sm font-medium mb-2">Case Style *</label>
               <input
                 name="caseName"
                 type="text"

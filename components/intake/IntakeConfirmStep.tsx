@@ -24,7 +24,7 @@ export function IntakeConfirmStep({ role, values, isSubmitting, onBack, onSubmit
       <CardContent className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <Summary label="Job Title" value={values.jobTitle} />
-          <Summary label="Case Name" value={values.caseName} />
+          <Summary label="Case Style" value={values.caseName} />
           <Summary label="Cause Number" value={values.causeNumber} />
           <Summary label="Deponent" value={values.deponentName} />
           <Summary label="Date" value={values.depositionDate} />

@@ -56,7 +56,7 @@ import { toast } from 'sonner';
 // ------------------------------------------------------------
 
 const bookingRequestSchema = z.object({
-  caseName: z.string().min(1, 'Case name is required'),
+  caseName: z.string().min(1, 'Case style is required'),
   caseNumber: z.string().optional(),
   preferredDate: z.string().min(1, 'Preferred date is required'),
   preferredTime: z.string().min(1, 'Preferred time is required'),
@@ -243,7 +243,7 @@ export function BookingRequestForm() {
                 name="caseName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Case Name *</FormLabel>
+                    <FormLabel>Case Style *</FormLabel>
                     <FormControl>
                       <Input placeholder="Smith v. Jones" {...field} />
                     </FormControl>
@@ -257,7 +257,7 @@ export function BookingRequestForm() {
                 name="caseNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Case Number</FormLabel>
+                    <FormLabel>Cause Number</FormLabel>
                     <FormControl>
                       <Input placeholder="2025-CV-12345" {...field} />
                     </FormControl>

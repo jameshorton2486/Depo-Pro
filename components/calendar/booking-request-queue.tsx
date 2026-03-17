@@ -450,11 +450,11 @@ export function BookingRequestQueue({ reporters = [] }: BookingRequestQueueProps
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-muted-foreground">Case Name</Label>
+                  <Label className="text-muted-foreground">Case Style</Label>
                   <p className="font-medium">{selectedRequest.caseName}</p>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Case Number</Label>
+                  <Label className="text-muted-foreground">Cause Number</Label>
                   <p>{selectedRequest.caseNumber || '—'}</p>
                 </div>
                 <div>

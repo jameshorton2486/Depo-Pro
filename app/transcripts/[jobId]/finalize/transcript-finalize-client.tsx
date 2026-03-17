@@ -97,7 +97,7 @@ export function TranscriptFinalizeClient() {
         ) : summary ? (
           <dl className="grid grid-cols-2 gap-4">
             <div>
-              <dt className="text-sm text-gray-500">Case Name</dt>
+              <dt className="text-sm text-gray-500">Case Style</dt>
               <dd className="font-medium">{summary.caseName}</dd>
             </div>
             <div>

@@ -61,7 +61,7 @@ export default async function ReporterDashboard() {
 
   // Group by case_number
   const depositionsByCause = (activeJobs || []).reduce<Record<string, typeof activeJobs>>((acc, job) => {
-    const key = (job.case_number || job.case_name || 'No Case Number').trim();
+    const key = (job.case_number || job.case_name || 'No Cause Number').trim();
     if (!acc[key]) acc[key] = [];
     acc[key]!.push(job);
     return acc;

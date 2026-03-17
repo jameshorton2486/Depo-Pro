@@ -199,7 +199,7 @@ export function CreateEventModal({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="caseNumber">Case Number</Label>
+                <Label htmlFor="caseNumber">Cause Number</Label>
                 <Input
                   id="caseNumber"
                   placeholder="2024-CV-12345"

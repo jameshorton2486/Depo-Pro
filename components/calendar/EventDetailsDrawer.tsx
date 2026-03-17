@@ -174,7 +174,7 @@ export function EventDetailsDrawer({
                             />
                           )}
                           {event.caseNumber && (
-                            <InfoRow label="Case Number" value={event.caseNumber} />
+                            <InfoRow label="Cause Number" value={event.caseNumber} />
                           )}
                         </div>
                       </Section>

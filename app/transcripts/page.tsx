@@ -85,7 +85,7 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
           <input
             type="text"
             name="search"
-            placeholder="Search by case name..."
+            placeholder="Search by case style..."
             defaultValue={search}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
@@ -120,7 +120,7 @@ export default async function TranscriptsPage({ searchParams }: PageProps) {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left p-4 font-semibold">Case Name</th>
+                  <th className="text-left p-4 font-semibold">Case Style</th>
                   <th className="text-left p-4 font-semibold">Status</th>
                   <th className="text-left p-4 font-semibold">Reporter</th>
                   <th className="text-left p-4 font-semibold">Date</th>

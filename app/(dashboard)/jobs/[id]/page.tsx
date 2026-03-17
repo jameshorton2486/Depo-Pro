@@ -25,12 +25,14 @@ import {
   MapPin,
   User,
   Edit,
-  Trash2,
   FileText,
 } from 'lucide-react';
 import { isAdminRole } from '@/lib/admin';
 import { DeliverTranscriptButton } from '@/components/jobs/DeliverTranscriptButton';
 import { GenerateInvoiceButton } from '@/components/jobs/GenerateInvoiceButton';
+import { JobAudioSection } from '@/components/jobs/job-audio-section';
+import { StartTranscriptionButton } from '@/components/jobs/StartTranscriptionButton';
+import { DeleteJobButton } from '@/components/jobs/delete-job-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,11 +74,18 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
     notFound();
   }
 
-  const { data: transcription } = await supabase
-    .from('transcriptions')
-    .select('id, segments, metadata, status')
-    .eq('job_id', id)
-    .single();
+  const [{ data: transcription }, { data: jobFiles }] = await Promise.all([
+    supabase
+      .from('transcriptions')
+      .select('id, segments, metadata, status')
+      .eq('job_id', id)
+      .single(),
+    supabase
+      .from('job_files')
+      .select('*')
+      .eq('job_id', id)
+      .order('created_at', { ascending: false }),
+  ]);
 
   const audioQuality = transcription?.metadata as {
     audio_quality_score?: number;
@@ -129,10 +138,11 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
                 Edit
               </Button>
             </Link>
-            <Button variant="outline" className="text-red-600 hover:text-red-700">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
+            <DeleteJobButton
+              jobId={job.id}
+              jobTitle={job.title || job.case_name || 'Untitled Job'}
+              variant="button"
+            />
           </div>
         )}
       </div>
@@ -146,7 +156,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
           <CardContent className="space-y-3">
             {job.case_number && (
               <div>
-                <p className="text-sm text-muted-foreground">Case Number</p>
+                <p className="text-sm text-muted-foreground">Cause Number</p>
                 <p className="font-medium">{job.case_number}</p>
               </div>
             )}
@@ -179,7 +189,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
               <p className="text-sm text-muted-foreground">Created By</p>
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
-                <p className="font-medium">{job.createdBy.firstName} {job.createdBy.lastName}</p>
+                <p className="font-medium">{job.createdBy?.full_name ?? 'Unknown'}</p>
               </div>
             </div>
             {job.zoomLink && (
@@ -234,20 +244,46 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
         </div>
       )}
 
+      {/* Audio Recording */}
+      <JobAudioSection
+        jobId={job.id}
+        jobTitle={(job as any).title ?? 'This Deposition'}
+        audioFileUrl={(job as any).audio_file_url ?? null}
+      />
+
+      {/* Start Transcription — when audio exists and not already transcribing */}
+      {canEdit &&
+        (job.status === 'DRAFT' ||
+          job.status === 'CREATED' ||
+          job.status === 'PENDING' ||
+          job.status === 'FILES_UPLOADED' ||
+          job.status === 'FAILED') &&
+        ((job as any).audio_file_url ||
+          (jobFiles || []).some(
+            (f: any) =>
+              f.type === 'AUDIO' ||
+              f.mime_type?.startsWith('audio/') ||
+              f.mime_type?.startsWith('video/'),
+          )) && (
+          <div className="mt-4">
+            <StartTranscriptionButton jobId={job.id} />
+          </div>
+        )}
+
       {/* File Upload */}
       <FileUpload
         jobId={job.id}
-        files={(job.files || []).map((file: any) => ({
+        files={(jobFiles || []).map((file: any) => ({
           id: file.id,
-          filename: file.file_name || file.filename,
-          originalName: file.file_name || file.filename,
-          mimeType: file.mime_type || file.mimeType,
-          size: file.file_size || file.size,
+          filename: file.file_name,
+          originalName: file.file_name,
+          mimeType: file.mime_type,
+          size: file.file_size,
           fileType: file.type,
-          createdAt: file.created_at || file.createdAt,
+          createdAt: file.created_at,
           uploadedBy: {
-            id: job.created_by_id, // Fallback since we don't track uploader per file
-            name: 'System',
+            id: file.uploaded_by_id || job.created_by_id,
+            name: 'Uploader',
             email: '',
           },
         }))}
@@ -290,7 +326,7 @@ export default async function JobDetailPage({ params }: JobDetailPageProps) {
             transcriptId={transcription?.id || ''}
             orderingEmail={(job as any).ordering_email || ''}
             orderingName={(job as any).ordering_attorney || 'Ordering Attorney'}
-            depositionLabel={`${job.deponent_name || job.title} (${job.case_number || 'No case number'})`}
+            depositionLabel={`${job.deponent_name || job.title} (${job.case_number || 'No cause number'})`}
           />
         </div>
       )}

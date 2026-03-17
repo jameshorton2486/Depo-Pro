@@ -16,6 +16,8 @@ import { RiskOverviewWidget, calculateRiskOverview } from '@/components/jobs/ris
 import { EffortBadge } from '@/components/jobs/effort-badge';
 import { estimateReviewEffort, calculateTotalEffort } from '@/lib/services/effort-estimate';
 import { Plus, Search, Calendar, FileText, Clock, AlertTriangle, ListChecks } from 'lucide-react';
+import { DeleteJobButton } from '@/components/jobs/delete-job-button';
+import { isAdminRole } from '@/lib/admin';
 import { formatDate } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -75,7 +77,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               id="search"
-              placeholder="Search jobs by title, case name, or case number..."
+              placeholder="Search jobs by title, case style, or cause number..."
               className="pl-10"
               defaultValue={search}
               name="search"
@@ -151,8 +153,9 @@ async function JobsList({
   // Role-based filtering
   if (user.role === 'SUPER_ADMIN') {
     // SUPER_ADMIN sees all jobs across all firms — no filter
+    jobsQuery = jobsQuery.is('deleted_at', null);
   } else if (user.role === 'REPORTER' || user.role === 'COURT_REPORTER') {
-    jobsQuery = jobsQuery.eq('created_by_id', user.id);
+    jobsQuery = jobsQuery.is('deleted_at', null).eq('created_by_id', user.id);
   } else if (user.role === 'SCOPIST') {
     // Scopist sees only jobs assigned to them via jobs.scopist_id
     jobsQuery = jobsQuery.eq('scopist_id', user.id);
@@ -194,7 +197,7 @@ async function JobsList({
     );
   }
 
-  // Get file and transcript counts for each job, plus transcription metadata
+  // Get file counts and transcription metadata for each job
   const jobIds = jobsData?.map(j => j.id) || [];
   const [filesCounts, transcriptionData] = await Promise.all([
     jobIds.length > 0 ? supabase
@@ -250,7 +253,7 @@ async function JobsList({
 
   // Transform to expected format
   const jobs = (jobsData || []).map((job: any) => {
-    const fileCount = filesCounts.data?.filter(f => f.job_id === job.id).length || 0;
+    const fileCount = filesCounts.data?.filter((f: any) => f.job_id === job.id).length || 0;
     const transcriptCount = transcriptionData.data?.filter(t => t.job_id === job.id).length || 0;
     const transcription = transcriptionsByJobId[job.id];
     const riskScoreResult = transcription?.metadata?.risk_score_result;
@@ -426,7 +429,12 @@ async function JobsList({
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
           <Link key={job.id} href={`/jobs/${job.id}`}>
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative">
+              {(isAdminRole(user.role) || job.createdBy.id === user.id) && (
+                <div className="absolute right-3 top-3 z-10">
+                  <DeleteJobButton jobId={job.id} jobTitle={job.title || job.caseName || 'Untitled Job'} />
+                </div>
+              )}
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-lg line-clamp-2 flex-1">{job.title || job.caseName || 'Untitled Job'}</CardTitle>

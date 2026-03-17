@@ -58,11 +58,11 @@ export function IntakeFormStep({ values, autofilled, onChange, onBack, onNext }:
               <Input id="causeNumber" value={values.causeNumber ?? ''} onChange={(event) => onChange('causeNumber', event.target.value)} />
             </FieldShell>
             <FieldShell field="caseName" autofilled={autofilled}>
-              <Label htmlFor="caseName">Case Name *</Label>
+              <Label htmlFor="caseName">Case Style *</Label>
               <Input id="caseName" value={values.caseName ?? ''} onChange={(event) => onChange('caseName', event.target.value)} />
             </FieldShell>
             <FieldShell field="caseNumber" autofilled={autofilled}>
-              <Label htmlFor="caseNumber">Case Number</Label>
+              <Label htmlFor="caseNumber">Cause Number</Label>
               <Input id="caseNumber" value={values.caseNumber ?? ''} onChange={(event) => onChange('caseNumber', event.target.value)} />
             </FieldShell>
           </div>

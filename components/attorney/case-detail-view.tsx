@@ -24,7 +24,7 @@ export function CaseDetailView({ caseData, roleInCase, annotations }: CaseDetail
             <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Case File</span>
           </div>
           <h1 className="text-3xl font-bold tracking-tight">{caseData.caseStyle}</h1>
-          <p className="text-muted-foreground">Case Number: {caseData.caseNumber}</p>
+          <p className="text-muted-foreground">Cause Number: {caseData.caseNumber}</p>
         </div>
         <div className="flex items-center gap-3">
           <Badge variant="outline" className="px-3 py-1 text-sm">

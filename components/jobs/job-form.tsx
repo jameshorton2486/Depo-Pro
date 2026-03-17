@@ -110,7 +110,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="caseName">Case Name *</Label>
+            <Label htmlFor="caseName">Case Style *</Label>
             <Input
               id="caseName"
               {...register('caseName')}
@@ -122,7 +122,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
           </div>
 
           <div>
-            <Label htmlFor="caseNumber">Case Number</Label>
+            <Label htmlFor="caseNumber">Cause Number</Label>
             <Input
               id="caseNumber"
               {...register('caseNumber')}

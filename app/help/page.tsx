@@ -22,7 +22,7 @@ export default async function HelpPage() {
           <h2 className="mb-2 text-lg font-semibold text-gray-900">Creating a Job</h2>
           <ol className="list-inside list-decimal space-y-1 text-sm text-gray-600">
             <li>Go to Jobs → New Job</li>
-            <li>Enter case name and deponent details</li>
+            <li>Enter case style and deponent details</li>
             <li>Upload the deposition audio file</li>
             <li>Wait for transcription completion</li>
             <li>Assign a scopist or start review</li>
