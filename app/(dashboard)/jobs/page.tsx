@@ -95,18 +95,14 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           title="Filter by job status"
         >
           <option value="">All Statuses</option>
-          <option value="CREATED">Scheduled – Awaiting Deposition</option>
-          <option value="FILES_UPLOADED">Recording Needed</option>
+          <option value="DRAFT">Draft</option>
+          <option value="PENDING">Pending</option>
           <option value="TRANSCRIBING">Transcribing</option>
-          <option value="AI_REVIEWING">AI Formatting</option>
-          <option value="READY_FOR_EDIT">Ready for Proofing</option>
-          <option value="ASSIGNED">Assigned to Scopist</option>
-          <option value="IN_EDIT">In Proofing</option>
-          <option value="SUBMITTED_FOR_REVIEW">Submitted for Reporter Review</option>
-          <option value="IN_REVIEW">Reporter Review</option>
-          <option value="REVIEW_COMPLETE">Pending Delivery</option>
-          <option value="COMPLETED">Delivered</option>
-          <option value="CANCELLED">Cancelled</option>
+          <option value="AI_REVIEWING">AI Reviewing</option>
+          <option value="READY_FOR_PROOFING">Ready for Proofing</option>
+          <option value="IN_PROOFING">In Proofing</option>
+          <option value="COMPLETE">Complete</option>
+          <option value="FAILED">Failed</option>
         </select>
         <Button type="submit">Apply Filters</Button>
       </form>

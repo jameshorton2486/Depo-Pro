@@ -101,9 +101,9 @@ const ADMIN_NAV: NavigationSchema = [
     section: 'Transcripts',
     icon: FileText,
     items: [
-      { id: 'admin-transcripts-in-edit', label: 'In Proofing', href: '/jobs?status=IN_EDIT', icon: Clock },
-      { id: 'admin-transcripts-ready', label: 'Ready for Proofing', href: '/jobs?status=READY_FOR_EDIT', icon: FileAudio },
-      { id: 'admin-transcripts-completed', label: 'Delivered', href: '/jobs?status=COMPLETED', icon: CheckCircle },
+      { id: 'admin-transcripts-in-edit', label: 'In Proofing', href: '/jobs?status=IN_PROOFING', icon: Clock },
+      { id: 'admin-transcripts-ready', label: 'Ready for Proofing', href: '/jobs?status=READY_FOR_PROOFING', icon: FileAudio },
+      { id: 'admin-transcripts-completed', label: 'Delivered', href: '/jobs?status=COMPLETE', icon: CheckCircle },
     ],
   },
   {
@@ -170,9 +170,9 @@ const REPORTER_NAV: NavigationSchema = [
     section: 'Transcripts',
     icon: FileText,
     items: [
-      { id: 'reporter-ready', label: 'Ready for Proofing', href: '/jobs?status=READY_FOR_EDIT', icon: FileAudio },
+      { id: 'reporter-ready', label: 'Ready for Proofing', href: '/jobs?status=READY_FOR_PROOFING', icon: FileAudio },
       { id: 'reporter-with-scopist', label: 'With Scopist', href: '/jobs?status=ASSIGNED', icon: UserCircle },
-      { id: 'reporter-completed', label: 'Delivered', href: '/jobs?status=COMPLETED', icon: CheckCircle },
+      { id: 'reporter-completed', label: 'Delivered', href: '/jobs?status=COMPLETE', icon: CheckCircle },
     ],
   },
   {
@@ -201,15 +201,15 @@ const SCOPIST_NAV: NavigationSchema = [
     icon: Briefcase,
     items: [
       { id: 'scopist-assignments', label: 'My Assignments', href: '/jobs?assigned=me', icon: Briefcase },
-      { id: 'scopist-available', label: 'Available Jobs', href: '/jobs?status=READY_FOR_EDIT', icon: FolderOpen },
+      { id: 'scopist-available', label: 'Available Jobs', href: '/jobs?status=READY_FOR_PROOFING', icon: FolderOpen },
     ],
   },
   {
     section: 'Work Queue',
     icon: FileText,
     items: [
-      { id: 'scopist-in-progress', label: 'In Progress', href: '/jobs?status=IN_EDIT&assigned=me', icon: Clock },
-      { id: 'scopist-submitted', label: 'Submitted', href: '/jobs?status=SUBMITTED_FOR_REVIEW&assigned=me', icon: CheckCircle },
+      { id: 'scopist-in-progress', label: 'In Progress', href: '/jobs?status=IN_PROOFING&assigned=me', icon: Clock },
+      { id: 'scopist-submitted', label: 'Submitted', href: '/jobs?status=COMPLETE&assigned=me', icon: CheckCircle },
     ],
   },
   {

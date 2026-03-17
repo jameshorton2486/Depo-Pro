@@ -4,7 +4,6 @@
 // Zod schemas for job-related forms and API endpoints
 
 import { z } from 'zod';
-import { JobStatus } from '@/lib/constants';
 
 // Audio Processing Mode values (matches Prisma enum)
 export const AudioProcessingMode = {
@@ -13,6 +12,20 @@ export const AudioProcessingMode = {
 } as const;
 
 export type AudioProcessingModeType = typeof AudioProcessingMode[keyof typeof AudioProcessingMode];
+
+/**
+ * Valid job status values matching the actual database enum.
+ */
+export const VALID_JOB_STATUSES = [
+  'DRAFT',
+  'PENDING',
+  'TRANSCRIBING',
+  'AI_REVIEWING',
+  'READY_FOR_PROOFING',
+  'IN_PROOFING',
+  'COMPLETE',
+  'FAILED',
+] as const;
 
 /**
  * Create job schema
@@ -36,7 +49,8 @@ export const createJobSchema = z.object({
     .or(z.literal('')),
   depositionDate: z
     .string()
-    .datetime({ message: 'Invalid date format' }),
+    .min(1, 'Deposition date is required')
+    .refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date format' }),
   location: z
     .string()
     .max(300, 'Location must be less than 300 characters')
@@ -49,22 +63,7 @@ export const createJobSchema = z.object({
     .or(z.literal('')),
 
   // Job metadata
-  status: z.enum([
-    JobStatus.CREATED,
-    JobStatus.FILES_UPLOADED,
-    JobStatus.ENHANCING_AUDIO,
-    JobStatus.TRANSCRIBING,
-    JobStatus.AI_REVIEWING,
-    JobStatus.READY_FOR_EDIT,
-    JobStatus.ASSIGNED,
-    JobStatus.IN_EDIT,
-    JobStatus.SUBMITTED_FOR_REVIEW,
-    JobStatus.IN_REVIEW,
-    JobStatus.SCOPIST_COMPLETE,
-    JobStatus.REVIEW_COMPLETE,
-    JobStatus.COMPLETED,
-    JobStatus.CANCELLED,
-  ] as const),
+  status: z.enum(VALID_JOB_STATUSES),
 
   // Audio Processing Mode (Phase 6B)
   // AUTOMATED: Default - Dolby.io enhancement, fast turnaround
@@ -97,22 +96,7 @@ export type CreateJobInput = z.infer<typeof createJobSchema>;
  * Used for: Job list filtering and search
  */
 export const jobFilterSchema = z.object({
-  status: z.enum([
-    JobStatus.CREATED,
-    JobStatus.FILES_UPLOADED,
-    JobStatus.ENHANCING_AUDIO,
-    JobStatus.TRANSCRIBING,
-    JobStatus.AI_REVIEWING,
-    JobStatus.READY_FOR_EDIT,
-    JobStatus.ASSIGNED,
-    JobStatus.IN_EDIT,
-    JobStatus.SUBMITTED_FOR_REVIEW,
-    JobStatus.IN_REVIEW,
-    JobStatus.SCOPIST_COMPLETE,
-    JobStatus.REVIEW_COMPLETE,
-    JobStatus.COMPLETED,
-    JobStatus.CANCELLED,
-  ] as const).optional(),
+  status: z.enum(VALID_JOB_STATUSES).optional(),
   createdById: z.string().cuid().optional(),
   search: z.string().max(200).optional(),
   depositionDateFrom: z.string().datetime().optional(),

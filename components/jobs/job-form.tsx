@@ -19,9 +19,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { JobStatus } from '@/types/database';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+
+const JOB_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'TRANSCRIBING', label: 'Transcribing' },
+  { value: 'AI_REVIEWING', label: 'AI Reviewing' },
+  { value: 'READY_FOR_PROOFING', label: 'Ready for Proofing' },
+  { value: 'IN_PROOFING', label: 'In Proofing' },
+  { value: 'COMPLETE', label: 'Complete' },
+  { value: 'FAILED', label: 'Failed' },
+];
 
 interface JobFormProps {
   initialData?: Partial<CreateJobInput> & { id?: string };
@@ -42,7 +52,7 @@ export function JobForm({ initialData, mode }: JobFormProps) {
   } = useForm<CreateJobInput>({
     resolver: zodResolver(createJobSchema),
     defaultValues: (initialData || {
-      status: JobStatus.CREATED,
+      status: 'DRAFT' as const,
       audioProcessingMode: AudioProcessingMode.AUTOMATED,
     }) as Partial<CreateJobInput>,
   });
@@ -162,24 +172,9 @@ export function JobForm({ initialData, mode }: JobFormProps) {
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={JobStatus.DRAFT}>Draft</SelectItem>
-                <SelectItem value={JobStatus.CREATED}>Created</SelectItem>
-                <SelectItem value={JobStatus.PENDING}>Pending</SelectItem>
-                <SelectItem value={JobStatus.FILES_UPLOADED}>Files Uploaded</SelectItem>
-                <SelectItem value={JobStatus.ENHANCING_AUDIO}>Enhancing Audio</SelectItem>
-                <SelectItem value={JobStatus.TRANSCRIBING}>Transcribing</SelectItem>
-                <SelectItem value={JobStatus.AI_REVIEWING}>AI Reviewing</SelectItem>
-                <SelectItem value={JobStatus.AI_COMPLETE}>AI Complete</SelectItem>
-                <SelectItem value={JobStatus.READY_FOR_EDIT}>Ready for Proofing</SelectItem>
-                <SelectItem value={JobStatus.ASSIGNED}>Assigned</SelectItem>
-                <SelectItem value={JobStatus.IN_EDIT}>In Edit</SelectItem>
-                <SelectItem value={JobStatus.SUBMITTED_FOR_REVIEW}>Submitted for Review</SelectItem>
-                <SelectItem value={JobStatus.IN_REVIEW}>In Review</SelectItem>
-                <SelectItem value={JobStatus.SCOPIST_COMPLETE}>Scopist Complete</SelectItem>
-                <SelectItem value={JobStatus.REVIEW_COMPLETE}>Review Complete</SelectItem>
-                <SelectItem value={JobStatus.COMPLETED}>Completed</SelectItem>
-                <SelectItem value={JobStatus.CANCELLED}>Cancelled</SelectItem>
-                <SelectItem value={JobStatus.FAILED}>Failed</SelectItem>
+                {JOB_STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             {errors.status && (
