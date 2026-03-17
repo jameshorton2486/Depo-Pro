@@ -657,27 +657,20 @@ export function ReviewClientNew({
             </Tooltip>
           </TooltipProvider>
 
-          {/* Certify & Export — reporter/admin only */}
-          {(userRole === 'ADMIN' || userRole === 'REPORTER' || userRole === 'COURT_REPORTER' || userRole === 'SUPER_ADMIN') && (
-          <>
-          {isCertified ? (
-            <button
-              onClick={() => handleExport('docx')}
-              disabled={isExporting}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm disabled:opacity-50 transition-colors"
-            >
-              {isExporting ? 'Downloading...' : 'Download Export'}
-            </button>
-          ) : (
+          {/* Certify Transcript — COURT_REPORTER only */}
+          {userRole === 'COURT_REPORTER' && (
             <button
               onClick={() => setShowCertifyDialog(true)}
-              disabled={isReadOnly || isExporting}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50 transition-colors"
+              disabled={isReadOnly || isCertified}
+              className={cn(
+                'px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-50',
+                isCertified
+                  ? 'bg-green-600 text-white cursor-default'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              )}
             >
-              Certify & Export
+              {isCertified ? 'Certified' : 'Certify Transcript'}
             </button>
-          )}
-          </>
           )}
 
           {/* Complete Button */}
