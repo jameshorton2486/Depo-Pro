@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
-    const { transcriptionId, jobId, riskScore, flaggedCount } = parsed;
+    const { transcriptionId, jobId, riskScore } = parsed;
 
     const supabase = await createSupabaseServerClient();
 
@@ -85,29 +85,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Insert new review session
-    const { data, error } = await supabase
-      .from('review_sessions')
-      .insert({
-        transcription_id: transcriptionId,
-        job_id: jobId,
-        user_id: currentUser.id,
-        risk_score: riskScore,
-        flagged_count: flaggedCount,
-        started_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single();
+    // Insert new review session — non-fatal: if the table schema is out of
+    // date or the insert fails for any reason, log and return a graceful
+    // response so that corrections are never blocked.
+    try {
+      const { data, error } = await supabase
+        .from('review_sessions')
+        .insert({
+          transcription_id: transcriptionId,
+          job_id: jobId,
+          user_id: currentUser.id,
+          risk_score: riskScore,
+          started_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
 
-    if (error) {
-      console.error('Failed to create review session:', error);
-      return NextResponse.json(
-        { error: 'Failed to create review session' },
-        { status: 500 }
-      );
+      if (error) {
+        console.error('[review-sessions] insert failed (non-fatal):', error.message);
+        return NextResponse.json({ id: null, warning: 'Session tracking unavailable' }, { status: 200 });
+      }
+
+      return NextResponse.json({ sessionId: data.id });
+    } catch (insertErr) {
+      console.error('[review-sessions] unexpected insert error (non-fatal):', insertErr);
+      return NextResponse.json({ id: null, warning: 'Session tracking unavailable' }, { status: 200 });
     }
-
-    return NextResponse.json({ sessionId: data.id });
   } catch (error) {
     console.error('Error creating review session:', error);
     return NextResponse.json(
