@@ -85,31 +85,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Insert new review session — non-fatal: if the table schema is out of
-    // date or the insert fails for any reason, log and return a graceful
-    // response so that corrections are never blocked.
-    try {
-      // Only insert columns confirmed to exist in the table.
-      // job_id, started_at, flagged_count do NOT exist on review_sessions.
-      const { data, error } = await supabase
-        .from('review_sessions')
-        .insert({
-          transcription_id: transcriptionId,
-          user_id: currentUser.id,
-        })
-        .select('id')
-        .single();
-
-      if (error) {
-        console.error('[review-sessions] insert failed (non-fatal):', error.message);
-        return NextResponse.json({ id: null, warning: 'Session tracking unavailable' }, { status: 200 });
-      }
-
-      return NextResponse.json({ sessionId: data.id });
-    } catch (insertErr) {
-      console.error('[review-sessions] unexpected insert error (non-fatal):', insertErr);
-      return NextResponse.json({ id: null, warning: 'Session tracking unavailable' }, { status: 200 });
-    }
+    // review_sessions table schema does not match code expectations —
+    // skip insert entirely until migration aligns the table.
+    // Corrections and review functionality work without session tracking.
+    console.warn('[review-sessions] insert skipped - table schema mismatch');
+    return NextResponse.json({ id: null, warning: 'Session tracking unavailable' }, { status: 200 });
   } catch (error) {
     console.error('Error creating review session:', error);
     return NextResponse.json(
