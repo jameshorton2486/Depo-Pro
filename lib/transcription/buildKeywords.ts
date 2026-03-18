@@ -23,9 +23,8 @@ function addTerm(terms: Map<string, number>, rawText: string | null | undefined,
   const text = rawText?.trim();
   if (!text) return;
 
-  const boosted = text.toUpperCase().includes('BARDOT') ? Math.max(boost, 8) : boost;
   const existing = terms.get(text) ?? 0;
-  terms.set(text, Math.max(existing, boosted));
+  terms.set(text, Math.max(existing, boost));
 }
 
 async function getJobLookup(jobId: string): Promise<JobLookup | null> {
@@ -45,7 +44,7 @@ async function getJobLookup(jobId: string): Promise<JobLookup | null> {
 
 export async function buildKeywords(
   jobId: string,
-  transcriptionId: string
+  _transcriptionId?: string
 ): Promise<DeepgramKeyterm[]> {
   const supabase = createAdminClient();
   const terms = new Map<string, number>();
@@ -69,23 +68,14 @@ export async function buildKeywords(
         if (lastName && lastName.length > 2) {
           addTerm(terms, lastName, 3);
         }
+
+        // Add "Dr. Stevens" style phrase if name has a title prefix
+        const titleMatch = String(participant.full_name ?? '').match(/^(Dr\.|Mr\.|Ms\.|Mrs\.)\s+\S+/);
+        if (titleMatch) addTerm(terms, titleMatch[0], 7);
       });
     }
   } catch {
     // Participant enrichment is best-effort.
-  }
-
-  try {
-    if (job.deposition_id) {
-      const { data: vocabTerms } = await supabase
-        .from('vocabulary_terms')
-        .select('term, boost')
-        .eq('deposition_id', job.deposition_id);
-
-      vocabTerms?.forEach((term: any) => addTerm(terms, term.term, Number(term.boost ?? 3)));
-    }
-  } catch {
-    // Deposition-level vocabulary is best-effort.
   }
 
   try {
@@ -113,17 +103,16 @@ export async function buildKeywords(
   }
 
   try {
-    const { data: transcription } = await supabase
-      .from('transcriptions')
-      .select('job_id')
-      .eq('id', transcriptionId)
-      .single();
+    const { data: jobVocab } = await supabase
+      .from('job_vocabulary')
+      .select('term, boost_factor')
+      .eq('job_id', jobId);
 
-    if (transcription?.job_id && transcription.job_id !== jobId) {
-      addTerm(terms, 'Miah Bardot', 10);
-    }
+    jobVocab?.forEach((term: any) =>
+      addTerm(terms, term.term, Number(term.boost_factor ?? 3))
+    );
   } catch {
-    // Validation-only query; ignore if unavailable.
+    // Job vocabulary is best-effort.
   }
 
   return Array.from(terms.entries())

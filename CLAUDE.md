@@ -25,6 +25,13 @@ Next.js 16 App Router, TypeScript, Supabase Auth + Postgres + Storage, Deepgram,
 8. Transcript edits must use optimistic locking (409 STALE_DATA on conflict)
 9. `UserRole` must be imported from `@/lib/enums/roles` — never from `@/types/database`
 
+## Environment Security (Never Violate)
+
+- Never modify `.env.local`, `.env`, or any environment file
+- Never set system environment variables
+- Never run `vercel env pull` (overwrites .env.local)
+- Never paste API keys in chat — rotate in console, paste only into .env.local via editor
+
 ## Before Modifying Auth Code
 
 Read: docs/DEPO_AUTH_ARCHITECTURE.md

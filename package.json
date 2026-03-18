@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:safe": "npm run check:apis && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
@@ -15,6 +16,7 @@
     "check:all": "npm run format:check && npm run lint && npm run typecheck && npm run build",
     "check:version": "node scripts/check-next-version.js",
     "check:env": "node scripts/check-env-vars.js",
+    "check:apis": "tsx scripts/check-api-connections.ts",
     "security:scan": "node scripts/security/scan-secrets.js",
     "security:scan:staged": "node scripts/security/scan-secrets.js --staged",
     "prepare": "husky",

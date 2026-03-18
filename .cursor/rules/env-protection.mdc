@@ -1,0 +1,28 @@
+# Environment File Protection Rule
+
+## Rule
+Never modify environment files or run commands that overwrite them. API keys live only in `.env.local`.
+
+## Forbidden Actions (NEVER)
+
+- Never modify `.env.local`, `.env`, or any environment file
+- Never set system environment variables
+- Never run `vercel env pull` (overwrites .env.local)
+- Never paste API keys in chat windows — they are auto-revoked when exposed
+
+## Allowed Actions
+
+- Read env vars via `process.env` in code
+- Document required vars in `.env.example`
+- Run `npm run check:apis` to verify keys (reads .env.local via dotenv)
+
+## Key Management
+
+1. Rotate keys in the provider console (Anthropic, Deepgram, etc.)
+2. Paste new keys only into `.env.local` via a text editor
+3. Verify with `npm run check:apis`
+4. Restart dev server after changes
+
+## This Rule Is Mandatory
+
+Applies to all AI agents (Cursor, Codex, etc.) and human contributors.

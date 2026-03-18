@@ -279,7 +279,7 @@ if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
     -H "x-api-key: ${ANTHROPIC_API_KEY}" \
     -H "anthropic-version: 2023-06-01" \
     -H "content-type: application/json" \
-    -d '{"model":"claude-sonnet-4-20250514","max_tokens":10,"messages":[{"role":"user","content":"Reply OK"}]}' \
+    -d '{"model":"claude-3-haiku-20240307","max_tokens":10,"messages":[{"role":"user","content":"Reply OK"}]}' \
     2>/dev/null || echo "000")
   if [ "$ANTH_HTTP" = "200" ]; then
     pass "Anthropic API key — valid (HTTP 200)"

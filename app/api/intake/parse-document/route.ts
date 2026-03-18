@@ -111,7 +111,9 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
           mimeType: 'text/plain',
           fileName: 'pasted-text.txt',
         });
-        return NextResponse.json(result, { status: result.success ? 200 : 422 });
+        return result.success
+          ? NextResponse.json(result)
+          : NextResponse.json({ error: result.error ?? 'Document parsing failed' }, { status: 422 });
       }
 
       if (!sourceUrl) {
@@ -132,7 +134,9 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
           fileName: 'google-doc.txt',
           sourceUrl,
         });
-        return NextResponse.json(result, { status: result.success ? 200 : 422 });
+        return result.success
+          ? NextResponse.json(result)
+          : NextResponse.json({ error: result.error ?? 'Document parsing failed' }, { status: 422 });
       }
 
       // Universal URL: fetch the document with timeout
@@ -187,7 +191,9 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
         fileName,
       });
 
-      return NextResponse.json(result, { status: result.success ? 200 : 422 });
+      return result.success
+        ? NextResponse.json(result)
+        : NextResponse.json({ error: result.error ?? 'Document parsing failed' }, { status: 422 });
     }
 
     const formData = await request.formData();
@@ -209,7 +215,9 @@ const handler = async (request: NextRequest, _context: ProtectedContext) => {
       fileName: file.name,
     });
 
-    return NextResponse.json(result, { status: result.success ? 200 : 422 });
+    return result.success
+      ? NextResponse.json(result)
+      : NextResponse.json({ error: result.error ?? 'Document parsing failed' }, { status: 422 });
   } catch (err) {
     console.error('[intake] Parse document route error:', err instanceof Error ? err.message : err);
     return NextResponse.json(

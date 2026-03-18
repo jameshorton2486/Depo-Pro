@@ -38,20 +38,29 @@ fi
 
 echo ""
 
-# Check .env file
-if [ ! -f .env ]; then
-    echo "⚠️  .env file not found"
-    echo "   Copying .env.example to .env..."
-    cp .env.example .env
-    echo ""
-    echo "⚠️  IMPORTANT: Edit .env and fill in your API keys:"
-    echo "   - DATABASE_URL"
-    echo "   - REDIS_HOST"
-    echo "   - DEEPGRAM_API_KEY"
-    echo "   - ANTHROPIC_API_KEY"
-    echo ""
-    echo "Press Enter after updating .env to continue..."
-    read
+# Check .env.local (Next.js loads this first — never overwrite if it exists)
+if [ ! -f .env.local ]; then
+    echo "⚠️  .env.local not found"
+    if [ -f .env.example ]; then
+        echo "   Copying .env.example to .env.local..."
+        cp .env.example .env.local
+        echo ""
+        echo "⚠️  IMPORTANT: Edit .env.local and add your real API keys:"
+        echo "   - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+        echo "   - SUPABASE_SERVICE_ROLE_KEY"
+        echo "   - DEEPGRAM_API_KEY"
+        echo "   - ANTHROPIC_API_KEY"
+        echo ""
+        echo "   Never commit .env.local. Run 'npm run check:apis' to verify keys."
+        echo ""
+        echo "Press Enter after updating .env.local to continue..."
+        read
+    else
+        echo "   .env.example not found — create .env.local manually"
+        exit 1
+    fi
+else
+    echo "✅ .env.local exists (will not overwrite — contains your keys)"
 fi
 
 # Install dependencies

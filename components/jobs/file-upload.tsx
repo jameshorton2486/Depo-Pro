@@ -9,6 +9,16 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Upload, X, FileText, Download, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
@@ -40,6 +50,7 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
   const abortControllerRef = useRef<AbortController | null>(null);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     return () => { abortControllerRef.current?.abort(); };
@@ -94,11 +105,10 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
     }
   };
 
-  const handleDelete = async (fileId: string) => {
-    if (!confirm('Are you sure you want to delete this file?')) {
-      return;
-    }
-
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmId) return;
+    const fileId = deleteConfirmId;
+    setDeleteConfirmId(null);
     setDeleting(fileId);
 
     try {
@@ -217,7 +227,7 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDelete(file.id)}
+                      onClick={() => setDeleteConfirmId(file.id)}
                       disabled={deleting === file.id}
                       className="text-red-600 hover:text-red-700"
                     >
@@ -234,6 +244,26 @@ export function FileUpload({ jobId, files, canUpload, canDelete }: FileUploadPro
           </div>
         )}
       </CardContent>
+
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete file</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this file. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

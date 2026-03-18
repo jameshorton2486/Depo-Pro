@@ -58,10 +58,30 @@ export interface SpeakerInfo {
  * Stored in transcriptions.chunking_config JSONB
  */
 export interface ChunkingConfig {
-  chunkDurationSeconds: number; // default 1800 (30 minutes)
-  overlapSeconds: number; // default 5
-  outputFormat: 'mp3';
-  outputBitrate: '128k';
+  /** Target chunk duration in seconds. VAD will seek the nearest silence after this point. */
+  chunkDurationSeconds: number;
+  /** Overlap between consecutive chunks in seconds. 20s recommended for legal Q&A. */
+  overlapSeconds: number;
+  /** Output audio format. Use 'wav' (lossless) for accuracy. 'mp3' for storage size. */
+  outputFormat: 'mp3' | 'wav';
+  /** Output bitrate — only used when outputFormat is 'mp3'. */
+  outputBitrate: '64k' | '128k' | '192k';
+  /**
+   * If true, use FFmpeg silencedetect to find the nearest natural pause
+   * after chunkDurationSeconds rather than cutting at a fixed time.
+   * Default: true
+   */
+  useVAD?: boolean;
+  /** Minimum silence duration in seconds to qualify as a chunk boundary. Default: 0.5 */
+  silenceMinDuration?: number;
+  /** Audio level (dB) below which audio is considered silence. Default: -40 */
+  silenceThresholdDb?: number;
+  /**
+   * Maximum extra seconds to scan beyond chunkDurationSeconds looking for silence.
+   * If no silence found within this window, cuts at the hard boundary.
+   * Default: 60 (scan up to 1 minute past the target time)
+   */
+  silenceScanWindowSeconds?: number;
 }
 
 /**

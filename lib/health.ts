@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
+import { ANTHROPIC_MODELS } from '@/lib/config/anthropic-models';
 
 type ServiceState = 'healthy' | 'unhealthy';
 
@@ -110,7 +111,7 @@ async function checkAnthropicService(): Promise<TimedServiceResult> {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: ANTHROPIC_MODELS.HAIKU,
           max_tokens: 1,
           messages: [{ role: 'user', content: 'ok' }],
         }),

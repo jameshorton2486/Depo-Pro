@@ -8,6 +8,43 @@
 
 import 'server-only';
 
+const ROUTE_REQUIRED_ENV_KEYS = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+] as const;
+
+/** Core API keys required for document intake and transcription. Run `npm run check:apis` to validate connections. */
+const CORE_API_KEYS = ['ANTHROPIC_API_KEY', 'DEEPGRAM_API_KEY'] as const;
+
+export function validateEnv(): void {
+  const missing = ROUTE_REQUIRED_ENV_KEYS.filter((key) => {
+    const value = process.env[key];
+    return !value || value.trim() === '';
+  });
+
+  if (missing.length > 0) {
+    throw new Error(`Missing environment variable(s): ${missing.join(', ')}`);
+  }
+}
+
+/**
+ * Validates that core API keys are present (not that they work).
+ * For full connection validation, run: npm run check:apis
+ */
+export function validateApiKeys(): void {
+  const missing = CORE_API_KEYS.filter((key) => {
+    const value = process.env[key];
+    return !value || value.trim() === '';
+  });
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing API key(s): ${missing.join(', ')}. Add to .env.local and run: npm run check:apis`
+    );
+  }
+}
+
 export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value || value.trim() === '') {

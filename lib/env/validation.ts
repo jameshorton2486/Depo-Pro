@@ -54,7 +54,7 @@ const ENV_VARS: EnvVar[] = [
     name: 'ANTHROPIC_API_KEY',
     required: true,
     description: 'Claude API key (for document extraction and AI corrections)',
-    validate: (v) => v.startsWith('sk-'),
+    validate: (v) => v.startsWith('sk-ant-'),
   },
 ];
 

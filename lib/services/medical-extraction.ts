@@ -12,6 +12,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { ANTHROPIC_MODELS } from '@/lib/config/anthropic-models';
 import type {
   MedicalExtractionResult,
   MedicalExtractionEntry,
@@ -90,7 +91,7 @@ export async function extractMedicalChronology(
   logger.info('[medical-extraction] Starting extraction', { fileName });
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: ANTHROPIC_MODELS.SONNET,
     max_tokens: 8192,
     system: EXTRACTION_SYSTEM_PROMPT,
     messages: [

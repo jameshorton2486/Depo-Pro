@@ -15,6 +15,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createLiveSession } from '@/lib/transcription/liveStream';
 import type { ParsedWord } from '@/lib/transcription/liveStream';
+import { buildKeywordsForJob } from '@/lib/transcription/buildKeywords';
 import { logger } from '@/lib/logger';
 
 // In-memory session store (single-server only; use Redis for multi-instance)
@@ -78,6 +79,21 @@ export async function POST(request: NextRequest) {
 
   const wordQueue: ParsedWord[] = [];
 
+  // Load case-specific keyterms for accuracy boost
+  // Best-effort: if the job lookup fails, session still starts with no keyterms
+  let liveKeyterms: string[] = [];
+  try {
+    if (transcript.job_id) {
+      const keywordConfigs = await buildKeywordsForJob(transcript.job_id);
+      liveKeyterms = keywordConfigs.map((k) => k.word);
+    }
+  } catch (keytermError) {
+    logger.warn('[live] Keyterm load failed (non-fatal)', {
+      sessionId: newSessionId,
+      error: String(keytermError),
+    });
+  }
+
   const session = createLiveSession(
     newSessionId,
     transcriptId,
@@ -86,6 +102,10 @@ export async function POST(request: NextRequest) {
     },
     (error) => {
       logger.error('[live] Session error', error, { sessionId: newSessionId });
+    },
+    {
+      keyterms: liveKeyterms,
+      sampleRate: 48000,
     },
   );
 

@@ -26,6 +26,7 @@ export async function writeExtractionToDatabase(
   documentId: string,
   firmId: string,
   jobId: string | null,
+  addedBy: string,
 ): Promise<WriteResult> {
   const supabase = createAdminClient();
 
@@ -136,19 +137,16 @@ export async function writeExtractionToDatabase(
     new Set(extraction.transcription_keywords.all_keywords.map((keyword) => keyword.trim()).filter(Boolean)),
   );
 
-  if (keywords.length) {
-    const { error } = await supabase.from('vocabulary_terms').upsert(
+  const keywordsWritten = keywords.length && jobId ? keywords.length : 0;
+  if (keywords.length && jobId) {
+    const { error } = await supabase.from('custom_vocabularies').insert(
       keywords.map((term) => ({
-        firm_id: firmId,
         job_id: jobId,
         term,
-        source: 'document_ingestion',
-        boost_factor: 1.5,
+        boost: 1.5,
+        category: 'document_ingestion',
+        added_by: addedBy,
       })),
-      {
-        onConflict: 'firm_id,term',
-        ignoreDuplicates: false,
-      },
     );
 
     if (error) {
@@ -187,6 +185,6 @@ export async function writeExtractionToDatabase(
     partiesWritten: parties.length,
     attorneysWritten: extraction.attorneys.length,
     sessionsWritten: extraction.deposition_sessions.length,
-    keywordsWritten: keywords.length,
+    keywordsWritten,
   };
 }

@@ -6,7 +6,11 @@ import path from 'path';
 import os from 'os';
 
 import { validateAudio } from './validate';
-import { chunkAudio, cleanupChunks, DEFAULT_CHUNKING_CONFIG } from './chunking';
+import {
+  chunkAudio,
+  cleanupChunks,
+  OPTIMIZED_CHUNKING_CONFIG,
+} from './chunking';
 import { transcribeAudio, toPipelineFormat } from '@/lib/transcription';
 import { reassembleChunks } from './reassemble';
 import {
@@ -15,6 +19,7 @@ import {
   cleanupPreprocessedFile,
   scoreAudioQuality,
   AGGRESSIVE_NORMALIZATION_CONFIG,
+  CLEAN_NORMALIZATION_CONFIG,
 } from './preprocessor';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { captureError } from '@/lib/error-capture';
@@ -109,7 +114,20 @@ export async function processTranscriptionJob(
     // Normalize ALL audio to 16kHz mono WAV for optimal Deepgram accuracy.
     // For video files, this also extracts the audio track in the same pass.
     // Auto-select aggressive config for POOR quality audio.
-    const normConfig = qualityScore.tier === 'POOR' ? AGGRESSIVE_NORMALIZATION_CONFIG : {};
+    // Select normalization config based on audio quality tier:
+    //   POOR/UNUSABLE → aggressive (heavy denoising, higher highpass)
+    //   FAIR          → default (light arnndn + afftdn + loudnorm)
+    //   GOOD/EXCELLENT → clean (loudnorm + highpass only, NO neural denoising)
+    //
+    // This avoids the "noise reduction paradox" where aggressive AI denoising
+    // strips phonetic cues from clean audio, increasing Nova-3 WER by up to 46%.
+    const normConfig =
+      qualityScore.tier === 'POOR'
+        ? AGGRESSIVE_NORMALIZATION_CONFIG
+        : qualityScore.tier === 'GOOD' || qualityScore.tier === 'EXCELLENT'
+        ? CLEAN_NORMALIZATION_CONFIG
+        : {}; // FAIR → DEFAULT_NORMALIZATION_CONFIG (spread of {})
+
     const shouldNormalize = qualityScore.tier === 'POOR' || await needsNormalization(audioFilePath);
 
     if (shouldNormalize) {
@@ -130,11 +148,13 @@ export async function processTranscriptionJob(
     });
 
     // --- STAGE 2: CHUNKING (if duration > 30 minutes) ---
-    const CHUNK_THRESHOLD = 1800; // 30 minutes
+    // Threshold raised to 45 min to match OPTIMIZED_CHUNKING_CONFIG chunk size.
+    // Files under 45 min are treated as a single chunk (no splitting, no VAD needed).
+    const CHUNK_THRESHOLD = 2700; // 45 minutes
 
     if (validation.duration > CHUNK_THRESHOLD) {
       await updateTranscriptionStatus(jobId, 'CHUNKING', 5);
-      chunks = await chunkAudio(audioFilePath, DEFAULT_CHUNKING_CONFIG);
+      chunks = await chunkAudio(audioFilePath, OPTIMIZED_CHUNKING_CONFIG);
       await createChunkRecords(jobId, chunks);
       console.warn(`Audio chunked into ${chunks.length} pieces`);
     } else {
@@ -266,7 +286,7 @@ export async function processTranscriptionJob(
     } else {
       const reassembled = await reassembleChunks(
         processedChunks,
-        DEFAULT_CHUNKING_CONFIG.overlapSeconds
+        OPTIMIZED_CHUNKING_CONFIG.overlapSeconds
       );
       finalResult = {
         ...reassembled,

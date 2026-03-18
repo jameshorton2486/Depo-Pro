@@ -36,20 +36,29 @@ try {
 
 Write-Host ""
 
-# Check .env file
-if (-Not (Test-Path ".env")) {
-    Write-Host "⚠️  .env file not found" -ForegroundColor Yellow
-    Write-Host "   Copying .env.example to .env..." -ForegroundColor Yellow
-    Copy-Item ".env.example" ".env"
-    Write-Host ""
-    Write-Host "⚠️  IMPORTANT: Edit .env and fill in your API keys:" -ForegroundColor Yellow
-    Write-Host "   - DATABASE_URL" -ForegroundColor Yellow
-    Write-Host "   - REDIS_HOST" -ForegroundColor Yellow
-    Write-Host "   - DEEPGRAM_API_KEY" -ForegroundColor Yellow
-    Write-Host "   - ANTHROPIC_API_KEY" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Press Enter after updating .env to continue..."
-    Read-Host
+# Check .env.local (Next.js loads this first — never overwrite if it exists)
+if (-Not (Test-Path ".env.local")) {
+    Write-Host "⚠️  .env.local not found" -ForegroundColor Yellow
+    if (Test-Path ".env.example") {
+        Write-Host "   Copying .env.example to .env.local..." -ForegroundColor Yellow
+        Copy-Item ".env.example" ".env.local"
+        Write-Host ""
+        Write-Host "⚠️  IMPORTANT: Edit .env.local and add your real API keys:" -ForegroundColor Yellow
+        Write-Host "   - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" -ForegroundColor Yellow
+        Write-Host "   - SUPABASE_SERVICE_ROLE_KEY" -ForegroundColor Yellow
+        Write-Host "   - DEEPGRAM_API_KEY" -ForegroundColor Yellow
+        Write-Host "   - ANTHROPIC_API_KEY" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "   Never commit .env.local. Run 'npm run check:apis' to verify keys." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Press Enter after updating .env.local to continue..."
+        Read-Host
+    } else {
+        Write-Host "   .env.example not found — create .env.local manually" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "✅ .env.local exists (will not overwrite — contains your keys)" -ForegroundColor Green
 }
 
 # Install dependencies

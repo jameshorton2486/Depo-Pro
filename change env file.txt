@@ -1,0 +1,11 @@
+# Remove protection
+attrib -R C:\Users\james\depo-pro\.env.local
+
+# Open in Notepad
+notepad C:\Users\james\depo-pro\.env.local
+
+# Make your changes and save, then re-protect
+attrib +R C:\Users\james\depo-pro\.env.local
+
+# Verify the new key works
+npm run check:apis

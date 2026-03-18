@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { ANTHROPIC_MODELS } from '@/lib/config/anthropic-models';
 import { EMPTY_EXTRACTION, normalizeExtraction, type DepositionExtractionResult } from './types';
 
-const MODEL = 'claude-3-haiku-20240307';
+const MODEL = ANTHROPIC_MODELS.HAIKU;
 const MAX_TEXT_LENGTH = 15000;
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a legal document parser for a court reporting platform.
@@ -82,13 +83,38 @@ You MUST return JSON matching this EXACT schema:
   "notes": string | null
 }`;
 
+const AI_UNAVAILABLE_MESSAGE = 'AI extraction is temporarily unavailable. Please enter details manually.';
+
 function getAnthropicClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  console.warn('[intake-debug] key prefix:', apiKey?.slice(0, 15), 'length:', apiKey?.length);
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY environment variable is not set');
   }
   return new Anthropic({ apiKey });
+}
+
+function getUserFacingExtractionError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return AI_UNAVAILABLE_MESSAGE;
+  }
+
+  const anthropicError = error as Error & { status?: number };
+  if (anthropicError.status === 401 || anthropicError.status === 403) {
+    return AI_UNAVAILABLE_MESSAGE;
+  }
+
+  const message = error.message.toLowerCase();
+  if (
+    message.includes('401')
+    || message.includes('403')
+    || message.includes('authentication')
+    || message.includes('invalid x-api-key')
+    || message.includes('credit balance is too low')
+  ) {
+    return AI_UNAVAILABLE_MESSAGE;
+  }
+
+  return 'AI extraction failed. Please complete intake manually.';
 }
 
 export function truncateExtractionText(rawText: string): string {
@@ -158,7 +184,7 @@ export async function extractDepositionData(
     return normalizeExtraction({
       ...EMPTY_EXTRACTION,
       confidence: 0,
-      notes: error instanceof Error ? error.message : 'AI extraction failed — please complete intake manually',
+      notes: getUserFacingExtractionError(error),
     });
   }
 }

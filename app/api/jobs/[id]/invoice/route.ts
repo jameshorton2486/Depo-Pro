@@ -45,7 +45,7 @@ const POSTHandler = async (
 
     // Calculate pricing from real job/transcription data
     const transcription = await getTranscriptByJobId(supabase, jobId);
-    const wordCount = transcription?.word_count ?? null;
+    const wordCount = transcription?.total_word_count ?? null;
     const pageCount = transcription?.page_count ?? (wordCount ? Math.ceil(wordCount / 250) : 0);
     const durationMinutes =
       (job as any).audio_duration_minutes ??

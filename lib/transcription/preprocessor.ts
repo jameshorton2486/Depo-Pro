@@ -3,7 +3,7 @@
  * Uses FFmpeg to normalize and enhance audio for litigation-grade transcription.
  *
  * KEY OPERATIONS:
- * 1. normalizeAudioForTranscription() — Convert any audio/video to 16kHz mono WAV
+ * 1. normalizeAudioForTranscription() — Convert any audio/video to 24kHz mono WAV
  * 2. extractAndNormalizeFromVideo() — Extract + normalize audio from video files
  * 3. analyzeAudioQuality() — Probe audio metadata via ffprobe
  * 4. scoreAudioQuality() — Score audio quality 0-100 with tier classification
@@ -81,13 +81,13 @@ export interface NormalizationConfig {
 
 /** Default normalization config optimized for Deepgram Nova-3 */
 export const DEFAULT_NORMALIZATION_CONFIG: NormalizationConfig = {
-  sampleRate: 16000,
+  sampleRate: 24000,
   channels: 1,
   outputFormat: 'wav',
   loudnorm: true,
   highpassFilter: true,
   highpassFrequency: 80,
-  arnndn: true,
+  arnndn: false, // disabled: requires model file; highpass/afftdn/acompressor/loudnorm do the heavy lifting
   afftdn: true,
   afftdnStrength: 0.15,
   compress: true,
@@ -100,6 +100,25 @@ export const AGGRESSIVE_NORMALIZATION_CONFIG: NormalizationConfig = {
   highpassFrequency: 100,
   afftdnStrength: 0.35,
   deess: true,
+};
+
+/**
+ * Clean audio config — for GOOD and EXCELLENT quality recordings.
+ *
+ * Skips neural denoising (arnndn) and spectral denoising (afftdn) entirely.
+ * Keeps only: highpass filter (removes hum) + loudnorm (level consistency).
+ *
+ * WHY: On clean boardroom/studio audio, arnndn resynthesizes speech phonemes
+ * in ways that confuse Nova-3. The "noise reduction paradox" — audio that
+ * sounds better to humans but scores worse with the ASR model.
+ *
+ * Used by pipeline.ts when qualityScore.tier is 'EXCELLENT' or 'GOOD'.
+ */
+export const CLEAN_NORMALIZATION_CONFIG: NormalizationConfig = {
+  ...DEFAULT_NORMALIZATION_CONFIG,
+  arnndn: false,       // No neural denoising on clean audio
+  afftdn: false,       // No spectral denoising on clean audio
+  compress: true,      // Still normalize dynamics (loud attorney / soft witness)
 };
 
 // Phone codecs that indicate poor quality source
@@ -253,14 +272,14 @@ export async function normalizeAudioForTranscription(
   console.warn(`[Preprocessor] Normalizing audio:`);
   console.warn(`  Input:  ${inputPath}`);
   console.warn(`  Format: ${inputMetadata.format} → ${cfg.outputFormat}`);
-  console.warn(`  Rate:   ${inputMetadata.sampleRate}Hz → ${cfg.sampleRate}Hz`);
+  console.warn(`  Rate:   ${inputMetadata.sampleRate}Hz → ${cfg.sampleRate}Hz (Nova-3 optimal)`);
   console.warn(`  Channels: ${inputMetadata.channels} → ${cfg.channels}`);
 
   return new Promise((resolve, reject) => {
     let command = ffmpeg(inputPath)
       .noVideo()                          // Strip video stream
       .audioChannels(cfg.channels)        // Mono
-      .audioFrequency(cfg.sampleRate);    // 16kHz
+      .audioFrequency(cfg.sampleRate);    // 24kHz
 
     // Build audio filter chain
     const filters: string[] = [];
@@ -418,4 +437,5 @@ export default {
   cleanupPreprocessedFile,
   DEFAULT_NORMALIZATION_CONFIG,
   AGGRESSIVE_NORMALIZATION_CONFIG,
+  CLEAN_NORMALIZATION_CONFIG,
 };

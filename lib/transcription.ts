@@ -50,7 +50,7 @@ export async function transcribeAudio(
   audioBuffer: Buffer,
   options: {
     customKeyterms?: string[];
-    modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
+    modelPreference?: 'nova-3' | 'nova-3-medical' | 'nova-2' | 'nova-2-medical';
   } = {},
 ): Promise<TranscriptionResult> {
   const apiKey = requireDeepgramKey();
@@ -97,7 +97,7 @@ export async function transcribeFromUrl(
   audioUrl: string,
   options: {
     customKeyterms?: string[];
-    modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
+    modelPreference?: 'nova-3' | 'nova-3-medical' | 'nova-2' | 'nova-2-medical';
   } = {},
 ): Promise<TranscriptionResult> {
   const apiKey = requireDeepgramKey();
@@ -145,7 +145,7 @@ export async function transcribeFile(
   filePath: string,
   options: {
     customKeyterms?: string[];
-    modelPreference?: 'nova-3' | 'nova-2' | 'nova-2-medical';
+    modelPreference?: 'nova-3' | 'nova-3-medical' | 'nova-2' | 'nova-2-medical';
   } = {},
 ): Promise<TranscriptionResult> {
   const buffer = fs.readFileSync(filePath);

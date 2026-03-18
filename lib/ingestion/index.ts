@@ -127,6 +127,7 @@ export async function ingestDocument(options: IngestionOptions): Promise<Ingesti
       currentDocumentId,
       options.firmId,
       options.jobId ?? null,
+      options.uploadedBy,
     );
 
     return {

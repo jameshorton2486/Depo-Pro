@@ -89,7 +89,7 @@ export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeA
       const urlRes = await fetch(`/api/jobs/${jobId}/upload-url`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+        body: JSON.stringify({ fileName: file.name, mimeType: file.type, fileSize: file.size }),
       });
       const urlData = await urlRes.json();
       if (!urlRes.ok) throw new Error(urlData.error || 'Failed to get upload URL');
@@ -107,8 +107,8 @@ export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeA
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storagePath,
-          filename: file.name,
-          contentType: file.type,
+          fileName: file.name,
+          mimeType: file.type,
           fileSize: file.size,
         }),
       });
@@ -275,3 +275,6 @@ export function IntakeAudioStep({ jobId, jobTitle, onComplete, onSkip }: IntakeA
     </Card>
   );
 }
+
+
+

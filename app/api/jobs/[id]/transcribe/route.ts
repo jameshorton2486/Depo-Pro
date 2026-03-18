@@ -11,7 +11,7 @@ import { listFilesForJob } from '@/lib/supabase/queries/files';
 import { checkCombinedRateLimit, rateLimitResponse } from '@/lib/rate-limit-service';
 import { AudioEnhancementService } from '@/lib/services/audio-enhancement-service';
 import type { AudioProcessingMode } from '@/lib/services/audio-enhancement-service';
-import { processTranscriptionJob } from '@/lib/transcription/pipeline';
+import { runTranscriptionEngine } from '@/lib/transcription/engine';
 import { isAdminRole } from '@/lib/admin';
 
 const POSTHandler = async (
@@ -163,24 +163,18 @@ const POSTHandler = async (
 
     // Determine model preference based on tier
     const modelPreference = modelTier === 'ENHANCED'
-      ? 'nova-2-medical'
+      ? 'nova-3-medical'
       : body.modelPreference || 'nova-3';
 
     // Update job status to TRANSCRIBING
     await updateJobStatus(supabase, jobId, 'TRANSCRIBING');
 
-    // Determine audio URL for transcription (enhanced or original)
-    const baseAudioUrl = audioFile
-      ? audioFile.storage_url || audioFile.storage_path || audioFile.storageUrl || audioFile.storagePath
-      : audioUrlFromJob || '';
-    const audioUrlForTranscription = enhancementResult.success && enhancementResult.enhancedFileUrl
-      ? enhancementResult.enhancedFileUrl
-      : baseAudioUrl;
-
-    // Start transcription pipeline (async, fire and forget)
+    // Start transcription engine (async, fire and forget)
     setImmediate(() => {
-      processTranscriptionJob(jobId, audioUrlForTranscription).catch((error) => {
-        console.error(`Pipeline error for job ${jobId}:`, error);
+      runTranscriptionEngine(jobId, {
+        modelOverride: modelPreference === 'nova-3-medical' ? 'nova-3-medical' : undefined,
+      }).catch((error) => {
+        console.error(`Engine error for job ${jobId}:`, error);
       });
     });
 

@@ -12,7 +12,18 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { ANTHROPIC_MODELS } from '../lib/config/anthropic-models';
 import * as fs from 'fs';
+
+// Warn if keys are set as system env vars — they override .env.local
+const systemKeys = ['ANTHROPIC_API_KEY', 'DEEPGRAM_API_KEY', 'OPENAI_API_KEY'];
+for (const key of systemKeys) {
+  if (process.env[key]) {
+    console.warn(
+      `WARNING: ${key} is set as a system environment variable and will override .env.local. Clear with: [System.Environment]::SetEnvironmentVariable("${key}", $null, "User")`
+    );
+  }
+}
 
 // Load env files
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -56,10 +67,11 @@ async function checkSupabase(): Promise<CheckResult> {
   try {
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-    const { error } = await withTimeout(
-      supabase.from('firms').select('id').limit(1),
+    const result = await withTimeout(
+      Promise.resolve(supabase.from('firms').select('id').limit(1)),
       'Supabase'
     );
+    const { error } = result;
     if (error) return { ok: false, msg: `Supabase: ${error.message}`, required: true };
     return { ok: true, msg: 'Connected', required: true };
   } catch (err) {
@@ -84,7 +96,7 @@ async function checkAnthropic(): Promise<CheckResult> {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
+          model: ANTHROPIC_MODELS.HAIKU,
           max_tokens: 1,
           messages: [{ role: 'user', content: 'ok' }],
         }),
@@ -95,7 +107,7 @@ async function checkAnthropic(): Promise<CheckResult> {
       const text = await response.text();
       return { ok: false, msg: `Anthropic ${response.status}: ${text.slice(0, 100)}`, required: true };
     }
-    return { ok: true, msg: 'Connected (claude-3-haiku)', required: true };
+    return { ok: true, msg: 'Connected', required: true };
   } catch (err) {
     return { ok: false, msg: err instanceof Error ? err.message : 'Unknown error', required: true };
   }

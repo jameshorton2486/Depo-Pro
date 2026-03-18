@@ -120,6 +120,7 @@ const postHandler = async (request: NextRequest, { user, supabase, params }: Pro
       type: getFileType(file.type),
       storage_path: uploadResult.storagePath,
       storage_url: uploadResult.storagePath,
+      uploaded_by_id: user.id,
     });
 
     // Persist audio path to jobs.audio_file_url so the transcription pipeline
