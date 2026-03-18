@@ -97,9 +97,13 @@ export const WaveformPlayer = forwardRef<WaveformPlayerRef, WaveformPlayerProps>
     return () => {
       mounted = false;
       try {
+        ws.pause();
+        ws.unAll();
         ws.destroy();
       } catch (e) {
-        if (e instanceof Error && e.name !== 'AbortError') console.error('WaveSurfer destroy:', e);
+        if (e instanceof Error && e.name !== 'AbortError') {
+          console.error('[WaveformPlayer] destroy error:', e);
+        }
       }
     };
   }, [audioUrl, initialTime, onReady, onTimeUpdate]);
