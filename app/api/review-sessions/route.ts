@@ -93,7 +93,6 @@ export async function POST(req: NextRequest) {
         .from('review_sessions')
         .insert({
           transcription_id: transcriptionId,
-          job_id: jobId,
           user_id: currentUser.id,
           risk_score: riskScore,
           started_at: new Date().toISOString(),
