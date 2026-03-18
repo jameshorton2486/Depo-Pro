@@ -183,12 +183,24 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     redirect(`/jobs/${jobId}?error=no_audio`);
   }
 
-  // Generate a fresh public URL for the audio file (depo-audio is a public bucket)
-  let audioUrl = rawAudioPath;
+  // Convert storage PATH to a loadable URL — paths never work directly in the player
+  const storagePath = extractStoragePath(rawAudioPath);
+  let audioUrl: string;
   try {
-    audioUrl = await getFileUrl(extractStoragePath(rawAudioPath), 'depo-audio');
+    audioUrl = await getFileUrl(storagePath, 'depo-audio');
   } catch {
-    // Fallback to raw path — may still work if it's already a full public URL
+    // If public URL fails (e.g. bucket is private), try signed URL
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const { data, error } = await createAdminClient().storage
+        .from('depo-audio')
+        .createSignedUrl(storagePath, 3600);
+      if (error || !data?.signedUrl) throw new Error(error?.message ?? 'No signed URL');
+      audioUrl = data.signedUrl;
+    } catch (signedErr) {
+      console.error('[review] Failed to resolve audio URL:', signedErr);
+      redirect(`/jobs/${jobId}?error=audio_unavailable`);
+    }
   }
 
   // Parse transcript segments from transcription
@@ -264,6 +276,19 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     // Table doesn't exist yet — lock disabled
   }
 
+  // Fetch formatted paragraphs (if formatter has run)
+  const { data: paragraphs } = await supabase
+    .from('transcript_paragraphs')
+    .select('id, paragraph_type, speaker_label, formatted_text, page_number, line_number_start, line_number_end, paragraph_order')
+    .eq('transcription_id', transcription.id)
+    .order('paragraph_order', { ascending: true });
+
+  if (paragraphs && paragraphs.length > 0) {
+    console.warn(`[review] ${paragraphs.length} formatted paragraphs loaded`);
+  } else {
+    console.warn('[review] No transcript_paragraphs found — using raw segments');
+  }
+
   // Extract confidence analytics from transcription metadata (Feature Deep Dive Enhancement 1.2)
   const confidenceAnalytics = transcription.metadata?.confidence_analytics as ConfidenceAnalytics | undefined;
   const riskScoreResult = transcription.metadata?.risk_score_result as RiskScoreResult | undefined;
@@ -285,6 +310,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
         userRole={currentUser.role}
         confidenceAnalytics={confidenceAnalytics}
         riskScoreResult={riskScoreResult}
+        paragraphs={(paragraphs ?? []) as any}
       />
     </ErrorBoundary>
   );

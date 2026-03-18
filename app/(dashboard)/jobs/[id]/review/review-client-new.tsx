@@ -45,6 +45,17 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+interface TranscriptParagraph {
+  id: string;
+  paragraph_type: string;
+  speaker_label: string | null;
+  formatted_text: string | null;
+  page_number: number | null;
+  line_number_start: number | null;
+  line_number_end: number | null;
+  paragraph_order: number;
+}
+
 interface ReviewClientNewProps {
   jobId: string;
   transcriptionId: string;
@@ -60,6 +71,7 @@ interface ReviewClientNewProps {
   userRole: UserRole;
   confidenceAnalytics?: ConfidenceAnalytics;
   riskScoreResult?: RiskScoreResult;
+  paragraphs?: TranscriptParagraph[];
 }
 
 export function ReviewClientNew({
@@ -77,6 +89,7 @@ export function ReviewClientNew({
   userRole,
   confidenceAnalytics,
   riskScoreResult,
+  paragraphs,
 }: ReviewClientNewProps) {
   const router = useRouter();
   const audioRef = useRef<WaveformPlayerRef>(null);
@@ -734,15 +747,41 @@ export function ReviewClientNew({
               </div>
             }
           >
-            <SyncedTranscriptViewer
-              segments={segments}
-              currentTime={currentTime}
-              onWordClick={handleWordClick}
-              confidenceThreshold={0.85}
-              highlightLowConfidence={true}
-              showHeatmap={showHeatmap}
-              corrections={correctionsMap}
-            />
+            {paragraphs && paragraphs.length > 0 ? (
+              <div className="h-full overflow-y-auto bg-slate-900 rounded-lg p-4 font-mono text-sm leading-relaxed">
+                {paragraphs.map((para) => (
+                  <div
+                    key={para.id}
+                    className={cn(
+                      'mb-1',
+                      para.paragraph_type === 'QUESTION' && 'pl-8',
+                      para.paragraph_type === 'ANSWER' && 'pl-8',
+                      para.paragraph_type === 'COLLOQUY' && 'pl-16',
+                    )}
+                  >
+                    {para.line_number_start != null && (
+                      <span className="text-slate-500 text-xs w-6 inline-block mr-2 select-none">
+                        {para.line_number_start}
+                      </span>
+                    )}
+                    {para.speaker_label && (
+                      <span className="font-semibold text-slate-300 mr-2">{para.speaker_label}</span>
+                    )}
+                    <span className="text-slate-200">{para.formatted_text || ''}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <SyncedTranscriptViewer
+                segments={segments}
+                currentTime={currentTime}
+                onWordClick={handleWordClick}
+                confidenceThreshold={0.85}
+                highlightLowConfidence={true}
+                showHeatmap={showHeatmap}
+                corrections={correctionsMap}
+              />
+            )}
           </ErrorBoundary>
         </div>
 
