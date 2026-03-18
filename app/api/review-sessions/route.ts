@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
-    const { transcriptionId, jobId, riskScore } = parsed;
+    const { transcriptionId, jobId } = parsed;
 
     const supabase = await createSupabaseServerClient();
 
@@ -89,13 +89,13 @@ export async function POST(req: NextRequest) {
     // date or the insert fails for any reason, log and return a graceful
     // response so that corrections are never blocked.
     try {
+      // Only insert columns confirmed to exist in the table.
+      // job_id, started_at, flagged_count do NOT exist on review_sessions.
       const { data, error } = await supabase
         .from('review_sessions')
         .insert({
           transcription_id: transcriptionId,
           user_id: currentUser.id,
-          risk_score: riskScore,
-          started_at: new Date().toISOString(),
         })
         .select('id')
         .single();
