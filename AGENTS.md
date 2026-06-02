@@ -1,7 +1,9 @@
 # AGENTS.md — House Rules for Bolt / AI Agents
 
 These rules are **locked**. Any agent working on this project must re-read this file
-before touching code. Violations must be reverted before a prompt is considered complete.
+**and `MASTER_ARCHITECTURE.md`** before touching code. When any rule here conflicts with
+`MASTER_ARCHITECTURE.md`, the master architecture document governs.
+Violations must be reverted before a prompt is considered complete.
 
 ---
 
