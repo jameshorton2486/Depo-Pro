@@ -15,11 +15,14 @@ async function startMocks() {
   if (import.meta.env.DEV) {
     try {
       const { worker } = await import("./mocks/browser");
-      await worker.start({
-        quiet: true,
-        onUnhandledRequest: "bypass",
-        serviceWorker: { url: "/mockServiceWorker.js" },
-      });
+      await Promise.race([
+        worker.start({
+          quiet: true,
+          onUnhandledRequest: "bypass",
+          serviceWorker: { url: "/mockServiceWorker.js" },
+        }),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
     } catch (err) {
       // Service worker registration may fail in sandboxed preview environments.
       // The app still mounts; API calls will 404 but the error UI will show.
