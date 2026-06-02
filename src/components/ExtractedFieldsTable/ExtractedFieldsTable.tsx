@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { AlertTriangle, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, History } from "lucide-react";
 import type { CaseRecord } from "../../types/case";
 import {
   projectFieldRows,
@@ -9,11 +9,14 @@ import {
   type DisplaySource,
 } from "./fieldProjection";
 import { FieldStatusBadge } from "./FieldStatusBadge";
-import { ConflictResolver } from "./ConflictResolver";
+import { useConflict } from "../conflict/conflictStore";
+import { ConflictResolutionModal } from "../conflict/ConflictResolutionModal";
+import { ProvenanceViewer } from "../conflict/ProvenanceViewer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
+  caseId: string;
   record: CaseRecord;
   conflictAlternates?: Record<string, { value: string; source: string }>;
   onConfirm?: (rowId: string) => void;
@@ -85,30 +88,29 @@ function SourcePill({ source }: { source: DisplaySource }) {
 
 // ─── Conflict cell ────────────────────────────────────────────────────────────
 
-function ConflictCell({
-  row,
-  expanded,
-  onToggle,
-}: {
-  row: FieldRow;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  if (!row.conflict) {
+function ConflictCell({ row, isResolved }: { row: FieldRow; isResolved: boolean }) {
+  const { openModal } = useConflict();
+
+  if (!row.conflict && !isResolved) {
     return <span className="text-xs text-slate-300">—</span>;
+  }
+  if (isResolved) {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+        <Check className="h-3.5 w-3.5" />
+        Resolved
+      </span>
+    );
   }
   return (
     <button
       type="button"
-      onClick={onToggle}
-      className="group inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-1"
+      onClick={() => openModal(row.id)}
+      className="inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-1"
     >
       <AlertTriangle className="h-3 w-3 shrink-0" />
-      Conflict
-      {expanded
-        ? <ChevronUp className="h-3 w-3 shrink-0 opacity-60" />
-        : <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
-      }
+      Resolve
+      <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
     </button>
   );
 }
@@ -117,68 +119,81 @@ function ConflictCell({
 
 interface RowProps {
   row: FieldRow;
-  expanded: boolean;
-  onToggle: () => void;
+  isResolved: boolean;
   onConfirm: () => void;
-  onResolve: (rowId: string, value: string, source: DisplaySource) => void;
+  onOpenProvenance: () => void;
 }
 
-function TableRow({ row, expanded, onToggle, onConfirm, onResolve }: RowProps) {
+function TableRow({ row, isResolved, onConfirm, onOpenProvenance }: RowProps) {
   const isEmpty = row.value === "";
+  const { state } = useConflict();
+  const resolvedEntry = state.history[row.id]?.find(
+    (e) => e.event_type === "conflict_resolved",
+  );
+  const displayValue = resolvedEntry?.winning_value ?? row.value;
+
   return (
-    <>
-      <tr
-        className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 ${
-          row.conflict ? "bg-rose-50/30" : ""
-        }`}
-      >
-        {/* Field */}
-        <td className="py-3 pl-5 pr-3">
-          <div className="flex items-start gap-1.5">
-            {row.required && (
-              <span className="mt-0.5 text-xs leading-none text-red-500" title="Required for certification">
-                *
-              </span>
-            )}
-            <div>
-              <p className="text-sm font-medium leading-tight text-slate-800">{row.label}</p>
-              <p className="mt-0.5 font-mono text-[10px] leading-none text-slate-400">{row.path}</p>
-            </div>
-          </div>
-        </td>
-
-        {/* Extracted Value */}
-        <td className="max-w-[220px] px-3 py-3">
-          {isEmpty ? (
-            <span className="text-sm italic text-slate-400">—</span>
-          ) : (
-            <span className="break-words text-sm text-slate-800">{row.value}</span>
+    <tr
+      className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 ${
+        row.conflict && !isResolved ? "bg-rose-50/30" : ""
+      }`}
+    >
+      {/* Field */}
+      <td className="py-3 pl-5 pr-3">
+        <div className="flex items-start gap-1.5">
+          {row.required && (
+            <span className="mt-0.5 text-xs leading-none text-red-500" title="Required for certification">*</span>
           )}
-        </td>
+          <div>
+            <p className="text-sm font-medium leading-tight text-slate-800">{row.label}</p>
+            <p className="mt-0.5 font-mono text-[10px] leading-none text-slate-400">{row.path}</p>
+          </div>
+        </div>
+      </td>
 
-        {/* Source */}
-        <td className="px-3 py-3">
-          <SourcePill source={row.displaySource} />
-        </td>
+      {/* Extracted Value */}
+      <td className="max-w-[200px] px-3 py-3">
+        {!displayValue || displayValue === "" ? (
+          <span className="text-sm italic text-slate-400">—</span>
+        ) : (
+          <span className="break-words text-sm text-slate-800">{displayValue}</span>
+        )}
+      </td>
 
-        {/* Confidence */}
-        <td className="px-3 py-3">
-          <ConfidenceBar score={row.confidence_score} />
-        </td>
+      {/* Source */}
+      <td className="px-3 py-3">
+        <SourcePill source={row.displaySource} />
+      </td>
 
-        {/* Status */}
-        <td className="px-3 py-3">
-          <FieldStatusBadge status={row.status} />
-        </td>
+      {/* Confidence */}
+      <td className="px-3 py-3">
+        <ConfidenceBar score={row.confidence_score} />
+      </td>
 
-        {/* Conflict */}
-        <td className="px-3 py-3">
-          <ConflictCell row={row} expanded={expanded} onToggle={onToggle} />
-        </td>
+      {/* Status */}
+      <td className="px-3 py-3">
+        <FieldStatusBadge status={isResolved ? "Confirmed" : row.status} />
+      </td>
 
-        {/* Action */}
-        <td className="py-3 pl-3 pr-5 text-right">
-          {!row.conflict && row.status === "Needs Confirmation" && !isEmpty && (
+      {/* Conflict */}
+      <td className="px-3 py-3">
+        <ConflictCell row={row} isResolved={isResolved} />
+      </td>
+
+      {/* Action */}
+      <td className="py-3 pl-3 pr-5">
+        <div className="flex items-center justify-end gap-2">
+          {/* Provenance history button — always visible for rows with any history */}
+          <button
+            type="button"
+            onClick={onOpenProvenance}
+            title="View field history"
+            className="rounded p-1 text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          >
+            <History className="h-3.5 w-3.5" />
+          </button>
+
+          {!row.conflict && !isResolved && row.status === "Needs Confirmation" && !isEmpty && (
             <button
               type="button"
               onClick={onConfirm}
@@ -187,24 +202,15 @@ function TableRow({ row, expanded, onToggle, onConfirm, onResolve }: RowProps) {
               Confirm
             </button>
           )}
-          {row.status === "Confirmed" && (
+          {(row.status === "Confirmed" || isResolved) && !row.conflict && (
             <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
               <Check className="h-3.5 w-3.5" />
               Done
             </span>
           )}
-        </td>
-      </tr>
-
-      {/* Conflict resolution panel */}
-      {expanded && row.conflict && (
-        <tr className="border-b border-rose-100 bg-rose-50/50">
-          <td colSpan={7} className="px-5 pb-4 pt-2">
-            <ConflictResolver row={row} onResolve={onResolve} />
-          </td>
-        </tr>
-      )}
-    </>
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -230,9 +236,7 @@ function CategoryHeader({ category, count }: { category: FieldCategory; count: n
 // ─── Summary badges ───────────────────────────────────────────────────────────
 
 function SummaryBadge({
-  count,
-  label,
-  color,
+  count, label, color,
 }: {
   count: number;
   label: string;
@@ -254,27 +258,8 @@ function SummaryBadge({
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────
 
-interface FilterBarProps {
-  activeCategory: FieldCategory | FilterAll;
-  activeSource: DisplaySource | FilterAll;
-  activeStatus: FieldStatus | FilterAll;
-  showAll: boolean;
-  onCategory: (v: FieldCategory | FilterAll) => void;
-  onSource: (v: DisplaySource | FilterAll) => void;
-  onStatus: (v: FieldStatus | FilterAll) => void;
-  onToggleShowAll: () => void;
-  onConfirmAll: () => void;
-  conflictCount: number;
-  missingCount: number;
-  needsConfirmCount: number;
-  confirmedCount: number;
-}
-
 function SelectFilter<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
+  label, value, options, onChange,
 }: {
   label: string;
   value: T | FilterAll;
@@ -294,6 +279,22 @@ function SelectFilter<T extends string>({
       </select>
     </div>
   );
+}
+
+interface FilterBarProps {
+  activeCategory: FieldCategory | FilterAll;
+  activeSource: DisplaySource | FilterAll;
+  activeStatus: FieldStatus | FilterAll;
+  showAll: boolean;
+  onCategory: (v: FieldCategory | FilterAll) => void;
+  onSource: (v: DisplaySource | FilterAll) => void;
+  onStatus: (v: FieldStatus | FilterAll) => void;
+  onToggleShowAll: () => void;
+  onConfirmAll: () => void;
+  conflictCount: number;
+  missingCount: number;
+  needsConfirmCount: number;
+  confirmedCount: number;
 }
 
 function FilterBar({
@@ -321,7 +322,6 @@ function FilterBar({
         options={STATUSES}
         onChange={onStatus}
       />
-
       <label className="flex cursor-pointer items-center gap-1.5">
         <input
           type="checkbox"
@@ -333,10 +333,10 @@ function FilterBar({
       </label>
 
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        <SummaryBadge count={conflictCount}    label="conflict"     color="rose" />
-        <SummaryBadge count={missingCount}     label="missing"      color="red" />
+        <SummaryBadge count={conflictCount}     label="conflict"    color="rose" />
+        <SummaryBadge count={missingCount}      label="missing"     color="red" />
         <SummaryBadge count={needsConfirmCount} label="unconfirmed" color="amber" />
-        <SummaryBadge count={confirmedCount}   label="confirmed"    color="emerald" />
+        <SummaryBadge count={confirmedCount}    label="confirmed"   color="emerald" />
         <button
           type="button"
           onClick={onConfirmAll}
@@ -352,53 +352,63 @@ function FilterBar({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ExtractedFieldsTable({
+  caseId,
   record,
   conflictAlternates = {},
   onConfirm,
   onConfirmAll,
   onResolveConflict,
 }: Props) {
+  const { state, detectConflict, recordConfirm, openModal } = useConflict();
+
   const [filterCategory, setFilterCategory] = useState<FieldCategory | FilterAll>(ALL);
   const [filterSource, setFilterSource]     = useState<DisplaySource | FilterAll>(ALL);
   const [filterStatus, setFilterStatus]     = useState<FieldStatus | FilterAll>(ALL);
   const [showAll, setShowAll]               = useState(false);
-  const [expandedRows, setExpandedRows]     = useState<Set<string>>(new Set());
+  const [provenancePath, setProvenancePath] = useState<string | null>(null);
 
   const [localConfirmed, setLocalConfirmed] = useState<Set<string>>(new Set());
-  const [resolvedConflicts, setResolvedConflicts] = useState<
-    Record<string, { value: string; source: DisplaySource }>
-  >({});
 
   const allRows = useMemo(
     () => projectFieldRows(record, conflictAlternates),
     [record, conflictAlternates],
   );
 
+  // Register active conflicts with the store on first render and whenever
+  // the record/alternates change. Uses a ref-guard to avoid repeated fires.
+  useEffect(() => {
+    for (const row of allRows) {
+      if (row.conflict && row.conflictAlternate) {
+        detectConflict(
+          caseId,
+          row.id,
+          row.label,
+          { value: row.value, source: row.displaySource, confidence_score: row.confidence_score },
+          { value: row.conflictAlternate.value, source: row.conflictAlternate.source, confidence_score: null },
+        );
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseId]);
+
+  // A conflict row is "resolved" when the store has resolved it
+  const isResolvedInStore = (rowId: string) =>
+    !state.active[rowId] &&
+    (state.history[rowId] ?? []).some((e) => e.event_type === "conflict_resolved");
+
   const rows = useMemo<FieldRow[]>(() => {
     return allRows.map((row) => {
-      let r = row;
       if (localConfirmed.has(row.id)) {
-        r = { ...r, status: "Confirmed", conflict: false };
+        return { ...row, status: "Confirmed" as FieldStatus, conflict: false };
       }
-      if (resolvedConflicts[row.id]) {
-        const res = resolvedConflicts[row.id];
-        r = {
-          ...r,
-          value: res.value,
-          displaySource: res.source,
-          status: "Confirmed",
-          conflict: false,
-          conflictAlternate: null,
-        };
-      }
-      return r;
+      return row;
     });
-  }, [allRows, localConfirmed, resolvedConflicts]);
+  }, [allRows, localConfirmed]);
 
-  const conflictCount      = rows.filter((r) => r.conflict).length;
+  const conflictCount      = rows.filter((r) => r.conflict && !isResolvedInStore(r.id)).length;
   const missingCount       = rows.filter((r) => r.status === "Missing").length;
   const needsConfirmCount  = rows.filter((r) => r.status === "Needs Confirmation").length;
-  const confirmedCount     = rows.filter((r) => r.status === "Confirmed").length;
+  const confirmedCount     = rows.filter((r) => r.status === "Confirmed" || isResolvedInStore(r.id)).length;
 
   const filtered = useMemo(() => {
     return rows.filter((row) => {
@@ -419,126 +429,141 @@ export function ExtractedFieldsTable({
     return map;
   }, [filtered]);
 
-  function handleToggleExpand(id: string) {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function handleConfirm(id: string) {
-    setLocalConfirmed((prev) => new Set(prev).add(id));
-    onConfirm?.(id);
+  function handleConfirm(row: FieldRow) {
+    setLocalConfirmed((prev) => new Set(prev).add(row.id));
+    recordConfirm(caseId, row.id, row.label, row.value, row.displaySource);
+    onConfirm?.(row.id);
   }
 
   function handleConfirmAll() {
-    const ids = new Set(
-      filtered
-        .filter((r) => r.status === "Needs Confirmation" && r.value !== "")
-        .map((r) => r.id),
+    const confirmable = filtered.filter(
+      (r) => r.status === "Needs Confirmation" && r.value !== "" && !r.conflict,
     );
+    const ids = new Set(confirmable.map((r) => r.id));
     setLocalConfirmed((prev) => new Set([...prev, ...ids]));
+    for (const row of confirmable) {
+      recordConfirm(caseId, row.id, row.label, row.value, row.displaySource);
+    }
     onConfirmAll?.();
   }
 
-  function handleResolve(rowId: string, value: string, source: DisplaySource) {
-    setResolvedConflicts((prev) => ({ ...prev, [rowId]: { value, source } }));
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      next.delete(rowId);
-      return next;
-    });
-    onResolveConflict?.(rowId, value, source);
-  }
+  // Provenance viewer state — find label for header
+  const provenanceRow = provenancePath
+    ? allRows.find((r) => r.id === provenancePath)
+    : null;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <FilterBar
-        activeCategory={filterCategory}
-        activeSource={filterSource}
-        activeStatus={filterStatus}
-        showAll={showAll}
-        onCategory={setFilterCategory}
-        onSource={setFilterSource}
-        onStatus={setFilterStatus}
-        onToggleShowAll={() => setShowAll((v) => !v)}
-        onConfirmAll={handleConfirmAll}
-        conflictCount={conflictCount}
-        missingCount={missingCount}
-        needsConfirmCount={needsConfirmCount}
-        confirmedCount={confirmedCount}
-      />
+    <>
+      <div className="flex gap-4">
+        {/* Main table */}
+        <div className={`flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all ${provenancePath ? "flex-1 min-w-0" : "w-full"}`}>
+          <FilterBar
+            activeCategory={filterCategory}
+            activeSource={filterSource}
+            activeStatus={filterStatus}
+            showAll={showAll}
+            onCategory={setFilterCategory}
+            onSource={setFilterSource}
+            onStatus={setFilterStatus}
+            onToggleShowAll={() => setShowAll((v) => !v)}
+            onConfirmAll={handleConfirmAll}
+            conflictCount={conflictCount}
+            missingCount={missingCount}
+            needsConfirmCount={needsConfirmCount}
+            confirmedCount={confirmedCount}
+          />
 
-      <div className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse text-left">
-          <colgroup>
-            <col style={{ width: "21%" }} />
-            <col style={{ width: "22%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "11%" }} />
-            <col style={{ width: "10%" }} />
-          </colgroup>
-          <thead>
-            <tr className="border-b-2 border-slate-200 bg-slate-50">
-              <th className="py-2.5 pl-5 pr-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Field</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Extracted Value</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Source</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Confidence</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Conflict</th>
-              <th className="py-2.5 pl-3 pr-5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {grouped.size === 0 && (
-              <tr>
-                <td colSpan={7} className="py-16 text-center text-sm text-slate-400">
-                  No fields match the current filters.
-                </td>
-              </tr>
-            )}
-            {Array.from(grouped.entries()).map(([category, catRows]) => (
-              <>{/* eslint-disable-line react/jsx-key */}
-                <CategoryHeader key={`cat-${category}`} category={category} count={catRows.length} />
-                {catRows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    row={row}
-                    expanded={expandedRows.has(row.id)}
-                    onToggle={() => handleToggleExpand(row.id)}
-                    onConfirm={() => handleConfirm(row.id)}
-                    onResolve={handleResolve}
-                  />
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed border-collapse text-left">
+              <colgroup>
+                <col style={{ width: "21%" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "11%" }} />
+              </colgroup>
+              <thead>
+                <tr className="border-b-2 border-slate-200 bg-slate-50">
+                  <th className="py-2.5 pl-5 pr-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Field</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Extracted Value</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Source</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Confidence</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+                  <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Conflict</th>
+                  <th className="py-2.5 pl-3 pr-5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grouped.size === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-16 text-center text-sm text-slate-400">
+                      No fields match the current filters.
+                    </td>
+                  </tr>
+                )}
+                {Array.from(grouped.entries()).map(([category, catRows]) => (
+                  <>
+                    <CategoryHeader key={`cat-${category}`} category={category} count={catRows.length} />
+                    {catRows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        row={row}
+                        isResolved={isResolvedInStore(row.id)}
+                        onConfirm={() => handleConfirm(row)}
+                        onOpenProvenance={() =>
+                          setProvenancePath((p) => (p === row.id ? null : row.id))
+                        }
+                      />
+                    ))}
+                  </>
                 ))}
-              </>
-            ))}
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50 px-5 py-2.5 text-xs text-slate-500">
+            <span className="font-medium">{filtered.length} field{filtered.length !== 1 ? "s" : ""} shown</span>
+            <span className="text-slate-300">·</span>
+            {conflictCount > 0 && (
+              <span className="font-medium text-rose-600">
+                {conflictCount} conflict{conflictCount !== 1 ? "s" : ""} require resolution
+              </span>
+            )}
+            {missingCount > 0 && (
+              <span className="font-medium text-red-600">
+                {missingCount} required field{missingCount !== 1 ? "s" : ""} missing
+              </span>
+            )}
+            {conflictCount === 0 && missingCount === 0 && filtered.length > 0 && (
+              <span className="font-medium text-emerald-600">All visible fields are valid</span>
+            )}
+            <span className="ml-auto text-slate-400">* Required for certification</span>
+          </div>
+        </div>
+
+        {/* Provenance panel — slides in alongside the table */}
+        {provenancePath && provenanceRow && (
+          <div className="w-80 shrink-0">
+            <ProvenanceViewer
+              caseId={caseId}
+              fieldPath={provenancePath}
+              fieldLabel={provenanceRow.label}
+              onClose={() => setProvenancePath(null)}
+            />
+          </div>
+        )}
       </div>
 
-      {/* Footer */}
-      <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50 px-5 py-2.5 text-xs text-slate-500">
-        <span className="font-medium">{filtered.length} field{filtered.length !== 1 ? "s" : ""} shown</span>
-        <span className="text-slate-300">·</span>
-        {conflictCount > 0 && (
-          <span className="font-medium text-rose-600">
-            {conflictCount} conflict{conflictCount !== 1 ? "s" : ""} require resolution
-          </span>
-        )}
-        {missingCount > 0 && (
-          <span className="font-medium text-red-600">
-            {missingCount} required field{missingCount !== 1 ? "s" : ""} missing
-          </span>
-        )}
-        {conflictCount === 0 && missingCount === 0 && filtered.length > 0 && (
-          <span className="font-medium text-emerald-600">All visible fields are valid</span>
-        )}
-        <span className="ml-auto text-slate-400">* Required for certification</span>
-      </div>
-    </div>
+      {/* Conflict resolution modal — rendered at body level via portal-like position */}
+      <ConflictResolutionModal
+        caseId={caseId}
+        onProvenanceOpen={(fp) => {
+          setProvenancePath(fp);
+        }}
+      />
+    </>
   );
 }
