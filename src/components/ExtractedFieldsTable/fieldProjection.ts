@@ -32,17 +32,30 @@ export interface FieldRow {
   source: FieldSource;
   displaySource: DisplaySource;
   status: FieldStatus;
-  confidence_score: number | null;
   conflict: boolean;
   conflictAlternate: { value: string; source: DisplaySource } | null;
+  confidence_score: number | null;
   required: boolean;
 }
 
 // ─── Source mapping ───────────────────────────────────────────────────────────
+// "extracted" can mean either Notice or Job Sheet depending on the field path.
+// Job Sheet fields are identified by an explicit override map.
 
-function toDisplaySource(s: FieldSource): DisplaySource {
-  if (s === "extracted") return "Notice";
-  if (s === "imported")  return "Reporter Profile";
+const JOB_SHEET_PATHS = new Set([
+  "session.location_address",
+  "session.location_city",
+  "session.location_state",
+  "session.location_zip",
+  "session.start_time",
+  "session.end_time",
+]);
+
+function toDisplaySource(s: FieldSource, path: string): DisplaySource {
+  if (s === "extracted") {
+    return JOB_SHEET_PATHS.has(path) ? "Job Sheet" : "Notice";
+  }
+  if (s === "imported") return "Reporter Profile";
   return "Manual";
 }
 
@@ -62,6 +75,7 @@ function makeRow(
   conflictAlternate: FieldRow["conflictAlternate"] = null,
 ): FieldRow {
   const value = rawValue == null || rawValue === "" ? "" : String(rawValue);
+  const displaySource = toDisplaySource(source, path);
 
   let status: FieldStatus;
   if (conflict) {
@@ -82,17 +96,16 @@ function makeRow(
     value,
     rawValue,
     source,
-    displaySource: toDisplaySource(source),
+    displaySource,
     status,
-    confidence_score,
     conflict,
     conflictAlternate,
+    confidence_score,
     required,
   };
 }
 
 // ─── Projector ────────────────────────────────────────────────────────────────
-// Flattens a CaseRecord into a display-ready list of FieldRows.
 
 export function projectFieldRows(
   record: CaseRecord,
@@ -108,11 +121,11 @@ export function projectFieldRows(
 
   // ── Case Caption ─────────────────────────────────────────────────────────
   const c = record.caption;
-  rows.push(makeRow("caption.case_name",  "Case Caption", "Case Name",    "caption.case_name",  c.case_name.value,  c.case_name.source,  c.case_name.confirmed,  c.case_name.conflict,  c.case_name.confidence_score,  true));
-  rows.push(makeRow("caption.case_number","Case Caption", "Case Number",  "caption.case_number",c.case_number.value,c.case_number.source,c.case_number.confirmed,c.case_number.conflict,c.case_number.confidence_score, true));
-  rows.push(makeRow("caption.court_name", "Case Caption", "Court Name",   "caption.court_name", c.court_name.value, c.court_name.source, c.court_name.confirmed, c.court_name.conflict, c.court_name.confidence_score,  true));
-  rows.push(makeRow("caption.department", "Case Caption", "Department",   "caption.department", c.department.value, c.department.source, c.department.confirmed, c.department.conflict, c.department.confidence_score,  false));
-  rows.push(makeRow("caption.judge_name", "Case Caption", "Judge",        "caption.judge_name", c.judge_name.value, c.judge_name.source, c.judge_name.confirmed, c.judge_name.conflict, c.judge_name.confidence_score,  false));
+  rows.push(makeRow("caption.case_name",   "Case Caption", "Case Name",   "caption.case_name",   c.case_name.value,   c.case_name.source,   c.case_name.confirmed,   c.case_name.conflict,   c.case_name.confidence_score,   true));
+  rows.push(makeRow("caption.case_number", "Case Caption", "Case Number", "caption.case_number", c.case_number.value, c.case_number.source, c.case_number.confirmed, c.case_number.conflict, c.case_number.confidence_score, true));
+  rows.push(makeRow("caption.court_name",  "Case Caption", "Court Name",  "caption.court_name",  c.court_name.value,  c.court_name.source,  c.court_name.confirmed,  c.court_name.conflict,  c.court_name.confidence_score,  true));
+  rows.push(makeRow("caption.department",  "Case Caption", "Department",  "caption.department",  c.department.value,  c.department.source,  c.department.confirmed,  c.department.conflict,  c.department.confidence_score,  false));
+  rows.push(makeRow("caption.judge_name",  "Case Caption", "Judge",       "caption.judge_name",  c.judge_name.value,  c.judge_name.source,  c.judge_name.confirmed,  c.judge_name.conflict,  c.judge_name.confidence_score,  false));
 
   // ── Session ───────────────────────────────────────────────────────────────
   const s = record.session;
@@ -125,11 +138,11 @@ export function projectFieldRows(
   rows.push(makeRow("session.location_zip",     "Session", "ZIP Code",           "session.location_zip",     s.location_zip.value,     s.location_zip.source,     s.location_zip.confirmed,     s.location_zip.conflict,     s.location_zip.confidence_score,     false));
 
   // ── Reporter ──────────────────────────────────────────────────────────────
-  const r = record.reporter;
-  rows.push(makeRow("reporter.name",        "Reporter", "Reporter Name",      "reporter.name",        r.name.value,        r.name.source,        r.name.confirmed,        r.name.conflict,        r.name.confidence_score,        true));
-  rows.push(makeRow("reporter.cert_number", "Reporter", "Cert. Number",       "reporter.cert_number", r.cert_number.value, r.cert_number.source, r.cert_number.confirmed, r.cert_number.conflict, r.cert_number.confidence_score, true));
-  rows.push(makeRow("reporter.cert_state",  "Reporter", "Cert. State",        "reporter.cert_state",  r.cert_state.value,  r.cert_state.source,  r.cert_state.confirmed,  r.cert_state.conflict,  r.cert_state.confidence_score,  true));
-  rows.push(makeRow("reporter.firm",        "Reporter", "Reporting Firm",     "reporter.firm",        r.firm.value,        r.firm.source,        r.firm.confirmed,        r.firm.conflict,        r.firm.confidence_score,        false));
+  const rep = record.reporter;
+  rows.push(makeRow("reporter.name",        "Reporter", "Reporter Name",  "reporter.name",        rep.name.value,        rep.name.source,        rep.name.confirmed,        rep.name.conflict,        rep.name.confidence_score,        true));
+  rows.push(makeRow("reporter.cert_number", "Reporter", "Cert. Number",   "reporter.cert_number", rep.cert_number.value, rep.cert_number.source, rep.cert_number.confirmed, rep.cert_number.conflict, rep.cert_number.confidence_score, true));
+  rows.push(makeRow("reporter.cert_state",  "Reporter", "Cert. State",    "reporter.cert_state",  rep.cert_state.value,  rep.cert_state.source,  rep.cert_state.confirmed,  rep.cert_state.conflict,  rep.cert_state.confidence_score,  true));
+  rows.push(makeRow("reporter.firm",        "Reporter", "Reporting Firm", "reporter.firm",        rep.firm.value,        rep.firm.source,        rep.firm.confirmed,        rep.firm.conflict,        rep.firm.confidence_score,        false));
 
   // ── Witnesses ─────────────────────────────────────────────────────────────
   record.witnesses.forEach((w, i) => {

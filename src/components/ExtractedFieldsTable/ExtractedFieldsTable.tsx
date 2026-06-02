@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp } from "lucide-react";
 import type { CaseRecord } from "../../types/case";
 import {
   projectFieldRows,
@@ -57,7 +58,7 @@ function ConfidenceBar({ score }: { score: number | null }) {
   return (
     <div className="flex items-center gap-1.5">
       <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-200">
-        <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+        <div className={`h-full transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="tabular-nums text-xs text-slate-500">{pct}%</span>
     </div>
@@ -68,17 +69,47 @@ function ConfidenceBar({ score }: { score: number | null }) {
 
 function SourcePill({ source }: { source: DisplaySource }) {
   const map: Record<DisplaySource, string> = {
-    "Notice":          "bg-blue-50 text-blue-700",
-    "Job Sheet":       "bg-cyan-50 text-cyan-700",
-    "Reporter Profile":"bg-violet-50 text-violet-700",
-    "Record":          "bg-slate-100 text-slate-600",
-    "Computed":        "bg-orange-50 text-orange-700",
-    "Manual":          "bg-slate-100 text-slate-500",
+    "Notice":          "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+    "Job Sheet":       "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200",
+    "Reporter Profile":"bg-teal-50 text-teal-700 ring-1 ring-teal-200",
+    "Record":          "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
+    "Computed":        "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
+    "Manual":          "bg-slate-50 text-slate-500 ring-1 ring-slate-200",
   };
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${map[source]}`}>
+    <span className={`inline-block rounded-md px-1.5 py-0.5 text-xs font-medium ${map[source]}`}>
       {source}
     </span>
+  );
+}
+
+// ─── Conflict cell ────────────────────────────────────────────────────────────
+
+function ConflictCell({
+  row,
+  expanded,
+  onToggle,
+}: {
+  row: FieldRow;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  if (!row.conflict) {
+    return <span className="text-xs text-slate-300">—</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="group inline-flex items-center gap-1.5 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-1"
+    >
+      <AlertTriangle className="h-3 w-3 shrink-0" />
+      Conflict
+      {expanded
+        ? <ChevronUp className="h-3 w-3 shrink-0 opacity-60" />
+        : <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+      }
+    </button>
   );
 }
 
@@ -97,23 +128,27 @@ function TableRow({ row, expanded, onToggle, onConfirm, onResolve }: RowProps) {
   return (
     <>
       <tr
-        className={`border-b border-slate-100 transition-colors hover:bg-slate-50 ${row.conflict ? "bg-rose-50/40" : ""}`}
+        className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 ${
+          row.conflict ? "bg-rose-50/30" : ""
+        }`}
       >
         {/* Field */}
-        <td className="py-2.5 pl-4 pr-3">
-          <div className="flex items-start gap-1">
+        <td className="py-3 pl-5 pr-3">
+          <div className="flex items-start gap-1.5">
             {row.required && (
-              <span className="mt-0.5 text-red-500" title="Required">*</span>
+              <span className="mt-0.5 text-xs leading-none text-red-500" title="Required for certification">
+                *
+              </span>
             )}
             <div>
-              <p className="text-sm font-medium text-slate-800">{row.label}</p>
-              <p className="mt-0.5 font-mono text-[10px] text-slate-400">{row.path}</p>
+              <p className="text-sm font-medium leading-tight text-slate-800">{row.label}</p>
+              <p className="mt-0.5 font-mono text-[10px] leading-none text-slate-400">{row.path}</p>
             </div>
           </div>
         </td>
 
-        {/* Value */}
-        <td className="max-w-[240px] px-3 py-2.5">
+        {/* Extracted Value */}
+        <td className="max-w-[220px] px-3 py-3">
           {isEmpty ? (
             <span className="text-sm italic text-slate-400">—</span>
           ) : (
@@ -122,52 +157,49 @@ function TableRow({ row, expanded, onToggle, onConfirm, onResolve }: RowProps) {
         </td>
 
         {/* Source */}
-        <td className="px-3 py-2.5">
+        <td className="px-3 py-3">
           <SourcePill source={row.displaySource} />
         </td>
 
         {/* Confidence */}
-        <td className="px-3 py-2.5">
+        <td className="px-3 py-3">
           <ConfidenceBar score={row.confidence_score} />
         </td>
 
         {/* Status */}
-        <td className="px-3 py-2.5">
+        <td className="px-3 py-3">
           <FieldStatusBadge status={row.status} />
         </td>
 
-        {/* Actions */}
-        <td className="py-2.5 pl-3 pr-4 text-right">
-          <div className="flex items-center justify-end gap-2">
-            {row.conflict && (
-              <button
-                type="button"
-                onClick={onToggle}
-                className="rounded px-2 py-1 text-xs font-medium text-rose-600 underline-offset-2 hover:underline focus:outline-none"
-              >
-                {expanded ? "Hide" : "Resolve"}
-              </button>
-            )}
-            {!row.conflict && row.status === "Needs Confirmation" && !isEmpty && (
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
-              >
-                Confirm
-              </button>
-            )}
-            {row.status === "Confirmed" && (
-              <span className="text-xs text-emerald-600">&#10003;</span>
-            )}
-          </div>
+        {/* Conflict */}
+        <td className="px-3 py-3">
+          <ConflictCell row={row} expanded={expanded} onToggle={onToggle} />
+        </td>
+
+        {/* Action */}
+        <td className="py-3 pl-3 pr-5 text-right">
+          {!row.conflict && row.status === "Needs Confirmation" && !isEmpty && (
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
+            >
+              Confirm
+            </button>
+          )}
+          {row.status === "Confirmed" && (
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+              <Check className="h-3.5 w-3.5" />
+              Done
+            </span>
+          )}
         </td>
       </tr>
 
-      {/* Conflict resolution panel — spans all columns */}
+      {/* Conflict resolution panel */}
       {expanded && row.conflict && (
-        <tr className="border-b border-rose-100 bg-rose-50/60">
-          <td colSpan={6} className="px-4 pb-3 pt-1">
+        <tr className="border-b border-rose-100 bg-rose-50/50">
+          <td colSpan={7} className="px-5 pb-4 pt-2">
             <ConflictResolver row={row} onResolve={onResolve} />
           </td>
         </tr>
@@ -180,14 +212,43 @@ function TableRow({ row, expanded, onToggle, onConfirm, onResolve }: RowProps) {
 
 function CategoryHeader({ category, count }: { category: FieldCategory; count: number }) {
   return (
-    <tr className="bg-slate-100">
-      <td colSpan={6} className="py-1.5 pl-4 pr-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          {category}
-        </span>
-        <span className="ml-2 text-xs text-slate-400">{count}</span>
+    <tr className="border-b border-slate-200 bg-slate-100/80">
+      <td colSpan={7} className="py-2 pl-5 pr-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+            {category}
+          </span>
+          <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-500">
+            {count}
+          </span>
+        </div>
       </td>
     </tr>
+  );
+}
+
+// ─── Summary badges ───────────────────────────────────────────────────────────
+
+function SummaryBadge({
+  count,
+  label,
+  color,
+}: {
+  count: number;
+  label: string;
+  color: "rose" | "red" | "amber" | "emerald";
+}) {
+  if (count === 0) return null;
+  const cls = {
+    rose:    "bg-rose-100 text-rose-700",
+    red:     "bg-red-100 text-red-700",
+    amber:   "bg-amber-100 text-amber-700",
+    emerald: "bg-emerald-100 text-emerald-700",
+  }[color];
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>
+      {count} {label}{count !== 1 ? "s" : ""}
+    </span>
   );
 }
 
@@ -205,82 +266,81 @@ interface FilterBarProps {
   onConfirmAll: () => void;
   conflictCount: number;
   missingCount: number;
+  needsConfirmCount: number;
+  confirmedCount: number;
+}
+
+function SelectFilter<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T | FilterAll;
+  options: T[];
+  onChange: (v: T | FilterAll) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <label className="shrink-0 text-xs font-medium text-slate-500">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as T | FilterAll)}
+        className="rounded-md border border-slate-200 bg-white py-1.5 pl-2.5 pr-7 text-xs text-slate-700 shadow-sm transition-colors hover:border-slate-300 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+      >
+        <option value={ALL}>All</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
 }
 
 function FilterBar({
   activeCategory, activeSource, activeStatus,
   showAll, onCategory, onSource, onStatus, onToggleShowAll, onConfirmAll,
-  conflictCount, missingCount,
+  conflictCount, missingCount, needsConfirmCount, confirmedCount,
 }: FilterBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
-      {/* Category */}
-      <div className="flex items-center gap-1.5">
-        <label className="text-xs font-medium text-slate-500">Category</label>
-        <select
-          value={activeCategory}
-          onChange={(e) => onCategory(e.target.value as FieldCategory | FilterAll)}
-          className="rounded border border-slate-200 bg-white py-1 pl-2 pr-6 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        >
-          <option value={ALL}>All</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-white px-5 py-3">
+      <SelectFilter<FieldCategory>
+        label="Category"
+        value={activeCategory}
+        options={CATEGORIES}
+        onChange={onCategory}
+      />
+      <SelectFilter<DisplaySource>
+        label="Source"
+        value={activeSource}
+        options={SOURCES}
+        onChange={onSource}
+      />
+      <SelectFilter<FieldStatus>
+        label="Status"
+        value={activeStatus}
+        options={STATUSES}
+        onChange={onStatus}
+      />
 
-      {/* Source */}
-      <div className="flex items-center gap-1.5">
-        <label className="text-xs font-medium text-slate-500">Source</label>
-        <select
-          value={activeSource}
-          onChange={(e) => onSource(e.target.value as DisplaySource | FilterAll)}
-          className="rounded border border-slate-200 bg-white py-1 pl-2 pr-6 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        >
-          <option value={ALL}>All</option>
-          {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      {/* Status */}
-      <div className="flex items-center gap-1.5">
-        <label className="text-xs font-medium text-slate-500">Status</label>
-        <select
-          value={activeStatus}
-          onChange={(e) => onStatus(e.target.value as FieldStatus | FilterAll)}
-          className="rounded border border-slate-200 bg-white py-1 pl-2 pr-6 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        >
-          <option value={ALL}>All</option>
-          {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-      </div>
-
-      <div className="flex items-center gap-1.5">
+      <label className="flex cursor-pointer items-center gap-1.5">
         <input
-          id="show-all-toggle"
           type="checkbox"
           checked={showAll}
           onChange={onToggleShowAll}
           className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-400"
         />
-        <label htmlFor="show-all-toggle" className="cursor-pointer text-xs text-slate-600">
-          Show empty fields
-        </label>
-      </div>
+        <span className="text-xs text-slate-600">Show empty fields</span>
+      </label>
 
-      <div className="ml-auto flex items-center gap-3">
-        {conflictCount > 0 && (
-          <span className="rounded bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">
-            {conflictCount} conflict{conflictCount !== 1 ? "s" : ""}
-          </span>
-        )}
-        {missingCount > 0 && (
-          <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-            {missingCount} missing
-          </span>
-        )}
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        <SummaryBadge count={conflictCount}    label="conflict"     color="rose" />
+        <SummaryBadge count={missingCount}     label="missing"      color="red" />
+        <SummaryBadge count={needsConfirmCount} label="unconfirmed" color="amber" />
+        <SummaryBadge count={confirmedCount}   label="confirmed"    color="emerald" />
         <button
           type="button"
           onClick={onConfirmAll}
-          className="rounded border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1"
+          className="ml-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1"
         >
           Confirm All Visible
         </button>
@@ -304,9 +364,7 @@ export function ExtractedFieldsTable({
   const [showAll, setShowAll]               = useState(false);
   const [expandedRows, setExpandedRows]     = useState<Set<string>>(new Set());
 
-  // Local optimistic confirm state (until parent persists)
   const [localConfirmed, setLocalConfirmed] = useState<Set<string>>(new Set());
-  // Local optimistic conflict resolution
   const [resolvedConflicts, setResolvedConflicts] = useState<
     Record<string, { value: string; source: DisplaySource }>
   >({});
@@ -316,7 +374,6 @@ export function ExtractedFieldsTable({
     [record, conflictAlternates],
   );
 
-  // Apply local overrides so the UI is responsive without waiting for parent
   const rows = useMemo<FieldRow[]>(() => {
     return allRows.map((row) => {
       let r = row;
@@ -338,8 +395,10 @@ export function ExtractedFieldsTable({
     });
   }, [allRows, localConfirmed, resolvedConflicts]);
 
-  const conflictCount = rows.filter((r) => r.conflict).length;
-  const missingCount  = rows.filter((r) => r.status === "Missing").length;
+  const conflictCount      = rows.filter((r) => r.conflict).length;
+  const missingCount       = rows.filter((r) => r.status === "Missing").length;
+  const needsConfirmCount  = rows.filter((r) => r.status === "Needs Confirmation").length;
+  const confirmedCount     = rows.filter((r) => r.status === "Confirmed").length;
 
   const filtered = useMemo(() => {
     return rows.filter((row) => {
@@ -351,7 +410,6 @@ export function ExtractedFieldsTable({
     });
   }, [rows, showAll, filterCategory, filterSource, filterStatus]);
 
-  // Group by category preserving declaration order
   const grouped = useMemo(() => {
     const map = new Map<FieldCategory, FieldRow[]>();
     for (const row of filtered) {
@@ -376,7 +434,11 @@ export function ExtractedFieldsTable({
   }
 
   function handleConfirmAll() {
-    const ids = new Set(filtered.filter((r) => r.status === "Needs Confirmation").map((r) => r.id));
+    const ids = new Set(
+      filtered
+        .filter((r) => r.status === "Needs Confirmation" && r.value !== "")
+        .map((r) => r.id),
+    );
     setLocalConfirmed((prev) => new Set([...prev, ...ids]));
     onConfirmAll?.();
   }
@@ -392,7 +454,7 @@ export function ExtractedFieldsTable({
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <FilterBar
         activeCategory={filterCategory}
         activeSource={filterSource}
@@ -405,38 +467,42 @@ export function ExtractedFieldsTable({
         onConfirmAll={handleConfirmAll}
         conflictCount={conflictCount}
         missingCount={missingCount}
+        needsConfirmCount={needsConfirmCount}
+        confirmedCount={confirmedCount}
       />
 
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse text-left">
           <colgroup>
+            <col style={{ width: "21%" }} />
             <col style={{ width: "22%" }} />
-            <col style={{ width: "26%" }} />
-            <col style={{ width: "12%" }} />
-            <col style={{ width: "13%" }} />
-            <col style={{ width: "16%" }} />
             <col style={{ width: "11%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "10%" }} />
           </colgroup>
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50">
-              <th className="py-2 pl-4 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Field</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Extracted Value</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Source</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Confidence</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Status</th>
-              <th className="py-2 pl-3 pr-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Action</th>
+            <tr className="border-b-2 border-slate-200 bg-slate-50">
+              <th className="py-2.5 pl-5 pr-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Field</th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Extracted Value</th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Source</th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Confidence</th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Status</th>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">Conflict</th>
+              <th className="py-2.5 pl-3 pr-5 text-right text-[11px] font-bold uppercase tracking-wider text-slate-500">Action</th>
             </tr>
           </thead>
           <tbody>
             {grouped.size === 0 && (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-sm text-slate-400">
+                <td colSpan={7} className="py-16 text-center text-sm text-slate-400">
                   No fields match the current filters.
                 </td>
               </tr>
             )}
             {Array.from(grouped.entries()).map(([category, catRows]) => (
-              <>
+              <>{/* eslint-disable-line react/jsx-key */}
                 <CategoryHeader key={`cat-${category}`} category={category} count={catRows.length} />
                 {catRows.map((row) => (
                   <TableRow
@@ -454,9 +520,10 @@ export function ExtractedFieldsTable({
         </table>
       </div>
 
-      {/* Footer summary */}
-      <div className="flex items-center gap-4 border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-500">
-        <span>{filtered.length} field{filtered.length !== 1 ? "s" : ""} shown</span>
+      {/* Footer */}
+      <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50 px-5 py-2.5 text-xs text-slate-500">
+        <span className="font-medium">{filtered.length} field{filtered.length !== 1 ? "s" : ""} shown</span>
+        <span className="text-slate-300">·</span>
         {conflictCount > 0 && (
           <span className="font-medium text-rose-600">
             {conflictCount} conflict{conflictCount !== 1 ? "s" : ""} require resolution
@@ -470,6 +537,7 @@ export function ExtractedFieldsTable({
         {conflictCount === 0 && missingCount === 0 && filtered.length > 0 && (
           <span className="font-medium text-emerald-600">All visible fields are valid</span>
         )}
+        <span className="ml-auto text-slate-400">* Required for certification</span>
       </div>
     </div>
   );

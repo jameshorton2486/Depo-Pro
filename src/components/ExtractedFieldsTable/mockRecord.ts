@@ -1,5 +1,5 @@
 import type { CaseRecord } from "../../types/case";
-import { emptyCaseRecord, defaultTranscriptFormat, defaultDeepgramConfig, defaultStageCompletion } from "../../types/case";
+import { defaultTranscriptFormat, defaultDeepgramConfig, defaultStageCompletion } from "../../types/case";
 
 function ef<T>(
   value: T,
@@ -27,13 +27,14 @@ export const mockCaseRecord: CaseRecord = {
   },
 
   session: {
-    deposition_date:  ef("2026-06-10",               "extracted", true,  0.99),
-    start_time:       ef("09:30",                    "extracted", false, 0.82),
-    end_time:         ef(null,                       "manual",    false, null),
-    location_address: ef("350 S. Grand Avenue",      "extracted", false, 0.85),
-    location_city:    ef("Los Angeles",              "extracted", true,  0.96),
-    location_state:   ef("CA",                       "extracted", true,  0.98),
-    location_zip:     ef("90071",                    "extracted", false, 0.71),
+    deposition_date:  ef("2026-06-10",          "extracted", true,  0.99),
+    // start_time and location fields use "extracted" source but path routes them to "Job Sheet"
+    start_time:       ef("09:30",               "extracted", false, 0.82),
+    end_time:         ef(null,                  "extracted", false, null),
+    location_address: ef("350 S. Grand Avenue", "extracted", false, 0.85),
+    location_city:    ef("Los Angeles",         "extracted", true,  0.96),
+    location_state:   ef("CA",                  "extracted", true,  0.98),
+    location_zip:     ef("90071",               "extracted", false, 0.71),
     is_remote: false,
     remote_platform: null,
   },
@@ -66,9 +67,9 @@ export const mockCaseRecord: CaseRecord = {
     {
       witness_id: "wit_mock_001",
       // Conflict: Notice says "Junior Hernandez", Job Sheet says "Yunior Hernandez"
-      name:     ef("Junior Hernandez",   "extracted", false, 0.79, true),
-      role:     ef("WITNESS",            "extracted", true,  0.95),
-      title:    ef("Senior VP, Operations", "extracted", false, 0.68),
+      name:     ef("Junior Hernandez",               "extracted", false, 0.79, true),
+      role:     ef("WITNESS",                        "extracted", true,  0.95),
+      title:    ef("Senior VP, Operations",          "extracted", false, 0.68),
       employer: ef("Meridian Infrastructure Partners", "extracted", false, 0.91),
       email: null,
       phone: null,
@@ -110,8 +111,8 @@ export const mockCaseRecord: CaseRecord = {
   notes: "",
 };
 
-// Conflict values for the witness name — stored separately so the UI can display
-// the alternate value when resolving the conflict.
+// Alternate values for fields with conflicts — keyed by field path.
+// The primary conflicting value lives on the record itself; this holds the other candidate.
 export const mockConflictAlternates: Record<string, { value: string; source: string }> = {
   "witnesses[0].name": {
     value: "Yunior Hernandez",
