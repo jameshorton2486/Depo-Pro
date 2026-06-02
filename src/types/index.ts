@@ -29,6 +29,9 @@ export interface DepoEditorConfig {
 // ─── UFM Case model (UI-only — not part of the API contract) ─────────────────
 export type * from "./case";
 
+// ─── Contact library ─────────────────────────────────────────────────────────
+export type * from "./contact";
+
 // ─── IntakeData — thin form shape used by IntakeScreen ───────────────────────
 // Subset of CaseRecord fields flattened for the intake form UI.
 // The IntakeScreen will be migrated to CaseRecord directly in a future pass.
