@@ -25,3 +25,20 @@ export interface DepoEditorConfig {
   mountSelector: string;
   readOnly?: boolean;
 }
+
+// UI-only — not part of the API contract. Captured at intake and held in local
+// state until a future "submit job" endpoint is wired.
+export interface IntakeData {
+  caseName: string;
+  caseNumber: string;
+  court: string;
+  deponentName: string;
+  deponentRole: "WITNESS" | "PARTY" | "EXPERT" | "OTHER";
+  depositionDate: string;   // ISO date string "YYYY-MM-DD"
+  location: string;
+  examiningAttorney: string;
+  opposingAttorney: string;
+  reporterName: string;
+  reporterCertNumber: string;
+  notes: string;
+}

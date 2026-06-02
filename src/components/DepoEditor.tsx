@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { DocumentProvider, useDocument } from "../context/DocumentContext";
 import { AudioProvider } from "../context/AudioContext";
 import { EditorProvider, useEditorContext } from "../context/EditorContext";
 import { ExhibitsPanelProvider } from "./ExhibitsPanel/ExhibitsPanel";
+import { StageProvider, useStage } from "../context/StageContext";
 import { Toolbar } from "./Toolbar/Toolbar";
 import { TranscriptEditor } from "./TranscriptEditor/TranscriptEditor";
 import { AudioPlayer } from "./AudioPlayer/AudioPlayer";
 import { RightSidebar } from "./RightSidebar/RightSidebar";
-import type { DepoEditorConfig } from "../types";
+import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
+import type { DepoEditorConfig, IntakeData } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
 
 function EditorInner({ config }: { config: DepoEditorConfig }) {
@@ -41,7 +43,22 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
   );
 }
 
-export function DepoEditor({ config }: { config: DepoEditorConfig }) {
+function StageRouter({ config }: { config: DepoEditorConfig }) {
+  const { stage } = useStage();
+  const [intakeData, setIntakeData] = useState<IntakeData | null>(null);
+
+  if (stage === "intake") {
+    return (
+      <IntakeScreen
+        jobId={config.jobId}
+        onComplete={(data) => setIntakeData(data)}
+      />
+    );
+  }
+
+  // intakeData is available here for future use (e.g. pre-populating speaker names)
+  void intakeData;
+
   return (
     <AudioProvider>
       <DocumentProvider jobId={config.jobId}>
@@ -52,5 +69,13 @@ export function DepoEditor({ config }: { config: DepoEditorConfig }) {
         </EditorProvider>
       </DocumentProvider>
     </AudioProvider>
+  );
+}
+
+export function DepoEditor({ config }: { config: DepoEditorConfig }) {
+  return (
+    <StageProvider>
+      <StageRouter config={config} />
+    </StageProvider>
   );
 }
