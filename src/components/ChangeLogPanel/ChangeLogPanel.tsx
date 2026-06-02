@@ -1,8 +1,9 @@
+import type { LucideIcon } from "lucide-react";
 import type { ChangeLogEntry } from "../../types";
 import { useDocument } from "../../context/DocumentContext";
 import { Clock, Edit3, Sparkles, Pencil } from "lucide-react";
 
-const SOURCE_LABEL: Record<ChangeLogEntry["source"], { label: string; color: string; Icon: React.ComponentType<{ size?: number }> }> = {
+const SOURCE_LABEL: Record<ChangeLogEntry["source"], { label: string; color: string; Icon: LucideIcon }> = {
   "editor":             { label: "Typed",    color: "text-slate-500 bg-slate-100",   Icon: Pencil    },
   "suggestion-accept":  { label: "Accepted", color: "text-emerald-700 bg-emerald-100", Icon: Sparkles },
   "suggestion-edit":    { label: "Edited",   color: "text-blue-700 bg-blue-100",     Icon: Edit3     },
