@@ -26,15 +26,19 @@ export interface DepoEditorConfig {
   readOnly?: boolean;
 }
 
-// UI-only — not part of the API contract. Captured at intake and held in local
-// state until a future "submit job" endpoint is wired.
+// ─── UFM Case model (UI-only — not part of the API contract) ─────────────────
+export type * from "./case";
+
+// ─── IntakeData — thin form shape used by IntakeScreen ───────────────────────
+// Subset of CaseRecord fields flattened for the intake form UI.
+// The IntakeScreen will be migrated to CaseRecord directly in a future pass.
 export interface IntakeData {
   caseName: string;
   caseNumber: string;
   court: string;
   deponentName: string;
   deponentRole: "WITNESS" | "PARTY" | "EXPERT" | "OTHER";
-  depositionDate: string;   // ISO date string "YYYY-MM-DD"
+  depositionDate: string;
   location: string;
   examiningAttorney: string;
   opposingAttorney: string;
