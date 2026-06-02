@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DEPO-PRO Transcript Editor</title>
+  </head>
+  <body>
+    <div id="depo-editor-root" style="height:100vh"></div>
+    <script>
+      // Simulates what the FastAPI host page injects in production.
+      // In dev this drives the mock configuration.
+      window.DEPO_EDITOR_CONFIG = {
+        jobId: "job_demo_001",
+        apiBaseUrl: "/mock",
+        mountSelector: "#depo-editor-root",
+        readOnly: false,
+      };
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
