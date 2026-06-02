@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ufm_payload",
+  "title": "UFM Payload",
+  "description": "Assembled Uniform Format Manual payload for a single deposition transcript.",
+  "type": "object",
+  "required": [
+    "version",
+    "case_id",
+    "generated_at",
+    "case_caption",
+    "appearances",
+    "reporter",
+    "format",
+    "exhibit_index",
+    "certificate"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "Internal case identifier."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this payload was generated."
+    },
+
+    "case_caption": {
+      "type": "object",
+      "required": ["case_name", "case_number", "court_name"],
+      "properties": {
+        "case_name":   { "type": "string", "minLength": 1 },
+        "case_number": { "type": "string", "minLength": 1 },
+        "court_name":  { "type": "string", "minLength": 1 },
+        "department":  { "type": ["string", "null"] },
+        "judge_name":  { "type": ["string", "null"] }
+      }
+    },
+
+    "deponent": {
+      "type": "object",
+      "required": ["name", "role"],
+      "properties": {
+        "name":     { "type": "string", "minLength": 1 },
+        "role":     { "type": "string", "enum": ["WITNESS", "PARTY", "EXPERT", "OTHER"] },
+        "title":    { "type": ["string", "null"] },
+        "employer": { "type": ["string", "null"] }
+      }
+    },
+
+    "session": {
+      "type": "object",
+      "required": ["deposition_date", "location_address", "location_city", "location_state"],
+      "properties": {
+        "deposition_date":  { "type": "string", "format": "date" },
+        "start_time":       { "type": ["string", "null"], "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "end_time":         { "type": ["string", "null"], "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "location_address": { "type": "string", "minLength": 1 },
+        "location_city":    { "type": "string", "minLength": 1 },
+        "location_state":   { "type": "string", "minLength": 2, "maxLength": 2 },
+        "location_zip":     { "type": ["string", "null"] },
+        "is_remote":        { "type": "boolean", "default": false },
+        "remote_platform":  { "type": ["string", "null"] }
+      }
+    },
+
+    "appearances": {
+      "type": "object",
+      "required": ["attorneys"],
+      "properties": {
+        "attorneys": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "role"],
+            "properties": {
+              "name":         { "type": "string", "minLength": 1 },
+              "firm":         { "type": ["string", "null"] },
+              "role":         { "type": "string", "enum": ["EXAMINING", "OPPOSING", "CO_COUNSEL", "OTHER"] },
+              "representing": { "type": ["string", "null"] },
+              "bar_number":   { "type": ["string", "null"] },
+              "email":        { "type": ["string", "null"], "format": "email" }
+            }
+          }
+        }
+      }
+    },
+
+    "reporter": {
+      "type": "object",
+      "required": ["name", "cert_number", "cert_state"],
+      "properties": {
+        "name":        { "type": "string", "minLength": 1 },
+        "cert_number": { "type": "string", "minLength": 1 },
+        "cert_state":  { "type": "string", "minLength": 2, "maxLength": 2 },
+        "firm":        { "type": ["string", "null"] },
+        "email":       { "type": ["string", "null"], "format": "email" },
+        "phone":       { "type": ["string", "null"] }
+      }
+    },
+
+    "format": {
+      "type": "object",
+      "required": ["lines_per_page", "chars_per_line", "first_page_number", "include_line_numbers", "font_family", "font_size_pt"],
+      "properties": {
+        "lines_per_page":      { "type": "integer", "minimum": 1, "maximum": 50, "default": 25 },
+        "chars_per_line":      { "type": "integer", "minimum": 1, "maximum": 100, "default": 58 },
+        "first_page_number":   { "type": "integer", "minimum": 1, "default": 1 },
+        "include_line_numbers": { "type": "boolean", "default": true },
+        "include_timestamps":  { "type": "boolean", "default": false },
+        "font_family":         { "type": "string", "default": "Courier New" },
+        "font_size_pt":        { "type": "number", "minimum": 6, "maximum": 24, "default": 12 }
+      }
+    },
+
+    "exhibit_index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["exhibit_id", "label", "description"],
+        "properties": {
+          "exhibit_id":     { "type": "string" },
+          "label":          { "type": "string", "minLength": 1 },
+          "description":    { "type": "string", "minLength": 1 },
+          "marked_by":      { "type": ["string", "null"], "enum": ["PLAINTIFF", "DEFENDANT", "COURT", null] },
+          "admitted":       { "type": "boolean", "default": false },
+          "page_reference": { "type": ["integer", "null"], "minimum": 1 },
+          "line_reference": { "type": ["integer", "null"], "minimum": 1 }
+        }
+      }
+    },
+
+    "certificate": {
+      "type": "object",
+      "required": ["certification_statement"],
+      "properties": {
+        "certification_date":      { "type": ["string", "null"], "format": "date" },
+        "certification_statement": { "type": "string", "minLength": 1 },
+        "notary_required":         { "type": "boolean", "default": false },
+        "notary_name":             { "type": ["string", "null"] },
+        "notary_commission_expiry": { "type": ["string", "null"], "format": "date" }
+      }
+    },
+
+    "appearance_page_text": {
+      "type": "string",
+      "description": "Pre-rendered plain text of the appearances page, ready for insertion into DOCX/PDF."
+    },
+
+    "certificate_page_text": {
+      "type": "string",
+      "description": "Pre-rendered plain text of the certificate page, ready for insertion into DOCX/PDF."
+    }
+  }
+}
