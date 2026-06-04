@@ -12,6 +12,7 @@ import type {
   ProceedingType,
   WorkflowStage,
 } from "../types/case";
+import { normalizeCaseRecord } from "../types/case";
 
 import {
   intakeReducer,
@@ -111,7 +112,7 @@ export function IntakeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadCase = useCallback((rec: CaseRecord) => {
-    dispatch({ type: "LOAD_CASE", payload: { record: rec } });
+    dispatch({ type: "LOAD_CASE", payload: { record: normalizeCaseRecord(rec) } });
   }, []);
 
   const setProceedingType = useCallback((proceeding_type: ProceedingType) => {

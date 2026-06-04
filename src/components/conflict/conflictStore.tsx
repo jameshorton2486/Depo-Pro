@@ -12,7 +12,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { supabase } from "../../lib/supabase";
+import { getSupabaseClient } from "../../lib/supabase";
 import type {
   ConflictState,
   ConflictAction,
@@ -112,51 +112,69 @@ function initialState(): ConflictState {
   };
 }
 
+function toDatabaseEntry(entry: ProvenanceEntry): Omit<ProvenanceEntry, "id"> {
+  const { id, ...databaseEntry } = entry;
+  void id;
+  return databaseEntry;
+}
+
 // ─── Supabase persistence helpers ─────────────────────────────────────────────
 
 async function persistEntry(entry: ProvenanceEntry): Promise<void> {
-  await supabase.from("field_provenance").insert({
-    id:               entry.id,
-    case_id:          entry.case_id,
-    field_path:       entry.field_path,
-    field_label:      entry.field_label,
-    event_type:       entry.event_type,
-    value:            entry.value,
-    source:           entry.source,
-    winning_value:    entry.winning_value,
-    rejected_value:   entry.rejected_value,
-    rejected_source:  entry.rejected_source,
-    confidence_score: entry.confidence_score,
-    resolution_user:  entry.resolution_user,
-    resolved_at:      entry.resolved_at,
-  });
+  try {
+    const client = await getSupabaseClient(`persistEntry:${entry.event_type}`);
+    const { error } = await client.from("field_provenance").insert(toDatabaseEntry(entry));
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error("[DEPO-PRO] Supabase provenance write failed", {
+      operation: `persistEntry:${entry.event_type}`,
+      table: "field_provenance",
+      caseId: entry.case_id,
+      fieldPath: entry.field_path,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 async function fetchHistory(caseId: string, fieldPath: string): Promise<ProvenanceEntry[]> {
-  const { data, error } = await supabase
-    .from("field_provenance")
-    .select("*")
-    .eq("case_id", caseId)
-    .eq("field_path", fieldPath)
-    .order("resolved_at", { ascending: false });
+  try {
+    const client = await getSupabaseClient("fetchHistory");
+    const { data, error } = await client
+      .from("field_provenance")
+      .select("*")
+      .eq("case_id", caseId)
+      .eq("field_path", fieldPath)
+      .order("resolved_at", { ascending: false });
 
-  if (error || !data) return [];
+    if (error || !data) return [];
 
-  return data.map((row) => ({
-    id:               row.id,
-    case_id:          row.case_id,
-    field_path:       row.field_path,
-    field_label:      row.field_label,
-    event_type:       row.event_type,
-    value:            row.value,
-    source:           row.source as DisplaySource,
-    winning_value:    row.winning_value,
-    rejected_value:   row.rejected_value,
-    rejected_source:  row.rejected_source as DisplaySource | null,
-    confidence_score: row.confidence_score,
-    resolution_user:  row.resolution_user,
-    resolved_at:      row.resolved_at,
-  }));
+    return data.map((row) => ({
+      id:               row.id,
+      case_id:          row.case_id,
+      field_path:       row.field_path,
+      field_label:      row.field_label,
+      event_type:       row.event_type,
+      value:            row.value,
+      source:           row.source as DisplaySource,
+      winning_value:    row.winning_value,
+      rejected_value:   row.rejected_value,
+      rejected_source:  row.rejected_source as DisplaySource | null,
+      confidence_score: row.confidence_score,
+      resolution_user:  row.resolution_user,
+      resolved_at:      row.resolved_at,
+    }));
+  } catch (error) {
+    console.error("[DEPO-PRO] Supabase provenance read failed", {
+      operation: "fetchHistory",
+      table: "field_provenance",
+      caseId,
+      fieldPath,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────

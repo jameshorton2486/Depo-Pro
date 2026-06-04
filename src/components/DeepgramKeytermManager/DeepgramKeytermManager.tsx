@@ -1,6 +1,7 @@
+import type React from "react";
 import { useState } from "react";
 import {
-  Pin, PinOff, Trash2, Plus, Search, Eye, EyeOff,
+  Pin, PinOff, Trash2, Plus, Search,
   AlertTriangle, ChevronDown, ChevronUp, Zap, LayoutList,
 } from "lucide-react";
 import { useKeyterms } from "./keytermStore";

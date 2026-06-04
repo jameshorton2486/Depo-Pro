@@ -12,6 +12,8 @@ import { TranscriptEditor } from "./TranscriptEditor/TranscriptEditor";
 import { AudioPlayer } from "./AudioPlayer/AudioPlayer";
 import { RightSidebar } from "./RightSidebar/RightSidebar";
 import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
+import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
+import { ExportScreen } from "./ExportScreen/ExportScreen";
 import type { DepoEditorConfig } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
 import { countTokens } from "../lib/keytermRanker";
@@ -106,14 +108,18 @@ function StageRouter({ config }: { config: DepoEditorConfig }) {
     return <IntakeScreen jobId={config.jobId} />;
   }
 
-  // Stages 2-7 all render the transcript editor workspace for now.
-  // Future passes will add dedicated screens for exhibits, UFM, certification, export.
   return (
     <AudioProvider>
       <DocumentProvider jobId={config.jobId}>
         <EditorProvider>
           <ExhibitsPanelProvider>
-            <EditorInner config={config} />
+            {stage === "certification" ? (
+              <CertificationScreen jobId={config.jobId} />
+            ) : stage === "export" ? (
+              <ExportScreen jobId={config.jobId} />
+            ) : (
+              <EditorInner config={config} />
+            )}
           </ExhibitsPanelProvider>
         </EditorProvider>
       </DocumentProvider>

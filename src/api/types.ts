@@ -89,4 +89,8 @@ export interface ReviewPayload {
 
 export interface SpeakersPayload {
   speakers: Pick<Speaker, "speaker_id" | "display_name" | "role">[];
+  utterance_speaker_map?: Array<{
+    utterance_id: UtteranceId;
+    speaker_id: SpeakerId;
+  }>;
 }

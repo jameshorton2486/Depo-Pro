@@ -1,3 +1,4 @@
+import type React from "react";
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { Speaker } from "../../types";
 import { useDocument } from "../../context/DocumentContext";
@@ -353,6 +354,12 @@ function UtteranceReassignment({ speakers }: { speakers: Speaker[] }) {
             display_name: s.display_name,
             role: s.role,
           })),
+          utterance_speaker_map: [
+            {
+              utterance_id: activeId,
+              speaker_id: newSpeakerId,
+            },
+          ],
         });
       } catch {
         // silent best-effort

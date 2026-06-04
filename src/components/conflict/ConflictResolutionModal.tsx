@@ -133,10 +133,11 @@ function OptionCard({
 
 interface Props {
   caseId: string;
+  onResolved?: (fieldPath: string, winning: ConflictOption, rejected: ConflictOption) => void;
   onProvenanceOpen?: (fieldPath: string) => void;
 }
 
-export function ConflictResolutionModal({ caseId, onProvenanceOpen }: Props) {
+export function ConflictResolutionModal({ caseId, onResolved, onProvenanceOpen }: Props) {
   const { state, resolveConflict, closeModal } = useConflict();
   const [selectedOption, setSelectedOption] = useState<"a" | "b" | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -172,9 +173,10 @@ export function ConflictResolutionModal({ caseId, onProvenanceOpen }: Props) {
     selectedOption === "a" ? conflict.option_b : conflict.option_a;
 
   async function handleResolve() {
-    if (!selectedOption || !conflict) return;
+    if (!selectedOption || !conflict || !fieldPath) return;
     setSubmitting(true);
-    resolveConflict(fieldPath!, winning, rejected, caseId, conflict.field_label);
+    resolveConflict(fieldPath, winning, rejected, caseId, conflict.field_label);
+    onResolved?.(fieldPath, winning, rejected);
     // brief delay so the user sees the submitting state
     await new Promise((r) => setTimeout(r, 300));
     setSubmitting(false);

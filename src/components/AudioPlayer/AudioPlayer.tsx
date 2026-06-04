@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useRef, useCallback, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";

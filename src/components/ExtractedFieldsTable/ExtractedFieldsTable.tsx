@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, History } from "lucide-react";
+import { Fragment, useState, useMemo, useEffect } from "react";
+import { AlertTriangle, Check, ChevronDown, History, Pencil, X } from "lucide-react";
 import type { CaseRecord } from "../../types/case";
 import {
   projectFieldRows,
@@ -22,6 +22,7 @@ interface Props {
   onConfirm?: (rowId: string) => void;
   onConfirmAll?: () => void;
   onResolveConflict?: (rowId: string, value: string, source: DisplaySource) => void;
+  onUpdate?: (rowId: string, value: string) => void;
 }
 
 const ALL = "All" as const;
@@ -122,18 +123,27 @@ interface RowProps {
   isResolved: boolean;
   onConfirm: () => void;
   onOpenProvenance: () => void;
+  onUpdate?: (value: string) => void;
 }
 
-function TableRow({ row, isResolved, onConfirm, onOpenProvenance }: RowProps) {
+function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate }: RowProps) {
   const isEmpty = row.value === "";
   const { state } = useConflict();
+  const [editing, setEditing] = useState(false);
+  const [draftValue, setDraftValue] = useState(row.value);
   const resolvedEntry = state.history[row.id]?.find(
     (e) => e.event_type === "conflict_resolved",
   );
   const displayValue = resolvedEntry?.winning_value ?? row.value;
+  const isEditable = onUpdate !== undefined && row.path !== "session.is_remote" && row.path !== "session.remote_platform";
+
+  useEffect(() => {
+    setDraftValue(row.value);
+  }, [row.value]);
 
   return (
     <tr
+      data-field-path={row.id}
       className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 ${
         row.conflict && !isResolved ? "bg-rose-50/30" : ""
       }`}
@@ -201,6 +211,49 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance }: RowProps) {
             >
               Confirm
             </button>
+          )}
+          {isEditable && (
+            editing ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={draftValue}
+                  onChange={(e) => setDraftValue(e.target.value)}
+                  className="w-32 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUpdate?.(draftValue);
+                    setEditing(false);
+                  }}
+                  className="rounded p-1 text-emerald-600 transition-colors hover:bg-emerald-50"
+                  title="Save edit"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftValue(row.value);
+                    setEditing(false);
+                  }}
+                  className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-100"
+                  title="Cancel edit"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                title="Edit value"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )
           )}
           {(row.status === "Confirmed" || isResolved) && !row.conflict && (
             <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
@@ -358,8 +411,9 @@ export function ExtractedFieldsTable({
   onConfirm,
   onConfirmAll,
   onResolveConflict,
+  onUpdate,
 }: Props) {
-  const { state, detectConflict, recordConfirm, openModal } = useConflict();
+  const { state, detectConflict, recordConfirm } = useConflict();
 
   const [filterCategory, setFilterCategory] = useState<FieldCategory | FilterAll>(ALL);
   const [filterSource, setFilterSource]     = useState<DisplaySource | FilterAll>(ALL);
@@ -504,20 +558,26 @@ export function ExtractedFieldsTable({
                   </tr>
                 )}
                 {Array.from(grouped.entries()).map(([category, catRows]) => (
-                  <>
-                    <CategoryHeader key={`cat-${category}`} category={category} count={catRows.length} />
+                  <Fragment key={`cat-${category}`}>
+                    <CategoryHeader category={category} count={catRows.length} />
                     {catRows.map((row) => (
                       <TableRow
                         key={row.id}
                         row={row}
                         isResolved={isResolvedInStore(row.id)}
                         onConfirm={() => handleConfirm(row)}
+                        onUpdate={(value) => {
+                          setLocalConfirmed((prev) => new Set(prev).add(row.id));
+                          recordConfirm(caseId, row.id, row.label, value, "Manual");
+                          onUpdate?.(row.id, value);
+                          onConfirm?.(row.id);
+                        }}
                         onOpenProvenance={() =>
                           setProvenancePath((p) => (p === row.id ? null : row.id))
                         }
                       />
                     ))}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -560,6 +620,9 @@ export function ExtractedFieldsTable({
       {/* Conflict resolution modal — rendered at body level via portal-like position */}
       <ConflictResolutionModal
         caseId={caseId}
+        onResolved={(fieldPath, winning) => {
+          onResolveConflict?.(fieldPath, winning.value, winning.source);
+        }}
         onProvenanceOpen={(fp) => {
           setProvenancePath(fp);
         }}

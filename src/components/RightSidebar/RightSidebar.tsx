@@ -1,3 +1,4 @@
+import type React from "react";
 import { useState } from "react";
 import { Users, Sparkles, Clock, ShieldCheck, Paperclip } from "lucide-react";
 import { SpeakerPanel } from "../SpeakerPanel/SpeakerPanel";

@@ -6,22 +6,27 @@
 //   Bottom — Deepgram Keyterm Manager
 //   Footer — Actions: View Deepgram Request · View UFM Payload · Save Intake · Proceed
 
-import { useState, useEffect, useCallback } from "react";
+import type React from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   FileText, Upload, AlertTriangle, CheckCircle2, Clock,
   ChevronRight, Save, Zap, Package, Users, Search,
-  X, UserPlus, Mic, Scale, Video, User2,
+  X, UserPlus, Mic, Scale, Video, User2, ChevronDown, ChevronUp,
 } from "lucide-react";
 
-import { useIntake, useIntakeValidation } from "../../context/IntakeContext";
+import { useIntake } from "../../context/IntakeContext";
 import { useStage, STAGE_LABELS, STAGE_ORDER } from "../../context/StageContext";
 import { useConflict, selectActiveConflicts } from "../conflict/conflictStore";
 import { ExtractedFieldsTable } from "../ExtractedFieldsTable/ExtractedFieldsTable";
+import { projectFieldRows } from "../ExtractedFieldsTable/fieldProjection";
 import { DeepgramKeytermManager } from "../DeepgramKeytermManager/DeepgramKeytermManager";
 import { DeepgramPayloadPreview } from "../DeepgramKeytermManager/DeepgramPayloadPreview";
 import { mockCaseRecord, mockConflictAlternates } from "../ExtractedFieldsTable/mockRecord";
+import { loadCase as loadPersistedCase, saveCase } from "../../api/caseService";
 import { useContactStore } from "../../store/contactStore";
+import { evaluateIntake, type IntakeValidationResult } from "../../validation/intakeValidation";
 import type { Contact, ContactType } from "../../types/contact";
+import type { CaseRecord, FieldSource, ParticipantRole } from "../../types/case";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,6 +41,104 @@ interface UploadSlot {
   description: string;
   file: File | null;
   status: "idle" | "uploading" | "done" | "error";
+}
+
+function manualField<T>(value: T) {
+  return {
+    value,
+    source: "manual" as const,
+    confirmed: true,
+    conflict: false,
+    confidence_score: null,
+  };
+}
+
+function mapDisplaySourceToFieldSource(source: string): FieldSource {
+  if (source === "Notice" || source === "Job Sheet") return "extracted";
+  if (source === "Reporter Profile") return "imported";
+  return "manual";
+}
+
+function mapParticipantRole(type: ContactType): ParticipantRole {
+  switch (type) {
+    case "interpreter":
+      return "INTERPRETER";
+    case "videographer":
+      return "VIDEOGRAPHER";
+    case "participant":
+    case "attorney":
+    case "firm":
+      return "OTHER";
+  }
+}
+
+function sameInterpreterContact(contact: Contact, interpreterName: string) {
+  return contact.name === interpreterName;
+}
+
+function sameVideographerContact(contact: Contact, videographerName: string) {
+  return contact.name === videographerName;
+}
+
+function sameAttorneyContact(contact: Contact, attorneyName: string) {
+  return contact.name === attorneyName;
+}
+
+type AttorneyRepresentingPreset = "plaintiff" | "defendant" | "intervenor" | "other";
+
+type AttorneySelectionDraft = {
+  mode: "add" | "replace";
+  contact: Contact;
+  attorneyId: string | null;
+  preset: AttorneyRepresentingPreset;
+  partyName: string;
+};
+
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "").slice(0, 10);
+}
+
+function formatPhoneInput(value: string) {
+  const digits = digitsOnly(value);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function buildRepresentingValue(
+  preset: AttorneyRepresentingPreset,
+  partyName: string,
+): string | null {
+  const normalizedPartyName = partyName.trim().replace(/\s+/g, " ");
+  if (preset === "other") {
+    return normalizedPartyName ? `FOR ${normalizedPartyName.toUpperCase()}` : null;
+  }
+
+  if (normalizedPartyName) {
+    if (preset === "plaintiff") {
+      return `FOR PLAINTIFF ${normalizedPartyName.toUpperCase()}`;
+    }
+    if (preset === "defendant") {
+      return `FOR DEFENDANT ${normalizedPartyName.toUpperCase()}`;
+    }
+    return `FOR INTERVENOR / THIRD PARTY ${normalizedPartyName.toUpperCase()}`;
+  }
+
+  if (preset === "plaintiff") return "FOR THE PLAINTIFF";
+  if (preset === "defendant") return "FOR THE DEFENDANT";
+  return "FOR THE INTERVENOR / THIRD PARTY";
+}
+
+function guessRepresentingPreset(value: string | null | undefined): AttorneyRepresentingPreset {
+  const normalized = (value ?? "").toUpperCase();
+  if (normalized.includes("PLAINTIFF")) return "plaintiff";
+  if (normalized.includes("DEFENDANT")) return "defendant";
+  if (normalized.includes("INTERVENOR") || normalized.includes("THIRD PARTY")) return "intervenor";
+  return "other";
+}
+
+function attorneyBadgeLabel(representing: string | null, role: string) {
+  return representing || role;
 }
 
 // ─── Workflow stage nav ───────────────────────────────────────────────────────
@@ -83,15 +186,15 @@ function WorkflowNav({ jobId }: { jobId: string }) {
 
 // ─── Case status banner ───────────────────────────────────────────────────────
 
-function CaseStatusBanner() {
-  const validation = useIntakeValidation();
+function CaseStatusBanner({ validation }: { validation: IntakeValidationResult }) {
   const { state: conflictState } = useConflict();
   const activeConflicts = selectActiveConflicts(conflictState);
   const { record } = useIntake();
 
   const conflictCount  = activeConflicts.length;
-  const missingCount   = validation.missing.length;
-  const unconfirmedCnt = validation.unconfirmed.length;
+  const visibleUnconfirmedCount = projectFieldRows(record, mockConflictAlternates).filter(
+    (row) => row.value !== "" && row.status === "Needs Confirmation" && row.source !== "manual",
+  ).length;
 
   const caseName = record.caption.case_name.value || "New Case";
   const caseNo   = record.caption.case_number.value || "—";
@@ -107,25 +210,34 @@ function CaseStatusBanner() {
 
       {/* Status chips */}
       <div className="ml-auto flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+          Case Readiness: {validation.readinessScore}%{validation.missingLabels.length > 0 ? ` - Missing: ${validation.missingLabels.slice(0, 3).join(", ")}${validation.missingLabels.length > 3 ? ` and ${validation.missingLabels.length - 3} more` : ""}` : ""}
+        </span>
         {conflictCount > 0 && (
           <span className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
             <AlertTriangle size={12} />
             {conflictCount} conflict{conflictCount !== 1 ? "s" : ""}
           </span>
         )}
-        {missingCount > 0 && (
+        {validation.failCount > 0 && (
           <span className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
             <AlertTriangle size={12} />
-            {missingCount} missing
+            {validation.failCount} required
           </span>
         )}
-        {unconfirmedCnt > 0 && (
+        {validation.warningCount > 0 && (
           <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
             <Clock size={12} />
-            {unconfirmedCnt} unconfirmed
+            {validation.warningCount} warning{validation.warningCount !== 1 ? "s" : ""}
           </span>
         )}
-        {conflictCount === 0 && missingCount === 0 && (
+        {visibleUnconfirmedCount > 0 && (
+          <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+            <Clock size={12} />
+            {visibleUnconfirmedCount} fields awaiting confirmation
+          </span>
+        )}
+        {conflictCount === 0 && validation.canProceed && visibleUnconfirmedCount === 0 && (
           <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
             <CheckCircle2 size={12} />
             Ready to proceed
@@ -278,29 +390,104 @@ interface ContactPickerProps {
   label: string;
   icon: React.ReactNode;
   onSelect: (contact: Contact) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-function ContactPicker({ type, label, icon, onSelect }: ContactPickerProps) {
-  const { contacts, loading, search } = useContactStore();
-  const [open, setOpen]       = useState(false);
+function ContactPicker({
+  type,
+  label,
+  icon,
+  onSelect,
+  open: controlledOpen,
+  onOpenChange,
+}: ContactPickerProps) {
+  const { contacts, loading, error, search, create } = useContactStore();
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [query, setQuery]     = useState("");
   const [selected, setSelected] = useState<Contact | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createPending, setCreatePending] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [draft, setDraft] = useState({
+    name: "",
+    organization: "",
+    phone: "",
+    email: "",
+  });
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const createFormRef = useRef<HTMLFormElement | null>(null);
+  const open = controlledOpen ?? uncontrolledOpen;
+
+  const setOpen = useCallback((value: boolean | ((current: boolean) => boolean)) => {
+    const next = typeof value === "function" ? value(open) : value;
+    if (controlledOpen === undefined) {
+      setUncontrolledOpen(next);
+    }
+    onOpenChange?.(next);
+  }, [controlledOpen, onOpenChange, open]);
 
   useEffect(() => {
-    if (open) {
+    if (open && !creating) {
       search(query, type);
     }
-  }, [open, query, type, search]);
+  }, [creating, open, query, type, search]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handleDocumentMouseDown(event: MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      if (createFormRef.current?.contains(target)) return;
+      setOpen(false);
+      setCreating(false);
+      setCreateError(null);
+    }
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+    };
+  }, [open, setOpen]);
 
   function handleSelect(c: Contact) {
     setSelected(c);
     setOpen(false);
     setQuery("");
+    setCreating(false);
+    setCreateError(null);
+    setDraft({ name: "", organization: "", phone: "", email: "" });
     onSelect(c);
   }
 
+  async function handleCreateSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!draft.name.trim()) return;
+
+    setCreatePending(true);
+    setCreateError(null);
+    try {
+      const created = await create({
+        type,
+        name: draft.name.trim(),
+        organization: draft.organization.trim(),
+        phone: draft.phone,
+        email: draft.email.trim(),
+        address: "",
+        notes: "",
+      });
+      handleSelect(created);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCreatePending(false);
+    }
+  }
+
   return (
-    <div className="relative">
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -327,60 +514,149 @@ function ContactPicker({ type, label, icon, onSelect }: ContactPickerProps) {
 
       {open && (
         <div className="absolute left-0 top-full z-20 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-lg">
-          {/* Search */}
-          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
-            <Search size={12} className="shrink-0 text-slate-400" />
-            <input
-              autoFocus
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${label.toLowerCase()}s…`}
-              className="flex-1 bg-transparent text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none"
-            />
-          </div>
-
-          {/* Results */}
-          <div className="max-h-48 overflow-y-auto">
-            {loading && (
-              <p className="px-3 py-4 text-center text-xs text-slate-400">Loading…</p>
-            )}
-            {!loading && contacts.length === 0 && (
-              <p className="px-3 py-4 text-center text-xs text-slate-400">No contacts found</p>
-            )}
-            {contacts.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => handleSelect(c)}
-                className="flex w-full items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-800">{c.name}</p>
-                  {c.organization && (
-                    <p className="truncate text-[11px] text-slate-500">{c.organization}</p>
-                  )}
-                </div>
-                {c.times_used > 0 && (
-                  <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
-                    ×{c.times_used}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Create new */}
-          <div className="border-t border-slate-100 p-2">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+          {creating ? (
+            <form
+              ref={createFormRef}
+              onSubmit={handleCreateSubmit}
+              className="p-3"
             >
-              <UserPlus size={12} className="text-slate-400" />
-              Create new {label.toLowerCase()}
-            </button>
-          </div>
+              <div className="space-y-2">
+                <input
+                  autoFocus
+                  id={`${type}-create-name`}
+                  name={`${type}_name`}
+                  autoComplete="name"
+                  data-contact-picker-input="true"
+                  type="text"
+                  value={draft.name}
+                  onChange={(e) => setDraft((current) => ({ ...current, name: e.target.value }))}
+                  placeholder={`${label} name`}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                />
+                <input
+                  id={`${type}-create-organization`}
+                  name={`${type}_organization`}
+                  autoComplete="organization"
+                  data-contact-picker-input="true"
+                  type="text"
+                  value={draft.organization}
+                  onChange={(e) => setDraft((current) => ({ ...current, organization: e.target.value }))}
+                  placeholder="Organization"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                />
+                <input
+                  id={`${type}-create-phone`}
+                  name={`${type}_phone`}
+                  autoComplete="tel"
+                  data-contact-picker-input="true"
+                  inputMode="tel"
+                  type="tel"
+                  value={formatPhoneInput(draft.phone)}
+                  onChange={(e) => setDraft((current) => ({ ...current, phone: digitsOnly(e.target.value) }))}
+                  placeholder="Phone"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                />
+                <input
+                  id={`${type}-create-email`}
+                  name={`${type}_email`}
+                  autoComplete="email"
+                  data-contact-picker-input="true"
+                  type="email"
+                  value={draft.email}
+                  onChange={(e) => setDraft((current) => ({ ...current, email: e.target.value }))}
+                  placeholder="Email"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                />
+              </div>
+              {createError && (
+                <p className="mt-2 text-xs text-rose-600">{createError}</p>
+              )}
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="submit"
+                  disabled={createPending || !draft.name.trim()}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {createPending ? "Creating..." : `Create ${label}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreating(false);
+                    setCreateError(null);
+                  }}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+                >
+                  Back
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              {/* Search */}
+              <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
+                <Search size={12} className="shrink-0 text-slate-400" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`Search ${label.toLowerCase()}s…`}
+                  className="flex-1 bg-transparent text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
+
+              {/* Results */}
+              <div className="max-h-48 overflow-y-auto">
+                {loading && (
+                  <p className="px-3 py-4 text-center text-xs text-slate-400">Loading…</p>
+                )}
+                {!loading && error && (
+                  <p className="px-3 py-4 text-center text-xs text-rose-600">
+                    Contact library unavailable. Check Supabase configuration.
+                  </p>
+                )}
+                {!loading && !error && contacts.length === 0 && (
+                  <p className="px-3 py-4 text-center text-xs text-slate-400">No contacts found</p>
+                )}
+                {contacts.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleSelect(c)}
+                    className="flex w-full items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800">{c.name}</p>
+                      {c.organization && (
+                        <p className="truncate text-[11px] text-slate-500">{c.organization}</p>
+                      )}
+                    </div>
+                    {c.times_used > 0 && (
+                      <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                        ×{c.times_used}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Create new */}
+              <div className="border-t border-slate-100 p-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreating(true);
+                    setCreateError(null);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                >
+                  <UserPlus size={12} className="text-slate-400" />
+                  Create new {label.toLowerCase()}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -390,13 +666,182 @@ function ContactPicker({ type, label, icon, onSelect }: ContactPickerProps) {
 // ─── Appearances panel ────────────────────────────────────────────────────────
 
 function AppearancesPanel() {
-  const { record } = useIntake();
+  const {
+    record,
+    addAttorney,
+    updateAttorney,
+    removeAttorney,
+    addInterpreter,
+    updateInterpreter,
+    removeInterpreter,
+    addVideographer,
+    updateVideographer,
+    removeVideographer,
+    addParticipant,
+  } = useIntake();
+  const [addingAttorney, setAddingAttorney] = useState(false);
+  const [pendingAttorney, setPendingAttorney] = useState<AttorneySelectionDraft | null>(null);
+  const [replacingAttorneyId, setReplacingAttorneyId] = useState<string | null>(null);
+  const [replacingInterpreterId, setReplacingInterpreterId] = useState<string | null>(null);
+  const [replacingVideographerId, setReplacingVideographerId] = useState<string | null>(null);
 
-  function handleSelect(contact: Contact) {
-    // Contact selected — in production this would populate the IntakeContext fields.
-    // For the MVP the contact data is displayed but integration with the reducer
-    // happens in a later pass when the parser is wired.
-    void contact;
+  function handleSelect(type: ContactType, contact: Contact) {
+    if (type === "attorney") {
+      addAttorney({
+        name: manualField(contact.name),
+        firm: manualField(contact.organization || null),
+        role: manualField("OTHER"),
+        representing: manualField(null),
+        bar_number: manualField(null),
+        address: contact.address || null,
+        city: null,
+        state: null,
+        zip: null,
+        time_used: null,
+        email: contact.email || null,
+        phone: contact.phone || null,
+      });
+      return;
+    }
+
+    if (type === "interpreter") {
+      addInterpreter({
+        name: manualField(contact.name),
+        language_from: "",
+        language_to: "",
+        oath_administered: null,
+        certified: false,
+        cert_number: null,
+        agency: contact.organization || null,
+        email: contact.email || null,
+        phone: contact.phone || null,
+      });
+      return;
+    }
+
+    if (type === "videographer") {
+      addVideographer({
+        name: manualField(contact.name),
+        firm: manualField(contact.organization || null),
+        role_title: null,
+        cert_number: null,
+        email: contact.email || null,
+        phone: contact.phone || null,
+      });
+      return;
+    }
+
+    if (type === "participant") {
+      addParticipant({
+        name: manualField(contact.name),
+        role: mapParticipantRole(type),
+        organization: contact.organization || null,
+        email: contact.email || null,
+        phone: contact.phone || null,
+        notes: contact.notes || null,
+      });
+    }
+  }
+
+  function handleAttorneyReplace(attorneyId: string, contact: Contact) {
+    const attorney = record.attorneys.find((entry) => entry.attorney_id === attorneyId);
+    if (!attorney || sameAttorneyContact(contact, attorney.name.value)) {
+      setReplacingAttorneyId(null);
+      return;
+    }
+
+    setPendingAttorney({
+      mode: "replace",
+      contact,
+      attorneyId,
+      preset: guessRepresentingPreset(attorney.representing.value),
+      partyName: "",
+    });
+  }
+
+  function handleAttorneyAdd(contact: Contact) {
+    setPendingAttorney({
+      mode: "add",
+      contact,
+      attorneyId: null,
+      preset: "plaintiff",
+      partyName: "",
+    });
+    setAddingAttorney(false);
+  }
+
+  function handleAttorneySelectionCancel() {
+    setAddingAttorney(false);
+    setReplacingAttorneyId(null);
+    setPendingAttorney(null);
+  }
+
+  function commitAttorneySelection() {
+    if (!pendingAttorney) return;
+
+    const representingValue = buildRepresentingValue(
+      pendingAttorney.preset,
+      pendingAttorney.partyName,
+    );
+
+    const patch = {
+      name: manualField(pendingAttorney.contact.name),
+      firm: manualField(pendingAttorney.contact.organization || null),
+      representing: manualField(representingValue),
+      address: pendingAttorney.contact.address || null,
+      email: pendingAttorney.contact.email || null,
+      phone: pendingAttorney.contact.phone || null,
+    };
+
+    if (pendingAttorney.mode === "replace" && pendingAttorney.attorneyId) {
+      updateAttorney(pendingAttorney.attorneyId, patch);
+      setReplacingAttorneyId(null);
+    } else {
+      addAttorney({
+        ...patch,
+        role: manualField("OTHER"),
+        bar_number: manualField(null),
+        city: null,
+        state: null,
+        zip: null,
+        time_used: null,
+      });
+      setAddingAttorney(false);
+    }
+
+    setPendingAttorney(null);
+  }
+
+  function handleInterpreterReplace(interpreterId: string, contact: Contact) {
+    const interpreter = record.interpreters.find((entry) => entry.interpreter_id === interpreterId);
+    if (!interpreter || sameInterpreterContact(contact, interpreter.name.value)) {
+      setReplacingInterpreterId(null);
+      return;
+    }
+
+        updateInterpreter(interpreterId, {
+          name: manualField(contact.name),
+          agency: contact.organization || null,
+          email: contact.email || null,
+          phone: contact.phone || null,
+    });
+    setReplacingInterpreterId(null);
+  }
+
+  function handleVideographerReplace(videographerId: string, contact: Contact) {
+    const videographer = record.videographers.find((entry) => entry.videographer_id === videographerId);
+    if (!videographer || sameVideographerContact(contact, videographer.name.value)) {
+      setReplacingVideographerId(null);
+      return;
+    }
+
+    updateVideographer(videographerId, {
+      name: manualField(contact.name),
+      firm: manualField(contact.organization || null),
+      email: contact.email || null,
+      phone: contact.phone || null,
+    });
+    setReplacingVideographerId(null);
   }
 
   return (
@@ -417,21 +862,248 @@ function AppearancesPanel() {
           </p>
           <div className="space-y-2">
             {record.attorneys.length > 0 ? (
-              record.attorneys.map((a) => (
-                <div key={a.attorney_id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <span className="flex-1 text-sm font-medium text-slate-800">{a.name.value}</span>
-                  <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">
-                    {a.role.value}
-                  </span>
-                </div>
-              ))
+              <>
+                {record.attorneys.map((a) => (
+                  replacingAttorneyId === a.attorney_id ? (
+                    <div key={a.attorney_id} className="space-y-2">
+                      <ContactPicker
+                        type="attorney"
+                        label="Attorney"
+                        icon={<Scale size={13} />}
+                        open
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            handleAttorneySelectionCancel();
+                          }
+                        }}
+                        onSelect={(contact) => handleAttorneyReplace(a.attorney_id, contact)}
+                      />
+                      {pendingAttorney?.mode === "replace" && pendingAttorney.attorneyId === a.attorney_id && (
+                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-3">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Party Represented
+                          </p>
+                          <div className="mt-2 space-y-2">
+                            <select
+                              value={pendingAttorney.preset}
+                              onChange={(e) =>
+                                setPendingAttorney((current) =>
+                                  current
+                                    ? { ...current, preset: e.target.value as AttorneyRepresentingPreset }
+                                    : current,
+                                )
+                              }
+                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                            >
+                              <option value="plaintiff">Plaintiff</option>
+                              <option value="defendant">Defendant</option>
+                              <option value="intervenor">Intervenor / Third Party</option>
+                              <option value="other">Other</option>
+                            </select>
+                            <input
+                              type="text"
+                              value={pendingAttorney.partyName}
+                              onChange={(e) =>
+                                setPendingAttorney((current) =>
+                                  current ? { ...current, partyName: e.target.value } : current,
+                                )
+                              }
+                              placeholder="Specific party name"
+                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                            />
+                          </div>
+                          <div className="mt-3 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={commitAttorneySelection}
+                              className="rounded-md bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-slate-700"
+                            >
+                              Save Attorney
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleAttorneySelectionCancel}
+                              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div key={a.attorney_id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex-1 text-sm font-medium text-slate-800">{a.name.value}</span>
+                      <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">
+                          {attorneyBadgeLabel(a.representing.value, a.role.value)}
+                      </span>
+                    </div>
+                    {a.address && (
+                      <p className="mt-1 text-[11px] text-slate-500">{a.address}</p>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setReplacingAttorneyId(a.attorney_id)}
+                          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                        >
+                          Replace
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeAttorney(a.attorney_id)}
+                          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )
+                ))}
+                {addingAttorney && pendingAttorney === null && (
+                  <ContactPicker
+                    type="attorney"
+                    label="Attorney"
+                    icon={<Scale size={13} />}
+                    open
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        handleAttorneySelectionCancel();
+                      }
+                    }}
+                    onSelect={handleAttorneyAdd}
+                  />
+                )}
+                {pendingAttorney?.mode === "add" && (
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Party Represented
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      <select
+                        value={pendingAttorney.preset}
+                        onChange={(e) =>
+                          setPendingAttorney((current) =>
+                            current
+                              ? { ...current, preset: e.target.value as AttorneyRepresentingPreset }
+                              : current,
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                      >
+                        <option value="plaintiff">Plaintiff</option>
+                        <option value="defendant">Defendant</option>
+                        <option value="intervenor">Intervenor / Third Party</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={pendingAttorney.partyName}
+                        onChange={(e) =>
+                          setPendingAttorney((current) =>
+                            current ? { ...current, partyName: e.target.value } : current,
+                          )
+                        }
+                        placeholder="Specific party name"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={commitAttorneySelection}
+                        className="rounded-md bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-slate-700"
+                      >
+                        Save Attorney
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAttorneySelectionCancel}
+                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
-              <ContactPicker
-                type="attorney"
-                label="Attorney"
-                icon={<Scale size={13} />}
-                onSelect={handleSelect}
-              />
+              <div className="space-y-2">
+                <ContactPicker
+                  type="attorney"
+                  label="Attorney"
+                  icon={<Scale size={13} />}
+                  open={!pendingAttorney && addingAttorney}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      handleAttorneySelectionCancel();
+                    }
+                  }}
+                  onSelect={handleAttorneyAdd}
+                />
+                {pendingAttorney?.mode === "add" && (
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Party Represented
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      <select
+                        value={pendingAttorney.preset}
+                        onChange={(e) =>
+                          setPendingAttorney((current) =>
+                            current
+                              ? { ...current, preset: e.target.value as AttorneyRepresentingPreset }
+                              : current,
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                      >
+                        <option value="plaintiff">Plaintiff</option>
+                        <option value="defendant">Defendant</option>
+                        <option value="intervenor">Intervenor / Third Party</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={pendingAttorney.partyName}
+                        onChange={(e) =>
+                          setPendingAttorney((current) =>
+                            current ? { ...current, partyName: e.target.value } : current,
+                          )
+                        }
+                        placeholder="Specific party name"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={commitAttorneySelection}
+                        className="rounded-md bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-slate-700"
+                      >
+                        Save Attorney
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAttorneySelectionCancel}
+                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {!addingAttorney && pendingAttorney === null && (
+              <button
+                type="button"
+                onClick={() => setAddingAttorney(true)}
+                className="w-full rounded-lg border border-dashed border-slate-300 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+              >
+                + Add Attorney
+              </button>
             )}
           </div>
         </div>
@@ -447,14 +1119,64 @@ function AppearancesPanel() {
               type="interpreter"
               label="Interpreter"
               icon={<Mic size={13} />}
-              onSelect={handleSelect}
+              onSelect={(contact) => handleSelect("interpreter", contact)}
             />
           ) : (
             record.interpreters.map((i) => (
-              <div key={i.interpreter_id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <Mic size={13} className="text-slate-400" />
-                <span className="text-sm text-slate-800">{i.name.value}</span>
-              </div>
+              replacingInterpreterId === i.interpreter_id ? (
+                <ContactPicker
+                  key={i.interpreter_id}
+                  type="interpreter"
+                  label="Interpreter"
+                  icon={<Mic size={13} />}
+                  onSelect={(contact) => handleInterpreterReplace(i.interpreter_id, contact)}
+                />
+              ) : (
+                <div key={i.interpreter_id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Mic size={13} className="text-slate-400" />
+                    <span className="flex-1 text-sm text-slate-800">{i.name.value}</span>
+                  </div>
+                  {(i.language_from || i.language_to) && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {i.language_from || "Unknown"} to {i.language_to || "Unknown"}
+                    </p>
+                  )}
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-[11px] font-medium text-slate-500">Oath</span>
+                    <button
+                      type="button"
+                      onClick={() => updateInterpreter(i.interpreter_id, { oath_administered: true })}
+                      className={`rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${i.oath_administered === true ? "bg-emerald-100 text-emerald-700" : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-100"}`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateInterpreter(i.interpreter_id, { oath_administered: false })}
+                      className={`rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${i.oath_administered === false ? "bg-rose-100 text-rose-700" : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-100"}`}
+                    >
+                      No
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReplacingInterpreterId(i.interpreter_id)}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeInterpreter(i.interpreter_id)}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )
             ))
           )}
         </div>
@@ -470,14 +1192,45 @@ function AppearancesPanel() {
               type="videographer"
               label="Videographer"
               icon={<Video size={13} />}
-              onSelect={handleSelect}
+              onSelect={(contact) => handleSelect("videographer", contact)}
             />
           ) : (
             record.videographers.map((v) => (
-              <div key={v.videographer_id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                <Video size={13} className="text-slate-400" />
-                <span className="text-sm text-slate-800">{v.name.value}</span>
-              </div>
+              replacingVideographerId === v.videographer_id ? (
+                <ContactPicker
+                  key={v.videographer_id}
+                  type="videographer"
+                  label="Videographer"
+                  icon={<Video size={13} />}
+                  onSelect={(contact) => handleVideographerReplace(v.videographer_id, contact)}
+                />
+              ) : (
+                <div key={v.videographer_id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Video size={13} className="text-slate-400" />
+                    <span className="flex-1 text-sm text-slate-800">{v.name.value}</span>
+                  </div>
+                  {v.role_title && (
+                    <p className="mt-1 text-[11px] text-slate-500">{v.role_title}</p>
+                  )}
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReplacingVideographerId(v.videographer_id)}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeVideographer(v.videographer_id)}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )
             ))
           )}
         </div>
@@ -492,7 +1245,7 @@ function AppearancesPanel() {
             type="participant"
             label="Participant"
             icon={<User2 size={13} />}
-            onSelect={handleSelect}
+            onSelect={(contact) => handleSelect("participant", contact)}
           />
         </div>
       </div>
@@ -502,45 +1255,84 @@ function AppearancesPanel() {
 
 // ─── Gate 1 status card ───────────────────────────────────────────────────────
 
-interface GateCheck {
-  label: string;
-  met: boolean;
-  required: boolean;
-}
-
 function GateStatusCard({
-  checks,
-  onProceed,
+  validation,
+  persisted,
+  onNavigate,
 }: {
-  checks: GateCheck[];
-  onProceed: () => void;
+  validation: IntakeValidationResult;
+  persisted: boolean;
+  onNavigate: (fieldPath: string | null) => void;
 }) {
-  const blockers = checks.filter((c) => c.required && !c.met);
-  const canProceed = blockers.length === 0;
+  const [warningsOpen, setWarningsOpen] = useState(false);
+  const failItems = [...validation.items.filter((item) => item.tier === "FAIL")].sort(
+    (a, b) => Number(a.satisfied) - Number(b.satisfied),
+  );
+  const warningItems = validation.items.filter((item) => item.tier === "WARNING" && !item.satisfied);
 
   return (
-    <div className={`rounded-xl border p-4 ${canProceed ? "border-emerald-200 bg-emerald-50/60" : "border-amber-200 bg-amber-50/50"}`}>
+    <div className={`rounded-xl border p-4 ${validation.canProceed ? "border-emerald-200 bg-emerald-50/60" : "border-amber-200 bg-amber-50/50"}`}>
       <p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600">
         Gate 1 — Transcript Creation
       </p>
+      <div className="mb-3 flex items-center gap-2">
+        {persisted ? (
+          <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />
+        ) : (
+          <Clock size={13} className="shrink-0 text-slate-400" />
+        )}
+        <span className={`text-xs ${persisted ? "text-slate-700" : "text-slate-500"}`}>Case record created</span>
+      </div>
       <div className="space-y-1.5">
-        {checks.map((c) => (
-          <div key={c.label} className="flex items-center gap-2">
-            {c.met ? (
+        {failItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onNavigate(item.fieldPath)}
+            className="flex w-full items-start gap-2 rounded-md text-left transition-colors hover:bg-white/60"
+          >
+            {item.satisfied ? (
               <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />
-            ) : c.required ? (
-              <AlertTriangle size={13} className="shrink-0 text-amber-500" />
             ) : (
-              <Clock size={13} className="shrink-0 text-slate-400" />
+              <AlertTriangle size={13} className="shrink-0 text-amber-500" />
             )}
-            <span className={`text-xs ${c.met ? "text-slate-700" : c.required ? "font-medium text-amber-700" : "text-slate-500"}`}>
-              {c.label}
+            <span className={`flex-1 text-xs ${item.satisfied ? "text-slate-700" : "font-medium text-amber-700"}`}>
+              {item.label}
+              {item.detail && !item.satisfied && (
+                <span className="block text-[10px] font-normal text-slate-500">{item.detail}</span>
+              )}
             </span>
-            {!c.required && !c.met && (
-              <span className="ml-auto text-[10px] text-slate-400">optional</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 border-t border-slate-200/70 pt-3">
+        <button
+          type="button"
+          onClick={() => setWarningsOpen((value) => !value)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-slate-600"
+        >
+          {warningsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          Warnings ({validation.warningCount})
+        </button>
+        {warningsOpen && (
+          <div className="mt-2 space-y-1.5">
+            {warningItems.length === 0 ? (
+              <p className="text-xs text-slate-500">No outstanding warnings.</p>
+            ) : (
+              warningItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onNavigate(item.fieldPath)}
+                  className="block w-full rounded-md text-left text-xs text-amber-800 transition-colors hover:bg-white/60"
+                >
+                  {item.label}
+                  {item.detail && <span className="block text-[10px] text-slate-500">{item.detail}</span>}
+                </button>
+              ))
             )}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -552,14 +1344,26 @@ function IntakeFooter({
   onSave,
   onProceed,
   canProceed,
+  remainingRequiredCount,
   dirty,
+  saveState,
 }: {
-  onSave: () => void;
+  onSave: () => Promise<void>;
   onProceed: () => void;
   canProceed: boolean;
+  remainingRequiredCount: number;
   dirty: boolean;
+  saveState: "idle" | "saving" | "saved" | "error";
 }) {
   const [showPayload, setShowPayload] = useState(false);
+  const saveLabel =
+    saveState === "saving"
+      ? "Saving..."
+      : saveState === "saved"
+        ? "Saved"
+        : saveState === "error"
+          ? "Save Failed"
+          : "Save Intake";
 
   return (
     <footer className="shrink-0 border-t border-slate-200 bg-white">
@@ -587,34 +1391,47 @@ function IntakeFooter({
 
         <button
           type="button"
+          disabled
           className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none"
           title="UFM payload generation is implemented at Stage 5"
         >
           <Package size={13} />
           View UFM Payload
         </button>
+        <span className="text-[11px] text-slate-400">Not yet implemented</span>
 
         {/* Right: primary actions */}
         <div className="ml-auto flex items-center gap-2">
+          {dirty && saveState !== "saving" && (
+            <span className="text-[11px] font-medium text-amber-700">
+              Unsaved changes
+            </span>
+          )}
           <button
             type="button"
             onClick={onSave}
-            disabled={!dirty}
+            disabled={!dirty || saveState === "saving"}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-40"
           >
             <Save size={13} />
-            Save Intake
+            {saveLabel}
           </button>
 
           <button
             type="button"
             onClick={onProceed}
             disabled={!canProceed}
+            title={!canProceed ? `${remainingRequiredCount} required items remaining.` : undefined}
             className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Proceed to Transcript Creation
             <ChevronRight size={13} />
           </button>
+          {!canProceed && (
+            <span className="text-[11px] text-amber-700">
+              {remainingRequiredCount} required item{remainingRequiredCount !== 1 ? "s" : ""} remaining.
+            </span>
+          )}
         </div>
       </div>
     </footer>
@@ -624,43 +1441,132 @@ function IntakeFooter({
 // ─── Main IntakeScreen ────────────────────────────────────────────────────────
 
 export function IntakeScreen({ jobId }: Props) {
-  const { record, dirty, validation } = useIntake();
+  const {
+    record,
+    dirty,
+    loadCase,
+    initNewCase,
+    updateField,
+    confirmField,
+    confirmAll,
+    resolveConflict,
+  } = useIntake();
   const { setStage } = useStage();
-  const { state: conflictState } = useConflict();
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [persisted, setPersisted] = useState(false);
+  const recordRef = useRef(record);
+  const dirtyRef = useRef(dirty);
+  const recordCaseIdRef = useRef(record.case_id);
 
-  const activeConflicts = selectActiveConflicts(conflictState);
+  const intakeValidation = useMemo(() => evaluateIntake(record), [record]);
 
-  // Initialise intake with the mock case record on first render.
-  // When the document parser is wired in a later pass, this will be replaced
-  // by the parsed data from the uploaded Notice of Deposition.
-  const { loadCase } = useIntake();
   useEffect(() => {
-    loadCase(mockCaseRecord);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    recordRef.current = record;
+    dirtyRef.current = dirty;
+    recordCaseIdRef.current = record.case_id;
+  }, [dirty, record]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    function shouldAbortHydration(caseId: string) {
+      if (cancelled) return true;
+      return dirtyRef.current && recordCaseIdRef.current === caseId;
+    }
+
+    async function hydrateCase() {
+      if (shouldAbortHydration(jobId)) {
+        return;
+      }
+
+      const caseId = recordCaseIdRef.current || jobId;
+
+      try {
+        const persisted = await loadPersistedCase(caseId);
+        if (shouldAbortHydration(caseId)) return;
+
+        if (persisted) {
+          if (shouldAbortHydration(caseId)) return;
+          setPersisted(true);
+          loadCase(persisted);
+          return;
+        }
+      } catch (error) {
+        console.error("[DEPO-PRO] Case load failed", {
+          operation: "loadCase",
+          caseId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      if (shouldAbortHydration(caseId)) return;
+
+      if (import.meta.env.DEV) {
+        const fallbackRecord: CaseRecord = {
+          ...mockCaseRecord,
+          case_id: caseId,
+          stage: "intake",
+          notes: mockCaseRecord.notes,
+          proceeding_type: mockCaseRecord.proceeding_type,
+          proceeding: {
+            ...mockCaseRecord.proceeding,
+            proceeding_type: mockCaseRecord.proceeding_type,
+          },
+        };
+        if (shouldAbortHydration(caseId)) return;
+        setPersisted(false);
+        loadCase(fallbackRecord);
+        return;
+      }
+
+      if (shouldAbortHydration(caseId)) return;
+      setPersisted(false);
+      initNewCase(caseId);
+    }
+
+    void hydrateCase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dirty, initNewCase, jobId, loadCase, record.case_id]);
+
+  useEffect(() => {
+    if (dirty && saveState !== "saving") {
+      setSaveState("idle");
+    }
+  }, [dirty, saveState]);
+
+  const canProceed = intakeValidation.canProceed;
+
+  const handleNavigateToField = useCallback((fieldPath: string | null) => {
+    if (!fieldPath) return;
+    const selector = `[data-field-path="${fieldPath.replace(/"/g, '\\"')}"]`;
+    const element = document.querySelector<HTMLElement>(selector);
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    const originalBackground = element.style.backgroundColor;
+    element.style.backgroundColor = "rgba(191, 219, 254, 0.7)";
+    window.setTimeout(() => {
+      element.style.backgroundColor = originalBackground;
+    }, 1600);
   }, []);
 
-  // ── Gate 1 checks ──────────────────────────────────────────────────────────
-  const hasWitness  = record.witnesses.length > 0;
-  const hasAudio    = false; // populated when audio upload is wired
-  const hasCaseName = !!record.caption.case_name.value;
-  const hasDate     = !!record.session.deposition_date.value;
-  const noConflicts = activeConflicts.length === 0;
-  const noMissing   = validation.missing.length === 0;
-
-  const gateChecks: GateCheck[] = [
-    { label: "Case record created",         met: hasCaseName,  required: true  },
-    { label: "Witness / deponent present",  met: hasWitness,   required: true  },
-    { label: "No unresolved conflicts",     met: noConflicts,  required: true  },
-    { label: "Required fields complete",    met: noMissing,    required: true  },
-    { label: "Deposition date set",         met: hasDate,      required: false },
-    { label: "Audio file uploaded",         met: hasAudio,     required: false },
-  ];
-
-  const canProceed = gateChecks.filter((c) => c.required).every((c) => c.met);
-
-  const handleSave = useCallback(() => {
-    // Persistence will be wired to Supabase in a later pass.
-    // For now we just acknowledge with the dirty flag.
+  const handleSave = useCallback(async () => {
+    setSaveState("saving");
+    const currentRecord = recordRef.current;
+    try {
+      await saveCase(currentRecord);
+      setPersisted(true);
+      setSaveState("saved");
+    } catch (error) {
+      console.error("[DEPO-PRO] Case save failed", {
+        operation: "saveCase",
+        caseId: currentRecord.case_id,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      setSaveState("error");
+    }
   }, []);
 
   const handleProceed = useCallback(() => {
@@ -674,7 +1580,7 @@ export function IntakeScreen({ jobId }: Props) {
       <WorkflowNav jobId={jobId} />
 
       {/* ── Case status banner ── */}
-      <CaseStatusBanner />
+      <CaseStatusBanner validation={intakeValidation} />
 
       {/* ── Main scrollable body ── */}
       <div className="flex-1 overflow-y-auto">
@@ -685,7 +1591,11 @@ export function IntakeScreen({ jobId }: Props) {
             <DocumentUploadPanel />
             <div className="space-y-4">
               <AppearancesPanel />
-              <GateStatusCard checks={gateChecks} onProceed={handleProceed} />
+              <GateStatusCard
+                validation={intakeValidation}
+                persisted={persisted}
+                onNavigate={handleNavigateToField}
+              />
             </div>
           </div>
 
@@ -703,6 +1613,18 @@ export function IntakeScreen({ jobId }: Props) {
               caseId={record.case_id || "case_intake"}
               record={record}
               conflictAlternates={mockConflictAlternates}
+              onUpdate={(rowId, value) => {
+                updateField(rowId, value, "manual", null, true);
+              }}
+              onConfirm={(rowId) => {
+                confirmField(rowId);
+              }}
+              onConfirmAll={() => {
+                confirmAll();
+              }}
+              onResolveConflict={(rowId, value, source) => {
+                resolveConflict(rowId, value, mapDisplaySourceToFieldSource(source));
+              }}
             />
           </section>
 
@@ -727,7 +1649,9 @@ export function IntakeScreen({ jobId }: Props) {
         onSave={handleSave}
         onProceed={handleProceed}
         canProceed={canProceed}
+        remainingRequiredCount={intakeValidation.failCount}
         dirty={dirty}
+        saveState={saveState}
       />
     </div>
   );

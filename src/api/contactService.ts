@@ -1,8 +1,31 @@
-import { supabase } from "../lib/supabase";
+import { getSupabaseClient } from "../lib/supabase";
 import type { Contact, ContactInsert, ContactUpdate, ContactType } from "../types/contact";
 
+function normalizePhone(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+function normalizeContactInsert(payload: ContactInsert): ContactInsert {
+  return {
+    ...payload,
+    phone: normalizePhone(payload.phone),
+  };
+}
+
+function normalizeContactUpdate(patch: ContactUpdate): ContactUpdate {
+  if (!("phone" in patch)) {
+    return patch;
+  }
+
+  return {
+    ...patch,
+    phone: normalizePhone(patch.phone),
+  };
+}
+
 export async function listContacts(type?: ContactType): Promise<Contact[]> {
-  let query = supabase
+  const client = await getSupabaseClient("listContacts");
+  let query = client
     .from("contacts")
     .select("*")
     .order("times_used", { ascending: false })
@@ -18,7 +41,8 @@ export async function listContacts(type?: ContactType): Promise<Contact[]> {
 }
 
 export async function searchContacts(term: string, type?: ContactType): Promise<Contact[]> {
-  let query = supabase
+  const client = await getSupabaseClient("searchContacts");
+  let query = client
     .from("contacts")
     .select("*")
     .ilike("name", `%${term}%`)
@@ -35,7 +59,8 @@ export async function searchContacts(term: string, type?: ContactType): Promise<
 }
 
 export async function getContact(id: string): Promise<Contact | null> {
-  const { data, error } = await supabase
+  const client = await getSupabaseClient("getContact");
+  const { data, error } = await client
     .from("contacts")
     .select("*")
     .eq("id", id)
@@ -46,9 +71,11 @@ export async function getContact(id: string): Promise<Contact | null> {
 }
 
 export async function createContact(payload: ContactInsert): Promise<Contact> {
-  const { data, error } = await supabase
+  const client = await getSupabaseClient("createContact");
+  const normalized = normalizeContactInsert(payload);
+  const { data, error } = await client
     .from("contacts")
-    .insert({ ...payload, times_used: 0 })
+    .insert({ ...normalized, times_used: 0 })
     .select()
     .single();
 
@@ -57,9 +84,11 @@ export async function createContact(payload: ContactInsert): Promise<Contact> {
 }
 
 export async function updateContact(id: string, patch: ContactUpdate): Promise<Contact> {
-  const { data, error } = await supabase
+  const client = await getSupabaseClient("updateContact");
+  const normalized = normalizeContactUpdate(patch);
+  const { data, error } = await client
     .from("contacts")
-    .update(patch)
+    .update(normalized)
     .eq("id", id)
     .select()
     .single();
@@ -69,12 +98,13 @@ export async function updateContact(id: string, patch: ContactUpdate): Promise<C
 }
 
 export async function incrementUsage(id: string): Promise<void> {
-  const { error } = await supabase.rpc("increment_contact_usage", { contact_id: id });
+  const client = await getSupabaseClient("incrementUsage");
+  const { error } = await client.rpc("increment_contact_usage", { contact_id: id });
   if (error) {
     // Fallback: fetch current count and update manually if RPC not available
     const contact = await getContact(id);
     if (contact) {
-      await supabase
+      await client
         .from("contacts")
         .update({ times_used: contact.times_used + 1 })
         .eq("id", id);

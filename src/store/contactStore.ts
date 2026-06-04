@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useReducer } from "react";
 import type { Contact, ContactInsert, ContactUpdate, ContactType } from "../types/contact";
 import {
   listContacts,
@@ -76,6 +76,11 @@ export function useContactStore() {
       const contacts = await listContacts(type);
       dispatch({ type: "FETCH_SUCCESS", payload: contacts });
     } catch (err) {
+      console.error("[DEPO-PRO] Supabase contacts load failed", {
+        operation: "listContacts",
+        table: "contacts",
+        message: err instanceof Error ? err.message : String(err),
+      });
       dispatch({ type: "FETCH_ERROR", payload: String(err) });
     }
   }, []);
@@ -86,6 +91,12 @@ export function useContactStore() {
       const contacts = await searchContacts(term, type);
       dispatch({ type: "FETCH_SUCCESS", payload: contacts });
     } catch (err) {
+      console.error("[DEPO-PRO] Supabase contacts search failed", {
+        operation: "searchContacts",
+        table: "contacts",
+        message: err instanceof Error ? err.message : String(err),
+        term,
+      });
       dispatch({ type: "FETCH_ERROR", payload: String(err) });
     }
   }, []);
@@ -123,10 +134,6 @@ export function useContactStore() {
     await incrementUsage(id);
     dispatch({ type: "INCREMENT_USAGE", payload: id });
   }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   return {
     ...state,

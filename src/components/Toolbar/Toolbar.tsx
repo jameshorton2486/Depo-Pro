@@ -1,6 +1,7 @@
 import { Save, AlertCircle, CheckCircle, FileText, Languages } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
+import { useStage } from "../../context/StageContext";
 
 interface Props {
   jobId: string;
@@ -18,6 +19,7 @@ function formatSavedTime(ts: number): string {
 export function Toolbar({ jobId, onSave }: Props) {
   const { state } = useDocument();
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
+  const { setStage } = useStage();
 
   const reviewedCount = Object.values(state.wordMap).filter((w) => w.reviewed).length;
   const totalWords = Object.keys(state.wordMap).length;
@@ -45,6 +47,20 @@ export function Toolbar({ jobId, onSave }: Props) {
       >
         <Languages size={13} />
         <span className="hidden sm:inline">Interpreter</span>
+      </button>
+
+      <button
+        onClick={() => setStage("intake")}
+        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+      >
+        Intake
+      </button>
+
+      <button
+        onClick={() => setStage("certification")}
+        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+      >
+        Certification
       </button>
 
       {/* Save state indicator */}

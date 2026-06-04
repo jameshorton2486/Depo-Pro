@@ -34,6 +34,7 @@ export type ProceedingType =
 
 export type DeponentRole   = "WITNESS" | "PARTY" | "EXPERT" | "OTHER";
 export type AttorneyRole   = "EXAMINING" | "OPPOSING" | "CO_COUNSEL" | "OTHER";
+export type ReportingMethod = "machine_shorthand" | "zoom" | "in_person" | "audio_recording";
 export type ParticipantRole =
   | "REPORTER"
   | "ATTORNEY"
@@ -56,8 +57,11 @@ export type KeytermCategory =
 
 export interface CaseCaption {
   case_name:    ExtractedField<string>;
+  case_style:   ExtractedField<string>;
   case_number:  ExtractedField<string>;
   court_name:   ExtractedField<string>;
+  county:       ExtractedField<string>;
+  venue:        ExtractedField<string>;
   department:   ExtractedField<string | null>;
   judge_name:   ExtractedField<string | null>;
 }
@@ -86,6 +90,11 @@ export interface Attorney {
   role:         ExtractedField<AttorneyRole>;
   representing: ExtractedField<string | null>; // "Plaintiff", "Defendant", etc.
   bar_number:   ExtractedField<string | null>;
+  address:      string | null;
+  city:         string | null;
+  state:        string | null;
+  zip:          string | null;
+  time_used:    string | null; // Post-record certificate field; not edited at Intake.
   email:        string | null;
   phone:        string | null;
 }
@@ -98,6 +107,12 @@ export interface Witness {
   role:        ExtractedField<DeponentRole>;
   title:       ExtractedField<string | null>;  // professional title
   employer:    ExtractedField<string | null>;
+  prefix_suffix:    string | null;
+  party_affiliation: ExtractedField<"plaintiff" | "defendant" | "third_party" | null>;
+  is_corporate_rep: boolean;
+  corporate_entity: string | null;
+  read_and_sign: ExtractedField<"read_and_sign" | "waived" | null>;
+  spelling_corrections: Array<{ original: string; corrected: string; noted_on_record: boolean }>;
   email:       string | null;
   phone:       string | null;
 }
@@ -109,6 +124,7 @@ export interface Interpreter {
   name:              ExtractedField<string>;
   language_from:     string;   // ISO 639-1, e.g. "es"
   language_to:       string;   // ISO 639-1, e.g. "en"
+  oath_administered: boolean | null;
   certified:         boolean;
   cert_number:       string | null;
   agency:            string | null;
@@ -122,6 +138,7 @@ export interface Videographer {
   videographer_id: string;
   name:            ExtractedField<string>;
   firm:            ExtractedField<string | null>;
+  role_title:      string | null;
   cert_number:     string | null;
   email:           string | null;
   phone:           string | null;
@@ -146,6 +163,9 @@ export interface Reporter {
   cert_number:      ExtractedField<string>;
   cert_state:       ExtractedField<string>;    // two-letter state code
   firm:             ExtractedField<string | null>;
+  license_expiration:       ExtractedField<ISODate | null>;
+  firm_registration_number: ExtractedField<string | null>;
+  firm_address:             ExtractedField<string | null>;
   email:            string | null;
   phone:            string | null;
   notary_required:  boolean;
@@ -161,8 +181,10 @@ export interface Session {
   end_time:          ExtractedField<ISOTime | null>;
   location_address:  ExtractedField<string>;
   location_city:     ExtractedField<string>;
+  location_county:   ExtractedField<string>;
   location_state:    ExtractedField<string>;
   location_zip:      ExtractedField<string | null>;
+  reporting_method:  ExtractedField<ReportingMethod | null>;
   is_remote:         boolean;
   remote_platform:   string | null;  // "Zoom", "Teams", etc.
 }
@@ -372,8 +394,11 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
 
     caption: {
       case_name:   extractedEmpty(""),
+      case_style:  extractedEmpty(""),
       case_number: extractedEmpty(""),
       court_name:  extractedEmpty(""),
+      county:      extractedEmpty(""),
+      venue:       extractedEmpty(""),
       department:  extractedEmpty(null),
       judge_name:  extractedEmpty(null),
     },
@@ -384,8 +409,10 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
       end_time:         extractedEmpty(null),
       location_address: extractedEmpty(""),
       location_city:    extractedEmpty(""),
+      location_county:  extractedEmpty(""),
       location_state:   extractedEmpty(""),
       location_zip:     extractedEmpty(null),
+      reporting_method: extractedEmpty(null),
       is_remote:        false,
       remote_platform:  null,
     },
@@ -405,6 +432,9 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
       cert_number:              extractedEmpty(""),
       cert_state:               extractedEmpty(""),
       firm:                     extractedEmpty(null),
+      license_expiration:       extractedEmpty(null),
+      firm_registration_number: extractedEmpty(null),
+      firm_address:             extractedEmpty(null),
       email:                    null,
       phone:                    null,
       notary_required:          false,
@@ -426,5 +456,81 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
     stage_completion: defaultStageCompletion(),
     certification:    null,
     notes:            "",
+  };
+}
+
+function normalizeAttorney(attorney: Attorney): Attorney {
+  return {
+    ...attorney,
+    address: attorney.address ?? null,
+    city: attorney.city ?? null,
+    state: attorney.state ?? null,
+    zip: attorney.zip ?? null,
+    time_used: attorney.time_used ?? null,
+  };
+}
+
+function normalizeWitness(witness: Witness): Witness {
+  return {
+    ...witness,
+    prefix_suffix: witness.prefix_suffix ?? null,
+    party_affiliation: witness.party_affiliation ?? extractedEmpty(null),
+    is_corporate_rep: witness.is_corporate_rep ?? false,
+    corporate_entity: witness.corporate_entity ?? null,
+    read_and_sign: witness.read_and_sign ?? extractedEmpty(null),
+    spelling_corrections: witness.spelling_corrections ?? [],
+  };
+}
+
+function normalizeInterpreter(interpreter: Interpreter): Interpreter {
+  return {
+    ...interpreter,
+    oath_administered: interpreter.oath_administered ?? null,
+  };
+}
+
+function normalizeVideographer(videographer: Videographer): Videographer {
+  return {
+    ...videographer,
+    role_title: videographer.role_title ?? null,
+  };
+}
+
+export function normalizeCaseRecord(record: CaseRecord): CaseRecord {
+  const defaults = emptyCaseRecord(record.case_id, record.created_at || new Date().toISOString());
+
+  return {
+    ...defaults,
+    ...record,
+    caption: {
+      ...defaults.caption,
+      ...record.caption,
+    },
+    session: {
+      ...defaults.session,
+      ...record.session,
+    },
+    proceeding: {
+      ...defaults.proceeding,
+      ...record.proceeding,
+    },
+    reporter: {
+      ...defaults.reporter,
+      ...record.reporter,
+    },
+    format: {
+      ...defaults.format,
+      ...record.format,
+    },
+    stage_completion: {
+      ...defaults.stage_completion,
+      ...record.stage_completion,
+    },
+    witnesses: (record.witnesses ?? []).map((witness) => normalizeWitness(witness as Witness)),
+    attorneys: (record.attorneys ?? []).map((attorney) => normalizeAttorney(attorney as Attorney)),
+    interpreters: (record.interpreters ?? []).map((interpreter) => normalizeInterpreter(interpreter as Interpreter)),
+    videographers: (record.videographers ?? []).map((videographer) => normalizeVideographer(videographer as Videographer)),
+    participants: record.participants ?? [],
+    exhibits: record.exhibits ?? [],
   };
 }

@@ -18,9 +18,6 @@ import type {
 
 import {
   emptyCaseRecord,
-  defaultTranscriptFormat,
-  defaultDeepgramConfig,
-  defaultStageCompletion,
 } from "../types/case";
 
 // ─── ID generator ─────────────────────────────────────────────────────────────
@@ -234,7 +231,12 @@ type SetterResult<T> = {
 } | null;
 
 function resolveExtractedPath<T>(record: CaseRecord, path: string): SetterResult<T> {
-  const keys = path.split(".");
+  const keys = path
+    .split(".")
+    .flatMap((segment) => {
+      const match = segment.match(/^([^\[]+)\[(\d+)\]$/);
+      return match ? [match[1], match[2]] : [segment];
+    });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let node: any = record;
   const ancestry: Array<{ obj: Record<string, unknown>; key: string }> = [];
@@ -662,6 +664,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
 }
 
 // ─── UFM validation ───────────────────────────────────────────────────────────
+// Deprecated for Intake UI gating; Phase 2 uses src/validation/intakeValidation.ts.
 // Returns the set of dot-paths that are required but not yet confirmed.
 
 export interface ValidationResult {
@@ -685,6 +688,7 @@ const REQUIRED_PATHS: string[] = [
 ];
 
 export function validateIntake(record: CaseRecord): ValidationResult {
+  // Phase 2: validation tiers per UFM_TEXAS_REQUIREMENTS.md §9
   const missing: string[] = [];
   const unconfirmed: string[] = [];
   const conflicted: string[] = [];

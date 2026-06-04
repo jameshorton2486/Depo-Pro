@@ -15,7 +15,7 @@ export type ProvenanceEventType =
 // ─── Single history entry ─────────────────────────────────────────────────────
 
 export interface ProvenanceEntry {
-  id: string;                        // uuid from Supabase, or temp client id
+  id: string;                        // temp client id in-memory, uuid when loaded from Supabase
   case_id: string;
   field_path: string;                // e.g. "witnesses[0].name"
   field_label: string;               // e.g. "Witness 1 — Name"

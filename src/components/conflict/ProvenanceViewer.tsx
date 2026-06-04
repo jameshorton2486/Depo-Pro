@@ -6,6 +6,7 @@
 //
 // Used as a panel/drawer alongside the main conflict resolution workflow.
 
+import type React from "react";
 import { useEffect } from "react";
 import {
   X,
