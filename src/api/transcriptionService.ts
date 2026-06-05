@@ -9,38 +9,15 @@ import type { Database } from "../types/database";
 import type { DeepgramKeyterm } from "../types/case";
 import { createOfflineDeepgramFixture } from "../lib/transcript/offlineFixture";
 import type { DeepgramResponse, TranscriptCapture } from "../lib/transcript/types";
-
-type TranscriptRow = {
-  id: string;
-  transcript_id: string;
-  case_id: string;
-  job_id: string;
-  media_url: string | null;
-  duration: number | null;
-  based_on: string | null;
-  deepgram_request_id: string | null;
-  session_id: string | null;
-  source_filename: string | null;
-  media_kind: "audio" | "video";
-  status: "queued" | "preprocessing" | "transcribing" | "assembling" | "completed" | "failed";
-  engine: string | null;
-  transcription_source: "deepgram" | "offline-fixture";
-  sequence_index: number;
-  duration_seconds: number | null;
-  word_count: number;
-  utterance_count: number;
-  speaker_count: number;
-  avg_confidence: string | null;
-  raw_storage_path: string | null;
-  raw_checksum: string | null;
-  last_error: string | null;
-  speaker_map_confirmed: boolean;
-  created_at: string;
-  updated_at: string;
-};
+import { normalizeTranscriptResponse } from "../lib/transcript/normalize";
+import {
+  insertNormalizedTranscript,
+  type TranscriptJobRow,
+  updateTranscriptJob,
+} from "./transcriptRepository";
 
 type TranscriptInsert = Omit<
-  TranscriptRow,
+  TranscriptJobRow,
   "id" | "created_at" | "updated_at" | "duration" | "deepgram_request_id" | "duration_seconds" | "word_count" | "utterance_count" | "speaker_count" | "avg_confidence" | "raw_storage_path" | "raw_checksum" | "last_error" | "speaker_map_confirmed"
 > & {
   id?: string;
@@ -63,7 +40,7 @@ type TranscriptDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables"> & {
     Tables: Database["public"]["Tables"] & {
       transcripts: {
-        Row: TranscriptRow;
+        Row: TranscriptJobRow;
         Insert: TranscriptInsert;
         Update: TranscriptUpdate;
         Relationships: Database["public"]["Tables"]["transcripts"]["Relationships"];
@@ -158,7 +135,7 @@ async function createTranscriptJob(
   caseId: string,
   audioRecord: CaseAudioRecord,
   transcriptionSource: "deepgram" | "offline-fixture",
-): Promise<TranscriptRow> {
+): Promise<TranscriptJobRow> {
   const client = await getSupabaseClient("createTranscriptJob");
   const transcriptClient = getTranscriptClient(client);
   const jobId = createTranscriptJobId();
@@ -189,27 +166,7 @@ async function createTranscriptJob(
     throw error;
   }
 
-  return data as unknown as TranscriptRow;
-}
-
-async function updateTranscriptJob(
-  transcriptId: string,
-  patch: TranscriptUpdate,
-): Promise<TranscriptRow> {
-  const client = await getSupabaseClient("updateTranscriptJob");
-  const transcriptClient = getTranscriptClient(client);
-  const { data, error } = await transcriptClient
-    .from("transcripts")
-    .update(patch as never)
-    .eq("transcript_id", transcriptId)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as unknown as TranscriptRow;
+  return data as unknown as TranscriptJobRow;
 }
 
 async function uploadRawPacket(
@@ -281,9 +238,19 @@ export async function startTranscription(caseId: string, audioRecord: CaseAudioR
         : await fetchDeepgramResponse(audioRecord, keyterms);
 
     const { rawStoragePath, rawChecksum } = await uploadRawPacket(caseId, transcriptJob.job_id, response);
+    const normalized = normalizeTranscriptResponse(response);
+
+    await insertNormalizedTranscript(
+      {
+        transcript_id: transcriptJob.transcript_id,
+        case_id: transcriptJob.case_id,
+        job_id: transcriptJob.job_id,
+      },
+      normalized,
+    );
 
     await updateTranscriptJob(transcriptJob.transcript_id, {
-      status: "assembling",
+      status: "completed",
       deepgram_request_id: response.metadata.request_id,
       duration: response.metadata.duration,
       duration_seconds: response.metadata.duration,
@@ -291,6 +258,10 @@ export async function startTranscription(caseId: string, audioRecord: CaseAudioR
       raw_checksum: rawChecksum,
       transcription_source: transcriptionSource,
       engine: transcriptionSource === "deepgram" ? "deepgram-nova-3" : "offline-fixture",
+      word_count: normalized.words.length,
+      utterance_count: normalized.utterances.length,
+      speaker_count: normalized.speakers.length,
+      avg_confidence: normalized.avgConfidence != null ? normalized.avgConfidence.toFixed(4) : null,
       last_error: null,
     });
 

@@ -28,3 +28,5 @@ _None._
 | `CaseStatusPresentation` | `src/lib/caseLifecycle.ts` | UI-only status chip mapping derived from persisted stage plus certification presence. |
 | `CaseRecord._saveMeta` | `src/types/case.ts` | Local persisted save provenance for intake autosave/manual/flush source and sequence tracking. Not part of `src/api/types.ts`. |
 | `DeepgramResponse` / `TranscriptCapture` | `src/lib/transcript/types.ts` | Local transcript-ingest types for Deepgram/offline packets and raw-packet capture metadata. |
+| `NormalizedTranscriptData` | `src/lib/transcript/normalize.ts` | Local canonical transcript shape produced from Deepgram/offline packets before it is written into Supabase tables. |
+| `TranscriptJobRow` and local transcript row types | `src/api/transcriptRepository.ts` | Local Supabase row extensions used until generated database types are refreshed after the migration is pushed. |

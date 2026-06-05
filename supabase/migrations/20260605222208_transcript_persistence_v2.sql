@@ -108,6 +108,18 @@ where transcripts.transcript_id = speakers.transcript_id
 create index if not exists transcript_speakers_job_idx
   on public.transcript_speakers (job_id, speaker_index);
 
+drop policy if exists "transcript_speakers_delete_incomplete_jobs" on public.transcript_speakers;
+create policy "transcript_speakers_delete_incomplete_jobs" on public.transcript_speakers
+  for delete to authenticated
+  using (
+    exists (
+      select 1
+      from public.transcripts
+      where transcripts.transcript_id = transcript_speakers.transcript_id
+        and transcripts.status <> 'completed'
+    )
+  );
+
 -- ---------------------------------------------------------------------------
 -- transcript_utterances
 -- ---------------------------------------------------------------------------
@@ -162,6 +174,18 @@ where transcripts.transcript_id = utterances.transcript_id
 create index if not exists transcript_utterances_job_order_idx
   on public.transcript_utterances (job_id, utterance_index);
 
+drop policy if exists "transcript_utterances_delete_incomplete_jobs" on public.transcript_utterances;
+create policy "transcript_utterances_delete_incomplete_jobs" on public.transcript_utterances
+  for delete to authenticated
+  using (
+    exists (
+      select 1
+      from public.transcripts
+      where transcripts.transcript_id = transcript_utterances.transcript_id
+        and transcripts.status <> 'completed'
+    )
+  );
+
 -- ---------------------------------------------------------------------------
 -- transcript_words
 -- ---------------------------------------------------------------------------
@@ -201,6 +225,18 @@ create index if not exists transcript_words_job_utterance_idx
   on public.transcript_words (job_id, utterance_id, word_index);
 create index if not exists transcript_words_job_review_idx
   on public.transcript_words (job_id, reviewed);
+
+drop policy if exists "transcript_words_delete_incomplete_jobs" on public.transcript_words;
+create policy "transcript_words_delete_incomplete_jobs" on public.transcript_words
+  for delete to authenticated
+  using (
+    exists (
+      select 1
+      from public.transcripts
+      where transcripts.transcript_id = transcript_words.transcript_id
+        and transcripts.status <> 'completed'
+    )
+  );
 
 -- ---------------------------------------------------------------------------
 -- transcript_audit_log
@@ -258,3 +294,15 @@ $$;
 
 create index if not exists transcript_audit_log_job_idx
   on public.transcript_audit_log (job_id, created_at desc);
+
+drop policy if exists "transcript_audit_log_delete_incomplete_jobs" on public.transcript_audit_log;
+create policy "transcript_audit_log_delete_incomplete_jobs" on public.transcript_audit_log
+  for delete to authenticated
+  using (
+    exists (
+      select 1
+      from public.transcripts
+      where transcripts.transcript_id = transcript_audit_log.transcript_id
+        and transcripts.status <> 'completed'
+    )
+  );
