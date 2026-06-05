@@ -559,7 +559,11 @@ export function DocumentUploadPanel({
               {(slot.id === "notice" || slot.id === "scheduling" || slot.id === "supporting") && fileName ? (
                 <div className="mt-3 w-full space-y-2">
                   {slot.id === "supporting" ? (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <p className="text-center text-[11px] font-medium text-slate-500">
+                        Choose how to treat this supporting document.
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <button
                         type="button"
                         onClick={(event) => {
@@ -586,6 +590,7 @@ export function DocumentUploadPanel({
                         <Sparkles size={13} />
                         {extractingSlot === "supporting" ? "Extracting..." : "Extract as Job Sheet"}
                       </button>
+                      </div>
                     </div>
                   ) : (
                     <button
