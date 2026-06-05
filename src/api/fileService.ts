@@ -53,7 +53,7 @@ export type CaseAudioRecord = Tables<"case_audio">;
 const CASE_FILES_BUCKET = "case-files";
 const DOCUMENT_LIMIT_BYTES = 50 * 1024 * 1024;
 const TRANSCRIPT_SOURCE_LIMIT_BYTES = 100 * 1024 * 1024;
-const AUDIO_LIMIT_BYTES = 2 * 1024 * 1024 * 1024;
+export const MAX_AUDIO_BYTES = 2 * 1024 * 1024 * 1024;
 
 const DOCUMENT_EXTENSIONS = new Set(["pdf", "docx", "txt", "png", "jpg", "jpeg"]);
 const DOCUMENT_MIME_TYPES = new Set([
@@ -113,6 +113,55 @@ function isAllowedFile(
   return allowedMimeTypes.has(mime);
 }
 
+function formatLimitBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return `${Math.round(bytes / (1024 * 1024 * 1024))} GB`;
+  }
+
+  if (bytes >= 1024 * 1024) {
+    return `${Math.round(bytes / (1024 * 1024))} MB`;
+  }
+
+  return `${bytes} bytes`;
+}
+
+function formatFileBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  if (bytes >= 1024) {
+    return `${(bytes / 1024).toFixed(2)} KB`;
+  }
+
+  return `${bytes} B`;
+}
+
+export function buildAudioLimitErrorMessage(fileSizeBytes: number, maxBytes = MAX_AUDIO_BYTES): string {
+  return `Audio uploads are limited to ${formatLimitBytes(maxBytes)}. This file is ${formatFileBytes(fileSizeBytes)}.`;
+}
+
+export function normalizeAudioUploadError(error: unknown, fileSizeBytes?: number): Error {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("exceeded the maximum allowed size")) {
+      if (typeof fileSizeBytes === "number") {
+        return new Error(buildAudioLimitErrorMessage(fileSizeBytes));
+      }
+
+      return new Error(`Audio uploads are limited to ${formatLimitBytes(MAX_AUDIO_BYTES)}.`);
+    }
+
+    return error;
+  }
+
+  return new Error("Audio upload failed.");
+}
+
 export function validateCaseFileUpload(fileType: CaseFileType, file: Pick<File, "name" | "type" | "size">): void {
   if (
     fileType === "notice"
@@ -136,7 +185,11 @@ export function validateCaseFileUpload(fileType: CaseFileType, file: Pick<File, 
 }
 
 export function validateCaseAudioUpload(file: Pick<File, "name" | "type" | "size">): void {
-  if (!isAllowedFile(file, AUDIO_EXTENSIONS, AUDIO_MIME_TYPES, AUDIO_LIMIT_BYTES)) {
+  if (file.size > MAX_AUDIO_BYTES) {
+    throw new Error(buildAudioLimitErrorMessage(file.size));
+  }
+
+  if (!isAllowedFile(file, AUDIO_EXTENSIONS, AUDIO_MIME_TYPES, MAX_AUDIO_BYTES)) {
     throw new Error("Audio must be WAV, MP3, M4A, MP4, or WEBM and no larger than 2 GB.");
   }
 }
@@ -267,7 +320,7 @@ export async function uploadCaseAudio(caseId: string, file: File): Promise<CaseA
     .upload(storagePath, file, { upsert: false, contentType: file.type || undefined });
 
   if (uploadError) {
-    throw uploadError;
+    throw normalizeAudioUploadError(uploadError, file.size);
   }
 
   const row = {

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildAudioLimitErrorMessage,
   buildStoragePath,
   computeChecksum,
   createFileId,
+  MAX_AUDIO_BYTES,
+  normalizeAudioUploadError,
   sanitizeFilename,
   validateCaseAudioUpload,
   validateCaseFileUpload,
@@ -76,6 +79,30 @@ describe("validateCaseAudioUpload", () => {
         size: 1024,
       } as File),
     ).toThrow("Audio must be WAV, MP3, M4A, MP4, or WEBM and no larger than 2 GB.");
+  });
+
+  it("rejects oversized audio with a friendly size message before upload", () => {
+    expect(() =>
+      validateCaseAudioUpload({
+        name: "audio.mp3",
+        type: "audio/mpeg",
+        size: MAX_AUDIO_BYTES + 1,
+      } as File),
+    ).toThrow(buildAudioLimitErrorMessage(MAX_AUDIO_BYTES + 1));
+  });
+});
+
+describe("normalizeAudioUploadError", () => {
+  it("maps Supabase maximum-size errors to the friendly limit message", () => {
+    const error = new Error("The object exceeded the maximum allowed size");
+    expect(normalizeAudioUploadError(error, MAX_AUDIO_BYTES + 1024).message).toBe(
+      buildAudioLimitErrorMessage(MAX_AUDIO_BYTES + 1024),
+    );
+  });
+
+  it("preserves unrelated upload errors", () => {
+    const error = new Error("network failed");
+    expect(normalizeAudioUploadError(error).message).toBe("network failed");
   });
 });
 
