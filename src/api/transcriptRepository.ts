@@ -204,6 +204,106 @@ export async function updateTranscriptJob(
   return data as unknown as TranscriptJobRow;
 }
 
+export async function listTranscriptJobs(caseId: string): Promise<TranscriptJobRow[]> {
+  const client = await getSupabaseClient("listTranscriptJobs");
+  const transcriptClient = getTranscriptClient(client);
+  const { data, error } = await transcriptClient
+    .from("transcripts")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as unknown as TranscriptJobRow[];
+}
+
+export async function getTranscriptJobByJobId(jobId: string): Promise<TranscriptJobRow | null> {
+  const client = await getSupabaseClient("getTranscriptJobByJobId");
+  const transcriptClient = getTranscriptClient(client);
+  const { data, error } = await transcriptClient
+    .from("transcripts")
+    .select("*")
+    .eq("job_id", jobId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as TranscriptJobRow | null) ?? null;
+}
+
+export async function getLatestCompletedTranscriptJob(caseId: string): Promise<TranscriptJobRow | null> {
+  const client = await getSupabaseClient("getLatestCompletedTranscriptJob");
+  const transcriptClient = getTranscriptClient(client);
+  const { data, error } = await transcriptClient
+    .from("transcripts")
+    .select("*")
+    .eq("case_id", caseId)
+    .eq("status", "completed")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as TranscriptJobRow | null) ?? null;
+}
+
+export async function loadTranscriptSnapshot(jobId: string): Promise<{
+  job: TranscriptJobRow;
+  speakers: TranscriptSpeakerRow[];
+  utterances: TranscriptUtteranceRow[];
+  words: TranscriptWordRow[];
+} | null> {
+  const job = await getTranscriptJobByJobId(jobId);
+  if (!job) {
+    return null;
+  }
+
+  const client = await getSupabaseClient("loadTranscriptSnapshot");
+  const transcriptClient = getTranscriptClient(client);
+  const [speakersResult, utterancesResult, wordsResult] = await Promise.all([
+    transcriptClient
+      .from("transcript_speakers")
+      .select("*")
+      .eq("job_id", jobId)
+      .order("speaker_index", { ascending: true }),
+    transcriptClient
+      .from("transcript_utterances")
+      .select("*")
+      .eq("job_id", jobId)
+      .order("utterance_index", { ascending: true }),
+    transcriptClient
+      .from("transcript_words")
+      .select("*")
+      .eq("job_id", jobId)
+      .order("word_index", { ascending: true }),
+  ]);
+
+  if (speakersResult.error) {
+    throw speakersResult.error;
+  }
+  if (utterancesResult.error) {
+    throw utterancesResult.error;
+  }
+  if (wordsResult.error) {
+    throw wordsResult.error;
+  }
+
+  return {
+    job,
+    speakers: (speakersResult.data ?? []) as unknown as TranscriptSpeakerRow[],
+    utterances: (utterancesResult.data ?? []) as unknown as TranscriptUtteranceRow[],
+    words: (wordsResult.data ?? []) as unknown as TranscriptWordRow[],
+  };
+}
+
 export async function insertNormalizedTranscript(
   job: Pick<TranscriptJobRow, "transcript_id" | "case_id" | "job_id">,
   normalized: NormalizedTranscriptData,

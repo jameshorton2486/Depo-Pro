@@ -8,7 +8,7 @@ import {
   getConfidenceState,
   type LowConfWord,
 } from "../../extensions/ConfidencePlugin";
-import { api } from "../../api/client";
+import { workspaceApi } from "../../api/workspaceService";
 
 export function ConfidencePanel() {
   const { editor } = useEditorContext();
@@ -92,7 +92,7 @@ export function ConfidencePanel() {
       try {
         const newReviewedIds = new Set(reviewedIds);
         newReviewedIds.add(word.word_id);
-        await api.saveReview(jobId, {
+        await workspaceApi.saveReview(jobId, {
           reviewed_word_ids: Array.from(newReviewedIds),
           unreviewed_word_ids: [],
         });
@@ -125,7 +125,7 @@ export function ConfidencePanel() {
       try {
         const newReviewedIds = new Set(reviewedIds);
         newReviewedIds.delete(wordId);
-        await api.saveReview(jobId, {
+        await workspaceApi.saveReview(jobId, {
           reviewed_word_ids: Array.from(newReviewedIds),
           unreviewed_word_ids: [wordId],
         });

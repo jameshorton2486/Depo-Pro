@@ -7,7 +7,7 @@ import { resolveHydration } from "./hydration";
 describe("resolveHydration", () => {
   it("returns row mode when a persisted record exists", () => {
     const record = emptyCaseRecord("case_20260605_abc123", "2026-06-05T12:00:00Z");
-    const bundle: CaseBundle = { record, files: [], audio: [], provenance: [] };
+    const bundle: CaseBundle = { record, files: [], audio: [], transcripts: [], provenance: [] };
     expect(resolveHydration(bundle)).toEqual({ mode: "row", bundle });
   });
 

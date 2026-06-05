@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState, useEffect, useCallback } from "react";
 import type { Exhibit } from "../../api/types";
-import { api } from "../../api/client";
+import { workspaceApi } from "../../api/workspaceService";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { ExhibitViewerProvider } from "../../context/ExhibitViewerContext";
@@ -29,7 +29,7 @@ export function ExhibitsPanelProvider({ children }: ExhibitsPanelProviderProps) 
   const [viewerExhibit, setViewerExhibit] = useState<Exhibit | null>(null);
 
   useEffect(() => {
-    api.getExhibits(jobId).then(setExhibits).catch(() => {});
+    workspaceApi.getExhibits(jobId).then(setExhibits).catch(() => {});
   }, [jobId]);
 
   const openViewer = useCallback((exhibit: Exhibit) => {
@@ -62,7 +62,7 @@ export function ExhibitsPanel() {
   const [inserting, setInserting] = useState<string | null>(null);
 
   useEffect(() => {
-    api
+    workspaceApi
       .getExhibits(jobId)
       .then(setExhibits)
       .catch(() => setExhibits([]))

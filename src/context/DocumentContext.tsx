@@ -14,7 +14,7 @@ import type {
   Speaker,
 } from "../api/types";
 import type { ChangeLogEntry, ChangeSource } from "../types";
-import { api } from "../api/client";
+import { workspaceApi } from "../api/workspaceService";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -218,7 +218,7 @@ export function DocumentProvider({
   const loadDocument = useCallback(async () => {
     dispatch({ type: "LOAD_START" });
     try {
-      const doc = await api.getDocument(jobId);
+      const doc = await workspaceApi.getDocument(jobId);
       console.info("[DEPO-PRO] EditorDocument loaded:", doc);
       dispatch({ type: "LOAD_OK", doc });
     } catch (e) {
@@ -275,7 +275,7 @@ export function DocumentProvider({
     const savedSeq = state.editSeq;
     dispatch({ type: "SAVE_START" });
     try {
-      await api.saveWorking(jobId, { changes, source: "editor" });
+      await workspaceApi.saveWorking(jobId, { changes, source: "editor" });
       dispatch({ type: "SAVE_OK", savedSeq });
     } catch (e) {
       dispatch({ type: "SAVE_ERR", error: String(e) });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { AiSuggestion } from "../../api/types";
-import { api } from "../../api/client";
+import { workspaceApi } from "../../api/workspaceService";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { suggestionPluginKey } from "../../extensions/SuggestionPlugin";
@@ -37,7 +37,7 @@ export function SuggestionsPanel() {
 
   // Load suggestions
   useEffect(() => {
-    api
+    workspaceApi
       .getSuggestions(jobId)
       .then((s) => {
         setSuggestions(s);
@@ -169,7 +169,7 @@ export function SuggestionsPanel() {
           sug.suggestion_id
         );
 
-        await api.resolveSuggestion(jobId, sug.suggestion_id, { action: "accept" });
+        await workspaceApi.resolveSuggestion(jobId, sug.suggestion_id, { action: "accept" });
         setSuggestions((prev) =>
           prev.map((s) =>
             s.suggestion_id === sug.suggestion_id
@@ -189,7 +189,7 @@ export function SuggestionsPanel() {
       setActing(sug.suggestion_id);
       try {
         clearSuggestionDecoration(sug.word_id);
-        await api.resolveSuggestion(jobId, sug.suggestion_id, { action: "reject" });
+        await workspaceApi.resolveSuggestion(jobId, sug.suggestion_id, { action: "reject" });
         setSuggestions((prev) =>
           prev.map((s) =>
             s.suggestion_id === sug.suggestion_id
@@ -223,7 +223,7 @@ export function SuggestionsPanel() {
           sug.suggestion_id
         );
 
-        await api.resolveSuggestion(jobId, sug.suggestion_id, {
+        await workspaceApi.resolveSuggestion(jobId, sug.suggestion_id, {
           action: "edit",
           edited_text: editedText,
         });

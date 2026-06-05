@@ -3,7 +3,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type { Speaker } from "../../types";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
-import { api } from "../../api/client";
+import { workspaceApi } from "../../api/workspaceService";
 import { Check, X, Edit2, Users } from "lucide-react";
 
 const ROLES: Speaker["role"][] = [
@@ -34,6 +34,10 @@ export function SpeakerPanel() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const speakers = state.document?.speakers ?? [];
+  const speakerMapConfirmed = speakers.length > 0 && speakers.every((speaker) => {
+    const displayName = speaker.display_name.trim();
+    return displayName.length > 0 && speaker.role;
+  });
 
   const startEdit = useCallback((spk: Speaker) => {
     setEditing(spk.speaker_id);
@@ -88,7 +92,7 @@ export function SpeakerPanel() {
       setSaveError(null);
       try {
         const jobId = state.document?.job_id ?? "";
-        await api.saveSpeakers(jobId, {
+        await workspaceApi.saveSpeakers(jobId, {
           speakers: updated.map((s) => ({
             speaker_id: s.speaker_id,
             display_name: s.display_name,
@@ -121,6 +125,15 @@ export function SpeakerPanel() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
           Speaker Mapping
         </h2>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+            speakerMapConfirmed
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-amber-100 text-amber-700"
+          }`}
+        >
+          {speakerMapConfirmed ? "Map Confirmed" : "Map Pending"}
+        </span>
         <span className="ml-auto text-[10px] font-mono text-slate-400">
           {speakers.length} speaker{speakers.length !== 1 ? "s" : ""}
         </span>
@@ -348,7 +361,7 @@ function UtteranceReassignment({ speakers }: { speakers: Speaker[] }) {
       setSaving(true);
       try {
         const jobId = state.document?.job_id ?? "";
-        await api.saveSpeakers(jobId, {
+        await workspaceApi.saveSpeakers(jobId, {
           speakers: speakers.map((s) => ({
             speaker_id: s.speaker_id,
             display_name: s.display_name,

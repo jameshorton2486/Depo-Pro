@@ -52,7 +52,9 @@ async function ensureSupabaseSession() {
   await authBootstrapPromise;
 }
 
-void ensureSupabaseSession();
+if (typeof window !== "undefined" && import.meta.env.MODE !== "test") {
+  void ensureSupabaseSession();
+}
 
 export async function getSupabaseClient(operation: string) {
   if (!supabase) {

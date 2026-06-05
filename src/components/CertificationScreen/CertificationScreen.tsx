@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileCheck2 } from "lucide-react";
-import { api } from "../../api/client";
+import { workspaceApi } from "../../api/workspaceService";
 import { useIntake } from "../../context/IntakeContext";
 import { useStage } from "../../context/StageContext";
 
@@ -61,7 +61,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
     async function load() {
       setLoading(true);
       const stored = readCertification(jobId);
-      const certify = await api.getCertifyStatus(jobId).catch(() => null);
+      const certify = await workspaceApi.getCertifyStatus(jobId).catch(() => null);
       if (cancelled) return;
 
       setPersisted(

@@ -12,6 +12,7 @@ import { TranscriptEditor } from "./TranscriptEditor/TranscriptEditor";
 import { AudioPlayer } from "./AudioPlayer/AudioPlayer";
 import { RightSidebar } from "./RightSidebar/RightSidebar";
 import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
+import { TranscriptCreationScreen } from "./TranscriptCreationScreen";
 import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
 import { ExportScreen } from "./ExportScreen/ExportScreen";
 import { CaseBrowserScreen } from "./CaseBrowserScreen";
@@ -82,6 +83,10 @@ function StageRouter({
 
   if (stage === "intake") {
     return <IntakeScreen jobId={activeCaseId} />;
+  }
+
+  if (stage === "creation") {
+    return <TranscriptCreationScreen caseId={activeCaseId} />;
   }
 
   return (

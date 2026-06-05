@@ -7,11 +7,13 @@ const {
   loadCaseMock,
   listCaseFilesMock,
   listCaseAudioMock,
+  listTranscriptJobsMock,
   listFieldProvenanceMock,
 } = vi.hoisted(() => ({
   loadCaseMock: vi.fn(),
   listCaseFilesMock: vi.fn(),
   listCaseAudioMock: vi.fn(),
+  listTranscriptJobsMock: vi.fn(),
   listFieldProvenanceMock: vi.fn(),
 }));
 
@@ -28,11 +30,16 @@ vi.mock("./provenanceService", () => ({
   listFieldProvenance: listFieldProvenanceMock,
 }));
 
+vi.mock("./transcriptRepository", () => ({
+  listTranscriptJobs: listTranscriptJobsMock,
+}));
+
 describe("loadCaseBundle", () => {
   beforeEach(() => {
     loadCaseMock.mockReset();
     listCaseFilesMock.mockReset();
     listCaseAudioMock.mockReset();
+    listTranscriptJobsMock.mockReset();
     listFieldProvenanceMock.mockReset();
   });
 
@@ -40,6 +47,7 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(null);
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
+    listTranscriptJobsMock.mockResolvedValue([]);
     listFieldProvenanceMock.mockResolvedValue([]);
 
     await expect(loadCaseBundle("case_missing")).resolves.toBeNull();
@@ -94,12 +102,14 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(record);
     listCaseFilesMock.mockResolvedValue(files);
     listCaseAudioMock.mockResolvedValue(audio);
+    listTranscriptJobsMock.mockResolvedValue([]);
     listFieldProvenanceMock.mockResolvedValue(provenance);
 
     await expect(loadCaseBundle(record.case_id)).resolves.toEqual({
       record,
       files,
       audio,
+      transcripts: [],
       provenance,
     });
   });
@@ -109,11 +119,13 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(record);
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
+    listTranscriptJobsMock.mockResolvedValue([]);
     listFieldProvenanceMock.mockResolvedValue([]);
 
     const bundle = await loadCaseBundle(record.case_id);
     expect(bundle?.files).toEqual([]);
     expect(bundle?.audio).toEqual([]);
+    expect(bundle?.transcripts).toEqual([]);
     expect(bundle?.provenance).toEqual([]);
   });
 });

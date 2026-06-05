@@ -22,6 +22,7 @@ _None._
 | `workingTexts` | `DocumentContext` state | `Record<UtteranceId, string>` — unsaved edits until `PUT /{jobId}/working`. |
 | `CaseBundle` | `src/api/caseLoadService.ts` | Central restoration seam for Intake and future workspace/exhibits/export hydration. |
 | `CaseBundle.provenance` | `src/api/caseLoadService.ts` | Local bundle addition for preloading `field_provenance` into the case-scoped conflict store. |
+| `CaseBundle.transcripts` | `src/api/caseLoadService.ts` | Local bundle addition for preloading transcript-job summaries without changing the frozen API contract. |
 | `CaseFileRecord` | `src/api/fileService.ts` | Local metadata type for `case_files` table added in migration before generated DB types are refreshed. |
 | `IntakeFileState` | `src/validation/intakeValidation.ts` | Bundle-derived validation input so Gate 1 grades durable uploads without changing the API contract. |
 | `CaseBrowserSummary` | `src/api/caseService.ts` | Local browser/listing shape assembled from `cases` plus grouped indicator queries. |
@@ -30,3 +31,4 @@ _None._
 | `DeepgramResponse` / `TranscriptCapture` | `src/lib/transcript/types.ts` | Local transcript-ingest types for Deepgram/offline packets and raw-packet capture metadata. |
 | `NormalizedTranscriptData` | `src/lib/transcript/normalize.ts` | Local canonical transcript shape produced from Deepgram/offline packets before it is written into Supabase tables. |
 | `TranscriptJobRow` and local transcript row types | `src/api/transcriptRepository.ts` | Local Supabase row extensions used until generated database types are refreshed after the migration is pushed. |
+| `workspaceApi` | `src/api/workspaceService.ts` | Local workspace persistence seam that switches between MSW and Supabase without reshaping the frozen transcript contract. |
