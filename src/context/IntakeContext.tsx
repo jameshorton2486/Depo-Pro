@@ -102,8 +102,27 @@ const IntakeContext = createContext<IntakeContextValue | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-export function IntakeProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(intakeReducer, undefined, initialIntakeState);
+function buildInitialState(record?: CaseRecord): IntakeState {
+  if (!record) {
+    return initialIntakeState();
+  }
+
+  const normalized = normalizeCaseRecord(record);
+  return {
+    record: normalized,
+    dirty: false,
+    last_saved_at: normalized.updated_at,
+  };
+}
+
+export function IntakeProvider({
+  initialRecord,
+  children,
+}: {
+  initialRecord?: CaseRecord | null;
+  children: React.ReactNode;
+}) {
+  const [state, dispatch] = useReducer(intakeReducer, initialRecord ?? undefined, buildInitialState);
 
   const record = state.record;
   const dirty = state.dirty;

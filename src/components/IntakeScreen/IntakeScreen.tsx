@@ -15,6 +15,7 @@ import {
 
 import type { CaseAudioRecord, CaseFileRecord } from "../../api/fileService";
 import { useIntake } from "../../context/IntakeContext";
+import { useCase } from "../../context/CaseContext";
 import { useStage, STAGE_LABELS, STAGE_ORDER } from "../../context/StageContext";
 import { useConflict, selectActiveConflicts } from "../conflict/conflictStore";
 import { ExtractedFieldsTable } from "../ExtractedFieldsTable/ExtractedFieldsTable";
@@ -140,6 +141,7 @@ function attorneyBadgeLabel(representing: string | null, role: string) {
 
 function WorkflowNav({ jobId }: { jobId: string }) {
   const { stage } = useStage();
+  const { showBrowser } = useCase();
   const currentIdx = STAGE_ORDER.indexOf(stage);
 
   return (
@@ -150,6 +152,14 @@ function WorkflowNav({ jobId }: { jobId: string }) {
         <span className="text-sm font-bold tracking-wide text-white">DEPO-PRO</span>
         <span className="font-mono text-xs text-slate-500">{jobId}</span>
       </div>
+
+      <button
+        type="button"
+        onClick={() => void showBrowser()}
+        className="mr-3 rounded border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-300 transition hover:bg-slate-800"
+      >
+        Cases
+      </button>
 
       {/* Stage pills */}
       <div className="flex items-center gap-0 overflow-x-auto">
@@ -1314,6 +1324,7 @@ export function IntakeScreen({ jobId }: Props) {
     resolveConflict,
   } = useIntake();
   const { setStage } = useStage();
+  const { registerNavigationGuard } = useCase();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [persisted, setPersisted] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -1452,6 +1463,21 @@ export function IntakeScreen({ jobId }: Props) {
     setRevealExtractedFieldsVersion((value) => value + 1);
   }, []);
 
+  const persistCaseForUi = useCallback(async () => {
+    await persistCase();
+  }, [persistCase]);
+
+  useEffect(() => {
+    registerNavigationGuard({
+      dirty,
+      save: persistCaseForUi,
+    });
+
+    return () => {
+      registerNavigationGuard(null);
+    };
+  }, [dirty, persistCaseForUi, registerNavigationGuard]);
+
   return (
     <div className="depo-editor flex h-full flex-col bg-slate-100 text-slate-900">
       {/* ── Workflow stage nav ── */}
@@ -1475,7 +1501,7 @@ export function IntakeScreen({ jobId }: Props) {
               files={caseFiles}
               audio={caseAudio}
               persisted={persisted}
-              saveCaseRecord={persistCase}
+              saveCaseRecord={persistCaseForUi}
               onAudioUploaded={(audioRecord) => {
                 setCaseAudio((previous) => [audioRecord, ...previous.filter((entry) => entry.audio_id !== audioRecord.audio_id)]);
               }}

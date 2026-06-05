@@ -3,7 +3,7 @@ import { DocumentProvider, useDocument } from "../context/DocumentContext";
 import { AudioProvider } from "../context/AudioContext";
 import { EditorProvider, useEditorContext } from "../context/EditorContext";
 import { ExhibitsPanelProvider } from "./ExhibitsPanel/ExhibitsPanel";
-import { StageProvider, useStage } from "../context/StageContext";
+import { StageProvider, useStage, type AppStage } from "../context/StageContext";
 import { IntakeProvider } from "../context/IntakeContext";
 import { ConflictProvider } from "./conflict/conflictStore";
 import { KeytermProvider } from "./DeepgramKeytermManager/keytermStore";
@@ -14,19 +14,40 @@ import { RightSidebar } from "./RightSidebar/RightSidebar";
 import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
 import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
 import { ExportScreen } from "./ExportScreen/ExportScreen";
+import { CaseBrowserScreen } from "./CaseBrowserScreen";
+import { CaseProvider, useCase } from "../context/CaseContext";
 import type { DepoEditorConfig } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
+import { useIntake } from "../context/IntakeContext";
+import { saveCase } from "../api/caseService";
 
 // ─── Editor workspace (stages 2-7) ───────────────────────────────────────────
 
 function EditorInner({ config }: { config: DepoEditorConfig }) {
   const { loadDocument, saveNow, state } = useDocument();
   const { setLanguageMap } = useEditorContext();
+  const { registerNavigationGuard } = useCase();
+  const { record } = useIntake();
+  const { stage } = useStage();
 
   useEffect(() => {
     loadDocument();
     setLanguageMap(FIXTURE_LANGUAGE_MAP);
   }, [loadDocument, setLanguageMap]);
+
+  useEffect(() => {
+    registerNavigationGuard({
+      dirty: state.dirty,
+      save: async () => {
+        await saveNow();
+        await saveCase({ ...record, stage });
+      },
+    });
+
+    return () => {
+      registerNavigationGuard(null);
+    };
+  }, [record, registerNavigationGuard, saveNow, stage, state.dirty]);
 
   const mediaUrl = state.document?.media_url ?? "";
   const duration = state.document?.duration ?? 0;
@@ -50,24 +71,30 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
 
 // ─── Stage router ─────────────────────────────────────────────────────────────
 
-function StageRouter({ config }: { config: DepoEditorConfig }) {
+function StageRouter({
+  config,
+  activeCaseId,
+}: {
+  config: DepoEditorConfig;
+  activeCaseId: string;
+}) {
   const { stage } = useStage();
 
   if (stage === "intake") {
-    return <IntakeScreen jobId={config.jobId} />;
+    return <IntakeScreen jobId={activeCaseId} />;
   }
 
   return (
     <AudioProvider>
-      <DocumentProvider jobId={config.jobId}>
+      <DocumentProvider jobId={activeCaseId}>
         <EditorProvider>
           <ExhibitsPanelProvider>
             {stage === "certification" ? (
-              <CertificationScreen jobId={config.jobId} />
+              <CertificationScreen jobId={activeCaseId} />
             ) : stage === "export" ? (
-              <ExportScreen jobId={config.jobId} />
+              <ExportScreen jobId={activeCaseId} />
             ) : (
-              <EditorInner config={config} />
+              <EditorInner config={{ ...config, jobId: activeCaseId }} />
             )}
           </ExhibitsPanelProvider>
         </EditorProvider>
@@ -78,16 +105,119 @@ function StageRouter({ config }: { config: DepoEditorConfig }) {
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
-export function DepoEditor({ config }: { config: DepoEditorConfig }) {
+function CaseSwitchDialog() {
+  const {
+    switchDialog,
+    confirmSaveAndContinue,
+    discardAndContinue,
+    cancelSwitch,
+  } = useCase();
+
+  if (!switchDialog.open) {
+    return null;
+  }
+
   return (
-    <StageProvider>
-      <IntakeProvider>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Unsaved Changes</p>
+        <h2 className="mt-2 text-xl font-semibold text-slate-900">Save before switching cases?</h2>
+        <p className="mt-3 text-sm text-slate-600">
+          The current case has unsaved work. Save it before you {switchDialog.targetLabel}.
+        </p>
+        {switchDialog.error && (
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            Save failed: {switchDialog.error}
+          </div>
+        )}
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={cancelSwitch}
+            disabled={switchDialog.busy}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void discardAndContinue()}
+            disabled={switchDialog.busy}
+            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+          >
+            Discard and Switch
+          </button>
+          <button
+            type="button"
+            onClick={() => void confirmSaveAndContinue()}
+            disabled={switchDialog.busy}
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+          >
+            {switchDialog.busy ? "Saving..." : "Save and Switch"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CaseScopedShell({
+  config,
+  activeCaseId,
+  initialStage,
+  initialRecord,
+}: {
+  config: DepoEditorConfig;
+  activeCaseId: string;
+  initialStage: AppStage;
+  initialRecord: ReturnType<typeof useCase>["activeRecord"];
+}) {
+  return (
+    <StageProvider initialStage={initialStage}>
+      <IntakeProvider initialRecord={initialRecord}>
         <ConflictProvider>
           <KeytermProvider initialTerms={[]}>
-            <StageRouter config={config} />
+            <StageRouter config={config} activeCaseId={activeCaseId} />
           </KeytermProvider>
         </ConflictProvider>
       </IntakeProvider>
     </StageProvider>
+  );
+}
+
+function CaseShell({ config }: { config: DepoEditorConfig }) {
+  const { ready, activeCaseId, activeRecord, activeStage } = useCase();
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500">
+        Loading case lifecycle...
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {activeCaseId && activeStage ? (
+        <CaseScopedShell
+          key={activeCaseId}
+          config={config}
+          activeCaseId={activeCaseId}
+          initialStage={activeStage}
+          initialRecord={activeRecord}
+        />
+      ) : (
+        <CaseBrowserScreen />
+      )}
+      <CaseSwitchDialog />
+    </>
+  );
+}
+
+export function DepoEditor({ config }: { config: DepoEditorConfig }) {
+  return (
+    <CaseProvider configJobId={config.jobId}>
+      <CaseShell config={config} />
+    </CaseProvider>
   );
 }

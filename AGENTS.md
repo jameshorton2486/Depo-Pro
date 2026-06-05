@@ -39,6 +39,9 @@ Violations must be reverted before a prompt is considered complete.
   derive IDs. Never regenerate the entire document's IDs.
 - **No client-side persistence.** Do not use `localStorage` or `sessionStorage` for
   transcript data. The server is the source of truth; component state holds the working copy.
+- **Pointer-only exception.** UI pointers and preferences may use `localStorage`
+  when they do not store case content. Example: `lastOpenedCaseId` is allowed;
+  cached case payloads, extracted fields, transcript text, and review data are not.
 
 ---
 

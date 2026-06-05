@@ -2,6 +2,7 @@ import { Save, AlertCircle, CheckCircle, FileText, Languages } from "lucide-reac
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { useStage } from "../../context/StageContext";
+import { useCase } from "../../context/CaseContext";
 
 interface Props {
   jobId: string;
@@ -20,6 +21,7 @@ export function Toolbar({ jobId, onSave }: Props) {
   const { state } = useDocument();
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
   const { setStage } = useStage();
+  const { showBrowser } = useCase();
 
   const reviewedCount = Object.values(state.wordMap).filter((w) => w.reviewed).length;
   const totalWords = Object.keys(state.wordMap).length;
@@ -47,6 +49,13 @@ export function Toolbar({ jobId, onSave }: Props) {
       >
         <Languages size={13} />
         <span className="hidden sm:inline">Interpreter</span>
+      </button>
+
+      <button
+        onClick={() => void showBrowser()}
+        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+      >
+        Cases
       </button>
 
       <button

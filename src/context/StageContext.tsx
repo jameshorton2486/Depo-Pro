@@ -36,8 +36,14 @@ interface StageContextValue {
 
 const StageContext = createContext<StageContextValue | null>(null);
 
-export function StageProvider({ children }: { children: React.ReactNode }) {
-  const [stage, setStageInternal] = useState<AppStage>("intake");
+export function StageProvider({
+  initialStage = "intake",
+  children,
+}: {
+  initialStage?: AppStage;
+  children: React.ReactNode;
+}) {
+  const [stage, setStageInternal] = useState<AppStage>(initialStage);
 
   function setStage(s: Stage) {
     // Map legacy "editor" alias to "workspace"
