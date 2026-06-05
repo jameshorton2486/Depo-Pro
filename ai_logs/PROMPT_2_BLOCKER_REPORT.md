@@ -83,3 +83,16 @@ payload jsonb not null default '{}'::jsonb,
 The persistence layer appears functionally reachable and writable, but the gate as written failed because serialized `jsonb` output was not byte-identical to the inserted JSON string.
 
 No further Prompt 2 work was performed.
+
+## RESOLVED
+
+Date: 2026-06-05
+
+The failing assertion was corrected to use deep structural equality instead of
+serialized string equality. `cases.payload` is a `jsonb` column, so key-order
+preservation is not guaranteed and string equality is the wrong verifier for
+round-trip integrity.
+
+After amending `scripts/verify-case-roundtrip.mjs` to compare payloads
+recursively with key-order-insensitive deep equality, the Task 0 verifier
+passed and Prompt 2 resumed from Task 1.
