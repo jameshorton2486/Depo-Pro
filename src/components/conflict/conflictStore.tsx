@@ -269,6 +269,7 @@ export function ConflictProvider({ children }: { children: ReactNode }) {
       optionA: ConflictOption,
       optionB: ConflictOption,
     ) => {
+      const provenanceId = makeId();
       const conflict: ActiveConflict = {
         field_path: fieldPath,
         field_label: fieldLabel,
@@ -276,9 +277,10 @@ export function ConflictProvider({ children }: { children: ReactNode }) {
         option_a: optionA,
         option_b: optionB,
         detected_at: new Date().toISOString(),
+        provenance_row_ids: [provenanceId],
       };
       const entry: ProvenanceEntry = {
-        id: makeId(),
+        id: provenanceId,
         case_id: caseId,
         field_path: fieldPath,
         field_label: fieldLabel,

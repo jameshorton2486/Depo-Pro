@@ -40,6 +40,7 @@ export interface ActiveConflict {
   option_a: ConflictOption;
   option_b: ConflictOption;
   detected_at: string; // ISO datetime
+  provenance_row_ids: string[];
 }
 
 export interface ConflictOption {
@@ -47,6 +48,9 @@ export interface ConflictOption {
   source: DisplaySource;
   confidence_score: number | null;
 }
+
+export type FieldProvenanceRow = ProvenanceEntry;
+export type OpenConflict = ActiveConflict;
 
 // ─── Store state ──────────────────────────────────────────────────────────────
 
