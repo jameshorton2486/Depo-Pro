@@ -6,14 +6,14 @@
 //   Bottom — Deepgram Keyterm Manager
 //   Footer — Actions: View Deepgram Request · View UFM Payload · Save Intake · Proceed
 
-import type React from "react";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
-  FileText, Upload, AlertTriangle, CheckCircle2, Clock,
+  FileText, AlertTriangle, CheckCircle2, Clock,
   ChevronRight, Save, Zap, Package, Users, Search,
-  X, UserPlus, Mic, Scale, Video, User2, ChevronDown, ChevronUp, Sparkles,
+  X, UserPlus, Mic, Scale, Video, User2, ChevronDown, ChevronUp,
 } from "lucide-react";
 
+import type { CaseAudioRecord, CaseFileRecord } from "../../api/fileService";
 import { useIntake } from "../../context/IntakeContext";
 import { useStage, STAGE_LABELS, STAGE_ORDER } from "../../context/StageContext";
 import { useConflict, selectActiveConflicts } from "../conflict/conflictStore";
@@ -28,30 +28,14 @@ import { useContactStore } from "../../store/contactStore";
 import { evaluateIntake, type IntakeValidationResult } from "../../validation/intakeValidation";
 import type { Contact, ContactType } from "../../types/contact";
 import { emptyCaseRecord, type FieldSource, type ParticipantRole } from "../../types/case";
-import { extractDocumentText } from "../../lib/parsing/documentText";
-import { aiExtract } from "../../lib/parsing/aiExtract";
-import { applyExtraction } from "../../lib/parsing/applyExtraction";
 import { CaseStatusBadge } from "./CaseStatusBadge";
+import { DocumentUploadPanel } from "./DocumentUploadPanel";
 import { resolveHydration } from "./hydration";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   jobId: string;
-}
-
-interface UploadSlot {
-  id: string;
-  label: string;
-  accept: string;
-  description: string;
-  file: File | null;
-  status: "idle" | "uploading" | "done" | "error";
-}
-
-interface ExtractionSummary {
-  appliedCount: number;
-  conflictCount: number;
 }
 
 function manualField<T>(value: T) {
@@ -150,12 +134,6 @@ function guessRepresentingPreset(value: string | null | undefined): AttorneyRepr
 
 function attorneyBadgeLabel(representing: string | null, role: string) {
   return representing || role;
-}
-
-function toDisplaySourceFromFieldSource(source: FieldSource): "Notice" | "Job Sheet" | "Reporter Profile" | "Manual" {
-  if (source === "extracted") return "Notice";
-  if (source === "imported") return "Reporter Profile";
-  return "Manual";
 }
 
 // ─── Workflow stage nav ───────────────────────────────────────────────────────
@@ -260,253 +238,6 @@ function CaseStatusBanner({ validation }: { validation: IntakeValidationResult }
             Ready to proceed
           </span>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Upload slot ──────────────────────────────────────────────────────────────
-
-function UploadCard({
-  slot,
-  onDrop,
-  children,
-}: {
-  slot: UploadSlot;
-  onDrop: (id: string, file: File) => void;
-  children?: React.ReactNode;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    onDrop(slot.id, files[0]);
-  }
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => inputRef.current?.click()}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          inputRef.current?.click();
-        }
-      }}
-      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragging(false);
-        handleFiles(e.dataTransfer.files);
-      }}
-      className={`group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-5 transition-all ${
-        dragging          ? "border-blue-400 bg-blue-50/60" :
-        slot.status === "done"  ? "border-emerald-300 bg-emerald-50/40" :
-        slot.status === "error" ? "border-red-300 bg-red-50/40" :
-        "border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-slate-50"
-      }`}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept={slot.accept}
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
-
-      <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-        {slot.status === "done"  ? <CheckCircle2 size={18} className="text-emerald-500" /> :
-         slot.status === "error" ? <AlertTriangle size={18} className="text-red-500" /> :
-         <Upload size={18} className="text-slate-400 transition-colors group-hover:text-slate-600" />}
-      </div>
-
-      <p className="text-center text-xs font-semibold text-slate-700">{slot.label}</p>
-      <p className="mt-0.5 text-center text-[11px] text-slate-400">{slot.description}</p>
-
-      {slot.file && (
-        <p className="mt-2 max-w-full truncate rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
-          {slot.file.name}
-        </p>
-      )}
-
-      {slot.status === "idle" && !slot.file && (
-        <p className="mt-2 text-[11px] text-slate-400">
-          Drag & drop or <span className="text-blue-600 underline">browse</span>
-        </p>
-      )}
-
-      {children}
-    </div>
-  );
-}
-
-// ─── Document upload panel ────────────────────────────────────────────────────
-
-function DocumentUploadPanel({
-  onRevealExtractedFields,
-}: {
-  onRevealExtractedFields: () => void;
-}) {
-  const { record, applyExtraction: applyParsedExtraction } = useIntake();
-  const { detectConflict, recordExtraction } = useConflict();
-  const [slots, setSlots] = useState<UploadSlot[]>([
-    {
-      id: "notice",
-      label: "Notice of Deposition",
-      accept: ".pdf,.doc,.docx,.txt,.text",
-      description: "PDF, Word, or plain text",
-      file: null,
-      status: "idle",
-    },
-    {
-      id: "scheduling",
-      label: "Scheduling Notes / Job Sheet",
-      accept: ".pdf,.doc,.docx,.txt",
-      description: "PDF, Word, or plain text",
-      file: null,
-      status: "idle",
-    },
-    {
-      id: "supporting",
-      label: "Supporting Documents",
-      accept: ".pdf,.doc,.docx,.txt,.jpg,.png",
-      description: "Any supporting material",
-      file: null,
-      status: "idle",
-    },
-    {
-      id: "audio",
-      label: "Audio / Video Recording",
-      accept: "audio/*,video/*",
-      description: "MP3, WAV, MP4, M4A…",
-      file: null,
-      status: "idle",
-    },
-  ]);
-
-  function handleDrop(id: string, file: File) {
-    setSlots((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, file, status: "done" as const } : s,
-      ),
-    );
-  }
-
-  const [extractingNotice, setExtractingNotice] = useState(false);
-  const [extractError, setExtractError] = useState<string | null>(null);
-  const [extractSummary, setExtractSummary] = useState<ExtractionSummary | null>(null);
-
-  const audioSlot = slots.find((s) => s.id === "audio");
-  const noticeSlot = slots.find((s) => s.id === "notice");
-  const hasAudio  = audioSlot?.status === "done";
-
-  async function handleExtractNotice() {
-    if (!noticeSlot?.file) return;
-
-    setExtractingNotice(true);
-    setExtractError(null);
-    setExtractSummary(null);
-
-    try {
-      const text = await extractDocumentText(noticeSlot.file);
-      const extraction = await aiExtract(text, "nod");
-      if ("error" in extraction) {
-        throw new Error(`Extraction failed: ${extraction.error}. You can enter fields manually.`);
-      }
-
-      const application = applyExtraction(extraction.fields, record);
-
-      applyParsedExtraction(application);
-
-      for (const update of application.fieldUpdates) {
-        recordExtraction(record.case_id, update.path, update.label, String(update.value), "Notice", update.confidence_score);
-      }
-
-      for (const conflict of application.conflicts) {
-        detectConflict(
-          record.case_id,
-          conflict.path,
-          conflict.label,
-          {
-            value: conflict.currentValue,
-            source: toDisplaySourceFromFieldSource(conflict.currentSource),
-            confidence_score: null,
-          },
-          {
-            value: conflict.incomingValue,
-            source: "Notice",
-            confidence_score: conflict.incomingConfidence,
-          },
-        );
-      }
-
-      setExtractSummary({
-        appliedCount:
-          application.fieldUpdates.length +
-          application.attorneyAdds.length +
-          application.attorneyPatches.length +
-          application.witnessAdds.length +
-          application.witnessPatches.length,
-        conflictCount: application.conflicts.length,
-      });
-      onRevealExtractedFields();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Document extraction failed.";
-      setExtractError(message.startsWith("Extraction failed:") ? message : `Extraction failed: ${message}. You can enter fields manually.`);
-    } finally {
-      setExtractingNotice(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Upload size={14} className="text-slate-500" />
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Document Intake</span>
-        </div>
-        {hasAudio && (
-          <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-            <CheckCircle2 size={12} />
-            Audio ready
-          </span>
-        )}
-      </div>
-      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-        {slots.map((slot) => (
-          <UploadCard key={slot.id} slot={slot} onDrop={handleDrop}>
-            {slot.id === "notice" && slot.file ? (
-              <div className="mt-3 w-full space-y-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    void handleExtractNotice();
-                  }}
-                  disabled={extractingNotice}
-                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Sparkles size={13} />
-                  {extractingNotice ? "Extracting..." : "Extract from Document"}
-                </button>
-                {extractSummary && (
-                  <p className="text-center text-[11px] text-slate-600">
-                    Extracted {extractSummary.appliedCount} fields, {extractSummary.conflictCount} conflicts to resolve
-                  </p>
-                )}
-                {extractError && (
-                  <p className="text-center text-[11px] text-rose-600">
-                    {extractError}
-                  </p>
-                )}
-              </div>
-            ) : null}
-          </UploadCard>
-        ))}
       </div>
     </div>
   );
@@ -1586,6 +1317,8 @@ export function IntakeScreen({ jobId }: Props) {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [persisted, setPersisted] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [caseFiles, setCaseFiles] = useState<CaseFileRecord[]>([]);
+  const [caseAudio, setCaseAudio] = useState<CaseAudioRecord[]>([]);
   const [revealExtractedFieldsVersion, setRevealExtractedFieldsVersion] = useState(0);
   const recordRef = useRef(record);
   const dirtyRef = useRef(dirty);
@@ -1623,6 +1356,8 @@ export function IntakeScreen({ jobId }: Props) {
           if (shouldAbortHydration(caseId)) return;
           setPersisted(true);
           setSavedAt(hydration.bundle.record.updated_at);
+          setCaseFiles(hydration.bundle.files);
+          setCaseAudio(hydration.bundle.audio);
           setSaveState("saved");
           loadCase(hydration.bundle.record);
           return;
@@ -1638,6 +1373,8 @@ export function IntakeScreen({ jobId }: Props) {
       if (shouldAbortHydration(caseId)) return;
       setPersisted(false);
       setSavedAt(null);
+      setCaseFiles([]);
+      setCaseAudio([]);
       setSaveState("idle");
       loadCase(emptyCaseRecord(caseId, new Date().toISOString()));
     }
@@ -1670,7 +1407,7 @@ export function IntakeScreen({ jobId }: Props) {
     }, 1600);
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const persistCase = useCallback(async () => {
     setSaveState("saving");
     const currentRecord = recordRef.current;
     try {
@@ -1679,6 +1416,7 @@ export function IntakeScreen({ jobId }: Props) {
       setPersisted(true);
       setSavedAt(savedRecord.updated_at);
       setSaveState("saved");
+      return savedRecord;
     } catch (error) {
       console.error("[DEPO-PRO] Case save failed", {
         operation: "saveCase",
@@ -1686,8 +1424,17 @@ export function IntakeScreen({ jobId }: Props) {
         message: error instanceof Error ? error.message : String(error),
       });
       setSaveState("error");
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }, [loadCase]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      await persistCase();
+    } catch {
+      return;
+    }
+  }, [persistCase]);
 
   const handleProceed = useCallback(() => {
     if (!canProceed) return;
@@ -1717,7 +1464,22 @@ export function IntakeScreen({ jobId }: Props) {
 
           {/* ── Row 1: Document upload (left) + Appearances (right) ── */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_280px]">
-            <DocumentUploadPanel onRevealExtractedFields={handleRevealExtractedFields} />
+            <DocumentUploadPanel
+              files={caseFiles}
+              audio={caseAudio}
+              persisted={persisted}
+              ensureCaseSaved={persistCase}
+              onAudioUploaded={(audioRecord) => {
+                setCaseAudio((previous) => [audioRecord, ...previous.filter((entry) => entry.audio_id !== audioRecord.audio_id)]);
+              }}
+              onFileUploaded={(fileRecord) => {
+                setCaseFiles((previous) => [fileRecord, ...previous.filter((entry) => entry.file_type !== fileRecord.file_type)]);
+              }}
+              onFileRemoved={(fileId) => {
+                setCaseFiles((previous) => previous.filter((entry) => entry.file_id !== fileId));
+              }}
+              onRevealExtractedFields={handleRevealExtractedFields}
+            />
             <div className="space-y-4">
               <AppearancesPanel />
               <GateStatusCard

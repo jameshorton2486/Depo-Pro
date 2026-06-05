@@ -10,6 +10,7 @@ import type {
   Videographer,
   Participant,
   CaseExhibit,
+  CaseAudio,
   ExtractedField,
   FieldSource,
   ProceedingType,
@@ -72,6 +73,7 @@ export type SetProceedingTypeAction = { type: "SET_PROCEEDING_TYPE"; payload: { 
 export type SetStageAction       = { type: "SET_STAGE"; payload: { stage: WorkflowStage } };
 export type SetStageCompleteAction = { type: "SET_STAGE_COMPLETE"; payload: { stage: WorkflowStage; complete: boolean } };
 export type SetNotesAction       = { type: "SET_NOTES"; payload: { notes: string } };
+export type SetAudioAction       = { type: "SET_AUDIO"; payload: { audio: CaseAudio | null } };
 
 // ── Field update (generic path into CaseRecord) ───────────────────────────────
 // Targets a dot-path within the record's ExtractedField leaves.
@@ -203,6 +205,7 @@ export type IntakeAction =
   | SetStageAction
   | SetStageCompleteAction
   | SetNotesAction
+  | SetAudioAction
   | UpdateFieldAction
   | ApplyExtractionAction
   | ResolveConflictAction
@@ -364,6 +367,14 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         ...state,
         dirty: true,
         record: { ...state.record, notes: action.payload.notes },
+      };
+    }
+
+    case "SET_AUDIO": {
+      return {
+        ...state,
+        dirty: true,
+        record: { ...state.record, audio: action.payload.audio },
       };
     }
 

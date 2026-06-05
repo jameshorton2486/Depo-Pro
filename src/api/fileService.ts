@@ -357,3 +357,16 @@ export async function getSignedUrl(storagePath: string): Promise<string> {
 
   return data.signedUrl;
 }
+
+export async function downloadCaseFile(storagePath: string, filename: string, mimeType = ""): Promise<File> {
+  const client = await getSupabaseClient("downloadCaseFile");
+  const { data, error } = await client.storage
+    .from(CASE_FILES_BUCKET)
+    .download(storagePath);
+
+  if (error) {
+    throw error;
+  }
+
+  return new File([data], filename, { type: mimeType || data.type || "" });
+}

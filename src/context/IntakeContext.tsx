@@ -8,6 +8,7 @@ import type {
   Videographer,
   Participant,
   CaseExhibit,
+  CaseAudio,
   FieldSource,
   ProceedingType,
   WorkflowStage,
@@ -45,6 +46,7 @@ interface IntakeContextValue {
   setStage: (stage: WorkflowStage) => void;
   setStageComplete: (stage: WorkflowStage, complete: boolean) => void;
   setNotes: (notes: string) => void;
+  setAudio: (audio: CaseAudio | null) => void;
 
   // ── Field mutation ───────────────────────────────────────────────────────────
   updateField: (
@@ -131,6 +133,10 @@ export function IntakeProvider({ children }: { children: React.ReactNode }) {
 
   const setNotes = useCallback((notes: string) => {
     dispatch({ type: "SET_NOTES", payload: { notes } });
+  }, []);
+
+  const setAudio = useCallback((audio: CaseAudio | null) => {
+    dispatch({ type: "SET_AUDIO", payload: { audio } });
   }, []);
 
   // ── Field mutation ─────────────────────────────────────────────────────────
@@ -299,6 +305,7 @@ export function IntakeProvider({ children }: { children: React.ReactNode }) {
     setStage,
     setStageComplete,
     setNotes,
+    setAudio,
     updateField,
     applyExtraction,
     resolveConflict,
