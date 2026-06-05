@@ -20,3 +20,5 @@ _None._
 | `ChangeLogEntry` | `src/types/index.ts` | Append-only client-side edit history. Not sent to server. |
 | `DepoEditorConfig` | `src/types/index.ts` | Mount config injected by the host page. Not an API shape. |
 | `workingTexts` | `DocumentContext` state | `Record<UtteranceId, string>` — unsaved edits until `PUT /{jobId}/working`. |
+| `CaseBundle` | `src/api/caseLoadService.ts` | Central restoration seam for Intake and future workspace/exhibits/export hydration. |
+| `CaseFileRecord` | `src/api/fileService.ts` | Local metadata type for `case_files` table added in migration before generated DB types are refreshed. |

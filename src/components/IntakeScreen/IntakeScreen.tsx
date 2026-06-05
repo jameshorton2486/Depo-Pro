@@ -22,7 +22,8 @@ import { projectFieldRows } from "../ExtractedFieldsTable/fieldProjection";
 import { DeepgramKeytermManager } from "../DeepgramKeytermManager/DeepgramKeytermManager";
 import { DeepgramPayloadPreview } from "../DeepgramKeytermManager/DeepgramPayloadPreview";
 import { mockConflictAlternates } from "../ExtractedFieldsTable/mockRecord";
-import { loadCase as loadPersistedCase, saveCase } from "../../api/caseService";
+import { saveCase } from "../../api/caseService";
+import { loadCaseBundle as loadPersistedBundle } from "../../api/caseLoadService";
 import { useContactStore } from "../../store/contactStore";
 import { evaluateIntake, type IntakeValidationResult } from "../../validation/intakeValidation";
 import type { Contact, ContactType } from "../../types/contact";
@@ -1614,21 +1615,21 @@ export function IntakeScreen({ jobId }: Props) {
       const caseId = recordCaseIdRef.current || jobId;
 
       try {
-        const persistedRecord = await loadPersistedCase(caseId);
+        const persistedBundle = await loadPersistedBundle(caseId);
         if (shouldAbortHydration(caseId)) return;
 
-        const hydration = resolveHydration(persistedRecord);
+        const hydration = resolveHydration(persistedBundle);
         if (hydration.mode === "row") {
           if (shouldAbortHydration(caseId)) return;
           setPersisted(true);
-          setSavedAt(hydration.record.updated_at);
+          setSavedAt(hydration.bundle.record.updated_at);
           setSaveState("saved");
-          loadCase(hydration.record);
+          loadCase(hydration.bundle.record);
           return;
         }
       } catch (error) {
         console.error("[DEPO-PRO] Case load failed", {
-          operation: "loadCase",
+          operation: "loadCaseBundle",
           caseId,
           message: error instanceof Error ? error.message : String(error),
         });

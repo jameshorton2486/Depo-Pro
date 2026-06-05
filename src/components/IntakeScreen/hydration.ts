@@ -1,12 +1,12 @@
-import type { CaseRecord } from "../../types/case";
+import type { CaseBundle } from "../../api/caseLoadService";
 
 export type HydrationDecision =
-  | { mode: "row"; record: CaseRecord }
+  | { mode: "row"; bundle: CaseBundle }
   | { mode: "blank" };
 
-export function resolveHydration(record: CaseRecord | null): HydrationDecision {
-  if (record) {
-    return { mode: "row", record };
+export function resolveHydration(bundle: CaseBundle | null): HydrationDecision {
+  if (bundle) {
+    return { mode: "row", bundle };
   }
   return { mode: "blank" };
 }
