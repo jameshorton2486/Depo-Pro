@@ -6,6 +6,9 @@ import type {
 } from "./parserTypes";
 import { extractKeyterms } from "./keytermExtractor";
 
+// This parser is kept as a documented fallback reference. The active intake
+// extraction engine now lives in aiExtract.ts via the Supabase extract-nod function.
+
 export function normalizePDFText(raw: string): string {
   return raw
     .replace(/\r\n/g, "\n")

@@ -28,7 +28,7 @@ import { evaluateIntake, type IntakeValidationResult } from "../../validation/in
 import type { Contact, ContactType } from "../../types/contact";
 import type { CaseRecord, FieldSource, ParticipantRole } from "../../types/case";
 import { extractDocumentText } from "../../lib/parsing/documentText";
-import { parseNODText } from "../../lib/parsing/nodParser";
+import { aiExtract } from "../../lib/parsing/aiExtract";
 import { applyExtraction } from "../../lib/parsing/applyExtraction";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -274,6 +274,7 @@ function UploadCard({
   children?: React.ReactNode;
 }) {
   const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -282,6 +283,15 @@ function UploadCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={() => inputRef.current?.click()}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
       onDrop={(e) => {
@@ -297,9 +307,10 @@ function UploadCard({
       }`}
     >
       <input
+        ref={inputRef}
         type="file"
         accept={slot.accept}
-        className="absolute inset-0 cursor-pointer opacity-0"
+        className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
 
@@ -398,8 +409,12 @@ function DocumentUploadPanel({
 
     try {
       const text = await extractDocumentText(noticeSlot.file);
-      const parsed = parseNODText(text);
-      const application = applyExtraction(parsed, record);
+      const extraction = await aiExtract(text, "nod");
+      if ("error" in extraction) {
+        throw new Error(`Extraction failed: ${extraction.error}. You can enter fields manually.`);
+      }
+
+      const application = applyExtraction(extraction.fields, record);
 
       applyParsedExtraction(application);
 
@@ -436,7 +451,8 @@ function DocumentUploadPanel({
       });
       onRevealExtractedFields();
     } catch (error) {
-      setExtractError(error instanceof Error ? error.message : "Document extraction failed.");
+      const message = error instanceof Error ? error.message : "Document extraction failed.";
+      setExtractError(message.startsWith("Extraction failed:") ? message : `Extraction failed: ${message}. You can enter fields manually.`);
     } finally {
       setExtractingNotice(false);
     }
@@ -463,7 +479,11 @@ function DocumentUploadPanel({
               <div className="mt-3 w-full space-y-2">
                 <button
                   type="button"
-                  onClick={() => void handleExtractNotice()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void handleExtractNotice();
+                  }}
                   disabled={extractingNotice}
                   className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
                 >
