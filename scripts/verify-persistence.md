@@ -123,3 +123,41 @@ Run this after James applies the new migration with `npx supabase db push`.
 - Case switches and new-case actions flush automatically; the dialog appears only on save failure.
 - `beforeunload` warns while Intake or workspace has dirty or in-flight saves.
 - Workspace autosave never clears dirty state for edits that landed during an in-flight save.
+
+## Transcript persistence flow
+
+1. Apply the transcript migration with `npx supabase db push`.
+2. Run `node scripts/verify-transcript-ingest.mjs`.
+3. Confirm the script inserts an offline-fixture transcript job, writes canonical speakers, utterances, and words, and rejects a direct `raw_text` update.
+4. Start the app with `VITE_USE_MOCKS=false`.
+5. Open a case that has an audio upload, or upload a fresh audio file in Intake.
+6. Go to `Transcript Creation`.
+7. Start transcription with either:
+   - offline fixture mode (`VITE_TRANSCRIPTION_PROVIDER=offline` or no `VITE_DEEPGRAM_API_KEY`), or
+   - real Deepgram mode when the browser-visible key is configured.
+8. Wait for the transcript job status to reach `Completed`.
+9. Open `Transcript Workspace`.
+10. Confirm the workspace loads words, utterances, speakers, and media from Supabase rather than the MSW fixture.
+11. Edit three transcript words in one utterance.
+12. Mark one low-confidence word as reviewed.
+13. Assign names and roles to at least two speakers, then confirm the speaker map badge turns `Map Confirmed`.
+14. Hard refresh the browser.
+15. Confirm the edited word text, reviewed flag, and speaker assignments all persist after refresh.
+16. In the Supabase dashboard, confirm new `transcript_audit_log` rows exist for:
+   - `ingest`
+   - `edit_word`
+   - `mark_reviewed`
+   - `assign_speaker`
+   - `bulk_save`
+17. Open the same transcript in two browser tabs.
+18. In tab A, edit transcript text and wait for save completion.
+19. In tab B, make a different edit using the stale version.
+20. Confirm tab B surfaces `Transcript changed elsewhere — reload.` and preserves dirty state instead of silently overwriting tab A.
+
+## Transcript persistence expected result
+
+- Transcript jobs, canonical speakers, utterances, and words load from Supabase.
+- Raw provider packets are stored once in Storage and normalized into durable transcript rows.
+- `raw_text` remains immutable and only `working_text` changes during editing.
+- Workspace edits, review flags, and speaker assignments survive refresh and append audit rows.
+- Stale-tab saves fail visibly instead of silently winning last-write-wins.
