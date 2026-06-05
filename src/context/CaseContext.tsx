@@ -10,6 +10,7 @@ import React, {
 import { createCase, loadCase } from "../api/caseService";
 import type { AppStage } from "./StageContext";
 import {
+  DEMO_CASE_ID,
   LAST_OPENED_CASE_ID_KEY,
   normalizeCaseSearchText,
   shouldPersistLastOpenedCaseId,
@@ -62,7 +63,13 @@ function readLastOpenedCaseId(): string | null {
   try {
     const value = window.localStorage.getItem(LAST_OPENED_CASE_ID_KEY);
     const normalized = normalizeCaseSearchText(value ?? "");
-    return normalized ? value : null;
+    if (!normalized || value === DEMO_CASE_ID) {
+      if (value === DEMO_CASE_ID) {
+        window.localStorage.removeItem(LAST_OPENED_CASE_ID_KEY);
+      }
+      return null;
+    }
+    return value;
   } catch {
     return null;
   }
@@ -107,7 +114,7 @@ export function CaseProvider({
   configJobId,
   children,
 }: {
-  configJobId: string;
+  configJobId?: string;
   children: React.ReactNode;
 }) {
   const [ready, setReady] = useState(false);

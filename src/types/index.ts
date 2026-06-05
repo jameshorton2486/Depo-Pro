@@ -20,7 +20,7 @@ export interface ChangeLogEntry {
 }
 
 export interface DepoEditorConfig {
-  jobId: string;
+  jobId?: string;
   apiBaseUrl: string;
   mountSelector: string;
   readOnly?: boolean;

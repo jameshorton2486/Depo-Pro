@@ -54,7 +54,7 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
 
   return (
     <div className="depo-editor h-full flex flex-col bg-white text-slate-900">
-      <Toolbar jobId={config.jobId} onSave={saveNow} />
+      <Toolbar jobId={config.jobId ?? ""} onSave={saveNow} />
 
       <div className="flex-1 min-h-0 flex overflow-hidden">
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
