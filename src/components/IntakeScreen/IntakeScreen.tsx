@@ -25,7 +25,7 @@ import { mockConflictAlternates } from "../ExtractedFieldsTable/mockRecord";
 import { saveCase } from "../../api/caseService";
 import { loadCaseBundle as loadPersistedBundle } from "../../api/caseLoadService";
 import { useContactStore } from "../../store/contactStore";
-import { evaluateIntake, type IntakeValidationResult } from "../../validation/intakeValidation";
+import { evaluateIntake, type IntakeFileState, type IntakeValidationResult } from "../../validation/intakeValidation";
 import type { Contact, ContactType } from "../../types/contact";
 import { emptyCaseRecord, type FieldSource, type ParticipantRole } from "../../types/case";
 import { CaseStatusBadge } from "./CaseStatusBadge";
@@ -1324,7 +1324,14 @@ export function IntakeScreen({ jobId }: Props) {
   const dirtyRef = useRef(dirty);
   const recordCaseIdRef = useRef(record.case_id);
 
-  const intakeValidation = useMemo(() => evaluateIntake(record), [record]);
+  const intakeFileState = useMemo<IntakeFileState>(() => ({
+    hasNotice: caseFiles.some((file) => file.file_type === "notice"),
+    hasScheduling: caseFiles.some((file) => file.file_type === "scheduling"),
+    hasSupporting: caseFiles.some((file) => file.file_type === "supporting"),
+    hasAudio: caseAudio.length > 0,
+  }), [caseAudio, caseFiles]);
+
+  const intakeValidation = useMemo(() => evaluateIntake(record, intakeFileState), [intakeFileState, record]);
 
   useEffect(() => {
     recordRef.current = record;

@@ -18,8 +18,12 @@ export interface IntakeValidationResult {
   canProceed: boolean;
 }
 
-// TODO Phase 3: flip to true when durable audio upload exists
-export const AUDIO_FAIL_ENFORCED = false;
+export interface IntakeFileState {
+  hasNotice: boolean;
+  hasScheduling: boolean;
+  hasSupporting: boolean;
+  hasAudio: boolean;
+}
 
 function hasValue(value: unknown): boolean {
   if (value === null || value === undefined) return false;
@@ -31,7 +35,7 @@ function countMissing<T>(items: T[], predicate: (item: T) => boolean): number {
   return items.filter(predicate).length;
 }
 
-export function evaluateIntake(record: CaseRecord): IntakeValidationResult {
+export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): IntakeValidationResult {
   const items: ValidationItem[] = [];
 
   const witnessWithName = record.witnesses.find((witness) => hasValue(witness.name.value));
@@ -101,12 +105,12 @@ export function evaluateIntake(record: CaseRecord): IntakeValidationResult {
   });
 
   items.push({
-    id: AUDIO_FAIL_ENFORCED ? "fail.audio_uploaded" : "warning.audio_uploaded_pending",
-    tier: AUDIO_FAIL_ENFORCED ? "FAIL" : "WARNING",
-    label: AUDIO_FAIL_ENFORCED ? "Audio file uploaded" : "Audio file uploaded (enforcement pending)",
+    id: "fail.audio_uploaded",
+    tier: "FAIL",
+    label: "Audio file uploaded",
     fieldPath: "audio",
-    satisfied: record.audio !== null,
-    detail: record.audio === null ? "No durable case audio is attached yet." : undefined,
+    satisfied: fileState.hasAudio,
+    detail: fileState.hasAudio ? undefined : "No durable case audio is attached yet.",
   });
 
   const missingBarNumbers = countMissing(record.attorneys, (attorney) => !hasValue(attorney.bar_number.value));
@@ -268,8 +272,8 @@ export function evaluateIntake(record: CaseRecord): IntakeValidationResult {
     tier: "INFO",
     label: "Supporting documents",
     fieldPath: null,
-    satisfied: false,
-    detail: "Supporting document uploads are not persisted to CaseRecord yet.",
+    satisfied: fileState.hasSupporting,
+    detail: fileState.hasSupporting ? undefined : "No supporting documents uploaded.",
   });
 
   items.push({
@@ -277,8 +281,8 @@ export function evaluateIntake(record: CaseRecord): IntakeValidationResult {
     tier: "INFO",
     label: "Scheduling notes",
     fieldPath: null,
-    satisfied: false,
-    detail: "Scheduling note uploads are not persisted to CaseRecord yet.",
+    satisfied: fileState.hasScheduling,
+    detail: fileState.hasScheduling ? undefined : "No scheduling notes uploaded.",
   });
 
   const failCount = items.filter((item) => item.tier === "FAIL" && !item.satisfied).length;
