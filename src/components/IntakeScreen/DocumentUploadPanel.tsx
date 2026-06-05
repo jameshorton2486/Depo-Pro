@@ -14,7 +14,8 @@ import { useConflict } from "../conflict/conflictStore";
 import { extractDocumentText } from "../../lib/parsing/documentText";
 import { aiExtract } from "../../lib/parsing/aiExtract";
 import { applyExtraction } from "../../lib/parsing/applyExtraction";
-import type { CaseAudio, FieldSource } from "../../types/case";
+import type { CaseAudio } from "../../types/case";
+import { applyAndPersistExtraction, type ExtractionSummary } from "./extractionPersistence";
 
 type SlotId = "notice" | "scheduling" | "supporting" | "audio";
 
@@ -32,16 +33,11 @@ type SlotUiState = {
   error: string | null;
 };
 
-type ExtractionSummary = {
-  appliedCount: number;
-  conflictCount: number;
-};
-
 type DocumentUploadPanelProps = {
   files: CaseFileRecord[];
   audio: CaseAudioRecord[];
   persisted: boolean;
-  ensureCaseSaved: () => Promise<unknown>;
+  saveCaseRecord: () => Promise<unknown>;
   onAudioUploaded: (audioRecord: CaseAudioRecord) => void;
   onFileUploaded: (fileRecord: CaseFileRecord) => void;
   onFileRemoved: (fileId: string) => void;
@@ -77,12 +73,6 @@ const SLOT_CONFIGS: UploadSlotConfig[] = [
 
 function slotFileType(slotId: Exclude<SlotId, "audio">): "notice" | "scheduling" | "supporting" {
   return slotId;
-}
-
-function toDisplaySourceFromFieldSource(source: FieldSource): "Notice" | "Job Sheet" | "Reporter Profile" | "Manual" {
-  if (source === "extracted") return "Notice";
-  if (source === "imported") return "Reporter Profile";
-  return "Manual";
 }
 
 function toCaseAudioRecord(row: CaseAudioRecord): CaseAudio {
@@ -272,7 +262,7 @@ export function DocumentUploadPanel({
   files,
   audio,
   persisted,
-  ensureCaseSaved,
+  saveCaseRecord,
   onAudioUploaded,
   onFileUploaded,
   onFileRemoved,
@@ -329,7 +319,7 @@ export function DocumentUploadPanel({
 
   async function ensureUploadPrecondition() {
     if (!persisted) {
-      await ensureCaseSaved();
+      await saveCaseRecord();
     }
   }
 
@@ -448,40 +438,20 @@ export function DocumentUploadPanel({
 
       const application = applyExtraction(extraction.fields, record);
 
-      applyParsedExtraction(application);
-
-      for (const update of application.fieldUpdates) {
-        recordExtraction(record.case_id, update.path, update.label, String(update.value), "Notice", update.confidence_score);
-      }
-
-      for (const conflict of application.conflicts) {
-        detectConflict(
-          record.case_id,
-          conflict.path,
-          conflict.label,
-          {
-            value: conflict.currentValue,
-            source: toDisplaySourceFromFieldSource(conflict.currentSource),
-            confidence_score: null,
-          },
-          {
-            value: conflict.incomingValue,
-            source: "Notice",
-            confidence_score: conflict.incomingConfidence,
-          },
-        );
-      }
-
-      setExtractSummary({
-        appliedCount:
-          application.fieldUpdates.length +
-          application.attorneyAdds.length +
-          application.attorneyPatches.length +
-          application.witnessAdds.length +
-          application.witnessPatches.length,
-        conflictCount: application.conflicts.length,
+      const result = await applyAndPersistExtraction({
+        caseId: record.case_id,
+        application,
+        applyParsedExtraction,
+        recordExtraction,
+        detectConflict,
+        onRevealExtractedFields,
+        saveCaseRecord,
       });
-      onRevealExtractedFields();
+
+      setExtractSummary(result.summary);
+      if (result.saveErrorMessage) {
+        setExtractError(result.saveErrorMessage);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Document extraction failed.";
       setExtractError(message.startsWith("Extraction failed:") ? message : `Extraction failed: ${message}. You can enter fields manually.`);

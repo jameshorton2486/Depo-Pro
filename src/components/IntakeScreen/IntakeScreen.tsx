@@ -1475,7 +1475,7 @@ export function IntakeScreen({ jobId }: Props) {
               files={caseFiles}
               audio={caseAudio}
               persisted={persisted}
-              ensureCaseSaved={persistCase}
+              saveCaseRecord={persistCase}
               onAudioUploaded={(audioRecord) => {
                 setCaseAudio((previous) => [audioRecord, ...previous.filter((entry) => entry.audio_id !== audioRecord.audio_id)]);
               }}
