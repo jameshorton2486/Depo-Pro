@@ -34,6 +34,7 @@ interface State {
   activeUtteranceId: UtteranceId | null;
   workingTexts: Record<UtteranceId, string>;
   wordMap: Record<string, Word>;
+  editSeq: number;
 }
 
 type Action =
@@ -51,7 +52,7 @@ type Action =
       suggestion_id?: string;
     }
   | { type: "SAVE_START" }
-  | { type: "SAVE_OK" }
+  | { type: "SAVE_OK"; savedSeq: number }
   | { type: "SAVE_ERR"; error: string }
   | { type: "UPDATE_SPEAKERS"; speakers: Speaker[] }
   | { type: "MARK_REVIEWED"; word_ids: string[] }
@@ -63,7 +64,7 @@ function buildWordMap(doc: EditorDocument): Record<string, Word> {
   return m;
 }
 
-function reducer(state: State, action: Action): State {
+export function documentReducer(state: State, action: Action): State {
   switch (action.type) {
     case "LOAD_START":
       return { ...state, loading: true, error: null };
@@ -77,6 +78,7 @@ function reducer(state: State, action: Action): State {
         workingTexts: {},
         dirty: false,
         changeLog: [],
+        editSeq: 0,
       };
 
     case "LOAD_ERR":
@@ -103,6 +105,7 @@ function reducer(state: State, action: Action): State {
           [action.utterance_id]: action.new_text,
         },
         dirty: true,
+        editSeq: state.editSeq + 1,
         changeLog: [entry, ...state.changeLog].slice(0, 500),
       };
     }
@@ -111,7 +114,13 @@ function reducer(state: State, action: Action): State {
       return { ...state, saving: true, saveError: null };
 
     case "SAVE_OK":
-      return { ...state, saving: false, dirty: false, lastSavedAt: Date.now() };
+      return {
+        ...state,
+        saving: false,
+        dirty: state.editSeq !== action.savedSeq,
+        saveError: null,
+        lastSavedAt: Date.now(),
+      };
 
     case "SAVE_ERR":
       return { ...state, saving: false, saveError: action.error };
@@ -177,14 +186,8 @@ interface ContextValue {
 
 const Ctx = createContext<ContextValue | null>(null);
 
-export function DocumentProvider({
-  jobId,
-  children,
-}: {
-  jobId: string;
-  children: React.ReactNode;
-}) {
-  const [state, dispatch] = useReducer(reducer, {
+export function createInitialDocumentState(jobId: string): State {
+  return {
     jobId,
     document: null,
     loading: false,
@@ -197,7 +200,18 @@ export function DocumentProvider({
     activeUtteranceId: null,
     workingTexts: {},
     wordMap: {},
-  });
+    editSeq: 0,
+  };
+}
+
+export function DocumentProvider({
+  jobId,
+  children,
+}: {
+  jobId: string;
+  children: React.ReactNode;
+}) {
+  const [state, dispatch] = useReducer(documentReducer, createInitialDocumentState(jobId));
 
   const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -253,31 +267,48 @@ export function DocumentProvider({
   );
 
   const saveNow = useCallback(async () => {
-    if (!state.dirty || !state.document) return;
+    if (state.saving || !state.dirty || !state.document) return;
     const changes = Object.entries(state.workingTexts).map(
       ([utterance_id, working_text]) => ({ utterance_id, working_text })
     );
     if (changes.length === 0) return;
+    const savedSeq = state.editSeq;
     dispatch({ type: "SAVE_START" });
     try {
       await api.saveWorking(jobId, { changes, source: "editor" });
-      dispatch({ type: "SAVE_OK" });
+      dispatch({ type: "SAVE_OK", savedSeq });
     } catch (e) {
       dispatch({ type: "SAVE_ERR", error: String(e) });
     }
-  }, [jobId, state.dirty, state.document, state.workingTexts]);
+  }, [jobId, state.dirty, state.document, state.editSeq, state.saving, state.workingTexts]);
 
   // Auto-save after 2 s of inactivity
   useEffect(() => {
     if (!state.dirty) return;
     if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
     pendingSaveRef.current = setTimeout(() => {
-      saveNow();
+      void saveNow();
     }, 2000);
     return () => {
       if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
     };
   }, [state.dirty, state.workingTexts, saveNow]);
+
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!state.dirty && !state.saving) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [state.dirty, state.saving]);
 
   const updateSpeakers = useCallback((speakers: Speaker[]) => {
     dispatch({ type: "UPDATE_SPEAKERS", speakers });
