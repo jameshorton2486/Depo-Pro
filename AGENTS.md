@@ -42,6 +42,10 @@ Violations must be reverted before a prompt is considered complete.
 - **Pointer-only exception.** UI pointers and preferences may use `localStorage`
   when they do not store case content. Example: `lastOpenedCaseId` is allowed;
   cached case payloads, extracted fields, transcript text, and review data are not.
+- **Field source ownership is locked.** Parsers may only write fields owned by their
+  declared source, per `docs/DATA_FIELD_REFERENCE.md` §2.1.
+- **Transcript-domain shapes are locked.** Transcript persistence and rendering work
+  follows `docs/DATA_STRUCTURES_REFERENCE.md`.
 
 ---
 
