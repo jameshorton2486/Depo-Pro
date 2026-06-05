@@ -21,15 +21,17 @@ import { ExtractedFieldsTable } from "../ExtractedFieldsTable/ExtractedFieldsTab
 import { projectFieldRows } from "../ExtractedFieldsTable/fieldProjection";
 import { DeepgramKeytermManager } from "../DeepgramKeytermManager/DeepgramKeytermManager";
 import { DeepgramPayloadPreview } from "../DeepgramKeytermManager/DeepgramPayloadPreview";
-import { mockCaseRecord, mockConflictAlternates } from "../ExtractedFieldsTable/mockRecord";
+import { mockConflictAlternates } from "../ExtractedFieldsTable/mockRecord";
 import { loadCase as loadPersistedCase, saveCase } from "../../api/caseService";
 import { useContactStore } from "../../store/contactStore";
 import { evaluateIntake, type IntakeValidationResult } from "../../validation/intakeValidation";
 import type { Contact, ContactType } from "../../types/contact";
-import type { CaseRecord, FieldSource, ParticipantRole } from "../../types/case";
+import { emptyCaseRecord, type FieldSource, type ParticipantRole } from "../../types/case";
 import { extractDocumentText } from "../../lib/parsing/documentText";
 import { aiExtract } from "../../lib/parsing/aiExtract";
 import { applyExtraction } from "../../lib/parsing/applyExtraction";
+import { CaseStatusBadge } from "./CaseStatusBadge";
+import { resolveHydration } from "./hydration";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1384,10 +1386,16 @@ function AppearancesPanel() {
 function GateStatusCard({
   validation,
   persisted,
+  dirty,
+  saveState,
+  savedAt,
   onNavigate,
 }: {
   validation: IntakeValidationResult;
   persisted: boolean;
+  dirty: boolean;
+  saveState: "idle" | "saving" | "saved" | "error";
+  savedAt: string | null;
   onNavigate: (fieldPath: string | null) => void;
 }) {
   const [warningsOpen, setWarningsOpen] = useState(false);
@@ -1402,12 +1410,7 @@ function GateStatusCard({
         Gate 1 — Transcript Creation
       </p>
       <div className="mb-3 flex items-center gap-2">
-        {persisted ? (
-          <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />
-        ) : (
-          <Clock size={13} className="shrink-0 text-slate-400" />
-        )}
-        <span className={`text-xs ${persisted ? "text-slate-700" : "text-slate-500"}`}>Case record created</span>
+        <CaseStatusBadge persisted={persisted} dirty={dirty} saveState={saveState} savedAt={savedAt} />
       </div>
       <div className="space-y-1.5">
         {failItems.map((item) => (
@@ -1472,6 +1475,7 @@ function IntakeFooter({
   canProceed,
   remainingRequiredCount,
   dirty,
+  persisted,
   saveState,
 }: {
   onSave: () => Promise<void>;
@@ -1479,6 +1483,7 @@ function IntakeFooter({
   canProceed: boolean;
   remainingRequiredCount: number;
   dirty: boolean;
+  persisted: boolean;
   saveState: "idle" | "saving" | "saved" | "error";
 }) {
   const [showPayload, setShowPayload] = useState(false);
@@ -1536,7 +1541,7 @@ function IntakeFooter({
           <button
             type="button"
             onClick={onSave}
-            disabled={!dirty || saveState === "saving"}
+            disabled={(persisted && !dirty) || saveState === "saving"}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 disabled:opacity-40"
           >
             <Save size={13} />
@@ -1571,7 +1576,6 @@ export function IntakeScreen({ jobId }: Props) {
     record,
     dirty,
     loadCase,
-    initNewCase,
     updateField,
     confirmField,
     confirmAll,
@@ -1580,6 +1584,7 @@ export function IntakeScreen({ jobId }: Props) {
   const { setStage } = useStage();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [persisted, setPersisted] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [revealExtractedFieldsVersion, setRevealExtractedFieldsVersion] = useState(0);
   const recordRef = useRef(record);
   const dirtyRef = useRef(dirty);
@@ -1609,13 +1614,16 @@ export function IntakeScreen({ jobId }: Props) {
       const caseId = recordCaseIdRef.current || jobId;
 
       try {
-        const persisted = await loadPersistedCase(caseId);
+        const persistedRecord = await loadPersistedCase(caseId);
         if (shouldAbortHydration(caseId)) return;
 
-        if (persisted) {
+        const hydration = resolveHydration(persistedRecord);
+        if (hydration.mode === "row") {
           if (shouldAbortHydration(caseId)) return;
           setPersisted(true);
-          loadCase(persisted);
+          setSavedAt(hydration.record.updated_at);
+          setSaveState("saved");
+          loadCase(hydration.record);
           return;
         }
       } catch (error) {
@@ -1627,28 +1635,10 @@ export function IntakeScreen({ jobId }: Props) {
       }
 
       if (shouldAbortHydration(caseId)) return;
-
-      if (import.meta.env.DEV) {
-        const fallbackRecord: CaseRecord = {
-          ...mockCaseRecord,
-          case_id: caseId,
-          stage: "intake",
-          notes: mockCaseRecord.notes,
-          proceeding_type: mockCaseRecord.proceeding_type,
-          proceeding: {
-            ...mockCaseRecord.proceeding,
-            proceeding_type: mockCaseRecord.proceeding_type,
-          },
-        };
-        if (shouldAbortHydration(caseId)) return;
-        setPersisted(false);
-        loadCase(fallbackRecord);
-        return;
-      }
-
-      if (shouldAbortHydration(caseId)) return;
       setPersisted(false);
-      initNewCase(caseId);
+      setSavedAt(null);
+      setSaveState("idle");
+      loadCase(emptyCaseRecord(caseId, new Date().toISOString()));
     }
 
     void hydrateCase();
@@ -1656,7 +1646,7 @@ export function IntakeScreen({ jobId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dirty, initNewCase, jobId, loadCase, record.case_id]);
+  }, [dirty, jobId, loadCase, record.case_id]);
 
   useEffect(() => {
     if (dirty && saveState !== "saving") {
@@ -1683,8 +1673,10 @@ export function IntakeScreen({ jobId }: Props) {
     setSaveState("saving");
     const currentRecord = recordRef.current;
     try {
-      await saveCase(currentRecord);
+      const savedRecord = await saveCase(currentRecord);
+      loadCase(savedRecord);
       setPersisted(true);
+      setSavedAt(savedRecord.updated_at);
       setSaveState("saved");
     } catch (error) {
       console.error("[DEPO-PRO] Case save failed", {
@@ -1694,7 +1686,7 @@ export function IntakeScreen({ jobId }: Props) {
       });
       setSaveState("error");
     }
-  }, []);
+  }, [loadCase]);
 
   const handleProceed = useCallback(() => {
     if (!canProceed) return;
@@ -1716,6 +1708,11 @@ export function IntakeScreen({ jobId }: Props) {
       {/* ── Main scrollable body ── */}
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1400px] space-y-5 px-5 py-5">
+          {!persisted && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              New case - nothing saved yet.
+            </div>
+          )}
 
           {/* ── Row 1: Document upload (left) + Appearances (right) ── */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_280px]">
@@ -1725,6 +1722,9 @@ export function IntakeScreen({ jobId }: Props) {
               <GateStatusCard
                 validation={intakeValidation}
                 persisted={persisted}
+                dirty={dirty}
+                saveState={saveState}
+                savedAt={savedAt}
                 onNavigate={handleNavigateToField}
               />
             </div>
@@ -1783,6 +1783,7 @@ export function IntakeScreen({ jobId }: Props) {
         canProceed={canProceed}
         remainingRequiredCount={intakeValidation.failCount}
         dirty={dirty}
+        persisted={persisted}
         saveState={saveState}
       />
     </div>

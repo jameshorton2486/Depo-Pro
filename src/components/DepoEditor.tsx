@@ -16,57 +16,6 @@ import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
 import { ExportScreen } from "./ExportScreen/ExportScreen";
 import type { DepoEditorConfig } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
-import { countTokens } from "../lib/keytermRanker";
-import type { ManagedKeyterm } from "./DeepgramKeytermManager/types";
-
-// ─── Seed keyterms for a new case (populated before the parser is wired) ─────
-
-function mk(
-  term: string,
-  boost: number,
-  category: ManagedKeyterm["category"],
-  source: ManagedKeyterm["source"],
-  selected = true,
-  pinned = false,
-  confidence = 0.85,
-): ManagedKeyterm {
-  return {
-    id:          `seed_${term.replace(/\s+/g, "_").toLowerCase()}`,
-    term,
-    boost,
-    category,
-    source,
-    notes:       "",
-    selected,
-    pinned,
-    priority:    0,
-    confidence,
-    token_count: countTokens(term),
-  };
-}
-
-const SEED_KEYTERMS: ManagedKeyterm[] = [
-  mk("Smith v. Meridian Infrastructure Partners", 0.7, "legal_term",  "UFM Metadata", true,  true,  1.0),
-  mk("Junior Hernandez",                          0.9, "proper_name", "UFM Metadata", true,  true,  1.0),
-  mk("Yunior Hernandez",                          0.8, "proper_name", "Notice",       true,  false, 0.79),
-  mk("Meridian Infrastructure Partners",          0.7, "company",     "UFM Metadata", true,  false, 1.0),
-  mk("Rebecca Thornton",                          0.8, "proper_name", "UFM Metadata", true,  false, 0.94),
-  mk("David Morales",                             0.7, "proper_name", "UFM Metadata", true,  false, 0.81),
-  mk("Thornton and Associates",                   0.6, "company",     "UFM Metadata", true,  false, 0.92),
-  mk("Superior Court of California",              0.5, "legal_term",  "UFM Metadata", true,  false, 0.88),
-  mk("Pacific Reporting Services",                0.5, "company",     "UFM Metadata", true,  false, 1.0),
-  mk("Jennifer Castillo",                         0.6, "proper_name", "UFM Metadata", true,  false, 1.0),
-  mk("Los Angeles",                               0.5, "location",    "Notice",       true,  false, 0.96),
-  mk("350 South Grand Avenue",                    0.4, "location",    "Scheduling Notes", true, false, 0.85),
-  mk("examining attorney",                        0.5, "legal_term",  "Manual",       true,  false, 1.0),
-  mk("opposing counsel",                          0.5, "legal_term",  "Manual",       true,  false, 1.0),
-  mk("deposition",                                0.3, "legal_term",  "Manual",       true,  false, 1.0),
-  mk("cross-examination",                         0.4, "legal_term",  "Manual",       true,  false, 1.0),
-  mk("infrastructure project",                    0.5, "technical",   "Notice",       true,  false, 0.72),
-  mk("CSR",                                       0.6, "legal_term",  "UFM Metadata", true,  false, 1.0),
-  mk("stipulation",                               0.4, "legal_term",  "Learned",      false, false, 0.7),
-  mk("voir dire",                                 0.4, "legal_term",  "Learned",      false, false, 0.7),
-];
 
 // ─── Editor workspace (stages 2-7) ───────────────────────────────────────────
 
@@ -134,7 +83,7 @@ export function DepoEditor({ config }: { config: DepoEditorConfig }) {
     <StageProvider>
       <IntakeProvider>
         <ConflictProvider>
-          <KeytermProvider initialTerms={SEED_KEYTERMS}>
+          <KeytermProvider initialTerms={[]}>
             <StageRouter config={config} />
           </KeytermProvider>
         </ConflictProvider>
