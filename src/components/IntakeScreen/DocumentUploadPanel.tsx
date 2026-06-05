@@ -14,6 +14,8 @@ import { useConflict } from "../conflict/conflictStore";
 import { extractDocumentText } from "../../lib/parsing/documentText";
 import { aiExtract } from "../../lib/parsing/aiExtract";
 import { applyExtraction } from "../../lib/parsing/applyExtraction";
+import { applyJobSheetExtraction } from "../../lib/parsing/applyJobSheetExtraction";
+import { parseReporterNotes } from "../../lib/parsing/reporterNotesParser";
 import type { CaseAudio } from "../../types/case";
 import { applyAndPersistExtraction, type ExtractionSummary } from "./extractionPersistence";
 
@@ -273,9 +275,9 @@ export function DocumentUploadPanel({
   const [slotUi, setSlotUi] = useState<Partial<Record<SlotId, SlotUiState>>>({});
   const [localFiles, setLocalFiles] = useState<Partial<Record<SlotId, File>>>({});
   const [viewUrls, setViewUrls] = useState<Partial<Record<SlotId, string>>>({});
-  const [extractingNotice, setExtractingNotice] = useState(false);
-  const [extractError, setExtractError] = useState<string | null>(null);
-  const [extractSummary, setExtractSummary] = useState<ExtractionSummary | null>(null);
+  const [extractingSlot, setExtractingSlot] = useState<SlotId | null>(null);
+  const [extractErrors, setExtractErrors] = useState<Partial<Record<SlotId, string | null>>>({});
+  const [extractSummaries, setExtractSummaries] = useState<Partial<Record<SlotId, ExtractionSummary | null>>>({});
 
   const currentFiles = useMemo(() => ({
     notice: files.find((file) => file.file_type === "notice") ?? null,
@@ -403,34 +405,32 @@ export function DocumentUploadPanel({
     }
   }
 
-  async function getNoticeFile(): Promise<File | null> {
-    const localNotice = localFiles.notice;
-    if (localNotice) {
-      return localNotice;
+  async function getSlotFile(slotId: Exclude<SlotId, "audio">): Promise<File | null> {
+    const local = localFiles[slotId];
+    if (local) {
+      return local;
     }
 
-    const storedNotice = currentFiles.notice;
-    if (!storedNotice) {
+    const storedFile = currentFiles[slotId];
+    if (!storedFile) {
       return null;
     }
 
     return downloadCaseFile(
-      storedNotice.storage_path,
-      storedNotice.original_filename,
-      storedNotice.mime_type,
+      storedFile.storage_path,
+      storedFile.original_filename,
+      storedFile.mime_type,
     );
   }
 
-  async function handleExtractNotice() {
-    const noticeFile = await getNoticeFile();
-    if (!noticeFile) return;
+  function setExtractState(slotId: SlotId, error: string | null, summary: ExtractionSummary | null) {
+    setExtractErrors((previous) => ({ ...previous, [slotId]: error }));
+    setExtractSummaries((previous) => ({ ...previous, [slotId]: summary }));
+  }
 
-    setExtractingNotice(true);
-    setExtractError(null);
-    setExtractSummary(null);
-
+  async function runNoticeExtraction(file: File, slotId: SlotId) {
     try {
-      const text = await extractDocumentText(noticeFile);
+      const text = await extractDocumentText(file);
       const extraction = await aiExtract(text, "nod");
       if ("error" in extraction) {
         throw new Error(`Extraction failed: ${extraction.error}. You can enter fields manually.`);
@@ -446,17 +446,67 @@ export function DocumentUploadPanel({
         detectConflict,
         onRevealExtractedFields,
         saveCaseRecord,
+        sourceLabel: "Notice",
       });
 
-      setExtractSummary(result.summary);
-      if (result.saveErrorMessage) {
-        setExtractError(result.saveErrorMessage);
+      setExtractState(slotId, result.saveErrorMessage, result.summary);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Document extraction failed.";
+      setExtractState(slotId, message.startsWith("Extraction failed:") ? message : `Extraction failed: ${message}. You can enter fields manually.`, null);
+      throw error;
+    }
+  }
+
+  async function runJobSheetExtraction(file: File, slotId: SlotId) {
+    const text = await extractDocumentText(file);
+    const parsed = parseReporterNotes(text);
+    const { application, droppedPaths } = applyJobSheetExtraction(parsed, record);
+
+    const result = await applyAndPersistExtraction({
+      caseId: record.case_id,
+      application,
+      applyParsedExtraction,
+      recordExtraction,
+      detectConflict,
+      onRevealExtractedFields,
+      saveCaseRecord,
+      sourceLabel: "Job Sheet",
+    });
+
+    console.info("[DEPO-PRO] Job Sheet extraction filtered unsupported fields", {
+      caseId: record.case_id,
+      slotId,
+      droppedCount: droppedPaths.length,
+      droppedPaths,
+    });
+
+    setExtractState(slotId, result.saveErrorMessage, result.summary);
+  }
+
+  async function handleExtract(slotId: Exclude<SlotId, "audio">, mode: "notice" | "job_sheet") {
+    const file = await getSlotFile(slotId);
+    if (!file) {
+      return;
+    }
+
+    setExtractingSlot(slotId);
+    setExtractState(slotId, null, null);
+
+    try {
+      if (mode === "notice") {
+        await runNoticeExtraction(file, slotId);
+      } else {
+        await runJobSheetExtraction(file, slotId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Document extraction failed.";
-      setExtractError(message.startsWith("Extraction failed:") ? message : `Extraction failed: ${message}. You can enter fields manually.`);
+      setExtractState(
+        slotId,
+        message.startsWith("Extraction failed:") ? message : `Extraction failed: ${message}. You can enter fields manually.`,
+        null,
+      );
     } finally {
-      setExtractingNotice(false);
+      setExtractingSlot(null);
     }
   }
 
@@ -506,29 +556,64 @@ export function DocumentUploadPanel({
                 void handleRemove(slot.id as Exclude<SlotId, "audio">);
               }}
             >
-              {slot.id === "notice" && fileName ? (
+              {(slot.id === "notice" || slot.id === "scheduling" || slot.id === "supporting") && fileName ? (
                 <div className="mt-3 w-full space-y-2">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void handleExtractNotice();
-                    }}
-                    disabled={extractingNotice}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <Sparkles size={13} />
-                    {extractingNotice ? "Extracting..." : "Extract from Document"}
-                  </button>
-                  {extractSummary && (
+                  {slot.id === "supporting" ? (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleExtract("supporting", "notice");
+                        }}
+                        disabled={extractingSlot !== null}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Sparkles size={13} />
+                        {extractingSlot === "supporting" ? "Extracting..." : "Extract as Notice"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void handleExtract("supporting", "job_sheet");
+                        }}
+                        disabled={extractingSlot !== null}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-cyan-300 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700 transition-colors hover:bg-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <Sparkles size={13} />
+                        {extractingSlot === "supporting" ? "Extracting..." : "Extract as Job Sheet"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void handleExtract(slot.id as Exclude<SlotId, "audio">, slot.id === "notice" ? "notice" : "job_sheet");
+                      }}
+                      disabled={extractingSlot !== null}
+                      className={`inline-flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                        slot.id === "notice"
+                          ? "border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                          : "border border-cyan-300 bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
+                      }`}
+                    >
+                      <Sparkles size={13} />
+                      {extractingSlot === slot.id ? "Extracting..." : "Extract from Document"}
+                    </button>
+                  )}
+                  {extractSummaries[slot.id] && (
                     <p className="text-center text-[11px] text-slate-600">
-                      Extracted {extractSummary.appliedCount} fields, {extractSummary.conflictCount} conflicts to resolve
+                      Extracted {extractSummaries[slot.id]?.appliedCount} fields, {extractSummaries[slot.id]?.conflictCount} conflicts to resolve
                     </p>
                   )}
-                  {extractError && (
+                  {extractErrors[slot.id] && (
                     <p className="text-center text-[11px] text-rose-600">
-                      {extractError}
+                      {extractErrors[slot.id]}
                     </p>
                   )}
                 </div>

@@ -39,6 +39,7 @@ type ApplyAndPersistExtractionParams = {
   ) => void;
   onRevealExtractedFields: () => void;
   saveCaseRecord: () => Promise<unknown>;
+  sourceLabel?: DisplaySource;
 };
 
 export interface ExtractionPersistenceResult {
@@ -68,6 +69,7 @@ function persistConflict(
   caseId: string,
   conflict: ExtractionConflict,
   detectConflict: ApplyAndPersistExtractionParams["detectConflict"],
+  sourceLabel: DisplaySource,
 ) {
   detectConflict(
     caseId,
@@ -80,7 +82,7 @@ function persistConflict(
     },
     {
       value: conflict.incomingValue,
-      source: "Notice",
+      source: sourceLabel,
       confidence_score: conflict.incomingConfidence,
     },
   );
@@ -94,15 +96,16 @@ export async function applyAndPersistExtraction({
   detectConflict,
   onRevealExtractedFields,
   saveCaseRecord,
+  sourceLabel = "Notice",
 }: ApplyAndPersistExtractionParams): Promise<ExtractionPersistenceResult> {
   applyParsedExtraction(application);
 
   for (const update of application.fieldUpdates) {
-    recordExtraction(caseId, update.path, update.label, String(update.value), "Notice", update.confidence_score);
+    recordExtraction(caseId, update.path, update.label, String(update.value), sourceLabel, update.confidence_score);
   }
 
   for (const conflict of application.conflicts) {
-    persistConflict(caseId, conflict, detectConflict);
+    persistConflict(caseId, conflict, detectConflict, sourceLabel);
   }
 
   const summary = buildSummary(application);
