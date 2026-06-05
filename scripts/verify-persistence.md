@@ -30,3 +30,22 @@ Run this after James applies the new migration with `npx supabase db push`.
 - Notice and audio survive refresh through Supabase-backed restoration.
 - Extraction persists through the same case save path as the footer save button.
 - Removing a document hides it from Intake while preserving the metadata row and storage object for auditability.
+
+## Conflict rehydration flow
+
+1. Open `job_demo_001` from the Case Browser.
+2. Confirm the 11 audit-documented Texas conflicts appear in the Extracted Fields table with `Notice` source badges and Resolve actions.
+3. Hard refresh the browser.
+4. Confirm the same 11 conflicts reappear after refresh.
+5. Resolve one conflict in either direction.
+6. Confirm the visible conflict count drops from 11 to 10.
+7. Hard refresh the browser again.
+8. Confirm the count remains 10 and the resolved conflict does not reappear.
+9. Open a different existing case, or create a new case from the Case Browser.
+10. Confirm no conflicts from `job_demo_001` leak into the other case.
+
+## Conflict rehydration expected result
+
+- Unresolved conflicts are restored from `field_provenance` on case load.
+- Resolving a conflict persists the closing provenance event and survives refresh.
+- Conflict state remains scoped to the active case provider remount.
