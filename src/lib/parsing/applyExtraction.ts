@@ -266,7 +266,17 @@ function composeVenue(fields: ExtractedNODFields): string {
 }
 
 function mapReportingMethod(fields: ExtractedNODFields): CaseRecord["session"]["reporting_method"]["value"] {
-  const rawMethod = cleanupValue(valueOf(fields.reporting_method)).toLowerCase();
+  const normalizedMethod = valueOf(fields.reporting_method);
+  if (
+    normalizedMethod === "machine_shorthand"
+    || normalizedMethod === "zoom"
+    || normalizedMethod === "in_person"
+    || normalizedMethod === "audio_recording"
+  ) {
+    return normalizedMethod;
+  }
+
+  const rawMethod = cleanupValue(normalizedMethod).toLowerCase();
   const remote = Boolean(valueOf(fields.remote.is_remote));
   const platform = cleanupValue(valueOf(fields.remote.platform)).toLowerCase();
   if (remote || platform === "zoom" || rawMethod.includes("zoom")) return "zoom";

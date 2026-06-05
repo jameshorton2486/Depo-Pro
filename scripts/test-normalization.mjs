@@ -1,6 +1,7 @@
 import {
   inferDefendantsFromCaseStyle,
   mapReportingMethod,
+  normalizeSideField,
   ensureCountySuffix,
   toISODate,
   toISOTime,
@@ -31,6 +32,22 @@ const checks = [
     label: `case style fallback -> defendants array`,
     actual: inferDefendantsFromCaseStyle("Delia Garza v. Home Depot U.S.A., Inc. A/K/A The Home Depot and Shawn Herber"),
     expected: ["Home Depot U.S.A., Inc. A/K/A The Home Depot", "Shawn Herber"],
+  },
+  {
+    label: `certificate-of-service firm heuristic -> defense with low-confidence inference`,
+    actual: normalizeSideField(
+      { value: "", confidence: 0, inferred: false },
+      null,
+      "Delia Garza",
+      ["Home Depot U.S.A., Inc. A/K/A The Home Depot", "Shawn Herber"],
+      "Littler Mendelson, P.C.",
+      ["cukjati law firm, pllc"],
+    ),
+    expected: {
+      value: "defense",
+      confidence: 0.5,
+      inferred: true,
+    },
   },
 ];
 

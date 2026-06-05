@@ -126,13 +126,23 @@ if (!response.ok || body.error) {
       expected: "Bexar County",
     },
     {
-      label: "Karen side inferred as defense or null only if heuristic fails",
+      label: "Karen side is defense only when inferred with <=0.5 confidence, otherwise null",
       pass: (() => {
-        const side = attorneyByName.get("Karen M. Alvarado")?.side?.value ?? null;
-        return side === "defense" || side === null;
+        const side = attorneyByName.get("Karen M. Alvarado")?.side ?? null;
+        if (!side || side.value == null) {
+          return true;
+        }
+        return side.value === "defense"
+          && side.inferred === true
+          && typeof side.confidence === "number"
+          && side.confidence <= 0.5;
       })(),
-      actual: attorneyByName.get("Karen M. Alvarado")?.side?.value ?? null,
-      expected: "defense",
+      actual: attorneyByName.get("Karen M. Alvarado")?.side ?? null,
+      expected: {
+        value: "defense",
+        confidence_lte: 0.5,
+        inferred: true,
+      },
     },
     {
       label: "Deposition date normalized to ISO",
