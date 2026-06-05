@@ -19,6 +19,7 @@ interface Props {
   caseId: string;
   record: CaseRecord;
   conflictAlternates?: Record<string, { value: string; source: string }>;
+  revealUnconfirmedVersion?: number;
   onConfirm?: (rowId: string) => void;
   onConfirmAll?: () => void;
   onResolveConflict?: (rowId: string, value: string, source: DisplaySource) => void;
@@ -408,6 +409,7 @@ export function ExtractedFieldsTable({
   caseId,
   record,
   conflictAlternates = {},
+  revealUnconfirmedVersion = 0,
   onConfirm,
   onConfirmAll,
   onResolveConflict,
@@ -444,6 +446,14 @@ export function ExtractedFieldsTable({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caseId]);
+
+  useEffect(() => {
+    if (revealUnconfirmedVersion === 0) return;
+    setShowAll(true);
+    setFilterCategory(ALL);
+    setFilterSource(ALL);
+    setFilterStatus(ALL);
+  }, [revealUnconfirmedVersion]);
 
   // A conflict row is "resolved" when the store has resolved it
   const isResolvedInStore = (rowId: string) =>

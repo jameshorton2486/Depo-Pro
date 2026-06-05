@@ -86,6 +86,28 @@ export type UpdateFieldAction = {
   };
 };
 
+export type ApplyExtractionAction = {
+  type: "APPLY_EXTRACTION";
+  payload: {
+    fieldUpdates: Array<{
+      path: string;
+      value: unknown;
+      confidence_score: number | null;
+    }>;
+    attorneyAdds?: Array<{ attorney: Omit<Attorney, "attorney_id"> }>;
+    attorneyPatches?: Array<{
+      attorney_id: string;
+      patch: Partial<Omit<Attorney, "attorney_id">>;
+    }>;
+    witnessAdds?: Array<{ witness: Omit<Witness, "witness_id"> }>;
+    witnessPatches?: Array<{
+      witness_id: string;
+      patch: Partial<Omit<Witness, "witness_id">>;
+    }>;
+    keyterms?: CaseRecord["deepgram"]["keyterms"];
+  };
+};
+
 // ── Conflict resolution ───────────────────────────────────────────────────────
 export type ResolveConflictAction = {
   type: "RESOLVE_CONFLICT";
@@ -182,6 +204,7 @@ export type IntakeAction =
   | SetStageCompleteAction
   | SetNotesAction
   | UpdateFieldAction
+  | ApplyExtractionAction
   | ResolveConflictAction
   | ConfirmFieldAction
   | ConfirmAllAction
@@ -357,6 +380,83 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         force,
       );
       return { ...state, dirty: true, record: resolved.set(next) };
+    }
+
+    case "APPLY_EXTRACTION": {
+      let nextRecord = state.record;
+
+      for (const update of action.payload.fieldUpdates) {
+        const resolved = resolveExtractedPath<unknown>(nextRecord, update.path);
+        if (!resolved) continue;
+        const next: ExtractedField<unknown> = {
+          value: update.value,
+          source: "extracted",
+          confirmed: false,
+          conflict: false,
+          confidence_score: update.confidence_score,
+        };
+        nextRecord = resolved.set(next);
+      }
+
+      for (const attorneyAdd of action.payload.attorneyAdds ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          attorneys: [
+            ...nextRecord.attorneys,
+            {
+              ...attorneyAdd.attorney,
+              attorney_id: newId("atty"),
+            },
+          ],
+        };
+      }
+
+      for (const attorneyPatch of action.payload.attorneyPatches ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          attorneys: nextRecord.attorneys.map((attorney) =>
+            attorney.attorney_id === attorneyPatch.attorney_id
+              ? { ...attorney, ...attorneyPatch.patch }
+              : attorney,
+          ),
+        };
+      }
+
+      for (const witnessAdd of action.payload.witnessAdds ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          witnesses: [
+            ...nextRecord.witnesses,
+            {
+              ...witnessAdd.witness,
+              witness_id: newId("wit"),
+            },
+          ],
+        };
+      }
+
+      for (const witnessPatch of action.payload.witnessPatches ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          witnesses: nextRecord.witnesses.map((witness) =>
+            witness.witness_id === witnessPatch.witness_id
+              ? { ...witness, ...witnessPatch.patch }
+              : witness,
+          ),
+        };
+      }
+
+      if (action.payload.keyterms) {
+        nextRecord = {
+          ...nextRecord,
+          deepgram: {
+            ...nextRecord.deepgram,
+            keyterms: action.payload.keyterms,
+          },
+        };
+      }
+
+      return { ...state, dirty: true, record: nextRecord };
     }
 
     case "RESOLVE_CONFLICT": {

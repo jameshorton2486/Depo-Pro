@@ -25,6 +25,7 @@ import type {
   IntakeAction,
   ValidationResult,
 } from "../store/intakeReducer";
+import type { ExtractionApplication } from "../lib/parsing/applyExtraction";
 
 // ─── Context shape ────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ interface IntakeContextValue {
     confidence_score?: number | null,
     force?: boolean,
   ) => void;
+  applyExtraction: (application: ExtractionApplication) => void;
   resolveConflict: (
     path: string,
     accepted_value: unknown,
@@ -165,6 +167,20 @@ export function IntakeProvider({ children }: { children: React.ReactNode }) {
 
   const confirmAll = useCallback(() => {
     dispatch({ type: "CONFIRM_ALL" });
+  }, []);
+
+  const applyExtraction = useCallback((application: ExtractionApplication) => {
+    dispatch({
+      type: "APPLY_EXTRACTION",
+      payload: {
+        fieldUpdates: application.fieldUpdates,
+        attorneyAdds: application.attorneyAdds,
+        attorneyPatches: application.attorneyPatches,
+        witnessAdds: application.witnessAdds,
+        witnessPatches: application.witnessPatches,
+        keyterms: application.keyterms,
+      },
+    });
   }, []);
 
   // ── Attorneys ──────────────────────────────────────────────────────────────
@@ -284,6 +300,7 @@ export function IntakeProvider({ children }: { children: React.ReactNode }) {
     setStageComplete,
     setNotes,
     updateField,
+    applyExtraction,
     resolveConflict,
     confirmField,
     confirmAll,

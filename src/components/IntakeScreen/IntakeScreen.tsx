@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   FileText, Upload, AlertTriangle, CheckCircle2, Clock,
   ChevronRight, Save, Zap, Package, Users, Search,
-  X, UserPlus, Mic, Scale, Video, User2, ChevronDown, ChevronUp,
+  X, UserPlus, Mic, Scale, Video, User2, ChevronDown, ChevronUp, Sparkles,
 } from "lucide-react";
 
 import { useIntake } from "../../context/IntakeContext";
@@ -27,6 +27,9 @@ import { useContactStore } from "../../store/contactStore";
 import { evaluateIntake, type IntakeValidationResult } from "../../validation/intakeValidation";
 import type { Contact, ContactType } from "../../types/contact";
 import type { CaseRecord, FieldSource, ParticipantRole } from "../../types/case";
+import { extractDocumentText } from "../../lib/parsing/documentText";
+import { parseNODText } from "../../lib/parsing/nodParser";
+import { applyExtraction } from "../../lib/parsing/applyExtraction";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +44,11 @@ interface UploadSlot {
   description: string;
   file: File | null;
   status: "idle" | "uploading" | "done" | "error";
+}
+
+interface ExtractionSummary {
+  appliedCount: number;
+  conflictCount: number;
 }
 
 function manualField<T>(value: T) {
@@ -139,6 +147,12 @@ function guessRepresentingPreset(value: string | null | undefined): AttorneyRepr
 
 function attorneyBadgeLabel(representing: string | null, role: string) {
   return representing || role;
+}
+
+function toDisplaySourceFromFieldSource(source: FieldSource): "Notice" | "Job Sheet" | "Reporter Profile" | "Manual" {
+  if (source === "extracted") return "Notice";
+  if (source === "imported") return "Reporter Profile";
+  return "Manual";
 }
 
 // ─── Workflow stage nav ───────────────────────────────────────────────────────
@@ -253,9 +267,11 @@ function CaseStatusBanner({ validation }: { validation: IntakeValidationResult }
 function UploadCard({
   slot,
   onDrop,
+  children,
 }: {
   slot: UploadSlot;
   onDrop: (id: string, file: File) => void;
+  children?: React.ReactNode;
 }) {
   const [dragging, setDragging] = useState(false);
 
@@ -307,19 +323,27 @@ function UploadCard({
           Drag & drop or <span className="text-blue-600 underline">browse</span>
         </p>
       )}
+
+      {children}
     </div>
   );
 }
 
 // ─── Document upload panel ────────────────────────────────────────────────────
 
-function DocumentUploadPanel() {
+function DocumentUploadPanel({
+  onRevealExtractedFields,
+}: {
+  onRevealExtractedFields: () => void;
+}) {
+  const { record, applyExtraction: applyParsedExtraction } = useIntake();
+  const { detectConflict, recordExtraction } = useConflict();
   const [slots, setSlots] = useState<UploadSlot[]>([
     {
       id: "notice",
       label: "Notice of Deposition",
-      accept: ".pdf,.doc,.docx",
-      description: "PDF or Word document",
+      accept: ".pdf,.doc,.docx,.txt,.text",
+      description: "PDF, Word, or plain text",
       file: null,
       status: "idle",
     },
@@ -357,8 +381,66 @@ function DocumentUploadPanel() {
     );
   }
 
+  const [extractingNotice, setExtractingNotice] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractSummary, setExtractSummary] = useState<ExtractionSummary | null>(null);
+
   const audioSlot = slots.find((s) => s.id === "audio");
+  const noticeSlot = slots.find((s) => s.id === "notice");
   const hasAudio  = audioSlot?.status === "done";
+
+  async function handleExtractNotice() {
+    if (!noticeSlot?.file) return;
+
+    setExtractingNotice(true);
+    setExtractError(null);
+    setExtractSummary(null);
+
+    try {
+      const text = await extractDocumentText(noticeSlot.file);
+      const parsed = parseNODText(text);
+      const application = applyExtraction(parsed, record);
+
+      applyParsedExtraction(application);
+
+      for (const update of application.fieldUpdates) {
+        recordExtraction(record.case_id, update.path, update.label, String(update.value), "Notice", update.confidence_score);
+      }
+
+      for (const conflict of application.conflicts) {
+        detectConflict(
+          record.case_id,
+          conflict.path,
+          conflict.label,
+          {
+            value: conflict.currentValue,
+            source: toDisplaySourceFromFieldSource(conflict.currentSource),
+            confidence_score: null,
+          },
+          {
+            value: conflict.incomingValue,
+            source: "Notice",
+            confidence_score: conflict.incomingConfidence,
+          },
+        );
+      }
+
+      setExtractSummary({
+        appliedCount:
+          application.fieldUpdates.length +
+          application.attorneyAdds.length +
+          application.attorneyPatches.length +
+          application.witnessAdds.length +
+          application.witnessPatches.length,
+        conflictCount: application.conflicts.length,
+      });
+      onRevealExtractedFields();
+    } catch (error) {
+      setExtractError(error instanceof Error ? error.message : "Document extraction failed.");
+    } finally {
+      setExtractingNotice(false);
+    }
+  }
 
   return (
     <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -376,7 +458,31 @@ function DocumentUploadPanel() {
       </div>
       <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
         {slots.map((slot) => (
-          <UploadCard key={slot.id} slot={slot} onDrop={handleDrop} />
+          <UploadCard key={slot.id} slot={slot} onDrop={handleDrop}>
+            {slot.id === "notice" && slot.file ? (
+              <div className="mt-3 w-full space-y-2">
+                <button
+                  type="button"
+                  onClick={() => void handleExtractNotice()}
+                  disabled={extractingNotice}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Sparkles size={13} />
+                  {extractingNotice ? "Extracting..." : "Extract from Document"}
+                </button>
+                {extractSummary && (
+                  <p className="text-center text-[11px] text-slate-600">
+                    Extracted {extractSummary.appliedCount} fields, {extractSummary.conflictCount} conflicts to resolve
+                  </p>
+                )}
+                {extractError && (
+                  <p className="text-center text-[11px] text-rose-600">
+                    {extractError}
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </UploadCard>
         ))}
       </div>
     </div>
@@ -1454,6 +1560,7 @@ export function IntakeScreen({ jobId }: Props) {
   const { setStage } = useStage();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [persisted, setPersisted] = useState(false);
+  const [revealExtractedFieldsVersion, setRevealExtractedFieldsVersion] = useState(0);
   const recordRef = useRef(record);
   const dirtyRef = useRef(dirty);
   const recordCaseIdRef = useRef(record.case_id);
@@ -1574,6 +1681,10 @@ export function IntakeScreen({ jobId }: Props) {
     setStage("creation");
   }, [canProceed, setStage]);
 
+  const handleRevealExtractedFields = useCallback(() => {
+    setRevealExtractedFieldsVersion((value) => value + 1);
+  }, []);
+
   return (
     <div className="depo-editor flex h-full flex-col bg-slate-100 text-slate-900">
       {/* ── Workflow stage nav ── */}
@@ -1588,7 +1699,7 @@ export function IntakeScreen({ jobId }: Props) {
 
           {/* ── Row 1: Document upload (left) + Appearances (right) ── */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_280px]">
-            <DocumentUploadPanel />
+            <DocumentUploadPanel onRevealExtractedFields={handleRevealExtractedFields} />
             <div className="space-y-4">
               <AppearancesPanel />
               <GateStatusCard
@@ -1613,6 +1724,7 @@ export function IntakeScreen({ jobId }: Props) {
               caseId={record.case_id || "case_intake"}
               record={record}
               conflictAlternates={mockConflictAlternates}
+              revealUnconfirmedVersion={revealExtractedFieldsVersion}
               onUpdate={(rowId, value) => {
                 updateField(rowId, value, "manual", null, true);
               }}
