@@ -35,6 +35,42 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
+export async function externalRequest(
+  method: string,
+  url: string,
+  options: {
+    headers?: Record<string, string>;
+    body?: BodyInit;
+  } = {},
+): Promise<Response> {
+  const response = await fetch(url, {
+    method,
+    headers: options.headers,
+    body: options.body,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `External ${method} ${url} → ${response.status} ${response.statusText}${text ? ` — ${text}` : ""}`,
+    );
+  }
+
+  return response;
+}
+
+export async function externalJsonRequest<T>(
+  method: string,
+  url: string,
+  options: {
+    headers?: Record<string, string>;
+    body?: BodyInit;
+  } = {},
+): Promise<T> {
+  const response = await externalRequest(method, url, options);
+  return response.json() as Promise<T>;
+}
+
 function url(jobId: string, path: string): string {
   return `${_baseUrl}/${jobId}/${path}`;
 }

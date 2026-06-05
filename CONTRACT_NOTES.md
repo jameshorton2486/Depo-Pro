@@ -27,3 +27,4 @@ _None._
 | `CaseBrowserSummary` | `src/api/caseService.ts` | Local browser/listing shape assembled from `cases` plus grouped indicator queries. |
 | `CaseStatusPresentation` | `src/lib/caseLifecycle.ts` | UI-only status chip mapping derived from persisted stage plus certification presence. |
 | `CaseRecord._saveMeta` | `src/types/case.ts` | Local persisted save provenance for intake autosave/manual/flush source and sequence tracking. Not part of `src/api/types.ts`. |
+| `DeepgramResponse` / `TranscriptCapture` | `src/lib/transcript/types.ts` | Local transcript-ingest types for Deepgram/offline packets and raw-packet capture metadata. |
