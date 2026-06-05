@@ -108,7 +108,7 @@ function StageRouter({
 function CaseSwitchDialog() {
   const {
     switchDialog,
-    confirmSaveAndContinue,
+    retrySaveAndContinue,
     discardAndContinue,
     cancelSwitch,
   } = useCase();
@@ -120,10 +120,10 @@ function CaseSwitchDialog() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Unsaved Changes</p>
-        <h2 className="mt-2 text-xl font-semibold text-slate-900">Save before switching cases?</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Save Failed</p>
+        <h2 className="mt-2 text-xl font-semibold text-slate-900">Couldn&apos;t save before switching cases.</h2>
         <p className="mt-3 text-sm text-slate-600">
-          The current case has unsaved work. Save it before you {switchDialog.targetLabel}.
+          Automatic save failed while trying to {switchDialog.targetLabel}. Retry the save, discard the unsaved changes, or stay on the current case.
         </p>
         {switchDialog.error && (
           <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -149,11 +149,11 @@ function CaseSwitchDialog() {
           </button>
           <button
             type="button"
-            onClick={() => void confirmSaveAndContinue()}
+            onClick={() => void retrySaveAndContinue()}
             disabled={switchDialog.busy}
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
           >
-            {switchDialog.busy ? "Saving..." : "Save and Switch"}
+            {switchDialog.busy ? "Saving..." : "Retry Save"}
           </button>
         </div>
       </div>

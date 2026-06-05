@@ -76,6 +76,7 @@ Clean, modern, legal-professional. Resembles Microsoft Word / Case CATalyst:
 - Sans-serif (Inter) for UI chrome.
 - Restrained color palette: slate neutrals, blue accents, no purple/indigo.
 - No cartoonish elements, no emoji in UI, no rounded-bubble chat aesthetic.
+- The manual `Save` control is permanent. Autosave may supplement it, never replace it.
 
 ---
 

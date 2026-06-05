@@ -46,7 +46,7 @@ interface CaseContextValue {
     error: string | null;
     targetLabel: string;
   };
-  confirmSaveAndContinue: () => Promise<void>;
+  retrySaveAndContinue: () => Promise<void>;
   discardAndContinue: () => Promise<void>;
   cancelSwitch: () => void;
 }
@@ -214,8 +214,14 @@ export function CaseProvider({
   const requestIntent = useCallback(async (intent: SwitchIntent) => {
     const guard = guardRef.current;
     if (guard?.dirty) {
-      setPendingIntent(intent);
-      setDialogError(null);
+      try {
+        await guard.save();
+        await executeIntent(intent);
+      } catch (error) {
+        setPendingIntent(intent);
+        setDialogBusy(false);
+        setDialogError(error instanceof Error ? error.message : String(error));
+      }
       return;
     }
 
@@ -260,7 +266,7 @@ export function CaseProvider({
     await executeIntent(nextIntent);
   }, [executeIntent, pendingIntent]);
 
-  const confirmSaveAndContinue = useCallback(async () => {
+  const retrySaveAndContinue = useCallback(async () => {
     if (!pendingIntent || !guardRef.current) {
       return;
     }
@@ -298,7 +304,7 @@ export function CaseProvider({
       error: dialogError,
       targetLabel: pendingIntent ? intentLabel(pendingIntent) : "",
     },
-    confirmSaveAndContinue,
+    retrySaveAndContinue,
     discardAndContinue,
     cancelSwitch,
   }), [
@@ -308,7 +314,6 @@ export function CaseProvider({
     activeStage,
     browserQuery,
     cancelSwitch,
-    confirmSaveAndContinue,
     createAndOpen,
     dialogBusy,
     dialogError,
@@ -317,6 +322,7 @@ export function CaseProvider({
     pendingIntent,
     ready,
     registerNavigationGuard,
+    retrySaveAndContinue,
     setBrowserQuery,
     showBrowser,
   ]);
