@@ -30,6 +30,8 @@ interface State {
   saving: boolean;
   saveError: string | null;
   lastSavedAt: number | null;
+  jobUpdatedAt: string | null;
+  speakerMapConfirmed: boolean;
   changeLog: ChangeLogEntry[];
   activeUtteranceId: UtteranceId | null;
   workingTexts: Record<UtteranceId, string>;
@@ -39,7 +41,7 @@ interface State {
 
 type Action =
   | { type: "LOAD_START" }
-  | { type: "LOAD_OK"; doc: EditorDocument }
+  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean }
   | { type: "LOAD_ERR"; error: string }
   | { type: "SET_ACTIVE"; id: UtteranceId | null }
   | {
@@ -52,9 +54,11 @@ type Action =
       suggestion_id?: string;
     }
   | { type: "SAVE_START" }
-  | { type: "SAVE_OK"; savedSeq: number }
+  | { type: "SAVE_OK"; savedSeq: number; updatedAt: string | null }
   | { type: "SAVE_ERR"; error: string }
   | { type: "UPDATE_SPEAKERS"; speakers: Speaker[] }
+  | { type: "SET_TRANSCRIPT_VERSION"; updatedAt: string | null }
+  | { type: "SET_SPEAKER_MAP_CONFIRMED"; confirmed: boolean }
   | { type: "MARK_REVIEWED"; word_ids: string[] }
   | { type: "MARK_UNREVIEWED"; word_ids: string[] };
 
@@ -79,6 +83,8 @@ export function documentReducer(state: State, action: Action): State {
         dirty: false,
         changeLog: [],
         editSeq: 0,
+        jobUpdatedAt: action.updatedAt,
+        speakerMapConfirmed: action.speakerMapConfirmed,
       };
 
     case "LOAD_ERR":
@@ -120,6 +126,7 @@ export function documentReducer(state: State, action: Action): State {
         dirty: state.editSeq !== action.savedSeq,
         saveError: null,
         lastSavedAt: Date.now(),
+        jobUpdatedAt: action.updatedAt,
       };
 
     case "SAVE_ERR":
@@ -132,6 +139,12 @@ export function documentReducer(state: State, action: Action): State {
         document: { ...state.document, speakers: action.speakers },
       };
     }
+
+    case "SET_TRANSCRIPT_VERSION":
+      return { ...state, jobUpdatedAt: action.updatedAt };
+
+    case "SET_SPEAKER_MAP_CONFIRMED":
+      return { ...state, speakerMapConfirmed: action.confirmed };
 
     case "MARK_REVIEWED": {
       if (!state.document) return state;
@@ -179,6 +192,8 @@ interface ContextValue {
   ) => void;
   saveNow: () => Promise<void>;
   updateSpeakers: (speakers: Speaker[]) => void;
+  setTranscriptVersion: (updatedAt: string | null) => void;
+  setSpeakerMapConfirmed: (confirmed: boolean) => void;
   markReviewed: (word_ids: string[]) => void;
   markUnreviewed: (word_ids: string[]) => void;
   getUtteranceText: (utterance_id: UtteranceId) => string;
@@ -196,6 +211,8 @@ export function createInitialDocumentState(jobId: string): State {
     saving: false,
     saveError: null,
     lastSavedAt: null,
+    jobUpdatedAt: null,
+    speakerMapConfirmed: false,
     changeLog: [],
     activeUtteranceId: null,
     workingTexts: {},
@@ -218,9 +235,14 @@ export function DocumentProvider({
   const loadDocument = useCallback(async () => {
     dispatch({ type: "LOAD_START" });
     try {
-      const doc = await workspaceApi.getDocument(jobId);
-      console.info("[DEPO-PRO] EditorDocument loaded:", doc);
-      dispatch({ type: "LOAD_OK", doc });
+      const loaded = await workspaceApi.getDocument(jobId);
+      console.info("[DEPO-PRO] EditorDocument loaded:", loaded.document);
+      dispatch({
+        type: "LOAD_OK",
+        doc: loaded.document,
+        updatedAt: loaded.updatedAt,
+        speakerMapConfirmed: loaded.speakerMapConfirmed,
+      });
     } catch (e) {
       dispatch({ type: "LOAD_ERR", error: String(e) });
     }
@@ -275,12 +297,14 @@ export function DocumentProvider({
     const savedSeq = state.editSeq;
     dispatch({ type: "SAVE_START" });
     try {
-      await workspaceApi.saveWorking(jobId, { changes, source: "editor" });
-      dispatch({ type: "SAVE_OK", savedSeq });
+      const result = await workspaceApi.saveWorking(jobId, { changes, source: "editor" }, {
+        lastKnownUpdatedAt: state.jobUpdatedAt,
+      });
+      dispatch({ type: "SAVE_OK", savedSeq, updatedAt: result.updatedAt });
     } catch (e) {
       dispatch({ type: "SAVE_ERR", error: String(e) });
     }
-  }, [jobId, state.dirty, state.document, state.editSeq, state.saving, state.workingTexts]);
+  }, [jobId, state.dirty, state.document, state.editSeq, state.jobUpdatedAt, state.saving, state.workingTexts]);
 
   // Auto-save after 2 s of inactivity
   useEffect(() => {
@@ -312,6 +336,14 @@ export function DocumentProvider({
 
   const updateSpeakers = useCallback((speakers: Speaker[]) => {
     dispatch({ type: "UPDATE_SPEAKERS", speakers });
+  }, []);
+
+  const setTranscriptVersion = useCallback((updatedAt: string | null) => {
+    dispatch({ type: "SET_TRANSCRIPT_VERSION", updatedAt });
+  }, []);
+
+  const setSpeakerMapConfirmed = useCallback((confirmed: boolean) => {
+    dispatch({ type: "SET_SPEAKER_MAP_CONFIRMED", confirmed });
   }, []);
 
   const markReviewed = useCallback((word_ids: string[]) => {
@@ -347,11 +379,13 @@ export function DocumentProvider({
       logSuggestionEdit,
       saveNow,
       updateSpeakers,
+      setTranscriptVersion,
+      setSpeakerMapConfirmed,
       markReviewed,
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

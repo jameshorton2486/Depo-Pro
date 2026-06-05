@@ -12,7 +12,12 @@ import { workspaceApi } from "../../api/workspaceService";
 
 export function ConfidencePanel() {
   const { editor } = useEditorContext();
-  const { state: docState, markReviewed, markUnreviewed } = useDocument();
+  const {
+    state: docState,
+    markReviewed,
+    markUnreviewed,
+    setTranscriptVersion,
+  } = useDocument();
   const audio = useAudio();
   const jobId = docState.document?.job_id ?? "demo";
 
@@ -92,12 +97,15 @@ export function ConfidencePanel() {
       try {
         const newReviewedIds = new Set(reviewedIds);
         newReviewedIds.add(word.word_id);
-        await workspaceApi.saveReview(jobId, {
+        const result = await workspaceApi.saveReview(jobId, {
           reviewed_word_ids: Array.from(newReviewedIds),
           unreviewed_word_ids: [],
+        }, {
+          lastKnownUpdatedAt: docState.jobUpdatedAt,
         });
-      } catch {
-        // silent — best-effort
+        setTranscriptVersion(result.updatedAt);
+      } catch (error) {
+        console.error("[DEPO-PRO] saveReview failed", error);
       } finally {
         setSaving(false);
       }
@@ -107,7 +115,7 @@ export function ConfidencePanel() {
         setQueueIdx(Math.max(0, lowConfWords.length - 2));
       }
     },
-    [editor, markReviewed, reviewedIds, jobId, clampedIdx, lowConfWords]
+    [clampedIdx, docState.jobUpdatedAt, editor, jobId, lowConfWords, markReviewed, reviewedIds, setTranscriptVersion]
   );
 
   const handleUnreview = useCallback(
@@ -125,17 +133,20 @@ export function ConfidencePanel() {
       try {
         const newReviewedIds = new Set(reviewedIds);
         newReviewedIds.delete(wordId);
-        await workspaceApi.saveReview(jobId, {
+        const result = await workspaceApi.saveReview(jobId, {
           reviewed_word_ids: Array.from(newReviewedIds),
           unreviewed_word_ids: [wordId],
+        }, {
+          lastKnownUpdatedAt: docState.jobUpdatedAt,
         });
-      } catch {
-        // silent
+        setTranscriptVersion(result.updatedAt);
+      } catch (error) {
+        console.error("[DEPO-PRO] saveReview failed", error);
       } finally {
         setSaving(false);
       }
     },
-    [editor, markUnreviewed, reviewedIds, jobId]
+    [docState.jobUpdatedAt, editor, jobId, markUnreviewed, reviewedIds, setTranscriptVersion]
   );
 
   const progressPct =

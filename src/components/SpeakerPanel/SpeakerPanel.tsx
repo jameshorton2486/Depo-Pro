@@ -23,7 +23,12 @@ const ROLE_COLORS: Record<NonNullable<Speaker["role"]>, string> = {
 };
 
 export function SpeakerPanel() {
-  const { state, updateSpeakers } = useDocument();
+  const {
+    state,
+    updateSpeakers,
+    setTranscriptVersion,
+    setSpeakerMapConfirmed,
+  } = useDocument();
   const { editor } = useEditorContext();
 
   const [editing, setEditing] = useState<string | null>(null);
@@ -34,10 +39,7 @@ export function SpeakerPanel() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const speakers = state.document?.speakers ?? [];
-  const speakerMapConfirmed = speakers.length > 0 && speakers.every((speaker) => {
-    const displayName = speaker.display_name.trim();
-    return displayName.length > 0 && speaker.role;
-  });
+  const speakerMapConfirmed = state.speakerMapConfirmed;
 
   const startEdit = useCallback((spk: Speaker) => {
     setEditing(spk.speaker_id);
@@ -92,15 +94,19 @@ export function SpeakerPanel() {
       setSaveError(null);
       try {
         const jobId = state.document?.job_id ?? "";
-        await workspaceApi.saveSpeakers(jobId, {
+        const result = await workspaceApi.saveSpeakers(jobId, {
           speakers: updated.map((s) => ({
             speaker_id: s.speaker_id,
             display_name: s.display_name,
             role: s.role,
           })),
+        }, {
+          lastKnownUpdatedAt: state.jobUpdatedAt,
         });
         // Optimistic: update context + relabel editor nodes simultaneously
         updateSpeakers(updated);
+        setTranscriptVersion(result.updatedAt);
+        setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false);
         relabelInEditor(id, draft.display_name, draft.role);
         setEditing(null);
         setDrafts((d) => {
@@ -108,13 +114,23 @@ export function SpeakerPanel() {
           delete next[id];
           return next;
         });
-      } catch {
-        setSaveError("Save failed — please retry.");
+      } catch (error) {
+        console.error("[DEPO-PRO] saveSpeakers failed", error);
+        setSaveError(error instanceof Error ? error.message : "Save failed — please retry.");
       } finally {
         setSaving(false);
       }
     },
-    [drafts, speakers, updateSpeakers, relabelInEditor, state.document]
+    [
+      drafts,
+      relabelInEditor,
+      setSpeakerMapConfirmed,
+      setTranscriptVersion,
+      speakers,
+      state.document,
+      state.jobUpdatedAt,
+      updateSpeakers,
+    ]
   );
 
   return (
@@ -178,7 +194,12 @@ export function SpeakerPanel() {
       </div>
 
       {/* Utterance reassignment section */}
-      <UtteranceReassignment speakers={speakers} />
+      <UtteranceReassignment
+        speakers={speakers}
+        jobUpdatedAt={state.jobUpdatedAt}
+        setTranscriptVersion={setTranscriptVersion}
+        setSpeakerMapConfirmed={setSpeakerMapConfirmed}
+      />
     </div>
   );
 }
@@ -309,7 +330,17 @@ function SpeakerCard({
 // Shows the active utterance (from DocumentContext) and lets the user
 // reassign its speaker. Applies instantly to the editor node attrs.
 
-function UtteranceReassignment({ speakers }: { speakers: Speaker[] }) {
+function UtteranceReassignment({
+  speakers,
+  jobUpdatedAt,
+  setTranscriptVersion,
+  setSpeakerMapConfirmed,
+}: {
+  speakers: Speaker[];
+  jobUpdatedAt: string | null;
+  setTranscriptVersion: (updatedAt: string | null) => void;
+  setSpeakerMapConfirmed: (confirmed: boolean) => void;
+}) {
   const { state } = useDocument();
   const { editor } = useEditorContext();
   const [assigning, setAssigning] = useState(false);
@@ -361,7 +392,7 @@ function UtteranceReassignment({ speakers }: { speakers: Speaker[] }) {
       setSaving(true);
       try {
         const jobId = state.document?.job_id ?? "";
-        await workspaceApi.saveSpeakers(jobId, {
+        const result = await workspaceApi.saveSpeakers(jobId, {
           speakers: speakers.map((s) => ({
             speaker_id: s.speaker_id,
             display_name: s.display_name,
@@ -373,14 +404,26 @@ function UtteranceReassignment({ speakers }: { speakers: Speaker[] }) {
               speaker_id: newSpeakerId,
             },
           ],
+        }, {
+          lastKnownUpdatedAt: jobUpdatedAt,
         });
-      } catch {
-        // silent best-effort
+        setTranscriptVersion(result.updatedAt);
+        setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false);
+      } catch (error) {
+        console.error("[DEPO-PRO] saveSpeakers failed", error);
       } finally {
         setSaving(false);
       }
     },
-    [editor, activeId, speakers, state.document]
+    [
+      activeId,
+      editor,
+      setSpeakerMapConfirmed,
+      setTranscriptVersion,
+      speakers,
+      state.document,
+      jobUpdatedAt,
+    ]
   );
 
   if (!activeId) {

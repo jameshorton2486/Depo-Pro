@@ -21,6 +21,26 @@ import { getSupabaseClient } from "../lib/supabase";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
 
+export interface WorkspaceLoadResult {
+  document: EditorDocument;
+  updatedAt: string | null;
+  speakerMapConfirmed: boolean;
+}
+
+export interface WorkspaceMutationOptions {
+  lastKnownUpdatedAt?: string | null;
+}
+
+export interface WorkspaceSaveResult extends SaveWorkingResponse {
+  updatedAt: string | null;
+}
+
+export interface WorkspaceMutationResult {
+  ok: true;
+  updatedAt: string | null;
+  speakerMapConfirmed?: boolean;
+}
+
 function mapSpeakerRole(role: string | null | undefined): Speaker["role"] | undefined {
   switch (role) {
     case "court_reporter":
@@ -86,7 +106,7 @@ function buildEditorDocumentFromSnapshot(
   };
 }
 
-async function loadDocumentFromDatabase(caseId: string): Promise<EditorDocument> {
+async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResult> {
   const latestJob = await getLatestCompletedTranscriptJob(caseId);
   if (!latestJob) {
     throw new Error("No transcript has been generated for this case yet.");
@@ -101,93 +121,259 @@ async function loadDocumentFromDatabase(caseId: string): Promise<EditorDocument>
     ? await getSignedUrl(snapshot.job.media_url)
     : "";
 
-  return buildEditorDocumentFromSnapshot(snapshot, mediaUrl);
+  return {
+    document: buildEditorDocumentFromSnapshot(snapshot, mediaUrl),
+    updatedAt: snapshot.job.updated_at,
+    speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
+  };
 }
 
-async function naivePersistWorking(jobId: string, payload: SaveWorkingPayload): Promise<SaveWorkingResponse> {
+function isTransientWorkspaceError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes("fetch failed") || message.includes("network") || message.includes("timeout");
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  const delays = [0, 150, 350];
+  let lastError: unknown = null;
+
+  for (const delay of delays) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientWorkspaceError(error) || delay === delays[delays.length - 1]) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+async function requireFreshTranscript(
+  jobId: string,
+  lastKnownUpdatedAt?: string | null,
+) {
+  const job = await getTranscriptJobByJobId(jobId);
+  if (!job) {
+    throw new Error(`Transcript job ${jobId} was not found.`);
+  }
+
+  if (lastKnownUpdatedAt && job.updated_at !== lastKnownUpdatedAt) {
+    throw new Error("Transcript changed elsewhere — reload.");
+  }
+
+  return job;
+}
+
+async function appendAuditEntries(entries: Array<{
+  transcript_id: string;
+  case_id: string;
+  job_id: string;
+  action: "edit_word" | "mark_reviewed" | "assign_speaker" | "bulk_save";
+  utterance_id?: string | null;
+  word_id?: string | null;
+  before_text?: string | null;
+  after_text?: string | null;
+}>): Promise<void> {
+  if (entries.length === 0) {
+    return;
+  }
+
+  const client = await getSupabaseClient("appendTranscriptAuditEntries");
+  const rows = entries.map((entry, index) => ({
+    transcript_id: entry.transcript_id,
+    change_id: `chg_${entry.job_id}_${Date.now()}_${index}`,
+    utterance_id: entry.utterance_id ?? null,
+    word_id: entry.word_id ?? null,
+    old_text: entry.before_text ?? null,
+    new_text: entry.after_text ?? null,
+    source: "workspace",
+    suggestion_id: null,
+    reviewer_user_id: null,
+    case_id: entry.case_id,
+    job_id: entry.job_id,
+    actor: null,
+    action: entry.action,
+    before_text: entry.before_text ?? null,
+    after_text: entry.after_text ?? null,
+  }));
+
+  const { error } = await client.from("transcript_audit_log").insert(rows);
+  if (error) {
+    throw error;
+  }
+}
+
+async function naivePersistWorking(
+  jobId: string,
+  payload: SaveWorkingPayload,
+  options: WorkspaceMutationOptions = {},
+): Promise<WorkspaceSaveResult> {
+  const job = await requireFreshTranscript(jobId, options.lastKnownUpdatedAt);
   const snapshot = await loadTranscriptSnapshot(jobId);
   if (!snapshot) {
     throw new Error(`Transcript job ${jobId} was not found.`);
   }
 
-  const client = await getSupabaseClient("naivePersistWorking");
-  let saved = 0;
+  return withRetry(async () => {
+    const client = await getSupabaseClient("naivePersistWorking");
+    let saved = 0;
+    const auditEntries: Array<{
+      transcript_id: string;
+      case_id: string;
+      job_id: string;
+      action: "edit_word" | "bulk_save";
+      utterance_id?: string | null;
+      word_id?: string | null;
+      before_text?: string | null;
+      after_text?: string | null;
+    }> = [];
 
-  for (const change of payload.changes) {
-    const utteranceWords = snapshot.words.filter((word) => word.utterance_id === change.utterance_id);
-    if (utteranceWords.length === 0) {
-      continue;
+    for (const change of payload.changes) {
+      const utteranceWords = snapshot.words
+        .filter((word) => word.utterance_id === change.utterance_id && !word.removed);
+      if (utteranceWords.length === 0) {
+        continue;
+      }
+
+      const tokens = change.working_text.trim().length > 0
+        ? change.working_text.trim().split(/\s+/)
+        : [""];
+
+      for (let index = 0; index < utteranceWords.length; index += 1) {
+        const word = utteranceWords[index];
+        const beforeText = word.working_text ?? word.raw_text;
+        const nextText = index < utteranceWords.length - 1
+          ? (tokens[index] ?? "")
+          : tokens.slice(index).join(" ");
+        const workingText = nextText === word.raw_text ? null : nextText;
+
+        if (beforeText === nextText) {
+          continue;
+        }
+
+        const { error } = await client
+          .from("transcript_words")
+          .update({
+            working_text: workingText,
+            text: workingText ?? word.raw_text,
+            edited: Boolean(workingText),
+          })
+          .eq("job_id", jobId)
+          .eq("word_id", word.word_id);
+
+        if (error) {
+          throw error;
+        }
+
+        auditEntries.push({
+          transcript_id: snapshot.job.transcript_id,
+          case_id: snapshot.job.case_id,
+          job_id: jobId,
+          action: "edit_word",
+          utterance_id: change.utterance_id,
+          word_id: word.word_id,
+          before_text: beforeText,
+          after_text: nextText,
+        });
+      }
+
+      const { error: utteranceError } = await client
+        .from("transcript_utterances")
+        .update({ text: change.working_text })
+        .eq("job_id", jobId)
+        .eq("utterance_id", change.utterance_id);
+
+      if (utteranceError) {
+        throw utteranceError;
+      }
+
+      saved += 1;
     }
 
-    const tokens = change.working_text.trim().length > 0
-      ? change.working_text.trim().split(/\s+/)
-      : [""];
+    if (saved > 0) {
+      auditEntries.push({
+        transcript_id: snapshot.job.transcript_id,
+        case_id: snapshot.job.case_id,
+        job_id: jobId,
+        action: "bulk_save",
+        before_text: `${saved} utterance change(s)`,
+        after_text: "persisted",
+      });
+    }
+    await appendAuditEntries(auditEntries);
 
-    for (let index = 0; index < utteranceWords.length; index += 1) {
-      const word = utteranceWords[index];
-      const nextText = index < utteranceWords.length - 1
-        ? (tokens[index] ?? "")
-        : tokens.slice(index).join(" ");
-      const workingText = nextText === word.raw_text ? null : nextText;
+    const updatedJob = await updateTranscriptJob(job.transcript_id, { status: job.status });
+    return { saved, updatedAt: updatedJob.updated_at };
+  });
+}
 
+async function persistReview(
+  jobId: string,
+  payload: ReviewPayload,
+  options: WorkspaceMutationOptions = {},
+): Promise<WorkspaceMutationResult> {
+  const job = await requireFreshTranscript(jobId, options.lastKnownUpdatedAt);
+
+  return withRetry(async () => {
+    const client = await getSupabaseClient("persistReview");
+    const snapshot = await loadTranscriptSnapshot(jobId);
+    const wordMap = new Map((snapshot?.words ?? []).map((word) => [word.word_id, word]));
+
+    if (payload.reviewed_word_ids.length > 0) {
       const { error } = await client
         .from("transcript_words")
-        .update({
-          working_text: workingText,
-          text: workingText ?? word.raw_text,
-          edited: Boolean(workingText),
-        })
+        .update({ reviewed: true })
         .eq("job_id", jobId)
-        .eq("word_id", word.word_id);
-
+        .in("word_id", payload.reviewed_word_ids);
       if (error) {
         throw error;
       }
     }
 
-    const { error: utteranceError } = await client
-      .from("transcript_utterances")
-      .update({ text: change.working_text })
-      .eq("job_id", jobId)
-      .eq("utterance_id", change.utterance_id);
-
-    if (utteranceError) {
-      throw utteranceError;
+    if (payload.unreviewed_word_ids.length > 0) {
+      const { error } = await client
+        .from("transcript_words")
+        .update({ reviewed: false })
+        .eq("job_id", jobId)
+        .in("word_id", payload.unreviewed_word_ids);
+      if (error) {
+        throw error;
+      }
     }
 
-    saved += 1;
-  }
+    await appendAuditEntries([
+      ...payload.reviewed_word_ids.map((wordId) => ({
+        transcript_id: job.transcript_id,
+        case_id: job.case_id,
+        job_id: jobId,
+        action: "mark_reviewed" as const,
+        word_id: wordId,
+        utterance_id: wordMap.get(wordId)?.utterance_id ?? null,
+        before_text: wordMap.get(wordId)?.reviewed ? "reviewed" : "unreviewed",
+        after_text: "reviewed",
+      })),
+      ...payload.unreviewed_word_ids.map((wordId) => ({
+        transcript_id: job.transcript_id,
+        case_id: job.case_id,
+        job_id: jobId,
+        action: "mark_reviewed" as const,
+        word_id: wordId,
+        utterance_id: wordMap.get(wordId)?.utterance_id ?? null,
+        before_text: wordMap.get(wordId)?.reviewed ? "reviewed" : "unreviewed",
+        after_text: "unreviewed",
+      })),
+    ]);
 
-  await updateTranscriptJob(snapshot.job.transcript_id, { status: snapshot.job.status });
-  return { saved };
-}
-
-async function persistReview(jobId: string, payload: ReviewPayload): Promise<{ ok: true }> {
-  const client = await getSupabaseClient("persistReview");
-
-  if (payload.reviewed_word_ids.length > 0) {
-    const { error } = await client
-      .from("transcript_words")
-      .update({ reviewed: true })
-      .eq("job_id", jobId)
-      .in("word_id", payload.reviewed_word_ids);
-    if (error) {
-      throw error;
-    }
-  }
-
-  if (payload.unreviewed_word_ids.length > 0) {
-    const { error } = await client
-      .from("transcript_words")
-      .update({ reviewed: false })
-      .eq("job_id", jobId)
-      .in("word_id", payload.unreviewed_word_ids);
-    if (error) {
-      throw error;
-    }
-  }
-
-  return { ok: true };
+    const updatedJob = await updateTranscriptJob(job.transcript_id, { status: job.status });
+    return { ok: true, updatedAt: updatedJob.updated_at };
+  });
 }
 
 function isSpeakerMapConfirmed(speakers: SpeakersPayload["speakers"]): boolean {
@@ -197,65 +383,106 @@ function isSpeakerMapConfirmed(speakers: SpeakersPayload["speakers"]): boolean {
   });
 }
 
-async function persistSpeakers(jobId: string, payload: SpeakersPayload): Promise<{ ok: true }> {
-  const client = await getSupabaseClient("persistSpeakers");
+async function persistSpeakers(
+  jobId: string,
+  payload: SpeakersPayload,
+  options: WorkspaceMutationOptions = {},
+): Promise<WorkspaceMutationResult> {
+  const job = await requireFreshTranscript(jobId, options.lastKnownUpdatedAt);
 
-  for (const speaker of payload.speakers) {
-    const { error } = await client
-      .from("transcript_speakers")
-      .update({
-        assigned_name: speaker.display_name,
-        speaker_label: speaker.display_name,
-        display_name: speaker.display_name,
-        speaker_role: speaker.role ? speaker.role.toLowerCase() : null,
-        role: speaker.role ? speaker.role.toLowerCase() : null,
-      })
-      .eq("job_id", jobId)
-      .eq("speaker_id", speaker.speaker_id);
+  return withRetry(async () => {
+    const client = await getSupabaseClient("persistSpeakers");
+    const auditEntries: Array<{
+      transcript_id: string;
+      case_id: string;
+      job_id: string;
+      action: "assign_speaker";
+      utterance_id?: string | null;
+      word_id?: string | null;
+      before_text?: string | null;
+      after_text?: string | null;
+    }> = [];
 
-    if (error) {
-      throw error;
-    }
-  }
-
-  if (payload.utterance_speaker_map) {
-    for (const assignment of payload.utterance_speaker_map) {
-      const speaker = payload.speakers.find((item) => item.speaker_id === assignment.speaker_id);
-      const { error: utteranceError } = await client
-        .from("transcript_utterances")
+    for (const speaker of payload.speakers) {
+      const { error } = await client
+        .from("transcript_speakers")
         .update({
-          speaker_id: assignment.speaker_id,
-          speaker_label: speaker?.display_name ?? assignment.speaker_id,
+          assigned_name: speaker.display_name,
+          speaker_label: speaker.display_name,
+          display_name: speaker.display_name,
+          speaker_role: speaker.role ? speaker.role.toLowerCase() : null,
+          role: speaker.role ? speaker.role.toLowerCase() : null,
         })
         .eq("job_id", jobId)
-        .eq("utterance_id", assignment.utterance_id);
+        .eq("speaker_id", speaker.speaker_id);
 
-      if (utteranceError) {
-        throw utteranceError;
+      if (error) {
+        throw error;
       }
 
-      const { error: wordError } = await client
-        .from("transcript_words")
-        .update({
-          speaker_id: assignment.speaker_id,
-        })
-        .eq("job_id", jobId)
-        .eq("utterance_id", assignment.utterance_id);
+      auditEntries.push({
+        transcript_id: job.transcript_id,
+        case_id: job.case_id,
+        job_id: jobId,
+        action: "assign_speaker",
+        before_text: speaker.speaker_id,
+        after_text: `${speaker.display_name}${speaker.role ? ` (${speaker.role})` : ""}`,
+      });
+    }
 
-      if (wordError) {
-        throw wordError;
+    if (payload.utterance_speaker_map) {
+      for (const assignment of payload.utterance_speaker_map) {
+        const speaker = payload.speakers.find((item) => item.speaker_id === assignment.speaker_id);
+        const { error: utteranceError } = await client
+          .from("transcript_utterances")
+          .update({
+            speaker_id: assignment.speaker_id,
+            speaker_label: speaker?.display_name ?? assignment.speaker_id,
+          })
+          .eq("job_id", jobId)
+          .eq("utterance_id", assignment.utterance_id);
+
+        if (utteranceError) {
+          throw utteranceError;
+        }
+
+        const { error: wordError } = await client
+          .from("transcript_words")
+          .update({
+            speaker_id: assignment.speaker_id,
+          })
+          .eq("job_id", jobId)
+          .eq("utterance_id", assignment.utterance_id);
+
+        if (wordError) {
+          throw wordError;
+        }
+
+        auditEntries.push({
+          transcript_id: job.transcript_id,
+          case_id: job.case_id,
+          job_id: jobId,
+          action: "assign_speaker",
+          utterance_id: assignment.utterance_id,
+          before_text: "speaker reassignment",
+          after_text: assignment.speaker_id,
+        });
       }
     }
-  }
 
-  const job = await getTranscriptJobByJobId(jobId);
-  if (job) {
-    await updateTranscriptJob(job.transcript_id, {
+    await appendAuditEntries(auditEntries);
+
+    const updatedJob = await updateTranscriptJob(job.transcript_id, {
+      status: job.status,
       speaker_map_confirmed: isSpeakerMapConfirmed(payload.speakers),
     });
-  }
 
-  return { ok: true };
+    return {
+      ok: true,
+      updatedAt: updatedJob.updated_at,
+      speakerMapConfirmed: updatedJob.speaker_map_confirmed,
+    };
+  });
 }
 
 async function getTranscriptChecklist(jobId: string): Promise<CertifyChecklist> {
@@ -297,17 +524,29 @@ export async function listWorkspaceTranscriptJobs(caseId: string) {
 }
 
 export const workspaceApi = {
-  getDocument: async (caseId: string) => (
-    USE_MOCK_WORKSPACE ? mockApi.getDocument(caseId) : loadDocumentFromDatabase(caseId)
+  getDocument: async (caseId: string): Promise<WorkspaceLoadResult> => (
+    USE_MOCK_WORKSPACE
+      ? {
+          document: await mockApi.getDocument(caseId),
+          updatedAt: null,
+          speakerMapConfirmed: false,
+        }
+      : loadWorkspaceDocument(caseId)
   ),
-  saveWorking: async (jobId: string, payload: SaveWorkingPayload) => (
-    USE_MOCK_WORKSPACE ? mockApi.saveWorking(jobId, payload) : naivePersistWorking(jobId, payload)
+  saveWorking: async (jobId: string, payload: SaveWorkingPayload, options?: WorkspaceMutationOptions) => (
+    USE_MOCK_WORKSPACE
+      ? { ...(await mockApi.saveWorking(jobId, payload)), updatedAt: null }
+      : naivePersistWorking(jobId, payload, options)
   ),
-  saveReview: async (jobId: string, payload: ReviewPayload) => (
-    USE_MOCK_WORKSPACE ? mockApi.saveReview(jobId, payload) : persistReview(jobId, payload)
+  saveReview: async (jobId: string, payload: ReviewPayload, options?: WorkspaceMutationOptions) => (
+    USE_MOCK_WORKSPACE
+      ? { ...(await mockApi.saveReview(jobId, payload)), updatedAt: null }
+      : persistReview(jobId, payload, options)
   ),
-  saveSpeakers: async (jobId: string, payload: SpeakersPayload) => (
-    USE_MOCK_WORKSPACE ? mockApi.saveSpeakers(jobId, payload) : persistSpeakers(jobId, payload)
+  saveSpeakers: async (jobId: string, payload: SpeakersPayload, options?: WorkspaceMutationOptions) => (
+    USE_MOCK_WORKSPACE
+      ? { ...(await mockApi.saveSpeakers(jobId, payload)), updatedAt: null, speakerMapConfirmed: false }
+      : persistSpeakers(jobId, payload, options)
   ),
   getSuggestions: async (jobId: string) => (
     USE_MOCK_WORKSPACE ? mockApi.getSuggestions(jobId) : []

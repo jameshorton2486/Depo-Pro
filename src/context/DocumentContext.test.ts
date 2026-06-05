@@ -44,7 +44,12 @@ function buildDocument(): EditorDocument {
 describe("documentReducer save sequencing", () => {
   it("clears dirty when the acknowledged save matches the latest edit sequence", () => {
     let state = createInitialDocumentState("case_test_001");
-    state = documentReducer(state, { type: "LOAD_OK", doc: buildDocument() });
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+    });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",
       utterance_id: "utt_001",
@@ -54,7 +59,11 @@ describe("documentReducer save sequencing", () => {
       source: "editor",
     });
 
-    state = documentReducer(state, { type: "SAVE_OK", savedSeq: 1 });
+    state = documentReducer(state, {
+      type: "SAVE_OK",
+      savedSeq: 1,
+      updatedAt: "2026-06-05T00:00:01.000Z",
+    });
 
     expect(state.dirty).toBe(false);
     expect(state.editSeq).toBe(1);
@@ -62,7 +71,12 @@ describe("documentReducer save sequencing", () => {
 
   it("keeps dirty true when a later edit lands before save acknowledgement", () => {
     let state = createInitialDocumentState("case_test_001");
-    state = documentReducer(state, { type: "LOAD_OK", doc: buildDocument() });
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+    });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",
       utterance_id: "utt_001",
@@ -81,7 +95,11 @@ describe("documentReducer save sequencing", () => {
       source: "editor",
     });
 
-    state = documentReducer(state, { type: "SAVE_OK", savedSeq: 1 });
+    state = documentReducer(state, {
+      type: "SAVE_OK",
+      savedSeq: 1,
+      updatedAt: "2026-06-05T00:00:01.000Z",
+    });
 
     expect(state.dirty).toBe(true);
     expect(state.editSeq).toBe(2);
