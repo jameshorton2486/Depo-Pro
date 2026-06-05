@@ -166,16 +166,18 @@ function CaseScopedShell({
   activeCaseId,
   initialStage,
   initialRecord,
+  initialProvenance,
 }: {
   config: DepoEditorConfig;
   activeCaseId: string;
   initialStage: AppStage;
   initialRecord: ReturnType<typeof useCase>["activeRecord"];
+  initialProvenance: ReturnType<typeof useCase>["activeProvenance"];
 }) {
   return (
     <StageProvider initialStage={initialStage}>
       <IntakeProvider initialRecord={initialRecord}>
-        <ConflictProvider>
+        <ConflictProvider initialProvenance={initialProvenance}>
           <KeytermProvider initialTerms={[]}>
             <StageRouter config={config} activeCaseId={activeCaseId} />
           </KeytermProvider>
@@ -186,7 +188,7 @@ function CaseScopedShell({
 }
 
 function CaseShell({ config }: { config: DepoEditorConfig }) {
-  const { ready, activeCaseId, activeRecord, activeStage } = useCase();
+  const { ready, activeCaseId, activeRecord, activeStage, activeProvenance } = useCase();
 
   if (!ready) {
     return (
@@ -205,6 +207,7 @@ function CaseShell({ config }: { config: DepoEditorConfig }) {
           activeCaseId={activeCaseId}
           initialStage={activeStage}
           initialRecord={activeRecord}
+          initialProvenance={activeProvenance}
         />
       ) : (
         <CaseBrowserScreen />

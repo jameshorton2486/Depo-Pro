@@ -19,8 +19,10 @@ import type {
   ProvenanceEntry,
   ActiveConflict,
   ConflictOption,
+  FieldProvenanceRow,
 } from "./types";
 import type { DisplaySource } from "../ExtractedFieldsTable/fieldProjection";
+import { deriveOpenConflicts } from "../../lib/conflicts/deriveOpenConflicts";
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
@@ -101,15 +103,37 @@ function conflictReducer(state: ConflictState, action: ConflictAction): Conflict
   }
 }
 
-// ─── Initial state ────────────────────────────────────────────────────────────
+function buildStateFromProvenance(rows: FieldProvenanceRow[]): ConflictState {
+  const history: ConflictState["history"] = {};
 
-function initialState(): ConflictState {
+  for (const row of rows) {
+    history[row.field_path] = [row, ...(history[row.field_path] ?? [])];
+  }
+
+  const active = Object.fromEntries(
+    deriveOpenConflicts(rows).map((conflict) => [conflict.field_path, conflict]),
+  );
+
   return {
-    history: {},
-    active: {},
+    history,
+    active,
     modalFieldPath: null,
     persisting: false,
   };
+}
+
+function conflictsMatch(existing: ActiveConflict | undefined, next: ActiveConflict): boolean {
+  if (!existing) {
+    return false;
+  }
+
+  return (
+    existing.field_path === next.field_path
+    && existing.option_a.value === next.option_a.value
+    && existing.option_a.source === next.option_a.source
+    && existing.option_b.value === next.option_b.value
+    && existing.option_b.source === next.option_b.source
+  );
 }
 
 function toDatabaseEntry(entry: ProvenanceEntry): Omit<ProvenanceEntry, "id"> {
@@ -225,8 +249,14 @@ const ConflictContext = createContext<ConflictContextValue | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-export function ConflictProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(conflictReducer, undefined, initialState);
+export function ConflictProvider({
+  children,
+  initialProvenance = [],
+}: {
+  children: ReactNode;
+  initialProvenance?: FieldProvenanceRow[];
+}) {
+  const [state, dispatch] = useReducer(conflictReducer, initialProvenance, buildStateFromProvenance);
 
   const makeId = () =>
     `prov_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -294,10 +324,13 @@ export function ConflictProvider({ children }: { children: ReactNode }) {
         resolution_user: "reporter",
         resolved_at: new Date().toISOString(),
       };
+      if (conflictsMatch(state.active[fieldPath], conflict)) {
+        return;
+      }
       dispatch({ type: "DETECT_CONFLICT", payload: { conflict, entry } });
       persistEntry(entry);
     },
-    [],
+    [state.active],
   );
 
   const resolveConflict = useCallback(
@@ -367,9 +400,12 @@ export function ConflictProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadHistory = useCallback(async (caseId: string, fieldPath: string) => {
+    if (state.history[fieldPath]) {
+      return;
+    }
     const entries = await fetchHistory(caseId, fieldPath);
     dispatch({ type: "LOAD_HISTORY", payload: { field_path: fieldPath, entries } });
-  }, []);
+  }, [state.history]);
 
   return (
     <ConflictContext.Provider

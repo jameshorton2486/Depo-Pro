@@ -7,10 +7,12 @@ const {
   loadCaseMock,
   listCaseFilesMock,
   listCaseAudioMock,
+  listFieldProvenanceMock,
 } = vi.hoisted(() => ({
   loadCaseMock: vi.fn(),
   listCaseFilesMock: vi.fn(),
   listCaseAudioMock: vi.fn(),
+  listFieldProvenanceMock: vi.fn(),
 }));
 
 vi.mock("./caseService", () => ({
@@ -22,17 +24,23 @@ vi.mock("./fileService", () => ({
   listCaseAudio: listCaseAudioMock,
 }));
 
+vi.mock("./provenanceService", () => ({
+  listFieldProvenance: listFieldProvenanceMock,
+}));
+
 describe("loadCaseBundle", () => {
   beforeEach(() => {
     loadCaseMock.mockReset();
     listCaseFilesMock.mockReset();
     listCaseAudioMock.mockReset();
+    listFieldProvenanceMock.mockReset();
   });
 
   it("returns null when no case row exists", async () => {
     loadCaseMock.mockResolvedValue(null);
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
+    listFieldProvenanceMock.mockResolvedValue([]);
 
     await expect(loadCaseBundle("case_missing")).resolves.toBeNull();
   });
@@ -67,15 +75,32 @@ describe("loadCaseBundle", () => {
       media_url: null,
       storage_path: "cases/case_20260605_abcd12/audio/f_2_bcde_audio.mp3",
     }];
+    const provenance = [{
+      id: "prov-1",
+      case_id: record.case_id,
+      field_path: "caption.case_name",
+      field_label: "Case Name",
+      event_type: "extracted",
+      value: "Goldman & Peterson",
+      source: "Notice",
+      winning_value: null,
+      rejected_value: null,
+      rejected_source: null,
+      confidence_score: 0.97,
+      resolution_user: "reporter",
+      resolved_at: "2026-06-05T18:03:00Z",
+    }];
 
     loadCaseMock.mockResolvedValue(record);
     listCaseFilesMock.mockResolvedValue(files);
     listCaseAudioMock.mockResolvedValue(audio);
+    listFieldProvenanceMock.mockResolvedValue(provenance);
 
     await expect(loadCaseBundle(record.case_id)).resolves.toEqual({
       record,
       files,
       audio,
+      provenance,
     });
   });
 
@@ -84,9 +109,11 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(record);
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
+    listFieldProvenanceMock.mockResolvedValue([]);
 
     const bundle = await loadCaseBundle(record.case_id);
     expect(bundle?.files).toEqual([]);
     expect(bundle?.audio).toEqual([]);
+    expect(bundle?.provenance).toEqual([]);
   });
 });

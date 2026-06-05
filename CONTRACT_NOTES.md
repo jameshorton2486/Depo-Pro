@@ -21,6 +21,7 @@ _None._
 | `DepoEditorConfig` | `src/types/index.ts` | Mount config injected by the host page. Not an API shape. |
 | `workingTexts` | `DocumentContext` state | `Record<UtteranceId, string>` — unsaved edits until `PUT /{jobId}/working`. |
 | `CaseBundle` | `src/api/caseLoadService.ts` | Central restoration seam for Intake and future workspace/exhibits/export hydration. |
+| `CaseBundle.provenance` | `src/api/caseLoadService.ts` | Local bundle addition for preloading `field_provenance` into the case-scoped conflict store. |
 | `CaseFileRecord` | `src/api/fileService.ts` | Local metadata type for `case_files` table added in migration before generated DB types are refreshed. |
 | `IntakeFileState` | `src/validation/intakeValidation.ts` | Bundle-derived validation input so Gate 1 grades durable uploads without changing the API contract. |
 | `CaseBrowserSummary` | `src/api/caseService.ts` | Local browser/listing shape assembled from `cases` plus grouped indicator queries. |

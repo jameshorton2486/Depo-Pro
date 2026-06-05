@@ -7,7 +7,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createCase, loadCase } from "../api/caseService";
+import { createCase } from "../api/caseService";
+import { loadCaseBundle, type CaseBundle } from "../api/caseLoadService";
 import type { AppStage } from "./StageContext";
 import {
   DEMO_CASE_ID,
@@ -32,6 +33,7 @@ interface CaseContextValue {
   activeCaseId: string | null;
   activeStage: AppStage | null;
   activeRecord: CaseRecord | null;
+  activeProvenance: CaseBundle["provenance"];
   browserQuery: string;
   setBrowserQuery: (value: string) => void;
   openCase: (caseId: string, stageHint?: AppStage | null) => Promise<void>;
@@ -87,8 +89,14 @@ function writeLastOpenedCaseId(caseId: string | null) {
   }
 }
 
-async function resolveLaunch(caseId: string): Promise<{ caseId: string; stage: AppStage; record: CaseRecord } | null> {
-  const record = await loadCase(caseId);
+async function resolveLaunch(caseId: string): Promise<{
+  caseId: string;
+  stage: AppStage;
+  record: CaseRecord;
+  provenance: CaseBundle["provenance"];
+} | null> {
+  const bundle = await loadCaseBundle(caseId);
+  const record = bundle?.record ?? null;
   if (!record || isArchivedRecord(record)) {
     return null;
   }
@@ -97,6 +105,7 @@ async function resolveLaunch(caseId: string): Promise<{ caseId: string; stage: A
     caseId: record.case_id,
     stage: record.stage as AppStage,
     record,
+    provenance: bundle?.provenance ?? [],
   };
 }
 
@@ -121,16 +130,23 @@ export function CaseProvider({
   const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState<AppStage | null>(null);
   const [activeRecord, setActiveRecord] = useState<CaseRecord | null>(null);
+  const [activeProvenance, setActiveProvenance] = useState<CaseBundle["provenance"]>([]);
   const [browserQuery, setBrowserQuery] = useState("");
   const [pendingIntent, setPendingIntent] = useState<SwitchIntent | null>(null);
   const [dialogBusy, setDialogBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const guardRef = useRef<NavigationGuard | null>(null);
 
-  const setActiveCase = useCallback((caseId: string | null, stage: AppStage | null, record: CaseRecord | null) => {
+  const setActiveCase = useCallback((
+    caseId: string | null,
+    stage: AppStage | null,
+    record: CaseRecord | null,
+    provenance: CaseBundle["provenance"] = [],
+  ) => {
     setActiveCaseId(caseId);
     setActiveStage(stage);
     setActiveRecord(record);
+    setActiveProvenance(provenance);
     writeLastOpenedCaseId(caseId);
   }, []);
 
@@ -157,7 +173,7 @@ export function CaseProvider({
           return;
         }
 
-        setActiveCase(launch.caseId, launch.stage, launch.record);
+        setActiveCase(launch.caseId, launch.stage, launch.record, launch.provenance);
         setReady(true);
         return;
       }
@@ -182,7 +198,7 @@ export function CaseProvider({
 
     if (intent.type === "create") {
       const record = await createCase();
-      setActiveCase(record.case_id, "intake", record);
+      setActiveCase(record.case_id, "intake", record, []);
       return;
     }
 
@@ -192,7 +208,7 @@ export function CaseProvider({
       throw new Error(`Case ${intent.caseId} was not found.`);
     }
 
-    setActiveCase(launch.caseId, launch.stage, launch.record);
+    setActiveCase(launch.caseId, launch.stage, launch.record, launch.provenance);
   }, [setActiveCase]);
 
   const requestIntent = useCallback(async (intent: SwitchIntent) => {
@@ -269,6 +285,7 @@ export function CaseProvider({
     activeCaseId,
     activeStage,
     activeRecord,
+    activeProvenance,
     browserQuery,
     setBrowserQuery,
     openCase,
@@ -286,6 +303,7 @@ export function CaseProvider({
     cancelSwitch,
   }), [
     activeCaseId,
+    activeProvenance,
     activeRecord,
     activeStage,
     browserQuery,
