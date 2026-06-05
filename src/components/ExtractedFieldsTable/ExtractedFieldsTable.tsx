@@ -426,8 +426,27 @@ export function ExtractedFieldsTable({
   const [localConfirmed, setLocalConfirmed] = useState<Set<string>>(new Set());
 
   const allRows = useMemo(
-    () => projectFieldRows(record, conflictAlternates),
-    [record, conflictAlternates],
+    () => {
+      const projectedRows = projectFieldRows(record, conflictAlternates);
+
+      return projectedRows.map((row) => {
+        const activeConflict = state.active[row.id];
+        if (!activeConflict) {
+          return row;
+        }
+
+        return {
+          ...row,
+          status: "Conflict" as FieldStatus,
+          conflict: true,
+          conflictAlternate: {
+            value: activeConflict.option_b.value,
+            source: activeConflict.option_b.source,
+          },
+        };
+      });
+    },
+    [conflictAlternates, record, state.active],
   );
 
   // Register active conflicts with the store on first render and whenever
