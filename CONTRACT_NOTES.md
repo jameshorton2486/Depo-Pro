@@ -26,3 +26,4 @@ _None._
 | `IntakeFileState` | `src/validation/intakeValidation.ts` | Bundle-derived validation input so Gate 1 grades durable uploads without changing the API contract. |
 | `CaseBrowserSummary` | `src/api/caseService.ts` | Local browser/listing shape assembled from `cases` plus grouped indicator queries. |
 | `CaseStatusPresentation` | `src/lib/caseLifecycle.ts` | UI-only status chip mapping derived from persisted stage plus certification presence. |
+| `CaseRecord._saveMeta` | `src/types/case.ts` | Local persisted save provenance for intake autosave/manual/flush source and sequence tracking. Not part of `src/api/types.ts`. |

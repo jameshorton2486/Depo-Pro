@@ -28,7 +28,13 @@ import { loadCaseBundle as loadPersistedBundle } from "../../api/caseLoadService
 import { useContactStore } from "../../store/contactStore";
 import { evaluateIntake, type IntakeFileState, type IntakeValidationResult } from "../../validation/intakeValidation";
 import type { Contact, ContactType } from "../../types/contact";
-import { emptyCaseRecord, type FieldSource, type ParticipantRole } from "../../types/case";
+import {
+  emptyCaseRecord,
+  type CaseRecord,
+  type CaseSaveSource,
+  type FieldSource,
+  type ParticipantRole,
+} from "../../types/case";
 import { CaseStatusBadge } from "./CaseStatusBadge";
 import { DocumentUploadPanel } from "./DocumentUploadPanel";
 import { resolveHydration } from "./hydration";
@@ -38,6 +44,10 @@ import { resolveHydration } from "./hydration";
 interface Props {
   jobId: string;
 }
+
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+const INTAKE_AUTOSAVE_DELAY_MS = 10_000;
 
 function manualField<T>(value: T) {
   return {
@@ -1317,6 +1327,7 @@ export function IntakeScreen({ jobId }: Props) {
   const {
     record,
     dirty,
+    editSeq,
     loadCase,
     updateField,
     confirmField,
@@ -1325,7 +1336,7 @@ export function IntakeScreen({ jobId }: Props) {
   } = useIntake();
   const { setStage } = useStage();
   const { registerNavigationGuard } = useCase();
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const [persisted, setPersisted] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [caseFiles, setCaseFiles] = useState<CaseFileRecord[]>([]);
@@ -1333,7 +1344,10 @@ export function IntakeScreen({ jobId }: Props) {
   const [revealExtractedFieldsVersion, setRevealExtractedFieldsVersion] = useState(0);
   const recordRef = useRef(record);
   const dirtyRef = useRef(dirty);
+  const editSeqRef = useRef(editSeq);
   const recordCaseIdRef = useRef(record.case_id);
+  const saveStateRef = useRef<SaveState>("idle");
+  const autosaveTimerRef = useRef<number | null>(null);
 
   const intakeFileState = useMemo<IntakeFileState>(() => ({
     hasNotice: caseFiles.some((file) => file.file_type === "notice"),
@@ -1347,8 +1361,13 @@ export function IntakeScreen({ jobId }: Props) {
   useEffect(() => {
     recordRef.current = record;
     dirtyRef.current = dirty;
+    editSeqRef.current = editSeq;
     recordCaseIdRef.current = record.case_id;
-  }, [dirty, record]);
+  }, [dirty, editSeq, record]);
+
+  useEffect(() => {
+    saveStateRef.current = saveState;
+  }, [saveState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1425,15 +1444,45 @@ export function IntakeScreen({ jobId }: Props) {
     }, 1600);
   }, []);
 
-  const persistCase = useCallback(async () => {
+  const clearAutosaveTimer = useCallback(() => {
+    if (autosaveTimerRef.current !== null) {
+      window.clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+  }, []);
+
+  function withSaveMeta(
+    currentRecord: CaseRecord,
+    source: CaseSaveSource,
+    seq: number,
+    at: string,
+  ): CaseRecord {
+    return {
+      ...currentRecord,
+      _saveMeta: {
+        source,
+        at,
+        seq,
+      },
+    };
+  }
+
+  const persistCase = useCallback(async (source: CaseSaveSource = "manual") => {
+    clearAutosaveTimer();
     setSaveState("saving");
     const currentRecord = recordRef.current;
+    const saveSeq = editSeqRef.current;
+    const startedAt = new Date().toISOString();
     try {
-      const savedRecord = await saveCase(currentRecord);
-      loadCase(savedRecord);
+      const savedRecord = await saveCase(withSaveMeta(currentRecord, source, saveSeq, startedAt));
       setPersisted(true);
       setSavedAt(savedRecord.updated_at);
-      setSaveState("saved");
+      if (editSeqRef.current === saveSeq) {
+        loadCase(savedRecord);
+        setSaveState("saved");
+      } else {
+        setSaveState("idle");
+      }
       return savedRecord;
     } catch (error) {
       console.error("[DEPO-PRO] Case save failed", {
@@ -1444,11 +1493,11 @@ export function IntakeScreen({ jobId }: Props) {
       setSaveState("error");
       throw error instanceof Error ? error : new Error(String(error));
     }
-  }, [loadCase]);
+  }, [clearAutosaveTimer, loadCase]);
 
   const handleSave = useCallback(async () => {
     try {
-      await persistCase();
+      await persistCase("manual");
     } catch {
       return;
     }
@@ -1464,19 +1513,58 @@ export function IntakeScreen({ jobId }: Props) {
   }, []);
 
   const persistCaseForUi = useCallback(async () => {
-    await persistCase();
+    await persistCase("manual");
   }, [persistCase]);
+
+  const flushCaseForNavigation = useCallback(async () => {
+    await persistCase("flush");
+  }, [persistCase]);
+
+  useEffect(() => {
+    clearAutosaveTimer();
+
+    if (!dirty || saveState === "saving") {
+      return;
+    }
+
+    autosaveTimerRef.current = window.setTimeout(() => {
+      autosaveTimerRef.current = null;
+      void persistCase("autosave").catch(() => {
+        return;
+      });
+    }, INTAKE_AUTOSAVE_DELAY_MS);
+
+    return () => {
+      clearAutosaveTimer();
+    };
+  }, [clearAutosaveTimer, dirty, editSeq, persistCase, saveState]);
+
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!dirtyRef.current && saveStateRef.current !== "saving") {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     registerNavigationGuard({
       dirty,
-      save: persistCaseForUi,
+      save: flushCaseForNavigation,
     });
 
     return () => {
       registerNavigationGuard(null);
     };
-  }, [dirty, persistCaseForUi, registerNavigationGuard]);
+  }, [dirty, flushCaseForNavigation, registerNavigationGuard]);
 
   return (
     <div className="depo-editor flex h-full flex-col bg-slate-100 text-slate-900">

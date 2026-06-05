@@ -37,6 +37,7 @@ interface IntakeContextValue {
   // ── Derived convenience ──────────────────────────────────────────────────────
   record: CaseRecord;
   dirty: boolean;
+  editSeq: number;
   validation: ValidationResult;
 
   // ── Case lifecycle ───────────────────────────────────────────────────────────
@@ -112,6 +113,7 @@ function buildInitialState(record?: CaseRecord): IntakeState {
     record: normalized,
     dirty: false,
     last_saved_at: normalized.updated_at,
+    editSeq: 0,
   };
 }
 
@@ -126,6 +128,7 @@ export function IntakeProvider({
 
   const record = state.record;
   const dirty = state.dirty;
+  const editSeq = state.editSeq;
   const validation = validateIntake(record);
 
   // ── Case lifecycle ─────────────────────────────────────────────────────────
@@ -317,6 +320,7 @@ export function IntakeProvider({
     dispatch,
     record,
     dirty,
+    editSeq,
     validation,
     initNewCase,
     loadCase,
@@ -374,6 +378,10 @@ export function useIntakeValidation(): ValidationResult {
 
 export function useIntakeDirty(): boolean {
   return useIntake().dirty;
+}
+
+export function useIntakeEditSeq(): number {
+  return useIntake().editSeq;
 }
 
 export function useAttorneys(): Attorney[] {

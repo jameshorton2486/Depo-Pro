@@ -236,6 +236,7 @@ export interface IntakeState {
   record: CaseRecord;
   dirty: boolean;            // unsaved changes exist
   last_saved_at: string | null;
+  editSeq: number;
 }
 
 export function initialIntakeState(): IntakeState {
@@ -243,6 +244,7 @@ export function initialIntakeState(): IntakeState {
     record: emptyCaseRecord("", new Date().toISOString()),
     dirty: false,
     last_saved_at: null,
+    editSeq: 0,
   };
 }
 
@@ -318,6 +320,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: emptyCaseRecord(case_id, now),
         dirty: false,
         last_saved_at: null,
+        editSeq: 0,
       };
     }
 
@@ -326,6 +329,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: action.payload.record,
         dirty: false,
         last_saved_at: action.payload.record.updated_at,
+        editSeq: 0,
       };
     }
 
@@ -334,6 +338,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           proceeding_type,
@@ -346,6 +351,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: { ...state.record, stage: action.payload.stage },
       };
     }
@@ -355,6 +361,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           stage_completion: { ...state.record.stage_completion, [stage]: complete },
@@ -366,6 +373,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: { ...state.record, notes: action.payload.notes },
       };
     }
@@ -374,6 +382,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: { ...state.record, audio: action.payload.audio },
       };
     }
@@ -390,7 +399,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         confidence_score,
         force,
       );
-      return { ...state, dirty: true, record: resolved.set(next) };
+      return { ...state, dirty: true, editSeq: state.editSeq + 1, record: resolved.set(next) };
     }
 
     case "APPLY_EXTRACTION": {
@@ -467,7 +476,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         };
       }
 
-      return { ...state, dirty: true, record: nextRecord };
+      return { ...state, dirty: true, editSeq: state.editSeq + 1, record: nextRecord };
     }
 
     case "RESOLVE_CONFLICT": {
@@ -482,7 +491,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         conflict: false,
         confidence_score: resolved.field.confidence_score,
       };
-      return { ...state, dirty: true, record: resolved.set(next) };
+      return { ...state, dirty: true, editSeq: state.editSeq + 1, record: resolved.set(next) };
     }
 
     case "CONFIRM_FIELD": {
@@ -494,13 +503,14 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         confirmed: true,
         conflict: false,
       };
-      return { ...state, dirty: true, record: resolved.set(next) };
+      return { ...state, dirty: true, editSeq: state.editSeq + 1, record: resolved.set(next) };
     }
 
     case "CONFIRM_ALL": {
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: confirmAllFields(state.record) as CaseRecord,
       };
     }
@@ -515,6 +525,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           attorneys: [...state.record.attorneys, attorney],
@@ -526,6 +537,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           attorneys: state.record.attorneys.filter(
@@ -540,6 +552,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           attorneys: state.record.attorneys.map((a) =>
@@ -559,6 +572,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           witnesses: [...state.record.witnesses, witness],
@@ -570,6 +584,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           witnesses: state.record.witnesses.filter(
@@ -584,6 +599,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           witnesses: state.record.witnesses.map((w) =>
@@ -603,6 +619,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           interpreters: [...state.record.interpreters, interpreter],
@@ -614,6 +631,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           interpreters: state.record.interpreters.filter(
@@ -628,6 +646,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           interpreters: state.record.interpreters.map((i) =>
@@ -647,6 +666,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           videographers: [...state.record.videographers, videographer],
@@ -658,6 +678,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           videographers: state.record.videographers.filter(
@@ -672,6 +693,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           videographers: state.record.videographers.map((v) =>
@@ -691,6 +713,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           participants: [...state.record.participants, participant],
@@ -702,6 +725,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           participants: state.record.participants.filter(
@@ -716,6 +740,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           participants: state.record.participants.map((p) =>

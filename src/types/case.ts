@@ -10,6 +10,14 @@ export type ISODateTime = string; // "YYYY-MM-DDTHH:MM:SSZ"
 
 export type CaseId = string;    // "case_20240314_001"
 
+export type CaseSaveSource = "manual" | "autosave" | "flush";
+
+export interface CaseSaveMeta {
+  source: CaseSaveSource;
+  at: ISODateTime;
+  seq: number;
+}
+
 // ─── Extracted field wrapper ─────────────────────────────────────────────────
 // Wraps any value that may have been extracted from an uploaded document
 // (Notice of Deposition, intake notes) rather than entered manually.
@@ -306,6 +314,7 @@ export interface CaseRecord {
   case_id:    CaseId;
   created_at: ISODateTime;
   updated_at: ISODateTime;
+  _saveMeta?: CaseSaveMeta;
 
   proceeding_type: ProceedingType;
 
