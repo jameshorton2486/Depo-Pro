@@ -84,6 +84,8 @@ function makeRow(
     status = "Conflict";
   } else if (value === "" && required) {
     status = "Missing";
+  } else if (value === "") {
+    status = "Needs Confirmation";
   } else if (confirmed) {
     status = "Confirmed";
   } else {
@@ -143,8 +145,8 @@ export function projectFieldRows(
   rows.push(makeRow("session.location_state",   "Session", "State",              "session.location_state",   s.location_state.value,   s.location_state.source,   s.location_state.confirmed,   s.location_state.conflict,   s.location_state.confidence_score,   true));
   rows.push(makeRow("session.location_zip",     "Session", "ZIP Code",           "session.location_zip",     s.location_zip.value,     s.location_zip.source,     s.location_zip.confirmed,     s.location_zip.conflict,     s.location_zip.confidence_score,     false));
   rows.push(makeRow("session.reporting_method", "Session", "Reporting Method",   "session.reporting_method", s.reporting_method.value, s.reporting_method.source, s.reporting_method.confirmed, s.reporting_method.conflict, s.reporting_method.confidence_score, true));
-  rows.push(makeRow("session.is_remote",        "Session", "Remote Proceeding",  "session.is_remote",        s.is_remote ? "Yes" : "No", "manual", true, false, null, false));
-  rows.push(makeRow("session.remote_platform",  "Session", "Remote Platform",    "session.remote_platform",  s.remote_platform, "manual", s.remote_platform !== null, false, null, false));
+  rows.push(makeRow("session.is_remote",        "Session", "Remote Proceeding",  "session.is_remote",        s.is_remote ? "Yes" : "No", "manual", false, false, null, false));
+  rows.push(makeRow("session.remote_platform",  "Session", "Remote Platform",    "session.remote_platform",  s.remote_platform, "manual", false, false, null, false));
 
   // ── Reporter ──────────────────────────────────────────────────────────────
   const rep = record.reporter;
