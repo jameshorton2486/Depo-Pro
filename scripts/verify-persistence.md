@@ -86,3 +86,40 @@ Run this after James applies the new migration with `npx supabase db push`.
 - Supporting documents require an explicit extract mode and never auto-detect type.
 - Job-sheet extraction is limited to JOB-owned or shared fields from the field reference.
 - Empty fields never default to `Confirmed` on a new case.
+
+## Intake autosave and flush flow
+
+1. Open any real saved case from the Case Browser.
+2. Edit an Intake field such as `Case Name` or `County`.
+3. Do not click `Save Intake`.
+4. Confirm the status badge shows `MODIFIED`.
+5. Wait 10 seconds without further edits.
+6. Confirm the badge transitions through `SAVING...` and ends at `SAVED`.
+7. Hard refresh the browser.
+8. Confirm the edited Intake value persists.
+9. Make another Intake edit.
+10. Immediately click into another case from the Case Browser.
+11. Confirm the switch succeeds without showing a dialog when save succeeds.
+12. Reopen the original case.
+13. Confirm the last Intake edit persisted even though you switched immediately.
+14. Trigger a save failure if possible, then try to switch cases again.
+15. Confirm the dialog appears only after the failed flush and offers `Retry Save`, `Discard and Switch`, and `Cancel`.
+
+## Workspace save integrity flow
+
+1. Open a case with transcript workspace data.
+2. Make a transcript text edit.
+3. Before the 2-second autosave completes, make another text edit in the same utterance.
+4. Wait for save completion.
+5. Confirm the toolbar still shows unsaved state until the later edit is saved.
+6. Wait for the follow-up autosave.
+7. Confirm the toolbar ends in `Saved HH:MM`.
+8. Hard refresh the browser.
+9. Confirm both text edits are still present.
+
+## Autosave expected result
+
+- Intake autosaves 10 seconds after the last edit without removing the manual `Save Intake` button.
+- Case switches and new-case actions flush automatically; the dialog appears only on save failure.
+- `beforeunload` warns while Intake or workspace has dirty or in-flight saves.
+- Workspace autosave never clears dirty state for edits that landed during an in-flight save.
