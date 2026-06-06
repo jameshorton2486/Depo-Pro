@@ -1,4 +1,4 @@
-import { Fragment, useState, useMemo, useEffect } from "react";
+import { Fragment, useState, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import { AlertTriangle, Check, ChevronDown, History, Pencil, X } from "lucide-react";
 import type { CaseRecord } from "../../types/case";
 import {
@@ -12,6 +12,7 @@ import { FieldStatusBadge } from "./FieldStatusBadge";
 import { useConflict } from "../conflict/conflictStore";
 import { ConflictResolutionModal } from "../conflict/ConflictResolutionModal";
 import { ProvenanceViewer } from "../conflict/ProvenanceViewer";
+import { getFieldRowKey } from "./tableBehavior";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,6 +153,7 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate }: Ro
 
   return (
     <tr
+      data-testid={`field-row-${row.id}`}
       data-field-path={row.id}
       className={`border-b border-slate-100 transition-colors hover:bg-slate-50/80 ${
         row.conflict && !isResolved ? "bg-rose-50/30" : ""
@@ -447,6 +449,7 @@ export function ExtractedFieldsTable({
   const [provenancePath, setProvenancePath] = useState<string | null>(null);
 
   const [localConfirmed, setLocalConfirmed] = useState<Set<string>>(new Set());
+  const pendingWindowScrollYRef = useRef<number | null>(null);
 
   const allRows = useMemo(
     () => {
@@ -511,6 +514,15 @@ export function ExtractedFieldsTable({
     });
   }, [allRows, localConfirmed]);
 
+  useLayoutEffect(() => {
+    if (pendingWindowScrollYRef.current === null) {
+      return;
+    }
+
+    window.scrollTo({ top: pendingWindowScrollYRef.current });
+    pendingWindowScrollYRef.current = null;
+  }, [rows]);
+
 
   const conflictCount      = rows.filter((r) => r.conflict && !isResolvedInStore(r.id)).length;
   const missingCount       = rows.filter((r) => r.status === "Missing").length;
@@ -537,6 +549,7 @@ export function ExtractedFieldsTable({
   }, [filtered]);
 
   function handleConfirm(row: FieldRow) {
+    pendingWindowScrollYRef.current = window.scrollY;
     setLocalConfirmed((prev) => new Set(prev).add(row.id));
     recordConfirm(caseId, row.id, row.label, row.value, row.displaySource);
     onConfirm?.(row.id);
@@ -615,11 +628,12 @@ export function ExtractedFieldsTable({
                     <CategoryHeader category={category} count={catRows.length} />
                     {catRows.map((row) => (
                       <TableRow
-                        key={row.id}
+                        key={getFieldRowKey(row)}
                         row={row}
                         isResolved={isResolvedInStore(row.id)}
                         onConfirm={() => handleConfirm(row)}
                         onUpdate={(value) => {
+                          pendingWindowScrollYRef.current = window.scrollY;
                           setLocalConfirmed((prev) => new Set(prev).add(row.id));
                           recordConfirm(caseId, row.id, row.label, value, "Manual");
                           onUpdate?.(row.id, value);
