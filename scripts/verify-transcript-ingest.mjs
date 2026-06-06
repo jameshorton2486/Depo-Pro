@@ -19,6 +19,7 @@ const now = Date.now();
 const caseId = `case_transcript_verify_${now}`;
 const jobId = `job_verify_${now}`;
 const transcriptId = `tr_${jobId}`;
+let insertedCasePayload = null;
 
 await step("insert case row", async () => {
   const { error } = await supabase.from("cases").insert({
@@ -40,6 +41,16 @@ await step("insert case row", async () => {
   if (error) {
     throw error;
   }
+
+  insertedCasePayload = {
+    version: "1.0",
+    case_id: caseId,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    proceeding_type: "freelance_deposition",
+    stage: "workspace",
+    notes: "transcript verification",
+  };
 
   return { case_id: caseId };
 });
@@ -225,6 +236,27 @@ await step("raw_text is immutable", async () => {
   }
 
   return { message: error.message };
+});
+
+await step("mark archived", async () => {
+  const archivedPayload = {
+    ...(insertedCasePayload ?? {}),
+    archived: true,
+  };
+
+  const { data, error } = await supabase
+    .from("cases")
+    .update({ payload: archivedPayload })
+    .eq("case_id", caseId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  assertEqual(data.payload.archived, true, "archived flag was not persisted");
+  return { case_id: data.case_id, archived: data.payload.archived };
 });
 
 async function step(label, fn) {
