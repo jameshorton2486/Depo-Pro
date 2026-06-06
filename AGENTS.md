@@ -85,3 +85,10 @@ Clean, modern, legal-professional. Resembles Microsoft Word / Case CATalyst:
 The API contract types in `src/api/types.ts` are **frozen**. Never rename or reshape them.
 If a feature seems to need a new field, add it to a separate local type and leave the
 contract types untouched. Log all deviations in `CONTRACT_NOTES.md`.
+
+---
+
+## Wave8 Reference
+
+- `reference/wave8/` is read-only normative reference. Never import it into `src/`, never execute it in CI, and never edit it.
+- When a prompt cites a Wave8 module, treat that module as the normative algorithm: translate it faithfully into TypeScript, log stack-forced deltas in the report, and do not introduce behavioral deltas without a boundary-log entry.
