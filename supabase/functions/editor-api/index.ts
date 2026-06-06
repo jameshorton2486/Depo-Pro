@@ -1,8 +1,10 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type {
+  ReviewPayload,
   EditorDocument,
   SaveWorkingPayload,
   SaveWorkingResponse,
+  SpeakersPayload,
   Speaker,
   Utterance,
   Word,
@@ -137,9 +139,9 @@ Deno.serve(async (request) => {
       case "working":
         return handlePutWorking(context);
       case "review":
-        return routeNotImplemented("PUT /:jobId/review", context);
+        return handlePutReview(context);
       case "speakers":
-        return routeNotImplemented("PUT /:jobId/speakers", context);
+        return handlePutSpeakers(context);
       case "suggestions":
         return routeNotImplemented("GET /:jobId/suggestions", context);
       case "resolveSuggestion":
@@ -449,6 +451,322 @@ function validateSaveWorkingPayload(value: unknown): SaveWorkingPayload {
   }
 
   return payload as SaveWorkingPayload;
+}
+
+async function handlePutReview(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateReviewPayload(body);
+  const transcriptId = context.transcript.transcript_id;
+
+  if (payload.reviewed_word_ids.length > 0) {
+    const reviewedResult = await context.supabase
+      .from("transcript_words")
+      .update({ reviewed: true })
+      .eq("transcript_id", transcriptId)
+      .in("word_id", payload.reviewed_word_ids);
+
+    if (reviewedResult.error) {
+      throw new HttpError(500, "failed to save review");
+    }
+  }
+
+  if (payload.unreviewed_word_ids.length > 0) {
+    const unreviewedResult = await context.supabase
+      .from("transcript_words")
+      .update({ reviewed: false })
+      .eq("transcript_id", transcriptId)
+      .in("word_id", payload.unreviewed_word_ids);
+
+    if (unreviewedResult.error) {
+      throw new HttpError(500, "failed to save review");
+    }
+  }
+
+  const remainingCount = await countUnreviewedWords(context.supabase, transcriptId);
+  const totalCount = await countAllWords(context.supabase, transcriptId);
+  const reviewComplete = remainingCount === 0;
+  const reviewPct = totalCount === 0 ? null : Math.round(((totalCount - remainingCount) / totalCount) * 100);
+
+  const reviewStateResult = await context.supabase
+    .from("transcript_review_state")
+    .upsert({
+      transcript_id: transcriptId,
+      reviewed_word_ids: payload.reviewed_word_ids,
+      unreviewed_word_ids: payload.unreviewed_word_ids,
+      review_complete: reviewComplete,
+      review_pct: reviewPct,
+    }, { onConflict: "transcript_id" });
+
+  if (reviewStateResult.error) {
+    throw new HttpError(500, "failed to save review");
+  }
+
+  return respondJson(200, { ok: true });
+}
+
+async function handlePutSpeakers(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateSpeakersPayload(body);
+  const transcriptId = context.transcript.transcript_id;
+  const speakerMapConfirmed = payload.speakers.length > 0 && payload.speakers.every((speaker) => {
+    return speaker.display_name.trim().length > 0 && Boolean(speaker.role);
+  });
+
+  for (const speaker of payload.speakers) {
+    const normalizedRole = normalizeSpeakerRoleForDatabase(speaker.role);
+    const updateResult = await context.supabase
+      .from("transcript_speakers")
+      .update({
+        display_name: speaker.display_name,
+        assigned_name: speaker.display_name,
+        speaker_label: speaker.display_name,
+        role: normalizedRole,
+        speaker_role: normalizedRole,
+      })
+      .eq("transcript_id", transcriptId)
+      .eq("speaker_id", speaker.speaker_id);
+
+    if (updateResult.error) {
+      throw new HttpError(500, "failed to save speakers");
+    }
+  }
+
+  if (payload.utterance_speaker_map) {
+    for (const assignment of payload.utterance_speaker_map) {
+      const speaker = payload.speakers.find((candidate) => candidate.speaker_id === assignment.speaker_id);
+      const utteranceResult = await context.supabase
+        .from("transcript_utterances")
+        .update({
+          speaker_id: assignment.speaker_id,
+          speaker_label: speaker?.display_name ?? assignment.speaker_id,
+        })
+        .eq("transcript_id", transcriptId)
+        .eq("utterance_id", assignment.utterance_id);
+
+      if (utteranceResult.error) {
+        throw new HttpError(500, "failed to save speakers");
+      }
+
+      const wordsResult = await context.supabase
+        .from("transcript_words")
+        .update({
+          speaker_id: assignment.speaker_id,
+        })
+        .eq("transcript_id", transcriptId)
+        .eq("utterance_id", assignment.utterance_id);
+
+      if (wordsResult.error) {
+        throw new HttpError(500, "failed to save speakers");
+      }
+
+      await appendAuditRows(context, [{
+        utterance_id: assignment.utterance_id,
+        word_id: null,
+        source: "workspace",
+        action: "assign_speaker",
+        old_text: "speaker reassignment",
+        new_text: assignment.speaker_id,
+        before_text: "speaker reassignment",
+        after_text: assignment.speaker_id,
+      }]);
+    }
+  }
+
+  const transcriptResult = await context.supabase
+    .from("transcripts")
+    .update({ speaker_map_confirmed: speakerMapConfirmed })
+    .eq("transcript_id", transcriptId);
+
+  if (transcriptResult.error) {
+    throw new HttpError(500, "failed to save speakers");
+  }
+
+  return respondJson(200, { ok: true });
+}
+
+function validateReviewPayload(value: unknown): ReviewPayload {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const payload = value as Record<string, unknown>;
+  if (!Array.isArray(payload.reviewed_word_ids) || !Array.isArray(payload.unreviewed_word_ids)) {
+    throw new HttpError(400, "bad payload");
+  }
+
+  return {
+    reviewed_word_ids: payload.reviewed_word_ids.map(requireStringValue),
+    unreviewed_word_ids: payload.unreviewed_word_ids.map(requireStringValue),
+  };
+}
+
+function validateSpeakersPayload(value: unknown): SpeakersPayload {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const payload = value as Record<string, unknown>;
+  if (!Array.isArray(payload.speakers)) {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const speakers = payload.speakers.map((speaker) => {
+    if (!speaker || typeof speaker !== "object") {
+      throw new HttpError(400, "bad payload");
+    }
+
+    const candidate = speaker as Record<string, unknown>;
+    const role = candidate.role;
+    if (
+      typeof candidate.speaker_id !== "string"
+      || typeof candidate.display_name !== "string"
+      || (role !== undefined && role !== "REPORTER" && role !== "WITNESS" && role !== "ATTORNEY" && role !== "INTERPRETER" && role !== "OTHER")
+    ) {
+      throw new HttpError(400, "bad payload");
+    }
+
+    return {
+      speaker_id: candidate.speaker_id,
+      display_name: candidate.display_name,
+      role: role as SpeakersPayload["speakers"][number]["role"],
+    };
+  });
+
+  const utterance_speaker_map = payload.utterance_speaker_map;
+  if (utterance_speaker_map === undefined) {
+    return { speakers };
+  }
+
+  if (!Array.isArray(utterance_speaker_map)) {
+    throw new HttpError(400, "bad payload");
+  }
+
+  return {
+    speakers,
+    utterance_speaker_map: utterance_speaker_map.map((assignment) => {
+      if (!assignment || typeof assignment !== "object") {
+        throw new HttpError(400, "bad payload");
+      }
+
+      const candidate = assignment as Record<string, unknown>;
+      if (typeof candidate.utterance_id !== "string" || typeof candidate.speaker_id !== "string") {
+        throw new HttpError(400, "bad payload");
+      }
+
+      return {
+        utterance_id: candidate.utterance_id,
+        speaker_id: candidate.speaker_id,
+      };
+    }),
+  };
+}
+
+function requireStringValue(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  return value;
+}
+
+async function countUnreviewedWords(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("transcript_words")
+    .select("word_id", { count: "exact", head: true })
+    .eq("transcript_id", transcriptId)
+    .eq("reviewed", false)
+    .eq("removed", false);
+
+  if (error) {
+    throw new HttpError(500, "failed to save review");
+  }
+
+  return count ?? 0;
+}
+
+async function countAllWords(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("transcript_words")
+    .select("word_id", { count: "exact", head: true })
+    .eq("transcript_id", transcriptId)
+    .eq("removed", false);
+
+  if (error) {
+    throw new HttpError(500, "failed to save review");
+  }
+
+  return count ?? 0;
+}
+
+type AuditInsertRow = {
+  utterance_id: string | null;
+  word_id: string | null;
+  source: string;
+  action: "assign_speaker";
+  old_text: string | null;
+  new_text: string | null;
+  before_text: string | null;
+  after_text: string | null;
+};
+
+async function appendAuditRows(
+  context: RouteContext,
+  rows: AuditInsertRow[],
+): Promise<void> {
+  if (rows.length === 0) {
+    return;
+  }
+
+  const payload = rows.map((row, index) => ({
+    transcript_id: context.transcript.transcript_id,
+    change_id: `chg_${context.transcript.job_id}_${Date.now()}_${index}`,
+    utterance_id: row.utterance_id,
+    word_id: row.word_id,
+    old_text: row.old_text,
+    new_text: row.new_text,
+    source: row.source,
+    suggestion_id: null,
+    reviewer_user_id: null,
+    case_id: context.transcript.case_id,
+    job_id: context.transcript.job_id,
+    actor: null,
+    action: row.action,
+    before_text: row.before_text,
+    after_text: row.after_text,
+  }));
+
+  const { error } = await context.supabase
+    .from("transcript_audit_log")
+    .insert(payload);
+
+  if (error) {
+    throw new HttpError(500, "failed to save speakers");
+  }
+}
+
+function normalizeSpeakerRoleForDatabase(
+  value: SpeakersPayload["speakers"][number]["role"],
+): string | null {
+  switch (value) {
+    case "REPORTER":
+      return "reporter";
+    case "WITNESS":
+      return "witness";
+    case "ATTORNEY":
+      return "attorney";
+    case "INTERPRETER":
+      return "interpreter";
+    case "OTHER":
+      return "other";
+    default:
+      return null;
+  }
 }
 
 function matchRoute(request: Request): RouteMatch | null {

@@ -76,3 +76,17 @@ None yet.
 - `20260606113000_editor_api_working_rpc.sql`
   - adds `public.editor_apply_working_changes(...)`
   - justification: atomic save helper for stable word-ID transcript edits plus append-only audit rows
+
+## Phase 4
+
+### Decisions
+
+- `PUT /review` updates both `transcript_words.reviewed` and `transcript_review_state`.
+- `review_complete` and `review_pct` are computed from live word rows during review writes.
+- `PUT /speakers` updates speaker label columns (`display_name`, `assigned_name`, `speaker_label`) together to stay aligned with current runtime loading behavior.
+- Speaker roles are normalized to lowercase DB text while the contract remains uppercase.
+- `speaker_map_confirmed` is updated on `transcripts` during speaker saves because the current runtime already depends on it.
+
+### Additive migration log
+
+None.
