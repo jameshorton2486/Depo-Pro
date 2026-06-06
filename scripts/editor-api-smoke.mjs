@@ -224,6 +224,34 @@ await step("cross-user function access", async () => {
   return { status: response.status, error: json?.error ?? null };
 });
 
+await step("cross-user working save rejection", async () => {
+  const wordBefore = cachedDocument.words[0];
+  const auditBefore = await countAuditRows(supabaseUser1, seed.transcriptId);
+
+  const response = await fetch(`${baseUrl}/${seed.routeJobId}/working`, {
+    method: "PUT",
+    headers: authHeadersUser2,
+    body: JSON.stringify({
+      source: "editor",
+      changes: [{ utterance_id: cachedDocument.utterances[0].utterance_id, working_text: "INTRUDER WRITE TEST" }],
+    }),
+  });
+  const text = await response.text();
+  const json = text ? JSON.parse(text) : null;
+
+  assert(response.status === 404, `second user working save should return 404, got ${response.status}`);
+
+  const refreshedDocument = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeadersUser1);
+  const refreshedWord = refreshedDocument.words.find((word) => word.word_id === wordBefore.word_id);
+  const auditAfter = await countAuditRows(supabaseUser1, seed.transcriptId);
+
+  assert(refreshedWord?.raw_text === wordBefore.raw_text, "cross-user write altered raw_text");
+  assert(refreshedWord?.text === wordBefore.text, "cross-user write altered word text");
+  assert(auditAfter === auditBefore, "cross-user write altered audit row count");
+
+  return { status: response.status, error: json?.error ?? null, auditRows: auditAfter };
+});
+
 await step("anonymous access", async () => {
   const anonymousResult = await tryAnonymousSession(supabaseAnonymous);
 
@@ -367,6 +395,19 @@ function buildAuthHeaders(accessToken) {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
   };
+}
+
+async function countAuditRows(client, transcriptId) {
+  const { count, error } = await client
+    .from("transcript_audit_log")
+    .select("*", { count: "exact", head: true })
+    .eq("transcript_id", transcriptId);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
 }
 
 function assert(condition, message) {
