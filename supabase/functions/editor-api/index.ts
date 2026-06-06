@@ -1,5 +1,12 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
-import type { EditorDocument, Speaker, Utterance, Word } from "../../../src/api/types.ts";
+import type {
+  EditorDocument,
+  SaveWorkingPayload,
+  SaveWorkingResponse,
+  Speaker,
+  Utterance,
+  Word,
+} from "../../../src/api/types.ts";
 
 type Database = Record<string, never>;
 
@@ -128,7 +135,7 @@ Deno.serve(async (request) => {
       case "document":
         return handleGetDocument(context);
       case "working":
-        return routeNotImplemented("PUT /:jobId/working", context);
+        return handlePutWorking(context);
       case "review":
         return routeNotImplemented("PUT /:jobId/review", context);
       case "speakers":
@@ -380,6 +387,68 @@ function normalizeSpeakerRole(value: string | null | undefined): Speaker["role"]
     default:
       return undefined;
   }
+}
+
+async function handlePutWorking(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateSaveWorkingPayload(body);
+
+  const { data, error } = await context.supabase.rpc("editor_apply_working_changes", {
+    p_transcript_id: context.transcript.transcript_id,
+    p_case_id: context.transcript.case_id,
+    p_job_id: context.transcript.job_id,
+    p_changes: payload.changes,
+  });
+
+  if (error) {
+    console.error("[editor-api] PUT working failed", {
+      route: "PUT /:jobId/working",
+      jobId: context.transcript.transcript_id,
+      message: error.message,
+    });
+    throw new HttpError(500, "failed to save working transcript");
+  }
+
+  const response: SaveWorkingResponse = {
+    saved: typeof data === "number" ? data : 0,
+  };
+
+  return respondJson(200, response);
+}
+
+async function parseJsonBody(request: Request): Promise<unknown> {
+  try {
+    return await request.json();
+  } catch {
+    throw new HttpError(400, "bad payload");
+  }
+}
+
+function validateSaveWorkingPayload(value: unknown): SaveWorkingPayload {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const payload = value as Record<string, unknown>;
+  if (payload.source !== "editor" || !Array.isArray(payload.changes)) {
+    throw new HttpError(400, "bad payload");
+  }
+
+  for (const change of payload.changes) {
+    if (!change || typeof change !== "object") {
+      throw new HttpError(400, "bad payload");
+    }
+
+    const candidate = change as Record<string, unknown>;
+    if (
+      typeof candidate.utterance_id !== "string"
+      || typeof candidate.working_text !== "string"
+    ) {
+      throw new HttpError(400, "bad payload");
+    }
+  }
+
+  return payload as SaveWorkingPayload;
 }
 
 function matchRoute(request: Request): RouteMatch | null {

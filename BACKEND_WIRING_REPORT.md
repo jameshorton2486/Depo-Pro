@@ -61,3 +61,18 @@ None yet.
 ### Additive migration log
 
 None yet.
+
+## Phase 3
+
+### Decisions
+
+- Added `editor_apply_working_changes(...)` as a `security invoker` RPC to keep word updates, utterance text updates, and append-only audit inserts in one DB-side unit.
+- Stored both `text` and `working_text` on update even though the prompt’s minimal wording mentions `text` only.
+  - Reason: current runtime schema and loader semantics already use `working_text`, and leaving it stale would make `GET /document` return old text for previously edited rows.
+- Wrote one audit row per changed utterance with action `bulk_save`, matching the existing audit action vocabulary.
+
+### Additive migration log
+
+- `20260606113000_editor_api_working_rpc.sql`
+  - adds `public.editor_apply_working_changes(...)`
+  - justification: atomic save helper for stable word-ID transcript edits plus append-only audit rows
