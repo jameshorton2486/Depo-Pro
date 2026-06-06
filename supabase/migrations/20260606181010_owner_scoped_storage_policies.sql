@@ -2,13 +2,12 @@
 -- Auth / RLS hardening — owner-scoped storage policies
 -- Adopts <owner_user_id>/<case_id>/... object paths for the case-files bucket
 -- and replaces the permissive bucket policies with owner-prefix enforcement.
--- Fixture-era objects are deleted because Phase 0 confirmed disposable data.
+-- Fixture-era objects are left in place because direct DML against
+-- storage.objects is blocked. The new owner-prefix policies make those old
+-- paths unreadable, and reseeded objects land under the new convention.
 -- =============================================================================
 
 begin;
-
-delete from storage.objects
-where bucket_id = 'case-files';
 
 drop policy if exists "case_files_bucket_select_authenticated" on storage.objects;
 drop policy if exists "case_files_bucket_insert_authenticated" on storage.objects;

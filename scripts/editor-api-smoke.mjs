@@ -10,24 +10,57 @@ const baseUrl = env.VITE_EDITOR_API_BASE_URL
   ?? env.EDITOR_API_BASE_URL
   ?? (supabaseUrl ? `${supabaseUrl}/functions/v1/editor-api` : undefined);
 
+const smokeUserEmail = env.SMOKE_USER_EMAIL;
+const smokeUserPassword = env.SMOKE_USER_PASSWORD;
+const smokeUser2Email = env.SMOKE_USER2_EMAIL;
+const smokeUser2Password = env.SMOKE_USER2_PASSWORD;
+
 if (!supabaseUrl || !supabaseAnonKey || !baseUrl) {
   throw new Error("VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and VITE_EDITOR_API_BASE_URL are required for editor-api-smoke.mjs.");
 }
 
+if (!smokeUserEmail || !smokeUserPassword || !smokeUser2Email || !smokeUser2Password) {
+  throw new Error("SMOKE_USER_EMAIL, SMOKE_USER_PASSWORD, SMOKE_USER2_EMAIL, and SMOKE_USER2_PASSWORD are required.");
+}
+
 const seedPath = env.EDITOR_API_SEED_PATH ?? path.join(os.tmpdir(), "depo-pro-editor-api-seed.json");
 const seed = JSON.parse(await readFile(seedPath, "utf8"));
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const session = await ensureAnonymousSession(supabase);
-const authHeaders = {
-  Authorization: `Bearer ${session.access_token}`,
-  "Content-Type": "application/json",
-};
+
+const supabaseUser1 = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
+const supabaseUser2 = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
+const supabaseAnonymous = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
+
+const session1 = await ensurePasswordSession(supabaseUser1, smokeUserEmail, smokeUserPassword);
+const session2 = await ensurePasswordSession(supabaseUser2, smokeUser2Email, smokeUser2Password);
+const authHeadersUser1 = buildAuthHeaders(session1.access_token);
+const authHeadersUser2 = buildAuthHeaders(session2.access_token);
 
 let cachedDocument = null;
 let acceptedSuggestion = null;
 
+await step("unauthorized", async () => {
+  const response = await fetch(`${baseUrl}/${seed.routeJobId}/document`);
+  assert(response.status === 401, `unauthenticated request should return 401, got ${response.status}`);
+  return { status: response.status };
+});
+
 await step("document", async () => {
-  const document = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeaders);
+  const document = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeadersUser1);
   cachedDocument = document;
 
   assert(document.job_id === seed.routeJobId, "document job_id should use transcript route key");
@@ -55,11 +88,11 @@ await step("working", async () => {
       source: "editor",
       changes: [{ utterance_id: utterance.utterance_id, working_text: newText }],
     },
-    authHeaders,
+    authHeadersUser1,
   );
   assert(saved.saved === 1, "working save count mismatch");
 
-  const refreshed = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeaders);
+  const refreshed = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeadersUser1);
   const updatedWords = utterance.word_ids.map((wordId) => refreshed.words.find((word) => word.word_id === wordId));
   const updatedTexts = updatedWords.map((word) => word.text);
   const refreshedRawTexts = updatedWords.map((word) => word.raw_text);
@@ -80,11 +113,11 @@ await step("review", async () => {
       reviewed_word_ids: wordIds,
       unreviewed_word_ids: [],
     },
-    authHeaders,
+    authHeadersUser1,
   );
   assert(review.ok === true, "review response not ok");
 
-  const refreshed = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeaders);
+  const refreshed = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeadersUser1);
   assert(refreshed.words.slice(0, 2).every((word) => word.reviewed), "review flags did not persist");
   cachedDocument = refreshed;
 
@@ -105,11 +138,11 @@ await step("speakers", async () => {
       )),
       utterance_speaker_map: [{ utterance_id: firstUtterance.utterance_id, speaker_id: targetSpeaker.speaker_id }],
     },
-    authHeaders,
+    authHeadersUser1,
   );
   assert(save.ok === true, "speaker save response not ok");
 
-  const refreshed = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeaders);
+  const refreshed = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeadersUser1);
   const updatedSpeaker = refreshed.speakers.find((speaker) => speaker.speaker_id === targetSpeaker.speaker_id);
   const reassignedUtterance = refreshed.utterances.find((utterance) => utterance.utterance_id === firstUtterance.utterance_id);
   const reassignedWords = refreshed.words.filter((word) => word.utterance_id === firstUtterance.utterance_id);
@@ -123,7 +156,7 @@ await step("speakers", async () => {
 });
 
 await step("suggestions", async () => {
-  const suggestions = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/suggestions`, undefined, authHeaders);
+  const suggestions = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/suggestions`, undefined, authHeadersUser1);
   assert(Array.isArray(suggestions) && suggestions.length >= 3, "suggestions missing");
   acceptedSuggestion = suggestions[0];
   return { suggestions: suggestions.length, first: acceptedSuggestion.suggestion_id };
@@ -134,13 +167,13 @@ await step("resolve", async () => {
     "POST",
     `${baseUrl}/${seed.routeJobId}/suggestions/${acceptedSuggestion.suggestion_id}/resolve`,
     { action: "accept" },
-    authHeaders,
+    authHeadersUser1,
   );
   assert(result.ok === true, "resolve response not ok");
 
-  const refreshedSuggestions = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/suggestions`, undefined, authHeaders);
+  const refreshedSuggestions = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/suggestions`, undefined, authHeadersUser1);
   const updatedSuggestion = refreshedSuggestions.find((suggestion) => suggestion.suggestion_id === acceptedSuggestion.suggestion_id);
-  const refreshedDocument = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeaders);
+  const refreshedDocument = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/document`, undefined, authHeadersUser1);
   const updatedWord = refreshedDocument.words.find((word) => word.word_id === acceptedSuggestion.word_id);
 
   assert(updatedSuggestion.status === "accepted", "suggestion status did not persist");
@@ -152,18 +185,63 @@ await step("resolve", async () => {
 });
 
 await step("exhibits", async () => {
-  const exhibits = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/exhibits`, undefined, authHeaders);
+  const exhibits = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/exhibits`, undefined, authHeadersUser1);
   assert(Array.isArray(exhibits) && exhibits.length === 2, "exhibit count mismatch");
   assert(exhibits.every((exhibit) => typeof exhibit.file_url === "string" && exhibit.file_url.length > 0), "signed exhibit url missing");
   return { exhibits: exhibits.length };
 });
 
 await step("certify", async () => {
-  const certify = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/certify/status`, undefined, authHeaders);
+  const certify = await requestJson("GET", `${baseUrl}/${seed.routeJobId}/certify/status`, undefined, authHeadersUser1);
   assert(typeof certify.review_complete === "boolean", "certify review_complete missing");
   assert(typeof certify.speaker_mapping_complete === "boolean", "certify speaker_mapping_complete missing");
   assert(typeof certify.confidence_review_complete === "boolean", "certify confidence_review_complete missing");
   return certify;
+});
+
+await step("cross-user direct select", async () => {
+  const { data, error } = await supabaseUser2
+    .from("cases")
+    .select("case_id")
+    .eq("case_id", seed.caseId);
+
+  if (error) {
+    throw error;
+  }
+
+  assert(Array.isArray(data) && data.length === 0, `second user should see zero case rows, got ${data.length}`);
+  return { visibleRows: data.length };
+});
+
+await step("cross-user function access", async () => {
+  const response = await fetch(`${baseUrl}/${seed.routeJobId}/document`, {
+    headers: authHeadersUser2,
+  });
+  const text = await response.text();
+  const json = text ? JSON.parse(text) : null;
+
+  assert(response.status === 404, `second user document request should return 404, got ${response.status}`);
+  return { status: response.status, error: json?.error ?? null };
+});
+
+await step("anonymous access", async () => {
+  const anonymousResult = await tryAnonymousSession(supabaseAnonymous);
+
+  if (!anonymousResult.session) {
+    return { status: "anonymous_disabled" };
+  }
+
+  const { data, error } = await supabaseAnonymous
+    .from("cases")
+    .select("case_id")
+    .eq("case_id", seed.caseId);
+
+  if (error) {
+    throw error;
+  }
+
+  assert(Array.isArray(data) && data.length === 0, `anonymous session should see zero case rows, got ${data.length}`);
+  return { status: "anonymous_allowed_zero_rows", visibleRows: data.length };
 });
 
 async function requestJson(method, url, body, headers) {
@@ -195,22 +273,36 @@ async function step(label, fn) {
   }
 }
 
-async function ensureAnonymousSession(client) {
-  const { data: sessionData, error: sessionError } = await client.auth.getSession();
-  if (sessionError) {
-    throw sessionError;
+async function ensurePasswordSession(client, email, password) {
+  const { data: signInData, error: signInError } = await client.auth.signInWithPassword({ email, password });
+  if (!signInError && signInData.session) {
+    return signInData.session;
   }
 
-  if (sessionData.session) {
-    return sessionData.session;
+  const { data: signUpData, error: signUpError } = await client.auth.signUp({ email, password });
+  if (signUpError) {
+    throw signInError ?? signUpError;
   }
 
+  if (signUpData.session) {
+    return signUpData.session;
+  }
+
+  const { data: retryData, error: retryError } = await client.auth.signInWithPassword({ email, password });
+  if (retryError || !retryData.session) {
+    throw retryError ?? new Error("Sign-up succeeded but no password session was established.");
+  }
+
+  return retryData.session;
+}
+
+async function tryAnonymousSession(client) {
   const { data, error } = await client.auth.signInAnonymously();
   if (error) {
-    throw error;
+    return { session: null, error };
   }
 
-  return data.session;
+  return { session: data.session, error: null };
 }
 
 async function loadEnv() {
@@ -238,6 +330,13 @@ async function loadEnv() {
   }
 
   return env;
+}
+
+function buildAuthHeaders(accessToken) {
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
 }
 
 function assert(condition, message) {

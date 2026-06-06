@@ -56,3 +56,29 @@ Storage objects are handled separately in the storage phase.
   - transcript raw packets
 - `case-files` storage policies were rewritten to require the first folder segment to equal `(select auth.uid()::text)`.
 - Existing fixture-era `case-files` objects are deleted in the storage migration so reseeding recreates them under the new convention.
+
+## Seed and smoke hardening
+
+- `scripts/seed-editor-transcript.mjs` no longer falls back to anonymous auth.
+- Seeding now requires either:
+  - `SUPABASE_SERVICE_ROLE_KEY` + `SEED_OWNER_USER_ID`, or
+  - `SEED_USER_EMAIL` + `SEED_USER_PASSWORD`
+- Seeded storage objects now follow the owner-scoped path convention:
+  - `<owner_user_id>/<case_id>/audio/...`
+  - `<owner_user_id>/<case_id>/transcripts/...`
+  - `<owner_user_id>/<case_id>/exhibits/...`
+- `scripts/editor-api-smoke.mjs` signs in as two real users and verifies:
+  - authenticated happy-path editor-api behavior for all 8 routes
+  - unauthenticated requests return `401`
+  - user 2 cannot see user 1's case rows via direct Supabase queries
+  - user 2 receives `404` for user 1's transcript route through `editor-api`
+  - anonymous auth, if still enabled at the project level, yields zero rows
+
+## Manual dashboard sequence
+
+1. Apply migrations with `npx supabase db push`.
+2. Create or sign in as the primary smoke user.
+3. Run the seed script with owner-scoped credentials.
+4. Run the smoke script with `SMOKE_USER_*` and `SMOKE_USER2_*`.
+5. Confirm the editor still boots in DEV mock mode with `VITE_USE_REAL_API=0`.
+6. In the Supabase dashboard, disable anonymous sign-ins under Authentication → Providers.

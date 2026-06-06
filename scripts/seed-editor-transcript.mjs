@@ -9,12 +9,32 @@ const env = await loadEnv();
 const supabaseUrl = env.SUPABASE_URL ?? env.VITE_SUPABASE_URL;
 const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = env.VITE_SUPABASE_ANON_KEY;
+const seedOwnerUserId = env.SEED_OWNER_USER_ID;
+const seedUserEmail = env.SEED_USER_EMAIL;
+const seedUserPassword = env.SEED_USER_PASSWORD;
 
-if (!supabaseUrl || (!serviceRoleKey && !anonKey)) {
-  throw new Error("seed-editor-transcript.mjs requires SUPABASE_URL plus either SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_ANON_KEY.");
+if (!supabaseUrl) {
+  throw new Error("seed-editor-transcript.mjs requires SUPABASE_URL or VITE_SUPABASE_URL.");
 }
 
-const authMode = serviceRoleKey ? "service-role" : "anonymous-fallback";
+const usingServiceRole = Boolean(serviceRoleKey);
+const usingUserCredentials = Boolean(seedUserEmail && seedUserPassword);
+
+if (usingServiceRole && !seedOwnerUserId) {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY requires SEED_OWNER_USER_ID for owner-scoped seeding.");
+}
+
+if (!usingServiceRole && !usingUserCredentials) {
+  throw new Error(
+    "seed-editor-transcript.mjs requires either SUPABASE_SERVICE_ROLE_KEY + SEED_OWNER_USER_ID or SEED_USER_EMAIL + SEED_USER_PASSWORD.",
+  );
+}
+
+if (!serviceRoleKey && !anonKey) {
+  throw new Error("A Supabase key is required. Provide SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_ANON_KEY.");
+}
+
+const authMode = usingServiceRole ? "service-role" : "password-session";
 const supabase = createClient(supabaseUrl, serviceRoleKey ?? anonKey, {
   auth: {
     autoRefreshToken: false,
@@ -22,8 +42,15 @@ const supabase = createClient(supabaseUrl, serviceRoleKey ?? anonKey, {
   },
 });
 
-if (!serviceRoleKey) {
-  await ensureAnonymousSession(supabase);
+let ownerUserId = seedOwnerUserId ?? "";
+
+if (!usingServiceRole) {
+  const session = await ensurePasswordSession(supabase, seedUserEmail, seedUserPassword);
+  ownerUserId = session.user.id;
+}
+
+if (!ownerUserId) {
+  throw new Error("Unable to determine seed owner user id.");
 }
 
 const now = Date.now();
@@ -31,8 +58,8 @@ const caseId = `case_editor_api_${now}`;
 const transcriptId = `tr_editor_api_${now}`;
 const deepgramJobId = `job_editor_api_${now}`;
 const audioId = `audio_editor_api_${now}`;
-const audioPath = `cases/${caseId}/audio/${audioId}.wav`;
-const rawPath = `cases/${caseId}/transcripts/${deepgramJobId}/raw.json`;
+const audioPath = `${ownerUserId}/${caseId}/audio/${audioId}.wav`;
+const rawPath = `${ownerUserId}/${caseId}/transcripts/${deepgramJobId}/raw.json`;
 
 const rawJson = JSON.stringify(rawFixturePacket, null, 2);
 const rawChecksum = createHash("sha256").update(rawJson).digest("hex");
@@ -43,7 +70,7 @@ await uploadObject(audioPath, audioBytes, "audio/wav");
 await uploadObject(rawPath, rawBytes, "application/json");
 
 for (const exhibit of editorApiFixture.exhibits) {
-  const exhibitPath = `cases/${caseId}/exhibits/${exhibit.exhibit_id}.txt`;
+  const exhibitPath = `${ownerUserId}/${caseId}/exhibits/${exhibit.exhibit_id}.txt`;
   await uploadObject(exhibitPath, new TextEncoder().encode(exhibit.description), "text/plain");
   exhibit.storage_path = exhibitPath;
 }
@@ -64,6 +91,7 @@ const seedMetadata = {
   transcriptId,
   routeJobId: transcriptId,
   deepgramJobId,
+  ownerUserId,
   audioPath,
   rawPath,
   outputAt: new Date().toISOString(),
@@ -104,6 +132,7 @@ async function insertCase() {
   };
 
   const { error } = await supabase.from("cases").insert({
+    owner_user_id: ownerUserId,
     case_id: caseId,
     proceeding_type: "freelance_deposition",
     stage: "workspace",
@@ -118,6 +147,7 @@ async function insertCase() {
 
 async function insertAudio() {
   const { error } = await supabase.from("case_audio").insert({
+    owner_user_id: ownerUserId,
     case_id: caseId,
     audio_id: audioId,
     original_filename: "editor-api-seed.wav",
@@ -136,6 +166,7 @@ async function insertAudio() {
 
 async function insertTranscript() {
   const { error } = await supabase.from("transcripts").insert({
+    owner_user_id: ownerUserId,
     transcript_id: transcriptId,
     case_id: caseId,
     job_id: deepgramJobId,
@@ -168,6 +199,7 @@ async function insertTranscript() {
 
 async function insertSpeakers() {
   const rows = editorApiFixture.document.speakers.map((speaker) => ({
+    owner_user_id: ownerUserId,
     transcript_id: transcriptId,
     speaker_id: speaker.speaker_id,
     display_name: speaker.display_name,
@@ -194,6 +226,7 @@ async function insertUtterances() {
     const avgConfidence = utteranceWords.reduce((sum, word) => sum + word.confidence, 0) / Math.max(utteranceWords.length, 1);
 
     return {
+      owner_user_id: ownerUserId,
       transcript_id: transcriptId,
       utterance_id: utterance.utterance_id,
       speaker_id: utterance.speaker_id,
@@ -218,6 +251,7 @@ async function insertUtterances() {
 async function insertWords() {
   const speakerIndexById = new Map(editorApiFixture.document.speakers.map((speaker) => [speaker.speaker_id, speaker.deepgram_speaker]));
   const rows = editorApiFixture.document.words.map((word, wordIndex) => ({
+    owner_user_id: ownerUserId,
     transcript_id: transcriptId,
     utterance_id: word.utterance_id,
     word_id: word.word_id,
@@ -246,6 +280,7 @@ async function insertWords() {
 
 async function insertAudit() {
   const { error } = await supabase.from("transcript_audit_log").insert({
+    owner_user_id: ownerUserId,
     transcript_id: transcriptId,
     change_id: `chg_ingest_${deepgramJobId}`,
     utterance_id: null,
@@ -270,6 +305,7 @@ async function insertAudit() {
 
 async function insertSuggestions() {
   const rows = editorApiFixture.suggestions.map((suggestion) => ({
+    owner_user_id: ownerUserId,
     transcript_id: transcriptId,
     suggestion_id: suggestion.suggestion_id,
     word_id: suggestion.word_id,
@@ -289,6 +325,7 @@ async function insertSuggestions() {
 
 async function insertExhibits() {
   const rows = editorApiFixture.exhibits.map((exhibit) => ({
+    owner_user_id: ownerUserId,
     case_id: caseId,
     exhibit_id: exhibit.exhibit_id,
     label: exhibit.label,
@@ -310,6 +347,7 @@ async function insertExhibits() {
 
 async function insertReviewState() {
   const { error } = await supabase.from("transcript_review_state").insert({
+    owner_user_id: ownerUserId,
     transcript_id: transcriptId,
     reviewed_word_ids: [],
     unreviewed_word_ids: [],
@@ -349,64 +387,72 @@ async function loadEnv() {
   return env;
 }
 
-async function ensureAnonymousSession(client) {
-  const { data: sessionData, error: sessionError } = await client.auth.getSession();
-  if (sessionError) {
-    throw sessionError;
+async function ensurePasswordSession(client, email, password) {
+  const { data: signInData, error: signInError } = await client.auth.signInWithPassword({ email, password });
+  if (!signInError && signInData.session) {
+    return signInData.session;
   }
 
-  if (sessionData.session) {
-    return sessionData.session;
+  const { data: signUpData, error: signUpError } = await client.auth.signUp({ email, password });
+  if (signUpError) {
+    throw signInError ?? signUpError;
   }
 
-  const { error } = await client.auth.signInAnonymously();
-  if (error) {
-    throw error;
+  if (signUpData.session) {
+    return signUpData.session;
   }
+
+  const { data: retryData, error: retryError } = await client.auth.signInWithPassword({ email, password });
+  if (retryError || !retryData.session) {
+    throw retryError ?? new Error("Sign-up succeeded but no password session was established.");
+  }
+
+  return retryData.session;
 }
 
 function averageConfidence(words) {
-  const total = words.reduce((sum, word) => sum + word.confidence, 0);
-  return (total / Math.max(words.length, 1)).toFixed(4);
+  if (words.length === 0) {
+    return 0;
+  }
+
+  return Number((words.reduce((sum, word) => sum + word.confidence, 0) / words.length).toFixed(4));
 }
 
 function buildMockWav(durationSeconds) {
-  const sampleRate = 8000;
+  const sampleRate = 8_000;
+  const totalSamples = sampleRate * durationSeconds;
   const channels = 1;
   const bitsPerSample = 16;
   const bytesPerSample = bitsPerSample / 8;
-  const totalSamples = sampleRate * durationSeconds;
-  const dataSize = totalSamples * channels * bytesPerSample;
+  const blockAlign = channels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = totalSamples * blockAlign;
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
 
-  const str = (offset, value) => [...value].forEach((char, index) => view.setUint8(offset + index, char.charCodeAt(0)));
-  const u32 = (offset, value) => view.setUint32(offset, value, true);
-  const u16 = (offset, value) => view.setUint16(offset, value, true);
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, dataSize, true);
 
-  str(0, "RIFF");
-  u32(4, 36 + dataSize);
-  str(8, "WAVE");
-  str(12, "fmt ");
-  u32(16, 16);
-  u16(20, 1);
-  u16(22, channels);
-  u32(24, sampleRate);
-  u32(28, sampleRate * channels * bytesPerSample);
-  u16(32, channels * bytesPerSample);
-  u16(34, bitsPerSample);
-  str(36, "data");
-  u32(40, dataSize);
-
-  const frequency = 220;
-  const amplitude = 0.12;
   for (let index = 0; index < totalSamples; index += 1) {
-    const t = index / sampleRate;
-    const envelope = index % sampleRate < sampleRate * 0.08 ? 1 : 0.18;
-    const sample = Math.sin(2 * Math.PI * frequency * t) * amplitude * envelope;
-    const pcm = Math.max(-1, Math.min(1, sample)) * 0x7fff;
-    view.setInt16(44 + index * bytesPerSample, pcm, true);
+    view.setInt16(44 + (index * bytesPerSample), 0, true);
   }
 
   return new Uint8Array(buffer);
+}
+
+function writeAscii(view, offset, value) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index));
+  }
 }
