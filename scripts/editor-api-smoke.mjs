@@ -274,22 +274,52 @@ async function step(label, fn) {
 }
 
 async function ensurePasswordSession(client, email, password) {
-  const { data: signInData, error: signInError } = await client.auth.signInWithPassword({ email, password });
-  if (!signInError && signInData.session) {
+  let signInData = null;
+  let signInError = null;
+
+  try {
+    const result = await client.auth.signInWithPassword({ email, password });
+    signInData = result.data;
+    signInError = result.error;
+  } catch (error) {
+    signInError = error;
+  }
+
+  if (!signInError && signInData?.session) {
     return signInData.session;
   }
 
-  const { data: signUpData, error: signUpError } = await client.auth.signUp({ email, password });
+  let signUpData = null;
+  let signUpError = null;
+
+  try {
+    const result = await client.auth.signUp({ email, password });
+    signUpData = result.data;
+    signUpError = result.error;
+  } catch (error) {
+    signUpError = error;
+  }
+
   if (signUpError) {
     throw signInError ?? signUpError;
   }
 
-  if (signUpData.session) {
+  if (signUpData?.session) {
     return signUpData.session;
   }
 
-  const { data: retryData, error: retryError } = await client.auth.signInWithPassword({ email, password });
-  if (retryError || !retryData.session) {
+  let retryData = null;
+  let retryError = null;
+
+  try {
+    const result = await client.auth.signInWithPassword({ email, password });
+    retryData = result.data;
+    retryError = result.error;
+  } catch (error) {
+    retryError = error;
+  }
+
+  if (retryError || !retryData?.session) {
     throw retryError ?? new Error("Sign-up succeeded but no password session was established.");
   }
 
