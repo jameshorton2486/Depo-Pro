@@ -10,6 +10,7 @@ import type { DeepgramKeyterm } from "../types/case";
 import { createOfflineDeepgramFixture } from "../lib/transcript/offlineFixture";
 import type { DeepgramResponse, TranscriptCapture } from "../lib/transcript/types";
 import { normalizeTranscriptResponse } from "../lib/transcript/normalize";
+import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
 import {
   insertNormalizedTranscript,
   type TranscriptJobRow,
@@ -50,8 +51,6 @@ type TranscriptDatabase = Omit<Database, "public"> & {
 };
 
 const CASE_FILES_BUCKET = "case-files";
-const DEEPGRAM_ENDPOINT = "https://api.deepgram.com/v1/listen";
-const DEEPGRAM_MODEL = "nova-3";
 const MAX_KEYTERMS = 100;
 
 function getTranscriptClient(client: SupabaseClient<Database>): SupabaseClient<TranscriptDatabase> {
@@ -107,24 +106,6 @@ function resolveTranscriptionSource(): "deepgram" | "offline-fixture" {
   }
 
   return getDeepgramApiKey() ? "deepgram" : "offline-fixture";
-}
-
-function buildDeepgramUrl(keyterms: string[]): string {
-  const params = new URLSearchParams({
-    model: DEEPGRAM_MODEL,
-    punctuate: "true",
-    paragraphs: "true",
-    diarize_model: "latest",
-    filler_words: "true",
-    utterances: "true",
-    smart_format: "true",
-  });
-
-  for (const keyterm of keyterms) {
-    params.append("keyterm", keyterm);
-  }
-
-  return `${DEEPGRAM_ENDPOINT}?${params.toString()}`;
 }
 
 function buildRawStoragePath(caseId: string, jobId: string): string {
@@ -196,7 +177,11 @@ async function uploadRawPacket(
   };
 }
 
-async function fetchDeepgramResponse(audioRecord: CaseAudioRecord, keyterms: string[]): Promise<DeepgramResponse> {
+async function fetchDeepgramResponseFromCase(
+  caseId: string,
+  audioRecord: CaseAudioRecord,
+  keyterms: DeepgramKeyterm[],
+): Promise<DeepgramResponse> {
   if (!audioRecord.storage_path) {
     throw new Error("Audio storage path missing. Re-upload the audio before starting transcription.");
   }
@@ -207,7 +192,8 @@ async function fetchDeepgramResponse(audioRecord: CaseAudioRecord, keyterms: str
   }
 
   const file = await downloadCaseFile(audioRecord.storage_path, audioRecord.original_filename, audioRecord.mime_type);
-  return externalJsonRequest<DeepgramResponse>("POST", buildDeepgramUrl(keyterms), {
+  const request = buildDeepgramRequestFromStoredKeyterms({ caseId, keyterms });
+  return externalJsonRequest<DeepgramResponse>("POST", request.wireUrl, {
     headers: {
       Authorization: `Token ${apiKey}`,
       "Content-Type": file.type || "application/octet-stream",
@@ -223,7 +209,6 @@ export async function startTranscription(caseId: string, audioRecord: CaseAudioR
   }
 
   const transcriptionSource = resolveTranscriptionSource();
-  const keyterms = normalizeDeepgramKeyterms(caseRecord.deepgram.keyterms);
   const transcriptJob = await createTranscriptJob(caseId, audioRecord, transcriptionSource);
 
   try {
@@ -235,7 +220,7 @@ export async function startTranscription(caseId: string, audioRecord: CaseAudioR
     const response =
       transcriptionSource === "offline-fixture"
         ? createOfflineDeepgramFixture(caseId)
-        : await fetchDeepgramResponse(audioRecord, keyterms);
+        : await fetchDeepgramResponseFromCase(caseId, audioRecord, caseRecord.deepgram.keyterms);
 
     const { rawStoragePath, rawChecksum } = await uploadRawPacket(caseId, transcriptJob.job_id, response);
     const normalized = normalizeTranscriptResponse(response);
