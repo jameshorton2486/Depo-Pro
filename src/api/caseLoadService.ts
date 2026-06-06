@@ -3,7 +3,7 @@ import { listCaseAudio, listCaseFiles, type CaseAudioRecord, type CaseFileRecord
 import { listFieldProvenance } from "./provenanceService";
 import { listTranscriptJobs, type TranscriptJobRow } from "./transcriptRepository";
 import type { FieldProvenanceRow } from "../components/conflict/types";
-import type { CaseRecord } from "../types/case";
+import { normalizeCaseRecord, type CaseRecord } from "../types/case";
 
 // Intake uses this now; workspace, exhibits, and export should restore through
 // the same bundle seam instead of re-implementing case/file/audio hydration.
@@ -29,7 +29,7 @@ export async function loadCaseBundle(caseId: string): Promise<CaseBundle | null>
   }
 
   return {
-    record,
+    record: normalizeCaseRecord(record),
     files,
     audio,
     transcripts,

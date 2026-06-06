@@ -128,4 +128,23 @@ describe("loadCaseBundle", () => {
     expect(bundle?.transcripts).toEqual([]);
     expect(bundle?.provenance).toEqual([]);
   });
+
+  it("normalizes legacy single-witness payloads during bundle hydration", async () => {
+    const legacyPayload = {
+      ...emptyCaseRecord("job_demo_001", "2026-06-05T18:00:00Z"),
+      deponentName: "Heath Thomas",
+      witnesses: null,
+    };
+
+    loadCaseMock.mockResolvedValue(legacyPayload);
+    listCaseFilesMock.mockResolvedValue([]);
+    listCaseAudioMock.mockResolvedValue([]);
+    listTranscriptJobsMock.mockResolvedValue([]);
+    listFieldProvenanceMock.mockResolvedValue([]);
+
+    const bundle = await loadCaseBundle("job_demo_001");
+
+    expect(bundle?.record.witnesses).toHaveLength(1);
+    expect(bundle?.record.witnesses[0].name.value).toBe("Heath Thomas");
+  });
 });

@@ -471,6 +471,79 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function normalizeFieldSource(value: unknown): FieldSource {
+  return value === "manual" || value === "extracted" || value === "imported" ? value : "manual";
+}
+
+function normalizeExtractedField<T>(
+  input: unknown,
+  fallback: ExtractedField<T>,
+  isValidValue: (value: unknown) => value is T,
+): ExtractedField<T> {
+  if (isRecord(input) && hasOwn(input, "value")) {
+    const value = isValidValue(input.value) ? input.value : fallback.value;
+    return {
+      value,
+      source: normalizeFieldSource(input.source),
+      confirmed: typeof input.confirmed === "boolean" ? input.confirmed : fallback.confirmed,
+      conflict: typeof input.conflict === "boolean" ? input.conflict : fallback.conflict,
+      confidence_score: typeof input.confidence_score === "number" ? input.confidence_score : fallback.confidence_score,
+    };
+  }
+
+  if (isValidValue(input)) {
+    return {
+      ...fallback,
+      value: input,
+    };
+  }
+
+  return fallback;
+}
+
+function normalizeStringField(input: unknown, fallback = extractedEmpty("")): ExtractedField<string> {
+  return normalizeExtractedField(input, fallback, (value): value is string => typeof value === "string");
+}
+
+function normalizeNullableStringField(
+  input: unknown,
+  fallback = extractedEmpty<string | null>(null),
+): ExtractedField<string | null> {
+  return normalizeExtractedField(input, fallback, (value): value is string | null => typeof value === "string" || value === null);
+}
+
+function normalizeNullableRoleField<T extends string>(
+  input: unknown,
+  fallback: ExtractedField<T | null>,
+  allowed: readonly T[],
+): ExtractedField<T | null> {
+  return normalizeExtractedField(
+    input,
+    fallback,
+    (value): value is T | null => value === null || (typeof value === "string" && allowed.includes(value as T)),
+  );
+}
+
+function normalizeBoolean(input: unknown, fallback = false): boolean {
+  return typeof input === "boolean" ? input : fallback;
+}
+
+function normalizeNullableString(input: unknown, fallback: string | null = null): string | null {
+  return typeof input === "string" ? input : fallback;
+}
+
+function normalizeStringArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 function normalizeAttorney(attorney: Attorney): Attorney {
   return {
     ...attorney,
@@ -482,15 +555,96 @@ function normalizeAttorney(attorney: Attorney): Attorney {
   };
 }
 
-function normalizeWitness(witness: Witness): Witness {
+function emptyWitness(witnessId: string): Witness {
   return {
-    ...witness,
-    prefix_suffix: witness.prefix_suffix ?? null,
-    party_affiliation: witness.party_affiliation ?? extractedEmpty(null),
-    is_corporate_rep: witness.is_corporate_rep ?? false,
-    corporate_entity: witness.corporate_entity ?? null,
-    read_and_sign: witness.read_and_sign ?? extractedEmpty(null),
-    spelling_corrections: witness.spelling_corrections ?? [],
+    witness_id: witnessId,
+    name: extractedEmpty(""),
+    role: extractedEmpty<DeponentRole>("WITNESS"),
+    title: extractedEmpty(null),
+    employer: extractedEmpty(null),
+    prefix_suffix: null,
+    party_affiliation: extractedEmpty(null),
+    is_corporate_rep: false,
+    corporate_entity: null,
+    read_and_sign: extractedEmpty(null),
+    spelling_corrections: [],
+    email: null,
+    phone: null,
+  };
+}
+
+function readLegacyWitnessName(record: Record<string, unknown>): string | null {
+  if (typeof record.deponentName === "string" && record.deponentName.trim()) {
+    return record.deponentName;
+  }
+
+  if (typeof record.witness_name === "string" && record.witness_name.trim()) {
+    return record.witness_name;
+  }
+
+  const witness = isRecord(record.witness) ? record.witness : null;
+  if (witness && typeof witness.name === "string" && witness.name.trim()) {
+    return witness.name;
+  }
+
+  const depositionDetails = isRecord(record.depositionDetails) ? record.depositionDetails : null;
+  const deponent = depositionDetails && isRecord(depositionDetails.deponent) ? depositionDetails.deponent : null;
+  if (deponent && typeof deponent.name === "string" && deponent.name.trim()) {
+    return deponent.name;
+  }
+
+  return null;
+}
+
+function normalizeWitnessRole(input: unknown, fallback = extractedEmpty<DeponentRole>("WITNESS")): ExtractedField<DeponentRole> {
+  return normalizeExtractedField(
+    input,
+    fallback,
+    (value): value is DeponentRole =>
+      value === "WITNESS" || value === "PARTY" || value === "EXPERT" || value === "OTHER",
+  );
+}
+
+function normalizeWitness(witness: unknown, fallbackId: string, legacyFallbacks?: { name?: string | null; role?: unknown }): Witness {
+  const defaults = emptyWitness(fallbackId);
+  const source = isRecord(witness) ? witness : null;
+  const witnessId = source && typeof source.witness_id === "string" && source.witness_id.trim() ? source.witness_id : fallbackId;
+  const normalized = {
+    ...defaults,
+    ...source,
+    witness_id: witnessId,
+    name: normalizeStringField(source?.name ?? legacyFallbacks?.name ?? defaults.name, defaults.name),
+    role: normalizeWitnessRole(source?.role ?? legacyFallbacks?.role ?? defaults.role, defaults.role),
+    title: normalizeNullableStringField(source?.title, defaults.title),
+    employer: normalizeNullableStringField(source?.employer, defaults.employer),
+    prefix_suffix: normalizeNullableString(source?.prefix_suffix),
+    party_affiliation: normalizeNullableRoleField(
+      source?.party_affiliation,
+      defaults.party_affiliation,
+      ["plaintiff", "defendant", "third_party"] as const,
+    ),
+    is_corporate_rep: normalizeBoolean(source?.is_corporate_rep),
+    corporate_entity: normalizeNullableString(source?.corporate_entity),
+    read_and_sign: normalizeNullableRoleField(
+      source?.read_and_sign,
+      defaults.read_and_sign,
+      ["read_and_sign", "waived"] as const,
+    ),
+    spelling_corrections: normalizeStringArray<{ original: string; corrected: string; noted_on_record: boolean }>(
+      source?.spelling_corrections,
+    ),
+    email: normalizeNullableString(source?.email),
+    phone: normalizeNullableString(source?.phone),
+  };
+
+  return {
+    ...normalized,
+    prefix_suffix: normalized.prefix_suffix ?? null,
+    party_affiliation: normalized.party_affiliation ?? extractedEmpty(null),
+    is_corporate_rep: normalized.is_corporate_rep ?? false,
+    corporate_entity: normalized.corporate_entity ?? null,
+    read_and_sign: normalized.read_and_sign ?? extractedEmpty(null),
+    spelling_corrections: normalized.spelling_corrections ?? [],
   };
 }
 
@@ -508,41 +662,66 @@ function normalizeVideographer(videographer: Videographer): Videographer {
   };
 }
 
-export function normalizeCaseRecord(record: CaseRecord): CaseRecord {
-  const defaults = emptyCaseRecord(record.case_id, record.created_at || new Date().toISOString());
+function normalizeWitnesses(record: Record<string, unknown>): Witness[] {
+  const legacyName = readLegacyWitnessName(record);
+  const legacyRole = record.deponentRole;
+  const rawWitnesses = record.witnesses;
+
+  if (Array.isArray(rawWitnesses)) {
+    return rawWitnesses.map((witness, index) =>
+      normalizeWitness(witness, `witness_${index + 1}`, index === 0 ? { name: legacyName, role: legacyRole } : undefined),
+    );
+  }
+
+  if (isRecord(rawWitnesses) || typeof rawWitnesses === "string") {
+    return [normalizeWitness(rawWitnesses, "witness_1", { name: legacyName, role: legacyRole })];
+  }
+
+  if (legacyName) {
+    return [normalizeWitness({}, "witness_1", { name: legacyName, role: legacyRole })];
+  }
+
+  return [];
+}
+
+export function normalizeCaseRecord(record: unknown): CaseRecord {
+  const source = isRecord(record) ? record : {};
+  const caseId = typeof source.case_id === "string" ? source.case_id : "";
+  const createdAt = typeof source.created_at === "string" ? source.created_at : new Date().toISOString();
+  const defaults = emptyCaseRecord(caseId, createdAt);
 
   return {
     ...defaults,
-    ...record,
+    ...source,
     caption: {
       ...defaults.caption,
-      ...record.caption,
+      ...(isRecord(source.caption) ? source.caption : {}),
     },
     session: {
       ...defaults.session,
-      ...record.session,
+      ...(isRecord(source.session) ? source.session : {}),
     },
     proceeding: {
       ...defaults.proceeding,
-      ...record.proceeding,
+      ...(isRecord(source.proceeding) ? source.proceeding : {}),
     },
     reporter: {
       ...defaults.reporter,
-      ...record.reporter,
+      ...(isRecord(source.reporter) ? source.reporter : {}),
     },
     format: {
       ...defaults.format,
-      ...record.format,
+      ...(isRecord(source.format) ? source.format : {}),
     },
     stage_completion: {
       ...defaults.stage_completion,
-      ...record.stage_completion,
+      ...(isRecord(source.stage_completion) ? source.stage_completion : {}),
     },
-    witnesses: (record.witnesses ?? []).map((witness) => normalizeWitness(witness as Witness)),
-    attorneys: (record.attorneys ?? []).map((attorney) => normalizeAttorney(attorney as Attorney)),
-    interpreters: (record.interpreters ?? []).map((interpreter) => normalizeInterpreter(interpreter as Interpreter)),
-    videographers: (record.videographers ?? []).map((videographer) => normalizeVideographer(videographer as Videographer)),
-    participants: record.participants ?? [],
-    exhibits: record.exhibits ?? [],
+    witnesses: normalizeWitnesses(source),
+    attorneys: normalizeStringArray<Attorney>(source.attorneys).map((attorney) => normalizeAttorney(attorney)),
+    interpreters: normalizeStringArray<Interpreter>(source.interpreters).map((interpreter) => normalizeInterpreter(interpreter)),
+    videographers: normalizeStringArray<Videographer>(source.videographers).map((videographer) => normalizeVideographer(videographer)),
+    participants: normalizeStringArray<Participant>(source.participants),
+    exhibits: normalizeStringArray<CaseExhibit>(source.exhibits),
   };
 }

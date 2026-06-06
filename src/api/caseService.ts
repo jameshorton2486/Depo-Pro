@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "../lib/supabase";
-import { emptyCaseRecord, type CaseRecord } from "../types/case";
+import { emptyCaseRecord, normalizeCaseRecord, type CaseRecord } from "../types/case";
 
 type CaseRow = {
   case_id: string;
@@ -91,7 +91,7 @@ export async function loadCase(caseId: string): Promise<CaseRecord | null> {
     .maybeSingle();
 
   if (error) throw error;
-  return (data?.payload as CaseRecord | undefined) ?? null;
+  return data?.payload ? normalizeCaseRecord(data.payload) : null;
 }
 
 export async function caseExists(caseId: string): Promise<boolean> {

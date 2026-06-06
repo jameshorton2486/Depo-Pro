@@ -15,4 +15,31 @@ describe("normalizeCaseRecord", () => {
     expect(normalized.session.location_type.value).toBeNull();
     expect(normalized.session.location_type.confirmed).toBe(false);
   });
+
+  it("preserves legacy flattened deponentName payloads as a canonical witness array", () => {
+    const normalized = normalizeCaseRecord({
+      ...emptyCaseRecord("case_legacy_flat", "2026-06-05T18:00:00.000Z"),
+      deponentName: "Heath Thomas",
+      deponentRole: "WITNESS",
+      witnesses: null,
+    });
+
+    expect(normalized.witnesses).toHaveLength(1);
+    expect(normalized.witnesses[0].name.value).toBe("Heath Thomas");
+    expect(normalized.witnesses[0].role.value).toBe("WITNESS");
+  });
+
+  it("coerces legacy singular witnesses objects into the canonical array without losing the name", () => {
+    const normalized = normalizeCaseRecord({
+      ...emptyCaseRecord("case_legacy_object", "2026-06-05T18:00:00.000Z"),
+      witnesses: {
+        witness_id: "legacy_witness",
+        name: "Maria L. Lopez De Martinez",
+      },
+    });
+
+    expect(normalized.witnesses).toHaveLength(1);
+    expect(normalized.witnesses[0].witness_id).toBe("legacy_witness");
+    expect(normalized.witnesses[0].name.value).toBe("Maria L. Lopez De Martinez");
+  });
 });
