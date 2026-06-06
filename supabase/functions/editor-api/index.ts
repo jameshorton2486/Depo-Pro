@@ -1,10 +1,62 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import type { EditorDocument, Speaker, Utterance, Word } from "../../../src/api/types.ts";
 
 type Database = Record<string, never>;
 
+type TranscriptRow = {
+  transcript_id: string;
+  case_id: string;
+  job_id: string;
+  media_url: string | null;
+  duration: number | null;
+  duration_seconds?: number | null;
+};
+
+type TranscriptSpeakerRow = {
+  speaker_id: string;
+  display_name: string;
+  deepgram_speaker: number;
+  role: string | null;
+  speaker_index?: number | null;
+  speaker_label?: string | null;
+  assigned_name?: string | null;
+  speaker_role?: string | null;
+};
+
+type TranscriptUtteranceRow = {
+  utterance_id: string;
+  speaker_id: string;
+  start_time: number;
+  end_time: number;
+  ordinal: number;
+  utterance_index?: number | null;
+};
+
+type TranscriptWordRow = {
+  word_id: string;
+  utterance_id: string;
+  speaker_id: string;
+  start_time: number;
+  end_time: number;
+  confidence: number;
+  reviewed: boolean;
+  edited: boolean;
+  text: string;
+  raw_text: string;
+  ordinal: number;
+  word_index?: number | null;
+  working_text?: string | null;
+  removed?: boolean | null;
+};
+
+type CaseAudioRow = {
+  storage_path: string | null;
+  media_url: string | null;
+};
+
 type RouteContext = {
   supabase: SupabaseClient<Database>;
-  jobId: string;
+  transcript: TranscriptRow;
   suggestionId?: string;
   request: Request;
 };
@@ -27,6 +79,9 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const CASE_FILES_BUCKET = "case-files";
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
+const WORD_PAGE_SIZE = 1000;
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
@@ -60,18 +115,18 @@ Deno.serve(async (request) => {
       },
     });
 
-    await requireTranscript(supabase, match.jobId);
+    const transcript = await requireTranscript(supabase, match.jobId);
 
     const context: RouteContext = {
       supabase,
-      jobId: match.jobId,
+      transcript,
       suggestionId: "suggestionId" in match ? match.suggestionId : undefined,
       request,
     };
 
     switch (match.kind) {
       case "document":
-        return routeNotImplemented("GET /:jobId/document", context);
+        return handleGetDocument(context);
       case "working":
         return routeNotImplemented("PUT /:jobId/working", context);
       case "review":
@@ -104,7 +159,7 @@ Deno.serve(async (request) => {
 async function routeNotImplemented(route: string, context: RouteContext): Promise<Response> {
   console.error("[editor-api] route not implemented", {
     route,
-    jobId: context.jobId,
+    jobId: context.transcript.transcript_id,
   });
   return respondError(500, "route not implemented");
 }
@@ -112,10 +167,10 @@ async function routeNotImplemented(route: string, context: RouteContext): Promis
 async function requireTranscript(
   supabase: SupabaseClient<Database>,
   jobId: string,
-): Promise<void> {
+): Promise<TranscriptRow> {
   const { data, error } = await supabase
     .from("transcripts")
-    .select("transcript_id")
+    .select("transcript_id, case_id, job_id, media_url, duration, duration_seconds")
     .eq("transcript_id", jobId)
     .maybeSingle();
 
@@ -125,6 +180,205 @@ async function requireTranscript(
 
   if (!data) {
     throw new HttpError(404, "unknown jobId");
+  }
+
+  return data as TranscriptRow;
+}
+
+async function handleGetDocument(context: RouteContext): Promise<Response> {
+  const { supabase, transcript } = context;
+  const [speakerRows, utteranceRows, words, mediaUrl] = await Promise.all([
+    loadSpeakers(supabase, transcript.transcript_id),
+    loadUtterances(supabase, transcript.transcript_id),
+    loadWords(supabase, transcript.transcript_id),
+    resolveMediaUrl(supabase, transcript),
+  ]);
+
+  const wordIdsByUtterance = new Map<string, string[]>();
+  for (const word of words) {
+    const ids = wordIdsByUtterance.get(word.utterance_id) ?? [];
+    ids.push(word.word_id);
+    wordIdsByUtterance.set(word.utterance_id, ids);
+  }
+
+  const document: EditorDocument = {
+    job_id: transcript.job_id,
+    media_url: mediaUrl,
+    duration: transcript.duration_seconds ?? transcript.duration ?? 0,
+    speakers: speakerRows.map(mapSpeakerRow),
+    utterances: utteranceRows.map((row) => mapUtteranceRow(row, wordIdsByUtterance)),
+    words: words.map(mapWordRow),
+  };
+
+  return respondJson(200, document);
+}
+
+async function loadSpeakers(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+): Promise<TranscriptSpeakerRow[]> {
+  const { data, error } = await supabase
+    .from("transcript_speakers")
+    .select("speaker_id, display_name, deepgram_speaker, role, speaker_index, speaker_label, assigned_name, speaker_role")
+    .eq("transcript_id", transcriptId)
+    .order("speaker_index", { ascending: true })
+    .order("deepgram_speaker", { ascending: true });
+
+  if (error) {
+    throw new HttpError(500, "failed to load speakers");
+  }
+
+  return (data ?? []) as TranscriptSpeakerRow[];
+}
+
+async function loadUtterances(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+): Promise<TranscriptUtteranceRow[]> {
+  const { data, error } = await supabase
+    .from("transcript_utterances")
+    .select("utterance_id, speaker_id, start_time, end_time, ordinal, utterance_index")
+    .eq("transcript_id", transcriptId)
+    .order("utterance_index", { ascending: true })
+    .order("ordinal", { ascending: true });
+
+  if (error) {
+    throw new HttpError(500, "failed to load utterances");
+  }
+
+  return (data ?? []) as TranscriptUtteranceRow[];
+}
+
+async function loadWords(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+): Promise<TranscriptWordRow[]> {
+  const rows: TranscriptWordRow[] = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + WORD_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from("transcript_words")
+      .select("word_id, utterance_id, speaker_id, start_time, end_time, confidence, reviewed, edited, text, raw_text, ordinal, word_index, working_text, removed")
+      .eq("transcript_id", transcriptId)
+      .order("word_index", { ascending: true })
+      .order("ordinal", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      throw new HttpError(500, "failed to load words");
+    }
+
+    const page = (data ?? []) as TranscriptWordRow[];
+    rows.push(...page);
+
+    if (page.length < WORD_PAGE_SIZE) {
+      break;
+    }
+
+    from += WORD_PAGE_SIZE;
+  }
+
+  return rows.filter((row) => !row.removed);
+}
+
+async function resolveMediaUrl(
+  supabase: SupabaseClient<Database>,
+  transcript: TranscriptRow,
+): Promise<string> {
+  const { data, error } = await supabase
+    .from("case_audio")
+    .select("storage_path, media_url, uploaded_at")
+    .eq("case_id", transcript.case_id)
+    .order("uploaded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new HttpError(500, "failed to load case audio");
+  }
+
+  const audio = (data as CaseAudioRow | null) ?? null;
+  if (audio?.storage_path) {
+    const signed = await supabase.storage
+      .from(CASE_FILES_BUCKET)
+      .createSignedUrl(audio.storage_path, SIGNED_URL_TTL_SECONDS);
+
+    if (signed.error) {
+      throw new HttpError(500, "failed to sign media url");
+    }
+
+    return signed.data.signedUrl;
+  }
+
+  if (audio?.media_url) {
+    return audio.media_url;
+  }
+
+  console.warn("[editor-api] transcript has no case audio media", {
+    jobId: transcript.transcript_id,
+    caseId: transcript.case_id,
+  });
+
+  return "";
+}
+
+function mapSpeakerRow(row: TranscriptSpeakerRow): Speaker {
+  return {
+    speaker_id: row.speaker_id,
+    display_name: row.assigned_name || row.display_name || row.speaker_label || "",
+    deepgram_speaker: row.speaker_index ?? row.deepgram_speaker,
+    role: normalizeSpeakerRole(row.speaker_role ?? row.role),
+  };
+}
+
+function mapUtteranceRow(
+  row: TranscriptUtteranceRow,
+  wordIdsByUtterance: Map<string, string[]>,
+): Utterance {
+  return {
+    utterance_id: row.utterance_id,
+    speaker_id: row.speaker_id,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    word_ids: wordIdsByUtterance.get(row.utterance_id) ?? [],
+  };
+}
+
+function mapWordRow(row: TranscriptWordRow): Word {
+  const text = row.working_text ?? row.text;
+  return {
+    word_id: row.word_id,
+    text,
+    raw_text: row.raw_text,
+    speaker_id: row.speaker_id,
+    utterance_id: row.utterance_id,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    confidence: row.confidence,
+    reviewed: row.reviewed,
+    edited: text !== row.raw_text,
+  };
+}
+
+function normalizeSpeakerRole(value: string | null | undefined): Speaker["role"] | undefined {
+  switch ((value ?? "").toUpperCase()) {
+    case "REPORTER":
+    case "COURT_REPORTER":
+      return "REPORTER";
+    case "WITNESS":
+      return "WITNESS";
+    case "ATTORNEY":
+    case "EXAMINING_ATTORNEY":
+    case "DEFENDING_ATTORNEY":
+      return "ATTORNEY";
+    case "INTERPRETER":
+      return "INTERPRETER";
+    case "OTHER":
+      return "OTHER";
+    default:
+      return undefined;
   }
 }
 

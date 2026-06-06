@@ -48,3 +48,16 @@ None yet.
 ### Deferred
 
 - All route bodies remain to be implemented in later phases.
+
+## Phase 2
+
+### Decisions
+
+- `GET /document` returns `job_id = transcripts.job_id` while looking up the route by `transcript_id`.
+- Word pagination is implemented in 1,000-row pages to avoid PostgREST row caps.
+- `Word.text` is surfaced as `working_text ?? text` and `edited` is derived against `raw_text` at response time.
+- Missing audio is non-fatal: the endpoint returns `media_url: ""` and logs a warning.
+
+### Additive migration log
+
+None yet.
