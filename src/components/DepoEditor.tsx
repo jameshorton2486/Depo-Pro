@@ -23,6 +23,7 @@ import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
 import { useIntake } from "../context/IntakeContext";
 import { saveCase } from "../api/caseService";
 import { buildManagedKeyterms } from "../lib/keyterms/managedKeyterms";
+import { AuthGate } from "./AuthGate/AuthGate";
 
 // ─── Editor workspace (stages 2-7) ───────────────────────────────────────────
 
@@ -233,8 +234,10 @@ function CaseShell({ config }: { config: DepoEditorConfig }) {
 
 export function DepoEditor({ config }: { config: DepoEditorConfig }) {
   return (
-    <CaseProvider configJobId={config.jobId}>
-      <CaseShell config={config} />
-    </CaseProvider>
+    <AuthGate config={config}>
+      <CaseProvider configJobId={config.jobId}>
+        <CaseShell config={config} />
+      </CaseProvider>
+    </AuthGate>
   );
 }

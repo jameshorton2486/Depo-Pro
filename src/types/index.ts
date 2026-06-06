@@ -24,6 +24,8 @@ export interface DepoEditorConfig {
   apiBaseUrl: string;
   mountSelector: string;
   readOnly?: boolean;
+  supabaseAccessToken?: string;
+  supabaseRefreshToken?: string;
 }
 
 // ─── UFM Case model (UI-only — not part of the API contract) ─────────────────

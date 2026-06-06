@@ -36,3 +36,14 @@ Storage objects are handled separately in the storage phase.
 - multi-user case sharing
 - role-based access beyond simple ownership
 - dashboard step to disable anonymous sign-ins
+
+## Client auth hardening
+
+- Anonymous bootstrap was removed from `src/lib/supabase.ts`.
+- Auth state is now explicit:
+  - session snapshot + subscription
+  - optional host-injected session via `DepoEditorConfig.supabaseAccessToken` / `supabaseRefreshToken`
+  - `AuthRequiredError` surfaced for real-API requests with no session
+- `AuthGate` wraps the app outside `CaseProvider`.
+- DEV mock mode still bypasses the gate UI when `VITE_USE_REAL_API !== "1"`.
+- Sign-out is exposed in the toolbar and Case Browser header.

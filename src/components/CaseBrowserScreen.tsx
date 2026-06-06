@@ -3,6 +3,7 @@ import { AlertTriangle, FileAudio2, FileSearch, FolderOpen, ListMusic, Plus, Sea
 import { listRecentCases, type CaseBrowserSummary } from "../api/caseService";
 import { caseStatusFromStage, matchesCaseSearch } from "../lib/caseLifecycle";
 import { useCase } from "../context/CaseContext";
+import { AuthStatusChip } from "./AuthGate/AuthGate";
 
 function StatusChip({
   stage,
@@ -162,6 +163,10 @@ export function CaseBrowserScreen() {
               <Plus size={16} />
               New Deposition
             </button>
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <AuthStatusChip />
           </div>
 
           <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_300px]">

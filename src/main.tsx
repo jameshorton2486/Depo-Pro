@@ -3,6 +3,7 @@ import "./index.css";
 import { DepoEditor } from "./components/DepoEditor";
 import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
+import { initializeSupabaseSession } from "./lib/supabase";
 
 declare global {
   interface Window {
@@ -33,6 +34,10 @@ async function startMocks() {
 
 export async function mountEditor(config: DepoEditorConfig) {
   configureClient(config.apiBaseUrl);
+  await initializeSupabaseSession({
+    accessToken: config.supabaseAccessToken,
+    refreshToken: config.supabaseRefreshToken,
+  });
 
   const el = document.querySelector(config.mountSelector);
   if (!el) {
@@ -40,7 +45,11 @@ export async function mountEditor(config: DepoEditorConfig) {
     return;
   }
 
-  console.info("[DEPO-PRO] Mounting editor with config:", config);
+  console.info("[DEPO-PRO] Mounting editor with config:", {
+    ...config,
+    supabaseAccessToken: config.supabaseAccessToken ? "[redacted]" : undefined,
+    supabaseRefreshToken: config.supabaseRefreshToken ? "[redacted]" : undefined,
+  });
   createRoot(el as HTMLElement).render(<DepoEditor config={config} />);
 }
 
