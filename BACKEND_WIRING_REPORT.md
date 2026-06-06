@@ -118,3 +118,15 @@ None.
 ### Additive migration log
 
 None.
+
+## Phase 7
+
+### Decisions
+
+- Client bearer-token attachment is implemented only in `src/api/client.ts`, preserving the single-network-module rule.
+- Real backend mode is opt-in via `VITE_USE_REAL_API=1`; MSW remains the default in DEV.
+- No other client files were changed for routing to the real backend.
+
+### Additive migration log
+
+None.

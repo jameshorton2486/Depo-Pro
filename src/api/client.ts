@@ -9,6 +9,7 @@ import type {
   Exhibit,
   CertifyChecklist,
 } from "./types";
+import { supabase } from "../lib/supabase";
 
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
@@ -24,15 +25,34 @@ async function request<T>(
   url: string,
   body?: unknown
 ): Promise<T> {
+  const headers: Record<string, string> = body ? { "Content-Type": "application/json" } : {};
+  const accessToken = await getAccessToken();
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : {},
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
     throw new Error(`API ${method} ${url} → ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
+}
+
+async function getAccessToken(): Promise<string | null> {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw error;
+  }
+
+  return data.session?.access_token ?? null;
 }
 
 export async function externalRequest(

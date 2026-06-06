@@ -12,7 +12,7 @@ declare global {
 }
 
 async function startMocks() {
-  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === "true") {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_REAL_API !== "1") {
     try {
       const { worker } = await import("./mocks/browser");
       await Promise.race([
