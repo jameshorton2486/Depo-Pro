@@ -102,6 +102,13 @@ Required-field set currently enforced for preview summary:
 - CSR License Number
 - Custodial Attorney Name
 
+Follow-up correction applied after the initial 5C run:
+
+- the required-field list now lives in one source only: `src/lib/ufm/requiredFields.ts`
+- each entry carries `{ fieldPath, humanName, ufmSection }` metadata sourced from `docs/DATA_FIELD_REFERENCE.md`
+- `missing_required_fields` now derives exclusively from that module; there is no second inline list in `buildUfmMetadata.ts`
+- the intake readiness banner was intentionally not refactored in this follow-up; a targeted migration note now points future banner work at `src/lib/ufm/requiredFields.ts`
+
 Population / confirmation rules implemented:
 
 - best-available values populate even if still unconfirmed

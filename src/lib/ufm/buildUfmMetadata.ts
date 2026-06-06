@@ -1,5 +1,6 @@
 import type { FieldProvenanceRow } from "../../components/conflict/types";
 import type { CaseRecord, ExtractedField } from "../../types/case";
+import { REQUIRED_UFM_FIELDS } from "./requiredFields";
 
 type UfmFieldKey =
   | "cause_number"
@@ -52,17 +53,6 @@ export interface UfmMetadataEnvelope {
   field_confirmations: Partial<Record<FieldMapKey, boolean>>;
   missing_required_fields: string[];
 }
-
-const REQUIRED_FIELDS: Array<{ key: UfmFieldKey; label: string }> = [
-  { key: "cause_number", label: "Cause Number" },
-  { key: "court", label: "Court" },
-  { key: "county", label: "County" },
-  { key: "state", label: "State" },
-  { key: "deposition_date", label: "Deposition Date" },
-  { key: "csr_name", label: "Reporter Name" },
-  { key: "csr_license", label: "CSR License Number" },
-  { key: "custodial_attorney", label: "Custodial Attorney Name" },
-];
 
 const FIELD_PATHS: Partial<Record<FieldMapKey, string>> = {
   ufmCause: "caption.case_number",
@@ -263,15 +253,15 @@ export function buildUfmMetadata(args: {
     ufmRequestingParty: false,
   };
 
-  const missing_required_fields = REQUIRED_FIELDS
+  const missing_required_fields = REQUIRED_UFM_FIELDS
     .filter((field) => {
-      const value = ufm_metadata[field.key];
+      const value = ufm_metadata[field.metadataKey];
       if (Array.isArray(value)) {
         return value.length === 0;
       }
       return value == null || value === "";
     })
-    .map((field) => field.label);
+    .map((field) => field.humanName);
 
   void FIELD_PATHS;
 

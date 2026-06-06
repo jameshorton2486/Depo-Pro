@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { FieldProvenanceRow } from "../../components/conflict/types";
 import { emptyCaseRecord } from "../../types/case";
 import { buildUfmMetadata } from "./buildUfmMetadata";
+import { REQUIRED_UFM_FIELDS } from "./requiredFields";
 
 function buildRecord() {
   const record = emptyCaseRecord("case_ufm", "2026-06-05T20:00:00.000Z");
@@ -101,6 +102,59 @@ describe("buildUfmMetadata", () => {
 
     expect(envelope.missing_required_fields).toContain("CSR License Number");
     expect(envelope.missing_required_fields).toContain("Custodial Attorney Name");
+  });
+
+  it("uses the shared required-field module as the only missing-field source", () => {
+    expect(REQUIRED_UFM_FIELDS).toEqual([
+      {
+        metadataKey: "cause_number",
+        fieldPath: "caption.case_number",
+        humanName: "Cause Number",
+        ufmSection: "§3.1d",
+      },
+      {
+        metadataKey: "court",
+        fieldPath: "caption.court_name",
+        humanName: "Court",
+        ufmSection: "§3.1a",
+      },
+      {
+        metadataKey: "county",
+        fieldPath: "caption.county",
+        humanName: "County",
+        ufmSection: "§3.1b",
+      },
+      {
+        metadataKey: "state",
+        fieldPath: "session.location_state",
+        humanName: "State",
+        ufmSection: "§3.1b",
+      },
+      {
+        metadataKey: "deposition_date",
+        fieldPath: "session.deposition_date",
+        humanName: "Deposition Date",
+        ufmSection: "§3.1g",
+      },
+      {
+        metadataKey: "csr_name",
+        fieldPath: "reporter.name",
+        humanName: "Reporter Name",
+        ufmSection: "§3.4",
+      },
+      {
+        metadataKey: "csr_license",
+        fieldPath: "reporter.cert_number",
+        humanName: "CSR License Number",
+        ufmSection: "§3.4",
+      },
+      {
+        metadataKey: "custodial_attorney",
+        fieldPath: "proceeding.ordering_contact",
+        humanName: "Custodial Attorney Name",
+        ufmSection: "§3.4",
+      },
+    ]);
   });
 
   it("assembles the Garza fixture caption string", () => {
