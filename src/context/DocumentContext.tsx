@@ -43,6 +43,7 @@ type Action =
   | { type: "LOAD_START" }
   | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean }
   | { type: "LOAD_ERR"; error: string }
+  | { type: "UPDATE_MEDIA_URL"; mediaUrl: string }
   | { type: "SET_ACTIVE"; id: UtteranceId | null }
   | {
       type: "EDIT_UTTERANCE";
@@ -89,6 +90,16 @@ export function documentReducer(state: State, action: Action): State {
 
     case "LOAD_ERR":
       return { ...state, loading: false, error: action.error };
+
+    case "UPDATE_MEDIA_URL":
+      if (!state.document) return state;
+      return {
+        ...state,
+        document: {
+          ...state.document,
+          media_url: action.mediaUrl,
+        },
+      };
 
     case "SET_ACTIVE":
       return { ...state, activeUtteranceId: action.id };
@@ -180,6 +191,7 @@ export function documentReducer(state: State, action: Action): State {
 interface ContextValue {
   state: State;
   loadDocument: () => Promise<void>;
+  refreshMediaUrl: () => Promise<string | null>;
   setActive: (id: UtteranceId | null) => void;
   editUtterance: (utterance_id: UtteranceId, old_text: string, new_text: string) => void;
   logSuggestionEdit: (
@@ -251,6 +263,13 @@ export function DocumentProvider({
   const setActive = useCallback((id: UtteranceId | null) => {
     dispatch({ type: "SET_ACTIVE", id });
   }, []);
+
+  const refreshMediaUrl = useCallback(async () => {
+    const loaded = await workspaceApi.getDocument(jobId);
+    const nextMediaUrl = loaded.document.media_url ?? "";
+    dispatch({ type: "UPDATE_MEDIA_URL", mediaUrl: nextMediaUrl });
+    return nextMediaUrl;
+  }, [jobId]);
 
   const editUtterance = useCallback(
     (utterance_id: UtteranceId, old_text: string, new_text: string) => {
@@ -374,6 +393,7 @@ export function DocumentProvider({
     () => ({
       state,
       loadDocument,
+      refreshMediaUrl,
       setActive,
       editUtterance,
       logSuggestionEdit,
@@ -385,7 +405,7 @@ export function DocumentProvider({
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

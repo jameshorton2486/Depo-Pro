@@ -3,8 +3,15 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useAudio } from "../../context/AudioContext";
+import { useDocument } from "../../context/DocumentContext";
+import { shouldRefreshMediaUrl } from "./mediaRefreshThrottle";
 
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+const USE_REAL_EDITOR_API = import.meta.env.VITE_USE_REAL_API === "1";
+
+type WaveSurferWithMediaElement = WaveSurfer & {
+  getMediaElement?: () => HTMLMediaElement | null;
+};
 
 function formatTime(s: number): string {
   const h = Math.floor(s / 3600);
@@ -22,6 +29,7 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
   const waveRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WaveSurfer | null>(null);
   const audio = useAudio();
+  const { refreshMediaUrl } = useDocument();
 
   const [speedIdx, setSpeedIdx] = useState(2); // default 1.0×
   const [volume, setVolume] = useState(1);
@@ -29,6 +37,19 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
   const [displayTime, setDisplayTime] = useState(0);
   const [wsDuration, setWsDuration] = useState(0);
   const [ready, setReady] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const refreshAttemptAtRef = useRef<number | null>(null);
+  const recoveringRef = useRef(false);
+  const lastMediaUrlRef = useRef(mediaUrl);
+  const playingRef = useRef(audio.playing);
+
+  useEffect(() => {
+    lastMediaUrlRef.current = mediaUrl;
+  }, [mediaUrl]);
+
+  useEffect(() => {
+    playingRef.current = audio.playing;
+  }, [audio.playing]);
 
   // RAF tick: keeps displayTime + currentTimeRef in sync during playback.
   // Lives here (in the player) so it can read wsRef.current.getCurrentTime().
@@ -60,11 +81,85 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
 
     wsRef.current = ws;
 
+    const handleRecoverableError = async () => {
+      if (!USE_REAL_EDITOR_API) {
+        return;
+      }
+
+      if (recoveringRef.current) {
+        setAudioError("Audio unavailable.");
+        return;
+      }
+
+      const now = Date.now();
+      if (!shouldRefreshMediaUrl(refreshAttemptAtRef.current, now)) {
+        setAudioError("Audio unavailable.");
+        return;
+      }
+
+      recoveringRef.current = true;
+      refreshAttemptAtRef.current = now;
+      setAudioError(null);
+
+      const currentTime = ws.getCurrentTime();
+      const wasPlaying = playingRef.current;
+
+      try {
+        const nextMediaUrl = await refreshMediaUrl();
+        if (!nextMediaUrl || nextMediaUrl === lastMediaUrlRef.current) {
+          setAudioError("Audio unavailable.");
+          return;
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          let settled = false;
+          const cleanup = () => {
+            ws.un("ready", onReady);
+            ws.un("error", onError);
+          };
+          const onReady = () => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve();
+          };
+          const onError = () => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(new Error("refreshed media url failed"));
+          };
+
+          ws.on("ready", onReady);
+          ws.on("error", onError);
+          ws.load(nextMediaUrl);
+        });
+
+        const refreshedDuration = ws.getDuration();
+        setWsDuration(refreshedDuration);
+        audio.setDuration(refreshedDuration);
+        const boundedTime = Math.max(0, Math.min(currentTime, refreshedDuration || currentTime));
+        if (refreshedDuration > 0) {
+          ws.seekTo(boundedTime / refreshedDuration);
+        }
+        audio.updateCurrentTime(boundedTime);
+        setDisplayTime(boundedTime);
+        if (wasPlaying) {
+          await ws.play();
+        }
+      } catch {
+        setAudioError("Audio unavailable.");
+      } finally {
+        recoveringRef.current = false;
+      }
+    };
+
     ws.on("ready", () => {
       const dur = ws.getDuration();
       setWsDuration(dur);
       audio.setDuration(dur);
       setReady(true);
+      setAudioError(null);
 
       // Register absolute-seconds seek + play/pause so the rest of the app
       // can control WaveSurfer without knowing about it.
@@ -93,20 +188,31 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
       cancelAnimationFrame(rafRef.current);
     });
 
+    ws.on("error", () => {
+      void handleRecoverableError();
+    });
+
     // Also update time on waveform seek (user drags the waveform)
     ws.on("seeking", (t) => {
       audio.updateCurrentTime(t);
       setDisplayTime(t);
     });
 
+    const mediaElement = (ws as WaveSurferWithMediaElement).getMediaElement?.() ?? null;
+    const handleMediaElementError = () => {
+      void handleRecoverableError();
+    };
+    mediaElement?.addEventListener("error", handleMediaElementError);
+
     ws.load(mediaUrl);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      mediaElement?.removeEventListener("error", handleMediaElementError);
       ws.destroy();
       wsRef.current = null;
     };
-  }, [mediaUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mediaUrl, refreshMediaUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePlay = useCallback(() => {
     wsRef.current?.playPause();
@@ -208,6 +314,9 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
 
         {!ready && (
           <span className="text-xs text-slate-400 ml-2">Loading audio…</span>
+        )}
+        {audioError && (
+          <span className="text-xs text-rose-600 ml-2">{audioError}</span>
         )}
       </div>
     </div>
