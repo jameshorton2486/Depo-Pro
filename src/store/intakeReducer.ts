@@ -5,8 +5,10 @@
 import type {
   CaseRecord,
   Attorney,
+  CaseParty,
   Witness,
   Interpreter,
+  LawFirm,
   Videographer,
   Participant,
   CaseExhibit,
@@ -107,6 +109,16 @@ export type ApplyExtractionAction = {
     witnessPatches?: Array<{
       witness_id: string;
       patch: Partial<Omit<Witness, "witness_id">>;
+    }>;
+    partyAdds?: Array<{ party: Omit<CaseParty, "party_id"> }>;
+    partyPatches?: Array<{
+      party_id: string;
+      patch: Partial<Omit<CaseParty, "party_id">>;
+    }>;
+    lawFirmAdds?: Array<{ law_firm: Omit<LawFirm, "law_firm_id"> }>;
+    lawFirmPatches?: Array<{
+      law_firm_id: string;
+      patch: Partial<Omit<LawFirm, "law_firm_id">>;
     }>;
     keyterms?: CaseRecord["deepgram"]["keyterms"];
   };
@@ -279,7 +291,7 @@ function resolveExtractedPath<T>(record: CaseRecord, path: string): SetterResult
   const keys = path
     .split(".")
     .flatMap((segment) => {
-      const match = segment.match(/^([^\[]+)\[(\d+)\]$/);
+      const match = segment.match(/^([^[]+)\[(\d+)\]$/);
       return match ? [match[1], match[2]] : [segment];
     });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -500,6 +512,54 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
             witness.witness_id === witnessPatch.witness_id
               ? { ...witness, ...witnessPatch.patch }
               : witness,
+          ),
+        };
+      }
+
+      for (const partyAdd of action.payload.partyAdds ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          parties: [
+            ...nextRecord.parties,
+            {
+              ...partyAdd.party,
+              party_id: newId("party"),
+            },
+          ],
+        };
+      }
+
+      for (const partyPatch of action.payload.partyPatches ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          parties: nextRecord.parties.map((party) =>
+            party.party_id === partyPatch.party_id
+              ? { ...party, ...partyPatch.patch }
+              : party,
+          ),
+        };
+      }
+
+      for (const lawFirmAdd of action.payload.lawFirmAdds ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          law_firms: [
+            ...nextRecord.law_firms,
+            {
+              ...lawFirmAdd.law_firm,
+              law_firm_id: newId("firm"),
+            },
+          ],
+        };
+      }
+
+      for (const lawFirmPatch of action.payload.lawFirmPatches ?? []) {
+        nextRecord = {
+          ...nextRecord,
+          law_firms: nextRecord.law_firms.map((lawFirm) =>
+            lawFirm.law_firm_id === lawFirmPatch.law_firm_id
+              ? { ...lawFirm, ...lawFirmPatch.patch }
+              : lawFirm,
           ),
         };
       }

@@ -133,6 +133,10 @@ export function IntakeProvider({
         attorneyPatches: application.attorneyPatches,
         witnessAdds: application.witnessAdds,
         witnessPatches: application.witnessPatches,
+        partyAdds: application.partyAdds,
+        partyPatches: application.partyPatches,
+        lawFirmAdds: application.lawFirmAdds,
+        lawFirmPatches: application.lawFirmPatches,
         keyterms: application.keyterms,
       },
     });

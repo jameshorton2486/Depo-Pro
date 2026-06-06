@@ -140,7 +140,7 @@ function getExtractedField(record: CaseRecord, path: string) {
   const keys = path
     .split(".")
     .flatMap((segment) => {
-      const match = segment.match(/^([^\[]+)\[(\d+)\]$/);
+      const match = segment.match(/^([^[]+)\[(\d+)\]$/);
       return match ? [match[1], match[2]] : [segment];
     });
 
@@ -442,6 +442,10 @@ export function applyJobSheetExtraction(
       attorneyPatches: mergeAttorneyPatches(plainAttorneyPatches),
       witnessAdds: [],
       witnessPatches,
+      partyAdds: [],
+      partyPatches: [],
+      lawFirmAdds: [],
+      lawFirmPatches: [],
       conflicts,
       keyterms: parsed.deepgramKeyterms.map((term): DeepgramKeyterm => ({
         term,

@@ -7,7 +7,13 @@ describe("normalizeCaseRecord", () => {
   it("does not guess location_type from legacy is_remote values", () => {
     const legacyRecord = emptyCaseRecord("case_legacy_remote", "2026-06-05T18:00:00.000Z");
     legacyRecord.session.is_remote = true;
-    legacyRecord.session.remote_platform = "Zoom";
+    legacyRecord.session.remote_platform = {
+      value: "Zoom",
+      source: "manual",
+      confirmed: false,
+      conflict: false,
+      confidence_score: null,
+    };
     delete (legacyRecord.session as { location_type?: unknown }).location_type;
 
     const normalized = normalizeCaseRecord(legacyRecord);
@@ -105,6 +111,8 @@ describe("normalizeCaseRecord", () => {
       is_corporate_rep: false,
       corporate_entity: null,
       read_and_sign: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
       spelling_corrections: [],
       email: null,
       phone: null,

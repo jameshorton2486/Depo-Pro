@@ -44,6 +44,8 @@ export type DeponentRole   = "WITNESS" | "PARTY" | "EXPERT" | "OTHER";
 export type AttorneyRole   = "EXAMINING" | "OPPOSING" | "CO_COUNSEL" | "OTHER";
 export type ReportingMethod = "machine_shorthand" | "zoom" | "in_person" | "audio_recording";
 export type LocationType = "zoom" | "in_person" | "hybrid" | "phone";
+export type JurisdictionType = "texas_state" | "federal" | "state" | "other";
+export type PartyRole = "plaintiff" | "defendant" | "third_party" | "cross_plaintiff" | "cross_defendant" | "witness" | "other";
 export type ParticipantRole =
   | "REPORTER"
   | "ATTORNEY"
@@ -69,10 +71,23 @@ export interface CaseCaption {
   case_style:   ExtractedField<string>;
   case_number:  ExtractedField<string>;
   court_name:   ExtractedField<string>;
+  judicial_district: ExtractedField<string | null>;
+  division:     ExtractedField<string | null>;
   county:       ExtractedField<string>;
+  state:        ExtractedField<string>;
+  jurisdiction_type: ExtractedField<JurisdictionType | null>;
   venue:        ExtractedField<string>;
   department:   ExtractedField<string | null>;
   judge_name:   ExtractedField<string | null>;
+}
+
+export interface CaseParty {
+  party_id: string;
+  name: ExtractedField<string>;
+  role: ExtractedField<PartyRole>;
+  role_modifier: ExtractedField<string | null>;
+  entity_type: ExtractedField<string | null>;
+  fka_or_dba: ExtractedField<string | null>;
 }
 
 // ─── Firm ────────────────────────────────────────────────────────────────────
@@ -88,6 +103,19 @@ export interface Firm {
   fax:       string | null;
   email:     string | null;
   website:   string | null;
+}
+
+export interface LawFirm {
+  law_firm_id: string;
+  name: ExtractedField<string>;
+  address: ExtractedField<string | null>;
+  city: ExtractedField<string | null>;
+  state: ExtractedField<string | null>;
+  zip: ExtractedField<string | null>;
+  phone: ExtractedField<string | null>;
+  fax: ExtractedField<string | null>;
+  email: ExtractedField<string | null>;
+  represented_party: ExtractedField<string | null>;
 }
 
 // ─── Attorney ────────────────────────────────────────────────────────────────
@@ -121,6 +149,8 @@ export interface Witness {
   is_corporate_rep: boolean;
   corporate_entity: string | null;
   read_and_sign: ExtractedField<"read_and_sign" | "waived" | null>;
+  requires_interpreter: ExtractedField<boolean | null>;
+  requires_videographer: ExtractedField<boolean | null>;
   spelling_corrections: Array<{ original: string; corrected: string; noted_on_record: boolean }>;
   email:       string | null;
   phone:       string | null;
@@ -196,7 +226,7 @@ export interface Session {
   location_zip:      ExtractedField<string | null>;
   reporting_method:  ExtractedField<ReportingMethod | null>;
   is_remote:         boolean;
-  remote_platform:   string | null;  // "Zoom", "Teams", etc.
+  remote_platform:   ExtractedField<string | null>;
 }
 
 // ─── Proceeding ──────────────────────────────────────────────────────────────
@@ -211,6 +241,36 @@ export interface Proceeding {
   clerk_badge:      string | null;
   filing_deadline:  ISODate | null;
   notes:            string | null;
+}
+
+export interface SchedulingMetadata {
+  proceeding_type: ExtractedField<string | null>;
+  remote_platform: ExtractedField<string | null>;
+  noticing_party: ExtractedField<string | null>;
+  ordered_by: ExtractedField<string | null>;
+  scheduler: ExtractedField<string | null>;
+  scheduling_contact: ExtractedField<string | null>;
+  service_type: ExtractedField<string | null>;
+  time_zone: ExtractedField<string | null>;
+  remote_location: ExtractedField<string | null>;
+}
+
+export interface ServiceMetadata {
+  certificate_of_service: ExtractedField<boolean | null>;
+  service_date: ExtractedField<ISODate | null>;
+  served_parties: ExtractedField<string[]>;
+  service_emails: ExtractedField<string[]>;
+}
+
+export interface ReporterRequestMetadata {
+  certified_reporter_required: ExtractedField<boolean | null>;
+  stenographic_recording: ExtractedField<boolean | null>;
+  audiovisual_recording: ExtractedField<boolean | null>;
+  realtime_requested: ExtractedField<boolean | null>;
+  expedited_delivery: ExtractedField<boolean | null>;
+  rush_delivery: ExtractedField<boolean | null>;
+  daily_copy: ExtractedField<boolean | null>;
+  rough_draft: ExtractedField<boolean | null>;
 }
 
 // ─── Transcript format ────────────────────────────────────────────────────────
@@ -323,10 +383,15 @@ export interface CaseRecord {
   caption:    CaseCaption;
   session:    Session;
   proceeding: Proceeding;
+  scheduling: SchedulingMetadata;
+  service:    ServiceMetadata;
+  reporter_requests: ReporterRequestMetadata;
   reporter:   Reporter;
   format:     TranscriptFormat;
 
   // Named participants
+  parties:       CaseParty[];
+  law_firms:     LawFirm[];
   witnesses:     Witness[];
   attorneys:     Attorney[];
   interpreters:  Interpreter[];
@@ -408,7 +473,11 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
       case_style:  extractedEmpty(""),
       case_number: extractedEmpty(""),
       court_name:  extractedEmpty(""),
+      judicial_district: extractedEmpty(null),
+      division: extractedEmpty(null),
       county:      extractedEmpty(""),
+      state:       extractedEmpty(""),
+      jurisdiction_type: extractedEmpty<JurisdictionType | null>(null),
       venue:       extractedEmpty(""),
       department:  extractedEmpty(null),
       judge_name:  extractedEmpty(null),
@@ -426,7 +495,7 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
       location_zip:     extractedEmpty(null),
       reporting_method: extractedEmpty(null),
       is_remote:        false,
-      remote_platform:  null,
+      remote_platform:  extractedEmpty(null),
     },
 
     proceeding: {
@@ -437,6 +506,36 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
       clerk_badge:      null,
       filing_deadline:  null,
       notes:            null,
+    },
+
+    scheduling: {
+      proceeding_type: extractedEmpty(null),
+      remote_platform: extractedEmpty(null),
+      noticing_party: extractedEmpty(null),
+      ordered_by: extractedEmpty(null),
+      scheduler: extractedEmpty(null),
+      scheduling_contact: extractedEmpty(null),
+      service_type: extractedEmpty(null),
+      time_zone: extractedEmpty(null),
+      remote_location: extractedEmpty(null),
+    },
+
+    service: {
+      certificate_of_service: extractedEmpty<boolean | null>(null),
+      service_date: extractedEmpty<ISODate | null>(null),
+      served_parties: extractedEmpty<string[]>([]),
+      service_emails: extractedEmpty<string[]>([]),
+    },
+
+    reporter_requests: {
+      certified_reporter_required: extractedEmpty<boolean | null>(null),
+      stenographic_recording: extractedEmpty<boolean | null>(null),
+      audiovisual_recording: extractedEmpty<boolean | null>(null),
+      realtime_requested: extractedEmpty<boolean | null>(null),
+      expedited_delivery: extractedEmpty<boolean | null>(null),
+      rush_delivery: extractedEmpty<boolean | null>(null),
+      daily_copy: extractedEmpty<boolean | null>(null),
+      rough_draft: extractedEmpty<boolean | null>(null),
     },
 
     reporter: {
@@ -455,6 +554,8 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
     },
 
     format:        defaultTranscriptFormat(),
+    parties:       [],
+    law_firms:     [],
     witnesses:     [],
     attorneys:     [],
     interpreters:  [],
@@ -593,6 +694,86 @@ function normalizeAttorney(attorney: Attorney): Attorney {
   };
 }
 
+function emptyParty(partyId: string): CaseParty {
+  return {
+    party_id: partyId,
+    name: extractedEmpty(""),
+    role: extractedEmpty<PartyRole>("other"),
+    role_modifier: extractedEmpty(null),
+    entity_type: extractedEmpty(null),
+    fka_or_dba: extractedEmpty(null),
+  };
+}
+
+function normalizePartyRole(
+  input: unknown,
+  fallback = extractedEmpty<PartyRole>("other"),
+): ExtractedField<PartyRole> {
+  return normalizeExtractedField(
+    input,
+    fallback,
+    (value): value is PartyRole =>
+      value === "plaintiff"
+      || value === "defendant"
+      || value === "third_party"
+      || value === "cross_plaintiff"
+      || value === "cross_defendant"
+      || value === "witness"
+      || value === "other",
+  );
+}
+
+function normalizePartyFromUnknown(party: unknown, fallbackId: string): CaseParty {
+  const defaults = emptyParty(fallbackId);
+  const source = isRecord(party) ? party : null;
+  const partyId = source && typeof source.party_id === "string" && source.party_id.trim() ? source.party_id : fallbackId;
+
+  return {
+    ...defaults,
+    party_id: partyId,
+    name: normalizeStringField(source?.name, defaults.name),
+    role: normalizePartyRole(source?.role, defaults.role),
+    role_modifier: normalizeNullableStringField(source?.role_modifier, defaults.role_modifier),
+    entity_type: normalizeNullableStringField(source?.entity_type, defaults.entity_type),
+    fka_or_dba: normalizeNullableStringField(source?.fka_or_dba, defaults.fka_or_dba),
+  };
+}
+
+function emptyLawFirm(lawFirmId: string): LawFirm {
+  return {
+    law_firm_id: lawFirmId,
+    name: extractedEmpty(""),
+    address: extractedEmpty(null),
+    city: extractedEmpty(null),
+    state: extractedEmpty(null),
+    zip: extractedEmpty(null),
+    phone: extractedEmpty(null),
+    fax: extractedEmpty(null),
+    email: extractedEmpty(null),
+    represented_party: extractedEmpty(null),
+  };
+}
+
+function normalizeLawFirmFromUnknown(lawFirm: unknown, fallbackId: string): LawFirm {
+  const defaults = emptyLawFirm(fallbackId);
+  const source = isRecord(lawFirm) ? lawFirm : null;
+  const lawFirmId = source && typeof source.law_firm_id === "string" && source.law_firm_id.trim() ? source.law_firm_id : fallbackId;
+
+  return {
+    ...defaults,
+    law_firm_id: lawFirmId,
+    name: normalizeStringField(source?.name, defaults.name),
+    address: normalizeNullableStringField(source?.address, defaults.address),
+    city: normalizeNullableStringField(source?.city, defaults.city),
+    state: normalizeNullableStringField(source?.state, defaults.state),
+    zip: normalizeNullableStringField(source?.zip, defaults.zip),
+    phone: normalizeNullableStringField(source?.phone, defaults.phone),
+    fax: normalizeNullableStringField(source?.fax, defaults.fax),
+    email: normalizeNullableStringField(source?.email, defaults.email),
+    represented_party: normalizeNullableStringField(source?.represented_party, defaults.represented_party),
+  };
+}
+
 function emptyWitness(witnessId: string): Witness {
   return {
     witness_id: witnessId,
@@ -605,6 +786,8 @@ function emptyWitness(witnessId: string): Witness {
     is_corporate_rep: false,
     corporate_entity: null,
     read_and_sign: extractedEmpty(null),
+    requires_interpreter: extractedEmpty<boolean | null>(null),
+    requires_videographer: extractedEmpty<boolean | null>(null),
     spelling_corrections: [],
     email: null,
     phone: null,
@@ -668,6 +851,8 @@ function normalizeWitness(witness: unknown, fallbackId: string, legacyFallbacks?
       defaults.read_and_sign,
       ["read_and_sign", "waived"] as const,
     ),
+    requires_interpreter: normalizeNullableBooleanField(source?.requires_interpreter, defaults.requires_interpreter),
+    requires_videographer: normalizeNullableBooleanField(source?.requires_videographer, defaults.requires_videographer),
     spelling_corrections: normalizeStringArray<{ original: string; corrected: string; noted_on_record: boolean }>(
       source?.spelling_corrections,
     ),
@@ -682,6 +867,8 @@ function normalizeWitness(witness: unknown, fallbackId: string, legacyFallbacks?
     is_corporate_rep: normalized.is_corporate_rep ?? false,
     corporate_entity: normalized.corporate_entity ?? null,
     read_and_sign: normalized.read_and_sign ?? extractedEmpty(null),
+    requires_interpreter: normalized.requires_interpreter ?? extractedEmpty(null),
+    requires_videographer: normalized.requires_videographer ?? extractedEmpty(null),
     spelling_corrections: normalized.spelling_corrections ?? [],
   };
 }
@@ -727,6 +914,28 @@ function normalizeAttorneyRole(
     fallback,
     (value): value is AttorneyRole =>
       value === "EXAMINING" || value === "OPPOSING" || value === "CO_COUNSEL" || value === "OTHER",
+  );
+}
+
+function normalizeNullableBooleanField(
+  input: unknown,
+  fallback = extractedEmpty<boolean | null>(null),
+): ExtractedField<boolean | null> {
+  return normalizeExtractedField(
+    input,
+    fallback,
+    (value): value is boolean | null => typeof value === "boolean" || value === null,
+  );
+}
+
+function normalizeStringArrayField(
+  input: unknown,
+  fallback = extractedEmpty<string[]>([]),
+): ExtractedField<string[]> {
+  return normalizeExtractedField(
+    input,
+    fallback,
+    (value): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string"),
   );
 }
 
@@ -939,7 +1148,15 @@ function normalizeCaption(source: unknown, defaults: CaseCaption): CaseCaption {
     case_style: normalizeStringField(caption?.case_style, defaults.case_style),
     case_number: normalizeStringField(caption?.case_number, defaults.case_number),
     court_name: normalizeStringField(caption?.court_name, defaults.court_name),
+    judicial_district: normalizeNullableStringField(caption?.judicial_district, defaults.judicial_district),
+    division: normalizeNullableStringField(caption?.division, defaults.division),
     county: normalizeStringField(caption?.county, defaults.county),
+    state: normalizeStringField(caption?.state, defaults.state),
+    jurisdiction_type: normalizeNullableRoleField(
+      caption?.jurisdiction_type,
+      defaults.jurisdiction_type,
+      ["texas_state", "federal", "state", "other"] as const,
+    ),
     venue: normalizeStringField(caption?.venue, defaults.venue),
     department: normalizeNullableStringField(caption?.department, defaults.department),
     judge_name: normalizeNullableStringField(caption?.judge_name, defaults.judge_name),
@@ -964,7 +1181,7 @@ function normalizeSession(source: unknown, defaults: Session): Session {
       ["machine_shorthand", "zoom", "in_person", "audio_recording"] as const,
     ),
     is_remote: normalizeBoolean(session?.is_remote),
-    remote_platform: normalizeNullableString(session?.remote_platform),
+    remote_platform: normalizeNullableStringField(session?.remote_platform, defaults.remote_platform),
   };
 }
 
@@ -980,6 +1197,45 @@ function normalizeProceeding(source: unknown, defaults: Proceeding): Proceeding 
     clerk_badge: normalizeNullableString(proceeding?.clerk_badge),
     filing_deadline: normalizeNullableString(proceeding?.filing_deadline),
     notes: normalizeNullableString(proceeding?.notes),
+  };
+}
+
+function normalizeScheduling(source: unknown, defaults: SchedulingMetadata): SchedulingMetadata {
+  const scheduling = isRecord(source) ? source : null;
+  return {
+    proceeding_type: normalizeNullableStringField(scheduling?.proceeding_type, defaults.proceeding_type),
+    remote_platform: normalizeNullableStringField(scheduling?.remote_platform, defaults.remote_platform),
+    noticing_party: normalizeNullableStringField(scheduling?.noticing_party, defaults.noticing_party),
+    ordered_by: normalizeNullableStringField(scheduling?.ordered_by, defaults.ordered_by),
+    scheduler: normalizeNullableStringField(scheduling?.scheduler, defaults.scheduler),
+    scheduling_contact: normalizeNullableStringField(scheduling?.scheduling_contact, defaults.scheduling_contact),
+    service_type: normalizeNullableStringField(scheduling?.service_type, defaults.service_type),
+    time_zone: normalizeNullableStringField(scheduling?.time_zone, defaults.time_zone),
+    remote_location: normalizeNullableStringField(scheduling?.remote_location, defaults.remote_location),
+  };
+}
+
+function normalizeService(source: unknown, defaults: ServiceMetadata): ServiceMetadata {
+  const service = isRecord(source) ? source : null;
+  return {
+    certificate_of_service: normalizeNullableBooleanField(service?.certificate_of_service, defaults.certificate_of_service),
+    service_date: normalizeNullableStringField(service?.service_date, defaults.service_date),
+    served_parties: normalizeStringArrayField(service?.served_parties, defaults.served_parties),
+    service_emails: normalizeStringArrayField(service?.service_emails, defaults.service_emails),
+  };
+}
+
+function normalizeReporterRequests(source: unknown, defaults: ReporterRequestMetadata): ReporterRequestMetadata {
+  const requests = isRecord(source) ? source : null;
+  return {
+    certified_reporter_required: normalizeNullableBooleanField(requests?.certified_reporter_required, defaults.certified_reporter_required),
+    stenographic_recording: normalizeNullableBooleanField(requests?.stenographic_recording, defaults.stenographic_recording),
+    audiovisual_recording: normalizeNullableBooleanField(requests?.audiovisual_recording, defaults.audiovisual_recording),
+    realtime_requested: normalizeNullableBooleanField(requests?.realtime_requested, defaults.realtime_requested),
+    expedited_delivery: normalizeNullableBooleanField(requests?.expedited_delivery, defaults.expedited_delivery),
+    rush_delivery: normalizeNullableBooleanField(requests?.rush_delivery, defaults.rush_delivery),
+    daily_copy: normalizeNullableBooleanField(requests?.daily_copy, defaults.daily_copy),
+    rough_draft: normalizeNullableBooleanField(requests?.rough_draft, defaults.rough_draft),
   };
 }
 
@@ -1108,8 +1364,17 @@ export function normalizeCaseRecord(record: unknown): CaseRecord {
     caption: normalizeCaption(source.caption, defaults.caption),
     session: normalizeSession(source.session, defaults.session),
     proceeding: normalizeProceeding(source.proceeding, defaults.proceeding),
+    scheduling: normalizeScheduling(source.scheduling, defaults.scheduling),
+    service: normalizeService(source.service, defaults.service),
+    reporter_requests: normalizeReporterRequests(source.reporter_requests, defaults.reporter_requests),
     reporter: normalizeReporter(source.reporter, defaults.reporter),
     format: normalizeTranscriptFormat(source.format, defaults.format),
+    parties: normalizeArrayField(source.parties, "parties", coercedPaths, (party, index) =>
+      normalizePartyFromUnknown(party, `party_${index + 1}`),
+    ),
+    law_firms: normalizeArrayField(source.law_firms, "law_firms", coercedPaths, (lawFirm, index) =>
+      normalizeLawFirmFromUnknown(lawFirm, `firm_${index + 1}`),
+    ),
     witnesses: normalizeWitnesses(source, coercedPaths),
     attorneys: normalizeArrayField(source.attorneys, "attorneys", coercedPaths, (attorney, index) =>
       normalizeAttorneyFromUnknown(attorney, `attorney_${index + 1}`),

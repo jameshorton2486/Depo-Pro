@@ -24,6 +24,8 @@ function buildReadyRecord() {
       is_corporate_rep: false,
       corporate_entity: null,
       read_and_sign: { value: "read_and_sign", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
       spelling_corrections: [],
       email: null,
       phone: null,

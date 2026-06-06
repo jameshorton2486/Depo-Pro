@@ -23,7 +23,11 @@ export const mockCaseRecord: CaseRecord = {
     case_style:  ef("TONY JOHNSON, Plaintiff vs. ACME LOGISTICS, LLC, Defendant", "extracted", false, 0.95),
     case_number: ef("2024-CV-08821",                             "extracted", false, 0.91),
     court_name:  ef("193rd Judicial District Court", "extracted", false, 0.88),
+    judicial_district: ef("193rd", "extracted", false, 0.82),
+    division:    ef(null, "manual", false, null),
     county:      ef("Dallas County", "extracted", false, 0.9),
+    state:       ef("Texas", "extracted", false, 0.9),
+    jurisdiction_type: ef("texas_state", "extracted", false, 0.86),
     venue:       ef("Dallas, Texas", "extracted", false, 0.84),
     department:  ef(null,  "manual", false, null),
     judge_name:  ef(null,        "manual",    false, null),
@@ -42,7 +46,7 @@ export const mockCaseRecord: CaseRecord = {
     location_zip:     ef("75201",               "extracted", false, 0.71),
     reporting_method: ef("in_person",           "extracted", false, 0.8),
     is_remote: false,
-    remote_platform: null,
+    remote_platform: ef(null, "manual", false, null),
   },
 
   proceeding: {
@@ -53,6 +57,36 @@ export const mockCaseRecord: CaseRecord = {
     clerk_badge:      null,
     filing_deadline:  null,
     notes:            null,
+  },
+
+  scheduling: {
+    proceeding_type: ef("Oral Deposition", "extracted", false, 0.74),
+    remote_platform: ef(null, "manual", false, null),
+    noticing_party: ef("Plaintiff", "extracted", false, 0.71),
+    ordered_by: ef("Pacific Legal Group", "manual", false, null),
+    scheduler: ef(null, "manual", false, null),
+    scheduling_contact: ef(null, "manual", false, null),
+    service_type: ef("CR_plus_Zoom", "manual", false, null),
+    time_zone: ef("Central", "manual", false, null),
+    remote_location: ef(null, "manual", false, null),
+  },
+
+  service: {
+    certificate_of_service: ef(true, "extracted", false, 0.63),
+    service_date: ef("2026-05-20", "extracted", false, 0.66),
+    served_parties: ef(["Plaintiff", "Defendant"], "extracted", false, 0.61),
+    service_emails: ef(["service@example.com"], "extracted", false, 0.61),
+  },
+
+  reporter_requests: {
+    certified_reporter_required: ef(true, "extracted", false, 0.58),
+    stenographic_recording: ef(true, "extracted", false, 0.74),
+    audiovisual_recording: ef(false, "manual", false, null),
+    realtime_requested: ef(false, "manual", false, null),
+    expedited_delivery: ef(false, "manual", false, null),
+    rush_delivery: ef(false, "manual", false, null),
+    daily_copy: ef(false, "manual", false, null),
+    rough_draft: ef(false, "manual", false, null),
   },
 
   reporter: {
@@ -72,6 +106,40 @@ export const mockCaseRecord: CaseRecord = {
 
   format: defaultTranscriptFormat(),
 
+  parties: [
+    {
+      party_id: "party_mock_001",
+      name: ef("Tony Johnson", "extracted", false, 0.94),
+      role: ef("plaintiff", "extracted", false, 0.88),
+      role_modifier: ef(null, "manual", false, null),
+      entity_type: ef("individual", "extracted", false, 0.55),
+      fka_or_dba: ef(null, "manual", false, null),
+    },
+    {
+      party_id: "party_mock_002",
+      name: ef("Acme Logistics, LLC", "extracted", false, 0.93),
+      role: ef("defendant", "extracted", false, 0.88),
+      role_modifier: ef(null, "manual", false, null),
+      entity_type: ef("llc", "extracted", false, 0.62),
+      fka_or_dba: ef(null, "manual", false, null),
+    },
+  ],
+
+  law_firms: [
+    {
+      law_firm_id: "firm_mock_001",
+      name: ef("Thornton & Associates", "extracted", false, 0.92),
+      address: ef("500 North Akard Street", "extracted", false, 0.71),
+      city: ef("Dallas", "extracted", false, 0.73),
+      state: ef("TX", "extracted", false, 0.73),
+      zip: ef("75201", "extracted", false, 0.73),
+      phone: ef(null, "manual", false, null),
+      fax: ef(null, "manual", false, null),
+      email: ef(null, "manual", false, null),
+      represented_party: ef("Plaintiff", "extracted", false, 0.81),
+    },
+  ],
+
   witnesses: [
     {
       witness_id: "wit_mock_001",
@@ -84,6 +152,8 @@ export const mockCaseRecord: CaseRecord = {
       is_corporate_rep: false,
       corporate_entity: null,
       read_and_sign: ef("read_and_sign",             "extracted", false, 0.77),
+      requires_interpreter: ef(false, "manual", false, null),
+      requires_videographer: ef(false, "manual", false, null),
       spelling_corrections: [],
       email: null,
       phone: null,

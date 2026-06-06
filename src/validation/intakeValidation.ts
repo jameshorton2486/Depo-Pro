@@ -61,7 +61,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
   const hasStartTime = hasValue(fieldValue(session?.start_time));
   const hasEndTime = hasValue(fieldValue(session?.end_time));
   const isRemote = Boolean(session?.is_remote);
-  const remotePlatform = session?.remote_platform ?? null;
+  const remotePlatform = fieldValue(session?.remote_platform);
 
   const witnessWithName = witnesses.find((witness) => hasValue(fieldValue(witness?.name)));
   items.push({

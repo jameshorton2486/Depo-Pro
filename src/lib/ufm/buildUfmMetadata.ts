@@ -6,13 +6,26 @@ type UfmFieldKey =
   | "cause_number"
   | "caption"
   | "court"
+  | "judicial_district"
+  | "division"
   | "county"
   | "state"
+  | "jurisdiction_type"
   | "deponent"
   | "deposition_date"
   | "start_time"
   | "end_time"
   | "address"
+  | "location_type"
+  | "remote_platform"
+  | "noticing_party"
+  | "service_type"
+  | "parties"
+  | "law_firms"
+  | "service_date"
+  | "served_parties"
+  | "service_emails"
+  | "reporter_requests"
   | "csr_name"
   | "csr_license"
   | "firm_registration"
@@ -29,13 +42,20 @@ type FieldMapKey =
   | "ufmCause"
   | "ufmCaption"
   | "ufmCourt"
+  | "ufmJudicialDistrict"
+  | "ufmDivision"
   | "ufmCounty"
   | "ufmState"
+  | "ufmJurisdictionType"
   | "ufmDeponent"
   | "ufmDepositionDate"
   | "ufmStartTime"
   | "ufmEndTime"
   | "ufmAddress"
+  | "ufmLocationType"
+  | "ufmRemotePlatform"
+  | "ufmNoticingParty"
+  | "ufmServiceType"
   | "ufmCsrName"
   | "ufmCsrLicense"
   | "ufmFirmRegistration"
@@ -58,12 +78,19 @@ const FIELD_PATHS: Partial<Record<FieldMapKey, string>> = {
   ufmCause: "caption.case_number",
   ufmCaption: "caption.case_style",
   ufmCourt: "caption.court_name",
+  ufmJudicialDistrict: "caption.judicial_district",
+  ufmDivision: "caption.division",
   ufmCounty: "caption.county",
-  ufmState: "session.location_state",
+  ufmState: "caption.state",
+  ufmJurisdictionType: "caption.jurisdiction_type",
   ufmDepositionDate: "session.deposition_date",
   ufmStartTime: "session.start_time",
   ufmEndTime: "session.end_time",
   ufmAddress: "session.location_address",
+  ufmLocationType: "session.location_type",
+  ufmRemotePlatform: "scheduling.remote_platform",
+  ufmNoticingParty: "scheduling.noticing_party",
+  ufmServiceType: "scheduling.service_type",
   ufmCsrName: "reporter.name",
   ufmCsrLicense: "reporter.cert_number",
   ufmFirmRegistration: "reporter.firm_registration_number",
@@ -128,6 +155,30 @@ function buildAppearances(record: CaseRecord) {
     representing: normalizeValue(attorney.representing.value),
     phone: normalizeValue(attorney.phone),
     email: normalizeValue(attorney.email),
+  }));
+}
+
+function buildParties(record: CaseRecord) {
+  return record.parties.map((party) => ({
+    name: normalizeValue(party.name.value),
+    role: normalizeValue(party.role.value),
+    role_modifier: normalizeValue(party.role_modifier.value),
+    entity_type: normalizeValue(party.entity_type.value),
+    fka_or_dba: normalizeValue(party.fka_or_dba.value),
+  }));
+}
+
+function buildLawFirms(record: CaseRecord) {
+  return record.law_firms.map((lawFirm) => ({
+    name: normalizeValue(lawFirm.name.value),
+    address: normalizeValue(lawFirm.address.value),
+    city: normalizeValue(lawFirm.city.value),
+    state: normalizeValue(lawFirm.state.value),
+    zip: normalizeValue(lawFirm.zip.value),
+    phone: normalizeValue(lawFirm.phone.value),
+    fax: normalizeValue(lawFirm.fax.value),
+    email: normalizeValue(lawFirm.email.value),
+    represented_party: normalizeValue(lawFirm.represented_party.value),
   }));
 }
 
@@ -197,13 +248,35 @@ export function buildUfmMetadata(args: {
     cause_number: normalizeValue(record.caption.case_number.value),
     caption,
     court: normalizeValue(record.caption.court_name.value),
+    judicial_district: normalizeValue(record.caption.judicial_district.value),
+    division: normalizeValue(record.caption.division.value),
     county: normalizeValue(record.caption.county.value),
-    state: normalizeValue(record.session.location_state.value) ?? "Texas",
+    state: normalizeValue(record.caption.state.value) ?? normalizeValue(record.session.location_state.value) ?? "Texas",
+    jurisdiction_type: normalizeValue(record.caption.jurisdiction_type.value),
     deponent,
     deposition_date: depositionDate,
     start_time: normalizeValue(record.session.start_time.value),
     end_time: normalizeValue(record.session.end_time.value),
     address,
+    location_type: normalizeValue(record.session.location_type.value),
+    remote_platform: normalizeValue(record.scheduling.remote_platform.value) ?? normalizeValue(record.session.remote_platform.value),
+    noticing_party: normalizeValue(record.scheduling.noticing_party.value),
+    service_type: normalizeValue(record.scheduling.service_type.value),
+    parties: buildParties(record),
+    law_firms: buildLawFirms(record),
+    service_date: normalizeValue(record.service.service_date.value),
+    served_parties: record.service.served_parties.value,
+    service_emails: record.service.service_emails.value,
+    reporter_requests: {
+      certified_reporter_required: record.reporter_requests.certified_reporter_required.value,
+      stenographic_recording: record.reporter_requests.stenographic_recording.value,
+      audiovisual_recording: record.reporter_requests.audiovisual_recording.value,
+      realtime_requested: record.reporter_requests.realtime_requested.value,
+      expedited_delivery: record.reporter_requests.expedited_delivery.value,
+      rush_delivery: record.reporter_requests.rush_delivery.value,
+      daily_copy: record.reporter_requests.daily_copy.value,
+      rough_draft: record.reporter_requests.rough_draft.value,
+    },
     csr_name: normalizeValue(record.reporter.name.value),
     csr_license: normalizeValue(record.reporter.cert_number.value),
     firm_registration: normalizeValue(record.reporter.firm_registration_number.value),
@@ -221,12 +294,19 @@ export function buildUfmMetadata(args: {
     ufmCause: mapFieldSource(record.caption.case_number, sourceForPath(provenance, "caption.case_number")),
     ufmCaption: mapFieldSource(record.caption.case_style, sourceForPath(provenance, "caption.case_style")),
     ufmCourt: mapFieldSource(record.caption.court_name, sourceForPath(provenance, "caption.court_name")),
+    ufmJudicialDistrict: mapFieldSource(record.caption.judicial_district, sourceForPath(provenance, "caption.judicial_district")),
+    ufmDivision: mapFieldSource(record.caption.division, sourceForPath(provenance, "caption.division")),
     ufmCounty: mapFieldSource(record.caption.county, sourceForPath(provenance, "caption.county")),
-    ufmState: mapFieldSource(record.session.location_state, sourceForPath(provenance, "session.location_state")),
+    ufmState: mapFieldSource(record.caption.state, sourceForPath(provenance, "caption.state")),
+    ufmJurisdictionType: mapFieldSource(record.caption.jurisdiction_type, sourceForPath(provenance, "caption.jurisdiction_type")),
     ufmDepositionDate: mapFieldSource(record.session.deposition_date, sourceForPath(provenance, "session.deposition_date")),
     ufmStartTime: mapFieldSource(record.session.start_time, sourceForPath(provenance, "session.start_time")),
     ufmEndTime: mapFieldSource(record.session.end_time, sourceForPath(provenance, "session.end_time")),
     ufmAddress: mapFieldSource(record.session.location_address, sourceForPath(provenance, "session.location_address")),
+    ufmLocationType: mapFieldSource(record.session.location_type, sourceForPath(provenance, "session.location_type")),
+    ufmRemotePlatform: mapFieldSource(record.scheduling.remote_platform, sourceForPath(provenance, "scheduling.remote_platform")),
+    ufmNoticingParty: mapFieldSource(record.scheduling.noticing_party, sourceForPath(provenance, "scheduling.noticing_party")),
+    ufmServiceType: mapFieldSource(record.scheduling.service_type, sourceForPath(provenance, "scheduling.service_type")),
     ufmCsrName: mapFieldSource(record.reporter.name, "manual"),
     ufmCsrLicense: mapFieldSource(record.reporter.cert_number, "profile"),
     ufmFirmRegistration: mapFieldSource(record.reporter.firm_registration_number, "profile"),
@@ -239,12 +319,19 @@ export function buildUfmMetadata(args: {
     ufmCause: record.caption.case_number.confirmed,
     ufmCaption: record.caption.case_style.confirmed,
     ufmCourt: record.caption.court_name.confirmed,
+    ufmJudicialDistrict: record.caption.judicial_district.confirmed,
+    ufmDivision: record.caption.division.confirmed,
     ufmCounty: record.caption.county.confirmed,
-    ufmState: record.session.location_state.confirmed,
+    ufmState: record.caption.state.confirmed,
+    ufmJurisdictionType: record.caption.jurisdiction_type.confirmed,
     ufmDepositionDate: record.session.deposition_date.confirmed,
     ufmStartTime: record.session.start_time.confirmed,
     ufmEndTime: record.session.end_time.confirmed,
     ufmAddress: record.session.location_address.confirmed,
+    ufmLocationType: record.session.location_type.confirmed,
+    ufmRemotePlatform: record.scheduling.remote_platform.confirmed,
+    ufmNoticingParty: record.scheduling.noticing_party.confirmed,
+    ufmServiceType: record.scheduling.service_type.confirmed,
     ufmCsrName: record.reporter.name.confirmed,
     ufmCsrLicense: record.reporter.cert_number.confirmed,
     ufmFirmRegistration: record.reporter.firm_registration_number.confirmed,

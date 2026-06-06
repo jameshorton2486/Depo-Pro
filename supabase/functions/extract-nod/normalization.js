@@ -414,6 +414,50 @@ export function normalizeParticipant(participant) {
   };
 }
 
+export function normalizePartyRole(value) {
+  const normalized = (value ?? "").toLowerCase().replace(/\s+/g, "_");
+  if (
+    normalized === "plaintiff"
+    || normalized === "defendant"
+    || normalized === "third_party"
+    || normalized === "cross_plaintiff"
+    || normalized === "cross_defendant"
+    || normalized === "witness"
+    || normalized === "other"
+  ) {
+    return normalized;
+  }
+  return null;
+}
+
+export function normalizeParty(party) {
+  return {
+    name: normalizeStringField(party.name),
+    role: {
+      value: normalizePartyRole(party?.role?.value),
+      confidence: clampConfidence(party?.role?.confidence),
+      inferred: party?.role?.inferred === true || undefined,
+    },
+    role_modifier: normalizeStringField(party.role_modifier),
+    entity_type: normalizeStringField(party.entity_type),
+    fka_or_dba: normalizeStringField(party.fka_or_dba),
+  };
+}
+
+export function normalizeLawFirm(lawFirm) {
+  return {
+    name: normalizeStringField(lawFirm.name),
+    address: normalizeStringField(lawFirm.address),
+    city: normalizeStringField(lawFirm.city),
+    state: normalizeStringField(lawFirm.state),
+    zip: normalizeStringField(lawFirm.zip),
+    phone: normalizeStringField(lawFirm.phone),
+    fax: normalizeStringField(lawFirm.fax),
+    email: normalizeStringField(lawFirm.email),
+    represented_party: normalizeStringField(lawFirm.represented_party),
+  };
+}
+
 export function normalizeFields(raw, sourceText = "") {
   const caseStyle = normalizeStringField(raw.case_style);
   const plaintiff = normalizeStringField(raw.plaintiff);
@@ -426,7 +470,10 @@ export function normalizeFields(raw, sourceText = "") {
   const reportingMethod = normalizeReportingMethodField(raw.reporting_method, { ...raw.remote, sourceText });
   const courtName = normalizeCourtNameField(raw.court_name);
 
-  const plaintiffFirms = (raw.attorneys ?? [])
+  const rawAttorneys = Array.isArray(raw.attorneys) ? raw.attorneys : [];
+  const rawParticipants = Array.isArray(raw.other_participants) ? raw.other_participants : [];
+
+  const plaintiffFirms = rawAttorneys
     .map((attorney) => {
       const side = normalizeSide(attorney?.side?.value);
       if (side !== "plaintiff") {
@@ -447,6 +494,7 @@ export function normalizeFields(raw, sourceText = "") {
     division,
     county,
     state: normalizeStringField(raw.state),
+    jurisdiction_type: normalizeStringField(raw.jurisdiction_type),
     deposition_date: depositionDate,
     start_time: startTime,
     end_time: endTime,
@@ -463,10 +511,43 @@ export function normalizeFields(raw, sourceText = "") {
     reporting_method: reportingMethod,
     witness: {
       name: normalizeStringField(raw.witness.name),
+      role: normalizeStringField(raw.witness.role),
       party_affiliation: normalizeStringField(raw.witness.party_affiliation),
+      read_and_sign: normalizeStringField(raw.witness.read_and_sign),
+      interpreter_required: normalizeBooleanField(raw.witness.interpreter_required),
+      videographer_required: normalizeBooleanField(raw.witness.videographer_required),
     },
-    attorneys: mergeAttorneysWithBackfill(raw.attorneys, sourceText, plaintiff.value, defendants.value, plaintiffFirms),
-    other_participants: raw.other_participants.map(normalizeParticipant),
+    parties: Array.isArray(raw.parties) ? raw.parties.map(normalizeParty) : [],
+    attorneys: mergeAttorneysWithBackfill(rawAttorneys, sourceText, plaintiff.value, defendants.value, plaintiffFirms),
+    law_firms: Array.isArray(raw.law_firms) ? raw.law_firms.map(normalizeLawFirm) : [],
+    scheduling: {
+      proceeding_type: normalizeStringField(raw.scheduling?.proceeding_type),
+      remote_platform: normalizeStringField(raw.scheduling?.remote_platform),
+      noticing_party: normalizeStringField(raw.scheduling?.noticing_party),
+      ordered_by: normalizeStringField(raw.scheduling?.ordered_by),
+      scheduler: normalizeStringField(raw.scheduling?.scheduler),
+      scheduling_contact: normalizeStringField(raw.scheduling?.scheduling_contact),
+      service_type: normalizeStringField(raw.scheduling?.service_type),
+      time_zone: normalizeStringField(raw.scheduling?.time_zone),
+      remote_location: normalizeStringField(raw.scheduling?.remote_location),
+    },
+    service: {
+      certificate_of_service: normalizeBooleanField(raw.service?.certificate_of_service),
+      service_date: normalizeDateField(raw.service?.service_date),
+      served_parties: normalizeStringArrayField(raw.service?.served_parties),
+      service_emails: normalizeStringArrayField(raw.service?.service_emails),
+    },
+    reporter_requests: {
+      certified_reporter_required: normalizeBooleanField(raw.reporter_requests?.certified_reporter_required),
+      stenographic_recording: normalizeBooleanField(raw.reporter_requests?.stenographic_recording),
+      audiovisual_recording: normalizeBooleanField(raw.reporter_requests?.audiovisual_recording),
+      realtime_requested: normalizeBooleanField(raw.reporter_requests?.realtime_requested),
+      expedited_delivery: normalizeBooleanField(raw.reporter_requests?.expedited_delivery),
+      rush_delivery: normalizeBooleanField(raw.reporter_requests?.rush_delivery),
+      daily_copy: normalizeBooleanField(raw.reporter_requests?.daily_copy),
+      rough_draft: normalizeBooleanField(raw.reporter_requests?.rough_draft),
+    },
+    other_participants: rawParticipants.map(normalizeParticipant),
   };
 }
 

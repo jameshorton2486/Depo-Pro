@@ -60,7 +60,11 @@ function buildSummary(application: ExtractionApplication): ExtractionSummary {
       application.attorneyAdds.length +
       application.attorneyPatches.length +
       application.witnessAdds.length +
-      application.witnessPatches.length,
+      application.witnessPatches.length +
+      application.partyAdds.length +
+      application.partyPatches.length +
+      application.lawFirmAdds.length +
+      application.lawFirmPatches.length,
     conflictCount: application.conflicts.length,
   };
 }

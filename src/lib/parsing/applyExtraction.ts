@@ -1,8 +1,10 @@
-import type { Attorney, CaseRecord, DeepgramKeyterm, FieldSource, Witness } from "../../types/case";
+import type { Attorney, CaseParty, CaseRecord, DeepgramKeyterm, FieldSource, LawFirm, Witness } from "../../types/case";
 import type {
   ExtractedAttorney,
   ExtractedConfidenceValue,
+  ExtractedLawFirm,
   ExtractedNODFields,
+  ExtractedParty,
 } from "./aiExtractionTypes";
 
 export interface ExtractionFieldUpdate {
@@ -39,12 +41,34 @@ export interface WitnessPatch {
   patch: Partial<Omit<Witness, "witness_id">>;
 }
 
+export interface PartyAddition {
+  party: Omit<CaseParty, "party_id">;
+}
+
+export interface PartyPatch {
+  party_id: string;
+  patch: Partial<Omit<CaseParty, "party_id">>;
+}
+
+export interface LawFirmAddition {
+  law_firm: Omit<LawFirm, "law_firm_id">;
+}
+
+export interface LawFirmPatch {
+  law_firm_id: string;
+  patch: Partial<Omit<LawFirm, "law_firm_id">>;
+}
+
 export interface ExtractionApplication {
   fieldUpdates: ExtractionFieldUpdate[];
   attorneyAdds: AttorneyAddition[];
   attorneyPatches: AttorneyPatch[];
   witnessAdds: WitnessAddition[];
   witnessPatches: WitnessPatch[];
+  partyAdds: PartyAddition[];
+  partyPatches: PartyPatch[];
+  lawFirmAdds: LawFirmAddition[];
+  lawFirmPatches: LawFirmPatch[];
   conflicts: ExtractionConflict[];
   keyterms: DeepgramKeyterm[];
 }
@@ -58,6 +82,10 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
   const attorneyPatches: AttorneyPatch[] = [];
   const witnessAdds: WitnessAddition[] = [];
   const witnessPatches: WitnessPatch[] = [];
+  const partyAdds: PartyAddition[] = [];
+  const partyPatches: PartyPatch[] = [];
+  const lawFirmAdds: LawFirmAddition[] = [];
+  const lawFirmPatches: LawFirmPatch[] = [];
 
   queueField(fieldUpdates, conflicts, record, "caption.case_number", fields.cause_number, "Case Number");
   queueField(fieldUpdates, conflicts, record, "caption.case_style", fields.case_style, "Case Style");
@@ -75,7 +103,32 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
     withConfidence(courtName, maxConfidence(fields.court_name, fields.district, fields.division)),
     "Court Name",
   );
+  queueField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "caption.judicial_district",
+    withConfidence(orNull(valueOf(fields.district)), confidenceOf(fields.district)),
+    "Judicial District",
+  );
+  queueField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "caption.division",
+    withConfidence(orNull(valueOf(fields.division)), confidenceOf(fields.division)),
+    "Division",
+  );
   queueField(fieldUpdates, conflicts, record, "caption.county", withConfidence(normalizeCounty(valueOf(fields.county)), confidenceOf(fields.county)), "County");
+  queueField(fieldUpdates, conflicts, record, "caption.state", withConfidence(normalizeState(valueOf(fields.state)), confidenceOf(fields.state)), "State");
+  queueField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "caption.jurisdiction_type",
+    withConfidence(mapJurisdictionType(valueOf(fields.jurisdiction_type), valueOf(fields.state), valueOf(fields.court_name)), confidenceOf(fields.jurisdiction_type, fields.state, fields.court_name)),
+    "Jurisdiction Type",
+  );
   queueField(fieldUpdates, conflicts, record, "caption.venue", withConfidence(composeVenue(fields), maxConfidence(fields.division, fields.district, fields.county)), "Venue");
 
   queueField(fieldUpdates, conflicts, record, "session.deposition_date", withConfidence(normalizeISODate(valueOf(fields.deposition_date)), confidenceOf(fields.deposition_date)), "Deposition Date");
@@ -103,9 +156,58 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
     withConfidence(mapReportingMethod(fields), confidenceOf(fields.reporting_method, fields.remote.is_remote, fields.remote.platform)),
     "Reporting Method",
   );
+  queueField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "session.location_type",
+    withConfidence(mapLocationType(fields), confidenceOf(fields.remote.is_remote, fields.remote.platform, fields.location.address)),
+    "Location Type",
+  );
+  queueField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "session.remote_platform",
+    withConfidence(orNull(cleanupValue(valueOf(fields.remote.platform))), confidenceOf(fields.remote.platform)),
+    "Remote Platform",
+  );
+
+  queueField(fieldUpdates, conflicts, record, "scheduling.proceeding_type", fields.scheduling.proceeding_type, "Proceeding Type");
+  queueField(fieldUpdates, conflicts, record, "scheduling.remote_platform", fields.scheduling.remote_platform, "Remote Platform");
+  queueField(fieldUpdates, conflicts, record, "scheduling.noticing_party", fields.scheduling.noticing_party, "Noticing Party");
+  queueField(fieldUpdates, conflicts, record, "scheduling.ordered_by", fields.scheduling.ordered_by, "Ordered By");
+  queueField(fieldUpdates, conflicts, record, "scheduling.scheduler", fields.scheduling.scheduler, "Scheduler");
+  queueField(fieldUpdates, conflicts, record, "scheduling.scheduling_contact", fields.scheduling.scheduling_contact, "Scheduling Contact");
+  queueField(fieldUpdates, conflicts, record, "scheduling.service_type", fields.scheduling.service_type, "Service Type");
+  queueField(fieldUpdates, conflicts, record, "scheduling.time_zone", fields.scheduling.time_zone, "Time Zone");
+  queueField(fieldUpdates, conflicts, record, "scheduling.remote_location", fields.scheduling.remote_location, "Remote Location");
+
+  queueField(fieldUpdates, conflicts, record, "service.certificate_of_service", fields.service.certificate_of_service, "Certificate of Service");
+  queueField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "service.service_date",
+    withConfidence(normalizeISODate(orNull(valueOf(fields.service.service_date))), confidenceOf(fields.service.service_date)),
+    "Service Date",
+  );
+  queueField(fieldUpdates, conflicts, record, "service.served_parties", fields.service.served_parties, "Served Parties");
+  queueField(fieldUpdates, conflicts, record, "service.service_emails", fields.service.service_emails, "Service Emails");
+
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.certified_reporter_required", fields.reporter_requests.certified_reporter_required, "Certified Court Reporter Required");
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.stenographic_recording", fields.reporter_requests.stenographic_recording, "Stenographic Recording");
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.audiovisual_recording", fields.reporter_requests.audiovisual_recording, "Audiovisual Recording");
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.realtime_requested", fields.reporter_requests.realtime_requested, "Realtime Requested");
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.expedited_delivery", fields.reporter_requests.expedited_delivery, "Expedited Delivery");
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.rush_delivery", fields.reporter_requests.rush_delivery, "Rush Delivery");
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.daily_copy", fields.reporter_requests.daily_copy, "Daily Copy");
+  queueField(fieldUpdates, conflicts, record, "reporter_requests.rough_draft", fields.reporter_requests.rough_draft, "Rough Draft");
 
   applyWitnessExtraction(fields, record, fieldUpdates, conflicts, witnessAdds);
   applyAttorneyExtraction(fields, record, attorneyAdds, attorneyPatches);
+  applyPartyExtraction(fields, record, partyAdds, partyPatches);
+  applyLawFirmExtraction(fields, record, lawFirmAdds, lawFirmPatches);
 
   return {
     fieldUpdates,
@@ -113,6 +215,10 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
     attorneyPatches,
     witnessAdds,
     witnessPatches,
+    partyAdds,
+    partyPatches,
+    lawFirmAdds,
+    lawFirmPatches,
     conflicts,
     keyterms: buildKeyterms(fields),
   };
@@ -127,7 +233,11 @@ function applyWitnessExtraction(
 ) {
   const witnessName = cleanupValue(valueOf(fields.witness.name));
   const partyAffiliation = mapPartyAffiliation(valueOf(fields.witness.party_affiliation));
-  if (!witnessName && !partyAffiliation) {
+  const witnessRole = mapWitnessRole(valueOf(fields.witness.role));
+  const readAndSign = mapReadAndSign(valueOf(fields.witness.read_and_sign));
+  const interpreterRequired = valueOf(fields.witness.interpreter_required);
+  const videographerRequired = valueOf(fields.witness.videographer_required);
+  if (!witnessName && !partyAffiliation && !witnessRole && !readAndSign && interpreterRequired == null && videographerRequired == null) {
     return;
   }
 
@@ -135,6 +245,9 @@ function applyWitnessExtraction(
   if (existing) {
     if (witnessName) {
       queueField(fieldUpdates, conflicts, record, "witnesses[0].name", withConfidence(witnessName, confidenceOf(fields.witness.name)), "Witness 1 - Name");
+    }
+    if (witnessRole) {
+      queueField(fieldUpdates, conflicts, record, "witnesses[0].role", withConfidence(witnessRole, confidenceOf(fields.witness.role)), "Witness 1 - Role");
     }
     if (partyAffiliation) {
       queueField(
@@ -146,20 +259,48 @@ function applyWitnessExtraction(
         "Witness 1 - Party Affiliation",
       );
     }
+    if (readAndSign) {
+      queueField(
+        fieldUpdates,
+        conflicts,
+        record,
+        "witnesses[0].read_and_sign",
+        withConfidence(readAndSign, confidenceOf(fields.witness.read_and_sign)),
+        "Witness 1 - Read and Sign",
+      );
+    }
+    queueField(
+      fieldUpdates,
+      conflicts,
+      record,
+      "witnesses[0].requires_interpreter",
+      fields.witness.interpreter_required,
+      "Witness 1 - Interpreter Required",
+    );
+    queueField(
+      fieldUpdates,
+      conflicts,
+      record,
+      "witnesses[0].requires_videographer",
+      fields.witness.videographer_required,
+      "Witness 1 - Videographer Required",
+    );
     return;
   }
 
   witnessAdds.push({
     witness: {
       name: extractedField(witnessName, confidenceOf(fields.witness.name)),
-      role: extractedField("WITNESS", DEFAULT_CONFIDENCE),
+      role: extractedField(witnessRole ?? "WITNESS", confidenceOf(fields.witness.role) ?? DEFAULT_CONFIDENCE),
       title: extractedField(null, null),
       employer: extractedField(null, null),
       prefix_suffix: null,
       party_affiliation: extractedField(partyAffiliation, confidenceOf(fields.witness.party_affiliation)),
       is_corporate_rep: false,
       corporate_entity: null,
-      read_and_sign: extractedField(null, null),
+      read_and_sign: extractedField(readAndSign, confidenceOf(fields.witness.read_and_sign)),
+      requires_interpreter: extractedField(interpreterRequired, confidenceOf(fields.witness.interpreter_required)),
+      requires_videographer: extractedField(videographerRequired, confidenceOf(fields.witness.videographer_required)),
       spelling_corrections: [],
       email: null,
       phone: null,
@@ -218,6 +359,92 @@ function applyAttorneyExtraction(
         time_used: null,
         email: orNull(valueOf(attorney.email)),
         phone: orNull(valueOf(attorney.phone)),
+      },
+    });
+  }
+}
+
+function applyPartyExtraction(
+  fields: ExtractedNODFields,
+  record: CaseRecord,
+  partyAdds: PartyAddition[],
+  partyPatches: PartyPatch[],
+) {
+  const parties = fields.parties.length > 0 ? fields.parties : derivePartiesFromCaption(fields);
+
+  for (const party of parties) {
+    const name = cleanupValue(valueOf(party.name));
+    const role = mapPartyRole(valueOf(party.role));
+    if (!name || !role) {
+      continue;
+    }
+
+    const existing = record.parties.find((item) => normalizeName(item.name.value) === normalizeName(name) && item.role.value === role);
+    if (existing) {
+      const patch: Partial<Omit<CaseParty, "party_id">> = {};
+      if (!cleanupValue(existing.role_modifier.value)) patch.role_modifier = extractedField(orNull(valueOf(party.role_modifier)), confidenceOf(party.role_modifier));
+      if (!cleanupValue(existing.entity_type.value)) patch.entity_type = extractedField(orNull(valueOf(party.entity_type)), confidenceOf(party.entity_type));
+      if (!cleanupValue(existing.fka_or_dba.value)) patch.fka_or_dba = extractedField(orNull(valueOf(party.fka_or_dba)), confidenceOf(party.fka_or_dba));
+      if (Object.keys(patch).length > 0) {
+        partyPatches.push({ party_id: existing.party_id, patch });
+      }
+      continue;
+    }
+
+    partyAdds.push({
+      party: {
+        name: extractedField(name, confidenceOf(party.name)),
+        role: extractedField(role, confidenceOf(party.role) ?? DEFAULT_CONFIDENCE),
+        role_modifier: extractedField(orNull(valueOf(party.role_modifier)), confidenceOf(party.role_modifier)),
+        entity_type: extractedField(orNull(valueOf(party.entity_type)), confidenceOf(party.entity_type)),
+        fka_or_dba: extractedField(orNull(valueOf(party.fka_or_dba)), confidenceOf(party.fka_or_dba)),
+      },
+    });
+  }
+}
+
+function applyLawFirmExtraction(
+  fields: ExtractedNODFields,
+  record: CaseRecord,
+  lawFirmAdds: LawFirmAddition[],
+  lawFirmPatches: LawFirmPatch[],
+) {
+  const lawFirms = fields.law_firms.length > 0 ? fields.law_firms : deriveLawFirmsFromAttorneys(fields);
+
+  for (const lawFirm of lawFirms) {
+    const name = cleanupValue(valueOf(lawFirm.name));
+    if (!name) {
+      continue;
+    }
+
+    const existing = record.law_firms.find((item) => normalizeName(item.name.value) === normalizeName(name));
+    if (existing) {
+      const patch: Partial<Omit<LawFirm, "law_firm_id">> = {};
+      if (!cleanupValue(existing.address.value)) patch.address = extractedField(orNull(valueOf(lawFirm.address)), confidenceOf(lawFirm.address));
+      if (!cleanupValue(existing.city.value)) patch.city = extractedField(orNull(valueOf(lawFirm.city)), confidenceOf(lawFirm.city));
+      if (!cleanupValue(existing.state.value)) patch.state = extractedField(orNull(valueOf(lawFirm.state)), confidenceOf(lawFirm.state));
+      if (!cleanupValue(existing.zip.value)) patch.zip = extractedField(orNull(valueOf(lawFirm.zip)), confidenceOf(lawFirm.zip));
+      if (!cleanupValue(existing.phone.value)) patch.phone = extractedField(orNull(valueOf(lawFirm.phone)), confidenceOf(lawFirm.phone));
+      if (!cleanupValue(existing.fax.value)) patch.fax = extractedField(orNull(valueOf(lawFirm.fax)), confidenceOf(lawFirm.fax));
+      if (!cleanupValue(existing.email.value)) patch.email = extractedField(orNull(valueOf(lawFirm.email)), confidenceOf(lawFirm.email));
+      if (!cleanupValue(existing.represented_party.value)) patch.represented_party = extractedField(orNull(valueOf(lawFirm.represented_party)), confidenceOf(lawFirm.represented_party));
+      if (Object.keys(patch).length > 0) {
+        lawFirmPatches.push({ law_firm_id: existing.law_firm_id, patch });
+      }
+      continue;
+    }
+
+    lawFirmAdds.push({
+      law_firm: {
+        name: extractedField(name, confidenceOf(lawFirm.name)),
+        address: extractedField(orNull(valueOf(lawFirm.address)), confidenceOf(lawFirm.address)),
+        city: extractedField(orNull(valueOf(lawFirm.city)), confidenceOf(lawFirm.city)),
+        state: extractedField(orNull(valueOf(lawFirm.state)), confidenceOf(lawFirm.state)),
+        zip: extractedField(orNull(valueOf(lawFirm.zip)), confidenceOf(lawFirm.zip)),
+        phone: extractedField(orNull(valueOf(lawFirm.phone)), confidenceOf(lawFirm.phone)),
+        fax: extractedField(orNull(valueOf(lawFirm.fax)), confidenceOf(lawFirm.fax)),
+        email: extractedField(orNull(valueOf(lawFirm.email)), confidenceOf(lawFirm.email)),
+        represented_party: extractedField(orNull(valueOf(lawFirm.represented_party)), confidenceOf(lawFirm.represented_party)),
       },
     });
   }
@@ -293,6 +520,67 @@ function mapPartyAffiliation(value: string | null): "plaintiff" | "defendant" | 
   return null;
 }
 
+function mapPartyRole(value: string | null): CaseParty["role"]["value"] | null {
+  const normalized = cleanupValue(value).toLowerCase();
+  if (normalized === "plaintiff") return "plaintiff";
+  if (normalized === "defendant" || normalized === "defense") return "defendant";
+  if (normalized === "third_party" || normalized === "third party") return "third_party";
+  if (normalized === "cross_plaintiff" || normalized === "cross plaintiff") return "cross_plaintiff";
+  if (normalized === "cross_defendant" || normalized === "cross defendant") return "cross_defendant";
+  if (normalized === "witness") return "witness";
+  if (normalized === "other") return "other";
+  return null;
+}
+
+function mapWitnessRole(value: string | null): Witness["role"]["value"] | null {
+  const normalized = cleanupValue(value).toLowerCase();
+  if (normalized === "party") return "PARTY";
+  if (normalized === "expert") return "EXPERT";
+  if (normalized === "other") return "OTHER";
+  if (normalized === "witness" || normalized.includes("deponent")) return "WITNESS";
+  return null;
+}
+
+function mapReadAndSign(value: string | null): Witness["read_and_sign"]["value"] {
+  const normalized = cleanupValue(value).toLowerCase();
+  if (normalized.includes("waiv")) return "waived";
+  if (normalized.includes("read")) return "read_and_sign";
+  return null;
+}
+
+function mapJurisdictionType(
+  explicit: string | null,
+  state: string | null,
+  courtName: string | null,
+): CaseRecord["caption"]["jurisdiction_type"]["value"] {
+  const normalized = cleanupValue(explicit).toLowerCase();
+  if (normalized === "texas_state" || normalized === "federal" || normalized === "state" || normalized === "other") {
+    return normalized;
+  }
+  const normalizedCourt = cleanupValue(courtName).toLowerCase();
+  const normalizedState = cleanupValue(state).toLowerCase();
+  if (normalizedCourt.includes("united states") || normalizedCourt.includes("district court")) {
+    return "federal";
+  }
+  if (normalizedState === "texas" || normalizedState === "tx") {
+    return "texas_state";
+  }
+  if (normalizedState) {
+    return "state";
+  }
+  return null;
+}
+
+function mapLocationType(fields: ExtractedNODFields): CaseRecord["session"]["location_type"]["value"] {
+  const platform = cleanupValue(valueOf(fields.remote.platform)).toLowerCase();
+  const remote = Boolean(valueOf(fields.remote.is_remote));
+  const hasAddress = Boolean(cleanupValue(valueOf(fields.location.address)));
+  if (platform.includes("phone") || platform.includes("telephone")) return "phone";
+  if (remote && hasAddress) return "hybrid";
+  if (remote) return "zoom";
+  return "in_person";
+}
+
 function composeRepresenting(
   attorney: ExtractedAttorney,
   plaintiff: string,
@@ -314,17 +602,78 @@ function composeRepresenting(
   return "";
 }
 
+function derivePartiesFromCaption(fields: ExtractedNODFields): ExtractedParty[] {
+  const derived: ExtractedParty[] = [];
+  const plaintiff = cleanupValue(valueOf(fields.plaintiff));
+  if (plaintiff) {
+    derived.push({
+      name: withConfidence(plaintiff, confidenceOf(fields.plaintiff)),
+      role: withConfidence("plaintiff", confidenceOf(fields.plaintiff)),
+      role_modifier: withConfidence(null, null),
+      entity_type: withConfidence(inferEntityType(plaintiff), 0.5),
+      fka_or_dba: withConfidence(extractDbaFragment(plaintiff), 0.6),
+    });
+  }
+
+  for (const defendant of valueOf(fields.defendants) ?? []) {
+    const normalized = cleanupValue(defendant);
+    if (!normalized) {
+      continue;
+    }
+    derived.push({
+      name: withConfidence(normalized, confidenceOf(fields.defendants)),
+      role: withConfidence("defendant", confidenceOf(fields.defendants)),
+      role_modifier: withConfidence(null, null),
+      entity_type: withConfidence(inferEntityType(normalized), 0.5),
+      fka_or_dba: withConfidence(extractDbaFragment(normalized), 0.6),
+    });
+  }
+
+  return derived;
+}
+
+function deriveLawFirmsFromAttorneys(fields: ExtractedNODFields): ExtractedLawFirm[] {
+  const byName = new Map<string, ExtractedLawFirm>();
+  for (const attorney of fields.attorneys) {
+    const firmName = cleanupValue(valueOf(attorney.firm));
+    if (!firmName) {
+      continue;
+    }
+    const key = normalizeName(firmName);
+    if (!byName.has(key)) {
+      byName.set(key, {
+        name: withConfidence(firmName, confidenceOf(attorney.firm)),
+        address: withConfidence(orNull(valueOf(attorney.address)), confidenceOf(attorney.address)),
+        city: withConfidence(orNull(valueOf(attorney.city)), confidenceOf(attorney.city)),
+        state: withConfidence(orNull(valueOf(attorney.state)), confidenceOf(attorney.state)),
+        zip: withConfidence(orNull(valueOf(attorney.zip)), confidenceOf(attorney.zip)),
+        phone: withConfidence(orNull(valueOf(attorney.phone)), confidenceOf(attorney.phone)),
+        fax: withConfidence(null, null),
+        email: withConfidence(orNull(valueOf(attorney.email)), confidenceOf(attorney.email)),
+        represented_party: withConfidence(orNull(composeRepresenting(attorney, cleanupValue(valueOf(fields.plaintiff)), valueOf(fields.defendants) ?? [])), confidenceOf(attorney.representing)),
+      });
+    }
+  }
+  return [...byName.values()];
+}
+
 function buildKeyterms(fields: ExtractedNODFields): DeepgramKeyterm[] {
   const terms: Array<{ term: string; category: DeepgramKeyterm["category"] }> = [];
   pushTerm(terms, valueOf(fields.witness.name), "proper_name");
   pushTerm(terms, valueOf(fields.case_style), "legal_term");
   pushTerm(terms, valueOf(fields.plaintiff), "proper_name");
+  for (const party of fields.parties) {
+    pushTerm(terms, valueOf(party.name), "proper_name");
+  }
   for (const defendant of valueOf(fields.defendants) ?? []) {
     pushTerm(terms, defendant, "company");
   }
   for (const attorney of fields.attorneys) {
     pushTerm(terms, valueOf(attorney.name), "proper_name");
     pushTerm(terms, valueOf(attorney.firm), "company");
+  }
+  for (const lawFirm of fields.law_firms) {
+    pushTerm(terms, valueOf(lawFirm.name), "company");
   }
   for (const participant of fields.other_participants) {
     pushTerm(terms, valueOf(participant.name), "proper_name");
@@ -405,7 +754,7 @@ function getField(record: CaseRecord, path: string) {
   const keys = path
     .split(".")
     .flatMap((segment) => {
-      const match = segment.match(/^([^\[]+)\[(\d+)\]$/);
+      const match = segment.match(/^([^[]+)\[(\d+)\]$/);
       return match ? [match[1], match[2]] : [segment];
     });
 
@@ -509,6 +858,22 @@ function normalizeISOTime(value: string | null): string | null {
 
 function normalizeName(value: string | null | undefined): string {
   return cleanupValue(value).toLowerCase();
+}
+
+function inferEntityType(value: string | null): string | null {
+  const normalized = cleanupValue(value).toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes("llc")) return "llc";
+  if (normalized.includes("inc") || normalized.includes("corp")) return "corporation";
+  if (normalized.includes("l.p.") || normalized.includes("lp") || normalized.includes("llp") || normalized.includes("pllc")) return "partnership";
+  return "individual";
+}
+
+function extractDbaFragment(value: string | null): string | null {
+  const normalized = cleanupValue(value);
+  if (!normalized) return null;
+  const match = normalized.match(/\b(?:d\/b\/a|dba|f\/k\/a|fka)\b.*$/i);
+  return match ? cleanupValue(match[0]) : null;
 }
 
 function cleanupValue(value: string | null | undefined): string {

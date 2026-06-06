@@ -18,6 +18,10 @@ function buildApplication(): ExtractionApplication {
     attorneyPatches: [],
     witnessAdds: [],
     witnessPatches: [],
+    partyAdds: [],
+    partyPatches: [],
+    lawFirmAdds: [],
+    lawFirmPatches: [],
     keyterms: [],
   };
 }
