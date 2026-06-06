@@ -169,14 +169,6 @@ Deno.serve(async (request) => {
   }
 });
 
-async function routeNotImplemented(route: string, context: RouteContext): Promise<Response> {
-  console.error("[editor-api] route not implemented", {
-    route,
-    jobId: context.transcript.transcript_id,
-  });
-  return respondError(500, "route not implemented");
-}
-
 async function requireTranscript(
   supabase: SupabaseClient<Database>,
   jobId: string,
@@ -215,7 +207,7 @@ async function handleGetDocument(context: RouteContext): Promise<Response> {
   }
 
   const document: EditorDocument = {
-    job_id: transcript.job_id,
+    job_id: transcript.transcript_id,
     media_url: mediaUrl,
     duration: transcript.duration_seconds ?? transcript.duration ?? 0,
     speakers: speakerRows.map(mapSpeakerRow),

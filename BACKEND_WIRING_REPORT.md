@@ -125,7 +125,11 @@ None.
 
 - Client bearer-token attachment is implemented only in `src/api/client.ts`, preserving the single-network-module rule.
 - Real backend mode is opt-in via `VITE_USE_REAL_API=1`; MSW remains the default in DEV.
-- No other client files were changed for routing to the real backend.
+- Stack-forced delta: `src/api/workspaceService.ts` also needed a minimal flag-gated branch to actually call the frozen REST client in real mode.
+  - Reason: current repo reality already had a direct-Supabase non-mock path, so changing only `client.ts` and `main.tsx` would leave the new Edge Function unused by the app.
+- Additional stack-forced delta: workspace entry points currently pass a case ID on initial Stage 3 load, while later panel actions use `document.job_id`.
+  - Resolution: `workspaceService` now resolves case ID, transcript ID, or legacy job ID to a single transcript row before routing requests.
+  - `EditorDocument.job_id` is normalized to `transcripts.transcript_id` so subsequent route calls stay on the same business key the Edge Function expects.
 
 ### Additive migration log
 

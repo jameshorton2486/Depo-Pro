@@ -8,18 +8,21 @@ import type {
   Speaker,
   SpeakersPayload,
 } from "./types";
-import { api as mockApi } from "./client";
+import { api as contractApi } from "./client";
 import { getSignedUrl } from "./fileService";
 import {
   getLatestCompletedTranscriptJob,
   getTranscriptJobByJobId,
+  getTranscriptJobByTranscriptId,
   listTranscriptJobs,
   loadTranscriptSnapshot,
   updateTranscriptJob,
+  type TranscriptJobRow,
 } from "./transcriptRepository";
 import { getSupabaseClient } from "../lib/supabase";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
+const USE_REAL_EDITOR_API = import.meta.env.VITE_USE_REAL_API === "1";
 
 export interface WorkspaceLoadResult {
   document: EditorDocument;
@@ -73,7 +76,7 @@ function buildEditorDocumentFromSnapshot(
   }
 
   return {
-    job_id: snapshot.job.job_id,
+    job_id: snapshot.job.transcript_id,
     media_url: mediaUrl,
     duration: snapshot.job.duration_seconds ?? snapshot.job.duration ?? 0,
     speakers: snapshot.speakers.map((speaker) => ({
@@ -106,15 +109,29 @@ function buildEditorDocumentFromSnapshot(
   };
 }
 
+async function resolveWorkspaceTarget(value: string): Promise<TranscriptJobRow | null> {
+  const byTranscriptId = await getTranscriptJobByTranscriptId(value);
+  if (byTranscriptId) {
+    return byTranscriptId;
+  }
+
+  const byJobId = await getTranscriptJobByJobId(value);
+  if (byJobId) {
+    return byJobId;
+  }
+
+  return getLatestCompletedTranscriptJob(value);
+}
+
 async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResult> {
-  const latestJob = await getLatestCompletedTranscriptJob(caseId);
-  if (!latestJob) {
+  const target = await resolveWorkspaceTarget(caseId);
+  if (!target) {
     throw new Error("No transcript has been generated for this case yet.");
   }
 
-  const snapshot = await loadTranscriptSnapshot(latestJob.job_id);
+  const snapshot = await loadTranscriptSnapshot(target.job_id);
   if (!snapshot) {
-    throw new Error(`Transcript job ${latestJob.job_id} could not be loaded.`);
+    throw new Error(`Transcript job ${target.job_id} could not be loaded.`);
   }
 
   const mediaUrl = snapshot.job.media_url
@@ -156,12 +173,12 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function requireFreshTranscript(
-  jobId: string,
+  key: string,
   lastKnownUpdatedAt?: string | null,
 ) {
-  const job = await getTranscriptJobByJobId(jobId);
+  const job = await resolveWorkspaceTarget(key);
   if (!job) {
-    throw new Error(`Transcript job ${jobId} was not found.`);
+    throw new Error(`Transcript ${key} was not found.`);
   }
 
   if (lastKnownUpdatedAt && job.updated_at !== lastKnownUpdatedAt) {
@@ -211,14 +228,14 @@ async function appendAuditEntries(entries: Array<{
 }
 
 async function naivePersistWorking(
-  jobId: string,
+  key: string,
   payload: SaveWorkingPayload,
   options: WorkspaceMutationOptions = {},
 ): Promise<WorkspaceSaveResult> {
-  const job = await requireFreshTranscript(jobId, options.lastKnownUpdatedAt);
-  const snapshot = await loadTranscriptSnapshot(jobId);
+  const job = await requireFreshTranscript(key, options.lastKnownUpdatedAt);
+  const snapshot = await loadTranscriptSnapshot(job.job_id);
   if (!snapshot) {
-    throw new Error(`Transcript job ${jobId} was not found.`);
+    throw new Error(`Transcript job ${job.job_id} was not found.`);
   }
 
   return withRetry(async () => {
@@ -265,7 +282,7 @@ async function naivePersistWorking(
             text: workingText ?? word.raw_text,
             edited: Boolean(workingText),
           })
-          .eq("job_id", jobId)
+          .eq("job_id", job.job_id)
           .eq("word_id", word.word_id);
 
         if (error) {
@@ -275,7 +292,7 @@ async function naivePersistWorking(
         auditEntries.push({
           transcript_id: snapshot.job.transcript_id,
           case_id: snapshot.job.case_id,
-          job_id: jobId,
+          job_id: job.job_id,
           action: "edit_word",
           utterance_id: change.utterance_id,
           word_id: word.word_id,
@@ -287,7 +304,7 @@ async function naivePersistWorking(
       const { error: utteranceError } = await client
         .from("transcript_utterances")
         .update({ text: change.working_text })
-        .eq("job_id", jobId)
+        .eq("job_id", job.job_id)
         .eq("utterance_id", change.utterance_id);
 
       if (utteranceError) {
@@ -301,7 +318,7 @@ async function naivePersistWorking(
       auditEntries.push({
         transcript_id: snapshot.job.transcript_id,
         case_id: snapshot.job.case_id,
-        job_id: jobId,
+        job_id: job.job_id,
         action: "bulk_save",
         before_text: `${saved} utterance change(s)`,
         after_text: "persisted",
@@ -315,22 +332,22 @@ async function naivePersistWorking(
 }
 
 async function persistReview(
-  jobId: string,
+  key: string,
   payload: ReviewPayload,
   options: WorkspaceMutationOptions = {},
 ): Promise<WorkspaceMutationResult> {
-  const job = await requireFreshTranscript(jobId, options.lastKnownUpdatedAt);
+  const job = await requireFreshTranscript(key, options.lastKnownUpdatedAt);
 
   return withRetry(async () => {
     const client = await getSupabaseClient("persistReview");
-    const snapshot = await loadTranscriptSnapshot(jobId);
+    const snapshot = await loadTranscriptSnapshot(job.job_id);
     const wordMap = new Map((snapshot?.words ?? []).map((word) => [word.word_id, word]));
 
     if (payload.reviewed_word_ids.length > 0) {
       const { error } = await client
         .from("transcript_words")
         .update({ reviewed: true })
-        .eq("job_id", jobId)
+        .eq("job_id", job.job_id)
         .in("word_id", payload.reviewed_word_ids);
       if (error) {
         throw error;
@@ -341,7 +358,7 @@ async function persistReview(
       const { error } = await client
         .from("transcript_words")
         .update({ reviewed: false })
-        .eq("job_id", jobId)
+        .eq("job_id", job.job_id)
         .in("word_id", payload.unreviewed_word_ids);
       if (error) {
         throw error;
@@ -352,7 +369,7 @@ async function persistReview(
       ...payload.reviewed_word_ids.map((wordId) => ({
         transcript_id: job.transcript_id,
         case_id: job.case_id,
-        job_id: jobId,
+        job_id: job.job_id,
         action: "mark_reviewed" as const,
         word_id: wordId,
         utterance_id: wordMap.get(wordId)?.utterance_id ?? null,
@@ -362,7 +379,7 @@ async function persistReview(
       ...payload.unreviewed_word_ids.map((wordId) => ({
         transcript_id: job.transcript_id,
         case_id: job.case_id,
-        job_id: jobId,
+        job_id: job.job_id,
         action: "mark_reviewed" as const,
         word_id: wordId,
         utterance_id: wordMap.get(wordId)?.utterance_id ?? null,
@@ -384,11 +401,11 @@ function isSpeakerMapConfirmed(speakers: SpeakersPayload["speakers"]): boolean {
 }
 
 async function persistSpeakers(
-  jobId: string,
+  key: string,
   payload: SpeakersPayload,
   options: WorkspaceMutationOptions = {},
 ): Promise<WorkspaceMutationResult> {
-  const job = await requireFreshTranscript(jobId, options.lastKnownUpdatedAt);
+  const job = await requireFreshTranscript(key, options.lastKnownUpdatedAt);
 
   return withRetry(async () => {
     const client = await getSupabaseClient("persistSpeakers");
@@ -413,7 +430,7 @@ async function persistSpeakers(
           speaker_role: speaker.role ? speaker.role.toLowerCase() : null,
           role: speaker.role ? speaker.role.toLowerCase() : null,
         })
-        .eq("job_id", jobId)
+        .eq("job_id", job.job_id)
         .eq("speaker_id", speaker.speaker_id);
 
       if (error) {
@@ -423,7 +440,7 @@ async function persistSpeakers(
       auditEntries.push({
         transcript_id: job.transcript_id,
         case_id: job.case_id,
-        job_id: jobId,
+        job_id: job.job_id,
         action: "assign_speaker",
         before_text: speaker.speaker_id,
         after_text: `${speaker.display_name}${speaker.role ? ` (${speaker.role})` : ""}`,
@@ -439,7 +456,7 @@ async function persistSpeakers(
             speaker_id: assignment.speaker_id,
             speaker_label: speaker?.display_name ?? assignment.speaker_id,
           })
-          .eq("job_id", jobId)
+          .eq("job_id", job.job_id)
           .eq("utterance_id", assignment.utterance_id);
 
         if (utteranceError) {
@@ -451,7 +468,7 @@ async function persistSpeakers(
           .update({
             speaker_id: assignment.speaker_id,
           })
-          .eq("job_id", jobId)
+          .eq("job_id", job.job_id)
           .eq("utterance_id", assignment.utterance_id);
 
         if (wordError) {
@@ -461,7 +478,7 @@ async function persistSpeakers(
         auditEntries.push({
           transcript_id: job.transcript_id,
           case_id: job.case_id,
-          job_id: jobId,
+          job_id: job.job_id,
           action: "assign_speaker",
           utterance_id: assignment.utterance_id,
           before_text: "speaker reassignment",
@@ -485,8 +502,8 @@ async function persistSpeakers(
   });
 }
 
-async function getTranscriptChecklist(jobId: string): Promise<CertifyChecklist> {
-  const job = await getTranscriptJobByJobId(jobId);
+async function getTranscriptChecklist(key: string): Promise<CertifyChecklist> {
+  const job = await resolveWorkspaceTarget(key);
   if (!job) {
     return {
       review_complete: false,
@@ -499,7 +516,7 @@ async function getTranscriptChecklist(jobId: string): Promise<CertifyChecklist> 
   const { count, error } = await client
     .from("transcript_words")
     .select("word_id", { count: "exact", head: true })
-    .eq("job_id", jobId)
+    .eq("job_id", job.job_id)
     .eq("reviewed", false);
 
   if (error) {
@@ -524,40 +541,117 @@ export async function listWorkspaceTranscriptJobs(caseId: string) {
 }
 
 export const workspaceApi = {
-  getDocument: async (caseId: string): Promise<WorkspaceLoadResult> => (
-    USE_MOCK_WORKSPACE
-      ? {
-          document: await mockApi.getDocument(caseId),
-          updatedAt: null,
-          speakerMapConfirmed: false,
-        }
-      : loadWorkspaceDocument(caseId)
-  ),
-  saveWorking: async (jobId: string, payload: SaveWorkingPayload, options?: WorkspaceMutationOptions) => (
-    USE_MOCK_WORKSPACE
-      ? { ...(await mockApi.saveWorking(jobId, payload)), updatedAt: null }
-      : naivePersistWorking(jobId, payload, options)
-  ),
-  saveReview: async (jobId: string, payload: ReviewPayload, options?: WorkspaceMutationOptions) => (
-    USE_MOCK_WORKSPACE
-      ? { ...(await mockApi.saveReview(jobId, payload)), updatedAt: null }
-      : persistReview(jobId, payload, options)
-  ),
-  saveSpeakers: async (jobId: string, payload: SpeakersPayload, options?: WorkspaceMutationOptions) => (
-    USE_MOCK_WORKSPACE
-      ? { ...(await mockApi.saveSpeakers(jobId, payload)), updatedAt: null, speakerMapConfirmed: false }
-      : persistSpeakers(jobId, payload, options)
-  ),
-  getSuggestions: async (jobId: string) => (
-    USE_MOCK_WORKSPACE ? mockApi.getSuggestions(jobId) : []
-  ),
-  resolveSuggestion: async (jobId: string, id: string, body: Parameters<typeof mockApi.resolveSuggestion>[2]) => (
-    USE_MOCK_WORKSPACE ? mockApi.resolveSuggestion(jobId, id, body) : { ok: true as const }
-  ),
-  getExhibits: async (jobId: string): Promise<Exhibit[]> => (
-    USE_MOCK_WORKSPACE ? mockApi.getExhibits(jobId) : []
-  ),
-  getCertifyStatus: async (jobId: string) => (
-    USE_MOCK_WORKSPACE ? mockApi.getCertifyStatus(jobId) : getTranscriptChecklist(jobId)
-  ),
+  getDocument: async (caseId: string): Promise<WorkspaceLoadResult> => {
+    if (USE_MOCK_WORKSPACE) {
+      return {
+        document: await contractApi.getDocument(caseId),
+        updatedAt: null,
+        speakerMapConfirmed: false,
+      };
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await resolveWorkspaceTarget(caseId);
+      if (!target) {
+        throw new Error("No transcript has been generated for this case yet.");
+      }
+
+      return {
+        document: await contractApi.getDocument(target.transcript_id),
+        updatedAt: target.updated_at,
+        speakerMapConfirmed: target.speaker_map_confirmed,
+      };
+    }
+
+    return loadWorkspaceDocument(caseId);
+  },
+  saveWorking: async (jobId: string, payload: SaveWorkingPayload, options?: WorkspaceMutationOptions) => {
+    if (USE_MOCK_WORKSPACE) {
+      return { ...(await contractApi.saveWorking(jobId, payload)), updatedAt: null };
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
+      return { ...(await contractApi.saveWorking(target.transcript_id, payload)), updatedAt: target.updated_at };
+    }
+
+    return naivePersistWorking(jobId, payload, options);
+  },
+  saveReview: async (jobId: string, payload: ReviewPayload, options?: WorkspaceMutationOptions) => {
+    if (USE_MOCK_WORKSPACE) {
+      return { ...(await contractApi.saveReview(jobId, payload)), updatedAt: null };
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
+      return { ...(await contractApi.saveReview(target.transcript_id, payload)), updatedAt: target.updated_at };
+    }
+
+    return persistReview(jobId, payload, options);
+  },
+  saveSpeakers: async (jobId: string, payload: SpeakersPayload, options?: WorkspaceMutationOptions) => {
+    if (USE_MOCK_WORKSPACE) {
+      return { ...(await contractApi.saveSpeakers(jobId, payload)), updatedAt: null, speakerMapConfirmed: false };
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
+      await contractApi.saveSpeakers(target.transcript_id, payload);
+      return {
+        ok: true,
+        updatedAt: target.updated_at,
+        speakerMapConfirmed: isSpeakerMapConfirmed(payload.speakers),
+      };
+    }
+
+    return persistSpeakers(jobId, payload, options);
+  },
+  getSuggestions: async (jobId: string) => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.getSuggestions(jobId);
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.getSuggestions(target.transcript_id);
+    }
+
+    return [];
+  },
+  resolveSuggestion: async (jobId: string, id: string, body: Parameters<typeof contractApi.resolveSuggestion>[2]) => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.resolveSuggestion(jobId, id, body);
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.resolveSuggestion(target.transcript_id, id, body);
+    }
+
+    return { ok: true as const };
+  },
+  getExhibits: async (jobId: string): Promise<Exhibit[]> => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.getExhibits(jobId);
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.getExhibits(target.transcript_id);
+    }
+
+    return [];
+  },
+  getCertifyStatus: async (jobId: string) => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.getCertifyStatus(jobId);
+    }
+
+    if (USE_REAL_EDITOR_API) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.getCertifyStatus(target.transcript_id);
+    }
+
+    return getTranscriptChecklist(jobId);
+  },
 };
