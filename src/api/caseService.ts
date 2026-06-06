@@ -35,6 +35,14 @@ export interface CaseBrowserSummary {
   certified: boolean;
 }
 
+type MinimalExtractedField = {
+  value?: unknown;
+};
+
+type MinimalWitness = {
+  name?: MinimalExtractedField | null;
+};
+
 function toCaseRow(record: CaseRecord): CaseRow {
   return {
     case_id: record.case_id,
@@ -110,12 +118,40 @@ function parseArchivedFlag(payload: unknown): boolean {
   return Boolean((payload as { archived?: unknown }).archived);
 }
 
-function getSummaryText(record: CaseRecord) {
+function readExtractedString(value: unknown): string {
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+
+  const extracted = value as MinimalExtractedField;
+  return typeof extracted.value === "string" ? extracted.value : "";
+}
+
+function getSummaryText(record: unknown) {
+  if (!record || typeof record !== "object") {
+    return {
+      caseName: "Untitled Case",
+      caseStyle: "",
+      caseNumber: "",
+      witnessName: "",
+    };
+  }
+
+  const payload = record as {
+    caption?: {
+      case_name?: MinimalExtractedField | null;
+      case_style?: MinimalExtractedField | null;
+      case_number?: MinimalExtractedField | null;
+    } | null;
+    witnesses?: MinimalWitness[] | null;
+  };
+  const firstWitness = Array.isArray(payload.witnesses) ? payload.witnesses[0] : null;
+
   return {
-    caseName: record.caption.case_name.value || "Untitled Case",
-    caseStyle: record.caption.case_style.value || "",
-    caseNumber: record.caption.case_number.value || "",
-    witnessName: record.witnesses[0]?.name.value || "",
+    caseName: readExtractedString(payload.caption?.case_name) || "Untitled Case",
+    caseStyle: readExtractedString(payload.caption?.case_style),
+    caseNumber: readExtractedString(payload.caption?.case_number),
+    witnessName: readExtractedString(firstWitness?.name),
   };
 }
 
@@ -178,7 +214,7 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
     case_id: string;
     stage: CaseRecord["stage"];
     updated_at: string;
-    payload: CaseRecord;
+    payload: unknown;
   }>;
   const activeRows = rows.filter((row) => !parseArchivedFlag(row.payload));
   const caseIds = activeRows.map((row) => row.case_id);

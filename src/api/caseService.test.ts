@@ -158,4 +158,52 @@ describe("listRecentCases", () => {
       },
     ]);
   });
+
+  it("projects browser cards defensively from sparse payloads", async () => {
+    casesSelect.mockReturnValue({
+      order: () => ({
+        limit: async () => ({
+          data: [
+            {
+              case_id: "case_sparse",
+              stage: "creation",
+              updated_at: "2026-06-05T19:10:00.000Z",
+              payload: {},
+            },
+          ],
+          error: null,
+        }),
+      }),
+    });
+
+    caseAudioSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    transcriptsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    exhibitsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    certificationsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+
+    await expect(listRecentCases()).resolves.toEqual([
+      {
+        case_id: "case_sparse",
+        stage: "creation",
+        updated_at: "2026-06-05T19:10:00.000Z",
+        archived: false,
+        caseName: "Untitled Case",
+        caseStyle: "",
+        caseNumber: "",
+        witnessName: "",
+        hasAudio: false,
+        hasTranscript: false,
+        exhibitCount: 0,
+        certified: false,
+      },
+    ]);
+  });
 });
