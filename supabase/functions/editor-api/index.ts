@@ -92,7 +92,7 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const CASE_FILES_BUCKET = "case-files";
-const SIGNED_URL_TTL_SECONDS = 60 * 60;
+const SIGNED_URL_TTL_SECONDS = 6 * 60 * 60; // 6h supports long review sessions without mid-session expiry.
 const WORD_PAGE_SIZE = 1000;
 const CONFIDENCE_THRESHOLD = 0.70;
 
