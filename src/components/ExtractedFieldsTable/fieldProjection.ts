@@ -132,6 +132,10 @@ export function projectFieldRows(
   conflictAlternates: Record<string, { value: string; source: string }> = {},
 ): FieldRow[] {
   const rows: FieldRow[] = [];
+  const witnesses = Array.isArray(record.witnesses) ? record.witnesses : [];
+  const attorneys = Array.isArray(record.attorneys) ? record.attorneys : [];
+  const interpreters = Array.isArray(record.interpreters) ? record.interpreters : [];
+  const videographers = Array.isArray(record.videographers) ? record.videographers : [];
 
   const alt = (key: string): FieldRow["conflictAlternate"] => {
     const a = conflictAlternates[key];
@@ -175,7 +179,7 @@ export function projectFieldRows(
   rows.push(makeRow("reporter.firm_address",             "Reporter", "Firm Address",             "reporter.firm_address",             rep.firm_address.value,             rep.firm_address.source,             rep.firm_address.confirmed,             rep.firm_address.conflict,             rep.firm_address.confidence_score,             false));
 
   // ── Witnesses ─────────────────────────────────────────────────────────────
-  record.witnesses.forEach((w, i) => {
+  witnesses.forEach((w, i) => {
     const pfx = `witnesses[${i}]`;
     rows.push(makeRow(`${pfx}.name`,     "Witness", `Witness ${i + 1} — Name`,     `${pfx}.name`,     w.name.value,     w.name.source,     w.name.confirmed,     w.name.conflict,     w.name.confidence_score,     true,  alt(`${pfx}.name`)));
     rows.push(makeRow(`${pfx}.role`,     "Witness", `Witness ${i + 1} — Role`,     `${pfx}.role`,     w.role.value,     w.role.source,     w.role.confirmed,     w.role.conflict,     w.role.confidence_score,     true,  alt(`${pfx}.role`)));
@@ -186,7 +190,7 @@ export function projectFieldRows(
   });
 
   // ── Attorneys ─────────────────────────────────────────────────────────────
-  record.attorneys.forEach((a, i) => {
+  attorneys.forEach((a, i) => {
     const pfx = `attorneys[${i}]`;
     rows.push(makeRow(`${pfx}.name`,         "Attorney", `Attorney ${i + 1} — Name`,         `${pfx}.name`,         a.name.value,         a.name.source,         a.name.confirmed,         a.name.conflict,         a.name.confidence_score,         true,  alt(`${pfx}.name`)));
     rows.push(makeRow(`${pfx}.firm`,         "Attorney", `Attorney ${i + 1} — Firm`,         `${pfx}.firm`,         a.firm.value,         a.firm.source,         a.firm.confirmed,         a.firm.conflict,         a.firm.confidence_score,         false, alt(`${pfx}.firm`)));
@@ -196,13 +200,13 @@ export function projectFieldRows(
   });
 
   // ── Interpreters ──────────────────────────────────────────────────────────
-  record.interpreters.forEach((interp, i) => {
+  interpreters.forEach((interp, i) => {
     const pfx = `interpreters[${i}]`;
     rows.push(makeRow(`${pfx}.name`, "Interpreter", `Interpreter ${i + 1} — Name`, `${pfx}.name`, interp.name.value, interp.name.source, interp.name.confirmed, interp.name.conflict, interp.name.confidence_score, true, alt(`${pfx}.name`)));
   });
 
   // ── Videographers ─────────────────────────────────────────────────────────
-  record.videographers.forEach((vid, i) => {
+  videographers.forEach((vid, i) => {
     const pfx = `videographers[${i}]`;
     rows.push(makeRow(`${pfx}.name`, "Videographer", `Videographer ${i + 1} — Name`, `${pfx}.name`, vid.name.value, vid.name.source, vid.name.confirmed, vid.name.conflict, vid.name.confidence_score, false, alt(`${pfx}.name`)));
     rows.push(makeRow(`${pfx}.firm`, "Videographer", `Videographer ${i + 1} — Firm`, `${pfx}.firm`, vid.firm.value, vid.firm.source, vid.firm.confirmed, vid.firm.conflict, vid.firm.confidence_score, false, alt(`${pfx}.firm`)));
