@@ -90,3 +90,18 @@ None yet.
 ### Additive migration log
 
 None.
+
+## Phase 5
+
+### Decisions
+
+- Added `editor_resolve_suggestion(...)` as a `security invoker` RPC so suggestion status updates and document mutations happen atomically.
+- `GET /suggestions` returns all suggestion rows, including already resolved ones.
+- DB status `edited` is normalized back to contract status `accepted` because the frozen contract does not admit `edited`.
+- Accept/edit mutate the target word text and append an `edit_word` audit row with `suggestion_id`.
+
+### Additive migration log
+
+- `20260606114500_editor_api_resolve_suggestion_rpc.sql`
+  - adds `public.editor_resolve_suggestion(...)`
+  - justification: atomic suggestion status update plus optional target-word mutation and audit append

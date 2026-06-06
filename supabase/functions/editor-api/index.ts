@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type {
   ReviewPayload,
+  AiSuggestion,
   EditorDocument,
   SaveWorkingPayload,
   SaveWorkingResponse,
@@ -143,9 +144,9 @@ Deno.serve(async (request) => {
       case "speakers":
         return handlePutSpeakers(context);
       case "suggestions":
-        return routeNotImplemented("GET /:jobId/suggestions", context);
+        return handleGetSuggestions(context);
       case "resolveSuggestion":
-        return routeNotImplemented("POST /:jobId/suggestions/:suggestionId/resolve", context);
+        return handleResolveSuggestion(context);
       case "exhibits":
         return routeNotImplemented("GET /:jobId/exhibits", context);
       case "certifyStatus":
@@ -766,6 +767,121 @@ function normalizeSpeakerRoleForDatabase(
       return "other";
     default:
       return null;
+  }
+}
+
+type SuggestionRow = {
+  suggestion_id: string;
+  word_id: string;
+  utterance_id: string;
+  original_text: string;
+  suggested_text: string;
+  reason: string;
+  confidence: number;
+  status: string;
+};
+
+async function handleGetSuggestions(context: RouteContext): Promise<Response> {
+  const { data, error } = await context.supabase
+    .from("transcript_suggestions")
+    .select("suggestion_id, word_id, utterance_id, original_text, suggested_text, reason, confidence, status")
+    .eq("transcript_id", context.transcript.transcript_id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new HttpError(500, "failed to load suggestions");
+  }
+
+  const suggestions: AiSuggestion[] = ((data ?? []) as SuggestionRow[]).map((row) => ({
+    suggestion_id: row.suggestion_id,
+    word_id: row.word_id,
+    utterance_id: row.utterance_id,
+    original_text: row.original_text,
+    suggested_text: row.suggested_text,
+    reason: row.reason,
+    confidence: row.confidence,
+    status: normalizeSuggestionStatus(row.status),
+  }));
+
+  return respondJson(200, suggestions);
+}
+
+async function handleResolveSuggestion(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateSuggestionResolutionPayload(body);
+  const suggestionId = context.suggestionId;
+
+  if (!suggestionId) {
+    throw new HttpError(404, "unknown suggestion");
+  }
+
+  const existsResult = await context.supabase
+    .from("transcript_suggestions")
+    .select("suggestion_id")
+    .eq("transcript_id", context.transcript.transcript_id)
+    .eq("suggestion_id", suggestionId)
+    .maybeSingle();
+
+  if (existsResult.error) {
+    throw new HttpError(500, "failed to resolve suggestion");
+  }
+
+  if (!existsResult.data) {
+    throw new HttpError(404, "unknown suggestion");
+  }
+
+  const { error } = await context.supabase.rpc("editor_resolve_suggestion", {
+    p_transcript_id: context.transcript.transcript_id,
+    p_case_id: context.transcript.case_id,
+    p_job_id: context.transcript.job_id,
+    p_suggestion_id: suggestionId,
+    p_action: payload.action,
+    p_edited_text: payload.edited_text ?? null,
+  });
+
+  if (error) {
+    if (error.message.includes("edited_text is required")) {
+      throw new HttpError(400, "bad payload");
+    }
+    throw new HttpError(500, "failed to resolve suggestion");
+  }
+
+  return respondJson(200, { ok: true });
+}
+
+function validateSuggestionResolutionPayload(value: unknown): {
+  action: "accept" | "reject" | "edit";
+  edited_text?: string;
+} {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const payload = value as Record<string, unknown>;
+  if (payload.action !== "accept" && payload.action !== "reject" && payload.action !== "edit") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  if (payload.action === "edit" && typeof payload.edited_text !== "string") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  return {
+    action: payload.action,
+    edited_text: typeof payload.edited_text === "string" ? payload.edited_text : undefined,
+  };
+}
+
+function normalizeSuggestionStatus(value: string): AiSuggestion["status"] {
+  switch (value) {
+    case "accepted":
+    case "rejected":
+    case "pending":
+      return value;
+    case "edited":
+      return "accepted";
+    default:
+      return "pending";
   }
 }
 
