@@ -20,7 +20,7 @@ import { CaseScopedErrorBoundary } from "./CaseScopedErrorBoundary";
 import { CaseProvider, useCase } from "../context/CaseContext";
 import type { DepoEditorConfig } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
-import { useIntake } from "../context/IntakeContext";
+import { useIntake } from "../context/useIntake";
 import { saveCase } from "../api/caseService";
 import { buildManagedKeyterms } from "../lib/keyterms/managedKeyterms";
 import { AuthGate } from "./AuthGate/AuthGate";

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { useCase } from "../../context/CaseContext";
-import { useIntake } from "../../context/IntakeContext";
+import { useIntake } from "../../context/useIntake";
 import { buildUfmMetadata, summarizeUfmEnvelope } from "../../lib/ufm/buildUfmMetadata";
 
 function CopyButton({ text }: { text: string }) {

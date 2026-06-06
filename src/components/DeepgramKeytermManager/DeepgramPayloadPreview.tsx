@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Copy, Check, ExternalLink } from "lucide-react";
 
-import { useIntake } from "../../context/IntakeContext";
+import { useIntake } from "../../context/useIntake";
 import { buildDeepgramRequest } from "../../lib/deepgram/buildDeepgramRequest";
 import { useKeyterms } from "./keytermStore";
 
@@ -62,11 +62,7 @@ function KeytermLine({
   );
 }
 
-interface Props {
-  speakerCount?: number | null;
-}
-
-export function DeepgramPayloadPreview({ speakerCount: _speakerCount = null }: Props) {
+export function DeepgramPayloadPreview() {
   const { record } = useIntake();
   const { state } = useKeyterms();
   const [tab, setTab] = useState<"url" | "structured">("url");

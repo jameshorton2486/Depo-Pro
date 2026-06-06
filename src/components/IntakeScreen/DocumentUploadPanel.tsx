@@ -9,7 +9,7 @@ import {
   uploadCaseAudio,
   uploadCaseFile,
 } from "../../api/fileService";
-import { useIntake } from "../../context/IntakeContext";
+import { useIntake } from "../../context/useIntake";
 import { useConflict } from "../conflict/conflictStore";
 import { useKeyterms } from "../DeepgramKeytermManager/keytermStore";
 import { extractDocumentText } from "../../lib/parsing/documentText";

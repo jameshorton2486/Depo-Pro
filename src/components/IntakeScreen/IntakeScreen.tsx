@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import type { CaseAudioRecord, CaseFileRecord } from "../../api/fileService";
-import { useIntake } from "../../context/IntakeContext";
+import { useIntake } from "../../context/useIntake";
 import { useCase } from "../../context/CaseContext";
 import { useStage, STAGE_LABELS, STAGE_ORDER } from "../../context/StageContext";
 import { useConflict, selectActiveConflicts } from "../conflict/conflictStore";

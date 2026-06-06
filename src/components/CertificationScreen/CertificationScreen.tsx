@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight, FileCheck2 } from "lucide-react";
 import { workspaceApi } from "../../api/workspaceService";
-import { useIntake } from "../../context/IntakeContext";
+import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 
 interface PersistedCertificationState {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, Download, FileArchive, FileText } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
-import { useIntake } from "../../context/IntakeContext";
+import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 
 interface GeneratedArtifact {

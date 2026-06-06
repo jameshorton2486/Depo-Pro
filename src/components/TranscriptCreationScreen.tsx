@@ -7,7 +7,7 @@ import { listCaseAudio } from "../api/fileService";
 import { startTranscription } from "../api/transcriptionService";
 import { listWorkspaceTranscriptJobs } from "../api/workspaceService";
 import { saveCase } from "../api/caseService";
-import { useIntake } from "../context/IntakeContext";
+import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
 
 export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
