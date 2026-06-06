@@ -26,6 +26,10 @@ Storage objects are handled separately in the storage phase.
   - adds `owner_user_id` to every application table
   - creates owner indexes
   - clears disposable fixture rows first
+- `20260606180508_owner_scoped_rls_policies.sql`
+  - drops permissive authenticated policies
+  - creates owner-scoped replacements
+  - removes the legacy `transcript_audit_log_delete_incomplete_jobs` policy so audit rows remain append-only
 
 ## Deferred
 
