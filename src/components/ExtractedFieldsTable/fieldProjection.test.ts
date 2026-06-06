@@ -28,4 +28,13 @@ describe("projectFieldRows", () => {
 
     expect(row?.status).not.toBe("Confirmed");
   });
+
+  it("does not throw when witnesses is a malformed object", () => {
+    const record = {
+      ...emptyCaseRecord("case_20260606_malformed", "2026-06-06T12:00:00Z"),
+      witnesses: {},
+    } as unknown as Parameters<typeof projectFieldRows>[0];
+
+    expect(() => projectFieldRows(record)).not.toThrow();
+  });
 });

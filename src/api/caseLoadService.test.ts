@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { normalizeCaseRecord } from "../lib/normalizeCaseRecord";
 import { emptyCaseRecord } from "../types/case";
 import { loadCaseBundle } from "./caseLoadService";
 
@@ -129,14 +130,14 @@ describe("loadCaseBundle", () => {
     expect(bundle?.provenance).toEqual([]);
   });
 
-  it("normalizes legacy single-witness payloads during bundle hydration", async () => {
+  it("preserves normalized legacy single-witness payloads during bundle hydration", async () => {
     const legacyPayload = {
       ...emptyCaseRecord("job_demo_001", "2026-06-05T18:00:00Z"),
       deponentName: "Heath Thomas",
       witnesses: null,
     };
 
-    loadCaseMock.mockResolvedValue(legacyPayload);
+    loadCaseMock.mockResolvedValue(normalizeCaseRecord(legacyPayload));
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
     listTranscriptJobsMock.mockResolvedValue([]);
