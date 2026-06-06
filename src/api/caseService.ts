@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "../lib/supabase";
-import { emptyCaseRecord, normalizeCaseRecord, type CaseRecord } from "../types/case";
+import { normalizeCaseRecord } from "../lib/normalizeCaseRecord";
+import { emptyCaseRecord, type CaseRecord } from "../types/case";
 
 type CaseRow = {
   case_id: string;

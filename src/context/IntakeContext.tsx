@@ -13,7 +13,7 @@ import type {
   ProceedingType,
   WorkflowStage,
 } from "../types/case";
-import { normalizeCaseRecord } from "../types/case";
+import { normalizeCaseRecord } from "../lib/normalizeCaseRecord";
 
 import {
   intakeReducer,
@@ -109,11 +109,10 @@ function buildInitialState(record?: CaseRecord): IntakeState {
     return initialIntakeState();
   }
 
-  const normalized = normalizeCaseRecord(record);
   return {
-    record: normalized,
+    record,
     dirty: false,
-    last_saved_at: normalized.updated_at,
+    last_saved_at: record.updated_at,
     editSeq: 0,
   };
 }

@@ -544,6 +544,44 @@ function normalizeStringArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function normalizeNumber(input: unknown, fallback: number): number {
+  return typeof input === "number" && Number.isFinite(input) ? input : fallback;
+}
+
+function normalizeNullableNumber(input: unknown, fallback: number | null = null): number | null {
+  return typeof input === "number" && Number.isFinite(input) ? input : fallback;
+}
+
+function coerceArray(
+  value: unknown,
+  path: string,
+  coercedPaths: Set<string>,
+): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (isRecord(value)) {
+    coercedPaths.add(path);
+    return [value];
+  }
+
+  if (value !== undefined && value !== null) {
+    coercedPaths.add(path);
+  }
+
+  return [];
+}
+
+function normalizeArrayField<T>(
+  value: unknown,
+  path: string,
+  coercedPaths: Set<string>,
+  normalizeItem: (item: unknown, index: number) => T,
+): T[] {
+  return coerceArray(value, path, coercedPaths).map((item, index) => normalizeItem(item, index));
+}
+
 function normalizeAttorney(attorney: Attorney): Attorney {
   return {
     ...attorney,
@@ -662,7 +700,355 @@ function normalizeVideographer(videographer: Videographer): Videographer {
   };
 }
 
-function normalizeWitnesses(record: Record<string, unknown>): Witness[] {
+function emptyAttorney(attorneyId: string): Attorney {
+  return {
+    attorney_id: attorneyId,
+    name: extractedEmpty(""),
+    firm: extractedEmpty(null),
+    role: extractedEmpty<AttorneyRole>("OTHER"),
+    representing: extractedEmpty(null),
+    bar_number: extractedEmpty(null),
+    address: null,
+    city: null,
+    state: null,
+    zip: null,
+    time_used: null,
+    email: null,
+    phone: null,
+  };
+}
+
+function normalizeAttorneyRole(
+  input: unknown,
+  fallback = extractedEmpty<AttorneyRole>("OTHER"),
+): ExtractedField<AttorneyRole> {
+  return normalizeExtractedField(
+    input,
+    fallback,
+    (value): value is AttorneyRole =>
+      value === "EXAMINING" || value === "OPPOSING" || value === "CO_COUNSEL" || value === "OTHER",
+  );
+}
+
+function normalizeAttorneyFromUnknown(attorney: unknown, fallbackId: string): Attorney {
+  const defaults = emptyAttorney(fallbackId);
+  const source = isRecord(attorney) ? attorney : null;
+  const attorneyId = source && typeof source.attorney_id === "string" && source.attorney_id.trim() ? source.attorney_id : fallbackId;
+
+  return normalizeAttorney({
+    ...defaults,
+    attorney_id: attorneyId,
+    name: normalizeStringField(source?.name, defaults.name),
+    firm: normalizeNullableStringField(source?.firm, defaults.firm),
+    role: normalizeAttorneyRole(source?.role, defaults.role),
+    representing: normalizeNullableStringField(source?.representing, defaults.representing),
+    bar_number: normalizeNullableStringField(source?.bar_number, defaults.bar_number),
+    address: normalizeNullableString(source?.address),
+    city: normalizeNullableString(source?.city),
+    state: normalizeNullableString(source?.state),
+    zip: normalizeNullableString(source?.zip),
+    time_used: normalizeNullableString(source?.time_used),
+    email: normalizeNullableString(source?.email),
+    phone: normalizeNullableString(source?.phone),
+  });
+}
+
+function emptyInterpreter(interpreterId: string): Interpreter {
+  return {
+    interpreter_id: interpreterId,
+    name: extractedEmpty(""),
+    language_from: "",
+    language_to: "",
+    oath_administered: null,
+    certified: false,
+    cert_number: null,
+    agency: null,
+    email: null,
+    phone: null,
+  };
+}
+
+function normalizeInterpreterFromUnknown(interpreter: unknown, fallbackId: string): Interpreter {
+  const defaults = emptyInterpreter(fallbackId);
+  const source = isRecord(interpreter) ? interpreter : null;
+  const interpreterId = source && typeof source.interpreter_id === "string" && source.interpreter_id.trim() ? source.interpreter_id : fallbackId;
+
+  return normalizeInterpreter({
+    ...defaults,
+    interpreter_id: interpreterId,
+    name: normalizeStringField(source?.name, defaults.name),
+    language_from: typeof source?.language_from === "string" ? source.language_from : defaults.language_from,
+    language_to: typeof source?.language_to === "string" ? source.language_to : defaults.language_to,
+    oath_administered: typeof source?.oath_administered === "boolean" ? source.oath_administered : null,
+    certified: normalizeBoolean(source?.certified),
+    cert_number: normalizeNullableString(source?.cert_number),
+    agency: normalizeNullableString(source?.agency),
+    email: normalizeNullableString(source?.email),
+    phone: normalizeNullableString(source?.phone),
+  });
+}
+
+function emptyVideographer(videographerId: string): Videographer {
+  return {
+    videographer_id: videographerId,
+    name: extractedEmpty(""),
+    firm: extractedEmpty(null),
+    role_title: null,
+    cert_number: null,
+    email: null,
+    phone: null,
+  };
+}
+
+function normalizeVideographerFromUnknown(videographer: unknown, fallbackId: string): Videographer {
+  const defaults = emptyVideographer(fallbackId);
+  const source = isRecord(videographer) ? videographer : null;
+  const videographerId = source && typeof source.videographer_id === "string" && source.videographer_id.trim()
+    ? source.videographer_id
+    : fallbackId;
+
+  return normalizeVideographer({
+    ...defaults,
+    videographer_id: videographerId,
+    name: normalizeStringField(source?.name, defaults.name),
+    firm: normalizeNullableStringField(source?.firm, defaults.firm),
+    role_title: normalizeNullableString(source?.role_title),
+    cert_number: normalizeNullableString(source?.cert_number),
+    email: normalizeNullableString(source?.email),
+    phone: normalizeNullableString(source?.phone),
+  });
+}
+
+function emptyParticipant(participantId: string): Participant {
+  return {
+    participant_id: participantId,
+    name: extractedEmpty(""),
+    role: "OTHER",
+    organization: null,
+    email: null,
+    phone: null,
+    notes: null,
+  };
+}
+
+function normalizeParticipantFromUnknown(participant: unknown, fallbackId: string): Participant {
+  const defaults = emptyParticipant(fallbackId);
+  const source = isRecord(participant) ? participant : null;
+  const participantId = source && typeof source.participant_id === "string" && source.participant_id.trim()
+    ? source.participant_id
+    : fallbackId;
+  const role = source?.role;
+
+  return {
+    ...defaults,
+    participant_id: participantId,
+    name: normalizeStringField(source?.name, defaults.name),
+    role:
+      role === "REPORTER"
+      || role === "ATTORNEY"
+      || role === "WITNESS"
+      || role === "INTERPRETER"
+      || role === "VIDEOGRAPHER"
+      || role === "PARALEGAL"
+      || role === "OBSERVER"
+      || role === "OTHER"
+        ? role
+        : defaults.role,
+    organization: normalizeNullableString(source?.organization),
+    email: normalizeNullableString(source?.email),
+    phone: normalizeNullableString(source?.phone),
+    notes: normalizeNullableString(source?.notes),
+  };
+}
+
+function emptyExhibit(exhibitId: string): CaseExhibit {
+  return {
+    exhibit_id: exhibitId,
+    label: "",
+    description: "",
+    filename: null,
+    file_url: null,
+    marked_by: null,
+    admitted: false,
+    page_reference: null,
+    line_reference: null,
+  };
+}
+
+function normalizeExhibitFromUnknown(exhibit: unknown, fallbackId: string): CaseExhibit {
+  const defaults = emptyExhibit(fallbackId);
+  const source = isRecord(exhibit) ? exhibit : null;
+  const exhibitId = source && typeof source.exhibit_id === "string" && source.exhibit_id.trim() ? source.exhibit_id : fallbackId;
+  const markedBy = source?.marked_by;
+
+  return {
+    ...defaults,
+    exhibit_id: exhibitId,
+    label: typeof source?.label === "string" ? source.label : defaults.label,
+    description: typeof source?.description === "string" ? source.description : defaults.description,
+    filename: normalizeNullableString(source?.filename),
+    file_url: normalizeNullableString(source?.file_url),
+    marked_by: markedBy === "PLAINTIFF" || markedBy === "DEFENDANT" || markedBy === "COURT" ? markedBy : null,
+    admitted: normalizeBoolean(source?.admitted),
+    page_reference: normalizeNullableNumber(source?.page_reference),
+    line_reference: normalizeNullableNumber(source?.line_reference),
+  };
+}
+
+function normalizeKeytermCategory(input: unknown, fallback: KeytermCategory = "other"): KeytermCategory {
+  return input === "proper_name"
+    || input === "company"
+    || input === "legal_term"
+    || input === "technical"
+    || input === "location"
+    || input === "other"
+    ? input
+    : fallback;
+}
+
+function normalizeDeepgramKeytermFromUnknown(keyterm: unknown): DeepgramKeyterm {
+  const source = isRecord(keyterm) ? keyterm : null;
+  return {
+    term: typeof source?.term === "string" ? source.term : "",
+    boost: typeof source?.boost === "number" && Number.isFinite(source.boost) ? source.boost : 0.5,
+    category: normalizeKeytermCategory(source?.category),
+    notes: typeof source?.notes === "string" ? source.notes : "",
+  };
+}
+
+function normalizeCaseAudioFromUnknown(audio: unknown): CaseAudio | null {
+  if (!isRecord(audio)) {
+    return null;
+  }
+
+  return {
+    audio_id: typeof audio.audio_id === "string" ? audio.audio_id : "",
+    original_filename: typeof audio.original_filename === "string" ? audio.original_filename : "",
+    mime_type: typeof audio.mime_type === "string" ? audio.mime_type : "",
+    duration_seconds: normalizeNullableNumber(audio.duration_seconds),
+    file_size_bytes: normalizeNullableNumber(audio.file_size_bytes),
+    uploaded_at: typeof audio.uploaded_at === "string" ? audio.uploaded_at : null,
+    media_url: normalizeNullableString(audio.media_url),
+  };
+}
+
+function normalizeCaption(source: unknown, defaults: CaseCaption): CaseCaption {
+  const caption = isRecord(source) ? source : null;
+  return {
+    case_name: normalizeStringField(caption?.case_name, defaults.case_name),
+    case_style: normalizeStringField(caption?.case_style, defaults.case_style),
+    case_number: normalizeStringField(caption?.case_number, defaults.case_number),
+    court_name: normalizeStringField(caption?.court_name, defaults.court_name),
+    county: normalizeStringField(caption?.county, defaults.county),
+    venue: normalizeStringField(caption?.venue, defaults.venue),
+    department: normalizeNullableStringField(caption?.department, defaults.department),
+    judge_name: normalizeNullableStringField(caption?.judge_name, defaults.judge_name),
+  };
+}
+
+function normalizeSession(source: unknown, defaults: Session): Session {
+  const session = isRecord(source) ? source : null;
+  return {
+    deposition_date: normalizeStringField(session?.deposition_date, defaults.deposition_date),
+    start_time: normalizeNullableStringField(session?.start_time, defaults.start_time),
+    end_time: normalizeNullableStringField(session?.end_time, defaults.end_time),
+    location_type: normalizeNullableRoleField(session?.location_type, defaults.location_type, ["zoom", "in_person", "hybrid", "phone"] as const),
+    location_address: normalizeStringField(session?.location_address, defaults.location_address),
+    location_city: normalizeStringField(session?.location_city, defaults.location_city),
+    location_county: normalizeStringField(session?.location_county, defaults.location_county),
+    location_state: normalizeStringField(session?.location_state, defaults.location_state),
+    location_zip: normalizeNullableStringField(session?.location_zip, defaults.location_zip),
+    reporting_method: normalizeNullableRoleField(
+      session?.reporting_method,
+      defaults.reporting_method,
+      ["machine_shorthand", "zoom", "in_person", "audio_recording"] as const,
+    ),
+    is_remote: normalizeBoolean(session?.is_remote),
+    remote_platform: normalizeNullableString(session?.remote_platform),
+  };
+}
+
+function normalizeProceeding(source: unknown, defaults: Proceeding): Proceeding {
+  const proceeding = isRecord(source) ? source : null;
+  return {
+    proceeding_type: proceeding?.proceeding_type === "freelance_deposition" || proceeding?.proceeding_type === "official_court_record"
+      ? proceeding.proceeding_type
+      : defaults.proceeding_type,
+    ordering_firm: normalizeNullableString(proceeding?.ordering_firm),
+    ordering_contact: normalizeNullableString(proceeding?.ordering_contact),
+    clerk_name: normalizeNullableString(proceeding?.clerk_name),
+    clerk_badge: normalizeNullableString(proceeding?.clerk_badge),
+    filing_deadline: normalizeNullableString(proceeding?.filing_deadline),
+    notes: normalizeNullableString(proceeding?.notes),
+  };
+}
+
+function normalizeReporter(source: unknown, defaults: Reporter): Reporter {
+  const reporter = isRecord(source) ? source : null;
+  return {
+    name: normalizeStringField(reporter?.name, defaults.name),
+    cert_number: normalizeStringField(reporter?.cert_number, defaults.cert_number),
+    cert_state: normalizeStringField(reporter?.cert_state, defaults.cert_state),
+    firm: normalizeNullableStringField(reporter?.firm, defaults.firm),
+    license_expiration: normalizeNullableStringField(reporter?.license_expiration, defaults.license_expiration),
+    firm_registration_number: normalizeNullableStringField(reporter?.firm_registration_number, defaults.firm_registration_number),
+    firm_address: normalizeNullableStringField(reporter?.firm_address, defaults.firm_address),
+    email: normalizeNullableString(reporter?.email),
+    phone: normalizeNullableString(reporter?.phone),
+    notary_required: normalizeBoolean(reporter?.notary_required),
+    notary_name: normalizeNullableString(reporter?.notary_name),
+    notary_commission_expiry: normalizeNullableString(reporter?.notary_commission_expiry),
+  };
+}
+
+function normalizeTranscriptFormat(source: unknown, defaults: TranscriptFormat): TranscriptFormat {
+  const format = isRecord(source) ? source : null;
+  return {
+    lines_per_page: normalizeNumber(format?.lines_per_page, defaults.lines_per_page),
+    chars_per_line: normalizeNumber(format?.chars_per_line, defaults.chars_per_line),
+    first_page_number: normalizeNumber(format?.first_page_number, defaults.first_page_number),
+    include_line_numbers: typeof format?.include_line_numbers === "boolean" ? format.include_line_numbers : defaults.include_line_numbers,
+    include_timestamps: typeof format?.include_timestamps === "boolean" ? format.include_timestamps : defaults.include_timestamps,
+    font_family: typeof format?.font_family === "string" ? format.font_family : defaults.font_family,
+    font_size_pt: normalizeNumber(format?.font_size_pt, defaults.font_size_pt),
+  };
+}
+
+function normalizeStageCompletion(source: unknown, defaults: StageCompletion): StageCompletion {
+  const stageCompletion = isRecord(source) ? source : null;
+  return {
+    intake: typeof stageCompletion?.intake === "boolean" ? stageCompletion.intake : defaults.intake,
+    creation: typeof stageCompletion?.creation === "boolean" ? stageCompletion.creation : defaults.creation,
+    workspace: typeof stageCompletion?.workspace === "boolean" ? stageCompletion.workspace : defaults.workspace,
+    exhibits: typeof stageCompletion?.exhibits === "boolean" ? stageCompletion.exhibits : defaults.exhibits,
+    ufm: typeof stageCompletion?.ufm === "boolean" ? stageCompletion.ufm : defaults.ufm,
+    certification: typeof stageCompletion?.certification === "boolean" ? stageCompletion.certification : defaults.certification,
+    export: typeof stageCompletion?.export === "boolean" ? stageCompletion.export : defaults.export,
+  };
+}
+
+function normalizeDeepgram(source: unknown, defaults: DeepgramConfig, coercedPaths: Set<string>): DeepgramConfig {
+  const deepgram = isRecord(source) ? source : null;
+  return {
+    model: typeof deepgram?.model === "string" ? deepgram.model : defaults.model,
+    language: typeof deepgram?.language === "string" ? deepgram.language : defaults.language,
+    punctuate: typeof deepgram?.punctuate === "boolean" ? deepgram.punctuate : defaults.punctuate,
+    utterances: typeof deepgram?.utterances === "boolean" ? deepgram.utterances : defaults.utterances,
+    diarize: typeof deepgram?.diarize === "boolean" ? deepgram.diarize : defaults.diarize,
+    diarize_version: typeof deepgram?.diarize_version === "string" ? deepgram.diarize_version : defaults.diarize_version,
+    speaker_count: deepgram?.speaker_count === null || typeof deepgram?.speaker_count === "number" ? deepgram.speaker_count : defaults.speaker_count,
+    smart_format: typeof deepgram?.smart_format === "boolean" ? deepgram.smart_format : defaults.smart_format,
+    numerals: typeof deepgram?.numerals === "boolean" ? deepgram.numerals : defaults.numerals,
+    keyterms: normalizeArrayField(
+      deepgram?.keyterms,
+      "deepgram.keyterms",
+      coercedPaths,
+      (keyterm) => normalizeDeepgramKeytermFromUnknown(keyterm),
+    ),
+  };
+}
+
+function normalizeWitnesses(record: Record<string, unknown>, coercedPaths: Set<string>): Witness[] {
   const legacyName = readLegacyWitnessName(record);
   const legacyRole = record.deponentRole;
   const rawWitnesses = record.witnesses;
@@ -673,11 +1059,17 @@ function normalizeWitnesses(record: Record<string, unknown>): Witness[] {
     );
   }
 
-  if (isRecord(rawWitnesses) || typeof rawWitnesses === "string") {
+  if (isRecord(rawWitnesses)) {
+    coercedPaths.add("witnesses");
     return [normalizeWitness(rawWitnesses, "witness_1", { name: legacyName, role: legacyRole })];
   }
 
+  if (rawWitnesses !== undefined && rawWitnesses !== null) {
+    coercedPaths.add("witnesses");
+  }
+
   if (legacyName) {
+    coercedPaths.add("witnesses");
     return [normalizeWitness({}, "witness_1", { name: legacyName, role: legacyRole })];
   }
 
@@ -689,39 +1081,95 @@ export function normalizeCaseRecord(record: unknown): CaseRecord {
   const caseId = typeof source.case_id === "string" ? source.case_id : "";
   const createdAt = typeof source.created_at === "string" ? source.created_at : new Date().toISOString();
   const defaults = emptyCaseRecord(caseId, createdAt);
+  const coercedPaths = new Set<string>();
 
-  return {
+  const normalized: CaseRecord = {
     ...defaults,
-    ...source,
-    caption: {
-      ...defaults.caption,
-      ...(isRecord(source.caption) ? source.caption : {}),
-    },
-    session: {
-      ...defaults.session,
-      ...(isRecord(source.session) ? source.session : {}),
-    },
-    proceeding: {
-      ...defaults.proceeding,
-      ...(isRecord(source.proceeding) ? source.proceeding : {}),
-    },
-    reporter: {
-      ...defaults.reporter,
-      ...(isRecord(source.reporter) ? source.reporter : {}),
-    },
-    format: {
-      ...defaults.format,
-      ...(isRecord(source.format) ? source.format : {}),
-    },
-    stage_completion: {
-      ...defaults.stage_completion,
-      ...(isRecord(source.stage_completion) ? source.stage_completion : {}),
-    },
-    witnesses: normalizeWitnesses(source),
-    attorneys: normalizeStringArray<Attorney>(source.attorneys).map((attorney) => normalizeAttorney(attorney)),
-    interpreters: normalizeStringArray<Interpreter>(source.interpreters).map((interpreter) => normalizeInterpreter(interpreter)),
-    videographers: normalizeStringArray<Videographer>(source.videographers).map((videographer) => normalizeVideographer(videographer)),
-    participants: normalizeStringArray<Participant>(source.participants),
-    exhibits: normalizeStringArray<CaseExhibit>(source.exhibits),
+    version: source.version === "1.0" ? "1.0" : defaults.version,
+    case_id: caseId,
+    created_at: createdAt,
+    updated_at: typeof source.updated_at === "string" ? source.updated_at : defaults.updated_at,
+    _saveMeta: isRecord(source._saveMeta)
+      && typeof source._saveMeta.source === "string"
+      && typeof source._saveMeta.at === "string"
+      && typeof source._saveMeta.seq === "number"
+        ? {
+            source: source._saveMeta.source === "manual" || source._saveMeta.source === "autosave" || source._saveMeta.source === "flush"
+              ? source._saveMeta.source
+              : defaults._saveMeta?.source ?? "manual",
+            at: source._saveMeta.at,
+            seq: source._saveMeta.seq,
+          }
+        : undefined,
+    proceeding_type:
+      source.proceeding_type === "freelance_deposition" || source.proceeding_type === "official_court_record"
+        ? source.proceeding_type
+        : defaults.proceeding_type,
+    caption: normalizeCaption(source.caption, defaults.caption),
+    session: normalizeSession(source.session, defaults.session),
+    proceeding: normalizeProceeding(source.proceeding, defaults.proceeding),
+    reporter: normalizeReporter(source.reporter, defaults.reporter),
+    format: normalizeTranscriptFormat(source.format, defaults.format),
+    witnesses: normalizeWitnesses(source, coercedPaths),
+    attorneys: normalizeArrayField(source.attorneys, "attorneys", coercedPaths, (attorney, index) =>
+      normalizeAttorneyFromUnknown(attorney, `attorney_${index + 1}`),
+    ),
+    interpreters: normalizeArrayField(source.interpreters, "interpreters", coercedPaths, (interpreter, index) =>
+      normalizeInterpreterFromUnknown(interpreter, `interpreter_${index + 1}`),
+    ),
+    videographers: normalizeArrayField(source.videographers, "videographers", coercedPaths, (videographer, index) =>
+      normalizeVideographerFromUnknown(videographer, `videographer_${index + 1}`),
+    ),
+    participants: normalizeArrayField(source.participants, "participants", coercedPaths, (participant, index) =>
+      normalizeParticipantFromUnknown(participant, `participant_${index + 1}`),
+    ),
+    audio: normalizeCaseAudioFromUnknown(source.audio),
+    exhibits: normalizeArrayField(source.exhibits, "exhibits", coercedPaths, (exhibit, index) =>
+      normalizeExhibitFromUnknown(exhibit, `exhibit_${index + 1}`),
+    ),
+    deepgram: normalizeDeepgram(source.deepgram, defaults.deepgram, coercedPaths),
+    stage:
+      source.stage === "intake"
+      || source.stage === "creation"
+      || source.stage === "workspace"
+      || source.stage === "exhibits"
+      || source.stage === "ufm"
+      || source.stage === "certification"
+      || source.stage === "export"
+        ? source.stage
+        : defaults.stage,
+    stage_completion: normalizeStageCompletion(source.stage_completion, defaults.stage_completion),
+    certification: isRecord(source.certification) ? {
+      certification_date: typeof source.certification.certification_date === "string" ? source.certification.certification_date : null,
+      certification_statement: typeof source.certification.certification_statement === "string"
+        ? source.certification.certification_statement
+        : defaults.certification?.certification_statement ?? "",
+      checklist: isRecord(source.certification.checklist)
+        ? {
+            review_complete: normalizeBoolean(source.certification.checklist.review_complete),
+            speaker_mapping_complete: normalizeBoolean(source.certification.checklist.speaker_mapping_complete),
+            confidence_review_complete: normalizeBoolean(source.certification.checklist.confidence_review_complete),
+            exhibits_complete: normalizeBoolean(source.certification.checklist.exhibits_complete),
+            ufm_complete: normalizeBoolean(source.certification.checklist.ufm_complete),
+          }
+        : {
+            review_complete: false,
+            speaker_mapping_complete: false,
+            confidence_review_complete: false,
+            exhibits_complete: false,
+            ufm_complete: false,
+          },
+      signature_hash: normalizeNullableString(source.certification.signature_hash),
+    } : null,
+    notes: typeof source.notes === "string" ? source.notes : defaults.notes,
   };
+
+  if (coercedPaths.size > 0) {
+    console.warn("[DEPO-PRO] Normalized legacy case payload", {
+      case_id: normalized.case_id,
+      coercedPaths: [...coercedPaths],
+    });
+  }
+
+  return normalized;
 }
