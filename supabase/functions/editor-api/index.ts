@@ -2,7 +2,9 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import type {
   ReviewPayload,
   AiSuggestion,
+  CertifyChecklist,
   EditorDocument,
+  Exhibit,
   SaveWorkingPayload,
   SaveWorkingResponse,
   SpeakersPayload,
@@ -92,6 +94,7 @@ const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const CASE_FILES_BUCKET = "case-files";
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 const WORD_PAGE_SIZE = 1000;
+const CONFIDENCE_THRESHOLD = 0.70;
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
@@ -148,9 +151,9 @@ Deno.serve(async (request) => {
       case "resolveSuggestion":
         return handleResolveSuggestion(context);
       case "exhibits":
-        return routeNotImplemented("GET /:jobId/exhibits", context);
+        return handleGetExhibits(context);
       case "certifyStatus":
-        return routeNotImplemented("GET /:jobId/certify/status", context);
+        return handleGetCertifyStatus(context);
     }
   } catch (error) {
     if (error instanceof HttpError) {
@@ -883,6 +886,96 @@ function normalizeSuggestionStatus(value: string): AiSuggestion["status"] {
     default:
       return "pending";
   }
+}
+
+type ExhibitRow = {
+  exhibit_id: string;
+  label: string;
+  description: string;
+  file_url: string | null;
+  storage_path: string | null;
+};
+
+async function handleGetExhibits(context: RouteContext): Promise<Response> {
+  const { data, error } = await context.supabase
+    .from("case_exhibits")
+    .select("exhibit_id, label, description, file_url, storage_path")
+    .eq("case_id", context.transcript.case_id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new HttpError(500, "failed to load exhibits");
+  }
+
+  const exhibits: Exhibit[] = [];
+  for (const row of (data ?? []) as ExhibitRow[]) {
+    exhibits.push({
+      exhibit_id: row.exhibit_id,
+      label: row.label,
+      description: row.description,
+      file_url: await resolveAssetUrl(context.supabase, row.storage_path, row.file_url),
+    });
+  }
+
+  return respondJson(200, exhibits);
+}
+
+async function handleGetCertifyStatus(context: RouteContext): Promise<Response> {
+  const [unreviewedCount, lowConfidenceUnreviewedCount, speakerRows] = await Promise.all([
+    countUnreviewedWords(context.supabase, context.transcript.transcript_id),
+    countLowConfidenceUnreviewedWords(context.supabase, context.transcript.transcript_id),
+    loadSpeakers(context.supabase, context.transcript.transcript_id),
+  ]);
+
+  const checklist: CertifyChecklist = {
+    review_complete: unreviewedCount === 0,
+    speaker_mapping_complete: speakerRows.every((speaker) => {
+      const displayName = (speaker.assigned_name || speaker.display_name || speaker.speaker_label || "").trim();
+      return displayName.length > 0 && Boolean(normalizeSpeakerRole(speaker.speaker_role ?? speaker.role));
+    }),
+    confidence_review_complete: lowConfidenceUnreviewedCount === 0,
+  };
+
+  return respondJson(200, checklist);
+}
+
+async function countLowConfidenceUnreviewedWords(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("transcript_words")
+    .select("word_id", { count: "exact", head: true })
+    .eq("transcript_id", transcriptId)
+    .eq("reviewed", false)
+    .eq("removed", false)
+    .lt("confidence", CONFIDENCE_THRESHOLD);
+
+  if (error) {
+    throw new HttpError(500, "failed to load certify status");
+  }
+
+  return count ?? 0;
+}
+
+async function resolveAssetUrl(
+  supabase: SupabaseClient<Database>,
+  storagePath: string | null,
+  fallbackUrl: string | null,
+): Promise<string> {
+  if (storagePath) {
+    const signed = await supabase.storage
+      .from(CASE_FILES_BUCKET)
+      .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+
+    if (signed.error) {
+      throw new HttpError(500, "failed to sign asset url");
+    }
+
+    return signed.data.signedUrl;
+  }
+
+  return fallbackUrl ?? "";
 }
 
 function matchRoute(request: Request): RouteMatch | null {

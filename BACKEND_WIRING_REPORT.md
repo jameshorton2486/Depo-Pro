@@ -105,3 +105,16 @@ None.
 - `20260606114500_editor_api_resolve_suggestion_rpc.sql`
   - adds `public.editor_resolve_suggestion(...)`
   - justification: atomic suggestion status update plus optional target-word mutation and audit append
+
+## Phase 6
+
+### Decisions
+
+- `GET /exhibits` signs Storage-backed exhibit assets exactly like audio signing in `GET /document`.
+- `review_complete` is computed as zero unreviewed transcript words remaining.
+- `speaker_mapping_complete` is computed from live speaker rows having both non-empty display name and normalized role.
+- `confidence_review_complete` is computed as zero unreviewed words below the editor threshold `0.70`, taken from `src/extensions/ConfidencePlugin.ts`.
+
+### Additive migration log
+
+None.
