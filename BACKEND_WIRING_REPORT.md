@@ -134,3 +134,52 @@ None.
 ### Additive migration log
 
 None.
+
+## Phase 8
+
+### Decisions
+
+- Added local-only fixture-backed verification scripts:
+  - `scripts/seed-editor-transcript.mjs`
+  - `scripts/editor-api-smoke.mjs`
+  - shared data copy in `scripts/fixtures/editor-api-fixture.mjs`
+- The fixture module is a direct JS copy of the relevant `src/mocks/fixtures.ts` data and builders.
+  - Reason: the repo does not include a TS-at-runtime loader for Node scripts, and adding one would violate the no-new-dependencies rule.
+- `editor-api-smoke.mjs` derives the default function base URL from `VITE_SUPABASE_URL` when `VITE_EDITOR_API_BASE_URL` is not present locally.
+  - Reason: the deployed Supabase Functions URL is deterministic, and this keeps local verification from depending on extra `.env` setup.
+- Local verification used the linked remote Supabase project and the deployed `editor-api` function, not a local stack.
+- Seed fallback used authenticated anonymous-session writes when `SUPABASE_SERVICE_ROLE_KEY` was not present locally.
+  - Scope note: this fallback is local-script-only and relies on the project's still-permissive authenticated RLS policies.
+  - Deployed runtime code still uses caller JWT passthrough only and never uses the service role.
+
+### Additive migration log
+
+- `20260606113000_editor_api_working_rpc.sql`
+  - applied via `npx supabase db push`
+- `20260606114500_editor_api_resolve_suggestion_rpc.sql`
+  - applied via `npx supabase db push`
+
+### Verification
+
+- `npm run typecheck` ✅
+- `npm run test` ✅
+- `npm run build` ✅
+- `npx eslint scripts/seed-editor-transcript.mjs scripts/editor-api-smoke.mjs scripts/fixtures/editor-api-fixture.mjs` ✅
+- `node scripts/seed-editor-transcript.mjs` against the linked remote project ✅
+  - seeded transcript: `tr_editor_api_1780765775980`
+  - auth mode: `anonymous-fallback`
+- `npx supabase functions deploy editor-api` ✅
+- `node scripts/editor-api-smoke.mjs` against the deployed function ✅
+  - document ✅
+  - working save + re-fetch + `raw_text` unchanged ✅
+  - review ✅
+  - speakers ✅
+  - suggestions ✅
+  - resolve accept + document mutation ✅
+  - exhibits ✅
+  - certify/status ✅
+
+### Deferred
+
+- Auth owner-scoping / tighter RLS remains deferred to the separate security task.
+- DEV boot in MSW mode was smoke-checked only at the process level (`npm run dev` stayed alive until timeout); no separate browser session was used in this wiring task.
