@@ -12,7 +12,7 @@ import { FieldStatusBadge } from "./FieldStatusBadge";
 import { useConflict } from "../conflict/conflictStore";
 import { ConflictResolutionModal } from "../conflict/ConflictResolutionModal";
 import { ProvenanceViewer } from "../conflict/ProvenanceViewer";
-import { getFieldRowKey } from "./tableBehavior";
+import { findNextConfirmableRowId, getFieldRowKey } from "./tableBehavior";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -132,9 +132,10 @@ interface RowProps {
   onConfirm: () => void;
   onOpenProvenance: () => void;
   onUpdate?: (value: string) => void;
+  confirmButtonRef?: (button: HTMLButtonElement | null) => void;
 }
 
-function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate }: RowProps) {
+function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate, confirmButtonRef }: RowProps) {
   const isEmpty = row.value === "";
   const { state } = useConflict();
   const [editing, setEditing] = useState(false);
@@ -217,7 +218,9 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate }: Ro
           {!row.conflict && !isResolved && row.status === "Needs Confirmation" && !isEmpty && (
             <button
               type="button"
+              ref={confirmButtonRef}
               onClick={onConfirm}
+              data-testid={`confirm-${row.id}`}
               className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-1"
             >
               Confirm
@@ -449,7 +452,9 @@ export function ExtractedFieldsTable({
   const [provenancePath, setProvenancePath] = useState<string | null>(null);
 
   const [localConfirmed, setLocalConfirmed] = useState<Set<string>>(new Set());
+  const [pendingFocusRowId, setPendingFocusRowId] = useState<string | null>(null);
   const pendingWindowScrollYRef = useRef<number | null>(null);
+  const confirmButtonRefs = useRef(new Map<string, HTMLButtonElement | null>());
 
   const allRows = useMemo(
     () => {
@@ -548,9 +553,29 @@ export function ExtractedFieldsTable({
     return map;
   }, [filtered]);
 
+  useEffect(() => {
+    if (!pendingFocusRowId) {
+      return;
+    }
+
+    const button = confirmButtonRefs.current.get(pendingFocusRowId);
+    if (!button) {
+      setPendingFocusRowId(null);
+      return;
+    }
+
+    button.focus();
+    button.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    setPendingFocusRowId(null);
+  }, [filtered, pendingFocusRowId]);
+
   function handleConfirm(row: FieldRow) {
     pendingWindowScrollYRef.current = window.scrollY;
-    setLocalConfirmed((prev) => new Set(prev).add(row.id));
+    setLocalConfirmed((prev) => {
+      const next = new Set(prev).add(row.id);
+      setPendingFocusRowId(findNextConfirmableRowId(filtered, row.id, next));
+      return next;
+    });
     recordConfirm(caseId, row.id, row.label, row.value, row.displaySource);
     onConfirm?.(row.id);
   }
@@ -642,6 +667,13 @@ export function ExtractedFieldsTable({
                         onOpenProvenance={() =>
                           setProvenancePath((p) => (p === row.id ? null : row.id))
                         }
+                        confirmButtonRef={(button) => {
+                          if (button) {
+                            confirmButtonRefs.current.set(row.id, button);
+                          } else {
+                            confirmButtonRefs.current.delete(row.id);
+                          }
+                        }}
                       />
                     ))}
                   </Fragment>
