@@ -16,6 +16,7 @@ import { TranscriptCreationScreen } from "./TranscriptCreationScreen";
 import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
 import { ExportScreen } from "./ExportScreen/ExportScreen";
 import { CaseBrowserScreen } from "./CaseBrowserScreen";
+import { CaseScopedErrorBoundary } from "./CaseScopedErrorBoundary";
 import { CaseProvider, useCase } from "../context/CaseContext";
 import type { DepoEditorConfig } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
@@ -180,20 +181,23 @@ function CaseScopedShell({
   initialRecord: ReturnType<typeof useCase>["activeRecord"];
   initialProvenance: ReturnType<typeof useCase>["activeProvenance"];
 }) {
+  const { showBrowser } = useCase();
   const initialKeyterms = initialRecord
     ? buildManagedKeyterms({ record: initialRecord, provenance: initialProvenance })
     : [];
 
   return (
-    <StageProvider initialStage={initialStage}>
-      <IntakeProvider initialRecord={initialRecord}>
-        <ConflictProvider initialProvenance={initialProvenance}>
-          <KeytermProvider initialTerms={initialKeyterms}>
-            <StageRouter config={config} activeCaseId={activeCaseId} />
-          </KeytermProvider>
-        </ConflictProvider>
-      </IntakeProvider>
-    </StageProvider>
+    <CaseScopedErrorBoundary onBackToCases={() => void showBrowser()}>
+      <StageProvider initialStage={initialStage}>
+        <IntakeProvider initialRecord={initialRecord}>
+          <ConflictProvider initialProvenance={initialProvenance}>
+            <KeytermProvider initialTerms={initialKeyterms}>
+              <StageRouter config={config} activeCaseId={activeCaseId} />
+            </KeytermProvider>
+          </ConflictProvider>
+        </IntakeProvider>
+      </StageProvider>
+    </CaseScopedErrorBoundary>
   );
 }
 
