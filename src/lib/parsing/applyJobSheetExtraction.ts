@@ -123,6 +123,7 @@ function deriveLocation(job: ParsedReporterNotes["jobDetails"]) {
   const addressParts = splitAddress(rawLocation.replace(/\bvia\s+zoom\b/i, "").replace(/\bzoom\b/i, "").replace(/[/-]+/g, " "));
 
   return {
+    locationType: zoom ? "zoom" : "in_person",
     address: zoom
       ? `Via Zoom${addressParts.city || addressParts.state ? ` / ${[addressParts.city, addressParts.state].filter(Boolean).join(", ")}` : ""}`
       : rawLocation,
@@ -319,6 +320,15 @@ export function applyJobSheetExtraction(
     normalizeISOTime(parsed.jobDetails.scheduledStartTime),
     DEFAULT_CONFIDENCE,
     "Start Time",
+  );
+  queueExtractedField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "session.location_type",
+    location.locationType,
+    DEFAULT_CONFIDENCE,
+    "Location Type",
   );
   queueExtractedField(
     fieldUpdates,

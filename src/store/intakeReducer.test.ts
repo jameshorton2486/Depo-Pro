@@ -69,4 +69,39 @@ describe("intakeReducer edit sequencing", () => {
     expect(next.editSeq).toBe(1);
     expect(next.record.attorneys).toHaveLength(1);
   });
+
+  it("derives is_remote from location_type and preserves the value across load", () => {
+    const now = "2026-06-05T00:00:00.000Z";
+    const baseState = {
+      ...initialIntakeState(),
+      record: emptyCaseRecord("case_test_location_type", now),
+    };
+
+    const edited = intakeReducer(baseState, {
+      type: "UPDATE_FIELD",
+      payload: {
+        path: "session.location_type",
+        value: "zoom",
+        source: "manual",
+        confidence_score: null,
+        force: true,
+      },
+    });
+
+    expect(edited.record.session.location_type.value).toBe("zoom");
+    expect(edited.record.session.is_remote).toBe(true);
+
+    const reloaded = intakeReducer(edited, {
+      type: "LOAD_CASE",
+      payload: {
+        record: {
+          ...edited.record,
+          updated_at: "2026-06-05T00:00:10.000Z",
+        },
+      },
+    });
+
+    expect(reloaded.record.session.location_type.value).toBe("zoom");
+    expect(reloaded.record.session.is_remote).toBe(true);
+  });
 });

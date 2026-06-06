@@ -50,6 +50,12 @@ const SOURCES: DisplaySource[] = [
 ];
 
 const STATUSES: FieldStatus[] = ["Missing", "Needs Confirmation", "Confirmed", "Conflict"];
+const LOCATION_TYPE_OPTIONS = [
+  { value: "zoom", label: "Zoom" },
+  { value: "in_person", label: "In Person" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "phone", label: "Phone" },
+] as const;
 
 // ─── Confidence bar ───────────────────────────────────────────────────────────
 
@@ -131,16 +137,18 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate }: Ro
   const isEmpty = row.value === "";
   const { state } = useConflict();
   const [editing, setEditing] = useState(false);
-  const [draftValue, setDraftValue] = useState(row.value);
+  const isLocationType = row.path === "session.location_type";
+  const initialDraftValue = isLocationType && typeof row.rawValue === "string" ? row.rawValue : row.value;
+  const [draftValue, setDraftValue] = useState(initialDraftValue);
   const resolvedEntry = state.history[row.id]?.find(
     (e) => e.event_type === "conflict_resolved",
   );
   const displayValue = resolvedEntry?.winning_value ?? row.value;
-  const isEditable = onUpdate !== undefined && row.path !== "session.is_remote" && row.path !== "session.remote_platform";
+  const isEditable = onUpdate !== undefined && row.path !== "session.remote_platform";
 
   useEffect(() => {
-    setDraftValue(row.value);
-  }, [row.value]);
+    setDraftValue(initialDraftValue);
+  }, [initialDraftValue]);
 
   return (
     <tr
@@ -216,12 +224,27 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate }: Ro
           {isEditable && (
             editing ? (
               <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={draftValue}
-                  onChange={(e) => setDraftValue(e.target.value)}
-                  className="w-32 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
-                />
+                {isLocationType ? (
+                  <select
+                    value={draftValue}
+                    onChange={(e) => setDraftValue(e.target.value)}
+                    className="w-32 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                  >
+                    <option value="">Select</option>
+                    {LOCATION_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={draftValue}
+                    onChange={(e) => setDraftValue(e.target.value)}
+                    className="w-32 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -487,6 +510,7 @@ export function ExtractedFieldsTable({
       return row;
     });
   }, [allRows, localConfirmed]);
+
 
   const conflictCount      = rows.filter((r) => r.conflict && !isResolvedInStore(r.id)).length;
   const missingCount       = rows.filter((r) => r.status === "Missing").length;

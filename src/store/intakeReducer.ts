@@ -13,6 +13,7 @@ import type {
   CaseAudio,
   ExtractedField,
   FieldSource,
+  LocationType,
   ProceedingType,
   WorkflowStage,
 } from "../types/case";
@@ -248,6 +249,20 @@ export function initialIntakeState(): IntakeState {
   };
 }
 
+function deriveIsRemote(locationType: LocationType | null): boolean {
+  return locationType === "zoom" || locationType === "phone" || locationType === "hybrid";
+}
+
+function applyLocationTypeDerivation(record: CaseRecord): CaseRecord {
+  return {
+    ...record,
+    session: {
+      ...record.session,
+      is_remote: deriveIsRemote(record.session.location_type.value),
+    },
+  };
+}
+
 // ─── Path resolver ────────────────────────────────────────────────────────────
 // Resolves a dot-path against the record and returns the ExtractedField leaf,
 // plus a setter that returns a new record with that leaf replaced.
@@ -399,7 +414,13 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         confidence_score,
         force,
       );
-      return { ...state, dirty: true, editSeq: state.editSeq + 1, record: resolved.set(next) };
+      const nextRecord = resolved.set(next);
+      return {
+        ...state,
+        dirty: true,
+        editSeq: state.editSeq + 1,
+        record: path === "session.location_type" ? applyLocationTypeDerivation(nextRecord) : nextRecord,
+      };
     }
 
     case "APPLY_EXTRACTION": {
@@ -476,7 +497,12 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         };
       }
 
-      return { ...state, dirty: true, editSeq: state.editSeq + 1, record: nextRecord };
+      return {
+        ...state,
+        dirty: true,
+        editSeq: state.editSeq + 1,
+        record: applyLocationTypeDerivation(nextRecord),
+      };
     }
 
     case "RESOLVE_CONFLICT": {

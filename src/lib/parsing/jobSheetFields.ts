@@ -1,12 +1,12 @@
 const JOB_SHEET_EXACT_FIELD_PATHS = [
   "session.deposition_date",
   "session.start_time",
+  "session.location_type",
   "session.location_address",
   "session.location_city",
   "session.location_state",
   "session.location_zip",
   "session.reporting_method",
-  "session.is_remote",
   "session.remote_platform",
   "witnesses[0].read_and_sign",
   "proceeding.ordering_firm",

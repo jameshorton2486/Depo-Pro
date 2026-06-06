@@ -43,6 +43,7 @@ export type ProceedingType =
 export type DeponentRole   = "WITNESS" | "PARTY" | "EXPERT" | "OTHER";
 export type AttorneyRole   = "EXAMINING" | "OPPOSING" | "CO_COUNSEL" | "OTHER";
 export type ReportingMethod = "machine_shorthand" | "zoom" | "in_person" | "audio_recording";
+export type LocationType = "zoom" | "in_person" | "hybrid" | "phone";
 export type ParticipantRole =
   | "REPORTER"
   | "ATTORNEY"
@@ -187,6 +188,7 @@ export interface Session {
   deposition_date:   ExtractedField<ISODate>;
   start_time:        ExtractedField<ISOTime | null>;
   end_time:          ExtractedField<ISOTime | null>;
+  location_type:     ExtractedField<LocationType | null>;
   location_address:  ExtractedField<string>;
   location_city:     ExtractedField<string>;
   location_county:   ExtractedField<string>;
@@ -416,6 +418,7 @@ export function emptyCaseRecord(case_id: CaseId, now: ISODateTime): CaseRecord {
       deposition_date:  extractedEmpty(""),
       start_time:       extractedEmpty(null),
       end_time:         extractedEmpty(null),
+      location_type:    extractedEmpty<LocationType | null>(null),
       location_address: extractedEmpty(""),
       location_city:    extractedEmpty(""),
       location_county:  extractedEmpty(""),

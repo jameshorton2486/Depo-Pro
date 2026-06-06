@@ -34,6 +34,7 @@ export const mockCaseRecord: CaseRecord = {
     // start_time and location fields use "extracted" source but path routes them to "Job Sheet"
     start_time:       ef("09:30",               "extracted", false, 0.82),
     end_time:         ef("16:45",               "extracted", false, 0.76),
+    location_type:    ef("in_person",           "extracted", false, 0.8),
     location_address: ef("1415 N. Akard Street", "extracted", false, 0.85),
     location_city:    ef("Dallas",              "extracted", false, 0.96),
     location_county:  ef("Dallas County",       "extracted", false, 0.9),

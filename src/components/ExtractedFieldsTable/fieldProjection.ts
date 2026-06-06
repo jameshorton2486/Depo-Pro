@@ -43,6 +43,7 @@ export interface FieldRow {
 // Job Sheet fields are identified by an explicit override map.
 
 const JOB_SHEET_PATHS = new Set([
+  "session.location_type",
   "session.location_address",
   "session.location_city",
   "session.location_county",
@@ -52,6 +53,21 @@ const JOB_SHEET_PATHS = new Set([
   "session.end_time",
   "session.reporting_method",
 ]);
+
+function formatLocationType(value: CaseRecord["session"]["location_type"]["value"]): string {
+  switch (value) {
+    case "zoom":
+      return "Zoom";
+    case "in_person":
+      return "In Person";
+    case "hybrid":
+      return "Hybrid";
+    case "phone":
+      return "Phone";
+    default:
+      return "";
+  }
+}
 
 function toDisplaySource(s: FieldSource, path: string): DisplaySource {
   if (s === "extracted") {
@@ -139,13 +155,13 @@ export function projectFieldRows(
   rows.push(makeRow("session.deposition_date",  "Session", "Deposition Date",    "session.deposition_date",  s.deposition_date.value,  s.deposition_date.source,  s.deposition_date.confirmed,  s.deposition_date.conflict,  s.deposition_date.confidence_score,  true));
   rows.push(makeRow("session.start_time",       "Session", "Start Time",         "session.start_time",       s.start_time.value,       s.start_time.source,       s.start_time.confirmed,       s.start_time.conflict,       s.start_time.confidence_score,       false));
   rows.push(makeRow("session.end_time",         "Session", "End Time",           "session.end_time",         s.end_time.value,         s.end_time.source,         s.end_time.confirmed,         s.end_time.conflict,         s.end_time.confidence_score,         false));
+  rows.push(makeRow("session.location_type",    "Session", "Location Type",      "session.location_type",    formatLocationType(s.location_type.value), s.location_type.source, s.location_type.confirmed, s.location_type.conflict, s.location_type.confidence_score, false));
   rows.push(makeRow("session.location_address", "Session", "Address",            "session.location_address", s.location_address.value, s.location_address.source, s.location_address.confirmed, s.location_address.conflict, s.location_address.confidence_score, true));
   rows.push(makeRow("session.location_city",    "Session", "City",               "session.location_city",    s.location_city.value,    s.location_city.source,    s.location_city.confirmed,    s.location_city.conflict,    s.location_city.confidence_score,    true));
   rows.push(makeRow("session.location_county",  "Session", "County",             "session.location_county",  s.location_county.value,  s.location_county.source,  s.location_county.confirmed,  s.location_county.conflict,  s.location_county.confidence_score,  true));
   rows.push(makeRow("session.location_state",   "Session", "State",              "session.location_state",   s.location_state.value,   s.location_state.source,   s.location_state.confirmed,   s.location_state.conflict,   s.location_state.confidence_score,   true));
   rows.push(makeRow("session.location_zip",     "Session", "ZIP Code",           "session.location_zip",     s.location_zip.value,     s.location_zip.source,     s.location_zip.confirmed,     s.location_zip.conflict,     s.location_zip.confidence_score,     false));
   rows.push(makeRow("session.reporting_method", "Session", "Reporting Method",   "session.reporting_method", s.reporting_method.value, s.reporting_method.source, s.reporting_method.confirmed, s.reporting_method.conflict, s.reporting_method.confidence_score, true));
-  rows.push(makeRow("session.is_remote",        "Session", "Remote Proceeding",  "session.is_remote",        s.is_remote ? "Yes" : "No", "manual", false, false, null, false));
   rows.push(makeRow("session.remote_platform",  "Session", "Remote Platform",    "session.remote_platform",  s.remote_platform, "manual", false, false, null, false));
 
   // ── Reporter ──────────────────────────────────────────────────────────────
