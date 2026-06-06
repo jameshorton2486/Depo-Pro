@@ -1,4 +1,4 @@
-import type { CaseRecord } from "../types/case";
+import type { Attorney, CaseRecord, Interpreter, Participant, Videographer, Witness } from "../types/case";
 
 export interface ValidationItem {
   id: string;
@@ -31,19 +31,44 @@ function hasValue(value: unknown): boolean {
   return true;
 }
 
+function fieldValue(field: unknown): unknown {
+  if (!field || typeof field !== "object" || !("value" in field)) {
+    return null;
+  }
+
+  return (field as { value?: unknown }).value ?? null;
+}
+
+function safeArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
 function countMissing<T>(items: T[], predicate: (item: T) => boolean): number {
   return items.filter(predicate).length;
 }
 
 export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): IntakeValidationResult {
   const items: ValidationItem[] = [];
+  const partial = record as Partial<CaseRecord>;
+  const witnesses = safeArray<Witness>(partial.witnesses);
+  const attorneys = safeArray<Attorney>(partial.attorneys);
+  const interpreters = safeArray<Interpreter>(partial.interpreters);
+  const videographers = safeArray<Videographer>(partial.videographers);
+  const participants = safeArray<Participant>(partial.participants);
+  const caption = partial.caption;
+  const session = partial.session;
+  const reporter = partial.reporter;
+  const hasStartTime = hasValue(fieldValue(session?.start_time));
+  const hasEndTime = hasValue(fieldValue(session?.end_time));
+  const isRemote = Boolean(session?.is_remote);
+  const remotePlatform = session?.remote_platform ?? null;
 
-  const witnessWithName = record.witnesses.find((witness) => hasValue(witness.name.value));
+  const witnessWithName = witnesses.find((witness) => hasValue(fieldValue(witness?.name)));
   items.push({
     id: "fail.witness_name",
     tier: "FAIL",
     label: "Witness full legal name",
-    fieldPath: witnessWithName ? `witnesses[0].name` : null,
+    fieldPath: witnessWithName ? "witnesses[0].name" : null,
     satisfied: witnessWithName !== undefined,
   });
 
@@ -52,7 +77,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "FAIL",
     label: "Cause number",
     fieldPath: "caption.case_number",
-    satisfied: hasValue(record.caption.case_number.value),
+    satisfied: hasValue(fieldValue(caption?.case_number)),
   });
 
   items.push({
@@ -60,7 +85,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "FAIL",
     label: "Case style / case name",
     fieldPath: "caption.case_style",
-    satisfied: hasValue(record.caption.case_style.value) || hasValue(record.caption.case_name.value),
+    satisfied: hasValue(fieldValue(caption?.case_style)) || hasValue(fieldValue(caption?.case_name)),
   });
 
   items.push({
@@ -68,7 +93,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "FAIL",
     label: "Court",
     fieldPath: "caption.court_name",
-    satisfied: hasValue(record.caption.court_name.value),
+    satisfied: hasValue(fieldValue(caption?.court_name)),
   });
 
   items.push({
@@ -76,7 +101,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "FAIL",
     label: "County",
     fieldPath: "caption.county",
-    satisfied: hasValue(record.caption.county.value),
+    satisfied: hasValue(fieldValue(caption?.county)),
   });
 
   items.push({
@@ -84,10 +109,10 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "FAIL",
     label: "Deposition date",
     fieldPath: "session.deposition_date",
-    satisfied: hasValue(record.session.deposition_date.value),
+    satisfied: hasValue(fieldValue(session?.deposition_date)),
   });
 
-  const attorneysWithRepresenting = record.attorneys.filter((attorney) => hasValue(attorney.representing.value));
+  const attorneysWithRepresenting = attorneys.filter((attorney) => hasValue(fieldValue(attorney?.representing)));
   items.push({
     id: "fail.attorney_representing",
     tier: "FAIL",
@@ -101,7 +126,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "FAIL",
     label: "Reporting method",
     fieldPath: "session.reporting_method",
-    satisfied: hasValue(record.session.reporting_method.value),
+    satisfied: hasValue(fieldValue(session?.reporting_method)),
   });
 
   items.push({
@@ -113,7 +138,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     detail: fileState.hasAudio ? undefined : "No durable case audio is attached yet.",
   });
 
-  const missingBarNumbers = countMissing(record.attorneys, (attorney) => !hasValue(attorney.bar_number.value));
+  const missingBarNumbers = countMissing(attorneys, (attorney) => !hasValue(fieldValue(attorney?.bar_number)));
   items.push({
     id: "warning.attorney_sbot",
     tier: "WARNING",
@@ -123,7 +148,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     detail: missingBarNumbers > 0 ? `${missingBarNumbers} attorney${missingBarNumbers !== 1 ? "s" : ""} missing SBOT number` : undefined,
   });
 
-  const missingAttorneyAddresses = countMissing(record.attorneys, (attorney) => !hasValue(attorney.address));
+  const missingAttorneyAddresses = countMissing(attorneys, (attorney) => !hasValue(attorney?.address));
   items.push({
     id: "warning.attorney_address",
     tier: "WARNING",
@@ -133,7 +158,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     detail: missingAttorneyAddresses > 0 ? `${missingAttorneyAddresses} attorney${missingAttorneyAddresses !== 1 ? "s" : ""} missing address` : undefined,
   });
 
-  const missingAttorneyPhones = countMissing(record.attorneys, (attorney) => !hasValue(attorney.phone));
+  const missingAttorneyPhones = countMissing(attorneys, (attorney) => !hasValue(attorney?.phone));
   items.push({
     id: "warning.attorney_phone",
     tier: "WARNING",
@@ -143,7 +168,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     detail: missingAttorneyPhones > 0 ? `${missingAttorneyPhones} attorney${missingAttorneyPhones !== 1 ? "s" : ""} missing phone` : undefined,
   });
 
-  const missingAttorneyEmails = countMissing(record.attorneys, (attorney) => !hasValue(attorney.email));
+  const missingAttorneyEmails = countMissing(attorneys, (attorney) => !hasValue(attorney?.email));
   items.push({
     id: "warning.attorney_email",
     tier: "WARNING",
@@ -158,7 +183,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "WARNING",
     label: "Reporter CSR number",
     fieldPath: "reporter.cert_number",
-    satisfied: hasValue(record.reporter.cert_number.value),
+    satisfied: hasValue(fieldValue(reporter?.cert_number)),
   });
 
   items.push({
@@ -166,7 +191,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "WARNING",
     label: "Reporter expiration",
     fieldPath: "reporter.license_expiration",
-    satisfied: hasValue(record.reporter.license_expiration.value),
+    satisfied: hasValue(fieldValue(reporter?.license_expiration)),
   });
 
   items.push({
@@ -174,10 +199,10 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "WARNING",
     label: "Reporter firm registration",
     fieldPath: "reporter.firm_registration_number",
-    satisfied: hasValue(record.reporter.firm_registration_number.value),
+    satisfied: hasValue(fieldValue(reporter?.firm_registration_number)),
   });
 
-  const interpretersMissingLanguage = countMissing(record.interpreters, (interpreter) => !hasValue(interpreter.language_from));
+  const interpretersMissingLanguage = countMissing(interpreters, (interpreter) => !hasValue(interpreter?.language_from));
   items.push({
     id: "warning.interpreter_language",
     tier: "WARNING",
@@ -187,7 +212,10 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     detail: interpretersMissingLanguage > 0 ? `${interpretersMissingLanguage} interpreter${interpretersMissingLanguage !== 1 ? "s" : ""} missing source language` : undefined,
   });
 
-  const interpretersMissingOath = countMissing(record.interpreters, (interpreter) => interpreter.oath_administered === null);
+  const interpretersMissingOath = countMissing(
+    interpreters,
+    (interpreter) => interpreter?.oath_administered === null || interpreter?.oath_administered === undefined,
+  );
   items.push({
     id: "warning.interpreter_oath",
     tier: "WARNING",
@@ -201,15 +229,15 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     id: "warning.session_times",
     tier: "WARNING",
     label: "Start and end times",
-    fieldPath: !hasValue(record.session.start_time.value) ? "session.start_time" : "session.end_time",
-    satisfied: hasValue(record.session.start_time.value) && hasValue(record.session.end_time.value),
+    fieldPath: !hasStartTime ? "session.start_time" : "session.end_time",
+    satisfied: hasStartTime && hasEndTime,
     detail:
-      hasValue(record.session.start_time.value) && hasValue(record.session.end_time.value)
+      hasStartTime && hasEndTime
         ? undefined
-        : `Missing${!hasValue(record.session.start_time.value) ? " start time" : ""}${!hasValue(record.session.start_time.value) && !hasValue(record.session.end_time.value) ? " and" : ""}${!hasValue(record.session.end_time.value) ? " end time" : ""}`,
+        : `Missing${!hasStartTime ? " start time" : ""}${!hasStartTime && !hasEndTime ? " and" : ""}${!hasEndTime ? " end time" : ""}`,
   });
 
-  const witnessesMissingAffiliation = countMissing(record.witnesses, (witness) => !hasValue(witness.party_affiliation.value));
+  const witnessesMissingAffiliation = countMissing(witnesses, (witness) => !hasValue(fieldValue(witness?.party_affiliation)));
   items.push({
     id: "warning.witness_party_affiliation",
     tier: "WARNING",
@@ -219,7 +247,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     detail: witnessesMissingAffiliation > 0 ? `${witnessesMissingAffiliation} witness${witnessesMissingAffiliation !== 1 ? "es" : ""} missing party affiliation` : undefined,
   });
 
-  const witnessesMissingReadAndSign = countMissing(record.witnesses, (witness) => !hasValue(witness.read_and_sign.value));
+  const witnessesMissingReadAndSign = countMissing(witnesses, (witness) => !hasValue(fieldValue(witness?.read_and_sign)));
   items.push({
     id: "warning.read_and_sign",
     tier: "WARNING",
@@ -229,7 +257,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     detail: witnessesMissingReadAndSign > 0 ? `${witnessesMissingReadAndSign} witness${witnessesMissingReadAndSign !== 1 ? "es" : ""} missing Read & Sign election` : undefined,
   });
 
-  const videographersMissingRoleTitle = countMissing(record.videographers, (videographer) => !hasValue(videographer.role_title));
+  const videographersMissingRoleTitle = countMissing(videographers, (videographer) => !hasValue(videographer?.role_title));
   items.push({
     id: "info.videographer_role_title",
     tier: "INFO",
@@ -244,11 +272,11 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     tier: "INFO",
     label: "Other attendees recorded",
     fieldPath: "participants",
-    satisfied: record.participants.length > 0,
-    detail: record.participants.length === 0 ? "No other attendees recorded." : undefined,
+    satisfied: participants.length > 0,
+    detail: participants.length === 0 ? "No other attendees recorded." : undefined,
   });
 
-  const witnessesMissingPrefixSuffix = countMissing(record.witnesses, (witness) => !hasValue(witness.prefix_suffix));
+  const witnessesMissingPrefixSuffix = countMissing(witnesses, (witness) => !hasValue(witness?.prefix_suffix));
   items.push({
     id: "info.witness_prefix_suffix",
     tier: "INFO",
@@ -262,9 +290,9 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     id: "info.remote_platform",
     tier: "INFO",
     label: "Remote platform",
-    fieldPath: record.session.is_remote ? "session.remote_platform" : null,
-    satisfied: !record.session.is_remote || hasValue(record.session.remote_platform),
-    detail: record.session.is_remote && !hasValue(record.session.remote_platform) ? "Remote proceeding is missing platform details." : undefined,
+    fieldPath: isRemote ? "session.remote_platform" : null,
+    satisfied: !isRemote || hasValue(remotePlatform),
+    detail: isRemote && !hasValue(remotePlatform) ? "Remote proceeding is missing platform details." : undefined,
   });
 
   items.push({

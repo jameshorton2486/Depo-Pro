@@ -119,4 +119,29 @@ describe("evaluateIntake file-state validation", () => {
     expect(itemSatisfied(result, "info.scheduling_notes")).toBe(true);
     expect(result.canProceed).toBe(true);
   });
+
+  it("treats malformed collections as empty instead of throwing", () => {
+    const malformedRecord = {
+      ...buildReadyRecord(),
+      witnesses: { name: "Heath Thomas" },
+      attorneys: null,
+      interpreters: {},
+      videographers: "camera",
+      participants: undefined,
+    } as unknown as Parameters<typeof evaluateIntake>[0];
+
+    const fileState: IntakeFileState = {
+      hasNotice: false,
+      hasScheduling: false,
+      hasSupporting: false,
+      hasAudio: false,
+    };
+
+    const result = evaluateIntake(malformedRecord, fileState);
+
+    expect(itemSatisfied(result, "fail.witness_name")).toBe(false);
+    expect(itemSatisfied(result, "fail.attorney_representing")).toBe(false);
+    expect(itemSatisfied(result, "warning.interpreter_language")).toBe(true);
+    expect(itemSatisfied(result, "info.other_attendees")).toBe(false);
+  });
 });
