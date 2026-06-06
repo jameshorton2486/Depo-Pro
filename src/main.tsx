@@ -3,6 +3,7 @@ import "./index.css";
 import { DepoEditor } from "./components/DepoEditor";
 import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
+import { isMockMode } from "./lib/runtime/mode";
 import { initializeSupabaseSession } from "./lib/supabase";
 
 declare global {
@@ -13,7 +14,7 @@ declare global {
 }
 
 async function startMocks() {
-  if (import.meta.env.DEV && import.meta.env.VITE_USE_REAL_API !== "1") {
+  if (isMockMode()) {
     try {
       const { worker } = await import("./mocks/browser");
       await Promise.race([

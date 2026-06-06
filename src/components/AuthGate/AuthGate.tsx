@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import type { DepoEditorConfig } from "../../types";
+import { isMockMode } from "../../lib/runtime/mode";
 import {
   getAuthSnapshot,
   initializeSupabaseSession,
@@ -11,10 +12,6 @@ import {
 
 function useAuthSessionState() {
   return useSyncExternalStore(subscribeAuthState, getAuthSnapshot, getAuthSnapshot);
-}
-
-function isGateBypassed() {
-  return import.meta.env.DEV && import.meta.env.VITE_USE_REAL_API !== "1";
 }
 
 export function AuthGate({
@@ -40,7 +37,7 @@ export function AuthGate({
     });
   }, [config.supabaseAccessToken, config.supabaseRefreshToken]);
 
-  if (isGateBypassed()) {
+  if (isMockMode()) {
     return <>{children}</>;
   }
 
@@ -155,7 +152,7 @@ export function AuthStatusChip() {
   const authState = useAuthSessionState();
   const email = authState.session?.user.email ?? "Signed in";
 
-  if (isGateBypassed() || !authState.session) {
+  if (isMockMode() || !authState.session) {
     return null;
   }
 

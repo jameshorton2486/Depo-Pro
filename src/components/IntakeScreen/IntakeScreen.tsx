@@ -24,6 +24,7 @@ import { DeepgramKeytermManager } from "../DeepgramKeytermManager/DeepgramKeyter
 import { DeepgramPayloadPreview } from "../DeepgramKeytermManager/DeepgramPayloadPreview";
 import { useKeyterms } from "../DeepgramKeytermManager/keytermStore";
 import { mockConflictAlternates } from "../ExtractedFieldsTable/mockRecord";
+import { isMockMode } from "../../lib/runtime/mode";
 import { saveCase } from "../../api/caseService";
 import { loadCaseBundle as loadPersistedBundle } from "../../api/caseLoadService";
 import { useContactStore } from "../../store/contactStore";
@@ -204,13 +205,19 @@ function WorkflowNav({ jobId }: { jobId: string }) {
 
 // ─── Case status banner ───────────────────────────────────────────────────────
 
-function CaseStatusBanner({ validation }: { validation: IntakeValidationResult }) {
+function CaseStatusBanner({
+  validation,
+  conflictAlternates,
+}: {
+  validation: IntakeValidationResult;
+  conflictAlternates: typeof mockConflictAlternates;
+}) {
   const { state: conflictState } = useConflict();
   const activeConflicts = selectActiveConflicts(conflictState);
   const { record } = useIntake();
 
   const conflictCount  = activeConflicts.length;
-  const visibleUnconfirmedCount = projectFieldRows(record, mockConflictAlternates).filter(
+  const visibleUnconfirmedCount = projectFieldRows(record, conflictAlternates).filter(
     (row) => row.value !== "" && row.status === "Needs Confirmation" && row.source !== "manual",
   ).length;
 
@@ -569,24 +576,6 @@ function AppearancesPanel() {
   const [replacingVideographerId, setReplacingVideographerId] = useState<string | null>(null);
 
   function handleSelect(type: ContactType, contact: Contact) {
-    if (type === "attorney") {
-      addAttorney({
-        name: manualField(contact.name),
-        firm: manualField(contact.organization || null),
-        role: manualField("OTHER"),
-        representing: manualField(null),
-        bar_number: manualField(null),
-        address: contact.address || null,
-        city: null,
-        state: null,
-        zip: null,
-        time_used: null,
-        email: contact.email || null,
-        phone: contact.phone || null,
-      });
-      return;
-    }
-
     if (type === "interpreter") {
       addInterpreter({
         name: manualField(contact.name),
@@ -1232,14 +1221,16 @@ function IntakeFooter({
   dirty,
   persisted,
   saveState,
+  saveError,
 }: {
   onSave: () => Promise<void>;
-  onProceed: () => void;
+  onProceed: () => Promise<void>;
   canProceed: boolean;
   remainingRequiredCount: number;
   dirty: boolean;
   persisted: boolean;
   saveState: "idle" | "saving" | "saved" | "error";
+  saveError: string | null;
 }) {
   const [showPayload, setShowPayload] = useState(false);
   const [showUfmPayload, setShowUfmPayload] = useState(false);
@@ -1263,6 +1254,21 @@ function IntakeFooter({
       {showUfmPayload && (
         <div className="border-b border-slate-200">
           <UfmPayloadPreview />
+        </div>
+      )}
+      {saveError && (
+        <div className="border-b border-red-200 bg-red-50 px-5 py-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-red-800">
+            <span className="font-semibold">Save failed.</span>
+            <span className="text-red-700">{saveError}</span>
+            <button
+              type="button"
+              onClick={onSave}
+              className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-300"
+            >
+              Retry Save
+            </button>
+          </div>
         </div>
       )}
 
@@ -1346,7 +1352,9 @@ export function IntakeScreen({ jobId }: Props) {
   const { state: keytermState } = useKeyterms();
   const { setStage } = useStage();
   const { registerNavigationGuard } = useCase();
+  const mockMode = isMockMode();
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [persisted, setPersisted] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [caseFiles, setCaseFiles] = useState<CaseFileRecord[]>([]);
@@ -1357,6 +1365,7 @@ export function IntakeScreen({ jobId }: Props) {
   const editSeqRef = useRef(editSeq);
   const recordCaseIdRef = useRef(record.case_id);
   const saveStateRef = useRef<SaveState>("idle");
+  const savePromiseRef = useRef<Promise<CaseRecord> | null>(null);
   const autosaveTimerRef = useRef<number | null>(null);
 
   const intakeFileState = useMemo<IntakeFileState>(() => ({
@@ -1367,6 +1376,10 @@ export function IntakeScreen({ jobId }: Props) {
   }), [caseAudio, caseFiles]);
 
   const intakeValidation = useMemo(() => evaluateIntake(record, intakeFileState), [intakeFileState, record]);
+  const conflictAlternates = useMemo<Record<string, { value: string; source: string }>>(
+    () => (mockMode ? mockConflictAlternates : {}),
+    [mockMode],
+  );
 
   useEffect(() => {
     recordRef.current = record;
@@ -1406,6 +1419,7 @@ export function IntakeScreen({ jobId }: Props) {
           setCaseFiles(hydration.bundle.files);
           setCaseAudio(hydration.bundle.audio);
           setSaveState("saved");
+          setSaveError(null);
           loadCase(hydration.bundle.record);
           return;
         }
@@ -1423,6 +1437,7 @@ export function IntakeScreen({ jobId }: Props) {
       setCaseFiles([]);
       setCaseAudio([]);
       setSaveState("idle");
+      setSaveError(null);
       loadCase(emptyCaseRecord(caseId, new Date().toISOString()));
     }
 
@@ -1486,31 +1501,48 @@ export function IntakeScreen({ jobId }: Props) {
   }
 
   const persistCase = useCallback(async (source: CaseSaveSource = "manual") => {
+    if (savePromiseRef.current) {
+      return savePromiseRef.current;
+    }
+
     clearAutosaveTimer();
     setSaveState("saving");
+    setSaveError(null);
     const currentRecord = recordRef.current;
     const saveSeq = editSeqRef.current;
     const startedAt = new Date().toISOString();
-    try {
-      const savedRecord = await saveCase(withSaveMeta(currentRecord, source, saveSeq, startedAt));
-      setPersisted(true);
-      setSavedAt(savedRecord.updated_at);
-      if (editSeqRef.current === saveSeq) {
-        loadCase(savedRecord);
-        setSaveState("saved");
-      } else {
-        setSaveState("idle");
+    let savePromise: Promise<CaseRecord> | null = null;
+    savePromise = (async () => {
+      try {
+        const savedRecord = await saveCase(withSaveMeta(currentRecord, source, saveSeq, startedAt));
+        setPersisted(true);
+        setSavedAt(savedRecord.updated_at);
+        if (editSeqRef.current === saveSeq) {
+          loadCase(savedRecord);
+          setSaveState("saved");
+          setSaveError(null);
+        } else {
+          setSaveState("idle");
+        }
+        return savedRecord;
+      } catch (error) {
+        console.error("[DEPO-PRO] Case save failed", {
+          operation: "saveCase",
+          caseId: currentRecord.case_id,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        setSaveState("error");
+        const resolvedError = error instanceof Error ? error : new Error(String(error));
+        setSaveError(resolvedError.message);
+        throw resolvedError;
+      } finally {
+        if (savePromiseRef.current === savePromise) {
+          savePromiseRef.current = null;
+        }
       }
-      return savedRecord;
-    } catch (error) {
-      console.error("[DEPO-PRO] Case save failed", {
-        operation: "saveCase",
-        caseId: currentRecord.case_id,
-        message: error instanceof Error ? error.message : String(error),
-      });
-      setSaveState("error");
-      throw error instanceof Error ? error : new Error(String(error));
-    }
+    })();
+    savePromiseRef.current = savePromise;
+    return savePromise;
   }, [clearAutosaveTimer, loadCase]);
 
   const handleSave = useCallback(async () => {
@@ -1521,10 +1553,23 @@ export function IntakeScreen({ jobId }: Props) {
     }
   }, [persistCase]);
 
-  const handleProceed = useCallback(() => {
+  const handleProceed = useCallback(async () => {
     if (!canProceed) return;
+    if (savePromiseRef.current) {
+      try {
+        await savePromiseRef.current;
+      } catch {
+        return;
+      }
+    } else if (dirtyRef.current || saveStateRef.current === "error") {
+      try {
+        await persistCase("manual");
+      } catch {
+        return;
+      }
+    }
     setStage("creation");
-  }, [canProceed, setStage]);
+  }, [canProceed, persistCase, setStage]);
 
   const handleRevealExtractedFields = useCallback(() => {
     setRevealExtractedFieldsVersion((value) => value + 1);
@@ -1567,11 +1612,15 @@ export function IntakeScreen({ jobId }: Props) {
       event.returnValue = "";
     }
 
+    if (mockMode) {
+      return;
+    }
+
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, []);
+  }, [mockMode]);
 
   useEffect(() => {
     registerNavigationGuard({
@@ -1590,7 +1639,7 @@ export function IntakeScreen({ jobId }: Props) {
       <WorkflowNav jobId={jobId} />
 
       {/* ── Case status banner ── */}
-      <CaseStatusBanner validation={intakeValidation} />
+      <CaseStatusBanner validation={intakeValidation} conflictAlternates={conflictAlternates} />
 
       {/* ── Main scrollable body ── */}
       <div className="flex-1 overflow-y-auto">
@@ -1645,7 +1694,7 @@ export function IntakeScreen({ jobId }: Props) {
             <ExtractedFieldsTable
               caseId={record.case_id || "case_intake"}
               record={record}
-              conflictAlternates={mockConflictAlternates}
+              conflictAlternates={conflictAlternates}
               revealUnconfirmedVersion={revealExtractedFieldsVersion}
               onUpdate={(rowId, value) => {
                 updateField(rowId, value, "manual", null, true);
@@ -1687,6 +1736,7 @@ export function IntakeScreen({ jobId }: Props) {
         dirty={dirty}
         persisted={persisted}
         saveState={saveState}
+        saveError={saveError}
       />
     </div>
   );

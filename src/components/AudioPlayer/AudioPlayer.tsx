@@ -4,10 +4,10 @@ import WaveSurfer from "wavesurfer.js";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { useAudio } from "../../context/AudioContext";
 import { useDocument } from "../../context/DocumentContext";
+import { isRealApiMode } from "../../lib/runtime/mode";
 import { shouldRefreshMediaUrl } from "./mediaRefreshThrottle";
 
 const SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
-const USE_REAL_EDITOR_API = import.meta.env.VITE_USE_REAL_API === "1";
 
 type WaveSurferWithMediaElement = WaveSurfer & {
   getMediaElement?: () => HTMLMediaElement | null;
@@ -82,7 +82,7 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
     wsRef.current = ws;
 
     const handleRecoverableError = async () => {
-      if (!USE_REAL_EDITOR_API) {
+      if (!isRealApiMode()) {
         return;
       }
 

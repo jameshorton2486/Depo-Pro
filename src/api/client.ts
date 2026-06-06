@@ -9,13 +9,13 @@ import type {
   Exhibit,
   CertifyChecklist,
 } from "./types";
+import { isRealApiMode } from "../lib/runtime/mode";
 import { AuthRequiredError, supabase } from "../lib/supabase";
 
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
 
 let _baseUrl = "";
-const USE_REAL_EDITOR_API = import.meta.env.VITE_USE_REAL_API === "1";
 
 export function configureClient(apiBaseUrl: string) {
   _baseUrl = apiBaseUrl.replace(/\/$/, "");
@@ -28,7 +28,7 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = body ? { "Content-Type": "application/json" } : {};
   const accessToken = await getAccessToken();
-  if (!accessToken && USE_REAL_EDITOR_API) {
+  if (!accessToken && isRealApiMode()) {
     throw new AuthRequiredError(`Authentication is required for ${method} ${url}.`);
   }
   if (accessToken) {

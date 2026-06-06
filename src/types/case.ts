@@ -276,7 +276,7 @@ export interface DeepgramKeyterm {
 }
 
 export interface DeepgramConfig {
-  model:             string;     // "nova-2-legal"
+  model:             string;     // "nova-3"
   language:          string;     // "en-US"
   punctuate:         boolean;
   utterances:        boolean;
@@ -370,14 +370,14 @@ export function defaultTranscriptFormat(): TranscriptFormat {
 
 export function defaultDeepgramConfig(): DeepgramConfig {
   return {
-    model:           "nova-2-legal",
+    model:           "nova-3",
     language:        "en-US",
     punctuate:       true,
     utterances:      true,
     diarize:         true,
     diarize_version: "latest",
     speaker_count:   null,
-    smart_format:    false,
+    smart_format:    true,
     numerals:        false,
     keyterms:        [],
   };

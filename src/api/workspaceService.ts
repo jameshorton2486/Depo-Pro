@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import { api as contractApi } from "./client";
 import { getSignedUrl } from "./fileService";
+import { isRealApiMode } from "../lib/runtime/mode";
 import {
   getLatestCompletedTranscriptJob,
   getTranscriptJobByJobId,
@@ -22,7 +23,6 @@ import {
 import { getSupabaseClient } from "../lib/supabase";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
-const USE_REAL_EDITOR_API = import.meta.env.VITE_USE_REAL_API === "1";
 
 export interface WorkspaceLoadResult {
   document: EditorDocument;
@@ -550,7 +550,7 @@ export const workspaceApi = {
       };
     }
 
-    if (USE_REAL_EDITOR_API) {
+  if (isRealApiMode()) {
       const target = await resolveWorkspaceTarget(caseId);
       if (!target) {
         throw new Error("No transcript has been generated for this case yet.");
@@ -570,7 +570,7 @@ export const workspaceApi = {
       return { ...(await contractApi.saveWorking(jobId, payload)), updatedAt: null };
     }
 
-    if (USE_REAL_EDITOR_API) {
+  if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
       return { ...(await contractApi.saveWorking(target.transcript_id, payload)), updatedAt: target.updated_at };
     }
@@ -582,7 +582,7 @@ export const workspaceApi = {
       return { ...(await contractApi.saveReview(jobId, payload)), updatedAt: null };
     }
 
-    if (USE_REAL_EDITOR_API) {
+  if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
       return { ...(await contractApi.saveReview(target.transcript_id, payload)), updatedAt: target.updated_at };
     }
@@ -594,7 +594,7 @@ export const workspaceApi = {
       return { ...(await contractApi.saveSpeakers(jobId, payload)), updatedAt: null, speakerMapConfirmed: false };
     }
 
-    if (USE_REAL_EDITOR_API) {
+  if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
       await contractApi.saveSpeakers(target.transcript_id, payload);
       return {
@@ -611,7 +611,7 @@ export const workspaceApi = {
       return contractApi.getSuggestions(jobId);
     }
 
-    if (USE_REAL_EDITOR_API) {
+  if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId);
       return contractApi.getSuggestions(target.transcript_id);
     }
@@ -623,7 +623,7 @@ export const workspaceApi = {
       return contractApi.resolveSuggestion(jobId, id, body);
     }
 
-    if (USE_REAL_EDITOR_API) {
+    if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId);
       return contractApi.resolveSuggestion(target.transcript_id, id, body);
     }
@@ -635,7 +635,7 @@ export const workspaceApi = {
       return contractApi.getExhibits(jobId);
     }
 
-    if (USE_REAL_EDITOR_API) {
+    if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId);
       return contractApi.getExhibits(target.transcript_id);
     }
@@ -647,7 +647,7 @@ export const workspaceApi = {
       return contractApi.getCertifyStatus(jobId);
     }
 
-    if (USE_REAL_EDITOR_API) {
+    if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId);
       return contractApi.getCertifyStatus(target.transcript_id);
     }
