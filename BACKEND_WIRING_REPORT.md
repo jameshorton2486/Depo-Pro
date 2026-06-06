@@ -32,3 +32,19 @@ None yet.
 ### Deferred
 
 - Auth owner-scoping / RLS tightening remains deferred to the separate security task.
+
+## Phase 1
+
+### Decisions
+
+- Route key uses `transcripts.transcript_id` exactly as requested by the prompt.
+- The function creates the Supabase client per request with caller JWT passthrough from `Authorization`.
+- Route matching is strict on method + path; unknown combinations return `404`.
+
+### Additive migration log
+
+None yet.
+
+### Deferred
+
+- All route bodies remain to be implemented in later phases.
