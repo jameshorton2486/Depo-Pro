@@ -11,12 +11,17 @@ import {
 } from "../../api/fileService";
 import { useIntake } from "../../context/IntakeContext";
 import { useConflict } from "../conflict/conflictStore";
+import { useKeyterms } from "../DeepgramKeytermManager/keytermStore";
 import { extractDocumentText } from "../../lib/parsing/documentText";
 import { aiExtract } from "../../lib/parsing/aiExtract";
 import { applyExtraction } from "../../lib/parsing/applyExtraction";
 import { applyJobSheetExtraction } from "../../lib/parsing/applyJobSheetExtraction";
 import { parseReporterNotes } from "../../lib/parsing/reporterNotesParser";
 import type { CaseAudio } from "../../types/case";
+import type { FieldProvenanceRow, ProvenanceEventType } from "../conflict/types";
+import { intakeReducer } from "../../store/intakeReducer";
+import { harvestKeyterms } from "../../lib/keyterms/harvestKeyterms";
+import { mergeManagedKeytermSuggestions, serializeManagedKeyterms } from "../../lib/keyterms/managedKeyterms";
 import { applyAndPersistExtraction, type ExtractionSummary } from "./extractionPersistence";
 
 type SlotId = "notice" | "scheduling" | "supporting" | "audio";
@@ -270,8 +275,9 @@ export function DocumentUploadPanel({
   onFileRemoved,
   onRevealExtractedFields,
 }: DocumentUploadPanelProps) {
-  const { record, applyExtraction: applyParsedExtraction, setAudio } = useIntake();
-  const { detectConflict, recordExtraction } = useConflict();
+  const { record, applyExtraction: applyParsedExtraction, setAudio, setKeyterms } = useIntake();
+  const { state: conflictState, detectConflict, recordExtraction } = useConflict();
+  const { state: keytermState, load: loadKeyterms } = useKeyterms();
   const [slotUi, setSlotUi] = useState<Partial<Record<SlotId, SlotUiState>>>({});
   const [localFiles, setLocalFiles] = useState<Partial<Record<SlotId, File>>>({});
   const [viewUrls, setViewUrls] = useState<Partial<Record<SlotId, string>>>({});
@@ -428,6 +434,90 @@ export function DocumentUploadPanel({
     setExtractSummaries((previous) => ({ ...previous, [slotId]: summary }));
   }
 
+  function currentProvenanceRows(): FieldProvenanceRow[] {
+    return Object.values(conflictState.history).flat();
+  }
+
+  function buildExtractionProvenanceRows(
+    caseId: string,
+    sourceLabel: "Notice" | "Job Sheet",
+    application: ReturnType<typeof applyExtraction> | ReturnType<typeof applyJobSheetExtraction>["application"],
+  ): FieldProvenanceRow[] {
+    const rows: FieldProvenanceRow[] = [];
+    const now = new Date().toISOString();
+    const eventType: ProvenanceEventType = "extracted";
+
+    for (const update of application.fieldUpdates) {
+      rows.push({
+        id: `preview_${update.path}`,
+        case_id: caseId,
+        field_path: update.path,
+        field_label: update.label,
+        event_type: eventType,
+        value: String(update.value ?? ""),
+        source: sourceLabel,
+        winning_value: null,
+        rejected_value: null,
+        rejected_source: null,
+        confidence_score: update.confidence_score,
+        resolution_user: "reporter",
+        resolved_at: now,
+      });
+    }
+
+    for (const conflict of application.conflicts) {
+      rows.push({
+        id: `preview_conflict_${conflict.path}`,
+        case_id: caseId,
+        field_path: conflict.path,
+        field_label: conflict.label,
+        event_type: "conflict_detected",
+        value: conflict.currentValue,
+        source: sourceLabel,
+        winning_value: null,
+        rejected_value: conflict.incomingValue,
+        rejected_source: sourceLabel,
+        confidence_score: conflict.incomingConfidence,
+        resolution_user: "reporter",
+        resolved_at: now,
+      });
+    }
+
+    return rows;
+  }
+
+  function mergeHarvestedSuggestions(
+    sourceLabel: "Notice" | "Job Sheet",
+    application: ReturnType<typeof applyExtraction> | ReturnType<typeof applyJobSheetExtraction>["application"],
+  ) {
+    const nextState = intakeReducer(
+      {
+        record,
+        dirty: false,
+        last_saved_at: null,
+        editSeq: 0,
+      },
+      {
+        type: "APPLY_EXTRACTION",
+        payload: {
+          fieldUpdates: application.fieldUpdates,
+          attorneyAdds: application.attorneyAdds,
+          attorneyPatches: application.attorneyPatches,
+          witnessAdds: application.witnessAdds,
+          witnessPatches: application.witnessPatches,
+        },
+      },
+    );
+
+    const suggestions = harvestKeyterms(
+      nextState.record,
+      [...buildExtractionProvenanceRows(record.case_id, sourceLabel, application), ...currentProvenanceRows()],
+    );
+    const mergedTerms = mergeManagedKeytermSuggestions(keytermState.terms, suggestions);
+    loadKeyterms(mergedTerms);
+    setKeyterms(serializeManagedKeyterms(mergedTerms));
+  }
+
   async function runNoticeExtraction(file: File, slotId: SlotId) {
     try {
       const text = await extractDocumentText(file);
@@ -448,6 +538,7 @@ export function DocumentUploadPanel({
         saveCaseRecord,
         sourceLabel: "Notice",
       });
+      mergeHarvestedSuggestions("Notice", application);
 
       setExtractState(slotId, result.saveErrorMessage, result.summary);
     } catch (error) {
@@ -472,6 +563,7 @@ export function DocumentUploadPanel({
       saveCaseRecord,
       sourceLabel: "Job Sheet",
     });
+    mergeHarvestedSuggestions("Job Sheet", application);
 
     console.info("[DEPO-PRO] Job Sheet extraction filtered unsupported fields", {
       caseId: record.case_id,

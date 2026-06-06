@@ -22,6 +22,7 @@ import { ExtractedFieldsTable } from "../ExtractedFieldsTable/ExtractedFieldsTab
 import { projectFieldRows } from "../ExtractedFieldsTable/fieldProjection";
 import { DeepgramKeytermManager } from "../DeepgramKeytermManager/DeepgramKeytermManager";
 import { DeepgramPayloadPreview } from "../DeepgramKeytermManager/DeepgramPayloadPreview";
+import { useKeyterms } from "../DeepgramKeytermManager/keytermStore";
 import { mockConflictAlternates } from "../ExtractedFieldsTable/mockRecord";
 import { saveCase } from "../../api/caseService";
 import { loadCaseBundle as loadPersistedBundle } from "../../api/caseLoadService";
@@ -38,6 +39,7 @@ import {
 import { CaseStatusBadge } from "./CaseStatusBadge";
 import { DocumentUploadPanel } from "./DocumentUploadPanel";
 import { resolveHydration } from "./hydration";
+import { serializeManagedKeyterms } from "../../lib/keyterms/managedKeyterms";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1329,11 +1331,13 @@ export function IntakeScreen({ jobId }: Props) {
     dirty,
     editSeq,
     loadCase,
+    setKeyterms,
     updateField,
     confirmField,
     confirmAll,
     resolveConflict,
   } = useIntake();
+  const { state: keytermState } = useKeyterms();
   const { setStage } = useStage();
   const { registerNavigationGuard } = useCase();
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -1428,6 +1432,14 @@ export function IntakeScreen({ jobId }: Props) {
       setSaveState("idle");
     }
   }, [dirty, saveState]);
+
+  useEffect(() => {
+    const serialized = serializeManagedKeyterms(keytermState.terms);
+    if (JSON.stringify(serialized) === JSON.stringify(record.deepgram.keyterms)) {
+      return;
+    }
+    setKeyterms(serialized);
+  }, [keytermState.terms, record.deepgram.keyterms, setKeyterms]);
 
   const canProceed = intakeValidation.canProceed;
 

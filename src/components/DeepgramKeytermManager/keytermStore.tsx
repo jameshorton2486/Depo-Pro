@@ -12,6 +12,8 @@ import {
 import type { ManagedKeyterm, KeytermView, AddKeytermForm } from "./types";
 import { rankKeyterms, countTokens, totalTokens, selectedCount } from "../../lib/keytermRanker";
 import { pruneToLimits, checkLimits, type LimitStatus } from "../../lib/keytermPruner";
+import type { HarvestedKeyterm } from "../../lib/keyterms/harvestKeyterms";
+import { mergeManagedKeytermSuggestions } from "../../lib/keyterms/managedKeyterms";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -34,6 +36,7 @@ type Action =
   | { type: "SET_VIEW";      payload: { view: KeytermView } }
   | { type: "SET_SEARCH";    payload: { search: string } }
   | { type: "LOAD";          payload: { terms: ManagedKeyterm[] } }
+  | { type: "MERGE_SUGGESTIONS"; payload: { suggestions: HarvestedKeyterm[] } }
   | { type: "PRUNE" }
   | { type: "TOGGLE_PAYLOAD" };
 
@@ -128,6 +131,13 @@ function keytermReducer(state: KeytermState, action: Action): KeytermState {
       return { ...state, terms: pruned, lastPruned: [] };
     }
 
+    case "MERGE_SUGGESTIONS": {
+      const merged = mergeManagedKeytermSuggestions(state.terms, action.payload.suggestions);
+      const ranked = rerank(merged);
+      const { terms: pruned } = pruneToLimits(ranked);
+      return { ...state, terms: pruned, lastPruned: [] };
+    }
+
     case "PRUNE": {
       const ranked = rerank(state.terms);
       const { terms: pruned, deselected } = pruneToLimits(ranked);
@@ -155,6 +165,7 @@ interface KeytermContextValue {
   setView: (view: KeytermView) => void;
   setSearch: (s: string) => void;
   load: (terms: ManagedKeyterm[]) => void;
+  mergeSuggestions: (suggestions: HarvestedKeyterm[]) => void;
   prune: () => void;
   togglePayload: () => void;
   visibleTerms: ManagedKeyterm[];
@@ -191,6 +202,9 @@ export function KeytermProvider({
   const setView      = useCallback((view: KeytermView) => dispatch({ type: "SET_VIEW", payload: { view } }), []);
   const setSearch    = useCallback((search: string) => dispatch({ type: "SET_SEARCH", payload: { search } }), []);
   const load         = useCallback((terms: ManagedKeyterm[]) => dispatch({ type: "LOAD", payload: { terms } }), []);
+  const mergeSuggestions = useCallback((suggestions: HarvestedKeyterm[]) => {
+    dispatch({ type: "MERGE_SUGGESTIONS", payload: { suggestions } });
+  }, []);
   const prune        = useCallback(() => dispatch({ type: "PRUNE" }), []);
   const togglePayload = useCallback(() => dispatch({ type: "TOGGLE_PAYLOAD" }), []);
 
@@ -218,7 +232,7 @@ export function KeytermProvider({
   return (
     <KeytermContext.Provider value={{
       state, limits, addTerm, deleteTerm, toggleSelect, togglePin,
-      setBoost, setView, setSearch, load, prune, togglePayload, visibleTerms,
+      setBoost, setView, setSearch, load, mergeSuggestions, prune, togglePayload, visibleTerms,
     }}>
       {children}
     </KeytermContext.Provider>

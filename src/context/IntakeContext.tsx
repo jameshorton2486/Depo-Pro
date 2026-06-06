@@ -48,6 +48,7 @@ interface IntakeContextValue {
   setStageComplete: (stage: WorkflowStage, complete: boolean) => void;
   setNotes: (notes: string) => void;
   setAudio: (audio: CaseAudio | null) => void;
+  setKeyterms: (keyterms: CaseRecord["deepgram"]["keyterms"]) => void;
 
   // ── Field mutation ───────────────────────────────────────────────────────────
   updateField: (
@@ -159,6 +160,10 @@ export function IntakeProvider({
 
   const setAudio = useCallback((audio: CaseAudio | null) => {
     dispatch({ type: "SET_AUDIO", payload: { audio } });
+  }, []);
+
+  const setKeyterms = useCallback((keyterms: CaseRecord["deepgram"]["keyterms"]) => {
+    dispatch({ type: "SET_KEYTERMS", payload: { keyterms } });
   }, []);
 
   // ── Field mutation ─────────────────────────────────────────────────────────
@@ -329,6 +334,7 @@ export function IntakeProvider({
     setStageComplete,
     setNotes,
     setAudio,
+    setKeyterms,
     updateField,
     applyExtraction,
     resolveConflict,

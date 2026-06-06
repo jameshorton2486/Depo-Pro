@@ -75,6 +75,7 @@ export type SetStageAction       = { type: "SET_STAGE"; payload: { stage: Workfl
 export type SetStageCompleteAction = { type: "SET_STAGE_COMPLETE"; payload: { stage: WorkflowStage; complete: boolean } };
 export type SetNotesAction       = { type: "SET_NOTES"; payload: { notes: string } };
 export type SetAudioAction       = { type: "SET_AUDIO"; payload: { audio: CaseAudio | null } };
+export type SetKeytermsAction    = { type: "SET_KEYTERMS"; payload: { keyterms: CaseRecord["deepgram"]["keyterms"] } };
 
 // ── Field update (generic path into CaseRecord) ───────────────────────────────
 // Targets a dot-path within the record's ExtractedField leaves.
@@ -207,6 +208,7 @@ export type IntakeAction =
   | SetStageCompleteAction
   | SetNotesAction
   | SetAudioAction
+  | SetKeytermsAction
   | UpdateFieldAction
   | ApplyExtractionAction
   | ResolveConflictAction
@@ -399,6 +401,21 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         dirty: true,
         editSeq: state.editSeq + 1,
         record: { ...state.record, audio: action.payload.audio },
+      };
+    }
+
+    case "SET_KEYTERMS": {
+      return {
+        ...state,
+        dirty: true,
+        editSeq: state.editSeq + 1,
+        record: {
+          ...state.record,
+          deepgram: {
+            ...state.record.deepgram,
+            keyterms: action.payload.keyterms,
+          },
+        },
       };
     }
 

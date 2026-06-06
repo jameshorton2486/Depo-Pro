@@ -1,4 +1,5 @@
 import type { DeepgramKeyterm } from "../../types/case";
+import { readStoredKeytermMeta } from "../keyterms/managedKeyterms";
 
 export interface DeepgramRequestKeyterm {
   term: string;
@@ -143,12 +144,15 @@ export function buildDeepgramRequestFromStoredKeyterms(input: {
   return buildDeepgramRequest({
     caseId: input.caseId,
     computedAt: input.computedAt,
-    keyterms: input.keyterms.map((keyterm) => ({
-      term: keyterm.term,
-      boost: keyterm.boost,
-      category: keyterm.category,
-      source: "manual",
-      selected: true,
-    })),
+    keyterms: input.keyterms.map((keyterm) => {
+      const meta = readStoredKeytermMeta(keyterm.notes ?? "");
+      return {
+        term: keyterm.term,
+        boost: keyterm.boost,
+        category: keyterm.category,
+        source: meta.source ?? "manual",
+        selected: meta.selected ?? true,
+      };
+    }),
   });
 }

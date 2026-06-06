@@ -21,6 +21,7 @@ import type { DepoEditorConfig } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
 import { useIntake } from "../context/IntakeContext";
 import { saveCase } from "../api/caseService";
+import { buildManagedKeyterms } from "../lib/keyterms/managedKeyterms";
 
 // ─── Editor workspace (stages 2-7) ───────────────────────────────────────────
 
@@ -179,11 +180,15 @@ function CaseScopedShell({
   initialRecord: ReturnType<typeof useCase>["activeRecord"];
   initialProvenance: ReturnType<typeof useCase>["activeProvenance"];
 }) {
+  const initialKeyterms = initialRecord
+    ? buildManagedKeyterms({ record: initialRecord, provenance: initialProvenance })
+    : [];
+
   return (
     <StageProvider initialStage={initialStage}>
       <IntakeProvider initialRecord={initialRecord}>
         <ConflictProvider initialProvenance={initialProvenance}>
-          <KeytermProvider initialTerms={[]}>
+          <KeytermProvider initialTerms={initialKeyterms}>
             <StageRouter config={config} activeCaseId={activeCaseId} />
           </KeytermProvider>
         </ConflictProvider>
