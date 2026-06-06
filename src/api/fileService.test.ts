@@ -107,9 +107,9 @@ describe("normalizeAudioUploadError", () => {
 });
 
 describe("buildStoragePath", () => {
-  it("uses the case/category/file_id filename convention", () => {
-    expect(buildStoragePath("case_20260605_abcd12", "notice", "f_1234_abcd", "Notice Of Deposition.pdf")).toBe(
-      "cases/case_20260605_abcd12/notice/f_1234_abcd_Notice_Of_Deposition.pdf",
+  it("uses the owner/case/category/file_id filename convention", () => {
+    expect(buildStoragePath("user_123", "case_20260605_abcd12", "notice", "f_1234_abcd", "Notice Of Deposition.pdf")).toBe(
+      "user_123/case_20260605_abcd12/notice/f_1234_abcd_Notice_Of_Deposition.pdf",
     );
   });
 });

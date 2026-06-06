@@ -202,7 +202,7 @@ export function sanitizeFilename(filename: string): string {
     .replace(/\s+/g, "_")
     .replace(/[^A-Za-z0-9._-]/g, "")
     .replace(/_+/g, "_")
-    .replace(/^[_\. -]+|[_\. -]+$/g, "");
+    .replace(/^[_. -]+|[_. -]+$/g, "");
 
   return normalized || "file";
 }
@@ -213,12 +213,13 @@ export function createFileId(now = Date.now(), random = Math.random()): string {
 }
 
 export function buildStoragePath(
+  ownerUserId: string,
   caseId: string,
   category: string,
   fileId: string,
   filename: string,
 ): string {
-  return `cases/${caseId}/${category}/${fileId}_${sanitizeFilename(filename)}`;
+  return `${ownerUserId}/${caseId}/${category}/${fileId}_${sanitizeFilename(filename)}`;
 }
 
 export async function computeChecksum(file: Blob): Promise<string> {
@@ -268,9 +269,12 @@ export async function uploadCaseFile(caseId: string, file: File, fileType: CaseF
   const client = await getSupabaseClient("uploadCaseFile");
   const extendedClient = getExtendedClient(client);
   const fileId = createFileId();
-  const storagePath = buildStoragePath(caseId, fileType, fileId, file.name);
-  const checksum = await computeChecksum(file);
   const uploadedBy = await getUploadedBy(client);
+  if (!uploadedBy) {
+    throw new Error("Authentication is required to upload case files.");
+  }
+  const storagePath = buildStoragePath(uploadedBy, caseId, fileType, fileId, file.name);
+  const checksum = await computeChecksum(file);
 
   const { error: uploadError } = await client.storage
     .from(CASE_FILES_BUCKET)
@@ -312,8 +316,12 @@ export async function uploadCaseAudio(caseId: string, file: File): Promise<CaseA
 
   const client = await getSupabaseClient("uploadCaseAudio");
   const fileId = createFileId();
-  const storagePath = buildStoragePath(caseId, "audio", fileId, file.name);
   const durationSeconds = await loadAudioDuration(file);
+  const uploadedBy = await getUploadedBy(client);
+  if (!uploadedBy) {
+    throw new Error("Authentication is required to upload case audio.");
+  }
+  const storagePath = buildStoragePath(uploadedBy, caseId, "audio", fileId, file.name);
 
   const { error: uploadError } = await client.storage
     .from(CASE_FILES_BUCKET)

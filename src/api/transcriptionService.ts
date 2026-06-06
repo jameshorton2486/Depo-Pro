@@ -108,8 +108,8 @@ function resolveTranscriptionSource(): "deepgram" | "offline-fixture" {
   return getDeepgramApiKey() ? "deepgram" : "offline-fixture";
 }
 
-function buildRawStoragePath(caseId: string, jobId: string): string {
-  return `cases/${caseId}/transcripts/${jobId}/raw.json`;
+function buildRawStoragePath(ownerUserId: string, caseId: string, jobId: string): string {
+  return `${ownerUserId}/${caseId}/transcripts/${jobId}/raw.json`;
 }
 
 async function createTranscriptJob(
@@ -156,7 +156,15 @@ async function uploadRawPacket(
   response: DeepgramResponse,
 ): Promise<{ rawStoragePath: string; rawChecksum: string }> {
   const client = await getSupabaseClient("uploadTranscriptRawPacket");
-  const rawStoragePath = buildRawStoragePath(caseId, jobId);
+  const { data: userData, error: userError } = await client.auth.getUser();
+  if (userError) {
+    throw userError;
+  }
+  const ownerUserId = userData.user?.id;
+  if (!ownerUserId) {
+    throw new Error("Authentication is required to upload the raw transcript packet.");
+  }
+  const rawStoragePath = buildRawStoragePath(ownerUserId, caseId, jobId);
   const blob = new Blob([JSON.stringify(response, null, 2)], { type: "application/json" });
   const checksum = await computeChecksum(blob);
 

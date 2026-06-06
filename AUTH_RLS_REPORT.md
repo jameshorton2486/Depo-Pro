@@ -47,3 +47,12 @@ Storage objects are handled separately in the storage phase.
 - `AuthGate` wraps the app outside `CaseProvider`.
 - DEV mock mode still bypasses the gate UI when `VITE_USE_REAL_API !== "1"`.
 - Sign-out is exposed in the toolbar and Case Browser header.
+
+## Storage hardening
+
+- New object path convention is `<owner_user_id>/<case_id>/...` for:
+  - document uploads
+  - audio uploads
+  - transcript raw packets
+- `case-files` storage policies were rewritten to require the first folder segment to equal `(select auth.uid()::text)`.
+- Existing fixture-era `case-files` objects are deleted in the storage migration so reseeding recreates them under the new convention.
