@@ -40,6 +40,7 @@ import { CaseStatusBadge } from "./CaseStatusBadge";
 import { DocumentUploadPanel } from "./DocumentUploadPanel";
 import { resolveHydration } from "./hydration";
 import { serializeManagedKeyterms } from "../../lib/keyterms/managedKeyterms";
+import { UfmPayloadPreview } from "./UfmPayloadPreview";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1241,6 +1242,7 @@ function IntakeFooter({
   saveState: "idle" | "saving" | "saved" | "error";
 }) {
   const [showPayload, setShowPayload] = useState(false);
+  const [showUfmPayload, setShowUfmPayload] = useState(false);
   const saveLabel =
     saveState === "saving"
       ? "Saving..."
@@ -1256,6 +1258,11 @@ function IntakeFooter({
       {showPayload && (
         <div className="border-b border-slate-200">
           <DeepgramPayloadPreview />
+        </div>
+      )}
+      {showUfmPayload && (
+        <div className="border-b border-slate-200">
+          <UfmPayloadPreview />
         </div>
       )}
 
@@ -1276,14 +1283,13 @@ function IntakeFooter({
 
         <button
           type="button"
-          disabled
+          onClick={() => setShowUfmPayload((value) => !value)}
           className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus:outline-none"
-          title="UFM payload generation is implemented at Stage 5"
+          title="Preview the best-available UFM metadata payload"
         >
           <Package size={13} />
-          View UFM Payload
+          {showUfmPayload ? "Hide" : "View"} UFM Payload
         </button>
-        <span className="text-[11px] text-slate-400">Not yet implemented</span>
 
         {/* Right: primary actions */}
         <div className="ml-auto flex items-center gap-2">
