@@ -1,5 +1,7 @@
 import type { FieldProvenanceRow } from "../../components/conflict/types";
 import type { CaseRecord, ExtractedField } from "../../types/case";
+import type { Contact, ContactType } from "../../types/contact";
+import type { Firm } from "../../types/firm";
 import type { ReporterProfile } from "../../types/reporterProfile";
 import { REQUIRED_UFM_FIELDS } from "./requiredFields";
 
@@ -75,6 +77,48 @@ export interface UfmMetadataEnvelope {
   missing_required_fields: string[];
 }
 
+interface UfmAppearance {
+  category: string;
+  name: string | null;
+  firm?: string | null;
+  role?: string | null;
+  representing?: string | null;
+  bar_number?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  function?: string | null;
+  time_used?: string | null;
+  appearance_label?: string | null;
+  certified?: boolean | null;
+  cert_number?: string | null;
+  certification_authority?: string | null;
+  certification_expiration?: string | null;
+  agency?: string | null;
+  agency_contact?: string | null;
+  language_from?: string | null;
+  language_to?: string | null;
+  oath_administered?: boolean | null;
+  role_title?: string | null;
+  role_in_this_proceeding?: string | null;
+  organization?: string | null;
+}
+
+interface UfmLawFirm {
+  name: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  fax: string | null;
+  email: string | null;
+  represented_party: string | null;
+}
+
 const FIELD_PATHS: Partial<Record<FieldMapKey, string>> = {
   ufmCause: "caption.case_number",
   ufmCaption: "caption.case_style",
@@ -120,6 +164,14 @@ function normalizeValue(value: string | null | undefined): string | null {
   return normalized || null;
 }
 
+function normalizeIdentity(value: string | null | undefined): string | null {
+  const normalized = normalizeValue(value);
+  if (!normalized) {
+    return null;
+  }
+  return normalized.replace(/\./g, "").toLowerCase();
+}
+
 function mapFieldSource(field: ExtractedField<unknown>, fallback: FieldSourceValue): FieldSourceValue {
   if (field.source === "imported") {
     return "profile";
@@ -156,15 +208,129 @@ function deponentName(record: CaseRecord): string | null {
   return normalizeValue(record.caption.case_name.value) ?? normalizeValue(record.caption.case_style.value);
 }
 
-function buildAppearances(record: CaseRecord) {
-  return record.attorneys.map((attorney) => ({
-    name: normalizeValue(attorney.name.value),
-    firm: normalizeValue(attorney.firm.value),
-    role: normalizeValue(attorney.role.value),
-    representing: normalizeValue(attorney.representing.value),
-    phone: normalizeValue(attorney.phone),
-    email: normalizeValue(attorney.email),
-  }));
+function findDirectoryContact(
+  directoryContacts: Contact[],
+  type: ContactType,
+  name: string | null,
+): Contact | null {
+  const lookup = normalizeIdentity(name);
+  if (!lookup) {
+    return null;
+  }
+
+  return directoryContacts.find((contact) => contact.type === type && normalizeIdentity(contact.name) === lookup) ?? null;
+}
+
+function findDirectoryFirm(directoryFirms: Firm[], name: string | null): Firm | null {
+  const lookup = normalizeIdentity(name);
+  if (!lookup) {
+    return null;
+  }
+
+  return directoryFirms.find((firm) => normalizeIdentity(firm.name) === lookup) ?? null;
+}
+
+function resolveReporterProfileUsage(record: CaseRecord, reporterProfile: ReporterProfile | null) {
+  if (!reporterProfile) {
+    return null;
+  }
+
+  if (record.reporter.name.source === "imported") {
+    return reporterProfile;
+  }
+
+  const recordReporterName = normalizeValue(record.reporter.name.value);
+  const profileName = normalizeValue(reporterProfile.display_name);
+  if (!recordReporterName) {
+    return reporterProfile;
+  }
+
+  return normalizeIdentity(recordReporterName) === normalizeIdentity(profileName) ? reporterProfile : null;
+}
+
+function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): UfmAppearance[] {
+  const attorneyAppearances = record.attorneys.map((attorney) => {
+    const contact = findDirectoryContact(directoryContacts, "attorney", attorney.name.value);
+    const details = contact?.details.kind === "attorney" ? contact.details : null;
+
+    return {
+      category: "attorney",
+      name: normalizeValue(attorney.name.value),
+      firm: normalizeValue(attorney.firm.value),
+      role: normalizeValue(attorney.role.value),
+      representing: normalizeValue(attorney.representing.value),
+      bar_number: normalizeValue(attorney.bar_number.value) ?? details?.bar_number ?? null,
+      phone: normalizeValue(attorney.phone) ?? normalizeValue(details?.direct_phone) ?? normalizeValue(contact?.phone),
+      email: normalizeValue(attorney.email) ?? normalizeValue(contact?.email),
+      address: normalizeValue(attorney.address),
+      city: normalizeValue(attorney.city),
+      state: normalizeValue(attorney.state),
+      zip: normalizeValue(attorney.zip),
+      function: normalizeValue(attorney.role.value),
+      time_used: normalizeValue(attorney.time_used),
+      appearance_label: normalizeValue(details?.preferred_appearance_label),
+    };
+  });
+
+  const interpreterAppearances = record.interpreters.map((interpreter) => {
+    const contact = findDirectoryContact(directoryContacts, "interpreter", interpreter.name.value);
+    const details = contact?.details.kind === "interpreter" ? contact.details : null;
+
+    return {
+      category: "interpreter",
+      name: normalizeValue(interpreter.name.value),
+      role: "INTERPRETER",
+      certified: interpreter.certified || details?.certified || false,
+      cert_number: normalizeValue(interpreter.cert_number) ?? details?.cert_number ?? null,
+      certification_authority: normalizeValue(details?.certification_authority),
+      certification_expiration: normalizeValue(details?.certification_expiration),
+      agency: normalizeValue(interpreter.agency) ?? normalizeValue(details?.agency) ?? normalizeValue(contact?.organization),
+      agency_contact: normalizeValue(details?.agency_contact),
+      language_from: normalizeValue(interpreter.language_from),
+      language_to: normalizeValue(interpreter.language_to),
+      oath_administered: interpreter.oath_administered,
+      phone: normalizeValue(interpreter.phone) ?? normalizeValue(contact?.phone),
+      email: normalizeValue(interpreter.email) ?? normalizeValue(contact?.email),
+    };
+  });
+
+  const videographerAppearances = record.videographers.map((videographer) => {
+    const contact = findDirectoryContact(directoryContacts, "videographer", videographer.name.value);
+    const details = contact?.details.kind === "videographer" ? contact.details : null;
+
+    return {
+      category: "videographer",
+      name: normalizeValue(videographer.name.value),
+      firm: normalizeValue(videographer.firm.value),
+      role: "VIDEOGRAPHER",
+      cert_number: normalizeValue(videographer.cert_number) ?? normalizeValue(details?.cert_number),
+      role_title: normalizeValue(videographer.role_title) ?? normalizeValue(details?.role_title),
+      phone: normalizeValue(videographer.phone) ?? normalizeValue(contact?.phone),
+      email: normalizeValue(videographer.email) ?? normalizeValue(contact?.email),
+    };
+  });
+
+  const participantTypeByRole: Partial<Record<CaseRecord["participants"][number]["role"], ContactType>> = {
+    PARALEGAL: "paralegal",
+    OTHER: "participant",
+  };
+
+  const participantAppearances = record.participants.map((participant) => {
+    const directoryType = participantTypeByRole[participant.role] ?? "participant";
+    const contact = findDirectoryContact(directoryContacts, directoryType, participant.name.value);
+
+    return {
+      category: "participant",
+      name: normalizeValue(participant.name.value),
+      role: normalizeValue(participant.role),
+      organization: normalizeValue(participant.organization) ?? normalizeValue(contact?.organization),
+      email: normalizeValue(participant.email) ?? normalizeValue(contact?.email),
+      phone: normalizeValue(participant.phone) ?? normalizeValue(contact?.phone),
+      role_in_this_proceeding: normalizeValue(participant.role_in_this_proceeding),
+    };
+  });
+
+  return [...attorneyAppearances, ...interpreterAppearances, ...videographerAppearances, ...participantAppearances];
 }
 
 function buildParties(record: CaseRecord) {
@@ -177,8 +343,8 @@ function buildParties(record: CaseRecord) {
   }));
 }
 
-function buildLawFirms(record: CaseRecord) {
-  return record.law_firms.map((lawFirm) => ({
+function buildLawFirms(record: CaseRecord, directoryFirms: Firm[]): UfmLawFirm[] {
+  const explicitLawFirms = record.law_firms.map((lawFirm) => ({
     name: normalizeValue(lawFirm.name.value),
     address: normalizeValue(lawFirm.address.value),
     city: normalizeValue(lawFirm.city.value),
@@ -189,6 +355,76 @@ function buildLawFirms(record: CaseRecord) {
     email: normalizeValue(lawFirm.email.value),
     represented_party: normalizeValue(lawFirm.represented_party.value),
   }));
+
+  const derivedAttorneyFirms: UfmLawFirm[] = [];
+  for (const attorney of record.attorneys) {
+    const firmName = normalizeValue(attorney.firm.value);
+    if (!firmName) {
+      continue;
+    }
+
+    const directoryFirm = findDirectoryFirm(directoryFirms, firmName);
+    derivedAttorneyFirms.push({
+      name: firmName,
+      address: normalizeValue(directoryFirm?.address) ?? normalizeValue(attorney.address),
+      city: normalizeValue(directoryFirm?.city) ?? normalizeValue(attorney.city),
+      state: normalizeValue(directoryFirm?.state) ?? normalizeValue(attorney.state),
+      zip: normalizeValue(directoryFirm?.zip) ?? normalizeValue(attorney.zip),
+      phone: normalizeValue(directoryFirm?.main_phone),
+      fax: normalizeValue(directoryFirm?.fax),
+      email: null,
+      represented_party: normalizeValue(attorney.representing.value),
+    });
+  }
+
+  const derivedVideographerFirms: UfmLawFirm[] = [];
+  for (const videographer of record.videographers) {
+    const firmName = normalizeValue(videographer.firm.value);
+    if (!firmName) {
+      continue;
+    }
+
+    const directoryFirm = findDirectoryFirm(directoryFirms, firmName);
+    derivedVideographerFirms.push({
+      name: firmName,
+      address: normalizeValue(directoryFirm?.address),
+      city: normalizeValue(directoryFirm?.city),
+      state: normalizeValue(directoryFirm?.state),
+      zip: normalizeValue(directoryFirm?.zip),
+      phone: normalizeValue(directoryFirm?.main_phone),
+      fax: normalizeValue(directoryFirm?.fax),
+      email: null,
+      represented_party: null,
+    });
+  }
+
+  const merged = new Map<string, UfmLawFirm>();
+  for (const firm of [...explicitLawFirms, ...derivedAttorneyFirms, ...derivedVideographerFirms]) {
+    const key = normalizeIdentity(firm.name);
+    if (!key) {
+      continue;
+    }
+
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, firm);
+      continue;
+    }
+
+    merged.set(key, {
+      name: existing.name ?? firm.name,
+      address: existing.address ?? firm.address,
+      city: existing.city ?? firm.city,
+      state: existing.state ?? firm.state,
+      zip: existing.zip ?? firm.zip,
+      phone: existing.phone ?? firm.phone,
+      fax: existing.fax ?? firm.fax,
+      email: existing.email ?? firm.email,
+      represented_party: existing.represented_party ?? firm.represented_party,
+    });
+  }
+
+  return Array.from(merged.values());
 }
 
 function computeDateParts(dateValue: string | null) {
@@ -244,10 +480,13 @@ export function buildUfmMetadata(args: {
   record: CaseRecord;
   provenance: FieldProvenanceRow[];
   reporterProfile?: ReporterProfile | null;
+  directoryContacts?: Contact[];
+  directoryFirms?: Firm[];
   computedAt?: string;
 }): UfmMetadataEnvelope {
-  const { record, provenance, reporterProfile = null } = args;
+  const { record, provenance, reporterProfile = null, directoryContacts = [], directoryFirms = [] } = args;
   const computedAt = args.computedAt ?? new Date().toISOString();
+  const effectiveReporterProfile = resolveReporterProfileUsage(record, reporterProfile);
   const address = joinLocation(record);
   const caption = normalizeValue(record.caption.case_style.value) ?? normalizeValue(record.caption.case_name.value);
   const deponent = deponentName(record);
@@ -279,7 +518,7 @@ export function buildUfmMetadata(args: {
     noticing_party: normalizeValue(record.scheduling.noticing_party.value),
     service_type: normalizeValue(record.scheduling.service_type.value),
     parties: buildParties(record),
-    law_firms: buildLawFirms(record),
+    law_firms: buildLawFirms(record, directoryFirms),
     service_date: normalizeValue(record.service.service_date.value),
     served_parties: record.service.served_parties.value,
     service_emails: record.service.service_emails.value,
@@ -293,14 +532,15 @@ export function buildUfmMetadata(args: {
       daily_copy: record.reporter_requests.daily_copy.value,
       rough_draft: record.reporter_requests.rough_draft.value,
     },
-    csr_name: normalizeValue(reporterProfile?.display_name) ?? normalizeValue(record.reporter.name.value),
-    csr_license: normalizeValue(reporterProfile?.csr_number) ?? normalizeValue(record.reporter.cert_number.value),
+    csr_name: normalizeValue(effectiveReporterProfile?.display_name) ?? normalizeValue(record.reporter.name.value),
+    csr_license: normalizeValue(effectiveReporterProfile?.csr_number) ?? normalizeValue(record.reporter.cert_number.value),
     firm_registration:
-      normalizeValue(reporterProfile?.firm_registration_number) ?? normalizeValue(record.reporter.firm_registration_number.value),
-    csr_cert_expiration: normalizeValue(reporterProfile?.csr_cert_expiration) ?? normalizeValue(record.reporter.license_expiration.value),
+      normalizeValue(effectiveReporterProfile?.firm_registration_number) ?? normalizeValue(record.reporter.firm_registration_number.value),
+    csr_cert_expiration:
+      normalizeValue(effectiveReporterProfile?.csr_cert_expiration) ?? normalizeValue(record.reporter.license_expiration.value),
     custodial_attorney: normalizeValue(custodialAttorneyField?.value),
     requesting_party: normalizeValue(requestingPartyField?.value),
-    appearances: buildAppearances(record),
+    appearances: buildAppearances(record, directoryContacts),
     volume: "1",
     proceedings_month: dateParts.proceedings_month,
     proceedings_day: dateParts.proceedings_day,
@@ -324,10 +564,10 @@ export function buildUfmMetadata(args: {
     ufmRemotePlatform: mapFieldSource(record.scheduling.remote_platform, sourceForPath(provenance, "scheduling.remote_platform")),
     ufmNoticingParty: mapFieldSource(record.scheduling.noticing_party, sourceForPath(provenance, "scheduling.noticing_party")),
     ufmServiceType: mapFieldSource(record.scheduling.service_type, sourceForPath(provenance, "scheduling.service_type")),
-    ufmCsrName: reporterProfile ? "profile" : mapFieldSource(record.reporter.name, "manual"),
-    ufmCsrLicense: reporterProfile ? "profile" : mapFieldSource(record.reporter.cert_number, "profile"),
-    ufmFirmRegistration: reporterProfile ? "profile" : mapFieldSource(record.reporter.firm_registration_number, "profile"),
-    ufmCsrCertExpiration: reporterProfile ? "profile" : mapFieldSource(record.reporter.license_expiration, "profile"),
+    ufmCsrName: effectiveReporterProfile ? "profile" : mapFieldSource(record.reporter.name, "manual"),
+    ufmCsrLicense: effectiveReporterProfile ? "profile" : mapFieldSource(record.reporter.cert_number, "profile"),
+    ufmFirmRegistration: effectiveReporterProfile ? "profile" : mapFieldSource(record.reporter.firm_registration_number, "profile"),
+    ufmCsrCertExpiration: effectiveReporterProfile ? "profile" : mapFieldSource(record.reporter.license_expiration, "profile"),
     ufmCustodialAttorney: custodialAttorneyField
       ? mapFieldSource(
           custodialAttorneyField,
@@ -363,10 +603,10 @@ export function buildUfmMetadata(args: {
     ufmRemotePlatform: record.scheduling.remote_platform.confirmed,
     ufmNoticingParty: record.scheduling.noticing_party.confirmed,
     ufmServiceType: record.scheduling.service_type.confirmed,
-    ufmCsrName: reporterProfile ? true : record.reporter.name.confirmed,
-    ufmCsrLicense: reporterProfile ? true : record.reporter.cert_number.confirmed,
-    ufmFirmRegistration: reporterProfile ? true : record.reporter.firm_registration_number.confirmed,
-    ufmCsrCertExpiration: reporterProfile ? true : record.reporter.license_expiration.confirmed,
+    ufmCsrName: effectiveReporterProfile ? true : record.reporter.name.confirmed,
+    ufmCsrLicense: effectiveReporterProfile ? true : record.reporter.cert_number.confirmed,
+    ufmFirmRegistration: effectiveReporterProfile ? true : record.reporter.firm_registration_number.confirmed,
+    ufmCsrCertExpiration: effectiveReporterProfile ? true : record.reporter.license_expiration.confirmed,
     ufmCustodialAttorney: custodialAttorneyField?.confirmed ?? false,
     ufmRequestingParty: requestingPartyField?.confirmed ?? false,
   };

@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
+import { listContacts } from "../../api/contactService";
+import { listFirms } from "../../api/firmService";
 import { getMyProfile } from "../../api/reporterProfileService";
 import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { isMockMode } from "../../lib/runtime/mode";
 import { buildUfmMetadata, summarizeUfmEnvelope } from "../../lib/ufm/buildUfmMetadata";
+import type { Contact } from "../../types/contact";
+import type { Firm } from "../../types/firm";
 import type { ReporterProfile } from "../../types/reporterProfile";
 
 const MOCK_REPORTER_PROFILE: ReporterProfile = {
@@ -22,6 +26,9 @@ const MOCK_REPORTER_PROFILE: ReporterProfile = {
   created_at: "2026-06-07T00:00:00.000Z",
   updated_at: "2026-06-07T00:00:00.000Z",
 };
+
+const MOCK_DIRECTORY_CONTACTS: Contact[] = [];
+const MOCK_DIRECTORY_FIRMS: Firm[] = [];
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -57,25 +64,30 @@ export function UfmPayloadPreview() {
   const { record } = useIntake();
   const { activeProvenance } = useCase();
   const [reporterProfile, setReporterProfile] = useState<ReporterProfile | null>(isMockMode() ? MOCK_REPORTER_PROFILE : null);
+  const [directoryContacts, setDirectoryContacts] = useState<Contact[]>(isMockMode() ? MOCK_DIRECTORY_CONTACTS : []);
+  const [directoryFirms, setDirectoryFirms] = useState<Firm[]>(isMockMode() ? MOCK_DIRECTORY_FIRMS : []);
 
   useEffect(() => {
     if (isMockMode()) {
       setReporterProfile(MOCK_REPORTER_PROFILE);
+      setDirectoryContacts(MOCK_DIRECTORY_CONTACTS);
+      setDirectoryFirms(MOCK_DIRECTORY_FIRMS);
       return;
     }
 
     let cancelled = false;
-    void getMyProfile()
-      .then((profile) => {
-        if (!cancelled) {
-          setReporterProfile(profile);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setReporterProfile(null);
-        }
-      });
+    void Promise.all([
+      getMyProfile().catch(() => null),
+      listContacts().catch(() => []),
+      listFirms().catch(() => []),
+    ]).then(([profile, contacts, firms]) => {
+      if (cancelled) {
+        return;
+      }
+      setReporterProfile(profile);
+      setDirectoryContacts(contacts);
+      setDirectoryFirms(firms);
+    });
 
     return () => {
       cancelled = true;
@@ -86,7 +98,9 @@ export function UfmPayloadPreview() {
     record,
     provenance: activeProvenance,
     reporterProfile,
-  }), [activeProvenance, record, reporterProfile]);
+    directoryContacts,
+    directoryFirms,
+  }), [activeProvenance, directoryContacts, directoryFirms, record, reporterProfile]);
   const summary = summarizeUfmEnvelope(envelope);
 
   return (

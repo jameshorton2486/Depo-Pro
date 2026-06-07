@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { FieldProvenanceRow } from "../../components/conflict/types";
+import type { Contact } from "../../types/contact";
 import { emptyCaseRecord } from "../../types/case";
+import type { Firm } from "../../types/firm";
 import type { ReporterProfile } from "../../types/reporterProfile";
 import { buildUfmMetadata } from "./buildUfmMetadata";
 import { REQUIRED_UFM_FIELDS } from "./requiredFields";
@@ -82,6 +84,76 @@ function buildReporterProfile(): ReporterProfile {
     remote_swear_authority: true,
     notary_commission_expiration: "2027-12-31",
     preferred_signature_block: "Miah Bardot, CSR 12129",
+    created_at: "2026-06-05T20:00:00.000Z",
+    updated_at: "2026-06-05T20:00:00.000Z",
+  };
+}
+
+function buildDirectoryAttorneyContact(): Contact {
+  return {
+    id: "contact_attorney_1",
+    type: "attorney",
+    name: "Karen M. Alvarado",
+    organization: "Brothers, Alvarado, Piazza & Cozort, P.C.",
+    phone: "2105551212",
+    email: "kalvarado@example.com",
+    address: "",
+    notes: "",
+    firm_id: "firm_1",
+    details: {
+      kind: "attorney",
+      bar_number: "24012345",
+      direct_phone: "2105551212",
+      extension: "112",
+      fax: "2105551313",
+      assistant_name: "Dana",
+      assistant_email: "dana@example.com",
+      preferred_appearance_label: "MS. ALVARADO",
+    },
+    times_used: 3,
+    created_at: "2026-06-05T20:00:00.000Z",
+    updated_at: "2026-06-05T20:00:00.000Z",
+  };
+}
+
+function buildDirectoryInterpreterContact(): Contact {
+  return {
+    id: "contact_interpreter_1",
+    type: "interpreter",
+    name: "Rosa Pena",
+    organization: "Lingua Bridge",
+    phone: "2105551414",
+    email: "rosa@example.com",
+    address: "",
+    notes: "",
+    firm_id: null,
+    details: {
+      kind: "interpreter",
+      certified: true,
+      cert_number: "INT-7788",
+      certification_authority: "Texas JBCC",
+      certification_expiration: "2028-01-01",
+      remote_capable: true,
+      agency: "Lingua Bridge",
+      agency_contact: "Marta",
+      default_languages: ["es", "en"],
+    },
+    times_used: 1,
+    created_at: "2026-06-05T20:00:00.000Z",
+    updated_at: "2026-06-05T20:00:00.000Z",
+  };
+}
+
+function buildDirectoryFirm(): Firm {
+  return {
+    id: "firm_1",
+    name: "Brothers, Alvarado, Piazza & Cozort, P.C.",
+    address: "123 Main St",
+    city: "San Antonio",
+    state: "TX",
+    zip: "78205",
+    main_phone: "2105559999",
+    fax: "2105558888",
     created_at: "2026-06-05T20:00:00.000Z",
     updated_at: "2026-06-05T20:00:00.000Z",
   };
@@ -307,5 +379,103 @@ describe("buildUfmMetadata", () => {
 
     expect(result).not.toBeInstanceOf(Promise);
     expect(result.case_id).toBe("case_ufm");
+  });
+
+  it("enriches appearance and law firm metadata from participant directory records", () => {
+    const record = buildRecord();
+    record.attorneys.push({
+      attorney_id: "attorney_1",
+      name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      firm: { value: "Brothers, Alvarado, Piazza & Cozort, P.C.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      representing: { value: "Defendant", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      bar_number: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: "01:15",
+      email: null,
+      phone: null,
+    });
+    record.interpreters.push({
+      interpreter_id: "interp_1",
+      name: { value: "Rosa Pena", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      language_from: "es",
+      language_to: "en",
+      oath_administered: true,
+      certified: false,
+      cert_number: null,
+      agency: null,
+      email: null,
+      phone: null,
+    });
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: buildProvenance(),
+      directoryContacts: [buildDirectoryAttorneyContact(), buildDirectoryInterpreterContact()],
+      directoryFirms: [buildDirectoryFirm()],
+    });
+
+    expect(envelope.ufm_metadata.appearances).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "attorney",
+          name: "Karen M. Alvarado",
+          bar_number: "24012345",
+          appearance_label: "MS. ALVARADO",
+          firm: "Brothers, Alvarado, Piazza & Cozort, P.C.",
+          function: "EXAMINING",
+          representing: "Defendant",
+        }),
+        expect.objectContaining({
+          category: "interpreter",
+          name: "Rosa Pena",
+          cert_number: "INT-7788",
+          certification_authority: "Texas JBCC",
+          agency_contact: "Marta",
+          language_from: "es",
+          language_to: "en",
+          oath_administered: true,
+        }),
+      ]),
+    );
+    expect(envelope.ufm_metadata.law_firms).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Brothers, Alvarado, Piazza & Cozort, P.C.",
+          address: "123 Main St",
+          city: "San Antonio",
+          state: "TX",
+          zip: "78205",
+          phone: "2105559999",
+          fax: "2105558888",
+          represented_party: "Defendant",
+        }),
+      ]),
+    );
+  });
+
+  it("uses the case-selected reporter instead of the signed-in profile when a different reporter is chosen", () => {
+    const record = buildRecord();
+    record.reporter.name.value = "Alternate Reporter";
+    record.reporter.name.source = "manual";
+    record.reporter.name.confirmed = true;
+    record.reporter.cert_number.value = "99887";
+    record.reporter.cert_number.confirmed = true;
+    record.reporter.firm_registration_number.value = "ALT-1";
+    record.reporter.license_expiration.value = "2029-01-01";
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: buildProvenance(),
+      reporterProfile: buildReporterProfile(),
+    });
+
+    expect(envelope.ufm_metadata.csr_name).toBe("Alternate Reporter");
+    expect(envelope.ufm_metadata.csr_license).toBe("99887");
+    expect(envelope.field_sources.ufmCsrName).toBe("manual");
+    expect(envelope.field_confirmations.ufmCsrName).toBe(true);
   });
 });
