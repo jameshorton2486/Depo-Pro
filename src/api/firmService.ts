@@ -31,6 +31,18 @@ export async function searchFirms(term: string): Promise<Firm[]> {
   return (data ?? []).map((row) => normalizeFirmRow(row as Firm));
 }
 
+export async function getFirm(id: string): Promise<Firm | null> {
+  const client = await getSupabaseClient("getFirm");
+  const { data, error } = await client
+    .from("firms")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? normalizeFirmRow(data as Firm) : null;
+}
+
 export async function createFirm(payload: FirmInsert): Promise<Firm> {
   const client = await getSupabaseClient("createFirm");
   const normalized = normalizeFirmInsert(payload);

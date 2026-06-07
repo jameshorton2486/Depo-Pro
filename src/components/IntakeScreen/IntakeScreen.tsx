@@ -42,6 +42,7 @@ import { DocumentUploadPanel } from "./DocumentUploadPanel";
 import { resolveHydration } from "./hydration";
 import { serializeManagedKeyterms } from "../../lib/keyterms/managedKeyterms";
 import { UfmPayloadPreview } from "./UfmPayloadPreview";
+import { ParticipantsPanel } from "./ParticipantsPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -561,7 +562,7 @@ function ContactPicker({
 
 // ─── Appearances panel ────────────────────────────────────────────────────────
 
-function AppearancesPanel() {
+export function LegacyAppearancesPanel() {
   const {
     record,
     addAttorney,
@@ -616,6 +617,7 @@ function AppearancesPanel() {
         organization: contact.organization || null,
         email: contact.email || null,
         phone: contact.phone || null,
+        role_in_this_proceeding: null,
         notes: contact.notes || null,
       });
     }
@@ -1678,7 +1680,7 @@ export function IntakeScreen({ jobId }: Props) {
               onRevealExtractedFields={handleRevealExtractedFields}
             />
             <div className="space-y-4">
-              <AppearancesPanel />
+              <ParticipantsPanel />
               <GateStatusCard
                 validation={intakeValidation}
                 persisted={persisted}

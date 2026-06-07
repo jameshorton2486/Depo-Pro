@@ -192,6 +192,7 @@ export interface Participant {
   organization:   string | null;
   email:          string | null;
   phone:          string | null;
+  role_in_this_proceeding: string | null;
   notes:          string | null;
 }
 
@@ -1036,6 +1037,7 @@ function emptyParticipant(participantId: string): Participant {
     organization: null,
     email: null,
     phone: null,
+    role_in_this_proceeding: null,
     notes: null,
   };
 }
@@ -1066,6 +1068,7 @@ function normalizeParticipantFromUnknown(participant: unknown, fallbackId: strin
     organization: normalizeNullableString(source?.organization),
     email: normalizeNullableString(source?.email),
     phone: normalizeNullableString(source?.phone),
+    role_in_this_proceeding: normalizeNullableString(source?.role_in_this_proceeding),
     notes: normalizeNullableString(source?.notes),
   };
 }
