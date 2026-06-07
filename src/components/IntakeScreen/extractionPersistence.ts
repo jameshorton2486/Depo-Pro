@@ -1,4 +1,5 @@
 import type { ExtractionApplication } from "../../lib/parsing/applyExtraction";
+import type { CaseRecord } from "../../types/case";
 import type { FieldSource } from "../../types/case";
 
 export interface ExtractionSummary {
@@ -38,7 +39,8 @@ type ApplyAndPersistExtractionParams = {
     },
   ) => void;
   onRevealExtractedFields: () => void;
-  saveCaseRecord: () => Promise<unknown>;
+  saveCaseRecord: (recordOverride?: CaseRecord) => Promise<unknown>;
+  recordToSave?: CaseRecord;
   sourceLabel?: DisplaySource;
 };
 
@@ -100,6 +102,7 @@ export async function applyAndPersistExtraction({
   detectConflict,
   onRevealExtractedFields,
   saveCaseRecord,
+  recordToSave,
   sourceLabel = "Notice",
 }: ApplyAndPersistExtractionParams): Promise<ExtractionPersistenceResult> {
   applyParsedExtraction(application);
@@ -116,7 +119,7 @@ export async function applyAndPersistExtraction({
   onRevealExtractedFields();
 
   try {
-    await saveCaseRecord();
+    await saveCaseRecord(recordToSave);
     return { summary, saveErrorMessage: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

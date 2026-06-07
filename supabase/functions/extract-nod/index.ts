@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const MODEL = "claude-haiku-4-5";
 const MAX_TEXT_CHARS = 50_000;
+const MAX_OUTPUT_TOKENS = 8192;
 const ANTHROPIC_VERSION = "2023-06-01";
 
 type DocType = "nod" | "order" | "jobsheet";
@@ -61,11 +62,13 @@ Deno.serve(async (request) => {
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4096,
+        max_tokens: MAX_OUTPUT_TOKENS,
         system: [
           "You extract structured legal deposition metadata for a Texas court reporter.",
           "The input may contain a worksheet cover sheet, scheduling notes, or other boilerplate before the actual notice or order.",
           "Prefer the actual notice, order, or operative legal document over internal worksheet content.",
+          "When a worksheet or cover sheet contains explicit structured scheduling metadata that supplements the operative notice, you may extract it if the operative notice does not state that field and there is no conflict.",
+          "Worksheet or cover-sheet metadata may supplement ordered_by, scheduler, scheduling_contact, service_type, read_and_sign, videographer_required, interpreter_required, remote_platform, and reporter request fields, but must not override caption, court, party, deponent, date, time, or location values stated in the operative notice.",
           "Return only valid JSON matching the supplied shape.",
           "Use empty strings for missing scalar values, empty arrays for missing list values, and false only when the document explicitly indicates a boolean no.",
           "Never fabricate values not supported by the document.",

@@ -15,7 +15,7 @@ import {
 
 import type { CaseAudioRecord, CaseFileRecord } from "../../api/fileService";
 import { useIntake } from "../../context/useIntake";
-import { useCase } from "../../context/CaseContext";
+import { useCase } from "../../context/useCase";
 import { useStage, STAGE_LABELS, STAGE_ORDER } from "../../context/StageContext";
 import { useConflict, selectActiveConflicts } from "../conflict/conflictStore";
 import { ExtractedFieldsTable } from "../ExtractedFieldsTable/ExtractedFieldsTable";
@@ -1500,7 +1500,10 @@ export function IntakeScreen({ jobId }: Props) {
     };
   }
 
-  const persistCase = useCallback(async (source: CaseSaveSource = "manual") => {
+  const persistCase = useCallback(async (
+    source: CaseSaveSource = "manual",
+    recordOverride?: CaseRecord,
+  ) => {
     if (savePromiseRef.current) {
       return savePromiseRef.current;
     }
@@ -1508,7 +1511,7 @@ export function IntakeScreen({ jobId }: Props) {
     clearAutosaveTimer();
     setSaveState("saving");
     setSaveError(null);
-    const currentRecord = recordRef.current;
+    const currentRecord = recordOverride ?? recordRef.current;
     const saveSeq = editSeqRef.current;
     const startedAt = new Date().toISOString();
     let savePromise: Promise<CaseRecord> | null = null;
@@ -1575,8 +1578,8 @@ export function IntakeScreen({ jobId }: Props) {
     setRevealExtractedFieldsVersion((value) => value + 1);
   }, []);
 
-  const persistCaseForUi = useCallback(async () => {
-    await persistCase("manual");
+  const persistCaseForUi = useCallback(async (recordOverride?: CaseRecord) => {
+    await persistCase("manual", recordOverride);
   }, [persistCase]);
 
   const flushCaseForNavigation = useCallback(async () => {

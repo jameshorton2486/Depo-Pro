@@ -678,6 +678,12 @@ function buildKeyterms(fields: ExtractedNODFields): DeepgramKeyterm[] {
   for (const participant of fields.other_participants) {
     pushTerm(terms, valueOf(participant.name), "proper_name");
   }
+  pushTerm(terms, valueOf(fields.scheduling.ordered_by), "proper_name");
+  pushTerm(terms, valueOf(fields.scheduling.scheduler), "proper_name");
+  const schedulingContact = valueOf(fields.scheduling.scheduling_contact);
+  if (schedulingContact && !schedulingContact.includes("@")) {
+    pushTerm(terms, schedulingContact, "proper_name");
+  }
 
   const seen = new Set<string>();
   const result: DeepgramKeyterm[] = [];

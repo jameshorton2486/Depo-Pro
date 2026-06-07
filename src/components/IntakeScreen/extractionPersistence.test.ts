@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { ExtractionApplication } from "../../lib/parsing/applyExtraction";
+import { emptyCaseRecord } from "../../types/case";
 import { applyAndPersistExtraction } from "./extractionPersistence";
 
 function buildApplication(): ExtractionApplication {
@@ -49,6 +50,40 @@ describe("applyAndPersistExtraction", () => {
     expect(recordExtraction).toHaveBeenCalledTimes(1);
     expect(result.summary).toEqual({ appliedCount: 1, conflictCount: 0 });
     expect(result.saveErrorMessage).toBeNull();
+  });
+
+  it("passes the post-extraction record snapshot to the save step when provided", async () => {
+    const applyParsedExtraction = vi.fn();
+    const recordExtraction = vi.fn();
+    const detectConflict = vi.fn();
+    const onRevealExtractedFields = vi.fn();
+    const saveCaseRecord = vi.fn().mockResolvedValue(undefined);
+    const recordToSave = {
+      ...emptyCaseRecord("case_20260606_snap", "2026-06-06T18:00:00.000Z"),
+      caption: {
+        ...emptyCaseRecord("case_20260606_snap", "2026-06-06T18:00:00.000Z").caption,
+        case_number: {
+          value: "25-cv-00598-OLG",
+          source: "extracted" as const,
+          confirmed: false,
+          conflict: false,
+          confidence_score: 0.98,
+        },
+      },
+    };
+
+    await applyAndPersistExtraction({
+      caseId: "case_20260606_snap",
+      application: buildApplication(),
+      applyParsedExtraction,
+      recordExtraction,
+      detectConflict,
+      onRevealExtractedFields,
+      saveCaseRecord,
+      recordToSave,
+    });
+
+    expect(saveCaseRecord).toHaveBeenCalledWith(recordToSave);
   });
 
   it("leaves extracted state applied when the save step fails", async () => {

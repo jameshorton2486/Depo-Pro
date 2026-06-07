@@ -490,7 +490,20 @@ export function DocumentUploadPanel({
     sourceLabel: "Notice" | "Job Sheet",
     application: ReturnType<typeof applyExtraction> | ReturnType<typeof applyJobSheetExtraction>["application"],
   ) {
-    const nextState = intakeReducer(
+    const nextState = previewExtractionState(application);
+    const suggestions = harvestKeyterms(
+      nextState.record,
+      [...buildExtractionProvenanceRows(record.case_id, sourceLabel, application), ...currentProvenanceRows()],
+    );
+    const mergedTerms = mergeManagedKeytermSuggestions(keytermState.terms, suggestions);
+    loadKeyterms(mergedTerms);
+    setKeyterms(serializeManagedKeyterms(mergedTerms));
+  }
+
+  function previewExtractionState(
+    application: ReturnType<typeof applyExtraction> | ReturnType<typeof applyJobSheetExtraction>["application"],
+  ) {
+    return intakeReducer(
       {
         record,
         dirty: false,
@@ -512,14 +525,6 @@ export function DocumentUploadPanel({
         },
       },
     );
-
-    const suggestions = harvestKeyterms(
-      nextState.record,
-      [...buildExtractionProvenanceRows(record.case_id, sourceLabel, application), ...currentProvenanceRows()],
-    );
-    const mergedTerms = mergeManagedKeytermSuggestions(keytermState.terms, suggestions);
-    loadKeyterms(mergedTerms);
-    setKeyterms(serializeManagedKeyterms(mergedTerms));
   }
 
   async function runNoticeExtraction(file: File, slotId: SlotId) {
@@ -531,6 +536,7 @@ export function DocumentUploadPanel({
       }
 
       const application = applyExtraction(extraction.fields, record);
+      const nextState = previewExtractionState(application);
 
       const result = await applyAndPersistExtraction({
         caseId: record.case_id,
@@ -540,6 +546,7 @@ export function DocumentUploadPanel({
         detectConflict,
         onRevealExtractedFields,
         saveCaseRecord,
+        recordToSave: nextState.record,
         sourceLabel: "Notice",
       });
       mergeHarvestedSuggestions("Notice", application);
@@ -556,6 +563,7 @@ export function DocumentUploadPanel({
     const text = await extractDocumentText(file);
     const parsed = parseReporterNotes(text);
     const { application, droppedPaths } = applyJobSheetExtraction(parsed, record);
+    const nextState = previewExtractionState(application);
 
     const result = await applyAndPersistExtraction({
       caseId: record.case_id,
@@ -565,6 +573,7 @@ export function DocumentUploadPanel({
       detectConflict,
       onRevealExtractedFields,
       saveCaseRecord,
+      recordToSave: nextState.record,
       sourceLabel: "Job Sheet",
     });
     mergeHarvestedSuggestions("Job Sheet", application);
