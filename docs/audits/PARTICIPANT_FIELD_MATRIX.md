@@ -236,3 +236,39 @@ The platform-wide spacing standard belongs in transcript formatting/package beha
 - no double space inside numeric colons such as `10:30`
 
 This field matrix treats that as a transcript-formatting consumer only. No reporter-level punctuation override should be added.
+
+## Implementation Notes
+
+- Phase 1 additive migrations:
+  - `20260607135049_firms_table.sql`
+  - `20260607135049_contacts_details_and_firm_id.sql`
+  - `20260607135049_reporter_profiles_participant_fields.sql`
+- Phase 3 UFM mapping extends the pure builder with optional normalized directory inputs so participant credentials and firm blocks can populate without adding case-payload fields.
+- Phase 4 keyterm derivation now treats firm names already stored on attorney and videographer case entries as valid law-firm-priority sources, so directory-selected firms still seed Deepgram keyterms even when `record.law_firms` is empty.
+
+## Live Verification Script
+
+1. Start real mode and sign in with a normal owner-scoped user.
+2. Create Case 1.
+3. In Participants, add an attorney with:
+   - name
+   - SBOT / bar number
+   - a new firm with address, city, state, zip, phone, and fax
+4. Save the case.
+5. Open UFM preview.
+   - Confirm `appearances[]` includes the attorney with `bar_number`, `firm`, `representing`, and `function`.
+   - Confirm `law_firms[]` includes the new firm block with address and fax.
+6. Open Deepgram preview.
+   - Confirm firm tokens from the selected firm appear in the deterministic keyterm payload.
+7. Create Case 2.
+8. Re-open Participants and pick the same attorney from the directory.
+   - Confirm person fields auto-fill from `contacts`.
+   - Confirm the linked firm block auto-fills from `firms`.
+9. Save Case 2 and reopen UFM preview.
+   - Confirm SBOT and firm block are still present without re-entry.
+10. In Supabase Dashboard, verify:
+    - one `firms` row exists for the new firm
+    - the attorney `contacts` row has populated `details` JSON and `firm_id`
+    - `reporter_profiles` exposes the new participant-task columns
+11. Repeat the same participant flow in mock mode.
+    - Confirm add/select/save remains functional without Supabase.
