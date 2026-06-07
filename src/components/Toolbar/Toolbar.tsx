@@ -2,7 +2,7 @@ import { Save, AlertCircle, CheckCircle, FileText, Languages } from "lucide-reac
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { useStage } from "../../context/StageContext";
-import { useCase } from "../../context/CaseContext";
+import { useCase } from "../../context/useCase";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
 
 interface Props {

@@ -17,7 +17,8 @@ import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
 import { ExportScreen } from "./ExportScreen/ExportScreen";
 import { CaseBrowserScreen } from "./CaseBrowserScreen";
 import { CaseScopedErrorBoundary } from "./CaseScopedErrorBoundary";
-import { CaseProvider, useCase } from "../context/CaseContext";
+import { CaseProvider } from "../context/CaseContext";
+import { useCase } from "../context/useCase";
 import type { DepoEditorConfig } from "../types";
 import { FIXTURE_LANGUAGE_MAP } from "../mocks/fixtures";
 import { useIntake } from "../context/useIntake";
@@ -188,17 +189,17 @@ function CaseScopedShell({
     : [];
 
   return (
-    <CaseScopedErrorBoundary onBackToCases={() => void showBrowser()}>
-      <StageProvider initialStage={initialStage}>
-        <IntakeProvider initialRecord={initialRecord}>
-          <ConflictProvider initialProvenance={initialProvenance}>
-            <KeytermProvider initialTerms={initialKeyterms}>
+    <KeytermProvider initialTerms={initialKeyterms}>
+      <CaseScopedErrorBoundary onBackToCases={() => void showBrowser()}>
+        <StageProvider initialStage={initialStage}>
+          <IntakeProvider initialRecord={initialRecord}>
+            <ConflictProvider initialProvenance={initialProvenance}>
               <StageRouter config={config} activeCaseId={activeCaseId} />
-            </KeytermProvider>
-          </ConflictProvider>
-        </IntakeProvider>
-      </StageProvider>
-    </CaseScopedErrorBoundary>
+            </ConflictProvider>
+          </IntakeProvider>
+        </StageProvider>
+      </CaseScopedErrorBoundary>
+    </KeytermProvider>
   );
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, FileAudio2, FileSearch, FolderOpen, ListMusic, Plus, Search } from "lucide-react";
 import { listRecentCases, type CaseBrowserSummary } from "../api/caseService";
 import { caseStatusFromStage, matchesCaseSearch } from "../lib/caseLifecycle";
-import { useCase } from "../context/CaseContext";
+import { useCase } from "../context/useCase";
 import { AuthStatusChip } from "./AuthGate/AuthGate";
 
 function StatusChip({

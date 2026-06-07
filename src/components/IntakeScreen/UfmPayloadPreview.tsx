@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
-import { useCase } from "../../context/CaseContext";
+import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { buildUfmMetadata, summarizeUfmEnvelope } from "../../lib/ufm/buildUfmMetadata";
 

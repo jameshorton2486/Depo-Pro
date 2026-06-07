@@ -1,7 +1,5 @@
 import React, {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -10,6 +8,8 @@ import React, {
 import { createCase } from "../api/caseService";
 import { loadCaseBundle, type CaseBundle } from "../api/caseLoadService";
 import type { AppStage } from "./StageContext";
+import { CaseContext } from "./caseContextShared";
+import type { CaseContextValue, NavigationGuard } from "./caseContextShared";
 import {
   DEMO_CASE_ID,
   LAST_OPENED_CASE_ID_KEY,
@@ -22,36 +22,6 @@ type SwitchIntent =
   | { type: "browser" }
   | { type: "open"; caseId: string; stageHint?: AppStage | null }
   | { type: "create" };
-
-type NavigationGuard = {
-  dirty: boolean;
-  save: () => Promise<void>;
-};
-
-interface CaseContextValue {
-  ready: boolean;
-  activeCaseId: string | null;
-  activeStage: AppStage | null;
-  activeRecord: CaseRecord | null;
-  activeProvenance: CaseBundle["provenance"];
-  browserQuery: string;
-  setBrowserQuery: (value: string) => void;
-  openCase: (caseId: string, stageHint?: AppStage | null) => Promise<void>;
-  createAndOpen: () => Promise<void>;
-  showBrowser: () => Promise<void>;
-  registerNavigationGuard: (guard: NavigationGuard | null) => void;
-  switchDialog: {
-    open: boolean;
-    busy: boolean;
-    error: string | null;
-    targetLabel: string;
-  };
-  retrySaveAndContinue: () => Promise<void>;
-  discardAndContinue: () => Promise<void>;
-  cancelSwitch: () => void;
-}
-
-const CaseContext = createContext<CaseContextValue | null>(null);
 
 function isArchivedRecord(record: CaseRecord | null): boolean {
   if (!record || typeof record !== "object") {
@@ -334,10 +304,4 @@ export function CaseProvider({
   );
 }
 
-export function useCase(): CaseContextValue {
-  const context = useContext(CaseContext);
-  if (!context) {
-    throw new Error("useCase must be used inside CaseProvider");
-  }
-  return context;
-}
+export { useCase } from "./useCase";
