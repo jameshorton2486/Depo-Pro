@@ -240,9 +240,9 @@ This field matrix treats that as a transcript-formatting consumer only. No repor
 ## Implementation Notes
 
 - Phase 1 additive migrations:
-  - `20260607135049_firms_table.sql`
-  - `20260607135049_contacts_details_and_firm_id.sql`
-  - `20260607135049_reporter_profiles_participant_fields.sql`
+  - `20260607135050_firms_table.sql`
+  - `20260607135051_contacts_details_and_firm_id.sql`
+  - `20260607135052_reporter_profiles_participant_fields.sql`
 - Phase 3 UFM mapping extends the pure builder with optional normalized directory inputs so participant credentials and firm blocks can populate without adding case-payload fields.
 - Phase 4 keyterm derivation now treats firm names already stored on attorney and videographer case entries as valid law-firm-priority sources, so directory-selected firms still seed Deepgram keyterms even when `record.law_firms` is empty.
 
