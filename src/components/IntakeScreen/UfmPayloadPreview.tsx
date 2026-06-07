@@ -1,9 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
+import { getMyProfile } from "../../api/reporterProfileService";
 import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
+import { isMockMode } from "../../lib/runtime/mode";
 import { buildUfmMetadata, summarizeUfmEnvelope } from "../../lib/ufm/buildUfmMetadata";
+import type { ReporterProfile } from "../../types/reporterProfile";
+
+const MOCK_REPORTER_PROFILE: ReporterProfile = {
+  owner_user_id: "mock-reporter-profile",
+  display_name: "Miah Bardot",
+  csr_number: "12129",
+  csr_cert_expiration: "2027-12-31",
+  firm_registration_number: "FR-9001",
+  created_at: "2026-06-07T00:00:00.000Z",
+  updated_at: "2026-06-07T00:00:00.000Z",
+};
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -38,10 +51,37 @@ function CopyButton({ text }: { text: string }) {
 export function UfmPayloadPreview() {
   const { record } = useIntake();
   const { activeProvenance } = useCase();
+  const [reporterProfile, setReporterProfile] = useState<ReporterProfile | null>(isMockMode() ? MOCK_REPORTER_PROFILE : null);
+
+  useEffect(() => {
+    if (isMockMode()) {
+      setReporterProfile(MOCK_REPORTER_PROFILE);
+      return;
+    }
+
+    let cancelled = false;
+    void getMyProfile()
+      .then((profile) => {
+        if (!cancelled) {
+          setReporterProfile(profile);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setReporterProfile(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const envelope = useMemo(() => buildUfmMetadata({
     record,
     provenance: activeProvenance,
-  }), [activeProvenance, record]);
+    reporterProfile,
+  }), [activeProvenance, record, reporterProfile]);
   const summary = summarizeUfmEnvelope(envelope);
 
   return (

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { FieldProvenanceRow } from "../../components/conflict/types";
 import { emptyCaseRecord } from "../../types/case";
+import type { ReporterProfile } from "../../types/reporterProfile";
 import { buildUfmMetadata } from "./buildUfmMetadata";
 import { REQUIRED_UFM_FIELDS } from "./requiredFields";
 
@@ -67,6 +68,18 @@ function buildProvenance(): FieldProvenanceRow[] {
       resolved_at: now,
     },
   ];
+}
+
+function buildReporterProfile(): ReporterProfile {
+  return {
+    owner_user_id: "user_123",
+    display_name: "Miah Bardot",
+    csr_number: "12129",
+    csr_cert_expiration: "2027-12-31",
+    firm_registration_number: "FR-9001",
+    created_at: "2026-06-05T20:00:00.000Z",
+    updated_at: "2026-06-05T20:00:00.000Z",
+  };
 }
 
 describe("buildUfmMetadata", () => {
@@ -242,5 +255,52 @@ describe("buildUfmMetadata", () => {
     expect(envelope.ufm_metadata.caption).toBe(
       "Maria L. Lopez De Martinez and Alfredo Montes Navarro v. Rafael Robles Calderon and All American Heavy Equipment Leasing, LLC",
     );
+  });
+
+  it("uses the reporter profile when present and marks those fields as confirmed profile data", () => {
+    const record = buildRecord();
+    record.reporter.name.value = "";
+    record.reporter.cert_number.value = "";
+    record.reporter.firm_registration_number.value = "";
+    record.reporter.license_expiration.value = "";
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: buildProvenance(),
+      reporterProfile: buildReporterProfile(),
+    });
+
+    expect(envelope.ufm_metadata.csr_name).toBe("Miah Bardot");
+    expect(envelope.ufm_metadata.csr_license).toBe("12129");
+    expect(envelope.ufm_metadata.firm_registration).toBe("FR-9001");
+    expect(envelope.ufm_metadata.csr_cert_expiration).toBe("2027-12-31");
+    expect(envelope.field_sources.ufmCsrName).toBe("profile");
+    expect(envelope.field_confirmations.ufmCsrName).toBe(true);
+    expect(envelope.field_confirmations.ufmCsrLicense).toBe(true);
+    expect(envelope.field_confirmations.ufmFirmRegistration).toBe(true);
+    expect(envelope.field_confirmations.ufmCsrCertExpiration).toBe(true);
+  });
+
+  it("keeps the existing reporter-field behavior when no reporter profile is present", () => {
+    const envelope = buildUfmMetadata({
+      record: buildRecord(),
+      provenance: buildProvenance(),
+      reporterProfile: null,
+    });
+
+    expect(envelope.ufm_metadata.csr_name).toBe("Miah Bardot");
+    expect(envelope.field_sources.ufmCsrName).toBe("manual");
+    expect(envelope.field_confirmations.ufmCsrName).toBe(false);
+  });
+
+  it("remains a pure synchronous builder even when reporter profile data is provided", () => {
+    const result = buildUfmMetadata({
+      record: buildRecord(),
+      provenance: buildProvenance(),
+      reporterProfile: buildReporterProfile(),
+    });
+
+    expect(result).not.toBeInstanceOf(Promise);
+    expect(result.case_id).toBe("case_ufm");
   });
 });

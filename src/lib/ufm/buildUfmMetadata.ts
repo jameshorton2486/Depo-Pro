@@ -1,5 +1,6 @@
 import type { FieldProvenanceRow } from "../../components/conflict/types";
 import type { CaseRecord, ExtractedField } from "../../types/case";
+import type { ReporterProfile } from "../../types/reporterProfile";
 import { REQUIRED_UFM_FIELDS } from "./requiredFields";
 
 type UfmFieldKey =
@@ -242,9 +243,10 @@ export function summarizeUfmEnvelope(envelope: UfmMetadataEnvelope) {
 export function buildUfmMetadata(args: {
   record: CaseRecord;
   provenance: FieldProvenanceRow[];
+  reporterProfile?: ReporterProfile | null;
   computedAt?: string;
 }): UfmMetadataEnvelope {
-  const { record, provenance } = args;
+  const { record, provenance, reporterProfile = null } = args;
   const computedAt = args.computedAt ?? new Date().toISOString();
   const address = joinLocation(record);
   const caption = normalizeValue(record.caption.case_style.value) ?? normalizeValue(record.caption.case_name.value);
@@ -291,10 +293,11 @@ export function buildUfmMetadata(args: {
       daily_copy: record.reporter_requests.daily_copy.value,
       rough_draft: record.reporter_requests.rough_draft.value,
     },
-    csr_name: normalizeValue(record.reporter.name.value),
-    csr_license: normalizeValue(record.reporter.cert_number.value),
-    firm_registration: normalizeValue(record.reporter.firm_registration_number.value),
-    csr_cert_expiration: normalizeValue(record.reporter.license_expiration.value),
+    csr_name: normalizeValue(reporterProfile?.display_name) ?? normalizeValue(record.reporter.name.value),
+    csr_license: normalizeValue(reporterProfile?.csr_number) ?? normalizeValue(record.reporter.cert_number.value),
+    firm_registration:
+      normalizeValue(reporterProfile?.firm_registration_number) ?? normalizeValue(record.reporter.firm_registration_number.value),
+    csr_cert_expiration: normalizeValue(reporterProfile?.csr_cert_expiration) ?? normalizeValue(record.reporter.license_expiration.value),
     custodial_attorney: normalizeValue(custodialAttorneyField?.value),
     requesting_party: normalizeValue(requestingPartyField?.value),
     appearances: buildAppearances(record),
@@ -321,10 +324,10 @@ export function buildUfmMetadata(args: {
     ufmRemotePlatform: mapFieldSource(record.scheduling.remote_platform, sourceForPath(provenance, "scheduling.remote_platform")),
     ufmNoticingParty: mapFieldSource(record.scheduling.noticing_party, sourceForPath(provenance, "scheduling.noticing_party")),
     ufmServiceType: mapFieldSource(record.scheduling.service_type, sourceForPath(provenance, "scheduling.service_type")),
-    ufmCsrName: mapFieldSource(record.reporter.name, "manual"),
-    ufmCsrLicense: mapFieldSource(record.reporter.cert_number, "profile"),
-    ufmFirmRegistration: mapFieldSource(record.reporter.firm_registration_number, "profile"),
-    ufmCsrCertExpiration: mapFieldSource(record.reporter.license_expiration, "profile"),
+    ufmCsrName: reporterProfile ? "profile" : mapFieldSource(record.reporter.name, "manual"),
+    ufmCsrLicense: reporterProfile ? "profile" : mapFieldSource(record.reporter.cert_number, "profile"),
+    ufmFirmRegistration: reporterProfile ? "profile" : mapFieldSource(record.reporter.firm_registration_number, "profile"),
+    ufmCsrCertExpiration: reporterProfile ? "profile" : mapFieldSource(record.reporter.license_expiration, "profile"),
     ufmCustodialAttorney: custodialAttorneyField
       ? mapFieldSource(
           custodialAttorneyField,
@@ -360,10 +363,10 @@ export function buildUfmMetadata(args: {
     ufmRemotePlatform: record.scheduling.remote_platform.confirmed,
     ufmNoticingParty: record.scheduling.noticing_party.confirmed,
     ufmServiceType: record.scheduling.service_type.confirmed,
-    ufmCsrName: record.reporter.name.confirmed,
-    ufmCsrLicense: record.reporter.cert_number.confirmed,
-    ufmFirmRegistration: record.reporter.firm_registration_number.confirmed,
-    ufmCsrCertExpiration: record.reporter.license_expiration.confirmed,
+    ufmCsrName: reporterProfile ? true : record.reporter.name.confirmed,
+    ufmCsrLicense: reporterProfile ? true : record.reporter.cert_number.confirmed,
+    ufmFirmRegistration: reporterProfile ? true : record.reporter.firm_registration_number.confirmed,
+    ufmCsrCertExpiration: reporterProfile ? true : record.reporter.license_expiration.confirmed,
     ufmCustodialAttorney: custodialAttorneyField?.confirmed ?? false,
     ufmRequestingParty: requestingPartyField?.confirmed ?? false,
   };
