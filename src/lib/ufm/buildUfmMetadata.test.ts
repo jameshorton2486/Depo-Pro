@@ -77,6 +77,11 @@ function buildReporterProfile(): ReporterProfile {
     csr_number: "12129",
     csr_cert_expiration: "2027-12-31",
     firm_registration_number: "FR-9001",
+    initials: "MB",
+    realtime_capable: true,
+    remote_swear_authority: true,
+    notary_commission_expiration: "2027-12-31",
+    preferred_signature_block: "Miah Bardot, CSR 12129",
     created_at: "2026-06-05T20:00:00.000Z",
     updated_at: "2026-06-05T20:00:00.000Z",
   };

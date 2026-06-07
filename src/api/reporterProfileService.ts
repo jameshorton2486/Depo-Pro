@@ -1,6 +1,25 @@
 import { getSupabaseClient } from "../lib/supabase";
 import type { ReporterProfile, ReporterProfilePatch } from "../types/reporterProfile";
 
+function normalizeNullableString(value: string | null | undefined): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function normalizeReporterProfile(row: ReporterProfile): ReporterProfile {
+  return {
+    ...row,
+    display_name: normalizeNullableString(row.display_name),
+    csr_number: normalizeNullableString(row.csr_number),
+    csr_cert_expiration: normalizeNullableString(row.csr_cert_expiration),
+    firm_registration_number: normalizeNullableString(row.firm_registration_number),
+    initials: normalizeNullableString(row.initials),
+    realtime_capable: row.realtime_capable === true,
+    remote_swear_authority: row.remote_swear_authority === true,
+    notary_commission_expiration: normalizeNullableString(row.notary_commission_expiration),
+    preferred_signature_block: normalizeNullableString(row.preferred_signature_block),
+  };
+}
+
 async function getCurrentUserId() {
   const client = await getSupabaseClient("getCurrentReporterProfileUser");
   const { data, error } = await client.auth.getUser();
@@ -26,7 +45,7 @@ export async function getMyProfile(): Promise<ReporterProfile | null> {
     throw error;
   }
 
-  return (data as ReporterProfile | null) ?? null;
+  return data ? normalizeReporterProfile(data as ReporterProfile) : null;
 }
 
 export async function upsertMyProfile(patch: ReporterProfilePatch): Promise<ReporterProfile> {
@@ -45,7 +64,7 @@ export async function upsertMyProfile(patch: ReporterProfilePatch): Promise<Repo
       throw error;
     }
 
-    return data as ReporterProfile;
+    return normalizeReporterProfile(data as ReporterProfile);
   }
 
   const { data, error } = await client
@@ -61,5 +80,5 @@ export async function upsertMyProfile(patch: ReporterProfilePatch): Promise<Repo
     throw error;
   }
 
-  return data as ReporterProfile;
+  return normalizeReporterProfile(data as ReporterProfile);
 }

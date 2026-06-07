@@ -1,26 +1,23 @@
 import { getSupabaseClient } from "../lib/supabase";
-import type { Contact, ContactInsert, ContactUpdate, ContactType } from "../types/contact";
+import { decideDirectoryContactUpsert, type DirectoryMergeConflict } from "../lib/directory/mergeDirectoryRecords";
+import {
+  normalizeContactInsert,
+  normalizeContactRow,
+  normalizeContactUpdate,
+  type Contact,
+  type ContactInsert,
+  type ContactType,
+  type ContactUpdate,
+} from "../types/contact";
 
-function normalizePhone(value: string | null | undefined): string {
-  return (value ?? "").replace(/\D/g, "");
+function normalizePhone(value: string): string {
+  return value.replace(/\D/g, "");
 }
 
-function normalizeContactInsert(payload: ContactInsert): ContactInsert {
-  return {
-    ...payload,
-    phone: normalizePhone(payload.phone),
-  };
-}
-
-function normalizeContactUpdate(patch: ContactUpdate): ContactUpdate {
-  if (!("phone" in patch)) {
-    return patch;
-  }
-
-  return {
-    ...patch,
-    phone: normalizePhone(patch.phone),
-  };
+export interface DirectoryContactUpsertResult {
+  contact: Contact;
+  conflicts: DirectoryMergeConflict[];
+  created: boolean;
 }
 
 export async function listContacts(type?: ContactType): Promise<Contact[]> {
@@ -37,7 +34,7 @@ export async function listContacts(type?: ContactType): Promise<Contact[]> {
 
   const { data, error } = await query;
   if (error) throw error;
-  return data as Contact[];
+  return (data ?? []).map((row) => normalizeContactRow(row as Contact));
 }
 
 export async function searchContacts(term: string, type?: ContactType): Promise<Contact[]> {
@@ -55,7 +52,7 @@ export async function searchContacts(term: string, type?: ContactType): Promise<
 
   const { data, error } = await query;
   if (error) throw error;
-  return data as Contact[];
+  return (data ?? []).map((row) => normalizeContactRow(row as Contact));
 }
 
 export async function getContact(id: string): Promise<Contact | null> {
@@ -67,7 +64,7 @@ export async function getContact(id: string): Promise<Contact | null> {
     .maybeSingle();
 
   if (error) throw error;
-  return data as Contact | null;
+  return data ? normalizeContactRow(data as Contact) : null;
 }
 
 export async function createContact(payload: ContactInsert): Promise<Contact> {
@@ -75,26 +72,33 @@ export async function createContact(payload: ContactInsert): Promise<Contact> {
   const normalized = normalizeContactInsert(payload);
   const { data, error } = await client
     .from("contacts")
-    .insert({ ...normalized, times_used: 0 })
+    .insert({ ...normalized, phone: normalizePhone(normalized.phone), times_used: 0 })
     .select()
     .single();
 
   if (error) throw error;
-  return data as Contact;
+  return normalizeContactRow(data as Contact);
 }
 
 export async function updateContact(id: string, patch: ContactUpdate): Promise<Contact> {
   const client = await getSupabaseClient("updateContact");
-  const normalized = normalizeContactUpdate(patch);
+  const current = await getContact(id);
+  if (!current) {
+    throw new Error(`Contact ${id} not found.`);
+  }
+  const normalized = normalizeContactUpdate(current.type, patch);
   const { data, error } = await client
     .from("contacts")
-    .update(normalized)
+    .update({
+      ...normalized,
+      phone: normalized.phone ? normalizePhone(normalized.phone) : normalized.phone,
+    })
     .eq("id", id)
     .select()
     .single();
 
   if (error) throw error;
-  return data as Contact;
+  return normalizeContactRow(data as Contact);
 }
 
 export async function incrementUsage(id: string): Promise<void> {
@@ -118,4 +122,45 @@ export async function saveContact(payload: ContactInsert & { id?: string }): Pro
     return updateContact(id, patch);
   }
   return createContact(payload);
+}
+
+export async function upsertDirectoryContact(payload: ContactInsert): Promise<DirectoryContactUpsertResult> {
+  const existing = await listContacts(payload.type);
+  const decision = decideDirectoryContactUpsert(existing, payload);
+
+  if (decision.created && decision.payload) {
+    return {
+      contact: await createContact(decision.payload),
+      conflicts: [],
+      created: true,
+    };
+  }
+
+  if (decision.conflicts.length > 0 && decision.contact) {
+    return {
+      contact: decision.contact,
+      conflicts: decision.conflicts,
+      created: false,
+    };
+  }
+
+  if (!decision.contact) {
+    throw new Error("Directory upsert could not determine a contact result.");
+  }
+
+  const updated = await updateContact(decision.contact.id, {
+    organization: decision.contact.organization,
+    phone: decision.contact.phone,
+    email: decision.contact.email,
+    address: decision.contact.address,
+    notes: decision.contact.notes,
+    firm_id: decision.contact.firm_id,
+    details: decision.contact.details,
+  });
+
+  return {
+    contact: updated,
+    conflicts: [],
+    created: false,
+  };
 }

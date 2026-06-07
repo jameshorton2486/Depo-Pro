@@ -8,6 +8,8 @@ import {
   updateContact,
   incrementUsage,
   saveContact,
+  upsertDirectoryContact,
+  type DirectoryContactUpsertResult,
 } from "../api/contactService";
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -135,6 +137,12 @@ export function useContactStore() {
     dispatch({ type: "INCREMENT_USAGE", payload: id });
   }, []);
 
+  const upsertDirectory = useCallback(async (payload: ContactInsert): Promise<DirectoryContactUpsertResult> => {
+    const result = await upsertDirectoryContact(payload);
+    dispatch({ type: "UPSERT", payload: result.contact });
+    return result;
+  }, []);
+
   return {
     ...state,
     load,
@@ -143,10 +151,11 @@ export function useContactStore() {
     create,
     update,
     save,
+    upsertDirectory,
     useContact,
   };
 }
 
 // ─── Re-export service layer for direct use outside of React ──────────────────
-export { listContacts, searchContacts, getContact, createContact, updateContact, incrementUsage, saveContact };
+export { listContacts, searchContacts, getContact, createContact, updateContact, incrementUsage, saveContact, upsertDirectoryContact };
 export type { Contact, ContactInsert, ContactUpdate, ContactType };

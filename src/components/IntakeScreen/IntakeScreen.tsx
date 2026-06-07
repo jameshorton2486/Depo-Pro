@@ -78,6 +78,12 @@ function mapParticipantRole(type: ContactType): ParticipantRole {
     case "participant":
     case "attorney":
     case "firm":
+    case "reporter":
+    case "scheduler":
+    case "paralegal":
+    case "legal_assistant":
+    case "records_custodian":
+    case "corporate_representative":
       return "OTHER";
   }
 }
