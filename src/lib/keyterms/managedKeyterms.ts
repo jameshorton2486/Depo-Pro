@@ -63,6 +63,31 @@ function managedId(term: string): string {
   return `kt_${normalizeTerm(term).toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
 }
 
+function buildManagedTerm(
+  keyterm: DeepgramKeyterm,
+  source: KeytermSource,
+  options?: {
+    selected?: boolean;
+    pinned?: boolean;
+    confidence?: number;
+    notes?: string;
+  },
+): ManagedKeyterm {
+  return {
+    id: managedId(keyterm.term),
+    term: normalizeTerm(keyterm.term),
+    boost: keyterm.boost,
+    category: keyterm.category,
+    source,
+    notes: options?.notes ?? "",
+    selected: options?.selected ?? true,
+    pinned: options?.pinned ?? false,
+    priority: 0,
+    confidence: options?.confidence ?? 1,
+    token_count: countTokens(keyterm.term),
+  };
+}
+
 export function buildManagedKeyterms(args: {
   record: CaseRecord;
   provenance: FieldProvenanceRow[];
@@ -155,4 +180,31 @@ export function serializeManagedKeyterms(terms: ManagedKeyterm[]): DeepgramKeyte
       notes: term.notes,
     }),
   }));
+}
+
+export function mergeManagedDerivedKeyterms(
+  existingTerms: ManagedKeyterm[],
+  derivedKeyterms: DeepgramKeyterm[],
+): ManagedKeyterm[] {
+  const merged = new Map<string, ManagedKeyterm>();
+
+  for (const term of existingTerms) {
+    merged.set(normalizeTerm(term.term).toLowerCase(), term);
+  }
+
+  for (const keyterm of derivedKeyterms) {
+    const dedupeKey = normalizeTerm(keyterm.term).toLowerCase();
+    if (merged.has(dedupeKey)) {
+      continue;
+    }
+
+    merged.set(dedupeKey, buildManagedTerm(keyterm, "UFM Metadata", {
+      selected: true,
+      pinned: false,
+      confidence: 1,
+      notes: "derived",
+    }));
+  }
+
+  return Array.from(merged.values());
 }

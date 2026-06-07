@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pin, PinOff, Trash2, Plus, Search,
   AlertTriangle, ChevronDown, ChevronUp, Zap, LayoutList,
@@ -9,6 +9,9 @@ import { DeepgramPayloadPreview } from "./DeepgramPayloadPreview";
 import type { ManagedKeyterm, KeytermSource, KeytermView, AddKeytermForm } from "./types";
 import { DEEPGRAM_MAX_TERMS, DEEPGRAM_MAX_TOKENS } from "./types";
 import type { KeytermCategory } from "../../types/case";
+import { useIntake } from "../../context/useIntake";
+import { deriveKeytermsWithBudget, shouldAutoSeedDerivedKeyterms } from "../../lib/keytermDerivation";
+import { mergeManagedDerivedKeyterms } from "../../lib/keyterms/managedKeyterms";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -46,6 +49,38 @@ const SOURCE_COLOR: Record<KeytermSource, string> = {
   "Manual":           "bg-slate-100 text-slate-700",
   "Learned":          "bg-orange-100 text-orange-800",
 };
+
+const AUTO_SEED_STORAGE_KEY = "depo:auto-seeded-keyterms";
+
+function readAutoSeededCaseIds(): Set<string> {
+  if (typeof window === "undefined") {
+    return new Set<string>();
+  }
+
+  try {
+    const raw = window.localStorage.getItem(AUTO_SEED_STORAGE_KEY);
+    if (!raw) {
+      return new Set<string>();
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? new Set(parsed.filter((value): value is string => typeof value === "string"))
+      : new Set<string>();
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function markAutoSeeded(caseId: string) {
+  if (typeof window === "undefined" || !caseId) {
+    return;
+  }
+
+  const next = readAutoSeededCaseIds();
+  next.add(caseId);
+  window.localStorage.setItem(AUTO_SEED_STORAGE_KEY, JSON.stringify([...next]));
+}
 
 // ─── Limit gauge ──────────────────────────────────────────────────────────────
 
@@ -477,10 +512,40 @@ function ColumnHeaders() {
 
 export function DeepgramKeytermManager() {
   const {
-    state, limits, visibleTerms, setSearch, togglePayload,
+    state, limits, visibleTerms, setSearch, togglePayload, load,
   } = useKeyterms();
+  const { record } = useIntake();
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [lastDerivedSummary, setLastDerivedSummary] = useState<{
+    included: number;
+    dropped: number;
+    estimatedTokens: number;
+  } | null>(null);
+
+  function applyDerivedKeyterms() {
+    const result = deriveKeytermsWithBudget(record);
+    const merged = mergeManagedDerivedKeyterms(state.terms, result.included);
+    const addedCount = merged.length - state.terms.length;
+    load(merged);
+    setLastDerivedSummary({
+      included: addedCount,
+      dropped: result.dropped.length,
+      estimatedTokens: result.estimatedTokens,
+    });
+    return result;
+  }
+
+  useEffect(() => {
+    const alreadyAttempted = readAutoSeededCaseIds().has(record.case_id);
+    if (!shouldAutoSeedDerivedKeyterms(record, alreadyAttempted)) {
+      return;
+    }
+
+    applyDerivedKeyterms();
+    markAutoSeeded(record.case_id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record.case_id, record.deepgram.keyterms, record.witnesses, record.attorneys]);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -536,6 +601,14 @@ export function DeepgramKeytermManager() {
             }
           </button>
 
+          <button
+            type="button"
+            onClick={() => applyDerivedKeyterms()}
+            className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            Generate from case data
+          </button>
+
           {/* Add keyterm */}
           <button
             type="button"
@@ -551,6 +624,14 @@ export function DeepgramKeytermManager() {
           </button>
         </div>
       </div>
+
+      {lastDerivedSummary && (
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
+          Generated {lastDerivedSummary.included} derived term{lastDerivedSummary.included !== 1 ? "s" : ""} from case data.
+          {lastDerivedSummary.dropped > 0 ? ` ${lastDerivedSummary.dropped} dropped for budget.` : ""}
+          {" "}Estimated token usage: {lastDerivedSummary.estimatedTokens}/{DEEPGRAM_MAX_TOKENS}.
+        </div>
+      )}
 
       {/* ── Limit warning ── */}
       <LimitWarning />

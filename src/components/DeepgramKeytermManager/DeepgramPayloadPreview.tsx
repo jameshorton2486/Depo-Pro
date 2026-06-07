@@ -2,8 +2,7 @@ import { useMemo, useState } from "react";
 import { Copy, Check, ExternalLink } from "lucide-react";
 
 import { useIntake } from "../../context/useIntake";
-import { buildDeepgramRequest } from "../../lib/deepgram/buildDeepgramRequest";
-import { useKeyterms } from "./keytermStore";
+import { buildDeepgramRequestFromStoredKeyterms } from "../../lib/deepgram/buildDeepgramRequest";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -64,22 +63,15 @@ function KeytermLine({
 
 export function DeepgramPayloadPreview() {
   const { record } = useIntake();
-  const { state } = useKeyterms();
   const [tab, setTab] = useState<"url" | "structured">("url");
   const offlineFixture =
     import.meta.env.VITE_TRANSCRIPTION_PROVIDER === "offline"
     || !import.meta.env.VITE_DEEPGRAM_API_KEY;
 
-  const request = useMemo(() => buildDeepgramRequest({
+  const request = useMemo(() => buildDeepgramRequestFromStoredKeyterms({
     caseId: record.case_id,
-    keyterms: state.terms.map((term) => ({
-      term: term.term,
-      boost: term.boost,
-      category: term.category,
-      source: term.source,
-      selected: term.selected,
-    })),
-  }), [record.case_id, state.terms]);
+    keyterms: record.deepgram.keyterms,
+  }), [record.case_id, record.deepgram.keyterms]);
 
   const selectedTerms = request.envelope.keyterms;
 
@@ -185,12 +177,10 @@ export function DeepgramPayloadPreview() {
           <span className="font-bold text-slate-300">{request.envelope.keyterms_count}</span> selected keyterms
         </span>
         <span>
-          <span className="font-bold text-slate-300">{request.wireKeyterms.length}</span> sent on wire
+          <span className="font-bold text-slate-300">{request.envelope.estimated_token_usage}</span> estimated tokens / {request.envelope.estimated_token_cap}
         </span>
         <span>
-          <span className="font-bold text-amber-400">
-            {state.terms.filter((term) => term.pinned && term.selected).length}
-          </span> pinned
+          <span className="font-bold text-slate-300">{request.wireKeyterms.length}</span> sent on wire
         </span>
       </div>
     </div>

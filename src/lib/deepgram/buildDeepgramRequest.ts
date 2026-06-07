@@ -1,4 +1,5 @@
 import type { DeepgramKeyterm } from "../../types/case";
+import { DEEPGRAM_KEYTERM_HARD_TOKEN_CAP, estimateSelectedStoredKeytermTokens } from "../keytermDerivation";
 import { readStoredKeytermMeta } from "../keyterms/managedKeyterms";
 
 export interface DeepgramRequestKeyterm {
@@ -28,6 +29,8 @@ export interface DeepgramRequestPreviewEnvelope {
     source: string;
   }>;
   keyterms_count: number;
+  estimated_token_usage: number;
+  estimated_token_cap: number;
   keyterms_note: string | null;
 }
 
@@ -125,6 +128,8 @@ export function buildDeepgramRequest(input: {
         source: keyterm.source,
       })),
       keyterms_count: normalized.length,
+      estimated_token_usage: normalized.reduce((sum, keyterm) => sum + keyterm.term.trim().split(/\s+/).filter(Boolean).length + 1, 0),
+      estimated_token_cap: DEEPGRAM_KEYTERM_HARD_TOKEN_CAP,
       keyterms_note:
         cutCount > 0
           ? `${cutCount} keyterms were excluded from the wire request after the 100-term cap.`
@@ -141,7 +146,7 @@ export function buildDeepgramRequestFromStoredKeyterms(input: {
   keyterms: DeepgramKeyterm[];
   computedAt?: string;
 }): DeepgramRequestBuildResult {
-  return buildDeepgramRequest({
+  const request = buildDeepgramRequest({
     caseId: input.caseId,
     computedAt: input.computedAt,
     keyterms: input.keyterms.map((keyterm) => {
@@ -155,4 +160,7 @@ export function buildDeepgramRequestFromStoredKeyterms(input: {
       };
     }),
   });
+
+  request.envelope.estimated_token_usage = estimateSelectedStoredKeytermTokens(input.keyterms);
+  return request;
 }
