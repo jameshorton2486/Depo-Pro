@@ -129,6 +129,14 @@ function mapFieldSource(field: ExtractedField<unknown>, fallback: FieldSourceVal
   return fallback;
 }
 
+function hasValue(field: ExtractedField<string | null>): boolean {
+  return normalizeValue(field.value) !== null;
+}
+
+function firstPopulatedField(fields: ExtractedField<string | null>[]) {
+  return fields.find(hasValue) ?? null;
+}
+
 function joinLocation(record: CaseRecord): string | null {
   const parts = [
     normalizeValue(record.session.location_address.value),
@@ -243,6 +251,12 @@ export function buildUfmMetadata(args: {
   const deponent = deponentName(record);
   const depositionDate = normalizeValue(record.session.deposition_date.value);
   const dateParts = computeDateParts(depositionDate);
+  const requestingPartyField = hasValue(record.scheduling.noticing_party) ? record.scheduling.noticing_party : null;
+  const custodialAttorneyField = firstPopulatedField([
+    record.scheduling.ordered_by,
+    record.scheduling.scheduler,
+    record.scheduling.scheduling_contact,
+  ]);
 
   const ufm_metadata: UfmMetadataEnvelope["ufm_metadata"] = {
     cause_number: normalizeValue(record.caption.case_number.value),
@@ -281,8 +295,8 @@ export function buildUfmMetadata(args: {
     csr_license: normalizeValue(record.reporter.cert_number.value),
     firm_registration: normalizeValue(record.reporter.firm_registration_number.value),
     csr_cert_expiration: normalizeValue(record.reporter.license_expiration.value),
-    custodial_attorney: normalizeValue(record.proceeding.ordering_contact),
-    requesting_party: null,
+    custodial_attorney: normalizeValue(custodialAttorneyField?.value),
+    requesting_party: normalizeValue(requestingPartyField?.value),
     appearances: buildAppearances(record),
     volume: "1",
     proceedings_month: dateParts.proceedings_month,
@@ -311,8 +325,22 @@ export function buildUfmMetadata(args: {
     ufmCsrLicense: mapFieldSource(record.reporter.cert_number, "profile"),
     ufmFirmRegistration: mapFieldSource(record.reporter.firm_registration_number, "profile"),
     ufmCsrCertExpiration: mapFieldSource(record.reporter.license_expiration, "profile"),
-    ufmCustodialAttorney: "manual",
-    ufmRequestingParty: "manual",
+    ufmCustodialAttorney: custodialAttorneyField
+      ? mapFieldSource(
+          custodialAttorneyField,
+          sourceForPath(
+            provenance,
+            custodialAttorneyField === record.scheduling.ordered_by
+              ? "scheduling.ordered_by"
+              : custodialAttorneyField === record.scheduling.scheduler
+                ? "scheduling.scheduler"
+                : "scheduling.scheduling_contact",
+          ),
+        )
+      : "manual",
+    ufmRequestingParty: requestingPartyField
+      ? mapFieldSource(requestingPartyField, sourceForPath(provenance, "scheduling.noticing_party"))
+      : "manual",
   };
 
   const field_confirmations: UfmMetadataEnvelope["field_confirmations"] = {
@@ -336,8 +364,8 @@ export function buildUfmMetadata(args: {
     ufmCsrLicense: record.reporter.cert_number.confirmed,
     ufmFirmRegistration: record.reporter.firm_registration_number.confirmed,
     ufmCsrCertExpiration: record.reporter.license_expiration.confirmed,
-    ufmCustodialAttorney: false,
-    ufmRequestingParty: false,
+    ufmCustodialAttorney: custodialAttorneyField?.confirmed ?? false,
+    ufmRequestingParty: requestingPartyField?.confirmed ?? false,
   };
 
   const missing_required_fields = REQUIRED_UFM_FIELDS

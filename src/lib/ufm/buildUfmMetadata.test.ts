@@ -91,6 +91,82 @@ describe("buildUfmMetadata", () => {
     expect(envelope.field_confirmations.ufmCsrName).toBe(false);
   });
 
+  it("derives requesting party from extracted scheduling data without auto-confirming it", () => {
+    const record = buildRecord();
+    record.scheduling.noticing_party.value = "Plaintiff";
+    record.scheduling.noticing_party.source = "extracted";
+    record.scheduling.noticing_party.confirmed = false;
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: [
+        ...buildProvenance(),
+        {
+          id: "prov_requesting_party",
+          case_id: "case_ufm",
+          field_path: "scheduling.noticing_party",
+          field_label: "Noticing Party",
+          event_type: "extracted",
+          value: "Plaintiff",
+          source: "Notice",
+          winning_value: null,
+          rejected_value: null,
+          rejected_source: null,
+          confidence_score: 0.88,
+          resolution_user: "reporter",
+          resolved_at: "2026-06-05T20:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(envelope.ufm_metadata.requesting_party).toBe("Plaintiff");
+    expect(envelope.field_sources.ufmRequestingParty).toBe("nod_parser");
+    expect(envelope.field_confirmations.ufmRequestingParty).toBe(false);
+  });
+
+  it("leaves derived UFM fields blank when their extracted source fields are absent", () => {
+    const envelope = buildUfmMetadata({
+      record: buildRecord(),
+      provenance: buildProvenance(),
+    });
+
+    expect(envelope.ufm_metadata.requesting_party).toBeNull();
+    expect(envelope.ufm_metadata.custodial_attorney).toBeNull();
+  });
+
+  it("flips the UFM confirmation when the underlying extracted field is confirmed", () => {
+    const record = buildRecord();
+    record.scheduling.ordered_by.value = "Tiffany Netcher";
+    record.scheduling.ordered_by.source = "extracted";
+    record.scheduling.ordered_by.confirmed = true;
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: [
+        ...buildProvenance(),
+        {
+          id: "prov_custodial_attorney",
+          case_id: "case_ufm",
+          field_path: "scheduling.ordered_by",
+          field_label: "Ordered By",
+          event_type: "extracted",
+          value: "Tiffany Netcher",
+          source: "Notice",
+          winning_value: null,
+          rejected_value: null,
+          rejected_source: null,
+          confidence_score: 0.9,
+          resolution_user: "reporter",
+          resolved_at: "2026-06-05T20:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(envelope.ufm_metadata.custodial_attorney).toBe("Tiffany Netcher");
+    expect(envelope.field_sources.ufmCustodialAttorney).toBe("nod_parser");
+    expect(envelope.field_confirmations.ufmCustodialAttorney).toBe(true);
+  });
+
   it("derives missing required fields from the required set", () => {
     const record = buildRecord();
     record.reporter.cert_number.value = "";
