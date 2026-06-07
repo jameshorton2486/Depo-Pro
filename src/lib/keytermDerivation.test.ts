@@ -342,6 +342,42 @@ describe("deriveKeytermsWithBudget", () => {
     const terms = deriveKeytermsWithBudget(record).included.map((keyterm) => keyterm.term);
     expect(terms.filter((term) => term.toLowerCase() === "ramirez")).toEqual(["Ramirez"]);
   });
+
+  it("derives firm tokens from attorney and videographer case entries when law_firms is empty", () => {
+    const record = emptyCaseRecord("case_firm_gap", "2026-06-06T20:00:00.000Z");
+    record.attorneys = [{
+      attorney_id: "a1",
+      name: manualField("Karen M. Alvarado"),
+      firm: manualField("Brothers, Alvarado, Piazza & Cozort, P.C."),
+      role: manualField("EXAMINING"),
+      representing: manualField("Defendant"),
+      bar_number: manualField(null),
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: null,
+      email: null,
+      phone: null,
+    }];
+    record.videographers = [{
+      videographer_id: "v1",
+      name: manualField("Victor Stone"),
+      firm: manualField("Acme Video, LLC"),
+      role_title: null,
+      cert_number: null,
+      email: null,
+      phone: null,
+    }];
+
+    const terms = deriveKeytermsWithBudget(record).included.map((keyterm) => keyterm.term);
+
+    expect(terms).toContain("Alvarado");
+    expect(terms).toContain("Piazza");
+    expect(terms).toContain("Cozort");
+    expect(terms).toContain("Acme");
+    expect(terms).not.toContain("Video");
+  });
 });
 
 describe("mergeManagedDerivedKeyterms", () => {

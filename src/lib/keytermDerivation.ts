@@ -238,9 +238,11 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
     if (group) groups.push({ ...group, priority: 4 });
   }
 
-  const firmTokens = Array.from(new Set(
-    record.law_firms.flatMap((lawFirm) => collectFirmTokens(valueOf(lawFirm.name))),
-  ));
+  const firmTokens = Array.from(new Set([
+    ...record.law_firms.flatMap((lawFirm) => collectFirmTokens(valueOf(lawFirm.name))),
+    ...record.attorneys.flatMap((attorney) => collectFirmTokens(valueOf(attorney.firm))),
+    ...record.videographers.flatMap((videographer) => collectFirmTokens(valueOf(videographer.firm))),
+  ]));
   if (firmTokens.length > 0) {
     groups.push({
       priority: 5,
