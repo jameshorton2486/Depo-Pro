@@ -44,6 +44,8 @@ describe("buildDeepgramRequest", () => {
         { term: "Goldman & Peterson", boost: 7, category: "Law Firm", source: "nod_parser" },
       ],
       keyterms_count: 2,
+      estimated_token_usage: 7,
+      estimated_token_cap: 500,
       keyterms_note: null,
     });
     expect(request.wireUrl).toContain("model=nova-3");
@@ -83,6 +85,7 @@ describe("buildDeepgramRequest", () => {
     });
 
     expect(request.envelope.keyterms_count).toBe(105);
+    expect(request.envelope.estimated_token_cap).toBe(500);
     expect(request.wireKeyterms).toHaveLength(100);
     expect(request.envelope.keyterms_note).toContain("5 keyterms");
   });
