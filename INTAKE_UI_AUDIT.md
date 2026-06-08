@@ -222,3 +222,33 @@ Top priority attorney-picker root cause:
 2. In mock/dev, it is undermined by missing `contacts` / `firms` MSW handlers.
 3. Even when a directory contact is picked, the live panel does not commit it until the user clicks the generic footer action.
 4. Editing an already-added attorney is not broken wiring; it is absent from the live component.
+
+## Speaker-label addendum — `preferred_appearance_label` / `appearances[].appearance_label`
+
+### Current state
+
+- The attorney drawer still stores the field under the unchanged directory key `contacts.details.preferred_appearance_label` when saving an attorney contact (`src/components/IntakeScreen/ParticipantsPanel.tsx:372-381`).
+- The only live builder that consumes that stored field is `buildUfmMetadata()`, which copies it into `ufm_metadata.appearances[].appearance_label` for attorney appearance rows (`src/lib/ufm/buildUfmMetadata.ts:212-272`).
+- The live UFM preview renders the raw UFM envelope JSON built from `buildUfmMetadata(...)`; it does not reinterpret `appearance_label` for transcript/editor use (`src/components/IntakeScreen/UfmPayloadPreview.tsx:57-113`).
+- The transcript/editor stack uses a separate `speaker_label` attribute and speaker-assignment pipeline (`src/extensions/UtteranceNode.ts`, `src/components/TranscriptEditor/UtteranceNodeView.tsx:9-107`, `src/api/workspaceService.ts:84,428,457`, `src/lib/buildEditorContent.ts:96`). No live transcript/editor module reads `preferred_appearance_label` or `appearances[].appearance_label`.
+
+### Downstream consumer verdict
+
+- **Live runtime consumer found:** UFM appearances metadata only.
+- **No live transcript/by-line consumer found:** speaker labels and transcript by-lines flow through the transcript-domain `speaker_label` pipeline, not this attorney directory field.
+- **Documentation intent is mixed:** the participant matrix currently describes attorney `preferred_appearance_label` as a transcript-formatting consumer (`docs/audits/PARTICIPANT_FIELD_MATRIX.md:95`), but the live code does not implement that usage. Texas UFM requirements separately describe attorney full name as the appearance-page field (`docs/architecture/UFM_TEXAS_REQUIREMENTS.md:28-39`), which is distinct from this stored label.
+
+### Classification
+
+- **freeze-safe audit finding**
+- **implementation caution:** this is a single live consumer, but it is **not** the transcript speaker-label consumer named in the prompt. Repurposing the UI label to “Transcript Speaker Label” would change user-facing semantics ahead of any live transcript consumer.
+
+### Recommendation
+
+- Treat the field as a single-consumer UFM appearance-metadata field in the live app today.
+- Do **not** force a transcript-specific dropdown in this run without a confirmed live transcript/by-line consumer for the same field.
+- If the product decision is to make this a transcript-speaker-label field later, first wire or audit the actual transcript consumer so the UI name, option set, and downstream use all agree.
+
+### Risk
+
+- Medium. There is no two-consumer runtime conflict today, but there **is** a semantics mismatch between the proposed UI label (“Transcript Speaker Label”) and the only live consumer actually found (UFM appearances metadata).
