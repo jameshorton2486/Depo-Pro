@@ -345,6 +345,42 @@ describe("ParticipantsPanel", () => {
     expect(findLabel(tree, "Role In This Proceeding")).toBeTruthy();
   });
 
+  it("renders a long attorney name as a single intact text string in the participant card", () => {
+    const attorneyRecord = emptyCaseRecord("case_participants_long_name", "2026-06-08T00:00:00.000Z");
+    attorneyRecord.attorneys = [{
+      attorney_id: "attorney_long_1",
+      name: { value: "Brothers Alvarado Piazza Cozort Counsel", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      function: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      representing: { value: "FOR THE DEFENDANT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      bar_number: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: null,
+      email: null,
+      phone: null,
+    }];
+
+    useIntakeMock.mockReturnValue({
+      record: attorneyRecord,
+      addAttorney,
+      removeAttorney,
+      addInterpreter,
+      removeInterpreter,
+      addVideographer,
+      removeVideographer,
+      addParticipant,
+      removeParticipant,
+      updateField,
+    });
+
+    const tree = renderPanel();
+    expectText(tree, "Brothers Alvarado Piazza Cozort Counsel");
+  });
+
   it("applies the signed-in reporter profile through the current Use My Reporter Profile path", async () => {
     getMyProfileMock.mockResolvedValue({
       display_name: "Miah Lopez",

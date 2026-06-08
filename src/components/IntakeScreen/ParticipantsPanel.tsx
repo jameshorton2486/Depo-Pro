@@ -702,7 +702,7 @@ export function ParticipantsPanel() {
   const caseFields = drawerCategory ? caseFieldsFor(drawerCategory) : [];
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Participants</h2>
@@ -737,7 +737,7 @@ export function ParticipantsPanel() {
           </button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid min-w-0 grid-cols-1 gap-4">
           <CategoryCard label="Attorneys" icon={Scale} onAdd={() => openDrawer("attorney")}>
             {record.attorneys.map((attorney) => (
               <EntryCard
@@ -975,11 +975,13 @@ function CategoryCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-[18rem] flex-col rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="flex min-h-[18rem] min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <div className="min-w-0 break-words text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="flex items-center gap-2">
           <Icon size={12} />
           {label}
+          </div>
         </div>
         <button
           type="button"

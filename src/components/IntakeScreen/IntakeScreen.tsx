@@ -1662,7 +1662,7 @@ export function IntakeScreen({ jobId }: Props) {
           )}
 
           {/* ── Row 1: Document upload (left) + Appearances (right) ── */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_280px]">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(26rem,32rem)]">
             <DocumentUploadPanel
               files={caseFiles}
               audio={caseAudio}
