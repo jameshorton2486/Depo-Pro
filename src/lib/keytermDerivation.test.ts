@@ -19,6 +19,8 @@ function buildGarzaRecord(): CaseRecord {
   const record = emptyCaseRecord("case_garza", "2026-06-06T20:00:00.000Z");
   record.caption.case_style = manualField("Delia Garza v. Home Depot U.S.A., Inc. and Shawn Herber");
   record.caption.county = manualField("Bexar County");
+  record.session.location_address = manualField("123 Main Street");
+  record.session.location_city = manualField("San Antonio");
   record.reporter.name = manualField("Miah Ramirez");
   record.witnesses = [{
     witness_id: "wit_1",
@@ -163,6 +165,18 @@ function buildGarzaRecord(): CaseRecord {
       fka_or_dba: manualField(null),
     },
   ];
+  record.participants = [
+    {
+      participant_id: "pt_1",
+      name: manualField("Dr. Elena Torres"),
+      role: "OTHER",
+      organization: "South Texas Spine Clinic",
+      email: null,
+      phone: null,
+      role_in_this_proceeding: "Medical provider",
+      notes: null,
+    },
+  ];
   return record;
 }
 
@@ -202,6 +216,12 @@ describe("deriveKeytermsWithBudget", () => {
       "Mr. Thomas",
       "Ms. Thomas",
       "Heath",
+      "Delia Garza",
+      "Garza",
+      "Delia",
+      "Shawn Herber",
+      "Herber",
+      "Shawn",
       "Miah Ramirez",
       "Ramirez",
       "Miah",
@@ -219,8 +239,13 @@ describe("deriveKeytermsWithBudget", () => {
       "Cozort",
       "Bexar County",
       "Bexar",
-      "Garza",
-      "Herber",
+      "123 Main Street",
+      "Main",
+      "Street",
+      "San Antonio",
+      "Dr. Elena Torres",
+      "Torres",
+      "South Texas Spine Clinic",
       "certified court reporter",
       "civil action",
       "counsel",
@@ -354,6 +379,30 @@ describe("deriveKeytermsWithBudget", () => {
       expect(included.has(`mr. ${surname}`.toLowerCase())).toBe(false);
       expect(included.has(`ms. ${surname}`.toLowerCase())).toBe(false);
     }
+  });
+
+  it("keeps witness, party, and attorney tiers when truncating an oversized case", () => {
+    const record = buildGarzaRecord();
+    record.participants = Array.from({ length: 80 }, (_, index) => ({
+      participant_id: `pt_${index}`,
+      name: manualField(`Provider${index} Specialist${index}`),
+      role: "OTHER",
+      organization: `Medical Group ${index}`,
+      email: null,
+      phone: null,
+      role_in_this_proceeding: "Medical provider",
+      notes: null,
+    }));
+
+    const result = deriveKeytermsWithBudget(record);
+    const terms = new Set(result.included.map((keyterm) => keyterm.term));
+
+    expect(result.estimatedTokens).toBeLessThanOrEqual(400);
+    expect(result.included.length).toBeLessThanOrEqual(90);
+    expect(terms.has("Heath Thomas")).toBe(true);
+    expect(terms.has("Delia Garza")).toBe(true);
+    expect(terms.has("Curtis L. Cukjati")).toBe(true);
+    expect(result.dropped.length).toBeGreaterThan(0);
   });
 
   it("dedupes across sources while keeping the highest-priority casing", () => {

@@ -175,6 +175,50 @@ function collectFirmTokens(name: string | null | undefined): string[] {
     .filter((token) => !KNOWN_BRAND_TOKENS.has(token.toLowerCase()));
 }
 
+function looksLikeOrganizationName(name: string): boolean {
+  const normalized = stripCorporateSuffixes(name).toLowerCase();
+  return /\b(?:inc|llc|llp|pllc|company|corp|corporation|hospital|medical|clinic|group|center|associates|partners|u\.s\.a)\b/i.test(name)
+    || normalized.includes(" and ")
+    || normalized.includes("&");
+}
+
+function collectPartyGroups(record: CaseRecord): DerivedGroup[] {
+  const names = record.parties
+    .map((party) => sanitizePhrase(valueOf(party.name) ?? ""))
+    .filter(Boolean);
+
+  const fallback = names.length > 0
+    ? names
+    : [sanitizePhrase(valueOf(record.caption.case_style) ?? ""), sanitizePhrase(valueOf(record.caption.case_name) ?? "")].filter(Boolean);
+
+  const groups: DerivedGroup[] = [];
+  const seen = new Set<string>();
+
+  for (const name of fallback) {
+    const dedupeKey = name.toLowerCase();
+    if (seen.has(dedupeKey) || shouldSkipPartyName(name)) {
+      continue;
+    }
+    seen.add(dedupeKey);
+
+    if (looksLikeOrganizationName(name)) {
+      groups.push({
+        priority: 2,
+        allOrNothing: true,
+        candidates: [{ term: name, category: "company", notes: "derived" }],
+      });
+      continue;
+    }
+
+    const personGroup = collectPersonGroup(name, "proper_name");
+    if (personGroup) {
+      groups.push({ ...personGroup, priority: 2 });
+    }
+  }
+
+  return groups;
+}
+
 function collectCountyTerms(county: string | null | undefined): string[] {
   const phrase = sanitizePhrase(county ?? "");
   if (!phrase) return [];
@@ -218,6 +262,75 @@ function collectPartyTokens(record: CaseRecord): string[] {
   return terms;
 }
 
+function collectAddressCandidates(values: Array<string | null | undefined>): DerivedCandidate[] {
+  const seen = new Set<string>();
+  const candidates: DerivedCandidate[] = [];
+
+  for (const value of values) {
+    const phrase = sanitizePhrase(value ?? "");
+    if (!phrase) {
+      continue;
+    }
+
+    const phraseKey = phrase.toLowerCase();
+    if (!seen.has(phraseKey) && /[A-Za-z]/.test(phrase) && !/^\d+$/.test(phrase)) {
+      seen.add(phraseKey);
+      candidates.push({ term: phrase, category: "location", notes: "derived" });
+    }
+
+    for (const token of tokenize(phrase)) {
+      if (!isDistinctiveToken(token)) {
+        continue;
+      }
+      const tokenKey = token.toLowerCase();
+      if (seen.has(tokenKey)) {
+        continue;
+      }
+      seen.add(tokenKey);
+      candidates.push({ term: token, category: "location", notes: "derived" });
+    }
+  }
+
+  return candidates;
+}
+
+function collectParticipantGroups(record: CaseRecord): DerivedGroup[] {
+  const groups: DerivedGroup[] = [];
+
+  for (const participant of record.participants) {
+    const personGroup = collectPersonGroup(valueOf(participant.name), "proper_name");
+    if (personGroup) {
+      groups.push({ ...personGroup, priority: 8 });
+    }
+
+    const organization = sanitizePhrase(participant.organization ?? "");
+    if (organization && !shouldSkipPartyName(organization)) {
+      groups.push({
+        priority: 8,
+        allOrNothing: true,
+        candidates: [{ term: organization, category: "company", notes: "derived" }],
+      });
+    }
+  }
+
+  for (const witness of record.witnesses) {
+    if (valueOf(witness.role) !== "EXPERT") {
+      continue;
+    }
+
+    const employer = sanitizePhrase(valueOf(witness.employer) ?? "");
+    if (employer && !shouldSkipPartyName(employer)) {
+      groups.push({
+        priority: 8,
+        allOrNothing: true,
+        candidates: [{ term: employer, category: "company", notes: "derived" }],
+      });
+    }
+  }
+
+  return groups;
+}
+
 function collectDefaultTerms(): string[] {
   return [...DEFAULT_KEYTERM_TERMS];
 }
@@ -230,24 +343,26 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
     if (group) groups.push({ ...group, priority: 1 });
   }
 
+  groups.push(...collectPartyGroups(record));
+
   {
     const group = collectPersonGroup(valueOf(record.reporter.name), "proper_name");
-    if (group) groups.push({ ...group, priority: 2 });
+    if (group) groups.push({ ...group, priority: 3 });
   }
 
   for (const attorney of record.attorneys) {
     const group = collectPersonGroup(valueOf(attorney.name), "proper_name");
-    if (group) groups.push({ ...group, priority: 3 });
+    if (group) groups.push({ ...group, priority: 4 });
   }
 
   for (const interpreter of record.interpreters) {
     const group = collectPersonGroup(valueOf(interpreter.name), "proper_name");
-    if (group) groups.push({ ...group, priority: 4 });
+    if (group) groups.push({ ...group, priority: 5 });
   }
 
   for (const videographer of record.videographers) {
     const group = collectPersonGroup(valueOf(videographer.name), "proper_name");
-    if (group) groups.push({ ...group, priority: 4 });
+    if (group) groups.push({ ...group, priority: 5 });
   }
 
   const firmTokens = Array.from(new Set([
@@ -257,7 +372,7 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
   ]));
   if (firmTokens.length > 0) {
     groups.push({
-      priority: 5,
+      priority: 6,
       allOrNothing: false,
       candidates: firmTokens.map((term) => ({ term, category: "company", notes: "derived" })),
     });
@@ -266,23 +381,40 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
   const countyTerms = collectCountyTerms(valueOf(record.caption.county));
   if (countyTerms.length > 0) {
     groups.push({
-      priority: 6,
+      priority: 7,
       allOrNothing: false,
       candidates: countyTerms.map((term) => ({ term, category: "location", notes: "derived" })),
+    });
+  }
+
+  const addressCandidates = collectAddressCandidates([
+    valueOf(record.session.location_address),
+    valueOf(record.session.location_city),
+    ...record.attorneys.flatMap((attorney) => [attorney.address, attorney.city]),
+    ...record.law_firms.flatMap((lawFirm) => [valueOf(lawFirm.address), valueOf(lawFirm.city)]),
+    valueOf(record.reporter.firm_address),
+  ]);
+  if (addressCandidates.length > 0) {
+    groups.push({
+      priority: 8,
+      allOrNothing: false,
+      candidates: addressCandidates,
     });
   }
 
   const partyTokens = Array.from(new Set(collectPartyTokens(record)));
   if (partyTokens.length > 0) {
     groups.push({
-      priority: 7,
+      priority: 9,
       allOrNothing: false,
       candidates: partyTokens.map((term) => ({ term, category: "other", notes: "derived" })),
     });
   }
 
+  groups.push(...collectParticipantGroups(record));
+
   groups.push({
-    priority: 8,
+    priority: 10,
     allOrNothing: false,
     candidates: collectDefaultTerms().map((term) => ({ term, category: "legal_term", notes: "derived" })),
   });
