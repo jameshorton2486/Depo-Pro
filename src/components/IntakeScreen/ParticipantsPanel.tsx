@@ -271,12 +271,25 @@ function caseFieldsFor(category: PanelCategory) {
   return GENERIC_CASE_FIELDS;
 }
 
+function mergeDraftWithAutoFill(current: DrawerDraft, incoming: Partial<DrawerDraft>): DrawerDraft {
+  const defaults = defaultDraft();
+  const merged: DrawerDraft = { ...defaults, ...incoming };
+
+  (Object.keys(current) as Array<keyof DrawerDraft>).forEach((key) => {
+    if (JSON.stringify(current[key]) !== JSON.stringify(defaults[key])) {
+      merged[key] = current[key] as never;
+    }
+  });
+
+  return merged;
+}
+
 function applyContactToDraft(contact: Contact): Partial<DrawerDraft> {
   const details = contact.details;
   const draft: Partial<DrawerDraft> = {
     name: contact.name,
     organization: contact.organization,
-    phone: contact.phone,
+    phone: details.kind === "attorney" ? (details.direct_phone ?? contact.phone) : contact.phone,
     email: contact.email,
     address: contact.address,
     notes: contact.notes,
@@ -461,7 +474,7 @@ export function ParticipantsPanel() {
     removeParticipant,
     updateField,
   } = useIntake();
-  const { contacts, search, upsertDirectory } = useContactStore();
+  const { contacts, search, upsertDirectory, useContact: markContactUsed } = useContactStore();
   const [drawerCategory, setDrawerCategory] = useState<PanelCategory | null>(null);
   const [drawerMode, setDrawerMode] = useState<"pick" | "create">("pick");
   const [contactQuery, setContactQuery] = useState("");
@@ -531,7 +544,7 @@ export function ParticipantsPanel() {
 
   function handlePickContact(contact: Contact) {
     setSelectedContact(contact);
-    setDraft((current) => ({ ...defaultDraft(), ...applyContactToDraft(contact), ...current }));
+    setDraft((current) => mergeDraftWithAutoFill(current, applyContactToDraft(contact)));
     setDrawerMode("pick");
     setError(null);
   }
@@ -622,19 +635,23 @@ export function ParticipantsPanel() {
 
       const contact = contactResult.contact;
       if (drawerCategory === "attorney") {
+        if (drawerMode === "pick" && selectedContact) {
+          await markContactUsed(selectedContact.id);
+        }
+
         addAttorney({
-          name: manualField(contact.name),
-          firm: manualField(resolvedFirm?.name ?? (contact.organization || null)),
+          name: manualField(draft.name.trim() || contact.name),
+          firm: manualField(resolvedFirm?.name ?? (draft.firmName.trim() || (contact.organization || null))),
           role: manualField(draft.attorneyFunction),
           representing: manualField(buildRepresentingValue(draft.attorneyRepresentingPreset, draft.attorneyRepresentingParty)),
-          bar_number: manualField(contact.details.kind === "attorney" ? contact.details.bar_number : null),
+          bar_number: manualField(draft.attorneyBarNumber.trim() || null),
           address: resolvedFirm?.address || null,
           city: resolvedFirm?.city || null,
           state: resolvedFirm?.state || null,
           zip: resolvedFirm?.zip || null,
           time_used: draft.attorneyTimeUsed.trim() || null,
-          email: contact.email || null,
-          phone: contact.phone || null,
+          email: draft.email.trim() || null,
+          phone: draft.phone.trim() || null,
         });
       } else if (drawerCategory === "interpreter") {
         const details = contact.details.kind === "interpreter" ? contact.details : null;

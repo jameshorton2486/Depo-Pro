@@ -221,6 +221,7 @@ describe("ParticipantsPanel", () => {
   const removeParticipant = vi.fn();
   const search = vi.fn();
   const upsertDirectory = vi.fn();
+  const useContact = vi.fn();
 
   const attorneyContact: Contact = {
     id: "contact_attorney_1",
@@ -260,6 +261,7 @@ describe("ParticipantsPanel", () => {
     removeParticipant.mockReset();
     search.mockReset();
     upsertDirectory.mockReset();
+    useContact.mockReset();
     getMyProfileMock.mockReset();
     getFirmMock.mockReset();
     searchFirmsMock.mockReset();
@@ -281,6 +283,7 @@ describe("ParticipantsPanel", () => {
       contacts: [attorneyContact],
       search,
       upsertDirectory,
+      useContact,
     });
     getFirmMock.mockResolvedValue({
       id: "firm_1",
@@ -373,6 +376,83 @@ describe("ParticipantsPanel", () => {
 
     expect(getFirmMock).toHaveBeenCalledWith("firm_1");
     expectText(tree, "Brothers, Alvarado, Piazza & Cozort, P.C.");
+  });
+
+  it("maps attorney details.direct_phone into the draft phone and preserves already-typed overrides on pick", () => {
+    const draft = defaultDraft();
+    draft.email = "custom@example.com";
+    draft.attorneyBarNumber = "24077777";
+    const contactWithDifferentNumbers: Contact = {
+      ...attorneyContact,
+      phone: "9998887777",
+      details: {
+        direct_phone: "2105551212",
+        kind: "attorney",
+        bar_number: attorneyContact.details.kind === "attorney" ? attorneyContact.details.bar_number : null,
+        extension: attorneyContact.details.kind === "attorney" ? attorneyContact.details.extension : null,
+        fax: attorneyContact.details.kind === "attorney" ? attorneyContact.details.fax : null,
+        assistant_name: attorneyContact.details.kind === "attorney" ? attorneyContact.details.assistant_name : null,
+        assistant_email: attorneyContact.details.kind === "attorney" ? attorneyContact.details.assistant_email : null,
+        preferred_appearance_label: attorneyContact.details.kind === "attorney" ? attorneyContact.details.preferred_appearance_label : null,
+      },
+    };
+
+    useContactStoreMock.mockReturnValue({
+      contacts: [contactWithDifferentNumbers],
+      search,
+      upsertDirectory,
+      useContact,
+    });
+
+    seedPanelState({ 0: "attorney", 1: "pick", 6: draft });
+    const tree = renderPanel();
+
+    (findButton(tree, "Karen M. Alvarado").props as { onClick?: () => unknown }).onClick?.();
+
+    expect(hookRuntime.slots[6]).toMatchObject({
+      name: "Karen M. Alvarado",
+      phone: "2105551212",
+      email: "custom@example.com",
+      attorneyBarNumber: "24077777",
+      attorneyAppearanceLabel: "MS. ALVARADO",
+    });
+  });
+
+  it("adds a picked attorney using the draft values, linked firm, and current usage increment path", async () => {
+    const draft = defaultDraft();
+    draft.phone = "2105557878";
+    draft.email = "custom@example.com";
+    draft.attorneyBarNumber = "24077777";
+    draft.attorneyFunction = "EXAMINING";
+    draft.attorneyRepresentingPreset = "defendant";
+    draft.attorneyRepresentingParty = "Home Depot";
+    seedPanelState({ 0: "attorney", 1: "pick", 6: draft });
+
+    let tree = renderPanel();
+    (findButton(tree, "Karen M. Alvarado").props as { onClick?: () => unknown }).onClick?.();
+    tree = renderPanel();
+    await runEffects();
+    tree = renderPanel();
+
+    (findButton(tree, "Add Attorney").props as { onClick?: () => unknown }).onClick?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(useContact).toHaveBeenCalledWith("contact_attorney_1");
+    expect(addAttorney).toHaveBeenCalledWith({
+      name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      firm: { value: "Brothers, Alvarado, Piazza & Cozort, P.C.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      representing: { value: "FOR DEFENDANT HOME DEPOT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      bar_number: { value: "24077777", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      address: "123 Main",
+      city: "San Antonio",
+      state: "TX",
+      zip: "78205",
+      time_used: null,
+      email: "custom@example.com",
+      phone: "2105557878",
+    });
   });
 
   it("persists generic participant role_in_this_proceeding through the current add flow", async () => {

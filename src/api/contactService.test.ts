@@ -237,7 +237,7 @@ describe("contactService", () => {
               details: {
                 kind: "attorney",
                 bar_number: "24099999",
-                direct_phone: "(210) 555-9999",
+                direct_phone: "2105559999",
                 extension: "101",
                 fax: "210-555-0102",
                 assistant_name: "Dana",
@@ -348,7 +348,7 @@ describe("contactService", () => {
               details: {
                 kind: "attorney",
                 bar_number: "24000001",
-                direct_phone: "(210) 555-0101",
+                direct_phone: "2105550101",
                 extension: null,
                 fax: null,
                 assistant_name: null,
@@ -363,6 +363,74 @@ describe("contactService", () => {
         ],
       },
     ]);
+  });
+
+  it("normalizes attorney direct_phone symmetrically with top-level phone on write", async () => {
+    const createdRow = {
+      ...attorneyRow,
+      id: "contact_4",
+      phone: "2105552222",
+      details: {
+        ...attorneyRow.details,
+        direct_phone: "2105552222",
+      },
+    };
+    const { client, calls } = buildClient({
+      fromResponses: [{ data: createdRow, error: null }],
+    });
+    getSupabaseClientMock.mockResolvedValue(client);
+
+    await service.createContact({
+      type: "attorney",
+      name: "Dana Helper",
+      organization: "Brothers Law",
+      phone: "(210) 555-2222",
+      email: "dana@example.com",
+      address: "",
+      notes: "",
+      firm_id: null,
+      details: {
+        bar_number: null,
+        direct_phone: "(210) 555-2222",
+        extension: null,
+        fax: null,
+        assistant_name: null,
+        assistant_email: null,
+        preferred_appearance_label: null,
+      },
+    });
+
+    expect(calls[0]).toEqual({
+      table: "contacts",
+      methods: [
+        {
+          name: "insert",
+          args: [{
+            type: "attorney",
+            name: "Dana Helper",
+            organization: "Brothers Law",
+            phone: "2105552222",
+            email: "dana@example.com",
+            address: "",
+            notes: "",
+            firm_id: null,
+            details: {
+              kind: "attorney",
+              bar_number: null,
+              direct_phone: "2105552222",
+              extension: null,
+              fax: null,
+              assistant_name: null,
+              assistant_email: null,
+              preferred_appearance_label: null,
+            },
+            times_used: 0,
+          }],
+        },
+        { name: "select", args: [] },
+        { name: "single", args: [] },
+      ],
+    });
   });
 
   it("increments usage through the RPC path when available", async () => {

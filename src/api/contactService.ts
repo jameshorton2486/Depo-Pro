@@ -14,6 +14,17 @@ function normalizePhone(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+function normalizeContactDetailsForWrite(details: Contact["details"]): Contact["details"] {
+  if (details.kind !== "attorney") {
+    return details;
+  }
+
+  return {
+    ...details,
+    direct_phone: details.direct_phone ? normalizePhone(details.direct_phone) : details.direct_phone,
+  };
+}
+
 export interface DirectoryContactUpsertResult {
   contact: Contact;
   conflicts: DirectoryMergeConflict[];
@@ -72,7 +83,12 @@ export async function createContact(payload: ContactInsert): Promise<Contact> {
   const normalized = normalizeContactInsert(payload);
   const { data, error } = await client
     .from("contacts")
-    .insert({ ...normalized, phone: normalizePhone(normalized.phone), times_used: 0 })
+    .insert({
+      ...normalized,
+      phone: normalizePhone(normalized.phone),
+      details: normalizeContactDetailsForWrite(normalized.details),
+      times_used: 0,
+    })
     .select()
     .single();
 
@@ -92,6 +108,7 @@ export async function updateContact(id: string, patch: ContactUpdate): Promise<C
     .update({
       ...normalized,
       phone: normalized.phone ? normalizePhone(normalized.phone) : normalized.phone,
+      details: normalized.details ? normalizeContactDetailsForWrite(normalized.details as Contact["details"]) : normalized.details,
     })
     .eq("id", id)
     .select()
