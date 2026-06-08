@@ -34,6 +34,7 @@ describe("buildDeepgramRequest", () => {
         model: "nova-3",
         punctuate: "true",
         paragraphs: "true",
+        diarize: "true",
         diarize_model: "latest",
         filler_words: "true",
         utterances: "true",
@@ -97,5 +98,21 @@ describe("buildDeepgramRequest", () => {
     );
 
     expect(source).not.toContain("nova-");
+  });
+
+  it("keeps the default request params aligned with the case defaults", async () => {
+    const { defaultDeepgramConfig } = await import("../../types/case");
+    const defaults = defaultDeepgramConfig();
+
+    expect(defaults.model).toBe("nova-3");
+    expect(defaults.diarize).toBe(true);
+    expect(defaults.smart_format).toBe(true);
+    expect(buildDeepgramRequest({ caseId: "case_defaults", keyterms: [] }).envelope.deepgram_request).toEqual(
+      expect.objectContaining({
+        model: "nova-3",
+        diarize: "true",
+        smart_format: "true",
+      }),
+    );
   });
 });

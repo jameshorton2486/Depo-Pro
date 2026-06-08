@@ -17,6 +17,7 @@ export interface DeepgramRequestPreviewEnvelope {
     model: string;
     punctuate: string;
     paragraphs: string;
+    diarize: string;
     diarize_model: string;
     filler_words: string;
     utterances: string;
@@ -48,6 +49,7 @@ export const DEEPGRAM_REQUEST_PARAMS = {
   model: "nova-3",
   punctuate: "true",
   paragraphs: "true",
+  diarize: "true",
   diarize_model: "latest",
   filler_words: "true",
   utterances: "true",
