@@ -1432,12 +1432,285 @@ export function normalizeCaseRecord(record: unknown): CaseRecord {
     notes: typeof source.notes === "string" ? source.notes : defaults.notes,
   };
 
+  const deduped = repairParticipantCollections(normalized, coercedPaths);
+
   if (coercedPaths.size > 0) {
     console.warn("[DEPO-PRO] Normalized legacy case payload", {
-      case_id: normalized.case_id,
+      case_id: deduped.case_id,
       coercedPaths: [...coercedPaths],
     });
   }
 
-  return normalized;
+  return deduped;
+}
+
+function repairParticipantCollections(record: CaseRecord, coercedPaths: Set<string>): CaseRecord {
+  const dedupedParties = dedupeParties(record.parties, coercedPaths);
+  const dedupedAttorneys = dedupeAttorneys(record.attorneys, coercedPaths);
+  const dedupedParticipants = dedupeParticipants(record.participants, coercedPaths);
+  const dedupedInterpreters = dedupeInterpreters(record.interpreters, coercedPaths);
+  const dedupedVideographers = dedupeVideographers(record.videographers, coercedPaths);
+  const dedupedWitnesses = dedupeWitnesses(record.witnesses, coercedPaths);
+
+  const partyNames = new Set(dedupedParties.map((party) => normalizeComparableName(party.name.value)).filter(Boolean));
+  const healedAttorneys = dedupedAttorneys.filter((attorney) => {
+    const normalizedName = normalizeComparableName(attorney.name.value);
+    if (!normalizedName || !partyNames.has(normalizedName)) {
+      return true;
+    }
+
+    if (looksLikePartyLeak(attorney)) {
+      coercedPaths.add("attorneys.party_leak");
+      return false;
+    }
+
+    return true;
+  });
+
+  if (
+    dedupedParties === record.parties
+    && dedupedAttorneys === record.attorneys
+    && dedupedParticipants === record.participants
+    && dedupedInterpreters === record.interpreters
+    && dedupedVideographers === record.videographers
+    && dedupedWitnesses === record.witnesses
+    && healedAttorneys === dedupedAttorneys
+  ) {
+    return record;
+  }
+
+  return {
+    ...record,
+    parties: dedupedParties,
+    attorneys: healedAttorneys,
+    participants: dedupedParticipants,
+    interpreters: dedupedInterpreters,
+    videographers: dedupedVideographers,
+    witnesses: dedupedWitnesses,
+  };
+}
+
+function normalizeComparableName(value: string | null | undefined): string {
+  const normalized = normalizeNullableString(value, "") ?? "";
+  return normalized.toLowerCase().replace(/\./g, "").replace(/\s+/g, " ").trim();
+}
+
+function isMeaningfulString(value: string | null | undefined): boolean {
+  return (normalizeNullableString(value, "") ?? "").length > 0;
+}
+
+function mergeExtractedFieldIfEmpty<T>(current: ExtractedField<T>, incoming: ExtractedField<T>): ExtractedField<T> {
+  const currentValue = current.value;
+  if (typeof currentValue === "string" || currentValue == null) {
+    return isMeaningfulString(currentValue as string | null | undefined) ? current : incoming;
+  }
+
+  if (Array.isArray(currentValue)) {
+    return currentValue.length > 0 ? current : incoming;
+  }
+
+  return currentValue == null ? incoming : current;
+}
+
+function dedupeParties(parties: CaseParty[], coercedPaths: Set<string>): CaseParty[] {
+  const deduped: CaseParty[] = [];
+  const byName = new Map<string, CaseParty>();
+
+  for (const party of parties) {
+    const key = normalizeComparableName(party.name.value);
+    if (!key) {
+      deduped.push(party);
+      continue;
+    }
+
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, party);
+      deduped.push(party);
+      continue;
+    }
+
+    coercedPaths.add("parties");
+    existing.role = mergeExtractedFieldIfEmpty(existing.role, party.role);
+    existing.role_modifier = mergeExtractedFieldIfEmpty(existing.role_modifier, party.role_modifier);
+    existing.entity_type = mergeExtractedFieldIfEmpty(existing.entity_type, party.entity_type);
+    existing.fka_or_dba = mergeExtractedFieldIfEmpty(existing.fka_or_dba, party.fka_or_dba);
+  }
+
+  return deduped.length === parties.length ? parties : deduped;
+}
+
+function dedupeAttorneys(attorneys: Attorney[], coercedPaths: Set<string>): Attorney[] {
+  const deduped: Attorney[] = [];
+  const byName = new Map<string, Attorney>();
+
+  for (const attorney of attorneys) {
+    const key = normalizeComparableName(attorney.name.value);
+    if (!key) {
+      deduped.push(attorney);
+      continue;
+    }
+
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, attorney);
+      deduped.push(attorney);
+      continue;
+    }
+
+    coercedPaths.add("attorneys");
+    existing.firm = mergeExtractedFieldIfEmpty(existing.firm, attorney.firm);
+    existing.role = mergeExtractedFieldIfEmpty(existing.role, attorney.role);
+    existing.representing = mergeExtractedFieldIfEmpty(existing.representing, attorney.representing);
+    existing.bar_number = mergeExtractedFieldIfEmpty(existing.bar_number, attorney.bar_number);
+    if (!existing.address) existing.address = attorney.address;
+    if (!existing.city) existing.city = attorney.city;
+    if (!existing.state) existing.state = attorney.state;
+    if (!existing.zip) existing.zip = attorney.zip;
+    if (!existing.email) existing.email = attorney.email;
+    if (!existing.phone) existing.phone = attorney.phone;
+    if (!existing.time_used) existing.time_used = attorney.time_used;
+  }
+
+  return deduped.length === attorneys.length ? attorneys : deduped;
+}
+
+function dedupeWitnesses(witnesses: Witness[], coercedPaths: Set<string>): Witness[] {
+  const deduped: Witness[] = [];
+  const byName = new Map<string, Witness>();
+
+  for (const witness of witnesses) {
+    const key = normalizeComparableName(witness.name.value);
+    if (!key) {
+      deduped.push(witness);
+      continue;
+    }
+
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, witness);
+      deduped.push(witness);
+      continue;
+    }
+
+    coercedPaths.add("witnesses");
+    existing.role = mergeExtractedFieldIfEmpty(existing.role, witness.role);
+    existing.title = mergeExtractedFieldIfEmpty(existing.title, witness.title);
+    existing.employer = mergeExtractedFieldIfEmpty(existing.employer, witness.employer);
+    existing.party_affiliation = mergeExtractedFieldIfEmpty(existing.party_affiliation, witness.party_affiliation);
+    existing.read_and_sign = mergeExtractedFieldIfEmpty(existing.read_and_sign, witness.read_and_sign);
+    existing.requires_interpreter = mergeExtractedFieldIfEmpty(existing.requires_interpreter, witness.requires_interpreter);
+    existing.requires_videographer = mergeExtractedFieldIfEmpty(existing.requires_videographer, witness.requires_videographer);
+    if (!existing.prefix_suffix) existing.prefix_suffix = witness.prefix_suffix;
+    if (!existing.corporate_entity) existing.corporate_entity = witness.corporate_entity;
+    if (!existing.email) existing.email = witness.email;
+    if (!existing.phone) existing.phone = witness.phone;
+    if (existing.spelling_corrections.length === 0 && witness.spelling_corrections.length > 0) {
+      existing.spelling_corrections = witness.spelling_corrections;
+    }
+  }
+
+  return deduped.length === witnesses.length ? witnesses : deduped;
+}
+
+function dedupeInterpreters(interpreters: Interpreter[], coercedPaths: Set<string>): Interpreter[] {
+  const deduped: Interpreter[] = [];
+  const byName = new Map<string, Interpreter>();
+
+  for (const interpreter of interpreters) {
+    const key = normalizeComparableName(interpreter.name.value);
+    if (!key) {
+      deduped.push(interpreter);
+      continue;
+    }
+
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, interpreter);
+      deduped.push(interpreter);
+      continue;
+    }
+
+    coercedPaths.add("interpreters");
+    if (!existing.language_from) existing.language_from = interpreter.language_from;
+    if (!existing.language_to) existing.language_to = interpreter.language_to;
+    if (existing.oath_administered == null) existing.oath_administered = interpreter.oath_administered;
+    if (!existing.certified) existing.certified = interpreter.certified;
+    if (!existing.cert_number) existing.cert_number = interpreter.cert_number;
+    if (!existing.agency) existing.agency = interpreter.agency;
+    if (!existing.email) existing.email = interpreter.email;
+    if (!existing.phone) existing.phone = interpreter.phone;
+  }
+
+  return deduped.length === interpreters.length ? interpreters : deduped;
+}
+
+function dedupeVideographers(videographers: Videographer[], coercedPaths: Set<string>): Videographer[] {
+  const deduped: Videographer[] = [];
+  const byName = new Map<string, Videographer>();
+
+  for (const videographer of videographers) {
+    const key = normalizeComparableName(videographer.name.value);
+    if (!key) {
+      deduped.push(videographer);
+      continue;
+    }
+
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, videographer);
+      deduped.push(videographer);
+      continue;
+    }
+
+    coercedPaths.add("videographers");
+    existing.firm = mergeExtractedFieldIfEmpty(existing.firm, videographer.firm);
+    if (!existing.role_title) existing.role_title = videographer.role_title;
+    if (!existing.cert_number) existing.cert_number = videographer.cert_number;
+    if (!existing.email) existing.email = videographer.email;
+    if (!existing.phone) existing.phone = videographer.phone;
+  }
+
+  return deduped.length === videographers.length ? videographers : deduped;
+}
+
+function dedupeParticipants(participants: Participant[], coercedPaths: Set<string>): Participant[] {
+  const deduped: Participant[] = [];
+  const byName = new Map<string, Participant>();
+
+  for (const participant of participants) {
+    const key = normalizeComparableName(participant.name.value);
+    if (!key) {
+      deduped.push(participant);
+      continue;
+    }
+
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, participant);
+      deduped.push(participant);
+      continue;
+    }
+
+    coercedPaths.add("participants");
+    if (existing.role === "OTHER" && participant.role !== "OTHER") existing.role = participant.role;
+    if (!existing.organization) existing.organization = participant.organization;
+    if (!existing.email) existing.email = participant.email;
+    if (!existing.phone) existing.phone = participant.phone;
+    if (!existing.role_in_this_proceeding) existing.role_in_this_proceeding = participant.role_in_this_proceeding;
+    if (!existing.notes) existing.notes = participant.notes;
+  }
+
+  return deduped.length === participants.length ? participants : deduped;
+}
+
+function looksLikePartyLeak(attorney: Attorney): boolean {
+  return !isMeaningfulString(attorney.firm.value)
+    && !isMeaningfulString(attorney.bar_number.value)
+    && !isMeaningfulString(attorney.address)
+    && !isMeaningfulString(attorney.city)
+    && !isMeaningfulString(attorney.state)
+    && !isMeaningfulString(attorney.zip)
+    && !isMeaningfulString(attorney.email)
+    && !isMeaningfulString(attorney.phone);
 }

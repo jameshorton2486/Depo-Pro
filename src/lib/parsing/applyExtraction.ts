@@ -316,6 +316,12 @@ function applyAttorneyExtraction(
 ) {
   const plaintiff = cleanupValue(valueOf(fields.plaintiff));
   const defenseParties = valueOf(fields.defendants) ?? [];
+  const extractedPartyNames = new Set(
+    (fields.parties.length > 0 ? fields.parties : derivePartiesFromCaption(fields))
+      .map((party) => normalizeName(valueOf(party.name)))
+      .filter(Boolean),
+  );
+  const pendingAttorneys = new Set(attorneyAdds.map((addition) => normalizeName(addition.attorney.name.value)));
 
   for (const attorney of fields.attorneys) {
     const attorneyName = cleanupValue(valueOf(attorney.name));
@@ -324,6 +330,10 @@ function applyAttorneyExtraction(
     }
 
     const normalized = normalizeName(attorneyName);
+    if (!normalized || extractedPartyNames.has(normalized) || pendingAttorneys.has(normalized)) {
+      continue;
+    }
+
     const existing = record.attorneys.find((item) => normalizeName(item.name.value) === normalized);
     const representing = composeRepresenting(attorney, plaintiff, defenseParties);
 
@@ -361,6 +371,7 @@ function applyAttorneyExtraction(
         phone: orNull(valueOf(attorney.phone)),
       },
     });
+    pendingAttorneys.add(normalized);
   }
 }
 
@@ -371,6 +382,7 @@ function applyPartyExtraction(
   partyPatches: PartyPatch[],
 ) {
   const parties = fields.parties.length > 0 ? fields.parties : derivePartiesFromCaption(fields);
+  const pendingParties = new Map<string, PartyAddition["party"]>();
 
   for (const party of parties) {
     const name = cleanupValue(valueOf(party.name));
@@ -379,9 +391,30 @@ function applyPartyExtraction(
       continue;
     }
 
-    const existing = record.parties.find((item) => normalizeName(item.name.value) === normalizeName(name) && item.role.value === role);
+    const normalizedName = normalizeName(name);
+    if (!normalizedName) {
+      continue;
+    }
+
+    const pending = pendingParties.get(normalizedName);
+    if (pending) {
+      mergePartyDraft(
+        pending,
+        {
+          name: extractedField(name, confidenceOf(party.name)),
+          role: extractedField(role, confidenceOf(party.role) ?? DEFAULT_CONFIDENCE),
+          role_modifier: extractedField(orNull(valueOf(party.role_modifier)), confidenceOf(party.role_modifier)),
+          entity_type: extractedField(orNull(valueOf(party.entity_type)), confidenceOf(party.entity_type)),
+          fka_or_dba: extractedField(orNull(valueOf(party.fka_or_dba)), confidenceOf(party.fka_or_dba)),
+        },
+      );
+      continue;
+    }
+
+    const existing = record.parties.find((item) => normalizeName(item.name.value) === normalizedName);
     if (existing) {
       const patch: Partial<Omit<CaseParty, "party_id">> = {};
+      if (!cleanupValue(existing.role.value)) patch.role = extractedField(role, confidenceOf(party.role) ?? DEFAULT_CONFIDENCE);
       if (!cleanupValue(existing.role_modifier.value)) patch.role_modifier = extractedField(orNull(valueOf(party.role_modifier)), confidenceOf(party.role_modifier));
       if (!cleanupValue(existing.entity_type.value)) patch.entity_type = extractedField(orNull(valueOf(party.entity_type)), confidenceOf(party.entity_type));
       if (!cleanupValue(existing.fka_or_dba.value)) patch.fka_or_dba = extractedField(orNull(valueOf(party.fka_or_dba)), confidenceOf(party.fka_or_dba));
@@ -391,15 +424,15 @@ function applyPartyExtraction(
       continue;
     }
 
-    partyAdds.push({
-      party: {
-        name: extractedField(name, confidenceOf(party.name)),
-        role: extractedField(role, confidenceOf(party.role) ?? DEFAULT_CONFIDENCE),
-        role_modifier: extractedField(orNull(valueOf(party.role_modifier)), confidenceOf(party.role_modifier)),
-        entity_type: extractedField(orNull(valueOf(party.entity_type)), confidenceOf(party.entity_type)),
-        fka_or_dba: extractedField(orNull(valueOf(party.fka_or_dba)), confidenceOf(party.fka_or_dba)),
-      },
-    });
+    const nextParty: Omit<CaseParty, "party_id"> = {
+      name: extractedField(name, confidenceOf(party.name)),
+      role: extractedField(role, confidenceOf(party.role) ?? DEFAULT_CONFIDENCE),
+      role_modifier: extractedField(orNull(valueOf(party.role_modifier)), confidenceOf(party.role_modifier)),
+      entity_type: extractedField(orNull(valueOf(party.entity_type)), confidenceOf(party.entity_type)),
+      fka_or_dba: extractedField(orNull(valueOf(party.fka_or_dba)), confidenceOf(party.fka_or_dba)),
+    };
+    partyAdds.push({ party: nextParty });
+    pendingParties.set(normalizedName, nextParty);
   }
 }
 
@@ -655,6 +688,16 @@ function deriveLawFirmsFromAttorneys(fields: ExtractedNODFields): ExtractedLawFi
     }
   }
   return [...byName.values()];
+}
+
+function mergePartyDraft(
+  target: Omit<CaseParty, "party_id">,
+  incoming: Omit<CaseParty, "party_id">,
+) {
+  if (!cleanupValue(target.role.value)) target.role = incoming.role;
+  if (!cleanupValue(target.role_modifier.value)) target.role_modifier = incoming.role_modifier;
+  if (!cleanupValue(target.entity_type.value)) target.entity_type = incoming.entity_type;
+  if (!cleanupValue(target.fka_or_dba.value)) target.fka_or_dba = incoming.fka_or_dba;
 }
 
 function buildKeyterms(fields: ExtractedNODFields): DeepgramKeyterm[] {
