@@ -11,6 +11,7 @@ import { DEEPGRAM_MAX_TERMS, DEEPGRAM_MAX_TOKENS } from "./types";
 import type { KeytermCategory } from "../../types/case";
 import { useIntake } from "../../context/useIntake";
 import { deriveKeytermsWithBudget, shouldAutoSeedDerivedKeyterms } from "../../lib/keytermDerivation";
+import { shouldSuggestLowercaseKeyterm } from "../../lib/keyterms/manualKeytermHint";
 import { mergeManagedDerivedKeyterms } from "../../lib/keyterms/managedKeyterms";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -259,7 +260,13 @@ function KeytermRow({ term }: { term: ManagedKeyterm }) {
 
 // ─── Add keyterm form ─────────────────────────────────────────────────────────
 
-function AddKeytermForm({ onClose }: { onClose: () => void }) {
+function AddKeytermForm({
+  onClose,
+  record,
+}: {
+  onClose: () => void;
+  record: ReturnType<typeof useIntake>["record"];
+}) {
   const { addTerm } = useKeyterms();
   const [form, setForm] = useState<AddKeytermForm>({
     term:     "",
@@ -268,6 +275,7 @@ function AddKeytermForm({ onClose }: { onClose: () => void }) {
     source:   "Manual",
     notes:    "",
   });
+  const showLowercaseHint = shouldSuggestLowercaseKeyterm(form.term, record);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -299,6 +307,18 @@ function AddKeytermForm({ onClose }: { onClose: () => void }) {
             placeholder="e.g. Meridian Infrastructure Partners"
             className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
           />
+          {showLowercaseHint && (
+            <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <span>Technical or common terms should be lowercase — Deepgram reproduces capitalization exactly.</span>
+              <button
+                type="button"
+                onClick={() => setForm((current) => ({ ...current, term: current.term.toLowerCase() }))}
+                className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 font-semibold text-amber-800 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-300"
+              >
+                make lowercase
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Category */}
@@ -647,7 +667,7 @@ export function DeepgramKeytermManager() {
       )}
 
       {/* ── Add form ── */}
-      {showAddForm && <AddKeytermForm onClose={() => setShowAddForm(false)} />}
+      {showAddForm && <AddKeytermForm onClose={() => setShowAddForm(false)} record={record} />}
 
       {/* ── Column headers ── */}
       <ColumnHeaders />

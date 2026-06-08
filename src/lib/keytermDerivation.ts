@@ -290,6 +290,26 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
   return groups;
 }
 
+export function deriveCaseReferenceTerms(record: CaseRecord): Set<string> {
+  const references = new Set<string>();
+
+  for (const group of buildGroups(record)) {
+    if (group.priority >= 8) {
+      continue;
+    }
+
+    for (const candidate of group.candidates) {
+      const term = sanitizePhrase(candidate.term);
+      if (!term) {
+        continue;
+      }
+      references.add(term.toLowerCase());
+    }
+  }
+
+  return references;
+}
+
 export function deriveKeytermsWithBudget(record: CaseRecord): DerivedKeytermBudget {
   const included: DeepgramKeyterm[] = [];
   const dropped: DeepgramKeyterm[] = [];
