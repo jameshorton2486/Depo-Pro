@@ -8,6 +8,13 @@ import { useContactStore } from "../../store/contactStore";
 import type { Contact, ContactInsert, ContactType } from "../../types/contact";
 import type { Firm } from "../../types/firm";
 import type { AttorneyRole, ParticipantRole } from "../../types/case";
+import {
+  digitsOnly,
+  formatPhoneDisplay,
+  formatReporterDateDisplay,
+  getReporterFormattingWarnings,
+  parseReporterDateToIso,
+} from "./reporterFieldFormatting";
 
 type PanelCategory =
   | "attorney"
@@ -341,7 +348,7 @@ function applyContactToDraft(contact: Contact): Partial<DrawerDraft> {
     draft.videographerRoleTitle = details.role_title ?? "";
   } else if (details.kind === "reporter") {
     draft.reporterCsrNumber = details.csr_number ?? "";
-    draft.reporterCsrExpiration = details.csr_cert_expiration ?? "";
+    draft.reporterCsrExpiration = formatReporterDateDisplay(details.csr_cert_expiration ?? "");
     draft.reporterFirmRegistration = details.firm_registration_number ?? "";
   }
 
@@ -354,7 +361,7 @@ function buildContactInsert(category: PanelCategory, draft: DrawerDraft, selecte
     type,
     name: draft.name.trim(),
     organization: draft.organization.trim(),
-    phone: draft.phone.trim(),
+    phone: type === "reporter" ? digitsOnly(draft.phone, 10) : draft.phone.trim(),
     email: draft.email.trim(),
     address: draft.address.trim(),
     notes: draft.notes.trim(),
@@ -406,9 +413,9 @@ function buildContactInsert(category: PanelCategory, draft: DrawerDraft, selecte
     return {
       ...base,
       details: {
-        csr_number: draft.reporterCsrNumber.trim() || null,
-        csr_cert_expiration: draft.reporterCsrExpiration.trim() || null,
-        firm_registration_number: draft.reporterFirmRegistration.trim() || null,
+        csr_number: digitsOnly(draft.reporterCsrNumber) || null,
+        csr_cert_expiration: parseReporterDateToIso(draft.reporterCsrExpiration),
+        firm_registration_number: digitsOnly(draft.reporterFirmRegistration) || null,
       },
     };
   }
@@ -419,13 +426,24 @@ function buildContactInsert(category: PanelCategory, draft: DrawerDraft, selecte
 function DrawerField({
   config,
   draft,
+  category,
   onChange,
 }: {
   config: FieldConfig;
   draft: DrawerDraft;
+  category: PanelCategory | null;
   onChange: (key: keyof DrawerDraft, value: string | boolean) => void;
 }) {
   const value = draft[config.key as keyof DrawerDraft];
+  const inputValue = (() => {
+    if (typeof value !== "string") {
+      return "";
+    }
+    if (config.kind === "tel" && category === "reporter" && config.key === "phone") {
+      return formatPhoneDisplay(value);
+    }
+    return value;
+  })();
 
   if (config.kind === "checkbox") {
     return (
@@ -478,7 +496,7 @@ function DrawerField({
       <span>{config.label}</span>
       <input
         type={config.kind === "email" ? "email" : config.kind === "tel" ? "tel" : "text"}
-        value={typeof value === "string" ? value : ""}
+        value={inputValue}
         onChange={(event) => onChange(config.key as keyof DrawerDraft, event.target.value)}
         className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
       />
@@ -564,7 +582,25 @@ export function ParticipantsPanel() {
   }
 
   function handleDraftChange(key: keyof DrawerDraft, value: string | boolean) {
-    setDraft((current) => ({ ...current, [key]: value }));
+    setDraft((current) => {
+      if (typeof value !== "string") {
+        return { ...current, [key]: value };
+      }
+
+      if (drawerCategory === "reporter") {
+        if (key === "phone") {
+          return { ...current, [key]: digitsOnly(value, 10) };
+        }
+        if (key === "reporterCsrNumber" || key === "reporterFirmRegistration") {
+          return { ...current, [key]: digitsOnly(value) };
+        }
+        if (key === "reporterCsrExpiration") {
+          return { ...current, [key]: formatReporterDateDisplay(value) };
+        }
+      }
+
+      return { ...current, [key]: value };
+    });
   }
 
   function handlePickContact(contact: Contact) {
@@ -725,6 +761,12 @@ export function ParticipantsPanel() {
 
   const directoryFields = drawerCategory ? directoryFieldsFor(drawerCategory) : [];
   const caseFields = drawerCategory ? caseFieldsFor(drawerCategory) : [];
+  const reporterWarnings = drawerCategory === "reporter"
+    ? getReporterFormattingWarnings({
+      phone: draft.phone,
+      csrExpiration: draft.reporterCsrExpiration,
+    })
+    : [];
   const drawerDescription = drawerCategory
     ? buildDrawerDescription(drawerCategory, drawerMode, Boolean(selectedContact))
     : "";
@@ -903,7 +945,7 @@ export function ParticipantsPanel() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     {directoryFields.map((config) => (
-                      <DrawerField key={config.key} config={config} draft={draft} onChange={handleDraftChange} />
+                      <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
                     ))}
                   </div>
 
@@ -911,14 +953,14 @@ export function ParticipantsPanel() {
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Firm Directory</div>
                       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                        <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmCity", label: "City", kind: "text" }} draft={draft} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmState", label: "State", kind: "text" }} draft={draft} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmZip", label: "ZIP", kind: "text" }} draft={draft} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmMainPhone", label: "Main Phone", kind: "tel" }} draft={draft} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmFax", label: "Fax", kind: "tel" }} draft={draft} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmCity", label: "City", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmState", label: "State", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmZip", label: "ZIP", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmMainPhone", label: "Main Phone", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        <DrawerField config={{ key: "firmFax", label: "Fax", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
                       </div>
                       {firmResults.length > 0 && (
                         <div className="mt-3 space-y-2">
@@ -957,9 +999,15 @@ export function ParticipantsPanel() {
                   <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Case-Specific Fields</div>
                   <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     {caseFields.map((config) => (
-                      <DrawerField key={config.key} config={config} draft={draft} onChange={handleDraftChange} />
+                      <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
                     ))}
                   </div>
+                </div>
+              )}
+
+              {reporterWarnings.length > 0 && (
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  {reporterWarnings.join(" ")}
                 </div>
               )}
 

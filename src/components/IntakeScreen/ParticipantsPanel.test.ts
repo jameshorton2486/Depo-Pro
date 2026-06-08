@@ -581,6 +581,73 @@ describe("ParticipantsPanel", () => {
     expect(findButton(tree, "Save Reporter to Directory + Use for This Case")).toBeTruthy();
   });
 
+  it("stores reporter directory fields canonically while displaying formatted values", async () => {
+    const draft = defaultDraft();
+    draft.name = "Miah Bardot";
+    draft.phone = "(210) 555-0303";
+    draft.reporterCsrNumber = "12129";
+    draft.reporterCsrExpiration = "12/31/2027";
+    draft.reporterFirmRegistration = "9001";
+    upsertDirectory.mockResolvedValue({
+      created: true,
+      conflicts: [],
+      contact: {
+        id: "contact_reporter_1",
+        type: "reporter",
+        name: "Miah Bardot",
+        organization: "Bardot Reporting, LLC",
+        phone: "2105550303",
+        email: "miah@example.com",
+        address: "",
+        times_used: 0,
+        notes: "",
+        firm_id: null,
+        details: {
+          kind: "reporter",
+          csr_number: "12129",
+          csr_cert_expiration: "2027-12-31",
+          firm_registration_number: "9001",
+        },
+        created_at: "2026-06-08T00:00:00.000Z",
+        updated_at: "2026-06-08T00:00:00.000Z",
+      },
+    });
+    seedPanelState({ 0: "reporter", 1: "create", 6: draft });
+
+    const tree = renderPanel();
+    (findButton(tree, "Save Reporter to Directory + Use for This Case").props as { onClick?: () => unknown }).onClick?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(upsertDirectory).toHaveBeenCalledWith({
+      type: "reporter",
+      name: "Miah Bardot",
+      organization: "",
+      phone: "2105550303",
+      email: "",
+      address: "",
+      notes: "",
+      firm_id: null,
+      details: {
+        csr_number: "12129",
+        csr_cert_expiration: "2027-12-31",
+        firm_registration_number: "9001",
+      },
+    });
+  });
+
+  it("shows a soft warning for invalid reporter expiration dates without blocking save", () => {
+    const draft = defaultDraft();
+    draft.name = "Miah Bardot";
+    draft.reporterCsrExpiration = "13/40/2027";
+    seedPanelState({ 0: "reporter", 1: "create", 6: draft });
+
+    const tree = renderPanel();
+
+    expectText(tree, "CSR expiration should be a valid date in MM/DD/YYYY format.");
+    expect(findButton(tree, "Save Reporter to Directory + Use for This Case")).toBeTruthy();
+  });
+
   it("keeps the participant drawer in a single form column until extra-wide widths", () => {
     seedPanelState({ 0: "attorney", 1: "create" });
 
