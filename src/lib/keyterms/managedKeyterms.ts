@@ -1,8 +1,8 @@
-import type { ManagedKeyterm, KeytermSource } from "../../components/DeepgramKeytermManager/types";
-import type { FieldProvenanceRow } from "../../components/conflict/types";
-import type { CaseRecord, DeepgramKeyterm, KeytermCategory } from "../../types/case";
-import { countTokens } from "../keytermRanker";
-import { harvestKeyterms, type HarvestedKeyterm, type HarvestedKeytermSource } from "./harvestKeyterms";
+import type { ManagedKeyterm, KeytermSource } from "../../components/DeepgramKeytermManager/types.ts";
+import type { FieldProvenanceRow } from "../../components/conflict/types.ts";
+import type { CaseRecord, DeepgramKeyterm, KeytermCategory } from "../../types/case.ts";
+import { countTokens } from "../keytermRanker.ts";
+import { harvestKeyterms, type HarvestedKeyterm, type HarvestedKeytermSource } from "./harvestKeyterms.ts";
 
 const KEYTERM_META_PREFIX = "__depo_keyterm_meta__:";
 

@@ -36,7 +36,6 @@ const corsHeaders = {
 };
 
 const CASE_FILES_BUCKET = "case-files";
-const DEEPGRAM_ENDPOINT = "https://api.deepgram.com/v1/listen";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const deepgramApiKey = Deno.env.get("DEEPGRAM_API_KEY") ?? "";

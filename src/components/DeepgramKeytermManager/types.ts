@@ -2,7 +2,7 @@
 // These are richer than the storage-layer DeepgramKeyterm from types/case.ts —
 // they carry UI state (selected, pinned, source, token_count, confidence).
 
-import type { KeytermCategory } from "../../types/case";
+import type { KeytermCategory } from "../../types/case.ts";
 
 // ─── Source ───────────────────────────────────────────────────────────────────
 

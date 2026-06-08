@@ -1,7 +1,7 @@
 // Conflict resolution and provenance types.
 // These are UI-layer types — they map 1:1 to the field_provenance Supabase table.
 
-import type { DisplaySource } from "../ExtractedFieldsTable/fieldProjection";
+import type { DisplaySource } from "../ExtractedFieldsTable/fieldProjection.ts";
 
 // ─── Event types ──────────────────────────────────────────────────────────────
 

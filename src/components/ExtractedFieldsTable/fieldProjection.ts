@@ -1,4 +1,4 @@
-import type { CaseRecord, FieldSource } from "../../types/case";
+import type { CaseRecord, FieldSource } from "../../types/case.ts";
 
 // ─── Row model ────────────────────────────────────────────────────────────────
 

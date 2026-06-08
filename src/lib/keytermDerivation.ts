@@ -1,5 +1,5 @@
-import type { DeepgramKeyterm, CaseRecord, KeytermCategory } from "../types/case";
-import { readStoredKeytermMeta } from "./keyterms/managedKeyterms";
+import type { DeepgramKeyterm, CaseRecord, KeytermCategory } from "../types/case.ts";
+import { readStoredKeytermMeta } from "./keyterms/managedKeyterms.ts";
 
 // Deepgram Nova-3 accepts repeated `keyterm` query params and supports multi-word phrases.
 // The documented hard limit is 500 tokens / ~100 words across all keyterms, so we keep a

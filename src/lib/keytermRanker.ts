@@ -3,8 +3,8 @@
 // Priority score is computed from category, source, boost value, and
 // pinned/selected state. Higher score = higher priority = kept first during pruning.
 
-import type { ManagedKeyterm, KeytermSource } from "../components/DeepgramKeytermManager/types";
-import type { KeytermCategory } from "../types/case";
+import type { ManagedKeyterm, KeytermSource } from "../components/DeepgramKeytermManager/types.ts";
+import type { KeytermCategory } from "../types/case.ts";
 
 // ─── Weights ──────────────────────────────────────────────────────────────────
 

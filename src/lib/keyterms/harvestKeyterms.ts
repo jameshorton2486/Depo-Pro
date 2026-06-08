@@ -1,5 +1,5 @@
-import type { FieldProvenanceRow } from "../../components/conflict/types";
-import type { CaseRecord } from "../../types/case";
+import type { FieldProvenanceRow } from "../../components/conflict/types.ts";
+import type { CaseRecord } from "../../types/case.ts";
 
 export type HarvestedKeytermSource = "nod_parser" | "job_sheet" | "manual";
 

@@ -1,6 +1,6 @@
-import type { DeepgramKeyterm } from "../../types/case";
-import { DEEPGRAM_KEYTERM_SOFT_TERM_CAP, DEEPGRAM_KEYTERM_SOFT_TOKEN_CAP, estimateSelectedStoredKeytermTokens } from "../keytermDerivation";
-import { readStoredKeytermMeta } from "../keyterms/managedKeyterms";
+import type { DeepgramKeyterm } from "../../types/case.ts";
+import { DEEPGRAM_KEYTERM_SOFT_TERM_CAP, DEEPGRAM_KEYTERM_SOFT_TOKEN_CAP, estimateSelectedStoredKeytermTokens } from "../keytermDerivation.ts";
+import { readStoredKeytermMeta } from "../keyterms/managedKeyterms.ts";
 
 export interface DeepgramBudgetFitResult {
   keyterms: DeepgramKeyterm[];
