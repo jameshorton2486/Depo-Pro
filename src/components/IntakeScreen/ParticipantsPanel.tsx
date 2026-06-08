@@ -907,7 +907,7 @@ export function ParticipantsPanel() {
             </div>
 
             <div className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/80 px-5 py-4">
-              <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+              <div className="grid gap-4 2xl:grid-cols-[300px_minmax(0,1fr)]">
                 <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <Search size={14} className="text-slate-400" />
@@ -964,7 +964,7 @@ export function ParticipantsPanel() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {directoryFields.map((config) => (
                           <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
                         ))}
@@ -973,7 +973,7 @@ export function ParticipantsPanel() {
                       {(drawerCategory === "attorney" || drawerCategory === "videographer") && (
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Firm Directory</div>
-                          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                             <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
                             <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
                             <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
@@ -1018,7 +1018,7 @@ export function ParticipantsPanel() {
                   {caseFields.length > 0 && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Case-Specific Fields</div>
-                      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {caseFields.map((config) => (
                           <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
                         ))}
@@ -1041,8 +1041,8 @@ export function ParticipantsPanel() {
               </div>
             </div>
 
-            <div className="border-t border-slate-200 bg-white px-5 py-4">
-              <div className="flex justify-end gap-2">
+            <div className="sticky bottom-0 border-t border-slate-200 bg-white px-5 py-4">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={closeDrawer}
@@ -1054,7 +1054,7 @@ export function ParticipantsPanel() {
                   type="button"
                   onClick={() => void handleSave()}
                   disabled={saving || (!selectedContact && !draft.name.trim())}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+                  className="max-w-full whitespace-normal rounded-lg bg-slate-900 px-4 py-2 text-left text-sm font-semibold leading-tight text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
                   {saving ? "Saving..." : saveActionLabel}
                 </button>

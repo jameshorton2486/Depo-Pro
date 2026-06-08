@@ -739,13 +739,15 @@ describe("ParticipantsPanel", () => {
     expect(findButton(tree, "Save Reporter to Directory + Use for This Case")).toBeTruthy();
   });
 
-  it("keeps the participant drawer in a single form column until extra-wide widths", () => {
+  it("uses the modal's wider grid and sticky footer so labels and long save actions fit without clipping", () => {
     seedPanelState({ 0: "attorney", 1: "create" });
 
     const tree = renderPanel();
 
-    expect(findByClassSubstring(tree, "xl:grid-cols-[240px_minmax(0,1fr)]")).toBeTruthy();
-    expect(findByClassSubstring(tree, "grid-cols-1 gap-3 xl:grid-cols-2")).toBeTruthy();
+    expect(findByClassSubstring(tree, "2xl:grid-cols-[300px_minmax(0,1fr)]")).toBeTruthy();
+    expect(findByClassSubstring(tree, "grid grid-cols-1 gap-3 lg:grid-cols-2")).toBeTruthy();
+    expect(findByClassSubstring(tree, "sticky bottom-0 border-t border-slate-200 bg-white px-5 py-4")).toBeTruthy();
+    expect(findByClassSubstring(tree, "max-w-full whitespace-normal rounded-lg bg-slate-900")).toBeTruthy();
   });
 
   it("renders the participant form as a centered blocking modal and closes via cancel, close button, backdrop, and escape", async () => {
