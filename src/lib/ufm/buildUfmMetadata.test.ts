@@ -457,6 +457,40 @@ describe("buildUfmMetadata", () => {
     );
   });
 
+  it("carries a directory attorney preferred appearance label into appearances", () => {
+    const record = buildRecord();
+    record.attorneys.push({
+      attorney_id: "attorney_appearance_label",
+      name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      firm: { value: "Brothers, Alvarado, Piazza & Cozort, P.C.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "CO_COUNSEL", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      representing: { value: "Plaintiff", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      bar_number: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: null,
+      email: null,
+      phone: null,
+    });
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: buildProvenance(),
+      directoryContacts: [buildDirectoryAttorneyContact()],
+    });
+
+    expect(envelope.ufm_metadata.appearances).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Karen M. Alvarado",
+          appearance_label: "MS. ALVARADO",
+        }),
+      ]),
+    );
+  });
+
   it("uses the case-selected reporter instead of the signed-in profile when a different reporter is chosen", () => {
     const record = buildRecord();
     record.reporter.name.value = "Alternate Reporter";
