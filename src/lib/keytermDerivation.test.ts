@@ -343,6 +343,33 @@ describe("deriveKeytermsWithBudget", () => {
     expect(terms.filter((term) => term === "Ms. Thomas")).toHaveLength(1);
   });
 
+  it("keeps attorney name and linked firm tokens in the live derivation path after directory-style auto-fill", () => {
+    const record = emptyCaseRecord("case_attorney_directory", "2026-06-08T20:00:00.000Z");
+    record.attorneys = [{
+      attorney_id: "attorney_1",
+      name: manualField("Karen M. Alvarado"),
+      firm: manualField("Brothers, Alvarado, Piazza & Cozort, P.C."),
+      role: manualField("EXAMINING"),
+      representing: manualField("FOR DEFENDANT HOME DEPOT"),
+      bar_number: manualField("24012345"),
+      address: "123 Main St",
+      city: "San Antonio",
+      state: "TX",
+      zip: "78205",
+      time_used: null,
+      email: "kalvarado@example.com",
+      phone: "2105551212",
+    }];
+
+    const terms = deriveKeytermsWithBudget(record).included.map((keyterm) => keyterm.term);
+    expect(terms).toEqual(expect.arrayContaining([
+      "Karen M. Alvarado",
+      "Alvarado",
+      "Piazza",
+      "Cozort",
+    ]));
+  });
+
   it("drops lowest-priority terms when over budget and keeps person variants all-or-nothing", () => {
     const record = emptyCaseRecord("case_budget", "2026-06-06T20:00:00.000Z");
     record.witnesses = Array.from({ length: 55 }, (_, index) => ({
