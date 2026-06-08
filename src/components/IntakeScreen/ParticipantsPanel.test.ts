@@ -217,6 +217,33 @@ function findByClassSubstring(tree: ReactNode, classSubstring: string) {
   return match;
 }
 
+function findButtonByClassSubstring(tree: ReactNode, classSubstring: string): ElementOfType<"button"> {
+  let match: ElementOfType<"button"> | null = null;
+  walk(tree, (element) => {
+    const className = typeof element.props.className === "string" ? element.props.className : "";
+    if (!match && element.type === "button" && className.includes(classSubstring)) {
+      match = element as ElementOfType<"button">;
+    }
+  });
+  if (!match) {
+    throw new Error(`Button not found for class substring: ${classSubstring}`);
+  }
+  return match;
+}
+
+function findElementByProp(tree: ReactNode, propName: string, expected: unknown) {
+  let match: ReactElement | null = null;
+  walk(tree, (element) => {
+    if (!match && element.props[propName] === expected) {
+      match = element;
+    }
+  });
+  if (!match) {
+    throw new Error(`Element not found for prop ${propName}=${String(expected)}`);
+  }
+  return match;
+}
+
 function expectText(tree: ReactNode, value: string) {
   const haystack = textContent(tree);
   expect(haystack).toContain(value);
@@ -335,6 +362,7 @@ describe("ParticipantsPanel", () => {
   it("renders category-specific drawer fields for attorney, reporter, interpreter, videographer, and generic participants", () => {
     seedPanelState({ 0: "attorney", 1: "create" });
     let tree = renderPanel();
+    expect(findElementByProp(tree, "role", "dialog")).toBeTruthy();
     expect(findLabel(tree, "Attorney Name")).toBeTruthy();
     expect(findLabel(tree, "SBOT / Bar Number")).toBeTruthy();
     expect(findLabel(tree, "Specific Party")).toBeTruthy();
@@ -718,5 +746,53 @@ describe("ParticipantsPanel", () => {
 
     expect(findByClassSubstring(tree, "xl:grid-cols-[240px_minmax(0,1fr)]")).toBeTruthy();
     expect(findByClassSubstring(tree, "grid-cols-1 gap-3 xl:grid-cols-2")).toBeTruthy();
+  });
+
+  it("renders the participant form as a centered blocking modal and closes via cancel, close button, backdrop, and escape", async () => {
+    seedPanelState({ 0: "attorney", 1: "create" });
+    const listeners = new Map<string, (event: { key?: string }) => void>();
+    const documentMock = {
+      addEventListener: vi.fn((type: string, handler: (event: { key?: string }) => void) => {
+        listeners.set(type, handler);
+      }),
+      removeEventListener: vi.fn((type: string) => {
+        listeners.delete(type);
+      }),
+      dispatchEvent: (event: { type: string; key?: string }) => {
+        listeners.get(event.type)?.(event);
+      },
+    };
+    vi.stubGlobal("document", documentMock);
+
+    let tree = renderPanel();
+    await runEffects();
+
+    expect(findElementByProp(tree, "role", "dialog")).toBeTruthy();
+    expect(findByClassSubstring(tree, "fixed inset-0 z-50 flex items-center justify-center p-4")).toBeTruthy();
+
+    const backdrop = findByClassSubstring(tree, "absolute inset-0 bg-slate-900/60 backdrop-blur-sm") as ReactElement<Record<string, unknown>>;
+    (backdrop.props as { onClick?: () => unknown }).onClick?.();
+    expect(hookRuntime.slots[0]).toBeNull();
+
+    seedPanelState({ 0: "attorney", 1: "create" });
+    tree = renderPanel();
+    (findButton(tree, "Cancel").props as { onClick?: () => unknown }).onClick?.();
+    expect(hookRuntime.slots[0]).toBeNull();
+
+    seedPanelState({ 0: "attorney", 1: "create" });
+    tree = renderPanel();
+    const closeButton = findButtonByClassSubstring(tree, "rounded-lg p-1 text-slate-500 hover:bg-slate-200") as ElementOfType<"button">;
+    (closeButton.props as { onClick?: () => unknown }).onClick?.();
+    expect(hookRuntime.slots[0]).toBeNull();
+
+    seedPanelState({ 0: "attorney", 1: "create" });
+    tree = renderPanel();
+    await runEffects();
+    documentMock.dispatchEvent({ type: "keydown", key: "Escape" });
+    expect(hookRuntime.slots[0]).toBeNull();
+
+    expect(documentMock.addEventListener).toHaveBeenCalledWith("keydown", expect.any(Function));
+    expect(documentMock.removeEventListener).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });

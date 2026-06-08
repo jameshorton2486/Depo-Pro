@@ -777,6 +777,21 @@ export function ParticipantsPanel() {
     ? buildSaveActionLabel(drawerCategory, drawerMode, Boolean(selectedContact))
     : "Save";
 
+  useEffect(() => {
+    if (!drawerCategory || typeof document === "undefined") {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeDrawer();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [drawerCategory]);
+
   return (
     <section className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
@@ -878,19 +893,22 @@ export function ParticipantsPanel() {
       </div>
 
       {drawerCategory && (
-        <div className="border-t border-slate-200 bg-slate-50/80 px-4 py-4">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Add {CATEGORY_META[drawerCategory].label}</h3>
-              <p className="text-xs text-slate-500">{drawerDescription}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="participant-modal-title">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeDrawer} />
+          <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <div>
+                <h3 id="participant-modal-title" className="text-sm font-semibold text-slate-900">Add {CATEGORY_META[drawerCategory].label}</h3>
+                <p className="text-xs text-slate-500">{drawerDescription}</p>
+              </div>
+              <button type="button" onClick={closeDrawer} className="rounded-lg p-1 text-slate-500 hover:bg-slate-200">
+                <X size={16} />
+              </button>
             </div>
-            <button type="button" onClick={closeDrawer} className="rounded-lg p-1 text-slate-500 hover:bg-slate-200">
-              <X size={16} />
-            </button>
-          </div>
 
-          <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
-            <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/80 px-5 py-4">
+              <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+                <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <Search size={14} className="text-slate-400" />
                 <input
@@ -932,95 +950,99 @@ export function ParticipantsPanel() {
               </div>
             </div>
 
-            <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4">
-              {drawerMode === "pick" && selectedContact ? (
-                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-slate-800">
-                  <div className="font-semibold">{selectedContact.name}</div>
-                  <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-600">
-                    {selectedContact.email && <span className="flex items-center gap-1"><Mail size={12} />{selectedContact.email}</span>}
-                    {selectedContact.phone && <span className="flex items-center gap-1"><Phone size={12} />{selectedContact.phone}</span>}
-                    {(selectedFirm?.name || selectedContact.organization) && (
-                      <span className="flex items-center gap-1"><Building2 size={12} />{selectedFirm?.name || selectedContact.organization}</span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                    {directoryFields.map((config) => (
-                      <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                    ))}
-                  </div>
-
-                  {(drawerCategory === "attorney" || drawerCategory === "videographer") && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Firm Directory</div>
-                      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                        <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmCity", label: "City", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmState", label: "State", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmZip", label: "ZIP", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmMainPhone", label: "Main Phone", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                        <DrawerField config={{ key: "firmFax", label: "Fax", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4">
+                  {drawerMode === "pick" && selectedContact ? (
+                    <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-slate-800">
+                      <div className="font-semibold">{selectedContact.name}</div>
+                      <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-600">
+                        {selectedContact.email && <span className="flex items-center gap-1"><Mail size={12} />{selectedContact.email}</span>}
+                        {selectedContact.phone && <span className="flex items-center gap-1"><Phone size={12} />{selectedContact.phone}</span>}
+                        {(selectedFirm?.name || selectedContact.organization) && (
+                          <span className="flex items-center gap-1"><Building2 size={12} />{selectedFirm?.name || selectedContact.organization}</span>
+                        )}
                       </div>
-                      {firmResults.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {firmResults.map((firm) => (
-                            <button
-                              key={firm.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedFirm(firm);
-                                setDraft((current) => ({
-                                  ...current,
-                                  firmName: firm.name,
-                                  firmAddress: firm.address,
-                                  firmCity: firm.city,
-                                  firmState: firm.state,
-                                  firmZip: firm.zip,
-                                  firmMainPhone: firm.main_phone,
-                                  firmFax: firm.fax,
-                                }));
-                              }}
-                              className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
-                            >
-                              <div className="font-semibold">{firm.name}</div>
-                              <div className="text-xs text-slate-500">{firm.address || firm.city || "Saved firm"}</div>
-                            </button>
-                          ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                        {directoryFields.map((config) => (
+                          <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        ))}
+                      </div>
+
+                      {(drawerCategory === "attorney" || drawerCategory === "videographer") && (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Firm Directory</div>
+                          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                            <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmCity", label: "City", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmState", label: "State", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmZip", label: "ZIP", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmMainPhone", label: "Main Phone", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmFax", label: "Fax", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                          </div>
+                          {firmResults.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {firmResults.map((firm) => (
+                                <button
+                                  key={firm.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedFirm(firm);
+                                    setDraft((current) => ({
+                                      ...current,
+                                      firmName: firm.name,
+                                      firmAddress: firm.address,
+                                      firmCity: firm.city,
+                                      firmState: firm.state,
+                                      firmZip: firm.zip,
+                                      firmMainPhone: firm.main_phone,
+                                      firmFax: firm.fax,
+                                    }));
+                                  }}
+                                  className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-800 hover:bg-slate-50"
+                                >
+                                  <div className="font-semibold">{firm.name}</div>
+                                  <div className="text-xs text-slate-500">{firm.address || firm.city || "Saved firm"}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {caseFields.length > 0 && (
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Case-Specific Fields</div>
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                    {caseFields.map((config) => (
-                      <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                    ))}
-                  </div>
-                </div>
-              )}
+                  {caseFields.length > 0 && (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Case-Specific Fields</div>
+                      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                        {caseFields.map((config) => (
+                          <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {reporterWarnings.length > 0 && (
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-                  {reporterWarnings.join(" ")}
-                </div>
-              )}
+                  {reporterWarnings.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                      {reporterWarnings.join(" ")}
+                    </div>
+                  )}
 
-              {error && (
-                <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                  {error}
+                  {error && (
+                    <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                      {error}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+            </div>
 
-              <div className="mt-4 flex justify-end gap-2">
+            <div className="border-t border-slate-200 bg-white px-5 py-4">
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={closeDrawer}
