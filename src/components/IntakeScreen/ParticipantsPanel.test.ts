@@ -67,6 +67,10 @@ import type { Contact } from "../../types/contact";
 
 type ElementOfType<T extends string> = ReactElement<Record<string, unknown>, T>;
 
+function renderFunctionElement(element: ReactElement) {
+  return (element.type as (props: Record<string, unknown>) => ReactNode)(element.props as Record<string, unknown>);
+}
+
 function defaultDraft() {
   return {
     name: "",
@@ -150,7 +154,7 @@ function walk(node: ReactNode, visit: (element: ReactElement) => void) {
     return;
   }
   if (typeof node.type === "function") {
-    walk(node.type(node.props), visit);
+    walk(renderFunctionElement(node), visit);
     return;
   }
   visit(node);
@@ -168,12 +172,12 @@ function textContent(node: ReactNode): string {
     return "";
   }
   if (typeof node.type === "function") {
-    return textContent(node.type(node.props));
+    return textContent(renderFunctionElement(node));
   }
   return textContent(node.props.children);
 }
 
-function findButton(tree: ReactNode, label: string) {
+function findButton(tree: ReactNode, label: string): ElementOfType<"button"> {
   let match: ElementOfType<"button"> | null = null;
   walk(tree, (element) => {
     if (element.type === "button" && textContent(element.props.children).includes(label)) {
@@ -183,7 +187,7 @@ function findButton(tree: ReactNode, label: string) {
   if (!match) {
     throw new Error(`Button not found: ${label}`);
   }
-  return match;
+  return match as ElementOfType<"button">;
 }
 
 function findLabel(tree: ReactNode, label: string) {
@@ -347,7 +351,8 @@ describe("ParticipantsPanel", () => {
     });
     const tree = renderPanel();
 
-    await findButton(tree, "Use My Reporter Profile").props.onClick?.();
+    (findButton(tree, "Use My Reporter Profile").props as { onClick?: () => unknown }).onClick?.();
+    await Promise.resolve();
 
     expect(updateField.mock.calls).toEqual([
       ["reporter.name", "Miah Lopez", "imported", null, true],
@@ -361,7 +366,7 @@ describe("ParticipantsPanel", () => {
     seedPanelState({ 0: "attorney", 1: "pick" });
     let tree = renderPanel();
 
-    findButton(tree, "Karen M. Alvarado").props.onClick?.();
+    (findButton(tree, "Karen M. Alvarado").props as { onClick?: () => unknown }).onClick?.();
     tree = renderPanel();
     await runEffects();
     tree = renderPanel();
@@ -397,7 +402,7 @@ describe("ParticipantsPanel", () => {
     seedPanelState({ 0: "corporate_representative", 1: "create", 6: draft });
     const tree = renderPanel();
 
-    findButton(tree, "Add Corporate Representative").props.onClick?.();
+    (findButton(tree, "Add Corporate Representative").props as { onClick?: () => unknown }).onClick?.();
     await Promise.resolve();
     await Promise.resolve();
 

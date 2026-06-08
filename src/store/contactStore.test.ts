@@ -39,6 +39,12 @@ vi.mock("../api/contactService", () => ({
 import type { Contact, ContactInsert, ContactUpdate } from "../types/contact";
 import { useContactStore } from "./contactStore";
 
+type StoreState = {
+  contacts: Contact[];
+  loading: boolean;
+  error: string | null;
+};
+
 const contactOne: Contact = {
   id: "contact_1",
   type: "attorney",
@@ -72,13 +78,13 @@ const contactTwo: Contact = {
 };
 
 function createStoreHarness() {
-  let state = {
-    contacts: [] as Contact[],
+  let state: StoreState = {
+    contacts: [],
     loading: false,
-    error: null as string | null,
+    error: null,
   };
 
-  reactMocks.useReducerMock.mockImplementation((reducer: typeof Function) => {
+  reactMocks.useReducerMock.mockImplementation((reducer: (state: StoreState, action: unknown) => StoreState) => {
     const dispatch = (action: unknown) => {
       state = reducer(state, action);
     };
@@ -87,7 +93,7 @@ function createStoreHarness() {
   });
 
   return {
-    render() {
+    useStore() {
       return useContactStore();
     },
   };
@@ -117,11 +123,11 @@ describe("useContactStore", () => {
   it("loads contacts through the current success path and clears loading on fetch success", async () => {
     serviceMocks.listContactsMock.mockResolvedValue([contactOne]);
     const harness = createStoreHarness();
-    const store = harness.render();
+    const store = harness.useStore();
 
     await store.load("attorney");
 
-    const next = harness.render();
+    const next = harness.useStore();
     expect(serviceMocks.listContactsMock).toHaveBeenCalledWith("attorney");
     expect(next.loading).toBe(false);
     expect(next.error).toBeNull();
@@ -131,11 +137,11 @@ describe("useContactStore", () => {
   it("searches contacts through the current success path and replaces the contact list", async () => {
     serviceMocks.searchContactsMock.mockResolvedValue([contactTwo]);
     const harness = createStoreHarness();
-    const store = harness.render();
+    const store = harness.useStore();
 
     await store.search("cukjati", "attorney");
 
-    const next = harness.render();
+    const next = harness.useStore();
     expect(serviceMocks.searchContactsMock).toHaveBeenCalledWith("cukjati", "attorney");
     expect(next.contacts).toEqual([contactTwo]);
     expect(next.loading).toBe(false);
@@ -146,12 +152,12 @@ describe("useContactStore", () => {
     serviceMocks.listContactsMock.mockResolvedValueOnce([contactOne]);
     serviceMocks.listContactsMock.mockRejectedValueOnce(new Error("contacts unavailable"));
     const harness = createStoreHarness();
-    const store = harness.render();
+    const store = harness.useStore();
 
     await store.load();
     await store.load("attorney");
 
-    const next = harness.render();
+    const next = harness.useStore();
     expect(next.contacts).toEqual([contactOne]);
     expect(next.loading).toBe(false);
     expect(next.error).toBe("Error: contacts unavailable");
@@ -166,7 +172,7 @@ describe("useContactStore", () => {
     serviceMocks.updateContactMock.mockResolvedValue(updated);
     serviceMocks.saveContactMock.mockResolvedValue(savedExisting);
     const harness = createStoreHarness();
-    const store = harness.render();
+    const store = harness.useStore();
 
     await store.create({
       type: "attorney",
@@ -178,13 +184,13 @@ describe("useContactStore", () => {
       notes: created.notes,
     } satisfies ContactInsert);
 
-    expect(harness.render().contacts).toEqual([created]);
+    expect(harness.useStore().contacts).toEqual([created]);
 
     await store.update(created.id, {
       organization: updated.organization,
     } satisfies ContactUpdate);
 
-    expect(harness.render().contacts).toEqual([updated]);
+    expect(harness.useStore().contacts).toEqual([updated]);
 
     await store.save({
       id: updated.id,
@@ -197,14 +203,14 @@ describe("useContactStore", () => {
       notes: updated.notes,
     });
 
-    expect(harness.render().contacts).toEqual([savedExisting]);
+    expect(harness.useStore().contacts).toEqual([savedExisting]);
   });
 
   it("increments usage after the service side effect resolves", async () => {
     serviceMocks.createContactMock.mockResolvedValue(contactOne);
     serviceMocks.incrementUsageMock.mockResolvedValue(undefined);
     const harness = createStoreHarness();
-    const store = harness.render();
+    const store = harness.useStore();
 
     await store.create({
       type: "attorney",
@@ -219,7 +225,7 @@ describe("useContactStore", () => {
     });
     await store.useContact(contactOne.id);
 
-    const next = harness.render();
+    const next = harness.useStore();
     expect(serviceMocks.incrementUsageMock).toHaveBeenCalledWith(contactOne.id);
     expect(next.contacts[0]?.times_used).toBe(contactOne.times_used + 1);
   });

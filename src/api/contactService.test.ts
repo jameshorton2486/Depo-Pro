@@ -68,8 +68,11 @@ function buildClient(options: {
       calls.push(call);
       return buildAwaitableQuery(response, call);
     }),
-    rpc: vi.fn((_fn: string, _args: unknown) =>
-      Promise.resolve(options.rpcResponse ?? { data: null, error: null })),
+    rpc: vi.fn((fn: string, args: unknown) => {
+      void fn;
+      void args;
+      return Promise.resolve(options.rpcResponse ?? { data: null, error: null });
+    }),
   };
 
   return { client, calls };
