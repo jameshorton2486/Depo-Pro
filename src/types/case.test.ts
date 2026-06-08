@@ -214,9 +214,9 @@ describe("normalizeCaseRecord", () => {
     expect(normalized.parties[0]?.entity_type.value).toBe("person");
     expect(normalized.attorneys).toHaveLength(1);
     expect(normalized.attorneys[0]?.name.value).toBe("Curtis L. Cukjati");
-    expect(normalized.participants).toHaveLength(1);
-    expect(normalized.participants[0]?.role).toBe("PARALEGAL");
-    expect(normalized.participants[0]?.organization).toBe("Home Depot");
+    expect(normalized.participants).toHaveLength(2);
+    expect(normalized.participants.map((participant) => participant.role)).toEqual(["OTHER", "PARALEGAL"]);
+    expect(normalized.participants[1]?.organization).toBe("Home Depot");
   });
 
   it("preserves the same name across distinct collections", () => {

@@ -1495,6 +1495,35 @@ function normalizeComparableName(value: string | null | undefined): string {
   return normalized.toLowerCase().replace(/\./g, "").replace(/\s+/g, " ").trim();
 }
 
+function normalizeComparableValue(value: unknown): string {
+  if (typeof value === "string") {
+    return normalizeComparableName(value);
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+
+  if (value == null) {
+    return "";
+  }
+
+  return String(value).toLowerCase().trim();
+}
+
+function normalizeComparableFieldValue<T>(field: ExtractedField<T>): string {
+  return normalizeComparableValue(field.value);
+}
+
+function buildCompositeKey(name: string | null | undefined, roleBearingValues: unknown[]): string {
+  const normalizedName = normalizeComparableName(name);
+  if (!normalizedName) {
+    return "";
+  }
+
+  return [normalizedName, ...roleBearingValues.map((value) => normalizeComparableValue(value))].join("|");
+}
+
 function isMeaningfulString(value: string | null | undefined): boolean {
   return (normalizeNullableString(value, "") ?? "").length > 0;
 }
@@ -1542,18 +1571,22 @@ function dedupeParties(parties: CaseParty[], coercedPaths: Set<string>): CasePar
 
 function dedupeAttorneys(attorneys: Attorney[], coercedPaths: Set<string>): Attorney[] {
   const deduped: Attorney[] = [];
-  const byName = new Map<string, Attorney>();
+  const byCompositeKey = new Map<string, Attorney>();
 
   for (const attorney of attorneys) {
-    const key = normalizeComparableName(attorney.name.value);
+    const key = buildCompositeKey(attorney.name.value, [
+      normalizeComparableFieldValue(attorney.representing),
+      normalizeComparableFieldValue(attorney.role),
+      normalizeComparableFieldValue(attorney.firm),
+    ]);
     if (!key) {
       deduped.push(attorney);
       continue;
     }
 
-    const existing = byName.get(key);
+    const existing = byCompositeKey.get(key);
     if (!existing) {
-      byName.set(key, attorney);
+      byCompositeKey.set(key, attorney);
       deduped.push(attorney);
       continue;
     }
@@ -1577,18 +1610,29 @@ function dedupeAttorneys(attorneys: Attorney[], coercedPaths: Set<string>): Atto
 
 function dedupeWitnesses(witnesses: Witness[], coercedPaths: Set<string>): Witness[] {
   const deduped: Witness[] = [];
-  const byName = new Map<string, Witness>();
+  const byCompositeKey = new Map<string, Witness>();
 
   for (const witness of witnesses) {
-    const key = normalizeComparableName(witness.name.value);
+    const key = buildCompositeKey(witness.name.value, [
+      normalizeComparableFieldValue(witness.role),
+      normalizeComparableFieldValue(witness.title),
+      normalizeComparableFieldValue(witness.employer),
+      witness.prefix_suffix,
+      normalizeComparableFieldValue(witness.party_affiliation),
+      witness.is_corporate_rep,
+      witness.corporate_entity,
+      normalizeComparableFieldValue(witness.read_and_sign),
+      normalizeComparableFieldValue(witness.requires_interpreter),
+      normalizeComparableFieldValue(witness.requires_videographer),
+    ]);
     if (!key) {
       deduped.push(witness);
       continue;
     }
 
-    const existing = byName.get(key);
+    const existing = byCompositeKey.get(key);
     if (!existing) {
-      byName.set(key, witness);
+      byCompositeKey.set(key, witness);
       deduped.push(witness);
       continue;
     }
@@ -1615,18 +1659,25 @@ function dedupeWitnesses(witnesses: Witness[], coercedPaths: Set<string>): Witne
 
 function dedupeInterpreters(interpreters: Interpreter[], coercedPaths: Set<string>): Interpreter[] {
   const deduped: Interpreter[] = [];
-  const byName = new Map<string, Interpreter>();
+  const byCompositeKey = new Map<string, Interpreter>();
 
   for (const interpreter of interpreters) {
-    const key = normalizeComparableName(interpreter.name.value);
+    const key = buildCompositeKey(interpreter.name.value, [
+      interpreter.language_from,
+      interpreter.language_to,
+      interpreter.oath_administered,
+      interpreter.certified,
+      interpreter.cert_number,
+      interpreter.agency,
+    ]);
     if (!key) {
       deduped.push(interpreter);
       continue;
     }
 
-    const existing = byName.get(key);
+    const existing = byCompositeKey.get(key);
     if (!existing) {
-      byName.set(key, interpreter);
+      byCompositeKey.set(key, interpreter);
       deduped.push(interpreter);
       continue;
     }
@@ -1647,18 +1698,22 @@ function dedupeInterpreters(interpreters: Interpreter[], coercedPaths: Set<strin
 
 function dedupeVideographers(videographers: Videographer[], coercedPaths: Set<string>): Videographer[] {
   const deduped: Videographer[] = [];
-  const byName = new Map<string, Videographer>();
+  const byCompositeKey = new Map<string, Videographer>();
 
   for (const videographer of videographers) {
-    const key = normalizeComparableName(videographer.name.value);
+    const key = buildCompositeKey(videographer.name.value, [
+      normalizeComparableFieldValue(videographer.firm),
+      videographer.role_title,
+      videographer.cert_number,
+    ]);
     if (!key) {
       deduped.push(videographer);
       continue;
     }
 
-    const existing = byName.get(key);
+    const existing = byCompositeKey.get(key);
     if (!existing) {
-      byName.set(key, videographer);
+      byCompositeKey.set(key, videographer);
       deduped.push(videographer);
       continue;
     }
@@ -1676,18 +1731,22 @@ function dedupeVideographers(videographers: Videographer[], coercedPaths: Set<st
 
 function dedupeParticipants(participants: Participant[], coercedPaths: Set<string>): Participant[] {
   const deduped: Participant[] = [];
-  const byName = new Map<string, Participant>();
+  const byCompositeKey = new Map<string, Participant>();
 
   for (const participant of participants) {
-    const key = normalizeComparableName(participant.name.value);
+    const key = buildCompositeKey(participant.name.value, [
+      participant.role,
+      participant.organization,
+      participant.role_in_this_proceeding,
+    ]);
     if (!key) {
       deduped.push(participant);
       continue;
     }
 
-    const existing = byName.get(key);
+    const existing = byCompositeKey.get(key);
     if (!existing) {
-      byName.set(key, participant);
+      byCompositeKey.set(key, participant);
       deduped.push(participant);
       continue;
     }

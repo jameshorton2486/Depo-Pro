@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeCaseRecord } from "../lib/normalizeCaseRecord";
 
 describe("normalizeCaseRecord role-preservation behavior", () => {
-  it("currently collapses same-name attorneys inside one collection even when their role metadata differs", () => {
+  it("preserves same-name attorneys when their role-bearing fields differ while still collapsing exact duplicates", () => {
     const normalized = normalizeCaseRecord({
       case_id: "case_role_merge",
       created_at: "2026-06-08T00:00:00.000Z",
@@ -39,19 +39,57 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           email: "karen@example.com",
           phone: "2105550101",
         },
+        {
+          attorney_id: "attorney_3",
+          name: { value: "Karen M Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          role: { value: "CO_COUNSEL", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          representing: { value: "Appearance Attorney", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          bar_number: { value: null, source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          address: null,
+          city: null,
+          state: null,
+          zip: null,
+          time_used: null,
+          email: null,
+          phone: null,
+        },
+        {
+          attorney_id: "attorney_4",
+          name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          representing: { value: "FOR THE PLAINTIFF", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          address: "123 Main",
+          city: "San Antonio",
+          state: "TX",
+          zip: "78205",
+          time_used: "00:30",
+          email: "duplicate@example.com",
+          phone: "2105559999",
+        },
       ],
     });
 
-    // AUDIT NOTE: same-name/different-role collapse may violate role-preservation rule — confirm before Stage 1.
-    expect(normalized.attorneys).toHaveLength(1);
-    expect(normalized.attorneys[0]?.role.value).toBe("EXAMINING");
-    expect(normalized.attorneys[0]?.representing.value).toBe("FOR THE PLAINTIFF");
+    // RESOLVED 2026-06-08: role-preserving dedup; see fix commit.
+    expect(normalized.attorneys).toHaveLength(3);
+    expect(normalized.attorneys.map((attorney) => attorney.role.value)).toEqual([
+      "EXAMINING",
+      "OTHER",
+      "CO_COUNSEL",
+    ]);
+    expect(normalized.attorneys.map((attorney) => attorney.representing.value)).toEqual([
+      "FOR THE PLAINTIFF",
+      "Custodial Attorney",
+      "Appearance Attorney",
+    ]);
     expect(normalized.attorneys[0]?.bar_number.value).toBe("24012345");
-    expect(normalized.attorneys[0]?.email).toBe("karen@example.com");
-    expect(normalized.attorneys[0]?.time_used).toBe("00:15");
+    expect(normalized.attorneys[0]?.email).toBe("duplicate@example.com");
+    expect(normalized.attorneys[0]?.time_used).toBe("00:30");
   });
 
-  it("still preserves the same name across distinct collections while collapsing within attorneys", () => {
+  it("preserves the same name across distinct collections and within participants when role-bearing fields differ", () => {
     const normalized = normalizeCaseRecord({
       case_id: "case_cross_collection_role",
       created_at: "2026-06-08T00:00:00.000Z",
@@ -97,11 +135,21 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           role_in_this_proceeding: "Observer",
           notes: null,
         },
+        {
+          participant_id: "participant_2",
+          name: { value: "Karen M Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          role: "ATTORNEY",
+          organization: "Brothers Law",
+          email: null,
+          phone: null,
+          role_in_this_proceeding: "Corporate representative",
+          notes: null,
+        },
       ],
     });
 
-    expect(normalized.attorneys).toHaveLength(1);
-    expect(normalized.participants).toHaveLength(1);
+    expect(normalized.attorneys).toHaveLength(2);
+    expect(normalized.participants).toHaveLength(2);
     expect(normalized.attorneys[0]?.name.value).toBe("Karen M. Alvarado");
     expect(normalized.participants[0]?.name.value).toBe("Karen M. Alvarado");
   });
