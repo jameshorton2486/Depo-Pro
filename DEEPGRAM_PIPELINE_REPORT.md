@@ -318,3 +318,70 @@ Current fact confirmed:
 - the existing transcript schema **can** represent Deepgram utterance/word output without destructive change
 - the existing normalization seam is already close to the target callback-ingestion design
 - Phase 1 can proceed with a separate `transcription_jobs` table layered beside the existing `transcripts` table
+
+## Implementation Notes
+
+### Phase 1
+
+- Added `public.transcription_jobs` in `supabase/migrations/20260607204500_transcription_jobs.sql`
+- Owner-scoped RLS follows the established `(owner_user_id = (select auth.uid()))` style
+- Added partial unique index on `(case_id)` for `status in ('queued', 'processing')` to enforce the active-job conflict at the database layer
+
+### Phase 2
+
+- `supabase/functions/transcribe-start/index.ts` uses caller JWT passthrough with the anon key client
+- Shared request-building path:
+  - `src/lib/deepgram/buildDeepgramRequest.ts`
+  - `src/lib/deepgram/requestBudget.ts`
+- No Deepgram keyterm logic is duplicated inside the function
+- Request artifacts are stored in the existing `case-files` bucket under:
+  - `<owner>/<case_id>/transcription/<job>_deepgram_request.json`
+
+### Phase 3
+
+- `supabase/functions/transcribe-callback/index.ts` uses the **scoped service-role exception**
+- Reason:
+  - Deepgram callbacks arrive without a caller JWT
+  - the repo already persists canonical transcript rows across multiple tables
+  - the prompt allowed a scoped service-role path when SECURITY DEFINER ingestion was not practical inside the one-migration budget
+- Security boundary:
+  - callback token is stored only as `sha256` hash
+  - token hash validation occurs before any write
+  - every inserted row explicitly sets `owner_user_id` from the `transcription_jobs` row
+- Canonical transcript content is built from `results.utterances` through `src/lib/transcript/normalize.ts`
+
+### Stack-Forced Delta
+
+- The prompt mentions `transcript_utterances` carrying `word_ids` arrays.
+- Depo-Pro’s current schema has no `word_ids` column and does not need one:
+  - the editor reconstructs `word_ids` from canonical `transcript_words`
+  - no destructive schema change was required
+
+## Live Verification Script
+
+1. Ensure Supabase migrations are pushed, including `20260607204500_transcription_jobs.sql`.
+2. Deploy:
+   - `transcribe-start`
+   - `transcribe-callback`
+3. Set function secrets:
+   - `DEEPGRAM_API_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+4. Run real mode:
+   - `VITE_USE_REAL_API=1`
+5. Sign in as a real owner-scoped user.
+6. Open a case with durable `case_audio` storage.
+7. In Stage 2, click `Generate Transcript`.
+8. Confirm:
+   - one `transcription_jobs` row appears with `queued` then `processing`
+   - `request_path` artifact exists in Storage under `<owner>/<case_id>/transcription/`
+9. Wait for callback completion and confirm:
+   - job status becomes `complete`
+   - `response_path` artifact exists
+   - one `transcripts` row exists with matching `transcript_id`
+   - `transcript_speakers`, `transcript_utterances`, and `transcript_words` rows are populated
+   - `transcript_audit_log` has the ingest row
+10. The app should advance to Stage 3 and open the workspace.
+11. Spot-check:
+   - one expected keyterm spelling is correct
+   - low-confidence words appear from stored word confidence
+   - `raw_text` matches the original punctuated Deepgram word text
