@@ -22,6 +22,7 @@ function buildGarzaRecord(): CaseRecord {
   record.session.location_address = manualField("123 Main Street");
   record.session.location_city = manualField("San Antonio");
   record.reporter.name = manualField("Miah Ramirez");
+  record.reporter.firm = manualField("Bardot Reporting, LLC");
   record.witnesses = [{
     witness_id: "wit_1",
     name: manualField("Heath Thomas"),
@@ -165,6 +166,31 @@ function buildGarzaRecord(): CaseRecord {
       fka_or_dba: manualField(null),
     },
   ];
+  record.interpreters = [
+    {
+      interpreter_id: "interp_1",
+      name: manualField("Rosa Pena"),
+      language_from: "es",
+      language_to: "en",
+      oath_administered: true,
+      certified: true,
+      cert_number: "INT-7788",
+      agency: "Lingua Bridge",
+      email: null,
+      phone: null,
+    },
+  ];
+  record.videographers = [
+    {
+      videographer_id: "vid_1",
+      name: manualField("Victor Stone"),
+      firm: manualField("Acme Video, LLC"),
+      role_title: null,
+      cert_number: null,
+      email: null,
+      phone: null,
+    },
+  ];
   record.participants = [
     {
       participant_id: "pt_1",
@@ -174,6 +200,26 @@ function buildGarzaRecord(): CaseRecord {
       email: null,
       phone: null,
       role_in_this_proceeding: "Medical provider",
+      notes: null,
+    },
+    {
+      participant_id: "pt_2",
+      name: manualField("Jordan Smith"),
+      role: "OTHER",
+      organization: "Home Depot",
+      email: null,
+      phone: null,
+      role_in_this_proceeding: "Corporate representative",
+      notes: null,
+    },
+    {
+      participant_id: "pt_3",
+      name: manualField("Casey Brooks"),
+      role: "OTHER",
+      organization: "Bexar Records Custodians",
+      email: null,
+      phone: null,
+      role_in_this_proceeding: "Records custodian",
       notes: null,
     },
   ];
@@ -235,8 +281,21 @@ describe("deriveKeytermsWithBudget", () => {
       "Karen",
       "Steven A. Nunez",
       "Nunez",
+      "Rosa Pena",
+      "Pena",
+      "Rosa",
+      "Victor Stone",
+      "Stone",
+      "Victor",
+      "Cukjati Law Firm, PLLC",
+      "Brain and Spine Personal Injury Lawyers of San Antonio, PLLC",
+      "Brothers, Alvarado, Piazza & Cozort, P.C.",
+      "Acme Video, LLC",
+      "Lingua Bridge",
+      "Bardot Reporting, LLC",
       "Piazza",
       "Cozort",
+      "Acme",
       "Bexar County",
       "Bexar",
       "123 Main Street",
@@ -246,6 +305,14 @@ describe("deriveKeytermsWithBudget", () => {
       "Dr. Elena Torres",
       "Torres",
       "South Texas Spine Clinic",
+      "Jordan Smith",
+      "Smith",
+      "Jordan",
+      "Home Depot",
+      "Casey Brooks",
+      "Brooks",
+      "Casey",
+      "Bexar Records Custodians",
       "certified court reporter",
       "civil action",
       "counsel",
@@ -341,6 +408,127 @@ describe("deriveKeytermsWithBudget", () => {
     expect(terms).toEqual(expect.arrayContaining(["Heath Thomas", "Thomas", "Mr. Thomas", "Ms. Thomas", "Heath"]));
     expect(terms.filter((term) => term === "Mr. Thomas")).toHaveLength(1);
     expect(terms.filter((term) => term === "Ms. Thomas")).toHaveLength(1);
+  });
+
+  it("harvests participant-derived names that already exist on the case record", () => {
+    const terms = deriveKeytermsWithBudget(buildGarzaRecord()).included.map((keyterm) => keyterm.term);
+
+    expect(terms).toEqual(expect.arrayContaining([
+      "Heath Thomas",
+      "Miah Ramirez",
+      "Rosa Pena",
+      "Victor Stone",
+      "Jordan Smith",
+      "Casey Brooks",
+    ]));
+  });
+
+  it("harvests linked organization phrases from existing case data", () => {
+    const terms = deriveKeytermsWithBudget(buildGarzaRecord()).included.map((keyterm) => keyterm.term);
+
+    expect(terms).toEqual(expect.arrayContaining([
+      "Cukjati Law Firm, PLLC",
+      "Brothers, Alvarado, Piazza & Cozort, P.C.",
+      "Acme Video, LLC",
+      "Lingua Bridge",
+      "Bardot Reporting, LLC",
+      "South Texas Spine Clinic",
+      "Bexar Records Custodians",
+    ]));
+  });
+
+  it("harvests long linked organization phrases when budget pressure is removed", () => {
+    const record = emptyCaseRecord("case_sparse_organizations", "2026-06-08T20:00:00.000Z");
+    record.attorneys = [{
+      attorney_id: "a1",
+      name: manualField("Steven A. Nunez"),
+      firm: manualField("Brain and Spine Personal Injury Lawyers of San Antonio, PLLC"),
+      role: manualField("OPPOSING"),
+      representing: manualField("Defendant"),
+      bar_number: manualField(null),
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: null,
+      email: null,
+      phone: null,
+    }];
+    record.law_firms = [{
+      law_firm_id: "lf1",
+      name: manualField("Brain and Spine Personal Injury Lawyers of San Antonio, PLLC"),
+      address: manualField(null),
+      city: manualField(null),
+      state: manualField(null),
+      zip: manualField(null),
+      phone: manualField(null),
+      fax: manualField(null),
+      email: manualField(null),
+      represented_party: manualField(null),
+    }];
+
+    const terms = deriveKeytermsWithBudget(record).included.map((keyterm) => keyterm.term);
+    expect(terms).toContain("Brain and Spine Personal Injury Lawyers of San Antonio, PLLC");
+  });
+
+  it("skips participant and organization sources when the underlying fields are empty", () => {
+    const record = emptyCaseRecord("case_sparse_participants", "2026-06-08T20:00:00.000Z");
+    record.reporter.name = manualField("");
+    record.reporter.firm = manualField(null);
+    record.witnesses = [{
+      witness_id: "wit_1",
+      name: manualField(""),
+      role: manualField("WITNESS"),
+      title: manualField(null),
+      employer: manualField(null),
+      prefix_suffix: null,
+      party_affiliation: manualField(null),
+      is_corporate_rep: false,
+      corporate_entity: null,
+      read_and_sign: manualField(null),
+      requires_interpreter: manualField(null),
+      requires_videographer: manualField(null),
+      spelling_corrections: [],
+      email: null,
+      phone: null,
+    }];
+    record.interpreters = [{
+      interpreter_id: "interp_1",
+      name: manualField(""),
+      language_from: "es",
+      language_to: "en",
+      oath_administered: null,
+      certified: false,
+      cert_number: null,
+      agency: null,
+      email: null,
+      phone: null,
+    }];
+    record.videographers = [{
+      videographer_id: "vid_1",
+      name: manualField(""),
+      firm: manualField(null),
+      role_title: null,
+      cert_number: null,
+      email: null,
+      phone: null,
+    }];
+    record.participants = [{
+      participant_id: "pt_1",
+      name: manualField(""),
+      role: "OTHER",
+      organization: null,
+      email: null,
+      phone: null,
+      role_in_this_proceeding: null,
+      notes: null,
+    }];
+
+    const terms = deriveKeytermsWithBudget(record).included.map((keyterm) => keyterm.term);
+    expect(terms).not.toContain("Lingua Bridge");
+    expect(terms).not.toContain("Acme Video, LLC");
+    expect(terms).not.toContain("Jordan Smith");
+    expect(terms).not.toContain("Bardot Reporting, LLC");
   });
 
   it("keeps attorney name and linked firm tokens in the live derivation path after directory-style auto-fill", () => {

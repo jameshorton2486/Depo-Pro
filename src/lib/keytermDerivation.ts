@@ -175,6 +175,28 @@ function collectFirmTokens(name: string | null | undefined): string[] {
     .filter((token) => !KNOWN_BRAND_TOKENS.has(token.toLowerCase()));
 }
 
+function collectOrganizationPhrases(values: Array<string | null | undefined>): DerivedCandidate[] {
+  const seen = new Set<string>();
+  const candidates: DerivedCandidate[] = [];
+
+  for (const value of values) {
+    const phrase = sanitizePhrase(value ?? "");
+    if (!phrase) {
+      continue;
+    }
+
+    const key = phrase.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    candidates.push({ term: phrase, category: "company", notes: "derived" });
+  }
+
+  return candidates;
+}
+
 function looksLikeOrganizationName(name: string): boolean {
   const normalized = stripCorporateSuffixes(name).toLowerCase();
   return /\b(?:inc|llc|llp|pllc|company|corp|corporation|hospital|medical|clinic|group|center|associates|partners|u\.s\.a)\b/i.test(name)
@@ -304,7 +326,7 @@ function collectParticipantGroups(record: CaseRecord): DerivedGroup[] {
     }
 
     const organization = sanitizePhrase(participant.organization ?? "");
-    if (organization && !shouldSkipPartyName(organization)) {
+    if (organization) {
       groups.push({
         priority: 8,
         allOrNothing: true,
@@ -319,7 +341,7 @@ function collectParticipantGroups(record: CaseRecord): DerivedGroup[] {
     }
 
     const employer = sanitizePhrase(valueOf(witness.employer) ?? "");
-    if (employer && !shouldSkipPartyName(employer)) {
+    if (employer) {
       groups.push({
         priority: 8,
         allOrNothing: true,
@@ -363,6 +385,21 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
   for (const videographer of record.videographers) {
     const group = collectPersonGroup(valueOf(videographer.name), "proper_name");
     if (group) groups.push({ ...group, priority: 5 });
+  }
+
+  const organizationPhrases = collectOrganizationPhrases([
+    ...record.law_firms.map((lawFirm) => valueOf(lawFirm.name)),
+    ...record.attorneys.map((attorney) => valueOf(attorney.firm)),
+    ...record.videographers.map((videographer) => valueOf(videographer.firm)),
+    ...record.interpreters.map((interpreter) => interpreter.agency),
+    valueOf(record.reporter.firm),
+  ]);
+  if (organizationPhrases.length > 0) {
+    groups.push({
+      priority: 6,
+      allOrNothing: false,
+      candidates: organizationPhrases,
+    });
   }
 
   const firmTokens = Array.from(new Set([
