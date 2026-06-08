@@ -37,4 +37,21 @@ describe("projectFieldRows", () => {
 
     expect(() => projectFieldRows(record)).not.toThrow();
   });
+
+  it("uses the corrected Case Style / Cause Number display labels without changing field paths", () => {
+    const rows = projectFieldRows(emptyCaseRecord("case_20260608_labels", "2026-06-08T12:00:00Z"));
+    const caseStyleRow = rows.find((row) => row.id === "caption.case_style");
+    const causeNumberRow = rows.find((row) => row.id === "caption.case_number");
+
+    expect(caseStyleRow).toMatchObject({
+      id: "caption.case_style",
+      path: "caption.case_style",
+      label: "Case Style",
+    });
+    expect(causeNumberRow).toMatchObject({
+      id: "caption.case_number",
+      path: "caption.case_number",
+      label: "Cause Number",
+    });
+  });
 });

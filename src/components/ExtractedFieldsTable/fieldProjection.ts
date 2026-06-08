@@ -154,7 +154,7 @@ export function projectFieldRows(
   const c = record.caption;
   rows.push(makeRow("caption.case_name",   "Case Caption", "Case Name",   "caption.case_name",   c.case_name.value,   c.case_name.source,   c.case_name.confirmed,   c.case_name.conflict,   c.case_name.confidence_score,   true));
   rows.push(makeRow("caption.case_style",  "Case Caption", "Case Style",  "caption.case_style",  c.case_style.value,  c.case_style.source,  c.case_style.confirmed,  c.case_style.conflict,  c.case_style.confidence_score,  true));
-  rows.push(makeRow("caption.case_number", "Case Caption", "Case Number", "caption.case_number", c.case_number.value, c.case_number.source, c.case_number.confirmed, c.case_number.conflict, c.case_number.confidence_score, true));
+  rows.push(makeRow("caption.case_number", "Case Caption", "Cause Number", "caption.case_number", c.case_number.value, c.case_number.source, c.case_number.confirmed, c.case_number.conflict, c.case_number.confidence_score, true));
   rows.push(makeRow("caption.court_name",  "Case Caption", "Court Name",  "caption.court_name",  c.court_name.value,  c.court_name.source,  c.court_name.confirmed,  c.court_name.conflict,  c.court_name.confidence_score,  true));
   rows.push(makeRow("caption.judicial_district", "Case Caption", "Judicial District", "caption.judicial_district", c.judicial_district.value, c.judicial_district.source, c.judicial_district.confirmed, c.judicial_district.conflict, c.judicial_district.confidence_score, false));
   rows.push(makeRow("caption.division",    "Case Caption", "Division",    "caption.division",    c.division.value,    c.division.source,    c.division.confirmed,    c.division.conflict,    c.division.confidence_score,    false));
