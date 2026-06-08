@@ -634,6 +634,65 @@ describe("ParticipantsPanel", () => {
         firm_registration_number: "9001",
       },
     });
+    expect(updateField.mock.calls).toEqual([
+      ["reporter.name", "Miah Bardot", "manual", null, true],
+      ["reporter.cert_number", "12129", "manual", null, true],
+      ["reporter.license_expiration", "2027-12-31", "manual", null, true],
+      ["reporter.firm_registration_number", "9001", "manual", null, true],
+      ["reporter.firm", "Bardot Reporting, LLC", "manual", null, true],
+      ["reporter.firm_address", null, "manual", null, true],
+    ]);
+  });
+
+  it("populates reporter firm address from a picked alternate reporter's linked firm", async () => {
+    const reporterContact: Contact = {
+      id: "contact_reporter_pick_1",
+      type: "reporter",
+      name: "Miah Bardot",
+      organization: "Bardot Reporting, LLC",
+      phone: "2105550303",
+      email: "miah@example.com",
+      address: "400 Legacy Plaza",
+      times_used: 2,
+      notes: "",
+      firm_id: "firm_1",
+      details: {
+        kind: "reporter",
+        csr_number: "12129",
+        csr_cert_expiration: "2027-12-31",
+        firm_registration_number: "9001",
+      },
+      created_at: "2026-06-08T00:00:00.000Z",
+      updated_at: "2026-06-08T00:00:00.000Z",
+    };
+
+    useContactStoreMock.mockReturnValue({
+      contacts: [reporterContact],
+      search,
+      upsertDirectory,
+      useContact,
+    });
+
+    seedPanelState({ 0: "reporter", 1: "pick" });
+    let tree = renderPanel();
+
+    (findButton(tree, "Miah Bardot").props as { onClick?: () => unknown }).onClick?.();
+    tree = renderPanel();
+    await runEffects();
+    tree = renderPanel();
+
+    (findButton(tree, "Use Reporter for This Case").props as { onClick?: () => unknown }).onClick?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(updateField.mock.calls).toEqual([
+      ["reporter.name", "Miah Bardot", "manual", null, true],
+      ["reporter.cert_number", "12129", "manual", null, true],
+      ["reporter.license_expiration", "2027-12-31", "manual", null, true],
+      ["reporter.firm_registration_number", "9001", "manual", null, true],
+      ["reporter.firm", "Brothers, Alvarado, Piazza & Cozort, P.C.", "manual", null, true],
+      ["reporter.firm_address", "123 Main", "manual", null, true],
+    ]);
   });
 
   it("shows a soft warning for invalid reporter expiration dates without blocking save", () => {
