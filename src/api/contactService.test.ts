@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as service from "./contactService";
+import { resetMockDirectoryStore } from "../mocks/directoryStore";
 
 type QueryResponse = { data: unknown; error: unknown };
 
@@ -9,9 +10,14 @@ type QueryCall = {
 };
 
 const getSupabaseClientMock = vi.fn();
+const isMockModeMock = vi.fn(() => false);
 
 vi.mock("../lib/supabase", () => ({
   getSupabaseClient: (...args: unknown[]) => getSupabaseClientMock(...args),
+}));
+
+vi.mock("../lib/runtime/mode", () => ({
+  isMockMode: () => isMockModeMock(),
 }));
 
 function buildAwaitableQuery(response: QueryResponse, call: QueryCall) {
@@ -105,6 +111,9 @@ const attorneyRow = {
 describe("contactService", () => {
   beforeEach(() => {
     getSupabaseClientMock.mockReset();
+    isMockModeMock.mockReset();
+    isMockModeMock.mockReturnValue(false);
+    resetMockDirectoryStore();
   });
 
   it("lists contacts without a type filter using the current ordering shape", async () => {
@@ -480,5 +489,27 @@ describe("contactService", () => {
         ],
       },
     ]);
+  });
+
+  it("returns attorney directory fixtures in mock mode without hitting Supabase", async () => {
+    isMockModeMock.mockReturnValue(true);
+
+    const contacts = await service.listContacts("attorney");
+
+    expect(getSupabaseClientMock).not.toHaveBeenCalled();
+    expect(contacts.map((contact) => contact.name)).toEqual(["Karen M. Alvarado"]);
+    expect(contacts[0]?.firm_id).toBe("firm_mock_1");
+  });
+
+  it("increments fixture usage in mock mode without calling the RPC path", async () => {
+    isMockModeMock.mockReturnValue(true);
+
+    const before = await service.getContact("contact_mock_attorney_1");
+    await service.incrementUsage("contact_mock_attorney_1");
+    const after = await service.getContact("contact_mock_attorney_1");
+
+    expect(getSupabaseClientMock).not.toHaveBeenCalled();
+    expect(before?.times_used).toBe(5);
+    expect(after?.times_used).toBe(6);
   });
 });

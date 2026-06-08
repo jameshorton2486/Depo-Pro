@@ -1,4 +1,14 @@
 import { getSupabaseClient } from "../lib/supabase";
+import { isMockMode } from "../lib/runtime/mode";
+import {
+  createMockContact,
+  getMockContact,
+  incrementMockContactUsage,
+  listMockContacts,
+  searchMockContacts,
+  updateMockContact,
+  upsertMockDirectoryContact,
+} from "../mocks/directoryStore";
 import { decideDirectoryContactUpsert, type DirectoryMergeConflict } from "../lib/directory/mergeDirectoryRecords";
 import {
   normalizeContactInsert,
@@ -32,6 +42,9 @@ export interface DirectoryContactUpsertResult {
 }
 
 export async function listContacts(type?: ContactType): Promise<Contact[]> {
+  if (isMockMode()) {
+    return listMockContacts(type);
+  }
   const client = await getSupabaseClient("listContacts");
   let query = client
     .from("contacts")
@@ -49,6 +62,9 @@ export async function listContacts(type?: ContactType): Promise<Contact[]> {
 }
 
 export async function searchContacts(term: string, type?: ContactType): Promise<Contact[]> {
+  if (isMockMode()) {
+    return searchMockContacts(term, type);
+  }
   const client = await getSupabaseClient("searchContacts");
   let query = client
     .from("contacts")
@@ -67,6 +83,9 @@ export async function searchContacts(term: string, type?: ContactType): Promise<
 }
 
 export async function getContact(id: string): Promise<Contact | null> {
+  if (isMockMode()) {
+    return getMockContact(id);
+  }
   const client = await getSupabaseClient("getContact");
   const { data, error } = await client
     .from("contacts")
@@ -79,6 +98,9 @@ export async function getContact(id: string): Promise<Contact | null> {
 }
 
 export async function createContact(payload: ContactInsert): Promise<Contact> {
+  if (isMockMode()) {
+    return createMockContact(payload);
+  }
   const client = await getSupabaseClient("createContact");
   const normalized = normalizeContactInsert(payload);
   const { data, error } = await client
@@ -97,6 +119,9 @@ export async function createContact(payload: ContactInsert): Promise<Contact> {
 }
 
 export async function updateContact(id: string, patch: ContactUpdate): Promise<Contact> {
+  if (isMockMode()) {
+    return updateMockContact(id, patch);
+  }
   const client = await getSupabaseClient("updateContact");
   const current = await getContact(id);
   if (!current) {
@@ -119,6 +144,10 @@ export async function updateContact(id: string, patch: ContactUpdate): Promise<C
 }
 
 export async function incrementUsage(id: string): Promise<void> {
+  if (isMockMode()) {
+    incrementMockContactUsage(id);
+    return;
+  }
   const client = await getSupabaseClient("incrementUsage");
   const { error } = await client.rpc("increment_contact_usage", { contact_id: id });
   if (error) {
@@ -142,6 +171,9 @@ export async function saveContact(payload: ContactInsert & { id?: string }): Pro
 }
 
 export async function upsertDirectoryContact(payload: ContactInsert): Promise<DirectoryContactUpsertResult> {
+  if (isMockMode()) {
+    return upsertMockDirectoryContact(payload);
+  }
   const existing = await listContacts(payload.type);
   const decision = decideDirectoryContactUpsert(existing, payload);
 

@@ -1,4 +1,13 @@
 import { getSupabaseClient } from "../lib/supabase";
+import { isMockMode } from "../lib/runtime/mode";
+import {
+  createMockFirm,
+  getMockFirm,
+  listMockFirms,
+  searchMockFirms,
+  updateMockFirm,
+  upsertMockFirm,
+} from "../mocks/directoryStore";
 import { decideFirmUpsert, type DirectoryMergeConflict } from "../lib/directory/mergeDirectoryRecords";
 import { normalizeFirmInsert, normalizeFirmRow, normalizeFirmUpdate, type Firm, type FirmInsert, type FirmUpdate } from "../types/firm";
 
@@ -9,6 +18,9 @@ export interface FirmUpsertResult {
 }
 
 export async function listFirms(): Promise<Firm[]> {
+  if (isMockMode()) {
+    return listMockFirms();
+  }
   const client = await getSupabaseClient("listFirms");
   const { data, error } = await client
     .from("firms")
@@ -20,6 +32,9 @@ export async function listFirms(): Promise<Firm[]> {
 }
 
 export async function searchFirms(term: string): Promise<Firm[]> {
+  if (isMockMode()) {
+    return searchMockFirms(term);
+  }
   const client = await getSupabaseClient("searchFirms");
   const { data, error } = await client
     .from("firms")
@@ -32,6 +47,9 @@ export async function searchFirms(term: string): Promise<Firm[]> {
 }
 
 export async function getFirm(id: string): Promise<Firm | null> {
+  if (isMockMode()) {
+    return getMockFirm(id);
+  }
   const client = await getSupabaseClient("getFirm");
   const { data, error } = await client
     .from("firms")
@@ -44,6 +62,9 @@ export async function getFirm(id: string): Promise<Firm | null> {
 }
 
 export async function createFirm(payload: FirmInsert): Promise<Firm> {
+  if (isMockMode()) {
+    return createMockFirm(payload);
+  }
   const client = await getSupabaseClient("createFirm");
   const normalized = normalizeFirmInsert(payload);
   const { data, error } = await client
@@ -57,6 +78,9 @@ export async function createFirm(payload: FirmInsert): Promise<Firm> {
 }
 
 export async function updateFirm(id: string, patch: FirmUpdate): Promise<Firm> {
+  if (isMockMode()) {
+    return updateMockFirm(id, patch);
+  }
   const client = await getSupabaseClient("updateFirm");
   const normalized = normalizeFirmUpdate(patch);
   const { data, error } = await client
@@ -71,6 +95,9 @@ export async function updateFirm(id: string, patch: FirmUpdate): Promise<Firm> {
 }
 
 export async function upsertFirm(payload: FirmInsert): Promise<FirmUpsertResult> {
+  if (isMockMode()) {
+    return upsertMockFirm(payload);
+  }
   const firms = await listFirms();
   const decision = decideFirmUpsert(firms, payload);
 

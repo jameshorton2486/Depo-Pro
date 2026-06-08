@@ -7,6 +7,7 @@ import { getMyProfile } from "../../api/reporterProfileService";
 import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { isMockMode } from "../../lib/runtime/mode";
+import { listMockContacts, listMockFirms } from "../../mocks/directoryStore";
 import { buildUfmMetadata, summarizeUfmEnvelope } from "../../lib/ufm/buildUfmMetadata";
 import type { Contact } from "../../types/contact";
 import type { Firm } from "../../types/firm";
@@ -27,8 +28,8 @@ const MOCK_REPORTER_PROFILE: ReporterProfile = {
   updated_at: "2026-06-07T00:00:00.000Z",
 };
 
-const MOCK_DIRECTORY_CONTACTS: Contact[] = [];
-const MOCK_DIRECTORY_FIRMS: Firm[] = [];
+const MOCK_DIRECTORY_CONTACTS: Contact[] = listMockContacts();
+const MOCK_DIRECTORY_FIRMS: Firm[] = listMockFirms();
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
