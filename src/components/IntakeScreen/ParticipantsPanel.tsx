@@ -256,6 +256,31 @@ function buildRepresentingValue(preset: DrawerDraft["attorneyRepresentingPreset"
   return normalizedPartyName;
 }
 
+function buildDrawerDescription(category: PanelCategory, drawerMode: "pick" | "create", hasSelection: boolean) {
+  const label = CATEGORY_META[category].label;
+  if (drawerMode === "pick" && hasSelection) {
+    return category === "reporter"
+      ? `Use the selected ${label.toLowerCase()} for this case.`
+      : `Add the selected ${label.toLowerCase()} to this case.`;
+  }
+  if (drawerMode === "create") {
+    return category === "reporter"
+      ? `Save this ${label.toLowerCase()} to the reusable directory, then use it for this case.`
+      : `Save this ${label.toLowerCase()} to the reusable directory, then add it to this case.`;
+  }
+  return `Pick a saved directory entry or create a new one, then capture case-specific details.`;
+}
+
+function buildSaveActionLabel(category: PanelCategory, drawerMode: "pick" | "create", hasSelection: boolean) {
+  const label = CATEGORY_META[category].label;
+  if (drawerMode === "pick" && hasSelection) {
+    return category === "reporter" ? `Use ${label} for This Case` : `Add ${label} to Case`;
+  }
+  return category === "reporter"
+    ? `Save ${label} to Directory + Use for This Case`
+    : `Save ${label} to Directory + Add to Case`;
+}
+
 function directoryFieldsFor(category: PanelCategory) {
   if (category === "attorney") return ATTORNEY_DIRECTORY_FIELDS;
   if (category === "interpreter") return INTERPRETER_DIRECTORY_FIELDS;
@@ -700,6 +725,12 @@ export function ParticipantsPanel() {
 
   const directoryFields = drawerCategory ? directoryFieldsFor(drawerCategory) : [];
   const caseFields = drawerCategory ? caseFieldsFor(drawerCategory) : [];
+  const drawerDescription = drawerCategory
+    ? buildDrawerDescription(drawerCategory, drawerMode, Boolean(selectedContact))
+    : "";
+  const saveActionLabel = drawerCategory
+    ? buildSaveActionLabel(drawerCategory, drawerMode, Boolean(selectedContact))
+    : "Save";
 
   return (
     <section className="min-w-0 rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -806,7 +837,7 @@ export function ParticipantsPanel() {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Add {CATEGORY_META[drawerCategory].label}</h3>
-              <p className="text-xs text-slate-500">Pick a saved directory entry or create a new one, then capture case-specific details.</p>
+              <p className="text-xs text-slate-500">{drawerDescription}</p>
             </div>
             <button type="button" onClick={closeDrawer} className="rounded-lg p-1 text-slate-500 hover:bg-slate-200">
               <X size={16} />
@@ -952,7 +983,7 @@ export function ParticipantsPanel() {
                   disabled={saving || (!selectedContact && !draft.name.trim())}
                   className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
-                  {saving ? "Saving..." : `Add ${CATEGORY_META[drawerCategory].label}`}
+                  {saving ? "Saving..." : saveActionLabel}
                 </button>
               </div>
             </div>

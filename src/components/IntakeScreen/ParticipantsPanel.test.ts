@@ -414,6 +414,17 @@ describe("ParticipantsPanel", () => {
     expectText(tree, "Brothers, Alvarado, Piazza & Cozort, P.C.");
   });
 
+  it("labels a picked attorney action as case-only instead of a directory write", async () => {
+    seedPanelState({ 0: "attorney", 1: "pick" });
+    let tree = renderPanel();
+
+    (findButton(tree, "Karen M. Alvarado").props as { onClick?: () => unknown }).onClick?.();
+    tree = renderPanel();
+
+    expectText(tree, "Add the selected attorney to this case.");
+    expect(findButton(tree, "Add Attorney to Case")).toBeTruthy();
+  });
+
   it("maps attorney details.direct_phone into the draft phone and preserves already-typed overrides on pick", () => {
     const draft = defaultDraft();
     draft.email = "custom@example.com";
@@ -519,7 +530,7 @@ describe("ParticipantsPanel", () => {
     seedPanelState({ 0: "corporate_representative", 1: "create", 6: draft });
     const tree = renderPanel();
 
-    (findButton(tree, "Add Corporate Representative").props as { onClick?: () => unknown }).onClick?.();
+    (findButton(tree, "Save Corporate Representative to Directory + Add to Case").props as { onClick?: () => unknown }).onClick?.();
     await Promise.resolve();
     await Promise.resolve();
 
@@ -532,5 +543,27 @@ describe("ParticipantsPanel", () => {
       role_in_this_proceeding: "Corporate representative",
       notes: null,
     });
+  });
+
+  it("labels created generic participants as a directory write plus a case add", () => {
+    const draft = defaultDraft();
+    draft.name = "Jordan Smith";
+    seedPanelState({ 0: "corporate_representative", 1: "create", 6: draft });
+
+    const tree = renderPanel();
+
+    expectText(tree, "Save this corporate representative to the reusable directory, then add it to this case.");
+    expect(findButton(tree, "Save Corporate Representative to Directory + Add to Case")).toBeTruthy();
+  });
+
+  it("labels created reporters as a directory save plus case use", () => {
+    const draft = defaultDraft();
+    draft.name = "Miah Bardot";
+    seedPanelState({ 0: "reporter", 1: "create", 6: draft });
+
+    const tree = renderPanel();
+
+    expectText(tree, "Save this reporter to the reusable directory, then use it for this case.");
+    expect(findButton(tree, "Save Reporter to Directory + Use for This Case")).toBeTruthy();
   });
 });
