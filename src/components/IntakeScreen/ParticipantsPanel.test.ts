@@ -641,6 +641,8 @@ describe("ParticipantsPanel", () => {
       ["reporter.firm_registration_number", "9001", "manual", null, true],
       ["reporter.firm", "Bardot Reporting, LLC", "manual", null, true],
       ["reporter.firm_address", null, "manual", null, true],
+      ["reporter.phone", "2105550303", "manual", null, true],
+      ["reporter.email", "miah@example.com", "manual", null, true],
     ]);
   });
 
@@ -692,6 +694,8 @@ describe("ParticipantsPanel", () => {
       ["reporter.firm_registration_number", "9001", "manual", null, true],
       ["reporter.firm", "Brothers, Alvarado, Piazza & Cozort, P.C.", "manual", null, true],
       ["reporter.firm_address", "123 Main", "manual", null, true],
+      ["reporter.phone", "2105550303", "manual", null, true],
+      ["reporter.email", "miah@example.com", "manual", null, true],
     ]);
   });
 

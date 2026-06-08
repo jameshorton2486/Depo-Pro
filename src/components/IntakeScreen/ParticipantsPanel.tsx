@@ -643,6 +643,8 @@ export function ParticipantsPanel() {
     updateField("reporter.firm_registration_number", details?.firm_registration_number ?? null, "manual", null, true);
     updateField("reporter.firm", firm?.name ?? (contact.organization || null), "manual", null, true);
     updateField("reporter.firm_address", firm?.address ?? (contact.address || null), "manual", null, true);
+    updateField("reporter.phone", contact.phone || null, "manual", null, true);
+    updateField("reporter.email", contact.email || null, "manual", null, true);
   }
 
   async function handleUseMyProfile() {
