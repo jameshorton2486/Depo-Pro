@@ -643,6 +643,7 @@ export function ParticipantsPanel() {
           name: manualField(draft.name.trim() || contact.name),
           firm: manualField(resolvedFirm?.name ?? (draft.firmName.trim() || (contact.organization || null))),
           role: manualField(draft.attorneyFunction),
+          function: manualField(draft.attorneyFunction),
           representing: manualField(buildRepresentingValue(draft.attorneyRepresentingPreset, draft.attorneyRepresentingParty)),
           bar_number: manualField(draft.attorneyBarNumber.trim() || null),
           address: resolvedFirm?.address || null,

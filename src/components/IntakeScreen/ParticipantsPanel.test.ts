@@ -443,6 +443,7 @@ describe("ParticipantsPanel", () => {
       name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       firm: { value: "Brothers, Alvarado, Piazza & Cozort, P.C.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      function: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       representing: { value: "FOR DEFENDANT HOME DEPOT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       bar_number: { value: "24077777", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       address: "123 Main",

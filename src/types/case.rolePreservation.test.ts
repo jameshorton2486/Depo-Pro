@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { normalizeCaseRecord } from "../lib/normalizeCaseRecord";
+import { buildUfmMetadata } from "../lib/ufm/buildUfmMetadata";
 
 describe("normalizeCaseRecord role-preservation behavior", () => {
   it("preserves same-name attorneys when their role-bearing fields differ while still collapsing exact duplicates", () => {
@@ -14,6 +15,7 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           representing: { value: "FOR THE PLAINTIFF", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           bar_number: { value: null, source: "manual", confirmed: true, conflict: false, confidence_score: null },
           address: null,
@@ -29,6 +31,7 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           name: { value: "KAREN M ALVARADO", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           role: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           representing: { value: "Custodial Attorney", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           address: null,
@@ -44,6 +47,7 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           name: { value: "Karen M Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           role: { value: "CO_COUNSEL", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: { value: "CO_COUNSEL", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           representing: { value: "Appearance Attorney", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           bar_number: { value: null, source: "manual", confirmed: true, conflict: false, confidence_score: null },
           address: null,
@@ -59,6 +63,7 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           representing: { value: "FOR THE PLAINTIFF", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           address: "123 Main",
@@ -74,7 +79,7 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
 
     // RESOLVED 2026-06-08: role-preserving dedup; see fix commit.
     expect(normalized.attorneys).toHaveLength(3);
-    expect(normalized.attorneys.map((attorney) => attorney.role.value)).toEqual([
+    expect(normalized.attorneys.map((attorney) => attorney.function?.value ?? attorney.role.value)).toEqual([
       "EXAMINING",
       "OTHER",
       "CO_COUNSEL",
@@ -87,6 +92,15 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
     expect(normalized.attorneys[0]?.bar_number.value).toBe("24012345");
     expect(normalized.attorneys[0]?.email).toBe("duplicate@example.com");
     expect(normalized.attorneys[0]?.time_used).toBe("00:30");
+
+    const envelope = buildUfmMetadata({
+      record: normalized,
+      provenance: [],
+    });
+    const attorneyFunctions = (envelope.ufm_metadata.appearances as Array<{ category: string; function?: string | null }>)
+      .filter((appearance) => appearance.category === "attorney")
+      .map((appearance) => appearance.function);
+    expect(attorneyFunctions).toEqual(["EXAMINING", "OTHER", "CO_COUNSEL"]);
   });
 
   it("preserves the same name across distinct collections and within participants when role-bearing fields differ", () => {
@@ -99,6 +113,7 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           representing: { value: "FOR THE DEFENDANT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           bar_number: { value: null, source: "manual", confirmed: true, conflict: false, confidence_score: null },
           address: null,
@@ -113,6 +128,7 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
           name: { value: "Karen M Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           firm: { value: "Brothers Law", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           role: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           representing: { value: "Custodial Attorney", source: "manual", confirmed: true, conflict: false, confidence_score: null },
           bar_number: { value: null, source: "manual", confirmed: true, conflict: false, confidence_score: null },
           address: null,

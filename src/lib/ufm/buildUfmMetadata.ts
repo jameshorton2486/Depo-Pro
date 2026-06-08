@@ -266,7 +266,7 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
       city: normalizeValue(attorney.city),
       state: normalizeValue(attorney.state),
       zip: normalizeValue(attorney.zip),
-      function: normalizeValue(attorney.role.value),
+      function: normalizeValue(attorney.function?.value ?? attorney.role.value),
       time_used: normalizeValue(attorney.time_used),
       appearance_label: normalizeValue(details?.preferred_appearance_label),
     };

@@ -125,6 +125,7 @@ export interface Attorney {
   name:         ExtractedField<string>;
   firm:         ExtractedField<string | null>;
   role:         ExtractedField<AttorneyRole>;
+  function?:    ExtractedField<AttorneyRole>;
   representing: ExtractedField<string | null>; // "Plaintiff", "Defendant", etc.
   bar_number:   ExtractedField<string | null>;
   address:      string | null;
@@ -894,6 +895,7 @@ function emptyAttorney(attorneyId: string): Attorney {
     name: extractedEmpty(""),
     firm: extractedEmpty(null),
     role: extractedEmpty<AttorneyRole>("OTHER"),
+    function: extractedEmpty<AttorneyRole>("OTHER"),
     representing: extractedEmpty(null),
     bar_number: extractedEmpty(null),
     address: null,
@@ -950,7 +952,8 @@ function normalizeAttorneyFromUnknown(attorney: unknown, fallbackId: string): At
     attorney_id: attorneyId,
     name: normalizeStringField(source?.name, defaults.name),
     firm: normalizeNullableStringField(source?.firm, defaults.firm),
-    role: normalizeAttorneyRole(source?.role, defaults.role),
+    role: normalizeAttorneyRole(source?.role ?? source?.function, defaults.role),
+    function: normalizeAttorneyRole(source?.function ?? source?.role, defaults.function),
     representing: normalizeNullableStringField(source?.representing, defaults.representing),
     bar_number: normalizeNullableStringField(source?.bar_number, defaults.bar_number),
     address: normalizeNullableString(source?.address),
@@ -1576,7 +1579,7 @@ function dedupeAttorneys(attorneys: Attorney[], coercedPaths: Set<string>): Atto
   for (const attorney of attorneys) {
     const key = buildCompositeKey(attorney.name.value, [
       normalizeComparableFieldValue(attorney.representing),
-      normalizeComparableFieldValue(attorney.role),
+      normalizeComparableFieldValue(attorney.function ?? attorney.role),
       normalizeComparableFieldValue(attorney.firm),
     ]);
     if (!key) {
@@ -1594,6 +1597,7 @@ function dedupeAttorneys(attorneys: Attorney[], coercedPaths: Set<string>): Atto
     coercedPaths.add("attorneys");
     existing.firm = mergeExtractedFieldIfEmpty(existing.firm, attorney.firm);
     existing.role = mergeExtractedFieldIfEmpty(existing.role, attorney.role);
+    existing.function = mergeExtractedFieldIfEmpty(existing.function ?? existing.role, attorney.function ?? attorney.role);
     existing.representing = mergeExtractedFieldIfEmpty(existing.representing, attorney.representing);
     existing.bar_number = mergeExtractedFieldIfEmpty(existing.bar_number, attorney.bar_number);
     if (!existing.address) existing.address = attorney.address;
