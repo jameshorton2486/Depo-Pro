@@ -61,6 +61,10 @@ type DerivedCandidate = {
   notes: "derived";
 };
 
+type PersonGroupOptions = {
+  includeHonorificVariants?: boolean;
+};
+
 type DerivedGroup = {
   priority: number;
   allOrNothing: boolean;
@@ -130,7 +134,11 @@ function valueOf<T>(field: { value: T } | null | undefined): T | null {
   return field ? field.value : null;
 }
 
-function collectPersonGroup(name: string | null | undefined, category: KeytermCategory): DerivedGroup | null {
+function collectPersonGroup(
+  name: string | null | undefined,
+  category: KeytermCategory,
+  options: PersonGroupOptions = {},
+): DerivedGroup | null {
   const fullName = sanitizePhrase(name ?? "");
   if (!fullName) return null;
 
@@ -147,6 +155,10 @@ function collectPersonGroup(name: string | null | undefined, category: KeytermCa
 
   if (isSurnameToken(surname) && surname.toLowerCase() !== fullName.toLowerCase()) {
     candidates.push({ term: surname, category, notes: "derived" });
+    if (options.includeHonorificVariants) {
+      candidates.push({ term: `Mr. ${surname}`, category, notes: "derived" });
+      candidates.push({ term: `Ms. ${surname}`, category, notes: "derived" });
+    }
   }
 
   // Honorific variants are intentionally omitted because the bare surname already covers them.
@@ -214,7 +226,7 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
   const groups: DerivedGroup[] = [];
 
   for (const witness of record.witnesses) {
-    const group = collectPersonGroup(valueOf(witness.name), "proper_name");
+    const group = collectPersonGroup(valueOf(witness.name), "proper_name", { includeHonorificVariants: true });
     if (group) groups.push({ ...group, priority: 1 });
   }
 

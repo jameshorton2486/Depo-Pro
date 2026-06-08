@@ -199,6 +199,8 @@ describe("deriveKeytermsWithBudget", () => {
     expect(terms).toEqual([
       "Heath Thomas",
       "Thomas",
+      "Mr. Thomas",
+      "Ms. Thomas",
       "Heath",
       "Miah Ramirez",
       "Ramirez",
@@ -275,6 +277,47 @@ describe("deriveKeytermsWithBudget", () => {
     expect(terms).toContain("Miah");
   });
 
+  it("adds honorific variants only for witness-tier names, not later attorney tiers", () => {
+    const record = emptyCaseRecord("case_honorifics", "2026-06-06T20:00:00.000Z");
+    record.witnesses = [{
+      witness_id: "wit_1",
+      name: manualField("Heath Thomas"),
+      role: manualField("WITNESS"),
+      title: manualField(null),
+      employer: manualField(null),
+      prefix_suffix: null,
+      party_affiliation: manualField(null),
+      is_corporate_rep: false,
+      corporate_entity: null,
+      read_and_sign: manualField(null),
+      requires_interpreter: manualField(null),
+      requires_videographer: manualField(null),
+      spelling_corrections: [],
+      email: null,
+      phone: null,
+    }];
+    record.attorneys = [{
+      attorney_id: "a1",
+      name: manualField("Heath Thomas"),
+      firm: manualField(null),
+      role: manualField("EXAMINING"),
+      representing: manualField("Plaintiff"),
+      bar_number: manualField(null),
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: null,
+      email: null,
+      phone: null,
+    }];
+
+    const terms = deriveKeytermsWithBudget(record).included.map((keyterm) => keyterm.term);
+    expect(terms).toEqual(expect.arrayContaining(["Heath Thomas", "Thomas", "Mr. Thomas", "Ms. Thomas", "Heath"]));
+    expect(terms.filter((term) => term === "Mr. Thomas")).toHaveLength(1);
+    expect(terms.filter((term) => term === "Ms. Thomas")).toHaveLength(1);
+  });
+
   it("drops lowest-priority terms when over budget and keeps person variants all-or-nothing", () => {
     const record = emptyCaseRecord("case_budget", "2026-06-06T20:00:00.000Z");
     record.witnesses = Array.from({ length: 55 }, (_, index) => ({
@@ -308,6 +351,8 @@ describe("deriveKeytermsWithBudget", () => {
       expect(included.has(droppedFullName.toLowerCase())).toBe(false);
       expect(included.has(firstName.toLowerCase())).toBe(false);
       expect(included.has(surname.toLowerCase())).toBe(false);
+      expect(included.has(`mr. ${surname}`.toLowerCase())).toBe(false);
+      expect(included.has(`ms. ${surname}`.toLowerCase())).toBe(false);
     }
   });
 
