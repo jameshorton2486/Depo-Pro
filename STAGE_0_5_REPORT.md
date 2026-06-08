@@ -48,18 +48,17 @@ Import-graph deltas from the planned chain:
 - `src/lib/parsing/keytermExtractor.ts` is confirmed legacy/parser-only. It is imported only by `src/lib/parsing/nodParser.ts` and `src/lib/parsing/reporterNotesParser.ts`, not by the live participant/keyterm UI path.
 
 **Executive Summary**
-Stage 0.5 is complete and green. The suite moved from `35` passing files / `172` passing tests at baseline to `41` passing files / `196` passing tests after the six characterization additions, with coverage now present at the four weak seams called out by the audit: `contactService`, `contactStore`, `IntakeContext`, and `ParticipantsPanel`. The tests also pin the two integrity-critical behaviors that were previously implicit: role preservation at `normalizeCaseRecord()` and provenance behavior for manual participant add/remove actions. The biggest risk uncovered is that same-name attorneys inside one collection are currently merged during normalization even when their role metadata differs. That makes Stage 1 a conditional no-go until the role-collapse behavior is resolved and re-characterized.
+Stage 0.5 is complete and green. The suite moved from `35` passing files / `172` passing tests at baseline to `41` passing files / `196` passing tests after the six characterization additions, with coverage now present at the four weak seams called out by the audit: `contactService`, `contactStore`, `IntakeContext`, and `ParticipantsPanel`. The tests also pin the two integrity-critical behaviors that were previously implicit: role preservation at `normalizeCaseRecord()` and provenance behavior for manual participant add/remove actions. The original same-name attorney collapse inside one collection has now been resolved by `ea0e77d`, which changed load-time self-heal from name-only dedup to role-preserving composite-key dedup. Stage 1 is now clear to proceed from the integrity-gate perspective, with the provenance gap still explicitly deferred.
 
 **Integrity Findings**
 Finding A — Role preservation (`normalizeCaseRecord`, Task 5)
-- Actual characterized behavior: same-name attorney entries inside `record.attorneys[]` are currently **merged/collapsed** during normalization, even when their `role` / `representing` metadata differs.
-- The test in [src/types/case.rolePreservation.test.ts](/C:/Users/james/Projects/Depo-Pro/src/types/case.rolePreservation.test.ts:1) shows:
-  - collection-local duplicates collapse to one attorney
-  - the first non-empty role survives
-  - later non-empty metadata like bar number, email, and time used can be merged into that survivor
-  - the same name across *different* collections is still preserved
-- Classification: **Stage 1 DECISION GATE**
-- Required resolution before Stage 1: stop same-name/different-role attorney collapse inside the `attorneys[]` collection, add characterization for the new intended behavior, and rerun green.
+- Current characterized behavior after `ea0e77d`: same-name attorney entries inside `record.attorneys[]` are now **preserved as distinct entries** whenever their role-bearing fields differ (`representing`, `role`, `firm`), while true exact duplicates still collapse and merge enrichment fields.
+- The updated test in [src/types/case.rolePreservation.test.ts](/C:/Users/james/Projects/Depo-Pro/src/types/case.rolePreservation.test.ts:1) now guards:
+  - one name with three different attorney functions/roles surviving normalization as three entries
+  - participant entries with the same name but differing `role_in_this_proceeding` surviving as distinct entries
+  - a true exact duplicate still collapsing into one repaired survivor
+- Classification: **resolved Stage 1 decision gate**
+- Decision gate resolved note: before `ea0e77d`, dedup keyed on normalized name only; after `ea0e77d`, dedup keys on normalized name plus role-bearing fields, so cross-role entries no longer merge silently.
 
 Finding B — Participant provenance (Task 6)
 - Actual characterized behavior: participant `ADD_PARTICIPANT` / `REMOVE_PARTICIPANT` reducer actions do **not** append `field_provenance` rows or any provenance-like state today.
@@ -84,13 +83,13 @@ Finding B — Participant provenance (Task 6)
 
 **AUDIT NOTE Inventory**
 - [src/types/case.rolePreservation.test.ts](/C:/Users/james/Projects/Depo-Pro/src/types/case.rolePreservation.test.ts:45)
-  - `same-name/different-role collapse may violate role-preservation rule — confirm before Stage 1.`
+  - `RESOLVED 2026-06-08: role-preserving dedup; see fix commit.`
 - [src/store/intakeReducer.participantProvenance.test.ts](/C:/Users/james/Projects/Depo-Pro/src/store/intakeReducer.participantProvenance.test.ts:39)
   - `manual participant entries are not provenance-tracked today — fix is post-beta, behavioral.`
 
 **Stage 1 Go / No-Go**
-- Recommendation: **NO-GO (conditional)**
-- Rationale: the suite is green and all six Stage 0.5 commits are present, but Finding A shows same-name/different-role attorney entries are currently collapsed during normalization. Stage 1 (Attorney Directory) must not begin until that collapse is resolved, characterized, and re-run green.
+- Recommendation: **GO** (updated 2026-06-08)
+- Rationale: the suite is green, all six Stage 0.5 commits are present, and `ea0e77d` resolved the role-collapse bug by switching load-time self-heal to role-preserving composite-key dedup. The role-preservation test now guards the corrected behavior. The participant provenance gap remains documented and deferred, but it is not a Stage 1 blocker.
 
 **Verification**
 - `git status --short`: clean before report creation
