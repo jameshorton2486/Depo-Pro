@@ -5,6 +5,7 @@ import {
   buildStoragePath,
   computeChecksum,
   createFileId,
+  isAudioUploadWithinLimit,
   MAX_AUDIO_BYTES,
   normalizeAudioUploadError,
   sanitizeFilename,
@@ -92,11 +93,35 @@ describe("validateCaseAudioUpload", () => {
   });
 });
 
+describe("isAudioUploadWithinLimit", () => {
+  it("accepts a 134.85 MB file", () => {
+    const bytes134_85Mb = Math.round(134.85 * 1024 * 1024);
+    expect(isAudioUploadWithinLimit(bytes134_85Mb)).toBe(true);
+  });
+
+  it("accepts a file exactly at the 2 GB limit", () => {
+    expect(isAudioUploadWithinLimit(MAX_AUDIO_BYTES)).toBe(true);
+  });
+
+  it("rejects a 2.5 GB file", () => {
+    const bytes2_5Gb = 2.5 * 1024 * 1024 * 1024;
+    expect(isAudioUploadWithinLimit(bytes2_5Gb)).toBe(false);
+  });
+});
+
 describe("normalizeAudioUploadError", () => {
   it("maps Supabase maximum-size errors to the friendly limit message", () => {
     const error = new Error("The object exceeded the maximum allowed size");
     expect(normalizeAudioUploadError(error, MAX_AUDIO_BYTES + 1024).message).toBe(
       buildAudioLimitErrorMessage(MAX_AUDIO_BYTES + 1024),
+    );
+  });
+
+  it("preserves server maximum-size errors for files that are still within the 2 GB client limit", () => {
+    const error = new Error("The object exceeded the maximum allowed size");
+    const bytes134_85Mb = Math.round(134.85 * 1024 * 1024);
+    expect(normalizeAudioUploadError(error, bytes134_85Mb).message).toBe(
+      "The object exceeded the maximum allowed size",
     );
   });
 

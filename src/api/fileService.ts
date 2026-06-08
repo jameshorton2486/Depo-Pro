@@ -141,6 +141,10 @@ function formatFileBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
+export function isAudioUploadWithinLimit(fileSizeBytes: number, maxBytes = MAX_AUDIO_BYTES): boolean {
+  return fileSizeBytes <= maxBytes;
+}
+
 export function buildAudioLimitErrorMessage(fileSizeBytes: number, maxBytes = MAX_AUDIO_BYTES): string {
   return `Audio uploads are limited to ${formatLimitBytes(maxBytes)}. This file is ${formatFileBytes(fileSizeBytes)}.`;
 }
@@ -149,11 +153,11 @@ export function normalizeAudioUploadError(error: unknown, fileSizeBytes?: number
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
     if (message.includes("exceeded the maximum allowed size")) {
-      if (typeof fileSizeBytes === "number") {
+      if (typeof fileSizeBytes === "number" && !isAudioUploadWithinLimit(fileSizeBytes)) {
         return new Error(buildAudioLimitErrorMessage(fileSizeBytes));
       }
 
-      return new Error(`Audio uploads are limited to ${formatLimitBytes(MAX_AUDIO_BYTES)}.`);
+      return error;
     }
 
     return error;
@@ -185,7 +189,7 @@ export function validateCaseFileUpload(fileType: CaseFileType, file: Pick<File, 
 }
 
 export function validateCaseAudioUpload(file: Pick<File, "name" | "type" | "size">): void {
-  if (file.size > MAX_AUDIO_BYTES) {
+  if (!isAudioUploadWithinLimit(file.size)) {
     throw new Error(buildAudioLimitErrorMessage(file.size));
   }
 
