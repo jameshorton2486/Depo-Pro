@@ -203,6 +203,20 @@ function findLabel(tree: ReactNode, label: string) {
   return match;
 }
 
+function findByClassSubstring(tree: ReactNode, classSubstring: string) {
+  let match: ReactElement | null = null;
+  walk(tree, (element) => {
+    const className = typeof element.props.className === "string" ? element.props.className : "";
+    if (!match && className.includes(classSubstring)) {
+      match = element;
+    }
+  });
+  if (!match) {
+    throw new Error(`Element not found for class substring: ${classSubstring}`);
+  }
+  return match;
+}
+
 function expectText(tree: ReactNode, value: string) {
   const haystack = textContent(tree);
   expect(haystack).toContain(value);
@@ -565,5 +579,14 @@ describe("ParticipantsPanel", () => {
 
     expectText(tree, "Save this reporter to the reusable directory, then use it for this case.");
     expect(findButton(tree, "Save Reporter to Directory + Use for This Case")).toBeTruthy();
+  });
+
+  it("keeps the participant drawer in a single form column until extra-wide widths", () => {
+    seedPanelState({ 0: "attorney", 1: "create" });
+
+    const tree = renderPanel();
+
+    expect(findByClassSubstring(tree, "xl:grid-cols-[240px_minmax(0,1fr)]")).toBeTruthy();
+    expect(findByClassSubstring(tree, "grid-cols-1 gap-3 xl:grid-cols-2")).toBeTruthy();
   });
 });

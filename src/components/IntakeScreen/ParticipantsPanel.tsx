@@ -844,8 +844,8 @@ export function ParticipantsPanel() {
             </button>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-            <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+            <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <Search size={14} className="text-slate-400" />
                 <input
@@ -887,7 +887,7 @@ export function ParticipantsPanel() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4">
               {drawerMode === "pick" && selectedContact ? (
                 <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-slate-800">
                   <div className="font-semibold">{selectedContact.name}</div>
@@ -901,7 +901,7 @@ export function ParticipantsPanel() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     {directoryFields.map((config) => (
                       <DrawerField key={config.key} config={config} draft={draft} onChange={handleDraftChange} />
                     ))}
@@ -910,7 +910,7 @@ export function ParticipantsPanel() {
                   {(drawerCategory === "attorney" || drawerCategory === "videographer") && (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Firm Directory</div>
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                         <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} onChange={handleDraftChange} />
                         <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} onChange={handleDraftChange} />
                         <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} onChange={handleDraftChange} />
@@ -955,7 +955,7 @@ export function ParticipantsPanel() {
               {caseFields.length > 0 && (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Case-Specific Fields</div>
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     {caseFields.map((config) => (
                       <DrawerField key={config.key} config={config} draft={draft} onChange={handleDraftChange} />
                     ))}
