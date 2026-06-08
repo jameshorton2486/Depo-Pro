@@ -1,69 +1,71 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { externalJsonRequest } from "./client";
-import { computeChecksum, downloadCaseFile } from "./fileService";
-import { getSupabaseClient } from "../lib/supabase";
-import { loadCase } from "./caseService";
-import type { CaseAudioRecord } from "./fileService";
+import { getSupabaseClient, supabase } from "../lib/supabase";
+import { createOfflineDeepgramFixture } from "../lib/transcript/offlineFixture";
+import { isMockMode } from "../lib/runtime/mode";
 import type { Database } from "../types/database";
 import type { DeepgramKeyterm } from "../types/case";
-import { createOfflineDeepgramFixture } from "../lib/transcript/offlineFixture";
-import type { DeepgramResponse, TranscriptCapture } from "../lib/transcript/types";
-import { normalizeTranscriptResponse } from "../lib/transcript/normalize";
-import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
-import {
-  insertNormalizedTranscript,
-  type TranscriptJobRow,
-  updateTranscriptJob,
-} from "./transcriptRepository";
+import type { DeepgramResponse } from "../lib/transcript/types";
+import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
 
-type TranscriptInsert = Omit<
-  TranscriptJobRow,
-  "id" | "created_at" | "updated_at" | "duration" | "deepgram_request_id" | "duration_seconds" | "word_count" | "utterance_count" | "speaker_count" | "avg_confidence" | "raw_storage_path" | "raw_checksum" | "last_error" | "speaker_map_confirmed"
-> & {
+type TranscriptionJobInsert = Omit<TranscriptionJobRecord, "id" | "created_at" | "updated_at"> & {
   id?: string;
-  duration?: number | null;
-  deepgram_request_id?: string | null;
-  duration_seconds?: number | null;
-  word_count?: number;
-  utterance_count?: number;
-  speaker_count?: number;
-  avg_confidence?: string | null;
-  raw_storage_path?: string | null;
-  raw_checksum?: string | null;
-  last_error?: string | null;
-  speaker_map_confirmed?: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
-type TranscriptUpdate = Partial<TranscriptInsert>;
-
-type TranscriptDatabase = Omit<Database, "public"> & {
+type TranscriptionDatabase = Omit<Database, "public"> & {
   public: Omit<Database["public"], "Tables"> & {
     Tables: Database["public"]["Tables"] & {
-      transcripts: {
-        Row: TranscriptJobRow;
-        Insert: TranscriptInsert;
-        Update: TranscriptUpdate;
-        Relationships: Database["public"]["Tables"]["transcripts"]["Relationships"];
+      transcription_jobs: {
+        Row: TranscriptionJobRecord;
+        Insert: TranscriptionJobInsert;
+        Update: Partial<TranscriptionJobInsert>;
+        Relationships: [];
       };
     };
   };
 };
 
-const CASE_FILES_BUCKET = "case-files";
+type MockJobState = {
+  timer: number | null;
+  job: TranscriptionJobRecord;
+  fixture: DeepgramResponse;
+};
+
 const MAX_KEYTERMS = 100;
+const MOCK_LATENCY_MS = 1800;
+const mockJobs = new Map<string, MockJobState>();
 
-function getTranscriptClient(client: SupabaseClient<Database>): SupabaseClient<TranscriptDatabase> {
-  return client as unknown as SupabaseClient<TranscriptDatabase>;
+function getTranscriptionClient(client: SupabaseClient<Database>): SupabaseClient<TranscriptionDatabase> {
+  return client as unknown as SupabaseClient<TranscriptionDatabase>;
 }
 
-function createTranscriptJobId(now = Date.now(), random = Math.random()): string {
+function createMockJobId(now = Date.now(), random = Math.random()): string {
   const suffix = Math.floor(random * 36 ** 6).toString(36).padStart(6, "0");
-  return `job_${now}_${suffix}`;
+  return `mock_tx_${now}_${suffix}`;
 }
 
-function createTranscriptId(jobId: string): string {
-  return `tr_${jobId}`;
+function createMockTranscriptId(now = Date.now(), random = Math.random()): string {
+  const suffix = Math.floor(random * 36 ** 6).toString(36).padStart(6, "0");
+  return `mock_tr_${now}_${suffix}`;
+}
+
+function createMockJob(caseId: string): TranscriptionJobRecord {
+  const now = new Date().toISOString();
+  return {
+    id: createMockJobId(),
+    case_id: caseId,
+    transcript_id: createMockTranscriptId(),
+    owner_user_id: "mock-owner",
+    status: "queued",
+    callback_token_hash: "mock",
+    request_path: null,
+    response_path: null,
+    error: null,
+    created_at: now,
+    updated_at: now,
+  };
 }
 
 export function normalizeDeepgramKeyterms(keyterms: DeepgramKeyterm[]): string[] {
@@ -92,186 +94,173 @@ export function normalizeDeepgramKeyterms(keyterms: DeepgramKeyterm[]): string[]
   return result;
 }
 
-function detectMediaKind(mimeType: string): "audio" | "video" {
-  return mimeType.startsWith("video/") ? "video" : "audio";
-}
-
-function getDeepgramApiKey(): string | null {
-  return import.meta.env.VITE_DEEPGRAM_API_KEY || null;
-}
-
-function resolveTranscriptionSource(): "deepgram" | "offline-fixture" {
-  if (import.meta.env.VITE_TRANSCRIPTION_PROVIDER === "offline") {
-    return "offline-fixture";
+function scheduleMockCompletion(caseId: string) {
+  const state = mockJobs.get(caseId);
+  if (!state || state.timer !== null) {
+    return;
   }
 
-  return getDeepgramApiKey() ? "deepgram" : "offline-fixture";
-}
+  state.timer = window.setTimeout(() => {
+    const current = mockJobs.get(caseId);
+    if (!current) {
+      return;
+    }
 
-function buildRawStoragePath(ownerUserId: string, caseId: string, jobId: string): string {
-  return `${ownerUserId}/${caseId}/transcripts/${jobId}/raw.json`;
-}
-
-async function createTranscriptJob(
-  caseId: string,
-  audioRecord: CaseAudioRecord,
-  transcriptionSource: "deepgram" | "offline-fixture",
-): Promise<TranscriptJobRow> {
-  const client = await getSupabaseClient("createTranscriptJob");
-  const transcriptClient = getTranscriptClient(client);
-  const jobId = createTranscriptJobId();
-  const transcriptId = createTranscriptId(jobId);
-  const mediaKind = detectMediaKind(audioRecord.mime_type || "");
-  const insert: TranscriptInsert = {
-    transcript_id: transcriptId,
-    case_id: caseId,
-    job_id: jobId,
-    media_url: audioRecord.storage_path ?? null,
-    based_on: audioRecord.audio_id,
-    session_id: null,
-    source_filename: audioRecord.original_filename,
-    media_kind: mediaKind,
-    status: "queued",
-    engine: transcriptionSource === "deepgram" ? "deepgram-nova-3" : "offline-fixture",
-    transcription_source: transcriptionSource,
-    sequence_index: 0,
-  };
-
-  const { data, error } = await transcriptClient
-    .from("transcripts")
-    .insert(insert as never)
-    .select("*")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as unknown as TranscriptJobRow;
-}
-
-async function uploadRawPacket(
-  caseId: string,
-  jobId: string,
-  response: DeepgramResponse,
-): Promise<{ rawStoragePath: string; rawChecksum: string }> {
-  const client = await getSupabaseClient("uploadTranscriptRawPacket");
-  const { data: userData, error: userError } = await client.auth.getUser();
-  if (userError) {
-    throw userError;
-  }
-  const ownerUserId = userData.user?.id;
-  if (!ownerUserId) {
-    throw new Error("Authentication is required to upload the raw transcript packet.");
-  }
-  const rawStoragePath = buildRawStoragePath(ownerUserId, caseId, jobId);
-  const blob = new Blob([JSON.stringify(response, null, 2)], { type: "application/json" });
-  const checksum = await computeChecksum(blob);
-
-  const { error } = await client.storage
-    .from(CASE_FILES_BUCKET)
-    .upload(rawStoragePath, blob, {
-      upsert: false,
-      contentType: "application/json",
+    const completedAt = new Date().toISOString();
+    mockJobs.set(caseId, {
+      ...current,
+      timer: null,
+      job: {
+        ...current.job,
+        status: "complete",
+        updated_at: completedAt,
+      },
     });
+  }, MOCK_LATENCY_MS);
+}
+
+export async function startTranscription(caseId: string): Promise<TranscriptionJobRecord> {
+  if (isMockMode()) {
+    const existing = mockJobs.get(caseId)?.job ?? null;
+    if (existing && (existing.status === "queued" || existing.status === "processing")) {
+      return existing;
+    }
+
+    const job = createMockJob(caseId);
+    mockJobs.set(caseId, {
+      timer: null,
+      job: {
+        ...job,
+        status: "processing",
+      },
+      fixture: createOfflineDeepgramFixture(caseId),
+    });
+    scheduleMockCompletion(caseId);
+    return mockJobs.get(caseId)!.job;
+  }
+
+  const client = await getSupabaseClient("startTranscription");
+  const { data, error } = await client.functions.invoke("transcribe-start", {
+    body: { case_id: caseId },
+  });
 
   if (error) {
     throw error;
+  }
+
+  const job = readJobFromFunctionPayload(data);
+  if (!job) {
+    throw new Error("transcribe-start returned no job payload.");
+  }
+
+  return job;
+}
+
+export async function getJob(caseId: string): Promise<TranscriptionJobRecord | null> {
+  if (isMockMode()) {
+    return mockJobs.get(caseId)?.job ?? null;
+  }
+
+  const client = await getSupabaseClient("getTranscriptionJob");
+  const transcriptionClient = getTranscriptionClient(client);
+  const { data, error } = await transcriptionClient
+    .from("transcription_jobs")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as TranscriptionJobRecord | null) ?? null;
+}
+
+export async function listTranscriptionJobs(caseId: string): Promise<TranscriptionJobRecord[]> {
+  if (isMockMode()) {
+    const job = mockJobs.get(caseId)?.job ?? null;
+    return job ? [job] : [];
+  }
+
+  const client = await getSupabaseClient("listTranscriptionJobs");
+  const transcriptionClient = getTranscriptionClient(client);
+  const { data, error } = await transcriptionClient
+    .from("transcription_jobs")
+    .select("*")
+    .eq("case_id", caseId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as TranscriptionJobRecord[];
+}
+
+function readJobFromFunctionPayload(value: unknown): TranscriptionJobRecord | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const maybeJob = (value as { job?: unknown }).job;
+  if (!maybeJob || typeof maybeJob !== "object") {
+    return null;
+  }
+
+  const job = maybeJob as Partial<TranscriptionJobRecord>;
+  if (
+    typeof job.id !== "string"
+    || typeof job.case_id !== "string"
+    || typeof job.transcript_id !== "string"
+    || typeof job.status !== "string"
+  ) {
+    return null;
   }
 
   return {
-    rawStoragePath,
-    rawChecksum: checksum,
+    id: job.id,
+    case_id: job.case_id,
+    transcript_id: job.transcript_id,
+    owner_user_id: typeof job.owner_user_id === "string" ? job.owner_user_id : "",
+    status: job.status === "queued" || job.status === "processing" || job.status === "complete" || job.status === "failed"
+      ? job.status
+      : "queued",
+    callback_token_hash: typeof job.callback_token_hash === "string" ? job.callback_token_hash : "",
+    request_path: typeof job.request_path === "string" ? job.request_path : null,
+    response_path: typeof job.response_path === "string" ? job.response_path : null,
+    error: typeof job.error === "string" ? job.error : null,
+    created_at: typeof job.created_at === "string" ? job.created_at : new Date().toISOString(),
+    updated_at: typeof job.updated_at === "string" ? job.updated_at : new Date().toISOString(),
   };
 }
 
-async function fetchDeepgramResponseFromCase(
-  caseId: string,
-  audioRecord: CaseAudioRecord,
-  keyterms: DeepgramKeyterm[],
-): Promise<DeepgramResponse> {
-  if (!audioRecord.storage_path) {
-    throw new Error("Audio storage path missing. Re-upload the audio before starting transcription.");
+export function clearMockTranscriptionJobs() {
+  for (const state of mockJobs.values()) {
+    if (state.timer !== null) {
+      window.clearTimeout(state.timer);
+    }
   }
-
-  const apiKey = getDeepgramApiKey();
-  if (!apiKey) {
-    throw new Error("Deepgram API key missing. Set VITE_DEEPGRAM_API_KEY or use offline mode.");
-  }
-
-  const file = await downloadCaseFile(audioRecord.storage_path, audioRecord.original_filename, audioRecord.mime_type);
-  const request = buildDeepgramRequestFromStoredKeyterms({ caseId, keyterms });
-  return externalJsonRequest<DeepgramResponse>("POST", request.wireUrl, {
-    headers: {
-      Authorization: `Token ${apiKey}`,
-      "Content-Type": file.type || "application/octet-stream",
-    },
-    body: file,
-  });
+  mockJobs.clear();
 }
 
-export async function startTranscription(caseId: string, audioRecord: CaseAudioRecord): Promise<TranscriptCapture> {
-  const caseRecord = await loadCase(caseId);
-  if (!caseRecord) {
-    throw new Error(`Case ${caseId} was not found.`);
+export async function invokeTranscriptionCallbackForTest(
+  jobId: string,
+  token: string,
+  payload: string | Blob | ArrayBuffer | FormData | File | ReadableStream<Uint8Array> | Record<string, unknown>,
+) {
+  if (!supabase) {
+    throw new Error("Supabase unavailable.");
   }
 
-  const transcriptionSource = resolveTranscriptionSource();
-  const transcriptJob = await createTranscriptJob(caseId, audioRecord, transcriptionSource);
+  const { data, error } = await supabase.functions.invoke(`transcribe-callback?job=${encodeURIComponent(jobId)}&token=${encodeURIComponent(token)}`, {
+    body: payload,
+  });
 
-  try {
-    await updateTranscriptJob(transcriptJob.transcript_id, {
-      status: "preprocessing",
-      media_url: audioRecord.storage_path ?? transcriptJob.media_url,
-    });
-
-    const response =
-      transcriptionSource === "offline-fixture"
-        ? createOfflineDeepgramFixture(caseId)
-        : await fetchDeepgramResponseFromCase(caseId, audioRecord, caseRecord.deepgram.keyterms);
-
-    const { rawStoragePath, rawChecksum } = await uploadRawPacket(caseId, transcriptJob.job_id, response);
-    const normalized = normalizeTranscriptResponse(response);
-
-    await insertNormalizedTranscript(
-      {
-        transcript_id: transcriptJob.transcript_id,
-        case_id: transcriptJob.case_id,
-        job_id: transcriptJob.job_id,
-      },
-      normalized,
-    );
-
-    await updateTranscriptJob(transcriptJob.transcript_id, {
-      status: "completed",
-      deepgram_request_id: response.metadata.request_id,
-      duration: response.metadata.duration,
-      duration_seconds: response.metadata.duration,
-      raw_storage_path: rawStoragePath,
-      raw_checksum: rawChecksum,
-      transcription_source: transcriptionSource,
-      engine: transcriptionSource === "deepgram" ? "deepgram-nova-3" : "offline-fixture",
-      word_count: normalized.words.length,
-      utterance_count: normalized.utterances.length,
-      speaker_count: normalized.speakers.length,
-      avg_confidence: normalized.avgConfidence != null ? normalized.avgConfidence.toFixed(4) : null,
-      last_error: null,
-    });
-
-    return {
-      caseId,
-      jobId: transcriptJob.job_id,
-      transcriptId: transcriptJob.transcript_id,
-      response,
-      rawStoragePath,
-      rawChecksum,
-      transcriptionSource,
-    };
-  } catch (error) {
-    await updateTranscriptJob(transcriptJob.transcript_id, {
-      status: "failed",
-      last_error: error instanceof Error ? error.message : String(error),
-    });
+  if (error) {
     throw error;
   }
+
+  return data;
 }

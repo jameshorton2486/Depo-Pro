@@ -1,23 +1,24 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mic, RefreshCw, Sparkles } from "lucide-react";
 
 import type { CaseAudioRecord } from "../api/fileService";
-import type { TranscriptJobRow } from "../api/transcriptRepository";
+import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
 import { listCaseAudio } from "../api/fileService";
-import { startTranscription } from "../api/transcriptionService";
-import { listWorkspaceTranscriptJobs } from "../api/workspaceService";
+import { listTranscriptionJobs, startTranscription } from "../api/transcriptionService";
 import { saveCase } from "../api/caseService";
 import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
+import { isMockMode } from "../lib/runtime/mode";
 
 export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const { record } = useIntake();
   const { setStage } = useStage();
   const [audio, setAudio] = useState<CaseAudioRecord | null>(null);
-  const [jobs, setJobs] = useState<TranscriptJobRow[]>([]);
+  const [jobs, setJobs] = useState<TranscriptionJobRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const advancedJobIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +29,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
       try {
         const [audioRows, transcriptJobs] = await Promise.all([
           listCaseAudio(caseId),
-          listWorkspaceTranscriptJobs(caseId),
+          listTranscriptionJobs(caseId),
         ]);
 
         if (!cancelled) {
@@ -52,10 +53,38 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     };
   }, [caseId]);
 
-  async function openWorkspace() {
+  useEffect(() => {
+    const activeJob = jobs.find((job) => job.status === "queued" || job.status === "processing") ?? null;
+    if (!activeJob) {
+      return;
+    }
+
+    let cancelled = false;
+    const intervalId = window.setInterval(() => {
+      void (async () => {
+        try {
+          const nextJobs = await listTranscriptionJobs(caseId);
+          if (!cancelled) {
+            setJobs(nextJobs);
+          }
+        } catch (pollError) {
+          if (!cancelled) {
+            setError(pollError instanceof Error ? pollError.message : "Could not refresh transcription job state.");
+          }
+        }
+      })();
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [caseId, jobs]);
+
+  const openWorkspace = useCallback(async () => {
     await saveCase({ ...record, stage: "workspace" });
     setStage("workspace");
-  }
+  }, [record, setStage]);
 
   async function runTranscription() {
     if (!audio) {
@@ -67,10 +96,9 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     setError(null);
 
     try {
-      await startTranscription(caseId, audio);
-      const transcriptJobs = await listWorkspaceTranscriptJobs(caseId);
+      await startTranscription(caseId);
+      const transcriptJobs = await listTranscriptionJobs(caseId);
       setJobs(transcriptJobs);
-      await openWorkspace();
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Transcription failed.");
     } finally {
@@ -78,7 +106,23 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     }
   }
 
-  const completedJob = jobs.find((job) => job.status === "completed") ?? null;
+  const completedJob = jobs.find((job) => job.status === "complete") ?? null;
+  const failedJob = jobs.find((job) => job.status === "failed") ?? null;
+
+  useEffect(() => {
+    if (!completedJob || advancedJobIdRef.current === completedJob.id) {
+      return;
+    }
+
+    advancedJobIdRef.current = completedJob.id;
+    void openWorkspace();
+  }, [completedJob, openWorkspace]);
+
+  useEffect(() => {
+    if (failedJob?.error) {
+      setError(failedJob.error);
+    }
+  }, [failedJob]);
 
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-10">
@@ -153,12 +197,12 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                   </p>
                 ) : (
                   jobs.map((job) => (
-                    <div key={job.job_id} className="rounded-xl border border-slate-200 px-4 py-3">
+                    <div key={job.id} className="rounded-xl border border-slate-200 px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">{job.source_filename || job.job_id}</p>
+                          <p className="text-sm font-semibold text-slate-900">{job.transcript_id}</p>
                           <p className="mt-1 text-xs text-slate-500">
-                            {job.transcription_source} · {job.engine || "pending engine"} · updated {new Date(job.updated_at).toLocaleString()}
+                            transcript {job.transcript_id} · updated {new Date(job.updated_at).toLocaleString()}
                           </p>
                         </div>
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -176,7 +220,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Provider</p>
               <p className="mt-3 text-sm text-slate-700">
-                {import.meta.env.VITE_TRANSCRIPTION_PROVIDER === "offline" || !import.meta.env.VITE_DEEPGRAM_API_KEY
+                {isMockMode()
                   ? "Offline fixture mode is active. Output is marked non-authoritative and cannot be certified."
                   : "Deepgram Nova-3 is configured for batch ingestion."}
               </p>
