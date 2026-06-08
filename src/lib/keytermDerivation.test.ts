@@ -553,6 +553,7 @@ describe("deriveKeytermsWithBudget", () => {
     expect(terms).toEqual(expect.arrayContaining([
       "Karen M. Alvarado",
       "Alvarado",
+      "Brothers, Alvarado, Piazza & Cozort, P.C.",
       "Piazza",
       "Cozort",
     ]));
