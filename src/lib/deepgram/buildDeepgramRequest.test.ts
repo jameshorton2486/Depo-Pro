@@ -35,7 +35,6 @@ describe("buildDeepgramRequest", () => {
         punctuate: "true",
         paragraphs: "true",
         diarize: "true",
-        diarize_model: "latest",
         filler_words: "true",
         utterances: "true",
         smart_format: "true",
@@ -71,6 +70,8 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("boost");
     expect(request.wireQueryString).not.toContain("category");
     expect(request.wireQueryString).not.toContain("source");
+    expect(request.wireQueryString).toContain("diarize=true");
+    expect(request.wireQueryString).not.toContain("diarize_model");
   });
 
   it("caps the wire request at 100 terms and reports the cut", () => {
