@@ -1,5 +1,5 @@
 import type { FieldProvenanceRow } from "../../components/conflict/types";
-import type { AttorneyFunction, CaseRecord, ExtractedField } from "../../types/case";
+import type { CaseRecord, ExtractedField } from "../../types/case";
 import type { Contact, ContactType } from "../../types/contact";
 import type { Firm } from "../../types/firm";
 import type { ReporterProfile } from "../../types/reporterProfile";
@@ -90,7 +90,7 @@ interface UfmAppearance {
   city?: string | null;
   state?: string | null;
   zip?: string | null;
-  function?: string | null;
+  function?: string | string[] | null;
   time_used?: string | null;
   appearance_label?: string | null;
   certified?: boolean | null;
@@ -172,15 +172,9 @@ function normalizeIdentity(value: string | null | undefined): string | null {
   return normalized.replace(/\./g, "").toLowerCase();
 }
 
-function derivePrimaryAttorneyFunction(value: AttorneyFunction[] | string | null | undefined): string | null {
+function normalizeAttorneyFunctionValue(value: string | string[] | null | undefined): string | string[] | null {
   if (Array.isArray(value)) {
-    const first = value[0];
-    if (first === "APPEARANCE_ONLY") return "CO_COUNSEL";
-    if (first === "EXAMINING_ATTORNEY") return "EXAMINING";
-    if (first === "DEFENDING_ATTORNEY") return "OPPOSING";
-    if (first === "CUSTODIAL_ATTORNEY") return "OTHER";
-    if (first === "CROSS_EXAMINATION") return "OPPOSING";
-    return null;
+    return value.length > 0 ? [...value] : null;
   }
 
   return normalizeValue(value);
@@ -280,7 +274,7 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
       city: normalizeValue(attorney.city),
       state: normalizeValue(attorney.state),
       zip: normalizeValue(attorney.zip),
-      function: derivePrimaryAttorneyFunction(attorney.function?.value ?? attorney.role.value),
+      function: normalizeAttorneyFunctionValue(attorney.function?.value ?? attorney.role.value),
       time_used: normalizeValue(attorney.time_used),
       appearance_label: normalizeValue(details?.preferred_appearance_label),
     };

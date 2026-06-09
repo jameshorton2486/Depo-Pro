@@ -491,6 +491,47 @@ describe("buildUfmMetadata", () => {
     );
   });
 
+  it("emits attorney multi-select functions as an array while leaving representation independent", () => {
+    const record = buildRecord();
+    record.attorneys.push({
+      attorney_id: "attorney_multi_function",
+      name: { value: "Curtis L. Cukjati", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      firm: { value: "Cukjati Law Firm, PLLC", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      function: {
+        value: ["EXAMINING_ATTORNEY", "CUSTODIAL_ATTORNEY"],
+        source: "manual",
+        confirmed: true,
+        conflict: false,
+        confidence_score: null,
+      },
+      representing: { value: "FOR THE DEFENDANT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: null,
+      email: "curtis@example.com",
+      phone: "2105551111",
+    });
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: buildProvenance(),
+    });
+
+    expect(envelope.ufm_metadata.appearances).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Curtis L. Cukjati",
+          function: ["EXAMINING_ATTORNEY", "CUSTODIAL_ATTORNEY"],
+          representing: "FOR THE DEFENDANT",
+        }),
+      ]),
+    );
+  });
+
   it("uses the case-selected reporter instead of the signed-in profile when a different reporter is chosen", () => {
     const record = buildRecord();
     record.reporter.name.value = "Alternate Reporter";
