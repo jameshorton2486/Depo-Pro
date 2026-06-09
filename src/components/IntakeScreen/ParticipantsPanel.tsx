@@ -7,7 +7,7 @@ import { useIntake } from "../../context/useIntake";
 import { useContactStore } from "../../store/contactStore";
 import type { Contact, ContactInsert, ContactType } from "../../types/contact";
 import type { Firm } from "../../types/firm";
-import type { AttorneyRole, ParticipantRole } from "../../types/case";
+import type { AttorneyFunction, AttorneyRole, ParticipantRole } from "../../types/case";
 import {
   digitsOnly,
   formatPhoneDisplay,
@@ -62,7 +62,7 @@ type DrawerDraft = {
   attorneyAppearanceLabel: string;
   attorneyRepresentingPreset: "plaintiff" | "defendant" | "third_party" | "other";
   attorneyRepresentingParty: string;
-  attorneyFunction: AttorneyRole;
+  attorneyFunctions: AttorneyFunction[];
   attorneyTimeUsed: string;
   interpreterCertified: boolean;
   interpreterCertNumber: string;
@@ -121,18 +121,15 @@ const ATTORNEY_CASE_FIELDS: FieldConfig[] = [
     ],
   },
   { key: "attorneyRepresentingParty", label: "Specific Party", kind: "text" },
-  {
-    key: "attorneyFunction",
-    label: "Function",
-    kind: "select",
-    options: [
-      { value: "EXAMINING", label: "Examining" },
-      { value: "OPPOSING", label: "Cross Examining" },
-      { value: "CO_COUNSEL", label: "Appearing" },
-      { value: "OTHER", label: "Custodial / Other" },
-    ],
-  },
   { key: "attorneyTimeUsed", label: "Time Used", kind: "text" },
+];
+
+const ATTORNEY_FUNCTION_OPTIONS: Array<{ label: string; value: AttorneyFunction }> = [
+  { label: "Appearance Only", value: "APPEARANCE_ONLY" },
+  { label: "Examining Attorney", value: "EXAMINING_ATTORNEY" },
+  { label: "Defending Attorney", value: "DEFENDING_ATTORNEY" },
+  { label: "Custodial Attorney", value: "CUSTODIAL_ATTORNEY" },
+  { label: "Cross Examination", value: "CROSS_EXAMINATION" },
 ];
 
 const INTERPRETER_DIRECTORY_FIELDS: FieldConfig[] = [
@@ -227,7 +224,7 @@ function defaultDraft(): DrawerDraft {
     attorneyAppearanceLabel: "",
     attorneyRepresentingPreset: "plaintiff",
     attorneyRepresentingParty: "",
-    attorneyFunction: "OTHER",
+    attorneyFunctions: [],
     attorneyTimeUsed: "",
     interpreterCertified: false,
     interpreterCertNumber: "",
@@ -247,6 +244,16 @@ function defaultDraft(): DrawerDraft {
     reporterCsrExpiration: "",
     reporterFirmRegistration: "",
   };
+}
+
+function deriveLegacyAttorneyRole(functions: AttorneyFunction[]): AttorneyRole {
+  const first = functions[0];
+  if (first === "APPEARANCE_ONLY") return "CO_COUNSEL";
+  if (first === "EXAMINING_ATTORNEY") return "EXAMINING";
+  if (first === "DEFENDING_ATTORNEY") return "OPPOSING";
+  if (first === "CUSTODIAL_ATTORNEY") return "OTHER";
+  if (first === "CROSS_EXAMINATION") return "OPPOSING";
+  return "OTHER";
 }
 
 function buildRepresentingValue(preset: DrawerDraft["attorneyRepresentingPreset"], partyName: string): string | null {
@@ -603,6 +610,15 @@ export function ParticipantsPanel() {
     });
   }
 
+  function toggleAttorneyFunction(value: AttorneyFunction) {
+    setDraft((current) => ({
+      ...current,
+      attorneyFunctions: current.attorneyFunctions.includes(value)
+        ? current.attorneyFunctions.filter((item) => item !== value)
+        : [...current.attorneyFunctions, value],
+    }));
+  }
+
   function handlePickContact(contact: Contact) {
     setSelectedContact(contact);
     setDraft((current) => mergeDraftWithAutoFill(current, applyContactToDraft(contact)));
@@ -706,8 +722,8 @@ export function ParticipantsPanel() {
         addAttorney({
           name: manualField(draft.name.trim() || contact.name),
           firm: manualField(resolvedFirm?.name ?? (draft.firmName.trim() || (contact.organization || null))),
-          role: manualField(draft.attorneyFunction),
-          function: manualField(draft.attorneyFunction),
+          role: manualField(deriveLegacyAttorneyRole(draft.attorneyFunctions)),
+          function: manualField(draft.attorneyFunctions),
           representing: manualField(buildRepresentingValue(draft.attorneyRepresentingPreset, draft.attorneyRepresentingParty)),
           bar_number: manualField(draft.attorneyBarNumber.trim() || null),
           address: resolvedFirm?.address || null,
@@ -1018,6 +1034,24 @@ export function ParticipantsPanel() {
                   {caseFields.length > 0 && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Case-Specific Fields</div>
+                      {drawerCategory === "attorney" && (
+                        <div className="mb-3 rounded-lg border border-slate-200 bg-white px-3 py-3">
+                          <div className="mb-2 text-sm font-medium text-slate-700">Function</div>
+                          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                            {ATTORNEY_FUNCTION_OPTIONS.map((option) => (
+                              <label key={option.value} className="flex items-center gap-2 text-sm text-slate-700">
+                                <input
+                                  type="checkbox"
+                                  checked={draft.attorneyFunctions.includes(option.value)}
+                                  onChange={() => toggleAttorneyFunction(option.value)}
+                                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                {option.label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {caseFields.map((config) => (
                           <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />

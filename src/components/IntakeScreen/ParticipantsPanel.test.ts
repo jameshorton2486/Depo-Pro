@@ -64,6 +64,7 @@ vi.mock("../../api/firmService", () => ({
 import { emptyCaseRecord } from "../../types/case";
 import { ParticipantsPanel } from "./ParticipantsPanel";
 import type { Contact } from "../../types/contact";
+import type { AttorneyFunction } from "../../types/case";
 
 type ElementOfType<T extends string> = ReactElement<Record<string, unknown>, T>;
 
@@ -95,7 +96,7 @@ function defaultDraft() {
     attorneyAppearanceLabel: "",
     attorneyRepresentingPreset: "plaintiff",
     attorneyRepresentingParty: "",
-    attorneyFunction: "OTHER",
+    attorneyFunctions: [] as AttorneyFunction[],
     attorneyTimeUsed: "",
     interpreterCertified: false,
     interpreterCertNumber: "",
@@ -512,7 +513,7 @@ describe("ParticipantsPanel", () => {
     draft.phone = "2105557878";
     draft.email = "custom@example.com";
     draft.attorneyBarNumber = "24077777";
-    draft.attorneyFunction = "EXAMINING";
+    draft.attorneyFunctions = ["EXAMINING_ATTORNEY"];
     draft.attorneyRepresentingPreset = "defendant";
     draft.attorneyRepresentingParty = "Home Depot";
     seedPanelState({ 0: "attorney", 1: "pick", 6: draft });
@@ -532,7 +533,7 @@ describe("ParticipantsPanel", () => {
       name: { value: "Karen M. Alvarado", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       firm: { value: "Brothers, Alvarado, Piazza & Cozort, P.C.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
-      function: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      function: { value: ["EXAMINING_ATTORNEY"], source: "manual", confirmed: true, conflict: false, confidence_score: null },
       representing: { value: "FOR DEFENDANT HOME DEPOT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       bar_number: { value: "24077777", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       address: "123 Main",
@@ -545,7 +546,7 @@ describe("ParticipantsPanel", () => {
     });
   });
 
-  it("currently defaults a newly created attorney function to OTHER while keeping representation separate", async () => {
+  it("defaults a newly created attorney to no selected functions while keeping representation separate", async () => {
     const draft = defaultDraft();
     draft.name = "Curtis L. Cukjati";
     draft.phone = "2105551111";
@@ -616,7 +617,7 @@ describe("ParticipantsPanel", () => {
       name: { value: "Curtis L. Cukjati", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       firm: { value: "Cukjati Law Firm, PLLC", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       role: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
-      function: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      function: { value: [], source: "manual", confirmed: true, conflict: false, confidence_score: null },
       representing: { value: "FOR DEFENDANT HOME DEPOT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
       address: "123 Main",
@@ -627,6 +628,64 @@ describe("ParticipantsPanel", () => {
       email: "curtis@example.com",
       phone: "2105551111",
     });
+  });
+
+  it("persists multiple selected attorney functions without inferring OTHER", async () => {
+    const draft = defaultDraft();
+    draft.name = "Curtis L. Cukjati";
+    draft.phone = "2105551111";
+    draft.email = "curtis@example.com";
+    draft.attorneyBarNumber = "24012345";
+    draft.attorneyRepresentingPreset = "defendant";
+    draft.attorneyRepresentingParty = "Home Depot";
+    draft.attorneyFunctions = ["EXAMINING_ATTORNEY", "CUSTODIAL_ATTORNEY"];
+    seedPanelState({ 0: "attorney", 1: "create", 6: draft });
+
+    upsertDirectory.mockResolvedValue({
+      conflicts: [],
+      created: true,
+      contact: {
+        id: "contact_attorney_multi",
+        type: "attorney",
+        name: "Curtis L. Cukjati",
+        organization: "",
+        phone: "2105551111",
+        email: "curtis@example.com",
+        address: "",
+        times_used: 0,
+        notes: "",
+        firm_id: null,
+        details: {
+          kind: "attorney",
+          bar_number: "24012345",
+          direct_phone: "2105551111",
+          extension: null,
+          fax: null,
+          assistant_name: null,
+          assistant_email: null,
+          preferred_appearance_label: null,
+        },
+        created_at: "2026-06-08T00:00:00.000Z",
+        updated_at: "2026-06-08T00:00:00.000Z",
+      },
+    });
+
+    const tree = renderPanel();
+    (findButton(tree, "Save Attorney to Directory + Add to Case").props as { onClick?: () => unknown }).onClick?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(addAttorney).toHaveBeenCalledWith(expect.objectContaining({
+      role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      function: {
+        value: ["EXAMINING_ATTORNEY", "CUSTODIAL_ATTORNEY"],
+        source: "manual",
+        confirmed: true,
+        conflict: false,
+        confidence_score: null,
+      },
+      representing: { value: "FOR DEFENDANT HOME DEPOT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+    }));
   });
 
   it("persists generic participant role_in_this_proceeding through the current add flow", async () => {

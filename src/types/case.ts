@@ -42,6 +42,13 @@ export type ProceedingType =
 
 export type DeponentRole   = "WITNESS" | "PARTY" | "EXPERT" | "OTHER";
 export type AttorneyRole   = "EXAMINING" | "OPPOSING" | "CO_COUNSEL" | "OTHER";
+export type AttorneyFunction =
+  | "APPEARANCE_ONLY"
+  | "EXAMINING_ATTORNEY"
+  | "DEFENDING_ATTORNEY"
+  | "CUSTODIAL_ATTORNEY"
+  | "CROSS_EXAMINATION";
+export type AttorneyFunctionValue = AttorneyFunction[] | AttorneyRole;
 export type ReportingMethod = "machine_shorthand" | "zoom" | "in_person" | "audio_recording";
 export type LocationType = "zoom" | "in_person" | "hybrid" | "phone";
 export type JurisdictionType = "texas_state" | "federal" | "state" | "other";
@@ -125,7 +132,7 @@ export interface Attorney {
   name:         ExtractedField<string>;
   firm:         ExtractedField<string | null>;
   role:         ExtractedField<AttorneyRole>;
-  function?:    ExtractedField<AttorneyRole>;
+  function?:    ExtractedField<AttorneyFunctionValue>;
   representing: ExtractedField<string | null>; // "Plaintiff", "Defendant", etc.
   bar_number:   ExtractedField<string | null>;
   address:      string | null;
@@ -895,7 +902,7 @@ function emptyAttorney(attorneyId: string): Attorney {
     name: extractedEmpty(""),
     firm: extractedEmpty(null),
     role: extractedEmpty<AttorneyRole>("OTHER"),
-    function: extractedEmpty<AttorneyRole>("OTHER"),
+    function: extractedEmpty<AttorneyFunctionValue>([]),
     representing: extractedEmpty(null),
     bar_number: extractedEmpty(null),
     address: null,
@@ -908,6 +915,47 @@ function emptyAttorney(attorneyId: string): Attorney {
   };
 }
 
+function isAttorneyFunction(value: unknown): value is AttorneyFunction {
+  return value === "APPEARANCE_ONLY"
+    || value === "EXAMINING_ATTORNEY"
+    || value === "DEFENDING_ATTORNEY"
+    || value === "CUSTODIAL_ATTORNEY"
+    || value === "CROSS_EXAMINATION";
+}
+
+function normalizeAttorneyFunctionArray(input: unknown[]): AttorneyFunction[] {
+  const seen = new Set<AttorneyFunction>();
+  for (const value of input) {
+    if (isAttorneyFunction(value)) {
+      seen.add(value);
+    }
+  }
+
+  const order: AttorneyFunction[] = [
+    "APPEARANCE_ONLY",
+    "EXAMINING_ATTORNEY",
+    "DEFENDING_ATTORNEY",
+    "CUSTODIAL_ATTORNEY",
+    "CROSS_EXAMINATION",
+  ];
+
+  return order.filter((value) => seen.has(value));
+}
+
+function deriveLegacyAttorneyRoleFromFunctionValue(value: AttorneyFunctionValue | undefined): AttorneyRole {
+  if (Array.isArray(value)) {
+    const first = value[0];
+    if (first === "APPEARANCE_ONLY") return "CO_COUNSEL";
+    if (first === "EXAMINING_ATTORNEY") return "EXAMINING";
+    if (first === "DEFENDING_ATTORNEY") return "OPPOSING";
+    if (first === "CUSTODIAL_ATTORNEY") return "OTHER";
+    if (first === "CROSS_EXAMINATION") return "OPPOSING";
+    return "OTHER";
+  }
+
+  return value ?? "OTHER";
+}
+
 function normalizeAttorneyRole(
   input: unknown,
   fallback = extractedEmpty<AttorneyRole>("OTHER"),
@@ -917,6 +965,22 @@ function normalizeAttorneyRole(
     fallback,
     (value): value is AttorneyRole =>
       value === "EXAMINING" || value === "OPPOSING" || value === "CO_COUNSEL" || value === "OTHER",
+  );
+}
+
+function normalizeAttorneyFunction(
+  input: unknown,
+  fallback = extractedEmpty<AttorneyFunctionValue>([]),
+): ExtractedField<AttorneyFunctionValue> {
+  return normalizeExtractedField(
+    input,
+    fallback,
+    (value): value is AttorneyFunctionValue => {
+      if (value === "EXAMINING" || value === "OPPOSING" || value === "CO_COUNSEL" || value === "OTHER") {
+        return true;
+      }
+      return Array.isArray(value) && normalizeAttorneyFunctionArray(value).length === value.length;
+    },
   );
 }
 
@@ -946,14 +1010,16 @@ function normalizeAttorneyFromUnknown(attorney: unknown, fallbackId: string): At
   const defaults = emptyAttorney(fallbackId);
   const source = isRecord(attorney) ? attorney : null;
   const attorneyId = source && typeof source.attorney_id === "string" && source.attorney_id.trim() ? source.attorney_id : fallbackId;
+  const functionField = normalizeAttorneyFunction(source?.function ?? source?.role, defaults.function);
+  const derivedRole = deriveLegacyAttorneyRoleFromFunctionValue(functionField.value);
 
   return normalizeAttorney({
     ...defaults,
     attorney_id: attorneyId,
     name: normalizeStringField(source?.name, defaults.name),
     firm: normalizeNullableStringField(source?.firm, defaults.firm),
-    role: normalizeAttorneyRole(source?.role ?? source?.function, defaults.role),
-    function: normalizeAttorneyRole(source?.function ?? source?.role, defaults.function),
+    role: normalizeAttorneyRole(source?.role ?? derivedRole, defaults.role),
+    function: functionField,
     representing: normalizeNullableStringField(source?.representing, defaults.representing),
     bar_number: normalizeNullableStringField(source?.bar_number, defaults.bar_number),
     address: normalizeNullableString(source?.address),
@@ -1501,6 +1567,10 @@ function normalizeComparableName(value: string | null | undefined): string {
 function normalizeComparableValue(value: unknown): string {
   if (typeof value === "string") {
     return normalizeComparableName(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeComparableValue(item)).filter(Boolean).sort().join("|");
   }
 
   if (typeof value === "boolean") {
