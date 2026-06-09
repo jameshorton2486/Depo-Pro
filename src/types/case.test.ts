@@ -244,4 +244,35 @@ describe("normalizeCaseRecord", () => {
     expect(normalized.parties[0]?.name.value).toBe("Delia Garza");
     expect(normalized.witnesses[0]?.name.value).toBe("Delia Garza");
   });
+
+  it("preserves a legacy attorney function OTHER value during normalization without dropping representation", () => {
+    const normalized = normalizeCaseRecord({
+      case_id: "case_legacy_attorney_other",
+      created_at: "2026-06-08T00:00:00.000Z",
+      updated_at: "2026-06-08T00:00:00.000Z",
+      attorneys: [
+        {
+          attorney_id: "attorney_legacy_other",
+          name: { value: "Curtis L. Cukjati", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          firm: { value: "Cukjati Law Firm, PLLC", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          role: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          representing: { value: "FOR THE DEFENDANT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          address: null,
+          city: null,
+          state: null,
+          zip: null,
+          time_used: null,
+          email: null,
+          phone: null,
+        },
+      ],
+    });
+
+    expect(normalized.attorneys).toHaveLength(1);
+    expect(normalized.attorneys[0]?.function?.value).toBe("OTHER");
+    expect(normalized.attorneys[0]?.role.value).toBe("OTHER");
+    expect(normalized.attorneys[0]?.representing.value).toBe("FOR THE DEFENDANT");
+  });
 });

@@ -545,6 +545,90 @@ describe("ParticipantsPanel", () => {
     });
   });
 
+  it("currently defaults a newly created attorney function to OTHER while keeping representation separate", async () => {
+    const draft = defaultDraft();
+    draft.name = "Curtis L. Cukjati";
+    draft.phone = "2105551111";
+    draft.email = "curtis@example.com";
+    draft.attorneyBarNumber = "24012345";
+    draft.attorneyRepresentingPreset = "defendant";
+    draft.attorneyRepresentingParty = "Home Depot";
+    draft.firmName = "Cukjati Law Firm, PLLC";
+    draft.firmAddress = "123 Main";
+    draft.firmCity = "San Antonio";
+    draft.firmState = "TX";
+    draft.firmZip = "78205";
+    seedPanelState({ 0: "attorney", 1: "create", 6: draft });
+
+    upsertDirectory.mockResolvedValue({
+      conflicts: [],
+      created: true,
+      contact: {
+        id: "contact_attorney_2",
+        type: "attorney",
+        name: "Curtis L. Cukjati",
+        organization: "",
+        phone: "2105551111",
+        email: "curtis@example.com",
+        address: "",
+        times_used: 0,
+        notes: "",
+        firm_id: "firm_2",
+        details: {
+          kind: "attorney",
+          bar_number: "24012345",
+          direct_phone: "2105551111",
+          extension: null,
+          fax: null,
+          assistant_name: null,
+          assistant_email: null,
+          preferred_appearance_label: null,
+        },
+        created_at: "2026-06-08T00:00:00.000Z",
+        updated_at: "2026-06-08T00:00:00.000Z",
+      },
+    });
+    upsertFirmMock.mockResolvedValue({
+      conflicts: [],
+      created: true,
+      firm: {
+        id: "firm_2",
+        name: "Cukjati Law Firm, PLLC",
+        address: "123 Main",
+        city: "San Antonio",
+        state: "TX",
+        zip: "78205",
+        main_phone: "",
+        fax: "",
+        created_at: "2026-06-08T00:00:00.000Z",
+        updated_at: "2026-06-08T00:00:00.000Z",
+        owner_user_id: "user_1",
+      },
+    });
+
+    const tree = renderPanel();
+    (findButton(tree, "Save Attorney to Directory + Add to Case").props as { onClick?: () => unknown }).onClick?.();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(addAttorney).toHaveBeenCalledWith({
+      name: { value: "Curtis L. Cukjati", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      firm: { value: "Cukjati Law Firm, PLLC", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      function: { value: "OTHER", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      representing: { value: "FOR DEFENDANT HOME DEPOT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      address: "123 Main",
+      city: "San Antonio",
+      state: "TX",
+      zip: "78205",
+      time_used: null,
+      email: "curtis@example.com",
+      phone: "2105551111",
+    });
+  });
+
   it("persists generic participant role_in_this_proceeding through the current add flow", async () => {
     const draft = defaultDraft();
     draft.name = "Jordan Smith";
