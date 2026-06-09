@@ -38,6 +38,7 @@ describe("buildDeepgramRequest", () => {
         filler_words: "true",
         utterances: "true",
         smart_format: "true",
+        mip_opt_out: "true",
       },
       keyterms: [
         { term: "Raul Garza", boost: 9, category: "Person", source: "nod_parser" },
@@ -72,6 +73,7 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("source");
     expect(request.wireQueryString).toContain("diarize=true");
     expect(request.wireQueryString).not.toContain("diarize_model");
+    expect(request.wireQueryString).toContain("mip_opt_out=true");
   });
 
   it("caps the wire request at 100 terms and reports the cut", () => {

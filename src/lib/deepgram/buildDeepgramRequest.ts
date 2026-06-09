@@ -21,6 +21,7 @@ export interface DeepgramRequestPreviewEnvelope {
     filler_words: string;
     utterances: string;
     smart_format: string;
+    mip_opt_out: string;
   };
   keyterms: Array<{
     term: string;
@@ -52,6 +53,7 @@ export const DEEPGRAM_REQUEST_PARAMS = {
   filler_words: "true",
   utterances: "true",
   smart_format: "true",
+  mip_opt_out: "true",
 } as const;
 
 function normalizeWhitespace(value: string): string {
