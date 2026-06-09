@@ -97,10 +97,56 @@ describe("normalizeCaseRecord role-preservation behavior", () => {
       record: normalized,
       provenance: [],
     });
-    const attorneyFunctions = (envelope.ufm_metadata.appearances as Array<{ category: string; function?: string | null }>)
+    const attorneyFunctions = (envelope.ufm_metadata.appearances as Array<{ category: string; function?: string | string[] | null }>)
       .filter((appearance) => appearance.category === "attorney")
       .map((appearance) => appearance.function);
     expect(attorneyFunctions).toEqual(["EXAMINING", "OTHER", "CO_COUNSEL"]);
+  });
+
+  it("preserves a multi-function attorney entry through normalization and UFM emission", () => {
+    const normalized = normalizeCaseRecord({
+      case_id: "case_multi_function_attorney",
+      created_at: "2026-06-08T00:00:00.000Z",
+      updated_at: "2026-06-08T00:00:00.000Z",
+      attorneys: [
+        {
+          attorney_id: "attorney_multi_function",
+          name: { value: "Curtis L. Cukjati", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          firm: { value: "Cukjati Law Firm, PLLC", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          role: { value: "EXAMINING", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          function: {
+            value: ["EXAMINING_ATTORNEY", "CUSTODIAL_ATTORNEY"],
+            source: "manual",
+            confirmed: true,
+            conflict: false,
+            confidence_score: null,
+          },
+          representing: { value: "FOR THE DEFENDANT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          bar_number: { value: "24012345", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+          address: null,
+          city: null,
+          state: null,
+          zip: null,
+          time_used: null,
+          email: "curtis@example.com",
+          phone: "2105551111",
+        },
+      ],
+    });
+
+    expect(normalized.attorneys).toHaveLength(1);
+    expect(normalized.attorneys[0]?.function?.value).toEqual(["EXAMINING_ATTORNEY", "CUSTODIAL_ATTORNEY"]);
+    expect(normalized.attorneys[0]?.role.value).toBe("EXAMINING");
+    expect(normalized.attorneys[0]?.representing.value).toBe("FOR THE DEFENDANT");
+
+    const envelope = buildUfmMetadata({
+      record: normalized,
+      provenance: [],
+    });
+    const attorneyFunctions = (envelope.ufm_metadata.appearances as Array<{ category: string; function?: string | string[] | null }>)
+      .filter((appearance) => appearance.category === "attorney")
+      .map((appearance) => appearance.function);
+    expect(attorneyFunctions).toEqual([["EXAMINING_ATTORNEY", "CUSTODIAL_ATTORNEY"]]);
   });
 
   it("preserves the same name across distinct collections and within participants when role-bearing fields differ", () => {
