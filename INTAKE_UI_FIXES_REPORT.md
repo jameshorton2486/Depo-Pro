@@ -137,3 +137,95 @@ Task 0 found a material divergence from the prompt’s confirm-jump description:
 
 Under the prompt’s instruction to stop if reality diverges from the described defect, I am stopping here rather than making behavior edits that would require re-scoping Task 2.
 
+## Final summary
+
+### Task 1 — legacy-payload warning de-duplication
+
+Before:
+
+```ts
+if (coercedPaths.size > 0) {
+  console.warn("[DEPO-PRO] Normalized legacy case payload", {
+    case_id: deduped.case_id,
+    coercedPaths: [...coercedPaths],
+  });
+}
+```
+
+After:
+
+```ts
+if (coercedPaths.size > 0 && !warnedLegacyCaseIds.has(deduped.case_id)) {
+  warnedLegacyCaseIds.add(deduped.case_id);
+  console.warn("[DEPO-PRO] Normalized legacy case payload", {
+    case_id: deduped.case_id,
+    coercedPaths: [...coercedPaths],
+  });
+}
+```
+
+Result:
+
+- Warning now emits at most once per `case_id` per session.
+- `normalizeCaseRecord` coercion logic, `coercedPaths`, return shape, and produced values are unchanged.
+
+### Task 2 — confirm-focus viewport yank
+
+Before:
+
+```ts
+button.focus();
+button.scrollIntoView({ behavior: "smooth", block: "nearest" });
+```
+
+After:
+
+```ts
+button.focus({ preventScroll: true });
+```
+
+Result:
+
+- Keyboard focus still advances to the next confirmable row.
+- The explicit viewport yank was removed.
+- `findNextConfirmableRowId`, wrap-around logic, and the existing `pendingWindowScrollYRef` capture/restore path are unchanged.
+
+### Task 3 — boolean rendering
+
+Before:
+
+```ts
+const displayValue = resolvedEntry?.winning_value ?? row.value;
+```
+
+```tsx
+<span className="break-words text-sm text-slate-800">{displayValue}</span>
+```
+
+After:
+
+```ts
+const displayValue = resolvedEntry?.winning_value ?? row.value;
+const renderedValue = displayValue === "true" ? "Yes" : displayValue === "false" ? "No" : displayValue;
+```
+
+```tsx
+<span className="break-words text-sm text-slate-800">{renderedValue}</span>
+```
+
+Result:
+
+- Presentation now shows `Yes` / `No` when `displayValue` is exactly `"true"` / `"false"`.
+- `row.value` remains unchanged underneath, so confirm logging, edit drafts, and filters still use the original string values.
+
+### Standard-width layout check
+
+- Attempted a local 1280px render check using the standalone Vite app at `http://127.0.0.1:4173` plus headless Edge screenshot capture.
+- In this environment the page rendered as a blank white viewport in headless capture, so the previously reported overlap could not be reproduced visually here.
+- No contained CSS/layout fix was applied because Task 0 identified the confirmed root cause as raw boolean string rendering, not a verified table-layout collision.
+
+### Constraints confirmation
+
+- No schema, dependency, migration, or architecture changes were made.
+- `normalizeCaseRecord` output is unchanged.
+- `row.value` remains unchanged.
