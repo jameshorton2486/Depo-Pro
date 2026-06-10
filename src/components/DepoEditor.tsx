@@ -56,6 +56,7 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
 
   const mediaUrl = state.document?.media_url ?? "";
   const duration = state.document?.duration ?? 0;
+  const audioSegments = state.audioSegments;
 
   return (
     <div className="depo-editor h-full flex flex-col bg-white text-slate-900">
@@ -65,7 +66,7 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
           <TranscriptEditor readOnly={config.readOnly ?? false} />
           {mediaUrl && (
-            <AudioPlayer mediaUrl={mediaUrl} duration={duration} />
+            <AudioPlayer mediaUrl={mediaUrl} duration={duration} audioSegments={audioSegments} />
           )}
         </main>
         <RightSidebar />

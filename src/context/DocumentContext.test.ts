@@ -49,6 +49,7 @@ describe("documentReducer save sequencing", () => {
       doc: buildDocument(),
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
+      audioSegments: [],
     });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",
@@ -76,6 +77,7 @@ describe("documentReducer save sequencing", () => {
       doc: buildDocument(),
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
+      audioSegments: [],
     });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",

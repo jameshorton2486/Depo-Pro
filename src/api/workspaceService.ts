@@ -28,6 +28,15 @@ export interface WorkspaceLoadResult {
   document: EditorDocument;
   updatedAt: string | null;
   speakerMapConfirmed: boolean;
+  audioSegments: WorkspaceAudioSegment[];
+}
+
+export interface WorkspaceAudioSegment {
+  sourceIndex: number;
+  sourceFilename: string;
+  startOffsetSeconds: number;
+  durationSeconds: number;
+  mediaUrl: string;
 }
 
 export interface WorkspaceMutationOptions {
@@ -142,7 +151,52 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
     document: buildEditorDocumentFromSnapshot(snapshot, mediaUrl),
     updatedAt: snapshot.job.updated_at,
     speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
+    audioSegments: await loadAudioSegments(snapshot.job, mediaUrl),
   };
+}
+
+async function loadAudioSegments(
+  target: TranscriptJobRow,
+  fallbackMediaUrl: string,
+): Promise<WorkspaceAudioSegment[]> {
+  if (target.raw_storage_path?.endsWith("_multifile_manifest.json")) {
+    const client = await getSupabaseClient("loadAudioSegments");
+    const { data, error } = await client.storage
+      .from("case-files")
+      .download(target.raw_storage_path);
+
+    if (!error) {
+      const manifest = JSON.parse(await data.text()) as {
+        sources?: Array<{
+          source_index: number;
+          source_filename: string;
+          start_offset_seconds: number;
+          duration_seconds: number;
+          storage_path: string | null;
+        }>;
+      };
+
+      if (Array.isArray(manifest.sources) && manifest.sources.length > 0) {
+        return Promise.all(
+          manifest.sources.map(async (source) => ({
+            sourceIndex: source.source_index,
+            sourceFilename: source.source_filename,
+            startOffsetSeconds: source.start_offset_seconds,
+            durationSeconds: source.duration_seconds,
+            mediaUrl: source.storage_path ? await getSignedUrl(source.storage_path) : "",
+          })),
+        );
+      }
+    }
+  }
+
+  return [{
+    sourceIndex: 0,
+    sourceFilename: target.source_filename ?? "Source 1",
+    startOffsetSeconds: 0,
+    durationSeconds: target.duration_seconds ?? target.duration ?? 0,
+    mediaUrl: fallbackMediaUrl,
+  }];
 }
 
 function isTransientWorkspaceError(error: unknown): boolean {
@@ -547,6 +601,7 @@ export const workspaceApi = {
         document: await contractApi.getDocument(caseId),
         updatedAt: null,
         speakerMapConfirmed: false,
+        audioSegments: [],
       };
     }
 
@@ -556,10 +611,12 @@ export const workspaceApi = {
         throw new Error("No transcript has been generated for this case yet.");
       }
 
+      const document = await contractApi.getDocument(target.transcript_id);
       return {
-        document: await contractApi.getDocument(target.transcript_id),
+        document,
         updatedAt: target.updated_at,
         speakerMapConfirmed: target.speaker_map_confirmed,
+        audioSegments: await loadAudioSegments(target, document.media_url),
       };
     }
 

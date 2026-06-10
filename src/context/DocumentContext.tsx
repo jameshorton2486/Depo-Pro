@@ -14,7 +14,7 @@ import type {
   Speaker,
 } from "../api/types";
 import type { ChangeLogEntry, ChangeSource } from "../types";
-import { workspaceApi } from "../api/workspaceService";
+import { workspaceApi, type WorkspaceAudioSegment } from "../api/workspaceService";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -32,6 +32,7 @@ interface State {
   lastSavedAt: number | null;
   jobUpdatedAt: string | null;
   speakerMapConfirmed: boolean;
+  audioSegments: WorkspaceAudioSegment[];
   changeLog: ChangeLogEntry[];
   activeUtteranceId: UtteranceId | null;
   workingTexts: Record<UtteranceId, string>;
@@ -41,9 +42,9 @@ interface State {
 
 type Action =
   | { type: "LOAD_START" }
-  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean }
+  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; audioSegments: WorkspaceAudioSegment[] }
   | { type: "LOAD_ERR"; error: string }
-  | { type: "UPDATE_MEDIA_URL"; mediaUrl: string }
+  | { type: "UPDATE_MEDIA_URL"; mediaUrl: string; segmentIndex: number }
   | { type: "SET_ACTIVE"; id: UtteranceId | null }
   | {
       type: "EDIT_UTTERANCE";
@@ -86,6 +87,7 @@ export function documentReducer(state: State, action: Action): State {
         editSeq: 0,
         jobUpdatedAt: action.updatedAt,
         speakerMapConfirmed: action.speakerMapConfirmed,
+        audioSegments: action.audioSegments,
       };
 
     case "LOAD_ERR":
@@ -99,6 +101,11 @@ export function documentReducer(state: State, action: Action): State {
           ...state.document,
           media_url: action.mediaUrl,
         },
+        audioSegments: state.audioSegments.map((segment, index) => (
+          index === action.segmentIndex
+            ? { ...segment, mediaUrl: action.mediaUrl }
+            : segment
+        )),
       };
 
     case "SET_ACTIVE":
@@ -191,7 +198,7 @@ export function documentReducer(state: State, action: Action): State {
 interface ContextValue {
   state: State;
   loadDocument: () => Promise<void>;
-  refreshMediaUrl: () => Promise<string | null>;
+  refreshMediaUrl: (segmentIndex?: number) => Promise<string | null>;
   setActive: (id: UtteranceId | null) => void;
   editUtterance: (utterance_id: UtteranceId, old_text: string, new_text: string) => void;
   logSuggestionEdit: (
@@ -225,6 +232,7 @@ export function createInitialDocumentState(jobId: string): State {
     lastSavedAt: null,
     jobUpdatedAt: null,
     speakerMapConfirmed: false,
+    audioSegments: [],
     changeLog: [],
     activeUtteranceId: null,
     workingTexts: {},
@@ -254,6 +262,7 @@ export function DocumentProvider({
         doc: loaded.document,
         updatedAt: loaded.updatedAt,
         speakerMapConfirmed: loaded.speakerMapConfirmed,
+        audioSegments: loaded.audioSegments,
       });
     } catch (e) {
       dispatch({ type: "LOAD_ERR", error: String(e) });
@@ -264,10 +273,10 @@ export function DocumentProvider({
     dispatch({ type: "SET_ACTIVE", id });
   }, []);
 
-  const refreshMediaUrl = useCallback(async () => {
+  const refreshMediaUrl = useCallback(async (segmentIndex = 0) => {
     const loaded = await workspaceApi.getDocument(jobId);
-    const nextMediaUrl = loaded.document.media_url ?? "";
-    dispatch({ type: "UPDATE_MEDIA_URL", mediaUrl: nextMediaUrl });
+    const nextMediaUrl = loaded.audioSegments[segmentIndex]?.mediaUrl ?? loaded.document.media_url ?? "";
+    dispatch({ type: "UPDATE_MEDIA_URL", mediaUrl: nextMediaUrl, segmentIndex });
     return nextMediaUrl;
   }, [jobId]);
 

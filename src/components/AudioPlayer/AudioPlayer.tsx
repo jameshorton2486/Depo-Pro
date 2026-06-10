@@ -2,6 +2,8 @@ import type React from "react";
 import { useEffect, useRef, useCallback, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+
+import type { WorkspaceAudioSegment } from "../../api/workspaceService";
 import { useAudio } from "../../context/AudioContext";
 import { useDocument } from "../../context/DocumentContext";
 import { isRealApiMode } from "../../lib/runtime/mode";
@@ -17,55 +19,137 @@ function formatTime(s: number): string {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = Math.floor(s % 60);
-  if (h > 0)
+  if (h > 0) {
     return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  }
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-export function AudioPlayer({ mediaUrl, duration: docDuration }: {
+function buildSegments(
+  mediaUrl: string,
+  duration: number,
+  audioSegments: WorkspaceAudioSegment[],
+): WorkspaceAudioSegment[] {
+  if (audioSegments.length > 0) {
+    return audioSegments;
+  }
+
+  return [{
+    sourceIndex: 0,
+    sourceFilename: "Source 1",
+    startOffsetSeconds: 0,
+    durationSeconds: duration,
+    mediaUrl,
+  }];
+}
+
+function resolveSegmentTarget(segments: WorkspaceAudioSegment[], absoluteSeconds: number) {
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    const segment = segments[index];
+    if (absoluteSeconds >= segment.startOffsetSeconds) {
+      return {
+        segmentIndex: index,
+        localSeconds: Math.max(0, absoluteSeconds - segment.startOffsetSeconds),
+      };
+    }
+  }
+
+  return {
+    segmentIndex: 0,
+    localSeconds: Math.max(0, absoluteSeconds),
+  };
+}
+
+export function AudioPlayer({
+  mediaUrl,
+  duration: docDuration,
+  audioSegments,
+}: {
   mediaUrl: string;
   duration: number;
+  audioSegments: WorkspaceAudioSegment[];
 }) {
   const waveRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WaveSurfer | null>(null);
   const audio = useAudio();
   const { refreshMediaUrl } = useDocument();
 
-  const [speedIdx, setSpeedIdx] = useState(2); // default 1.0×
+  const [speedIdx, setSpeedIdx] = useState(2);
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [displayTime, setDisplayTime] = useState(0);
   const [wsDuration, setWsDuration] = useState(0);
   const [ready, setReady] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const refreshAttemptAtRef = useRef<number | null>(null);
   const recoveringRef = useRef(false);
+  const pendingSeekRef = useRef<number | null>(null);
+  const pendingPlayRef = useRef(false);
   const lastMediaUrlRef = useRef(mediaUrl);
   const playingRef = useRef(audio.playing);
 
+  const segments = buildSegments(mediaUrl, docDuration, audioSegments);
+  const safeSegmentIndex = Math.min(activeSegmentIndex, Math.max(segments.length - 1, 0));
+  const activeSegment = segments[safeSegmentIndex];
+  const resolvedMediaUrl = activeSegment?.mediaUrl || mediaUrl;
+
   useEffect(() => {
-    lastMediaUrlRef.current = mediaUrl;
-  }, [mediaUrl]);
+    lastMediaUrlRef.current = resolvedMediaUrl;
+  }, [resolvedMediaUrl]);
 
   useEffect(() => {
     playingRef.current = audio.playing;
   }, [audio.playing]);
 
-  // RAF tick: keeps displayTime + currentTimeRef in sync during playback.
-  // Lives here (in the player) so it can read wsRef.current.getCurrentTime().
+  useEffect(() => {
+    if (safeSegmentIndex !== activeSegmentIndex) {
+      setActiveSegmentIndex(safeSegmentIndex);
+    }
+  }, [activeSegmentIndex, safeSegmentIndex]);
+
   const rafRef = useRef<number>(0);
   const tickRef = useRef<() => void>();
   tickRef.current = () => {
     if (wsRef.current) {
-      const t = wsRef.current.getCurrentTime();
-      audio.updateCurrentTime(t);
-      setDisplayTime(t);
+      const localTime = wsRef.current.getCurrentTime();
+      const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + localTime;
+      audio.updateCurrentTime(absoluteTime);
+      setDisplayTime(absoluteTime);
     }
     rafRef.current = requestAnimationFrame(() => tickRef.current!());
   };
 
+  const seekAbsolute = useCallback((absoluteSeconds: number, autoplay: boolean) => {
+    const target = resolveSegmentTarget(segments, absoluteSeconds);
+    if (target.segmentIndex !== safeSegmentIndex) {
+      pendingSeekRef.current = target.localSeconds;
+      pendingPlayRef.current = autoplay;
+      setActiveSegmentIndex(target.segmentIndex);
+      audio.updateCurrentTime(absoluteSeconds);
+      setDisplayTime(absoluteSeconds);
+      return;
+    }
+
+    const ws = wsRef.current;
+    const duration = ws?.getDuration() ?? 0;
+    if (ws && duration > 0) {
+      ws.seekTo(Math.max(0, Math.min(target.localSeconds / duration, 1)));
+    }
+    audio.updateCurrentTime(absoluteSeconds);
+    setDisplayTime(absoluteSeconds);
+    if (autoplay) {
+      void ws?.play();
+    }
+  }, [audio, safeSegmentIndex, segments]);
+
   useEffect(() => {
-    if (!waveRef.current) return;
+    if (!waveRef.current) {
+      return;
+    }
+
+    setReady(false);
+    setAudioError(null);
 
     const ws = WaveSurfer.create({
       container: waveRef.current,
@@ -105,7 +189,7 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
       const wasPlaying = playingRef.current;
 
       try {
-        const nextMediaUrl = await refreshMediaUrl();
+        const nextMediaUrl = await refreshMediaUrl(safeSegmentIndex);
         if (!nextMediaUrl || nextMediaUrl === lastMediaUrlRef.current) {
           setAudioError("Audio unavailable.");
           return;
@@ -118,13 +202,17 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
             ws.un("error", onError);
           };
           const onReady = () => {
-            if (settled) return;
+            if (settled) {
+              return;
+            }
             settled = true;
             cleanup();
             resolve();
           };
           const onError = () => {
-            if (settled) return;
+            if (settled) {
+              return;
+            }
             settled = true;
             cleanup();
             reject(new Error("refreshed media url failed"));
@@ -142,8 +230,9 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
         if (refreshedDuration > 0) {
           ws.seekTo(boundedTime / refreshedDuration);
         }
-        audio.updateCurrentTime(boundedTime);
-        setDisplayTime(boundedTime);
+        const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + boundedTime;
+        audio.updateCurrentTime(absoluteTime);
+        setDisplayTime(absoluteTime);
         if (wasPlaying) {
           await ws.play();
         }
@@ -155,22 +244,37 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
     };
 
     ws.on("ready", () => {
-      const dur = ws.getDuration();
-      setWsDuration(dur);
-      audio.setDuration(dur);
+      const duration = ws.getDuration();
+      setWsDuration(duration);
+      audio.setDuration(duration);
       setReady(true);
       setAudioError(null);
 
-      // Register absolute-seconds seek + play/pause so the rest of the app
-      // can control WaveSurfer without knowing about it.
+      const pendingSeek = pendingSeekRef.current;
+      if (pendingSeek != null && duration > 0) {
+        ws.seekTo(Math.max(0, Math.min(pendingSeek / duration, 1)));
+      }
+      const localTime = pendingSeek ?? ws.getCurrentTime();
+      const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + localTime;
+      audio.updateCurrentTime(absoluteTime);
+      setDisplayTime(absoluteTime);
+      pendingSeekRef.current = null;
+
       audio.registerControls({
-        seek: (t: number) => {
-          const d = ws.getDuration();
-          if (d > 0) ws.seekTo(Math.max(0, Math.min(t / d, 1)));
+        seek: (absoluteSeconds: number) => {
+          seekAbsolute(absoluteSeconds, false);
         },
-        play: () => ws.play(),
+        play: () => {
+          pendingPlayRef.current = false;
+          void ws.play();
+        },
         pause: () => ws.pause(),
       });
+
+      if (pendingPlayRef.current) {
+        pendingPlayRef.current = false;
+        void ws.play();
+      }
     });
 
     ws.on("play", () => {
@@ -184,6 +288,13 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
     });
 
     ws.on("finish", () => {
+      if (safeSegmentIndex < segments.length - 1) {
+        pendingSeekRef.current = 0;
+        pendingPlayRef.current = true;
+        setActiveSegmentIndex(safeSegmentIndex + 1);
+        return;
+      }
+
       audio.setPlaying(false);
       cancelAnimationFrame(rafRef.current);
     });
@@ -192,10 +303,10 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
       void handleRecoverableError();
     });
 
-    // Also update time on waveform seek (user drags the waveform)
-    ws.on("seeking", (t) => {
-      audio.updateCurrentTime(t);
-      setDisplayTime(t);
+    ws.on("seeking", (localTime) => {
+      const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + localTime;
+      audio.updateCurrentTime(absoluteTime);
+      setDisplayTime(absoluteTime);
     });
 
     const mediaElement = (ws as WaveSurferWithMediaElement).getMediaElement?.() ?? null;
@@ -204,7 +315,7 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
     };
     mediaElement?.addEventListener("error", handleMediaElementError);
 
-    ws.load(mediaUrl);
+    ws.load(resolvedMediaUrl);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -212,19 +323,15 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
       ws.destroy();
       wsRef.current = null;
     };
-  }, [mediaUrl, refreshMediaUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSegment?.startOffsetSeconds, audio, refreshMediaUrl, resolvedMediaUrl, safeSegmentIndex, seekAbsolute, segments.length]);
 
   const togglePlay = useCallback(() => {
     wsRef.current?.playPause();
   }, []);
 
-  const skip = useCallback((secs: number) => {
-    const ws = wsRef.current;
-    if (!ws || !ready) return;
-    const d = ws.getDuration();
-    const next = Math.max(0, Math.min(ws.getCurrentTime() + secs, d));
-    if (d > 0) ws.seekTo(next / d);
-  }, [ready]);
+  const skip = useCallback((seconds: number) => {
+    seekAbsolute(Math.max(0, displayTime + seconds), false);
+  }, [displayTime, seekAbsolute]);
 
   const cycleSpeed = useCallback(() => {
     const next = (speedIdx + 1) % SPEEDS.length;
@@ -232,38 +339,41 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
     wsRef.current?.setPlaybackRate(SPEEDS[next]);
   }, [speedIdx]);
 
-  const handleVolume = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = parseFloat(e.target.value);
-    setVolume(v);
-    wsRef.current?.setVolume(v);
-    if (v > 0) setMuted(false);
+  const handleVolume = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextVolume = Number.parseFloat(event.target.value);
+    setVolume(nextVolume);
+    wsRef.current?.setVolume(nextVolume);
+    if (nextVolume > 0) {
+      setMuted(false);
+    }
   }, []);
 
   const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      wsRef.current?.setVolume(next ? 0 : volume);
-      return next;
+    setMuted((current) => {
+      const nextMuted = !current;
+      wsRef.current?.setVolume(nextMuted ? 0 : volume);
+      return nextMuted;
     });
   }, [volume]);
 
-  const shownDuration = wsDuration || docDuration;
+  const shownDuration = segments.length > 0
+    ? segments[segments.length - 1].startOffsetSeconds + segments[segments.length - 1].durationSeconds
+    : (wsDuration || docDuration);
 
   return (
     <div className="audio-player-bar">
-      {/* Waveform */}
       <div ref={waveRef} className="audio-waveform" />
 
-      {/* Controls */}
       <div className="audio-controls">
-        {/* Timestamp */}
         <span className="audio-time">
-          {formatTime(displayTime)}{" "}
-          <span className="text-slate-400">/</span>{" "}
-          {formatTime(shownDuration)}
+          {formatTime(displayTime)} <span className="text-slate-400">/</span> {formatTime(shownDuration)}
         </span>
+        {segments.length > 1 && activeSegment && (
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {activeSegment.sourceFilename}
+          </span>
+        )}
 
-        {/* Transport */}
         <button
           onClick={() => skip(-5)}
           disabled={!ready}
@@ -291,12 +401,10 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
           <SkipForward size={15} />
         </button>
 
-        {/* Speed */}
         <button onClick={cycleSpeed} className="audio-speed-btn" title="Cycle playback speed">
           {SPEEDS[speedIdx]}×
         </button>
 
-        {/* Volume */}
         <div className="audio-volume">
           <button onClick={toggleMute} className="audio-btn">
             {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
@@ -313,10 +421,10 @@ export function AudioPlayer({ mediaUrl, duration: docDuration }: {
         </div>
 
         {!ready && (
-          <span className="text-xs text-slate-400 ml-2">Loading audio…</span>
+          <span className="ml-2 text-xs text-slate-400">Loading audio…</span>
         )}
         {audioError && (
-          <span className="text-xs text-rose-600 ml-2">{audioError}</span>
+          <span className="ml-2 text-xs text-rose-600">{audioError}</span>
         )}
       </div>
     </div>

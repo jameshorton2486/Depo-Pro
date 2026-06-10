@@ -72,6 +72,34 @@ They do not alter existing keys, status checks, or the one-active-job-per-case i
 - `npm run typecheck`: pass
 - `npm run test`: pass (`232/232`)
 
+## Task 7 — Multi-file Playback Mapping
+
+### Delivered
+
+- Workspace load now resolves audio segment metadata from the multi-file merge manifest
+- Document state now carries ordered audio segments alongside the frozen `EditorDocument` contract
+- AudioPlayer now maps global transcript time to the correct source file and local offset
+- Playback auto-advances across source-file boundaries and preserves global timestamps for waveform seeks and word-click verification
+- Single-file playback still uses a one-segment fallback path
+
+### Single-file safety
+
+- Single-file transcripts still load a single segment with the original `media_url`
+- Existing editor contract fields are unchanged; segment metadata stays in local UI state only
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`232/232`)
+
+## Human Browser Checks
+
+1. Intake: upload two or more audio/video files to one case, reorder them, reload the case, and confirm order persists.
+2. Creation: run transcription for the multi-file case and confirm only one active `transcription_jobs` row exists while the job advances through sources.
+3. Workspace: confirm one canonical transcript opens after completion and speakers show file-context badges.
+4. Playback: click a word from file 1, then a word from file 2, and confirm the player loads the correct source file and seeks to the correct local offset.
+5. Regression: open a known single-file transcript and confirm transcript load, playback, and speaker mapping are unchanged.
+
 ## Task 5 — SpeakerPanel File Context
 
 ### Delivered
