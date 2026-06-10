@@ -7,6 +7,8 @@ export interface TranscriptionJobRecord {
   owner_user_id: string;
   status: TranscriptionJobStatus;
   callback_token_hash: string;
+  source_audio_id: string | null;
+  source_index: number | null;
   request_path: string | null;
   response_path: string | null;
   error: string | null;

@@ -32,3 +32,26 @@ The approved deltas are additive against the current schema:
 
 They do not alter existing keys, status checks, or the one-active-job-per-case index.
 
+## Task 1 — Additive Schema Delta
+
+### Delivered
+
+- Added migration `supabase/migrations/20260610165436_add_multifile_source_columns.sql`
+- Added `case_audio.source_index integer not null default 0`
+- Added `transcription_jobs.source_audio_id text null`
+- Added `transcription_jobs.source_index integer null`
+- Added supporting indexes:
+  - `case_audio_case_source_idx`
+  - `transcription_jobs_case_source_idx`
+
+### Single-file safety
+
+- Existing `case_audio` rows default to `source_index = 0`
+- Existing `transcription_jobs` rows keep null source binding fields without changing status semantics
+- The one-active-job-per-case unique index is untouched
+- Local transcription job types now include the new nullable binding fields
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`229/229`)

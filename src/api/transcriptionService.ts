@@ -60,6 +60,8 @@ function createMockJob(caseId: string): TranscriptionJobRecord {
     owner_user_id: "mock-owner",
     status: "queued",
     callback_token_hash: "mock",
+    source_audio_id: null,
+    source_index: 0,
     request_path: null,
     response_path: null,
     error: null,
@@ -228,6 +230,8 @@ function readJobFromFunctionPayload(value: unknown): TranscriptionJobRecord | nu
       ? job.status
       : "queued",
     callback_token_hash: typeof job.callback_token_hash === "string" ? job.callback_token_hash : "",
+    source_audio_id: typeof job.source_audio_id === "string" ? job.source_audio_id : null,
+    source_index: typeof job.source_index === "number" ? job.source_index : null,
     request_path: typeof job.request_path === "string" ? job.request_path : null,
     response_path: typeof job.response_path === "string" ? job.response_path : null,
     error: typeof job.error === "string" ? job.error : null,
