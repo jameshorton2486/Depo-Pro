@@ -1404,6 +1404,8 @@ function normalizeWitnesses(record: Record<string, unknown>, coercedPaths: Set<s
   return [];
 }
 
+const warnedLegacyCaseIds = new Set<string>();
+
 export function normalizeCaseRecord(record: unknown): CaseRecord {
   const source = isRecord(record) ? record : {};
   const caseId = typeof source.case_id === "string" ? source.case_id : "";
@@ -1503,7 +1505,8 @@ export function normalizeCaseRecord(record: unknown): CaseRecord {
 
   const deduped = repairParticipantCollections(normalized, coercedPaths);
 
-  if (coercedPaths.size > 0) {
+  if (coercedPaths.size > 0 && !warnedLegacyCaseIds.has(deduped.case_id)) {
+    warnedLegacyCaseIds.add(deduped.case_id);
     console.warn("[DEPO-PRO] Normalized legacy case payload", {
       case_id: deduped.case_id,
       coercedPaths: [...coercedPaths],
