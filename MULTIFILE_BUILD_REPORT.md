@@ -56,6 +56,22 @@ They do not alter existing keys, status checks, or the one-active-job-per-case i
 - `npm run typecheck`: pass
 - `npm run test`: pass (`229/229`)
 
+## Task 6 — Tests And Single-file Regression
+
+### Delivered
+
+- Added `src/lib/transcript/multifileMerge.test.ts`
+- Covered:
+  - single-file merge regression (`normalized` output preserved exactly)
+  - rebasing math and ordinal continuity across files
+  - per-file speaker namespacing
+  - missing-duration fallback to the prior file’s last word end time
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`232/232`)
+
 ## Task 5 — SpeakerPanel File Context
 
 ### Delivered
