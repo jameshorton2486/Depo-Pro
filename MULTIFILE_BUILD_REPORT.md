@@ -100,6 +100,28 @@ They do not alter existing keys, status checks, or the one-active-job-per-case i
 4. Playback: click a word from file 1, then a word from file 2, and confirm the player loads the correct source file and seeks to the correct local offset.
 5. Regression: open a known single-file transcript and confirm transcript load, playback, and speaker mapping are unchanged.
 
+## Post-build Failure-path Coverage
+
+### Added
+
+- `src/lib/transcript/multifileCallbackFlow.test.ts`
+- extracted `src/lib/transcript/multifileCallbackFlow.ts` from the callback sequencing branch so the tested path is the production path
+
+### What it proves
+
+- when file 2 cannot start after file 1 has already completed its callback, the parent job is failed
+- no canonical transcript rows are finalized by that branch
+- completed file-1 response artifacts are preserved because the failure path cleans transcript tables only and does not delete storage artifacts
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`233/233`)
+
+### Note
+
+- This was added after the main build completed. It closes the previously untested mid-set failure branch locally.
+
 ## Task 5 — SpeakerPanel File Context
 
 ### Delivered
