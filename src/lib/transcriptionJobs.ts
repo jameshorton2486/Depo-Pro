@@ -41,3 +41,23 @@ export function buildTranscriptionArtifactPath(
 ): string {
   return `${ownerUserId}/${caseId}/${TRANSCRIPTION_ARTIFACT_CATEGORY}/${fileName}`;
 }
+
+function padSourceIndex(sourceIndex: number): string {
+  return String(sourceIndex).padStart(3, "0");
+}
+
+export function buildDeepgramRequestFileName(jobId: string, sourceIndex: number, totalSources: number): string {
+  if (totalSources <= 1) {
+    return `${jobId}_deepgram_request.json`;
+  }
+
+  return `${jobId}_file_${padSourceIndex(sourceIndex)}_deepgram_request.json`;
+}
+
+export function buildDeepgramResponseFileName(jobId: string, sourceIndex: number, totalSources: number): string {
+  if (totalSources <= 1) {
+    return `${jobId}_deepgram_response.json`;
+  }
+
+  return `${jobId}_file_${padSourceIndex(sourceIndex)}_deepgram_response.json`;
+}

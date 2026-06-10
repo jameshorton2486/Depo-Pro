@@ -56,6 +56,26 @@ They do not alter existing keys, status checks, or the one-active-job-per-case i
 - `npm run typecheck`: pass
 - `npm run test`: pass (`229/229`)
 
+## Task 3 — Sequential Parent-job Orchestration
+
+### Delivered
+
+- `transcribe-start` now loads ordered `case_audio` rows instead of only the latest upload
+- The parent `transcription_jobs` row is created with the first source file bound in `source_audio_id` / `source_index`
+- The first outbound Deepgram request is archived with deterministic per-source filenames for multi-file cases
+- Shared helpers now support legacy single-file artifact names and indexed multi-file artifact names
+
+### Single-file safety
+
+- Single-file jobs still use the legacy `jobid_deepgram_request.json` and `jobid_deepgram_response.json` artifact names
+- The one-active-job-per-case invariant is unchanged because only the parent job row is inserted
+- The UI contract for `startTranscription` is unchanged apart from the additive source binding fields
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`229/229`)
+
 ## Task 2 — Intake Multi-file Attach And Ordering
 
 ### Delivered
