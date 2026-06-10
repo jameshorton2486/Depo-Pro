@@ -3,7 +3,7 @@ import "./index.css";
 import { DepoEditor } from "./components/DepoEditor";
 import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
-import { isMockMode } from "./lib/runtime/mode";
+import { isMockMode, isRealApiMode } from "./lib/runtime/mode";
 import { initializeSupabaseSession } from "./lib/supabase";
 
 declare global {
@@ -34,7 +34,12 @@ async function startMocks() {
 }
 
 export async function mountEditor(config: DepoEditorConfig) {
-  configureClient(config.apiBaseUrl);
+  const resolvedApiBaseUrl =
+    isRealApiMode() && import.meta.env.VITE_EDITOR_API_BASE_URL
+      ? String(import.meta.env.VITE_EDITOR_API_BASE_URL)
+      : config.apiBaseUrl;
+
+  configureClient(resolvedApiBaseUrl);
   await initializeSupabaseSession({
     accessToken: config.supabaseAccessToken,
     refreshToken: config.supabaseRefreshToken,
@@ -48,6 +53,7 @@ export async function mountEditor(config: DepoEditorConfig) {
 
   console.info("[DEPO-PRO] Mounting editor with config:", {
     ...config,
+    apiBaseUrl: resolvedApiBaseUrl,
     supabaseAccessToken: config.supabaseAccessToken ? "[redacted]" : undefined,
     supabaseRefreshToken: config.supabaseRefreshToken ? "[redacted]" : undefined,
   });
