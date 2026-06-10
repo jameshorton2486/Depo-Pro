@@ -47,7 +47,7 @@ type TranscriptInsertRow = {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
