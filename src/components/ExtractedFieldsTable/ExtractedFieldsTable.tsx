@@ -146,6 +146,7 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate, conf
     (e) => e.event_type === "conflict_resolved",
   );
   const displayValue = resolvedEntry?.winning_value ?? row.value;
+  const renderedValue = displayValue === "true" ? "Yes" : displayValue === "false" ? "No" : displayValue;
   const isEditable = onUpdate !== undefined && row.path !== "session.remote_platform";
 
   useEffect(() => {
@@ -178,7 +179,7 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate, conf
         {!displayValue || displayValue === "" ? (
           <span className="text-sm italic text-slate-400">—</span>
         ) : (
-          <span className="break-words text-sm text-slate-800">{displayValue}</span>
+          <span className="break-words text-sm text-slate-800">{renderedValue}</span>
         )}
       </td>
 
