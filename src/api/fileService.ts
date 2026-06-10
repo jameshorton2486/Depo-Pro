@@ -48,7 +48,9 @@ type CaseFilesDatabase = Omit<Database, "public"> & {
   };
 };
 
-export type CaseAudioRecord = Tables<"case_audio">;
+export type CaseAudioRecord = Tables<"case_audio"> & {
+  source_index: number;
+};
 
 const CASE_FILES_BUCKET = "case-files";
 const DOCUMENT_LIMIT_BYTES = 50 * 1024 * 1024;
@@ -321,6 +323,8 @@ export async function uploadCaseAudio(caseId: string, file: File): Promise<CaseA
   const client = await getSupabaseClient("uploadCaseAudio");
   const fileId = createFileId();
   const durationSeconds = await loadAudioDuration(file);
+  const existingAudio = await listCaseAudio(caseId);
+  const nextSourceIndex = existingAudio.reduce((maxIndex, audioRow) => Math.max(maxIndex, audioRow.source_index), -1) + 1;
   const uploadedBy = await getUploadedBy(client);
   if (!uploadedBy) {
     throw new Error("Authentication is required to upload case audio.");
@@ -342,6 +346,7 @@ export async function uploadCaseAudio(caseId: string, file: File): Promise<CaseA
     mime_type: file.type || "",
     file_size_bytes: file.size,
     duration_seconds: durationSeconds,
+    source_index: nextSourceIndex,
     storage_path: storagePath,
     uploaded_at: new Date().toISOString(),
   };
@@ -387,13 +392,37 @@ export async function listCaseAudio(caseId: string): Promise<CaseAudioRecord[]> 
     .from("case_audio")
     .select("*")
     .eq("case_id", caseId)
-    .order("uploaded_at", { ascending: false });
+    .order("source_index", { ascending: true })
+    .order("uploaded_at", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    ...row,
+    source_index: typeof (row as { source_index?: unknown }).source_index === "number"
+      ? (row as { source_index: number }).source_index
+      : 0,
+  }));
+}
+
+export async function reorderCaseAudio(caseId: string, orderedAudioIds: string[]): Promise<void> {
+  const client = await getSupabaseClient("reorderCaseAudio");
+
+  await Promise.all(
+    orderedAudioIds.map(async (audioId, sourceIndex) => {
+      const { error } = await client
+        .from("case_audio")
+        .update({ source_index: sourceIndex })
+        .eq("case_id", caseId)
+        .eq("audio_id", audioId);
+
+      if (error) {
+        throw error;
+      }
+    }),
+  );
 }
 
 export async function removeCaseFile(caseId: string, fileId: string): Promise<void> {

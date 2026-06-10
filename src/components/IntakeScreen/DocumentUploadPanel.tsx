@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Sparkles, Upload, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Clock, Sparkles, Upload, X } from "lucide-react";
 
 import type { CaseAudioRecord, CaseFileRecord } from "../../api/fileService";
 import {
   downloadCaseFile,
   getSignedUrl,
+  reorderCaseAudio,
   removeCaseFile,
   uploadCaseAudio,
   uploadCaseFile,
@@ -46,6 +47,7 @@ type DocumentUploadPanelProps = {
   persisted: boolean;
   saveCaseRecord: () => Promise<unknown>;
   onAudioUploaded: (audioRecord: CaseAudioRecord) => void;
+  onAudioReordered: (audioRecords: CaseAudioRecord[]) => void;
   onFileUploaded: (fileRecord: CaseFileRecord) => void;
   onFileRemoved: (fileId: string) => void;
   onRevealExtractedFields: () => void;
@@ -77,6 +79,8 @@ const SLOT_CONFIGS: UploadSlotConfig[] = [
     description: "MP3, WAV, MP4, M4A…",
   },
 ];
+
+const DOCUMENT_SLOT_IDS: Array<Exclude<SlotId, "audio">> = ["notice", "scheduling", "supporting"];
 
 function slotFileType(slotId: Exclude<SlotId, "audio">): "notice" | "scheduling" | "supporting" {
   return slotId;
@@ -271,6 +275,7 @@ export function DocumentUploadPanel({
   persisted,
   saveCaseRecord,
   onAudioUploaded,
+  onAudioReordered,
   onFileUploaded,
   onFileRemoved,
   onRevealExtractedFields,
@@ -281,32 +286,37 @@ export function DocumentUploadPanel({
   const [slotUi, setSlotUi] = useState<Partial<Record<SlotId, SlotUiState>>>({});
   const [localFiles, setLocalFiles] = useState<Partial<Record<SlotId, File>>>({});
   const [viewUrls, setViewUrls] = useState<Partial<Record<SlotId, string>>>({});
+  const [audioViewUrls, setAudioViewUrls] = useState<Record<string, string>>({});
   const [extractingSlot, setExtractingSlot] = useState<SlotId | null>(null);
   const [extractErrors, setExtractErrors] = useState<Partial<Record<SlotId, string | null>>>({});
   const [extractSummaries, setExtractSummaries] = useState<Partial<Record<SlotId, ExtractionSummary | null>>>({});
+  const [reorderingAudioId, setReorderingAudioId] = useState<string | null>(null);
 
   const currentFiles = useMemo(() => ({
     notice: files.find((file) => file.file_type === "notice") ?? null,
     scheduling: files.find((file) => file.file_type === "scheduling") ?? null,
     supporting: files.find((file) => file.file_type === "supporting") ?? null,
-    audio: audio[0] ?? null,
   }), [audio, files]);
+  const orderedAudio = useMemo(
+    () => [...audio].sort((left, right) => left.source_index - right.source_index || (left.uploaded_at ?? "").localeCompare(right.uploaded_at ?? "")),
+    [audio],
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     async function resolveViewUrls() {
       const nextEntries = await Promise.all(
-        SLOT_CONFIGS.map(async (slot) => {
-          const asset = currentFiles[slot.id];
+        DOCUMENT_SLOT_IDS.map(async (slotId) => {
+          const asset = currentFiles[slotId];
           if (!asset?.storage_path) {
-            return [slot.id, undefined] as const;
+            return [slotId, undefined] as const;
           }
           try {
             const signedUrl = await getSignedUrl(asset.storage_path);
-            return [slot.id, signedUrl] as const;
+            return [slotId, signedUrl] as const;
           } catch {
-            return [slot.id, undefined] as const;
+            return [slotId, undefined] as const;
           }
         }),
       );
@@ -324,6 +334,40 @@ export function DocumentUploadPanel({
       cancelled = true;
     };
   }, [currentFiles]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveAudioViewUrls() {
+      const nextEntries = await Promise.all(
+        orderedAudio.map(async (audioRecord) => {
+          if (!audioRecord.storage_path) {
+            return [audioRecord.audio_id, ""] as const;
+          }
+          try {
+            const signedUrl = await getSignedUrl(audioRecord.storage_path);
+            return [audioRecord.audio_id, signedUrl] as const;
+          } catch {
+            return [audioRecord.audio_id, ""] as const;
+          }
+        }),
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      setAudioViewUrls(
+        Object.fromEntries(nextEntries.filter(([, value]) => Boolean(value))),
+      );
+    }
+
+    void resolveAudioViewUrls();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderedAudio]);
 
   async function ensureUploadPrecondition() {
     if (!persisted) {
@@ -500,6 +544,44 @@ export function DocumentUploadPanel({
     setKeyterms(serializeManagedKeyterms(mergedTerms));
   }
 
+  async function moveAudio(audioId: string, direction: -1 | 1) {
+    const currentIndex = orderedAudio.findIndex((entry) => entry.audio_id === audioId);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex === -1 || targetIndex < 0 || targetIndex >= orderedAudio.length) {
+      return;
+    }
+
+    const nextAudio = [...orderedAudio];
+    const [moved] = nextAudio.splice(currentIndex, 1);
+    nextAudio.splice(targetIndex, 0, moved);
+    const reordered = nextAudio.map((entry, sourceIndex) => ({ ...entry, source_index: sourceIndex }));
+
+    setReorderingAudioId(audioId);
+    setSlotUi((previous) => ({
+      ...previous,
+      audio: { status: "uploading", error: null },
+    }));
+
+    try {
+      await reorderCaseAudio(record.case_id, reordered.map((entry) => entry.audio_id));
+      onAudioReordered(reordered);
+      setSlotUi((previous) => ({
+        ...previous,
+        audio: { status: "done", error: null },
+      }));
+    } catch (error) {
+      setSlotUi((previous) => ({
+        ...previous,
+        audio: {
+          status: "error",
+          error: error instanceof Error ? error.message : "Could not reorder audio sources.",
+        },
+      }));
+    } finally {
+      setReorderingAudioId(null);
+    }
+  }
+
   function previewExtractionState(
     application: ReturnType<typeof applyExtraction> | ReturnType<typeof applyJobSheetExtraction>["application"],
   ) {
@@ -615,7 +697,7 @@ export function DocumentUploadPanel({
     }
   }
 
-  const hasAudio = Boolean(currentFiles.audio);
+  const hasAudio = orderedAudio.length > 0;
 
   return (
     <div className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -633,14 +715,20 @@ export function DocumentUploadPanel({
       </div>
       <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
         {SLOT_CONFIGS.map((slot) => {
-          const currentAsset = currentFiles[slot.id];
+          const currentAsset = slot.id === "audio" ? null : currentFiles[slot.id];
           const localFile = localFiles[slot.id] ?? null;
           const ui = slotUi[slot.id];
-          const status = ui?.status ?? (currentAsset ? "done" : "idle");
+          const status = ui?.status ?? (slot.id === "audio" ? (hasAudio ? "done" : "idle") : (currentAsset ? "done" : "idle"));
           const error = ui?.error ?? null;
-          const fileName = localFile?.name ?? currentAsset?.original_filename ?? null;
-          const fileSize = localFile?.size ?? currentAsset?.file_size_bytes ?? null;
-          const uploadedAt = currentAsset?.uploaded_at ?? null;
+          const fileName = slot.id === "audio"
+            ? (hasAudio ? `${orderedAudio.length} source file${orderedAudio.length === 1 ? "" : "s"} attached` : localFile?.name ?? null)
+            : localFile?.name ?? currentAsset?.original_filename ?? null;
+          const fileSize = slot.id === "audio"
+            ? orderedAudio.reduce((sum, entry) => sum + (entry.file_size_bytes ?? 0), 0)
+            : localFile?.size ?? currentAsset?.file_size_bytes ?? null;
+          const uploadedAt = slot.id === "audio"
+            ? (orderedAudio.length > 0 ? orderedAudio[orderedAudio.length - 1].uploaded_at : null)
+            : currentAsset?.uploaded_at ?? null;
           const removable = slot.id !== "audio" && Boolean(currentAsset);
 
           return (
@@ -661,6 +749,71 @@ export function DocumentUploadPanel({
                 void handleRemove(slot.id as Exclude<SlotId, "audio">);
               }}
             >
+              {slot.id === "audio" && orderedAudio.length > 0 ? (
+                <div className="mt-3 w-full space-y-2">
+                  {orderedAudio.map((audioRecord, index) => (
+                    <div
+                      key={audioRecord.audio_id}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[11px] font-semibold text-slate-700">
+                            {index + 1}. {audioRecord.original_filename}
+                          </p>
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            {[
+                              audioRecord.mime_type || "audio",
+                              audioRecord.duration_seconds ? `${audioRecord.duration_seconds.toFixed(1)}s` : null,
+                              formatBytes(audioRecord.file_size_bytes),
+                            ].filter(Boolean).join(" · ")}
+                          </p>
+                          <p className="mt-1 text-[10px] font-medium text-emerald-700">
+                            Ready for transcription
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={index === 0 || reorderingAudioId === audioRecord.audio_id}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void moveAudio(audioRecord.audio_id, -1);
+                            }}
+                            className="rounded-md border border-slate-200 bg-slate-50 p-1 text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
+                          >
+                            <ArrowUp size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={index === orderedAudio.length - 1 || reorderingAudioId === audioRecord.audio_id}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              void moveAudio(audioRecord.audio_id, 1);
+                            }}
+                            className="rounded-md border border-slate-200 bg-slate-50 p-1 text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+                        </div>
+                      </div>
+                      {audioViewUrls[audioRecord.audio_id] ? (
+                        <a
+                          href={audioViewUrls[audioRecord.audio_id]}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          className="mt-2 inline-flex text-[11px] font-semibold text-blue-700 underline"
+                        >
+                          View source
+                        </a>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {(slot.id === "notice" || slot.id === "scheduling" || slot.id === "supporting") && fileName ? (
                 <div className="mt-3 w-full space-y-2">
                   {slot.id === "supporting" ? (

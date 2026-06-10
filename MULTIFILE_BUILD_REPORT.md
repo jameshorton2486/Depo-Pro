@@ -55,3 +55,24 @@ They do not alter existing keys, status checks, or the one-active-job-per-case i
 
 - `npm run typecheck`: pass
 - `npm run test`: pass (`229/229`)
+
+## Task 2 — Intake Multi-file Attach And Ordering
+
+### Delivered
+
+- `case_audio` is now treated as an ordered list in the client, not a single latest upload
+- New audio uploads are assigned the next `source_index`
+- Intake audio listing now renders all attached source files in order
+- Intake provides persisted move-up / move-down ordering controls backed by `case_audio.source_index`
+- Document upload cards for notice, scheduling, and supporting documents remain unchanged
+
+### Single-file safety
+
+- A case with one audio file still shows a single ready source and the same upload flow
+- The intake record’s legacy `record.audio` pointer remains untouched
+- No transcript orchestration logic changed in this task
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`229/229`)

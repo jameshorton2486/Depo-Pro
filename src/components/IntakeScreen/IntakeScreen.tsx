@@ -158,6 +158,12 @@ function attorneyBadgeLabel(representing: string | null, role: string) {
   return representing || role;
 }
 
+function sortCaseAudioRecords(audioRecords: CaseAudioRecord[]): CaseAudioRecord[] {
+  return [...audioRecords].sort(
+    (left, right) => left.source_index - right.source_index || (left.uploaded_at ?? "").localeCompare(right.uploaded_at ?? ""),
+  );
+}
+
 // ─── Workflow stage nav ───────────────────────────────────────────────────────
 
 function WorkflowNav({ jobId }: { jobId: string }) {
@@ -1425,7 +1431,7 @@ export function IntakeScreen({ jobId }: Props) {
           setPersisted(true);
           setSavedAt(hydration.bundle.record.updated_at);
           setCaseFiles(hydration.bundle.files);
-          setCaseAudio(hydration.bundle.audio);
+          setCaseAudio(sortCaseAudioRecords(hydration.bundle.audio));
           setSaveState("saved");
           setSaveError(null);
           loadCase(hydration.bundle.record);
@@ -1669,7 +1675,13 @@ export function IntakeScreen({ jobId }: Props) {
               persisted={persisted}
               saveCaseRecord={persistCaseForUi}
               onAudioUploaded={(audioRecord) => {
-                setCaseAudio((previous) => [audioRecord, ...previous.filter((entry) => entry.audio_id !== audioRecord.audio_id)]);
+                setCaseAudio((previous) => sortCaseAudioRecords([
+                  ...previous.filter((entry) => entry.audio_id !== audioRecord.audio_id),
+                  audioRecord,
+                ]));
+              }}
+              onAudioReordered={(audioRecords) => {
+                setCaseAudio(sortCaseAudioRecords(audioRecords));
               }}
               onFileUploaded={(fileRecord) => {
                 setCaseFiles((previous) => [fileRecord, ...previous.filter((entry) => entry.file_type !== fileRecord.file_type)]);
