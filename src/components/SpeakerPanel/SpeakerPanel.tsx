@@ -22,6 +22,15 @@ const ROLE_COLORS: Record<NonNullable<Speaker["role"]>, string> = {
   OTHER:       "bg-gray-100 text-gray-600",
 };
 
+function getSpeakerSourceFileLabel(speakerId: string): string | null {
+  const match = speakerId.match(/^spk_f(\d{3})_s\d{3}$/);
+  if (!match) {
+    return null;
+  }
+
+  return `File ${Number.parseInt(match[1], 10) + 1}`;
+}
+
 export function SpeakerPanel() {
   const {
     state,
@@ -239,6 +248,7 @@ function SpeakerCard({
     if (e.key === "Enter") onCommitEdit(spk.speaker_id);
     if (e.key === "Escape") onCancelEdit(spk.speaker_id);
   };
+  const sourceFileLabel = getSpeakerSourceFileLabel(spk.speaker_id);
 
   return (
     <div
@@ -253,6 +263,11 @@ function SpeakerCard({
         <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
           SPK {spk.deepgram_speaker}
         </span>
+        {sourceFileLabel && (
+          <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+            {sourceFileLabel}
+          </span>
+        )}
         {!isEditing && spk.role && (
           <span className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${roleColor}`}>
             {spk.role}
@@ -318,9 +333,16 @@ function SpeakerCard({
           </div>
         </div>
       ) : (
-        <p className="text-sm font-semibold text-slate-800 truncate">
-          {spk.display_name}
-        </p>
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-slate-800 truncate">
+            {spk.display_name}
+          </p>
+          {sourceFileLabel && (
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              {sourceFileLabel} diarization source
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -465,6 +487,11 @@ function UtteranceReassignment({
               }`}
             >
               {spk.display_name}
+              {getSpeakerSourceFileLabel(spk.speaker_id) && (
+                <span className="ml-1 text-[9px] text-blue-500 uppercase">
+                  {getSpeakerSourceFileLabel(spk.speaker_id)}
+                </span>
+              )}
               {spk.role && (
                 <span className="ml-1 text-[9px] text-slate-400 uppercase">
                   ({spk.role})

@@ -56,6 +56,24 @@ They do not alter existing keys, status checks, or the one-active-job-per-case i
 - `npm run typecheck`: pass
 - `npm run test`: pass (`229/229`)
 
+## Task 5 — SpeakerPanel File Context
+
+### Delivered
+
+- SpeakerPanel now derives source-file context from namespaced speaker ids
+- Namespaced speakers render with a visible `File N` badge instead of only `SPK N`
+- Reassignment choices also show source-file context, so cross-file `SPK 0` collisions are no longer visually ambiguous
+
+### Single-file safety
+
+- Single-file speakers do not receive a file badge because their ids keep the legacy shape
+- Speaker editing and reassignment flows are unchanged apart from the added context labels
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`229/229`)
+
 ## Task 4 — Callback Sequencing And Canonical Merge
 
 ### Delivered
