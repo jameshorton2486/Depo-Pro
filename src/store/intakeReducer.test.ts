@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { emptyCaseRecord } from "../types/case";
+import { emptyCaseRecord, normalizeCaseRecord } from "../types/case";
 import { intakeReducer, initialIntakeState } from "./intakeReducer";
 
 describe("intakeReducer edit sequencing", () => {
@@ -163,5 +163,57 @@ describe("intakeReducer edit sequencing", () => {
         notes: "Ordering counsel",
       },
     ]);
+  });
+
+  it("preserves array shapes when updating indexed witness and attorney fields", () => {
+    const now = "2026-06-05T00:00:00.000Z";
+    const baseRecord = emptyCaseRecord("case_test_array_fields", now);
+    const seededRecord = normalizeCaseRecord({
+      ...baseRecord,
+      witnesses: [
+        {
+          name: { value: "", source: "manual", confirmed: false, conflict: false, confidence_score: null },
+        },
+      ],
+      attorneys: [
+        {
+          name: { value: "", source: "manual", confirmed: false, conflict: false, confidence_score: null },
+        },
+      ],
+    });
+    const baseState = {
+      ...initialIntakeState(),
+      record: seededRecord,
+    };
+
+    const witnessEdited = intakeReducer(baseState, {
+      type: "UPDATE_FIELD",
+      payload: {
+        path: "witnesses[0].name",
+        value: "Heath Thomas",
+        source: "manual",
+        confidence_score: null,
+        force: true,
+      },
+    });
+
+    expect(Array.isArray(witnessEdited.record.witnesses)).toBe(true);
+    expect(witnessEdited.record.witnesses).toHaveLength(1);
+    expect(witnessEdited.record.witnesses[0].name.value).toBe("Heath Thomas");
+
+    const attorneyEdited = intakeReducer(witnessEdited, {
+      type: "UPDATE_FIELD",
+      payload: {
+        path: "attorneys[0].name",
+        value: "Raul Garza",
+        source: "manual",
+        confidence_score: null,
+        force: true,
+      },
+    });
+
+    expect(Array.isArray(attorneyEdited.record.attorneys)).toBe(true);
+    expect(attorneyEdited.record.attorneys).toHaveLength(1);
+    expect(attorneyEdited.record.attorneys[0].name.value).toBe("Raul Garza");
   });
 });

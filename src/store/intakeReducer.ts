@@ -315,7 +315,13 @@ function resolveExtractedPath<T>(record: CaseRecord, path: string): SetterResult
     let rebuilt: any = next;
     for (let i = ancestry.length - 1; i >= 0; i--) {
       const { obj, key } = ancestry[i];
-      rebuilt = { ...obj, [key]: rebuilt };
+      if (Array.isArray(obj)) {
+        const copy = obj.slice();
+        copy[Number(key)] = rebuilt;
+        rebuilt = copy;
+      } else {
+        rebuilt = { ...obj, [key]: rebuilt };
+      }
     }
     return rebuilt as CaseRecord;
   };
