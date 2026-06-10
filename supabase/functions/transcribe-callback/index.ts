@@ -1,8 +1,18 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
+import {
+  getPrimaryMediaUrl,
+  getPrimaryMimeType,
+  getPrimarySourceAudioId,
+  getPrimarySourceFilename,
+  mergeSourceTranscriptSegments,
+  type MergedSourceSegment,
+} from "../../../src/lib/transcript/multifileMerge.ts";
 import type { DeepgramResponse } from "../../../src/lib/transcript/types.ts";
 import {
+  buildDeepgramRequestFileName,
+  buildDeepgramResponseFileName,
   buildTranscriptionArtifactPath,
   sha256Hex,
   type TranscriptionJobRecord,
@@ -14,8 +24,18 @@ type CaseAudioRow = {
   audio_id: string;
   original_filename: string;
   mime_type: string;
+  duration_seconds: number | null;
+  source_index: number | null;
   storage_path: string | null;
+  media_url: string | null;
   uploaded_at: string | null;
+};
+
+type DeepgramRequestArtifact = {
+  url: string;
+  callback_url: string;
+  preview?: unknown;
+  total_sources?: number;
 };
 
 type TranscriptInsertRow = {
@@ -55,6 +75,7 @@ const CASE_FILES_BUCKET = "case-files";
 const WORD_CHUNK_SIZE = 500;
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const deepgramApiKey = Deno.env.get("DEEPGRAM_API_KEY") ?? "";
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
@@ -65,7 +86,7 @@ Deno.serve(async (request) => {
     return respondError(405, "method not allowed");
   }
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
+  if (!supabaseUrl || !supabaseServiceRoleKey || !deepgramApiKey) {
     console.error("[transcribe-callback] missing function env");
     return respondError(500, "server misconfigured");
   }
@@ -91,10 +112,13 @@ Deno.serve(async (request) => {
     }
 
     const payload = await request.json();
+    const orderedAudio = await loadOrderedAudio(serviceClient, job.case_id);
+    const currentAudio = resolveCurrentAudio(job, orderedAudio);
+    const totalSources = orderedAudio.length;
     const responsePath = buildTranscriptionArtifactPath(
       job.owner_user_id,
       job.case_id,
-      `${job.id}_deepgram_response.json`,
+      buildDeepgramResponseFileName(job.id, currentAudio.source_index ?? 0, totalSources),
     );
     const rawChecksum = await uploadJsonArtifact(serviceClient, responsePath, payload);
 
@@ -104,8 +128,60 @@ Deno.serve(async (request) => {
       return respondJson(200, { ok: true, status: "failed" });
     }
 
+    let completedResponsePath = responsePath;
+
     try {
-      await ingestTranscript(serviceClient, job, parsed.response, responsePath, rawChecksum);
+      const currentPosition = orderedAudio.findIndex((audio) => audio.audio_id === currentAudio.audio_id);
+      if (currentPosition < 0) {
+        throw new Error(`Unknown source audio ${currentAudio.audio_id} for transcription job ${job.id}.`);
+      }
+
+      if (currentPosition < orderedAudio.length - 1) {
+        const requestArtifact = await requireRequestArtifact(serviceClient, job.request_path);
+        const nextAudio = orderedAudio[currentPosition + 1];
+        const nextRequestPath = await submitNextDeepgramJob(serviceClient, job, nextAudio, totalSources, requestArtifact);
+        await updateJob(serviceClient, job.id, {
+          status: "processing",
+          source_audio_id: nextAudio.audio_id,
+          source_index: nextAudio.source_index ?? currentPosition + 1,
+          request_path: nextRequestPath,
+          response_path: responsePath,
+          error: null,
+        });
+        return respondJson(200, { ok: true, status: "processing" });
+      }
+
+      const sourceSegments = await loadSourceTranscriptSegments(serviceClient, job, orderedAudio);
+      const merged = mergeSourceTranscriptSegments(sourceSegments);
+      const deepgramRequestId = totalSources === 1
+        ? sourceSegments[0]?.response.metadata.request_id ?? null
+        : `${job.id}_multifile`;
+      const finalArtifact = totalSources === 1
+        ? { path: responsePath, checksum: rawChecksum }
+        : await (async () => {
+            const manifestPath = buildTranscriptionArtifactPath(
+              job.owner_user_id,
+              job.case_id,
+              `${job.id}_multifile_manifest.json`,
+            );
+            const checksum = await uploadJsonArtifact(
+              serviceClient,
+              manifestPath,
+              buildMergeManifest(job, merged.segments, sourceSegments),
+            );
+            return { path: manifestPath, checksum };
+          })();
+
+      await ingestTranscript(
+        serviceClient,
+        job,
+        merged.segments,
+        merged.normalized,
+        deepgramRequestId,
+        finalArtifact.path,
+        finalArtifact.checksum,
+      );
+      completedResponsePath = finalArtifact.path;
     } catch (error) {
       await cleanupTranscript(serviceClient, job.transcript_id);
       await failJob(
@@ -119,7 +195,7 @@ Deno.serve(async (request) => {
 
     await updateJob(serviceClient, job.id, {
       status: "complete",
-      response_path: responsePath,
+      response_path: completedResponsePath,
       error: null,
     });
 
@@ -183,29 +259,28 @@ function parseDeepgramResponse(value: unknown): { ok: true; response: DeepgramRe
 async function ingestTranscript(
   supabase: SupabaseClient<Database>,
   job: TranscriptionJobRecord,
-  response: DeepgramResponse,
+  segments: MergedSourceSegment[],
+  normalized: ReturnType<typeof mergeSourceTranscriptSegments>["normalized"],
+  deepgramRequestId: string | null,
   responsePath: string,
   rawChecksum: string,
 ): Promise<void> {
-  const normalized = normalizeTranscriptResponse(response);
-  const audio = await loadLatestAudio(supabase, job.case_id);
-
   const transcriptRow: TranscriptInsertRow = {
     transcript_id: job.transcript_id,
     case_id: job.case_id,
     job_id: job.id,
-    media_url: audio?.storage_path ?? null,
-    duration: response.metadata.duration,
-    based_on: audio?.audio_id ?? null,
-    deepgram_request_id: response.metadata.request_id,
+    media_url: getPrimaryMediaUrl(segments),
+    duration: normalized.durationSeconds,
+    based_on: getPrimarySourceAudioId(segments),
+    deepgram_request_id: deepgramRequestId,
     session_id: null,
-    source_filename: audio?.original_filename ?? null,
-    media_kind: detectMediaKind(audio?.mime_type ?? ""),
+    source_filename: getPrimarySourceFilename(segments),
+    media_kind: detectMediaKind(getPrimaryMimeType(segments)),
     status: "completed",
     engine: "deepgram-nova-3",
     transcription_source: "deepgram",
     sequence_index: 0,
-    duration_seconds: response.metadata.duration,
+    duration_seconds: normalized.durationSeconds,
     word_count: normalized.words.length,
     utterance_count: normalized.utterances.length,
     speaker_count: normalized.speakers.length,
@@ -326,23 +401,25 @@ async function ingestTranscript(
   }
 }
 
-async function loadLatestAudio(
+async function loadOrderedAudio(
   supabase: SupabaseClient<Database>,
   caseId: string,
-): Promise<CaseAudioRow | null> {
+): Promise<CaseAudioRow[]> {
   const { data, error } = await supabase
     .from("case_audio")
-    .select("audio_id, original_filename, mime_type, storage_path, uploaded_at")
+    .select("audio_id, original_filename, mime_type, duration_seconds, source_index, storage_path, media_url, uploaded_at")
     .eq("case_id", caseId)
-    .order("uploaded_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .order("source_index", { ascending: true })
+    .order("uploaded_at", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return (data as CaseAudioRow | null) ?? null;
+  return ((data as CaseAudioRow[] | null) ?? []).map((row, index) => ({
+    ...row,
+    source_index: typeof row.source_index === "number" ? row.source_index : index,
+  }));
 }
 
 async function uploadJsonArtifact(
@@ -389,7 +466,7 @@ async function failJob(
 async function updateJob(
   supabase: SupabaseClient<Database>,
   jobId: string,
-  patch: Partial<Pick<TranscriptionJobRecord, "status" | "response_path" | "error">>,
+  patch: Partial<Pick<TranscriptionJobRecord, "status" | "source_audio_id" | "source_index" | "request_path" | "response_path" | "error">>,
 ): Promise<void> {
   const { error } = await supabase
     .from("transcription_jobs")
@@ -399,6 +476,181 @@ async function updateJob(
   if (error) {
     throw error;
   }
+}
+
+function resolveCurrentAudio(job: TranscriptionJobRecord, orderedAudio: CaseAudioRow[]): CaseAudioRow {
+  if (job.source_audio_id) {
+    const boundAudio = orderedAudio.find((audio) => audio.audio_id === job.source_audio_id);
+    if (boundAudio) {
+      return boundAudio;
+    }
+  }
+
+  if (typeof job.source_index === "number") {
+    const indexedAudio = orderedAudio.find((audio) => (audio.source_index ?? 0) === job.source_index);
+    if (indexedAudio) {
+      return indexedAudio;
+    }
+  }
+
+  throw new Error(`Could not resolve the active source audio for job ${job.id}.`);
+}
+
+async function requireRequestArtifact(
+  supabase: SupabaseClient<Database>,
+  requestPath: string | null,
+): Promise<DeepgramRequestArtifact> {
+  if (!requestPath) {
+    throw new Error("Transcription job is missing its request artifact path.");
+  }
+
+  const artifact = await downloadJsonArtifact(supabase, requestPath);
+  if (
+    typeof artifact !== "object"
+    || artifact === null
+    || typeof (artifact as Record<string, unknown>).url !== "string"
+    || typeof (artifact as Record<string, unknown>).callback_url !== "string"
+  ) {
+    throw new Error("Request artifact is missing required callback metadata.");
+  }
+
+  return artifact as DeepgramRequestArtifact;
+}
+
+async function downloadJsonArtifact(
+  supabase: SupabaseClient<Database>,
+  storagePath: string,
+): Promise<unknown> {
+  const { data, error } = await supabase.storage
+    .from(CASE_FILES_BUCKET)
+    .download(storagePath);
+
+  if (error) {
+    throw error;
+  }
+
+  return JSON.parse(await data.text()) as unknown;
+}
+
+async function signAudioUrl(supabase: SupabaseClient<Database>, storagePath: string): Promise<string> {
+  const signed = await supabase.storage
+    .from(CASE_FILES_BUCKET)
+    .createSignedUrl(storagePath, 6 * 60 * 60);
+
+  if (signed.error) {
+    throw signed.error;
+  }
+
+  return signed.data.signedUrl;
+}
+
+async function submitNextDeepgramJob(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+  audio: CaseAudioRow,
+  totalSources: number,
+  requestArtifact: DeepgramRequestArtifact,
+): Promise<string> {
+  if (!audio.storage_path) {
+    throw new Error(`Source file ${audio.original_filename} is missing a storage path.`);
+  }
+
+  const signedAudioUrl = await signAudioUrl(supabase, audio.storage_path);
+  const sourceIndex = audio.source_index ?? 0;
+  const requestPath = buildTranscriptionArtifactPath(
+    job.owner_user_id,
+    job.case_id,
+    buildDeepgramRequestFileName(job.id, sourceIndex, totalSources),
+  );
+  const nextArtifact = {
+    ...requestArtifact,
+    body: {
+      url: signedAudioUrl,
+    },
+    source_audio_id: audio.audio_id,
+    source_index: sourceIndex,
+    total_sources: totalSources,
+    source_filename: audio.original_filename,
+    storage_path: audio.storage_path,
+  };
+  await uploadJsonArtifact(supabase, requestPath, nextArtifact);
+
+  const deepgramResponse = await fetch(requestArtifact.url, {
+    method: "POST",
+    headers: {
+      Authorization: `Token ${deepgramApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ url: signedAudioUrl }),
+  });
+
+  if (!deepgramResponse.ok) {
+    const errorText = await deepgramResponse.text();
+    throw new Error(
+      `Deepgram start failed for source ${sourceIndex}: ${deepgramResponse.status} ${deepgramResponse.statusText}${errorText ? ` — ${errorText}` : ""}`,
+    );
+  }
+
+  return requestPath;
+}
+
+async function loadSourceTranscriptSegments(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+  orderedAudio: CaseAudioRow[],
+) {
+  const totalSources = orderedAudio.length;
+
+  return Promise.all(
+    orderedAudio.map(async (audio, fallbackIndex) => {
+      const sourceIndex = audio.source_index ?? fallbackIndex;
+      const responsePath = buildTranscriptionArtifactPath(
+        job.owner_user_id,
+        job.case_id,
+        buildDeepgramResponseFileName(job.id, sourceIndex, totalSources),
+      );
+      const payload = await downloadJsonArtifact(supabase, responsePath);
+      const parsed = parseDeepgramResponse(payload);
+      if (!parsed.ok) {
+        throw new Error(`Stored Deepgram response for ${audio.original_filename} was invalid: ${parsed.error}`);
+      }
+
+      return {
+        source_audio_id: audio.audio_id,
+        source_index: sourceIndex,
+        source_filename: audio.original_filename,
+        mime_type: audio.mime_type,
+        storage_path: audio.storage_path,
+        media_url: audio.media_url,
+        response: parsed.response,
+        normalized: normalizeTranscriptResponse(parsed.response),
+        fallback_duration_seconds: audio.duration_seconds,
+      };
+    }),
+  );
+}
+
+function buildMergeManifest(
+  job: TranscriptionJobRecord,
+  segments: MergedSourceSegment[],
+  sourceSegments: Array<{ response: DeepgramResponse }>,
+) {
+  const totalSources = segments.length;
+
+  return {
+    job_id: job.id,
+    transcript_id: job.transcript_id,
+    case_id: job.case_id,
+    sources: segments.map((segment, index) => ({
+      ...segment,
+      deepgram_request_id: sourceSegments[index]?.response.metadata.request_id ?? null,
+      response_path: buildTranscriptionArtifactPath(
+        job.owner_user_id,
+        job.case_id,
+        buildDeepgramResponseFileName(job.id, segment.source_index, totalSources),
+      ),
+    })),
+  };
 }
 
 async function cleanupTranscript(

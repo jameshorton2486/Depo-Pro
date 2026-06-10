@@ -56,6 +56,27 @@ They do not alter existing keys, status checks, or the one-active-job-per-case i
 - `npm run typecheck`: pass
 - `npm run test`: pass (`229/229`)
 
+## Task 4 — Callback Sequencing And Canonical Merge
+
+### Delivered
+
+- `transcribe-callback` now binds each callback to the parent job’s active `source_audio_id` / `source_index`
+- Each source file’s raw Deepgram response is archived separately using deterministic per-source filenames
+- Intermediate callbacks no longer persist partial transcript rows; they queue the next source file instead
+- The final callback loads all archived per-source responses, normalizes each, rebases timings and ordinals, namespaces speakers, and persists one canonical transcript row set
+- Multi-file runs now emit a merge manifest artifact in storage for auditability; single-file runs keep the legacy raw response artifact path
+
+### Single-file safety
+
+- Single-file callbacks still persist exactly one normalized transcript
+- Single-file raw artifact naming remains unchanged
+- The canonical transcript tables are only written once, after a complete callback cycle, matching the prior single-file completion point
+
+### Verification
+
+- `npm run typecheck`: pass
+- `npm run test`: pass (`229/229`)
+
 ## Task 3 — Sequential Parent-job Orchestration
 
 ### Delivered
