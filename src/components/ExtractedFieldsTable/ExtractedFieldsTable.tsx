@@ -564,8 +564,7 @@ export function ExtractedFieldsTable({
       return;
     }
 
-    button.focus();
-    button.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    button.focus({ preventScroll: true });
     setPendingFocusRowId(null);
   }, [filtered, pendingFocusRowId]);
 
