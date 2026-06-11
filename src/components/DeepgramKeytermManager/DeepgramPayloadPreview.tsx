@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { Copy, Check, ExternalLink } from "lucide-react";
+import { Copy, Check, ExternalLink, FileText } from "lucide-react";
 
 import { useIntake } from "../../context/useIntake";
 import { buildDeepgramRequestFromStoredKeyterms } from "../../lib/deepgram/buildDeepgramRequest";
+import { openJsonPreviewInNotepad } from "../../api/intakeDesktopService";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -64,6 +65,7 @@ function KeytermLine({
 export function DeepgramPayloadPreview() {
   const { record } = useIntake();
   const [tab, setTab] = useState<"url" | "structured">("url");
+  const [openMode, setOpenMode] = useState<null | "notepad" | "download">(null);
   const offlineFixture =
     import.meta.env.VITE_TRANSCRIPTION_PROVIDER === "offline"
     || !import.meta.env.VITE_DEEPGRAM_API_KEY;
@@ -74,11 +76,19 @@ export function DeepgramPayloadPreview() {
   }), [record.case_id, record.deepgram.keyterms]);
 
   const selectedTerms = request.envelope.keyterms;
+  const structuredPayload = JSON.stringify(request.envelope, null, 2);
+  const previewFilename = `${record.case_id || "case"}_deepgram_request.json`;
 
   const tabClass = (value: "url" | "structured") =>
     `px-3 py-1.5 text-xs font-semibold rounded-md transition-colors focus:outline-none ${
       tab === value ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
     }`;
+
+  async function handleOpenInNotepad() {
+    const mode = await openJsonPreviewInNotepad(previewFilename, structuredPayload);
+    setOpenMode(mode);
+    window.setTimeout(() => setOpenMode(null), 2500);
+  }
 
   return (
     <div className="bg-slate-900 px-4 py-4 text-slate-100">
@@ -94,9 +104,21 @@ export function DeepgramPayloadPreview() {
             </span>
           )}
         </div>
-        <div className="ml-auto flex gap-0.5 rounded-lg bg-slate-800 p-0.5">
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              void handleOpenInNotepad();
+            }}
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white focus:outline-none"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            {openMode === "download" ? "Downloaded" : openMode === "notepad" ? "Opened" : "Notepad"}
+          </button>
+          <div className="flex gap-0.5 rounded-lg bg-slate-800 p-0.5">
           <button type="button" onClick={() => setTab("url")} className={tabClass("url")}>URL</button>
           <button type="button" onClick={() => setTab("structured")} className={tabClass("structured")}>Structured</button>
+          </div>
         </div>
       </div>
 
@@ -164,10 +186,10 @@ export function DeepgramPayloadPreview() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Structured Payload
             </p>
-            <CopyButton text={JSON.stringify(request.envelope, null, 2)} />
+            <CopyButton text={structuredPayload} />
           </div>
           <pre className="max-h-80 overflow-auto rounded-lg bg-slate-800/60 p-3 font-mono text-[11px] leading-relaxed text-slate-300">
-            {JSON.stringify(request.envelope, null, 2)}
+            {structuredPayload}
           </pre>
         </div>
       )}
