@@ -1,8 +1,9 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import type { Speaker } from "../api/types";
+import type { DOMOutputSpec } from "@tiptap/pm/model";
+import { getBlockRole } from "../editor/pagination";
+import { formatUtteranceTimeTitle, getUtterancePrefix } from "../editor/utteranceRender";
 
-// Block node representing one utterance (speaker turn).
-// Speaker label, line numbers, and role are stored as attrs and rendered by the
-// React NodeView (UtteranceNodeView.tsx). This extension stays framework-agnostic.
 export const UtteranceNode = Node.create({
   name: "utterance",
   group: "block",
@@ -41,10 +42,29 @@ export const UtteranceNode = Node.create({
       language,
     } = HTMLAttributes as Record<string, unknown>;
 
-    return [
+    const numericStartTime = typeof start_time === "number" ? start_time : 0;
+    const numericLineNumber = typeof line_number === "number" ? line_number : 0;
+    const numericPageLineNumber = typeof page_line_number === "number" ? page_line_number : 0;
+    const speakerLabelText = typeof speaker_label === "string" ? speaker_label : "";
+    const roleValue =
+      role === null || role === undefined ? null : (String(role) as Speaker["role"]);
+    const languageValue = typeof language === "string" ? language : null;
+    const blockRole = getBlockRole(roleValue);
+    const isInterpreter = roleValue === "INTERPRETER";
+    const displayLine = numericPageLineNumber > 0 ? numericPageLineNumber : numericLineNumber;
+    const prefix = getUtterancePrefix(roleValue, speakerLabelText);
+    const className = [
+      "utterance-block",
+      `utterance-block--${blockRole.toLowerCase()}`,
+      isInterpreter ? "utterance-block--interpreter" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const specParts: unknown[] = [
       "div",
       mergeAttributes({
-        class: "utterance-block",
+        class: className,
         "data-utterance-id": utterance_id,
         "data-speaker-id": speaker_id,
         "data-speaker-label": speaker_label,
@@ -54,7 +74,38 @@ export const UtteranceNode = Node.create({
         "data-role": role,
         "data-lang": language,
       }),
-      0,
+      [
+        "span",
+        {
+          class: "utt-line-num",
+          contenteditable: "false",
+          title: formatUtteranceTimeTitle(numericStartTime),
+        },
+        String(displayLine),
+      ],
+      [
+        "span",
+        {
+          class: `utt-prefix ${blockRole === "COLLOQUY" ? "utt-prefix--colloquy" : "utt-prefix--qa"}`,
+          contenteditable: "false",
+        },
+        prefix,
+      ],
+      ["span", { class: "utt-content" }, 0],
     ];
+
+    if (isInterpreter) {
+      specParts.push([
+        "span",
+        {
+          class: "utt-interp-channel",
+          contenteditable: "false",
+          title: `Language: ${languageValue ?? "unknown"}`,
+        },
+        languageValue ?? "??",
+      ]);
+    }
+
+    return specParts as unknown as DOMOutputSpec;
   },
 });

@@ -7,7 +7,6 @@ import { WordMark } from "../../extensions/WordMark";
 import { UtteranceNode } from "../../extensions/UtteranceNode";
 import { PageBreakNode } from "../../extensions/PageBreakNode";
 import { ExhibitRefNode } from "../../extensions/ExhibitRefNode";
-import { UtteranceNodeView } from "./UtteranceNodeView";
 import { PageBreakNodeView } from "./PageBreakNodeView";
 import { ExhibitRefNodeView } from "./ExhibitRefNodeView";
 import { buildEditorContent } from "../../lib/buildEditorContent";
@@ -63,13 +62,7 @@ const EXTENSIONS = [
     listKeymap: false,
     trailingNode: false,
   }),
-  // Attach React NodeViews at the React usage site so the framework-agnostic
-  // extensions stay importable without React.
-  UtteranceNode.extend({
-    addNodeView() {
-      return ReactNodeViewRenderer(UtteranceNodeView);
-    },
-  }),
+  UtteranceNode,
   PageBreakNode.extend({
     addNodeView() {
       return ReactNodeViewRenderer(PageBreakNodeView);
@@ -100,11 +93,14 @@ export function TranscriptEditor({ readOnly }: Props) {
   const { state, editUtterance, setActive } = useDocument();
   const audio = useAudio();
   const { setEditor, showInterpreterLayer, languageMap } = useEditorContext();
+  const { playing } = audio;
 
   // Refs for RAF highlight loop
   const lastWordIdRef = useRef<string | null>(null);
+  const lastElsRef = useRef<HTMLElement[]>([]);
   const lastScrollAtRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Snapshot of utterance texts at the last content-push.
   // Used to diff TipTap updates → only call editUtterance on changed utterances.
@@ -199,42 +195,80 @@ export function TranscriptEditor({ readOnly }: Props) {
     return () => editorDom.removeEventListener("click", handleClick);
   }, [editor, audio]);
 
+  const clearHighlightedWord = useCallback(() => {
+    lastElsRef.current.forEach((el) => el.classList.remove("word-playing"));
+    lastElsRef.current = [];
+    lastWordIdRef.current = null;
+  }, []);
+
+  const maybeScrollWordIntoView = useCallback((element: HTMLElement) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const now = performance.now();
+    if (now - lastScrollAtRef.current <= 600) return;
+
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const isVisible =
+      elementRect.top >= containerRect.top &&
+      elementRect.bottom <= containerRect.bottom;
+
+    if (isVisible) return;
+
+    element.scrollIntoView({ behavior: "auto", block: "nearest" });
+    lastScrollAtRef.current = now;
+  }, []);
+
   // ── Audio → Transcript ───────────────────────────────────────────────────
   // RAF loop: binary search → direct DOM classList toggle, no React state.
   // Auto-scroll throttled to once per 600 ms.
   const highlightLoop = useCallback(() => {
+    if (!editor || !playing) {
+      rafRef.current = 0;
+      return;
+    }
+
     const t = audio.currentTimeRef.current;
     const wordId = findWordAtTime(wordTimings, t);
 
     if (wordId !== lastWordIdRef.current) {
-      if (lastWordIdRef.current) {
-        document
-          .querySelectorAll(`[data-word-id="${lastWordIdRef.current}"]`)
-          .forEach((el) => el.classList.remove("word-playing"));
-      }
+      clearHighlightedWord();
       if (wordId) {
-        const els = document.querySelectorAll<HTMLElement>(
-          `[data-word-id="${wordId}"]`
+        const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
+        const els = Array.from(
+          editor.view.dom.querySelectorAll<HTMLElement>(selector)
         );
         els.forEach((el) => el.classList.add("word-playing"));
+        lastElsRef.current = els;
+        lastWordIdRef.current = wordId;
 
-        const now = performance.now();
         const firstEl = els[0];
-        if (firstEl && now - lastScrollAtRef.current > 600) {
-          firstEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          lastScrollAtRef.current = now;
-        }
+        if (firstEl) maybeScrollWordIntoView(firstEl);
       }
-      lastWordIdRef.current = wordId;
     }
 
     rafRef.current = requestAnimationFrame(highlightLoop);
-  }, [audio.currentTimeRef, wordTimings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [audio.currentTimeRef, clearHighlightedWord, editor, maybeScrollWordIntoView, playing, wordTimings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (!playing) {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+      clearHighlightedWord();
+      return;
+    }
+
     rafRef.current = requestAnimationFrame(highlightLoop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [highlightLoop]);
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+    };
+  }, [clearHighlightedWord, highlightLoop, playing]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -264,6 +298,7 @@ export function TranscriptEditor({ readOnly }: Props) {
 
   return (
     <div
+      ref={scrollContainerRef}
       className="flex-1 min-h-0 overflow-y-auto transcript-scroll bg-transcript-bg"
       data-show-interpreter={showInterpreterLayer ? "true" : "false"}
     >
