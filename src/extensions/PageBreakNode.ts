@@ -1,8 +1,5 @@
 import { Node } from "@tiptap/core";
 
-// Non-editable atom node that marks a page boundary in the transcript.
-// Inserted by buildEditorContent between utterances that straddle a page break.
-// The React NodeView (PageBreakNodeView.tsx) renders it as a visual divider.
 export const PageBreakNode = Node.create({
   name: "pageBreak",
   group: "block",
@@ -25,8 +22,12 @@ export const PageBreakNode = Node.create({
       "div",
       {
         "data-page-break": String(HTMLAttributes.pageNumber),
-        class: "page-break-node",
+        class: "page-break-view",
+        contenteditable: "false",
       },
+      ["div", { class: "page-break-rule" }],
+      ["span", { class: "page-break-label" }, `PAGE ${String(HTMLAttributes.pageNumber)}`],
+      ["div", { class: "page-break-rule" }],
     ];
   },
 });

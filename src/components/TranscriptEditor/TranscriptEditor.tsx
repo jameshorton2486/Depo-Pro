@@ -7,7 +7,6 @@ import { WordMark } from "../../extensions/WordMark";
 import { UtteranceNode } from "../../extensions/UtteranceNode";
 import { PageBreakNode } from "../../extensions/PageBreakNode";
 import { ExhibitRefNode } from "../../extensions/ExhibitRefNode";
-import { PageBreakNodeView } from "./PageBreakNodeView";
 import { ExhibitRefNodeView } from "./ExhibitRefNodeView";
 import { buildEditorContent } from "../../lib/buildEditorContent";
 import { buildWordTimings, findWordAtTime } from "../../lib/wordTimings";
@@ -63,11 +62,7 @@ const EXTENSIONS = [
     trailingNode: false,
   }),
   UtteranceNode,
-  PageBreakNode.extend({
-    addNodeView() {
-      return ReactNodeViewRenderer(PageBreakNodeView);
-    },
-  }),
+  PageBreakNode,
   ExhibitRefNode.extend({
     addNodeView() {
       return ReactNodeViewRenderer(ExhibitRefNodeView);

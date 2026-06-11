@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 
@@ -88,11 +88,23 @@ export function AudioPlayer({
   const pendingPlayRef = useRef(false);
   const lastMediaUrlRef = useRef(mediaUrl);
   const playingRef = useRef(audio.playing);
+  const audioRef = useRef(audio);
 
-  const segments = buildSegments(mediaUrl, docDuration, audioSegments);
+  const segments = useMemo(
+    () => buildSegments(mediaUrl, docDuration, audioSegments),
+    [mediaUrl, docDuration, audioSegments]
+  );
   const safeSegmentIndex = Math.min(activeSegmentIndex, Math.max(segments.length - 1, 0));
   const activeSegment = segments[safeSegmentIndex];
   const resolvedMediaUrl = activeSegment?.mediaUrl || mediaUrl;
+  const activeSegmentRef = useRef(activeSegment);
+  const segmentsRef = useRef(segments);
+  const safeSegmentIndexRef = useRef(safeSegmentIndex);
+  const refreshMediaUrlRef = useRef(refreshMediaUrl);
+
+  useEffect(() => {
+    audioRef.current = audio;
+  }, [audio]);
 
   useEffect(() => {
     lastMediaUrlRef.current = resolvedMediaUrl;
@@ -101,6 +113,22 @@ export function AudioPlayer({
   useEffect(() => {
     playingRef.current = audio.playing;
   }, [audio.playing]);
+
+  useEffect(() => {
+    activeSegmentRef.current = activeSegment;
+  }, [activeSegment]);
+
+  useEffect(() => {
+    segmentsRef.current = segments;
+  }, [segments]);
+
+  useEffect(() => {
+    safeSegmentIndexRef.current = safeSegmentIndex;
+  }, [safeSegmentIndex]);
+
+  useEffect(() => {
+    refreshMediaUrlRef.current = refreshMediaUrl;
+  }, [refreshMediaUrl]);
 
   useEffect(() => {
     if (safeSegmentIndex !== activeSegmentIndex) {
@@ -114,7 +142,7 @@ export function AudioPlayer({
     if (wsRef.current) {
       const localTime = wsRef.current.getCurrentTime();
       const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + localTime;
-      audio.updateCurrentTime(absoluteTime);
+      audioRef.current.updateCurrentTime(absoluteTime);
       setDisplayTime(absoluteTime);
     }
     rafRef.current = requestAnimationFrame(() => tickRef.current!());
@@ -126,7 +154,7 @@ export function AudioPlayer({
       pendingSeekRef.current = target.localSeconds;
       pendingPlayRef.current = autoplay;
       setActiveSegmentIndex(target.segmentIndex);
-      audio.updateCurrentTime(absoluteSeconds);
+      audioRef.current.updateCurrentTime(absoluteSeconds);
       setDisplayTime(absoluteSeconds);
       return;
     }
@@ -136,12 +164,17 @@ export function AudioPlayer({
     if (ws && duration > 0) {
       ws.seekTo(Math.max(0, Math.min(target.localSeconds / duration, 1)));
     }
-    audio.updateCurrentTime(absoluteSeconds);
+    audioRef.current.updateCurrentTime(absoluteSeconds);
     setDisplayTime(absoluteSeconds);
     if (autoplay) {
       void ws?.play();
     }
-  }, [audio, safeSegmentIndex, segments]);
+  }, [safeSegmentIndex, segments]);
+  const seekAbsoluteRef = useRef(seekAbsolute);
+
+  useEffect(() => {
+    seekAbsoluteRef.current = seekAbsolute;
+  }, [seekAbsolute]);
 
   useEffect(() => {
     if (!waveRef.current) {
@@ -189,7 +222,7 @@ export function AudioPlayer({
       const wasPlaying = playingRef.current;
 
       try {
-        const nextMediaUrl = await refreshMediaUrl(safeSegmentIndex);
+        const nextMediaUrl = await refreshMediaUrlRef.current(safeSegmentIndexRef.current);
         if (!nextMediaUrl || nextMediaUrl === lastMediaUrlRef.current) {
           setAudioError("Audio unavailable.");
           return;
@@ -225,13 +258,13 @@ export function AudioPlayer({
 
         const refreshedDuration = ws.getDuration();
         setWsDuration(refreshedDuration);
-        audio.setDuration(refreshedDuration);
+        audioRef.current.setDuration(refreshedDuration);
         const boundedTime = Math.max(0, Math.min(currentTime, refreshedDuration || currentTime));
         if (refreshedDuration > 0) {
           ws.seekTo(boundedTime / refreshedDuration);
         }
-        const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + boundedTime;
-        audio.updateCurrentTime(absoluteTime);
+        const absoluteTime = (activeSegmentRef.current?.startOffsetSeconds ?? 0) + boundedTime;
+        audioRef.current.updateCurrentTime(absoluteTime);
         setDisplayTime(absoluteTime);
         if (wasPlaying) {
           await ws.play();
@@ -246,7 +279,7 @@ export function AudioPlayer({
     ws.on("ready", () => {
       const duration = ws.getDuration();
       setWsDuration(duration);
-      audio.setDuration(duration);
+      audioRef.current.setDuration(duration);
       setReady(true);
       setAudioError(null);
 
@@ -255,14 +288,14 @@ export function AudioPlayer({
         ws.seekTo(Math.max(0, Math.min(pendingSeek / duration, 1)));
       }
       const localTime = pendingSeek ?? ws.getCurrentTime();
-      const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + localTime;
-      audio.updateCurrentTime(absoluteTime);
+      const absoluteTime = (activeSegmentRef.current?.startOffsetSeconds ?? 0) + localTime;
+      audioRef.current.updateCurrentTime(absoluteTime);
       setDisplayTime(absoluteTime);
       pendingSeekRef.current = null;
 
-      audio.registerControls({
+      audioRef.current.registerControls({
         seek: (absoluteSeconds: number) => {
-          seekAbsolute(absoluteSeconds, false);
+          seekAbsoluteRef.current(absoluteSeconds, false);
         },
         play: () => {
           pendingPlayRef.current = false;
@@ -278,24 +311,24 @@ export function AudioPlayer({
     });
 
     ws.on("play", () => {
-      audio.setPlaying(true);
+      audioRef.current.setPlaying(true);
       rafRef.current = requestAnimationFrame(() => tickRef.current!());
     });
 
     ws.on("pause", () => {
-      audio.setPlaying(false);
+      audioRef.current.setPlaying(false);
       cancelAnimationFrame(rafRef.current);
     });
 
     ws.on("finish", () => {
-      if (safeSegmentIndex < segments.length - 1) {
+      if (safeSegmentIndexRef.current < segmentsRef.current.length - 1) {
         pendingSeekRef.current = 0;
         pendingPlayRef.current = true;
-        setActiveSegmentIndex(safeSegmentIndex + 1);
+        setActiveSegmentIndex(safeSegmentIndexRef.current + 1);
         return;
       }
 
-      audio.setPlaying(false);
+      audioRef.current.setPlaying(false);
       cancelAnimationFrame(rafRef.current);
     });
 
@@ -304,8 +337,8 @@ export function AudioPlayer({
     });
 
     ws.on("seeking", (localTime) => {
-      const absoluteTime = (activeSegment?.startOffsetSeconds ?? 0) + localTime;
-      audio.updateCurrentTime(absoluteTime);
+      const absoluteTime = (activeSegmentRef.current?.startOffsetSeconds ?? 0) + localTime;
+      audioRef.current.updateCurrentTime(absoluteTime);
       setDisplayTime(absoluteTime);
     });
 
@@ -323,7 +356,7 @@ export function AudioPlayer({
       ws.destroy();
       wsRef.current = null;
     };
-  }, [activeSegment?.startOffsetSeconds, audio, refreshMediaUrl, resolvedMediaUrl, safeSegmentIndex, seekAbsolute, segments.length]);
+  }, [resolvedMediaUrl]);
 
   const togglePlay = useCallback(() => {
     wsRef.current?.playPause();

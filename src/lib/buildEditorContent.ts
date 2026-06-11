@@ -57,6 +57,7 @@ export function buildEditorContent(
     utt.word_ids.forEach((wid, i) => {
       const word = wordById.get(wid);
       if (!word) return;
+      if (!word.text || word.text.length === 0) return;
 
       inlineNodes.push({
         type: "text",
@@ -83,9 +84,9 @@ export function buildEditorContent(
       }
     });
 
-    // ProseMirror requires at least one inline node per block
+    // ProseMirror requires at least one non-empty inline node per block.
     if (inlineNodes.length === 0) {
-      inlineNodes.push({ type: "text", text: "" });
+      inlineNodes.push({ type: "text", text: " " });
     }
 
     blocks.push({
