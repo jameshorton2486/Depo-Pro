@@ -37,6 +37,16 @@ const STRING_ARRAY_FIELD_SCHEMA = confidenceFieldSchema({
   type: "array",
   items: { type: "string" },
 });
+const WITNESS_NAME_FIELD_SCHEMA = {
+  ...STRING_FIELD_SCHEMA,
+  description:
+    "Populate this with the person being deposed. If the document says Deponent: NAME, person to be deposed, oral deposition of NAME, or to take the deposition of NAME, use that NAME here even when the word witness never appears.",
+};
+const WITNESS_ROLE_FIELD_SCHEMA = {
+  ...STRING_FIELD_SCHEMA,
+  description:
+    "Role or title of the person being deposed, such as corporate representative, custodian of records, treating physician, or expert. Leave empty if no such role is stated.",
+};
 
 const EXTRACTION_TOOL_SCHEMA = objectSchema({
   cause_number: STRING_FIELD_SCHEMA,
@@ -64,8 +74,8 @@ const EXTRACTION_TOOL_SCHEMA = objectSchema({
   }),
   reporting_method: STRING_FIELD_SCHEMA,
   witness: objectSchema({
-    name: STRING_FIELD_SCHEMA,
-    role: STRING_FIELD_SCHEMA,
+    name: WITNESS_NAME_FIELD_SCHEMA,
+    role: WITNESS_ROLE_FIELD_SCHEMA,
     party_affiliation: STRING_FIELD_SCHEMA,
     read_and_sign: STRING_FIELD_SCHEMA,
     interpreter_required: BOOLEAN_FIELD_SCHEMA,
@@ -276,6 +286,8 @@ function buildAnthropicRequest(docType: DocType, truncatedText: string) {
       "Return reporting_method as exactly one of: machine_shorthand, zoom, in_person, audio_recording.",
       "For remote proceedings, set remote.is_remote true, identify the platform when stated, and leave street address, city, state, and zip as empty strings unless expressly stated.",
       "Return jurisdiction_type as texas_state, federal, state, or other.",
+      "The person being deposed is the witness. Populate witness.name with the deponent's name whether the document calls them the witness, the deponent, the person to be deposed, or names them in a phrase like oral deposition of NAME or to take the deposition of NAME.",
+      "If the document gives a title or role for the deponent, such as corporate representative, custodian of records, treating physician, or expert, set witness.role accordingly. Otherwise leave witness.role empty rather than guessing.",
       "For witness read and sign, use exactly read_and_sign or waived when explicitly stated.",
       "County may be inferred with inferred=true and confidence no greater than 0.6 when a named Texas division or city makes the county reasonably clear, such as San Antonio Division implying Bexar County.",
       "An attorney side may be inferred with inferred=true and confidence no greater than 0.6 from context such as certificate-of-service position, the party they represent, or caption alignment.",

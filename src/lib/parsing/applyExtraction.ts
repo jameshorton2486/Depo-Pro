@@ -231,7 +231,8 @@ function applyWitnessExtraction(
   conflicts: ExtractionConflict[],
   witnessAdds: WitnessAddition[],
 ) {
-  const witnessName = cleanupValue(valueOf(fields.witness.name));
+  const witnessIdentity = resolveWitnessIdentity(fields);
+  const witnessName = witnessIdentity.name;
   const partyAffiliation = mapPartyAffiliation(valueOf(fields.witness.party_affiliation));
   const witnessRole = mapWitnessRole(valueOf(fields.witness.role));
   const readAndSign = mapReadAndSign(valueOf(fields.witness.read_and_sign));
@@ -244,7 +245,7 @@ function applyWitnessExtraction(
   const existing = record.witnesses[0];
   if (existing) {
     if (witnessName) {
-      queueField(fieldUpdates, conflicts, record, "witnesses[0].name", withConfidence(witnessName, confidenceOf(fields.witness.name)), "Witness 1 - Name");
+      queueField(fieldUpdates, conflicts, record, "witnesses[0].name", withConfidence(witnessName, witnessIdentity.confidence), "Witness 1 - Name");
     }
     if (witnessRole) {
       queueField(fieldUpdates, conflicts, record, "witnesses[0].role", withConfidence(witnessRole, confidenceOf(fields.witness.role)), "Witness 1 - Role");
@@ -290,7 +291,7 @@ function applyWitnessExtraction(
 
   witnessAdds.push({
     witness: {
-      name: extractedField(witnessName, confidenceOf(fields.witness.name)),
+      name: extractedField(witnessName, witnessIdentity.confidence),
       role: extractedField(witnessRole ?? "WITNESS", confidenceOf(fields.witness.role) ?? DEFAULT_CONFIDENCE),
       title: extractedField(null, null),
       employer: extractedField(null, null),
@@ -306,6 +307,71 @@ function applyWitnessExtraction(
       phone: null,
     },
   });
+}
+
+function resolveWitnessIdentity(fields: ExtractedNODFields): { name: string; confidence: number | null } {
+  const explicitWitnessName = cleanupValue(valueOf(fields.witness.name));
+  if (explicitWitnessName) {
+    return {
+      name: explicitWitnessName,
+      confidence: confidenceOf(fields.witness.name),
+    };
+  }
+
+  const derivedWitness = deriveWitnessNameFromDeponentCue(fields);
+  if (!derivedWitness) {
+    return { name: "", confidence: null };
+  }
+
+  return derivedWitness;
+}
+
+function deriveWitnessNameFromDeponentCue(
+  fields: ExtractedNODFields,
+): { name: string; confidence: number | null } | null {
+  const candidates = [
+    { text: valueOf(fields.case_style), confidence: confidenceOf(fields.case_style) },
+    { text: valueOf(fields.scheduling.proceeding_type), confidence: confidenceOf(fields.scheduling.proceeding_type) },
+  ];
+
+  for (const candidate of candidates) {
+    const derivedName = extractDeponentName(candidate.text);
+    if (!derivedName) {
+      continue;
+    }
+    return {
+      name: derivedName,
+      confidence: candidate.confidence == null ? 0.6 : Math.min(candidate.confidence, 0.6),
+    };
+  }
+
+  return null;
+}
+
+function extractDeponentName(value: string | null): string {
+  const normalized = cleanupValue(value);
+  if (!normalized) {
+    return "";
+  }
+
+  const titleMatch = normalized.match(
+    /(?:NOTICE\s+OF\s+(?:INTENTION\s+TO\s+TAKE\s+)?(?:ORAL\s*\/?\s*)?(?:ZOOM\s+)?DEPOSITION\s+OF|ORAL\s+DEPOSITION\s+OF|TO\s+TAKE\s+THE\s+DEPOSITION\s+OF)\s+([A-Za-z][A-Za-z\s.'’-]+)/i,
+  );
+  if (titleMatch) {
+    return cleanupValue(titleMatch[1]).replace(/[,:;]+$/, "");
+  }
+
+  const labeledMatch = normalized.match(/Deponent\s*:\s*([^\n]+)/i);
+  if (labeledMatch) {
+    return cleanupValue(labeledMatch[1]).replace(/[,:;]+$/, "");
+  }
+
+  const deponentMatch = normalized.match(/DEPOSITION\s+OF\s+([A-Za-z][A-Za-z\s.'’-]+)/i);
+  if (deponentMatch) {
+    return cleanupValue(deponentMatch[1]).replace(/[,:;]+$/, "");
+  }
+
+  return "";
 }
 
 function applyAttorneyExtraction(
