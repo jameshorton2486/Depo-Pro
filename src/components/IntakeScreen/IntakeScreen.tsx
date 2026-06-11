@@ -1683,6 +1683,9 @@ export function IntakeScreen({ jobId }: Props) {
               onAudioReordered={(audioRecords) => {
                 setCaseAudio(sortCaseAudioRecords(audioRecords));
               }}
+              onAudioRemoved={(audioId) => {
+                setCaseAudio((previous) => previous.filter((entry) => entry.audio_id !== audioId));
+              }}
               onFileUploaded={(fileRecord) => {
                 setCaseFiles((previous) => [fileRecord, ...previous.filter((entry) => entry.file_type !== fileRecord.file_type)]);
               }}

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Clock, Sparkles, Upload, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Clock, Sparkles, Upload } from "lucide-react";
 
 import type { CaseAudioRecord, CaseFileRecord } from "../../api/fileService";
 import {
   downloadCaseFile,
   getSignedUrl,
   reorderCaseAudio,
+  removeCaseAudio,
   removeCaseFile,
   uploadCaseAudio,
   uploadCaseFile,
@@ -48,10 +49,24 @@ type DocumentUploadPanelProps = {
   saveCaseRecord: () => Promise<unknown>;
   onAudioUploaded: (audioRecord: CaseAudioRecord) => void;
   onAudioReordered: (audioRecords: CaseAudioRecord[]) => void;
+  onAudioRemoved: (audioId: string) => void;
   onFileUploaded: (fileRecord: CaseFileRecord) => void;
   onFileRemoved: (fileId: string) => void;
   onRevealExtractedFields: () => void;
 };
+
+type PendingRemoval =
+  | {
+    kind: "file";
+    slotId: Exclude<SlotId, "audio">;
+    fileId: string;
+    filename: string;
+  }
+  | {
+    kind: "audio";
+    audioId: string;
+    filename: string;
+  };
 
 const SLOT_CONFIGS: UploadSlotConfig[] = [
   {
@@ -253,8 +268,7 @@ function UploadCard({
           }}
           className="mt-2 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
         >
-          <X size={11} />
-          Remove
+          × Remove
         </button>
       )}
 
@@ -276,6 +290,7 @@ export function DocumentUploadPanel({
   saveCaseRecord,
   onAudioUploaded,
   onAudioReordered,
+  onAudioRemoved,
   onFileUploaded,
   onFileRemoved,
   onRevealExtractedFields,
@@ -291,6 +306,8 @@ export function DocumentUploadPanel({
   const [extractErrors, setExtractErrors] = useState<Partial<Record<SlotId, string | null>>>({});
   const [extractSummaries, setExtractSummaries] = useState<Partial<Record<SlotId, ExtractionSummary | null>>>({});
   const [reorderingAudioId, setReorderingAudioId] = useState<string | null>(null);
+  const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const currentFiles = useMemo(() => ({
     notice: files.find((file) => file.file_type === "notice") ?? null,
@@ -418,40 +435,102 @@ export function DocumentUploadPanel({
     }
   }
 
-  async function handleRemove(slotId: Exclude<SlotId, "audio">) {
+  function requestFileRemoval(slotId: Exclude<SlotId, "audio">) {
     const currentFile = currentFiles[slotId];
     if (!currentFile) {
       return;
     }
 
+    setPendingRemoval({
+      kind: "file",
+      slotId,
+      fileId: currentFile.file_id,
+      filename: currentFile.original_filename,
+    });
+  }
+
+  function requestAudioRemoval(audioRecord: CaseAudioRecord) {
+    setPendingRemoval({
+      kind: "audio",
+      audioId: audioRecord.audio_id,
+      filename: audioRecord.original_filename,
+    });
+  }
+
+  async function confirmRemoval() {
+    if (!pendingRemoval) {
+      return;
+    }
+
+    setRemoving(true);
+
+    if (pendingRemoval.kind === "file") {
+      const { slotId, fileId } = pendingRemoval;
+      setSlotUi((previous) => ({
+        ...previous,
+        [slotId]: { status: "uploading", error: null },
+      }));
+
+      try {
+        await removeCaseFile(record.case_id, fileId);
+        onFileRemoved(fileId);
+        setLocalFiles((previous) => {
+          const next = { ...previous };
+          delete next[slotId];
+          return next;
+        });
+        setViewUrls((previous) => {
+          const next = { ...previous };
+          delete next[slotId];
+          return next;
+        });
+        setSlotUi((previous) => ({
+          ...previous,
+          [slotId]: { status: "idle", error: null },
+        }));
+        setPendingRemoval(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Remove failed.";
+        setSlotUi((previous) => ({
+          ...previous,
+          [slotId]: { status: "error", error: message },
+        }));
+        setPendingRemoval(null);
+      } finally {
+        setRemoving(false);
+      }
+      return;
+    }
+
     setSlotUi((previous) => ({
       ...previous,
-      [slotId]: { status: "uploading", error: null },
+      audio: { status: "uploading", error: null },
     }));
 
     try {
-      await removeCaseFile(record.case_id, currentFile.file_id);
-      onFileRemoved(currentFile.file_id);
-      setLocalFiles((previous) => {
+      await removeCaseAudio(record.case_id, pendingRemoval.audioId);
+      onAudioRemoved(pendingRemoval.audioId);
+      setAudioViewUrls((previous) => {
         const next = { ...previous };
-        delete next[slotId];
+        delete next[pendingRemoval.audioId];
         return next;
       });
-      setViewUrls((previous) => {
-        const next = { ...previous };
-        delete next[slotId];
-        return next;
-      });
+      const remainingAudio = orderedAudio.filter((entry) => entry.audio_id !== pendingRemoval.audioId);
+      setAudio(remainingAudio[0] ? toCaseAudioRecord(remainingAudio[0]) : null);
       setSlotUi((previous) => ({
         ...previous,
-        [slotId]: { status: "idle", error: null },
+        audio: { status: remainingAudio.length > 0 ? "done" : "idle", error: null },
       }));
+      setPendingRemoval(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Remove failed.";
       setSlotUi((previous) => ({
         ...previous,
-        [slotId]: { status: "error", error: message },
+        audio: { status: "error", error: message },
       }));
+      setPendingRemoval(null);
+    } finally {
+      setRemoving(false);
     }
   }
 
@@ -746,7 +825,7 @@ export function DocumentUploadPanel({
                 void handleDrop(slotId, file);
               }}
               onRemove={slot.id === "audio" ? null : () => {
-                void handleRemove(slot.id as Exclude<SlotId, "audio">);
+                requestFileRemoval(slot.id as Exclude<SlotId, "audio">);
               }}
             >
               {slot.id === "audio" && orderedAudio.length > 0 ? (
@@ -773,6 +852,18 @@ export function DocumentUploadPanel({
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={removing}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              requestAudioRemoval(audioRecord);
+                            }}
+                            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-40"
+                          >
+                            × Remove
+                          </button>
                           <button
                             type="button"
                             disabled={index === 0 || reorderingAudioId === audioRecord.audio_id}
@@ -885,6 +976,41 @@ export function DocumentUploadPanel({
           );
         })}
       </div>
+      {pendingRemoval && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4" role="dialog" aria-modal="true" aria-labelledby="remove-file-title">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 id="remove-file-title" className="text-base font-semibold text-slate-900">
+              {pendingRemoval.kind === "audio" ? "Remove Audio File?" : "Remove File?"}
+            </h3>
+            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+              {pendingRemoval.filename}
+            </p>
+            <p className="mt-3 text-sm text-slate-600">
+              This file will be permanently removed from the case.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingRemoval(null)}
+                disabled={removing}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void confirmRemoval();
+                }}
+                disabled={removing}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:opacity-50"
+              >
+                {removing ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

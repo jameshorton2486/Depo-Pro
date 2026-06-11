@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getSupabaseClient } from "../lib/supabase";
 import type { Database, Tables } from "../types/database";
+import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
 
 export type CaseFileType =
   | "notice"
@@ -44,6 +45,16 @@ type CaseFilesDatabase = Omit<Database, "public"> & {
         Update: CaseFileUpdate;
         Relationships: [];
       };
+      transcription_jobs: {
+        Row: TranscriptionJobRecord;
+        Insert: Omit<TranscriptionJobRecord, "id" | "created_at" | "updated_at"> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<TranscriptionJobRecord>;
+        Relationships: [];
+      };
     };
   };
 };
@@ -80,6 +91,13 @@ const AUDIO_MIME_TYPES = new Set([
 
 function getExtendedClient(client: SupabaseClient<Database>): SupabaseClient<CaseFilesDatabase> {
   return client as unknown as SupabaseClient<CaseFilesDatabase>;
+}
+
+function createProtectedRemovalError(message: string): Error & { status: number } {
+  const error = new Error(message) as Error & { status: number };
+  error.name = "ProtectedRemovalError";
+  error.status = 409;
+  return error;
 }
 
 function getFileExtension(filename: string): string {
@@ -425,14 +443,108 @@ export async function reorderCaseAudio(caseId: string, orderedAudioIds: string[]
   );
 }
 
+async function ensureCaseRemovalAllowed(client: SupabaseClient<Database>, caseId: string): Promise<void> {
+  const extendedClient = getExtendedClient(client);
+  const [transcriptResult, certificationResult, jobResult] = await Promise.all([
+    client
+      .from("transcripts")
+      .select("transcript_id", { count: "exact", head: true })
+      .eq("case_id", caseId),
+    client
+      .from("case_certifications")
+      .select("case_id", { count: "exact", head: true })
+      .eq("case_id", caseId),
+    extendedClient
+      .from("transcription_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("case_id", caseId),
+  ]);
+
+  if (transcriptResult.error) {
+    throw transcriptResult.error;
+  }
+  if (certificationResult.error) {
+    throw certificationResult.error;
+  }
+  if (jobResult.error) {
+    throw jobResult.error;
+  }
+
+  if ((transcriptResult.count ?? 0) > 0 || (certificationResult.count ?? 0) > 0 || (jobResult.count ?? 0) > 0) {
+    throw createProtectedRemovalError(
+      "This file can't be removed because the case is already linked to transcript or certification data.",
+    );
+  }
+}
+
 export async function removeCaseFile(caseId: string, fileId: string): Promise<void> {
   const client = await getSupabaseClient("removeCaseFile");
   const extendedClient = getExtendedClient(client);
+  await ensureCaseRemovalAllowed(client, caseId);
+
+  const { data: rawFileRow, error: fileError } = await extendedClient
+    .from("case_files")
+    .select("*")
+    .eq("case_id", caseId)
+    .eq("file_id", fileId)
+    .maybeSingle();
+  const fileRow = rawFileRow as CaseFileRecord | null;
+
+  if (fileError) {
+    throw fileError;
+  }
+
+  if (fileRow?.storage_path) {
+    const { error: storageError } = await client.storage
+      .from(CASE_FILES_BUCKET)
+      .remove([fileRow.storage_path]);
+
+    if (storageError) {
+      throw storageError;
+    }
+  }
+
   const { error } = await extendedClient
     .from("case_files")
-    .update({ status: "removed" } as never)
+    .delete()
     .eq("case_id", caseId)
     .eq("file_id", fileId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function removeCaseAudio(caseId: string, audioId: string): Promise<void> {
+  const client = await getSupabaseClient("removeCaseAudio");
+  await ensureCaseRemovalAllowed(client, caseId);
+
+  const { data: audioRow, error: audioError } = await client
+    .from("case_audio")
+    .select("storage_path")
+    .eq("case_id", caseId)
+    .eq("audio_id", audioId)
+    .maybeSingle();
+
+  if (audioError) {
+    throw audioError;
+  }
+
+  if (audioRow?.storage_path) {
+    const { error: storageError } = await client.storage
+      .from(CASE_FILES_BUCKET)
+      .remove([audioRow.storage_path]);
+
+    if (storageError) {
+      throw storageError;
+    }
+  }
+
+  const { error } = await client
+    .from("case_audio")
+    .delete()
+    .eq("case_id", caseId)
+    .eq("audio_id", audioId);
 
   if (error) {
     throw error;
