@@ -3,14 +3,14 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
 import { advanceOrFinalizeMultifileJob } from "../../../src/lib/transcript/multifileCallbackFlow.ts";
 import {
-  getPrimaryMediaUrl,
-  getPrimaryMimeType,
-  getPrimarySourceAudioId,
-  getPrimarySourceFilename,
-  mergeSourceTranscriptSegments,
-  type MergedSourceSegment,
+  type SourceTranscriptSegment,
 } from "../../../src/lib/transcript/multifileMerge.ts";
 import type { DeepgramResponse } from "../../../src/lib/transcript/types.ts";
+import {
+  buildSegmentTranscriptBundle,
+  replaceCaseSegmentTranscripts,
+  type SegmentTranscriptBundle,
+} from "../../../src/lib/transcript/segmentFinalization.ts";
 import {
   buildDeepgramRequestFileName,
   buildDeepgramResponseFileName,
@@ -32,39 +32,6 @@ type CaseAudioRow = {
   uploaded_at: string | null;
 };
 
-type DeepgramRequestArtifact = {
-  url: string;
-  callback_url: string;
-  preview?: unknown;
-  total_sources?: number;
-};
-
-type TranscriptInsertRow = {
-  transcript_id: string;
-  case_id: string;
-  job_id: string;
-  media_url: string | null;
-  duration: number | null;
-  based_on: string | null;
-  deepgram_request_id: string | null;
-  session_id: string | null;
-  source_filename: string | null;
-  media_kind: "audio" | "video";
-  status: "completed";
-  engine: string;
-  transcription_source: "deepgram";
-  sequence_index: number;
-  duration_seconds: number | null;
-  word_count: number;
-  utterance_count: number;
-  speaker_count: number;
-  avg_confidence: string | null;
-  raw_storage_path: string | null;
-  raw_checksum: string | null;
-  last_error: string | null;
-  speaker_map_confirmed: boolean;
-  owner_user_id: string;
-};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -143,41 +110,37 @@ Deno.serve(async (request) => {
         updateJob: (jobId, patch) => updateJob(serviceClient, jobId, patch),
         finalize: async () => {
           const sourceSegments = await loadSourceTranscriptSegments(serviceClient, job, orderedAudio);
-          const merged = mergeSourceTranscriptSegments(sourceSegments);
-          const deepgramRequestId = totalSources === 1
-            ? sourceSegments[0]?.response.metadata.request_id ?? null
-            : `${job.id}_multifile`;
-          const finalArtifact = totalSources === 1
-            ? { path: responsePath, checksum: rawChecksum }
-            : await (async () => {
-                const manifestPath = buildTranscriptionArtifactPath(
-                  job.owner_user_id,
-                  job.case_id,
-                  `${job.id}_multifile_manifest.json`,
-                );
-                const checksum = await uploadJsonArtifact(
-                  serviceClient,
-                  manifestPath,
-                  buildMergeManifest(job, merged.segments, sourceSegments),
-                );
-                return { path: manifestPath, checksum };
-              })();
-
-          await ingestTranscript(
-            serviceClient,
-            job,
-            merged.segments,
-            merged.normalized,
-            deepgramRequestId,
-            finalArtifact.path,
-            finalArtifact.checksum,
+          const segmentBundles = sourceSegments.map((segment) =>
+            buildSegmentTranscriptBundle({
+              transcriptId: job.transcript_id,
+              caseId: job.case_id,
+              jobId: job.id,
+              ownerUserId: job.owner_user_id,
+            }, {
+              sourceAudioId: segment.source_audio_id,
+              sourceIndex: segment.source_index,
+              sourceFilename: segment.source_filename,
+              mimeType: segment.mime_type,
+              storagePath: segment.storage_path,
+              mediaUrl: segment.media_url,
+              normalized: segment.normalized,
+              deepgramRequestId: segment.response.metadata.request_id ?? null,
+              rawStoragePath: segment.response_path,
+              rawChecksum: segment.response_path === responsePath ? rawChecksum : null,
+            })
           );
+
+          await replaceCaseSegmentTranscripts({
+            listCaseTranscriptIds: (caseId) => listCaseTranscriptIds(serviceClient, caseId),
+            deleteTranscriptData: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
+            insertTranscriptBundle: (bundle) => insertSegmentTranscriptBundle(serviceClient, bundle),
+          }, job.case_id, segmentBundles);
           await updateJob(serviceClient, job.id, {
             status: "complete",
-            response_path: finalArtifact.path,
+            response_path: responsePath,
             error: null,
           });
-          return finalArtifact.path;
+          return responsePath;
         },
         cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
         failJob: (jobId, failedResponsePath, errorMessage) =>
@@ -242,151 +205,6 @@ function parseDeepgramResponse(value: unknown): { ok: true; response: DeepgramRe
   }
 
   return { ok: true, response: value as DeepgramResponse };
-}
-
-async function ingestTranscript(
-  supabase: SupabaseClient<Database>,
-  job: TranscriptionJobRecord,
-  segments: MergedSourceSegment[],
-  normalized: ReturnType<typeof mergeSourceTranscriptSegments>["normalized"],
-  deepgramRequestId: string | null,
-  responsePath: string,
-  rawChecksum: string,
-): Promise<void> {
-  const transcriptRow: TranscriptInsertRow = {
-    transcript_id: job.transcript_id,
-    case_id: job.case_id,
-    job_id: job.id,
-    media_url: getPrimaryMediaUrl(segments),
-    duration: normalized.durationSeconds,
-    based_on: getPrimarySourceAudioId(segments),
-    deepgram_request_id: deepgramRequestId,
-    session_id: null,
-    source_filename: getPrimarySourceFilename(segments),
-    media_kind: detectMediaKind(getPrimaryMimeType(segments)),
-    status: "completed",
-    engine: "deepgram-nova-3",
-    transcription_source: "deepgram",
-    sequence_index: 0,
-    duration_seconds: normalized.durationSeconds,
-    word_count: normalized.words.length,
-    utterance_count: normalized.utterances.length,
-    speaker_count: normalized.speakers.length,
-    avg_confidence: normalized.avgConfidence != null ? normalized.avgConfidence.toFixed(4) : null,
-    raw_storage_path: responsePath,
-    raw_checksum: rawChecksum,
-    last_error: null,
-    speaker_map_confirmed: false,
-    owner_user_id: job.owner_user_id,
-  };
-
-  const { error: transcriptError } = await supabase
-    .from("transcripts")
-    .insert(transcriptRow);
-  if (transcriptError) {
-    throw transcriptError;
-  }
-
-  const speakers = normalized.speakers.map((speaker) => ({
-    transcript_id: job.transcript_id,
-    speaker_id: speaker.speaker_id,
-    display_name: speaker.speaker_label,
-    deepgram_speaker: speaker.speaker_index,
-    role: null,
-    job_id: job.id,
-    speaker_index: speaker.speaker_index,
-    speaker_label: speaker.speaker_label,
-    assigned_name: null,
-    speaker_role: null,
-    word_count: speaker.word_count,
-    owner_user_id: job.owner_user_id,
-  }));
-
-  if (speakers.length > 0) {
-    const { error } = await supabase.from("transcript_speakers").insert(speakers);
-    if (error) {
-      throw error;
-    }
-  }
-
-  const utterances = normalized.utterances.map((utterance) => ({
-    transcript_id: job.transcript_id,
-    utterance_id: utterance.utterance_id,
-    speaker_id: utterance.speaker_id,
-    start_time: utterance.start_time,
-    end_time: utterance.end_time,
-    ordinal: utterance.utterance_index,
-    job_id: job.id,
-    utterance_index: utterance.utterance_index,
-    speaker_index: utterance.speaker_index,
-    speaker_label: utterance.speaker_label,
-    text: utterance.text,
-    avg_confidence: utterance.avg_confidence.toFixed(4),
-    owner_user_id: job.owner_user_id,
-  }));
-
-  if (utterances.length > 0) {
-    const { error } = await supabase.from("transcript_utterances").insert(utterances);
-    if (error) {
-      throw error;
-    }
-  }
-
-  const words = normalized.words.map((word) => ({
-    transcript_id: job.transcript_id,
-    utterance_id: word.utterance_id,
-    word_id: word.word_id,
-    speaker_id: word.speaker_id,
-    ordinal: word.word_index,
-    text: word.raw_text,
-    raw_text: word.raw_text,
-    start_time: word.start_time,
-    end_time: word.end_time,
-    confidence: word.confidence,
-    reviewed: word.reviewed,
-    edited: word.edited,
-    job_id: job.id,
-    word_index: word.word_index,
-    working_text: word.working_text,
-    speaker_index: word.speaker_index,
-    is_filler: word.is_filler,
-    removed: false,
-    owner_user_id: job.owner_user_id,
-  }));
-
-  for (let index = 0; index < words.length; index += WORD_CHUNK_SIZE) {
-    const chunk = words.slice(index, index + WORD_CHUNK_SIZE);
-    const { error } = await supabase.from("transcript_words").insert(chunk);
-    if (error) {
-      throw error;
-    }
-  }
-
-  const auditRow = {
-    transcript_id: job.transcript_id,
-    change_id: `chg_ingest_${job.id}`,
-    utterance_id: null,
-    word_id: null,
-    old_text: null,
-    new_text: null,
-    source: "system",
-    suggestion_id: null,
-    reviewer_user_id: null,
-    case_id: job.case_id,
-    job_id: job.id,
-    actor: null,
-    action: "ingest",
-    before_text: null,
-    after_text: null,
-    owner_user_id: job.owner_user_id,
-  };
-
-  const { error: auditError } = await supabase
-    .from("transcript_audit_log")
-    .insert(auditRow);
-  if (auditError) {
-    throw auditError;
-  }
 }
 
 async function loadOrderedAudio(
@@ -487,7 +305,12 @@ function resolveCurrentAudio(job: TranscriptionJobRecord, orderedAudio: CaseAudi
 async function requireRequestArtifact(
   supabase: SupabaseClient<Database>,
   requestPath: string | null,
-): Promise<DeepgramRequestArtifact> {
+): Promise<{
+  url: string;
+  callback_url: string;
+  preview?: unknown;
+  total_sources?: number;
+}> {
   if (!requestPath) {
     throw new Error("Transcription job is missing its request artifact path.");
   }
@@ -502,7 +325,12 @@ async function requireRequestArtifact(
     throw new Error("Request artifact is missing required callback metadata.");
   }
 
-  return artifact as DeepgramRequestArtifact;
+  return artifact as {
+    url: string;
+    callback_url: string;
+    preview?: unknown;
+    total_sources?: number;
+  };
 }
 
 async function downloadJsonArtifact(
@@ -537,7 +365,12 @@ async function submitNextDeepgramJob(
   job: TranscriptionJobRecord,
   audio: CaseAudioRow,
   totalSources: number,
-  requestArtifact: DeepgramRequestArtifact,
+  requestArtifact: {
+    url: string;
+    callback_url: string;
+    preview?: unknown;
+    total_sources?: number;
+  },
 ): Promise<string> {
   if (!audio.storage_path) {
     throw new Error(`Source file ${audio.original_filename} is missing a storage path.`);
@@ -586,7 +419,7 @@ async function loadSourceTranscriptSegments(
   supabase: SupabaseClient<Database>,
   job: TranscriptionJobRecord,
   orderedAudio: CaseAudioRow[],
-) {
+): Promise<Array<SourceTranscriptSegment & { response_path: string }>> {
   const totalSources = orderedAudio.length;
 
   return Promise.all(
@@ -613,32 +446,10 @@ async function loadSourceTranscriptSegments(
         response: parsed.response,
         normalized: normalizeTranscriptResponse(parsed.response),
         fallback_duration_seconds: audio.duration_seconds,
+        response_path: responsePath,
       };
     }),
   );
-}
-
-function buildMergeManifest(
-  job: TranscriptionJobRecord,
-  segments: MergedSourceSegment[],
-  sourceSegments: Array<{ response: DeepgramResponse }>,
-) {
-  const totalSources = segments.length;
-
-  return {
-    job_id: job.id,
-    transcript_id: job.transcript_id,
-    case_id: job.case_id,
-    sources: segments.map((segment, index) => ({
-      ...segment,
-      deepgram_request_id: sourceSegments[index]?.response.metadata.request_id ?? null,
-      response_path: buildTranscriptionArtifactPath(
-        job.owner_user_id,
-        job.case_id,
-        buildDeepgramResponseFileName(job.id, segment.source_index, totalSources),
-      ),
-    })),
-  };
 }
 
 async function cleanupTranscript(
@@ -652,8 +463,61 @@ async function cleanupTranscript(
   await supabase.from("transcripts").delete().eq("transcript_id", transcriptId);
 }
 
-function detectMediaKind(mimeType: string): "audio" | "video" {
-  return mimeType.startsWith("video/") ? "video" : "audio";
+async function listCaseTranscriptIds(
+  supabase: SupabaseClient<Database>,
+  caseId: string,
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("transcripts")
+    .select("transcript_id")
+    .eq("case_id", caseId);
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data as Array<{ transcript_id: string }> | null) ?? []).map((row) => row.transcript_id);
+}
+
+async function insertSegmentTranscriptBundle(
+  supabase: SupabaseClient<Database>,
+  bundle: SegmentTranscriptBundle,
+): Promise<void> {
+  const { error: transcriptError } = await supabase
+    .from("transcripts")
+    .insert(bundle.transcript);
+  if (transcriptError) {
+    throw transcriptError;
+  }
+
+  if (bundle.speakers.length > 0) {
+    const { error } = await supabase.from("transcript_speakers").insert(bundle.speakers);
+    if (error) {
+      throw error;
+    }
+  }
+
+  if (bundle.utterances.length > 0) {
+    const { error } = await supabase.from("transcript_utterances").insert(bundle.utterances);
+    if (error) {
+      throw error;
+    }
+  }
+
+  for (let index = 0; index < bundle.words.length; index += WORD_CHUNK_SIZE) {
+    const chunk = bundle.words.slice(index, index + WORD_CHUNK_SIZE);
+    const { error } = await supabase.from("transcript_words").insert(chunk);
+    if (error) {
+      throw error;
+    }
+  }
+
+  const { error: auditError } = await supabase
+    .from("transcript_audit_log")
+    .insert(bundle.audit);
+  if (auditError) {
+    throw auditError;
+  }
 }
 
 function respondJson(status: number, body: unknown): Response {

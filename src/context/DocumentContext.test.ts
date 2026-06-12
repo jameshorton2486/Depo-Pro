@@ -50,6 +50,11 @@ describe("documentReducer save sequencing", () => {
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
       audioSegments: [],
+      segmentTargets: [],
+      currentSegmentIndex: 0,
+      currentTranscriptId: "tr_000",
+      previousTranscriptId: null,
+      nextTranscriptId: null,
     });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",
@@ -78,6 +83,11 @@ describe("documentReducer save sequencing", () => {
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
       audioSegments: [],
+      segmentTargets: [],
+      currentSegmentIndex: 0,
+      currentTranscriptId: "tr_000",
+      previousTranscriptId: null,
+      nextTranscriptId: null,
     });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",

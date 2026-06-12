@@ -271,6 +271,24 @@ export async function getLatestCompletedTranscriptJob(caseId: string): Promise<T
   return (data as TranscriptJobRow | null) ?? null;
 }
 
+export async function listCompletedTranscriptJobsBySequence(caseId: string): Promise<TranscriptJobRow[]> {
+  const client = await getSupabaseClient("listCompletedTranscriptJobsBySequence");
+  const transcriptClient = getTranscriptClient(client);
+  const { data, error } = await transcriptClient
+    .from("transcripts")
+    .select("*")
+    .eq("case_id", caseId)
+    .eq("status", "completed")
+    .order("sequence_index", { ascending: true })
+    .order("updated_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as unknown as TranscriptJobRow[];
+}
+
 export async function loadTranscriptSnapshot(jobId: string): Promise<{
   job: TranscriptJobRow;
   speakers: TranscriptSpeakerRow[];

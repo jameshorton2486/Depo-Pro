@@ -12,15 +12,16 @@ import { api as contractApi } from "./client";
 import { getSignedUrl } from "./fileService";
 import { isRealApiMode } from "../lib/runtime/mode";
 import {
-  getLatestCompletedTranscriptJob,
   getTranscriptJobByJobId,
   getTranscriptJobByTranscriptId,
+  listCompletedTranscriptJobsBySequence,
   listTranscriptJobs,
   loadTranscriptSnapshot,
   updateTranscriptJob,
   type TranscriptJobRow,
 } from "./transcriptRepository";
 import { getSupabaseClient } from "../lib/supabase";
+import { resolveSegmentWorkspaceSelection } from "../lib/transcript/segmentWorkspace";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
 
@@ -29,6 +30,11 @@ export interface WorkspaceLoadResult {
   updatedAt: string | null;
   speakerMapConfirmed: boolean;
   audioSegments: WorkspaceAudioSegment[];
+  segmentTargets: WorkspaceSegmentTarget[];
+  currentSegmentIndex: number;
+  currentTranscriptId: string;
+  previousTranscriptId: string | null;
+  nextTranscriptId: string | null;
 }
 
 export interface WorkspaceAudioSegment {
@@ -37,6 +43,12 @@ export interface WorkspaceAudioSegment {
   startOffsetSeconds: number;
   durationSeconds: number;
   mediaUrl: string;
+}
+
+export interface WorkspaceSegmentTarget {
+  transcriptId: string;
+  sequenceIndex: number;
+  sourceFilename: string | null;
 }
 
 export interface WorkspaceMutationOptions {
@@ -118,22 +130,53 @@ function buildEditorDocumentFromSnapshot(
   };
 }
 
-async function resolveWorkspaceTarget(value: string): Promise<TranscriptJobRow | null> {
+async function resolveWorkspaceTarget(value: string): Promise<{
+  target: TranscriptJobRow | null;
+  orderedSegments: TranscriptJobRow[];
+  currentIndex: number;
+  previousTranscriptId: string | null;
+  nextTranscriptId: string | null;
+}> {
   const byTranscriptId = await getTranscriptJobByTranscriptId(value);
   if (byTranscriptId) {
-    return byTranscriptId;
+    const orderedSegments = await listCompletedTranscriptJobsBySequence(byTranscriptId.case_id);
+    const selection = resolveSegmentWorkspaceSelection(orderedSegments, byTranscriptId.transcript_id);
+    return {
+      target: byTranscriptId,
+      orderedSegments: selection.ordered,
+      currentIndex: selection.currentIndex,
+      previousTranscriptId: selection.previous?.transcript_id ?? null,
+      nextTranscriptId: selection.next?.transcript_id ?? null,
+    };
   }
 
   const byJobId = await getTranscriptJobByJobId(value);
   if (byJobId) {
-    return byJobId;
+    const orderedSegments = await listCompletedTranscriptJobsBySequence(byJobId.case_id);
+    const selection = resolveSegmentWorkspaceSelection(orderedSegments, byJobId.transcript_id);
+    return {
+      target: byJobId,
+      orderedSegments: selection.ordered,
+      currentIndex: selection.currentIndex,
+      previousTranscriptId: selection.previous?.transcript_id ?? null,
+      nextTranscriptId: selection.next?.transcript_id ?? null,
+    };
   }
 
-  return getLatestCompletedTranscriptJob(value);
+  const orderedSegments = await listCompletedTranscriptJobsBySequence(value);
+  const selection = resolveSegmentWorkspaceSelection(orderedSegments);
+  return {
+    target: selection.selected,
+    orderedSegments: selection.ordered,
+    currentIndex: selection.currentIndex,
+    previousTranscriptId: selection.previous?.transcript_id ?? null,
+    nextTranscriptId: selection.next?.transcript_id ?? null,
+  };
 }
 
 async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResult> {
-  const target = await resolveWorkspaceTarget(caseId);
+  const resolved = await resolveWorkspaceTarget(caseId);
+  const target = resolved.target;
   if (!target) {
     throw new Error("No transcript has been generated for this case yet.");
   }
@@ -152,6 +195,15 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
     updatedAt: snapshot.job.updated_at,
     speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
     audioSegments: await loadAudioSegments(snapshot.job, mediaUrl),
+    segmentTargets: resolved.orderedSegments.map((segment) => ({
+      transcriptId: segment.transcript_id,
+      sequenceIndex: segment.sequence_index,
+      sourceFilename: segment.source_filename,
+    })),
+    currentSegmentIndex: resolved.currentIndex,
+    currentTranscriptId: target.transcript_id,
+    previousTranscriptId: resolved.previousTranscriptId,
+    nextTranscriptId: resolved.nextTranscriptId,
   };
 }
 
@@ -230,7 +282,8 @@ async function requireFreshTranscript(
   key: string,
   lastKnownUpdatedAt?: string | null,
 ) {
-  const job = await resolveWorkspaceTarget(key);
+  const resolved = await resolveWorkspaceTarget(key);
+  const job = resolved.target;
   if (!job) {
     throw new Error(`Transcript ${key} was not found.`);
   }
@@ -557,7 +610,8 @@ async function persistSpeakers(
 }
 
 async function getTranscriptChecklist(key: string): Promise<CertifyChecklist> {
-  const job = await resolveWorkspaceTarget(key);
+  const resolved = await resolveWorkspaceTarget(key);
+  const job = resolved.target;
   if (!job) {
     return {
       review_complete: false,
@@ -602,11 +656,17 @@ export const workspaceApi = {
         updatedAt: null,
         speakerMapConfirmed: false,
         audioSegments: [],
+        segmentTargets: [],
+        currentSegmentIndex: 0,
+        currentTranscriptId: caseId,
+        previousTranscriptId: null,
+        nextTranscriptId: null,
       };
     }
 
   if (isRealApiMode()) {
-      const target = await resolveWorkspaceTarget(caseId);
+      const resolved = await resolveWorkspaceTarget(caseId);
+      const target = resolved.target;
       if (!target) {
         throw new Error("No transcript has been generated for this case yet.");
       }
@@ -617,6 +677,15 @@ export const workspaceApi = {
         updatedAt: target.updated_at,
         speakerMapConfirmed: target.speaker_map_confirmed,
         audioSegments: await loadAudioSegments(target, document.media_url),
+        segmentTargets: resolved.orderedSegments.map((segment) => ({
+          transcriptId: segment.transcript_id,
+          sequenceIndex: segment.sequence_index,
+          sourceFilename: segment.source_filename,
+        })),
+        currentSegmentIndex: resolved.currentIndex,
+        currentTranscriptId: target.transcript_id,
+        previousTranscriptId: resolved.previousTranscriptId,
+        nextTranscriptId: resolved.nextTranscriptId,
       };
     }
 

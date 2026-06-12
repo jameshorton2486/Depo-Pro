@@ -19,7 +19,7 @@ function formatSavedTime(ts: number): string {
 }
 
 export function Toolbar({ jobId, onSave }: Props) {
-  const { state } = useDocument();
+  const { state, navigateToPreviousSegment, navigateToNextSegment } = useDocument();
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
   const { setStage } = useStage();
   const { showBrowser } = useCase();
@@ -72,6 +72,30 @@ export function Toolbar({ jobId, onSave }: Props) {
       >
         Certification
       </button>
+
+      {state.segmentTargets.length > 1 && (
+        <div className="flex items-center gap-2 rounded border border-slate-700 px-2 py-1">
+          <button
+            type="button"
+            onClick={() => void navigateToPreviousSegment()}
+            disabled={!state.previousTranscriptId || state.loading || state.saving}
+            className="text-xs px-2 py-1 rounded text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
+          >
+            Prev Segment
+          </button>
+          <span className="text-xs text-slate-400">
+            Segment {state.currentSegmentIndex + 1} / {state.segmentTargets.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => void navigateToNextSegment()}
+            disabled={!state.nextTranscriptId || state.loading || state.saving}
+            className="text-xs px-2 py-1 rounded text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
+          >
+            Next Segment
+          </button>
+        </div>
+      )}
 
       {/* Save state indicator */}
       <div className="flex items-center gap-2 ml-auto">

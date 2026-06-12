@@ -14,7 +14,11 @@ import type {
   Speaker,
 } from "../api/types";
 import type { ChangeLogEntry, ChangeSource } from "../types";
-import { workspaceApi, type WorkspaceAudioSegment } from "../api/workspaceService";
+import {
+  workspaceApi,
+  type WorkspaceAudioSegment,
+  type WorkspaceSegmentTarget,
+} from "../api/workspaceService";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -33,6 +37,11 @@ interface State {
   jobUpdatedAt: string | null;
   speakerMapConfirmed: boolean;
   audioSegments: WorkspaceAudioSegment[];
+  segmentTargets: WorkspaceSegmentTarget[];
+  currentSegmentIndex: number;
+  currentTranscriptId: string | null;
+  previousTranscriptId: string | null;
+  nextTranscriptId: string | null;
   changeLog: ChangeLogEntry[];
   activeUtteranceId: UtteranceId | null;
   workingTexts: Record<UtteranceId, string>;
@@ -42,7 +51,18 @@ interface State {
 
 type Action =
   | { type: "LOAD_START" }
-  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; audioSegments: WorkspaceAudioSegment[] }
+  | {
+      type: "LOAD_OK";
+      doc: EditorDocument;
+      updatedAt: string | null;
+      speakerMapConfirmed: boolean;
+      audioSegments: WorkspaceAudioSegment[];
+      segmentTargets: WorkspaceSegmentTarget[];
+      currentSegmentIndex: number;
+      currentTranscriptId: string;
+      previousTranscriptId: string | null;
+      nextTranscriptId: string | null;
+    }
   | { type: "LOAD_ERR"; error: string }
   | { type: "UPDATE_MEDIA_URL"; mediaUrl: string; segmentIndex: number }
   | { type: "SET_ACTIVE"; id: UtteranceId | null }
@@ -88,6 +108,11 @@ export function documentReducer(state: State, action: Action): State {
         jobUpdatedAt: action.updatedAt,
         speakerMapConfirmed: action.speakerMapConfirmed,
         audioSegments: action.audioSegments,
+        segmentTargets: action.segmentTargets,
+        currentSegmentIndex: action.currentSegmentIndex,
+        currentTranscriptId: action.currentTranscriptId,
+        previousTranscriptId: action.previousTranscriptId,
+        nextTranscriptId: action.nextTranscriptId,
       };
 
     case "LOAD_ERR":
@@ -198,6 +223,8 @@ export function documentReducer(state: State, action: Action): State {
 interface ContextValue {
   state: State;
   loadDocument: () => Promise<void>;
+  navigateToPreviousSegment: () => Promise<void>;
+  navigateToNextSegment: () => Promise<void>;
   refreshMediaUrl: (segmentIndex?: number) => Promise<string | null>;
   setActive: (id: UtteranceId | null) => void;
   editUtterance: (utterance_id: UtteranceId, old_text: string, new_text: string) => void;
@@ -233,6 +260,11 @@ export function createInitialDocumentState(jobId: string): State {
     jobUpdatedAt: null,
     speakerMapConfirmed: false,
     audioSegments: [],
+    segmentTargets: [],
+    currentSegmentIndex: 0,
+    currentTranscriptId: null,
+    previousTranscriptId: null,
+    nextTranscriptId: null,
     changeLog: [],
     activeUtteranceId: null,
     workingTexts: {},
@@ -251,18 +283,25 @@ export function DocumentProvider({
   const [state, dispatch] = useReducer(documentReducer, createInitialDocumentState(jobId));
 
   const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const selectedTranscriptIdRef = useRef<string | null>(null);
 
   const loadDocument = useCallback(async () => {
     dispatch({ type: "LOAD_START" });
     try {
-      const loaded = await workspaceApi.getDocument(jobId);
+      const loaded = await workspaceApi.getDocument(selectedTranscriptIdRef.current ?? jobId);
       console.info("[DEPO-PRO] EditorDocument loaded:", loaded.document);
+      selectedTranscriptIdRef.current = loaded.currentTranscriptId;
       dispatch({
         type: "LOAD_OK",
         doc: loaded.document,
         updatedAt: loaded.updatedAt,
         speakerMapConfirmed: loaded.speakerMapConfirmed,
         audioSegments: loaded.audioSegments,
+        segmentTargets: loaded.segmentTargets,
+        currentSegmentIndex: loaded.currentSegmentIndex,
+        currentTranscriptId: loaded.currentTranscriptId,
+        previousTranscriptId: loaded.previousTranscriptId,
+        nextTranscriptId: loaded.nextTranscriptId,
       });
     } catch (e) {
       dispatch({ type: "LOAD_ERR", error: String(e) });
@@ -274,7 +313,7 @@ export function DocumentProvider({
   }, []);
 
   const refreshMediaUrl = useCallback(async (segmentIndex = 0) => {
-    const loaded = await workspaceApi.getDocument(jobId);
+    const loaded = await workspaceApi.getDocument(selectedTranscriptIdRef.current ?? jobId);
     const nextMediaUrl = loaded.audioSegments[segmentIndex]?.mediaUrl ?? loaded.document.media_url ?? "";
     dispatch({ type: "UPDATE_MEDIA_URL", mediaUrl: nextMediaUrl, segmentIndex });
     return nextMediaUrl;
@@ -325,21 +364,62 @@ export function DocumentProvider({
     const savedSeq = state.editSeq;
     dispatch({ type: "SAVE_START" });
     try {
-      const result = await workspaceApi.saveWorking(jobId, { changes, source: "editor" }, {
+      const result = await workspaceApi.saveWorking(selectedTranscriptIdRef.current ?? jobId, { changes, source: "editor" }, {
         lastKnownUpdatedAt: state.jobUpdatedAt,
       });
       dispatch({ type: "SAVE_OK", savedSeq, updatedAt: result.updatedAt });
     } catch (e) {
       dispatch({ type: "SAVE_ERR", error: String(e) });
+      throw e;
     }
   }, [jobId, state.dirty, state.document, state.editSeq, state.jobUpdatedAt, state.saving, state.workingTexts]);
+
+  const navigateToTranscript = useCallback(async (transcriptId: string | null) => {
+    if (!transcriptId || transcriptId === selectedTranscriptIdRef.current) {
+      return;
+    }
+
+    if (state.dirty) {
+      await saveNow();
+    }
+
+    selectedTranscriptIdRef.current = transcriptId;
+    dispatch({ type: "LOAD_START" });
+    try {
+      const loaded = await workspaceApi.getDocument(transcriptId);
+      selectedTranscriptIdRef.current = loaded.currentTranscriptId;
+      dispatch({
+        type: "LOAD_OK",
+        doc: loaded.document,
+        updatedAt: loaded.updatedAt,
+        speakerMapConfirmed: loaded.speakerMapConfirmed,
+        audioSegments: loaded.audioSegments,
+        segmentTargets: loaded.segmentTargets,
+        currentSegmentIndex: loaded.currentSegmentIndex,
+        currentTranscriptId: loaded.currentTranscriptId,
+        previousTranscriptId: loaded.previousTranscriptId,
+        nextTranscriptId: loaded.nextTranscriptId,
+      });
+    } catch (error) {
+      dispatch({ type: "LOAD_ERR", error: String(error) });
+      throw error;
+    }
+  }, [saveNow, state.dirty]);
+
+  const navigateToPreviousSegment = useCallback(async () => {
+    await navigateToTranscript(state.previousTranscriptId);
+  }, [navigateToTranscript, state.previousTranscriptId]);
+
+  const navigateToNextSegment = useCallback(async () => {
+    await navigateToTranscript(state.nextTranscriptId);
+  }, [navigateToTranscript, state.nextTranscriptId]);
 
   // Auto-save after 2 s of inactivity
   useEffect(() => {
     if (!state.dirty) return;
     if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
     pendingSaveRef.current = setTimeout(() => {
-      void saveNow();
+      void saveNow().catch(() => undefined);
     }, 2000);
     return () => {
       if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
@@ -402,6 +482,8 @@ export function DocumentProvider({
     () => ({
       state,
       loadDocument,
+      navigateToPreviousSegment,
+      navigateToNextSegment,
       refreshMediaUrl,
       setActive,
       editUtterance,
@@ -414,7 +496,7 @@ export function DocumentProvider({
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, navigateToPreviousSegment, navigateToNextSegment, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

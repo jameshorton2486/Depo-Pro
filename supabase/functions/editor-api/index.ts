@@ -22,6 +22,7 @@ type TranscriptRow = {
   media_url: string | null;
   duration: number | null;
   duration_seconds?: number | null;
+  based_on?: string | null;
 };
 
 type TranscriptSpeakerRow = {
@@ -62,6 +63,7 @@ type TranscriptWordRow = {
 };
 
 type CaseAudioRow = {
+  audio_id?: string | null;
   storage_path: string | null;
   media_url: string | null;
 };
@@ -175,7 +177,7 @@ async function requireTranscript(
 ): Promise<TranscriptRow> {
   const { data, error } = await supabase
     .from("transcripts")
-    .select("transcript_id, case_id, job_id, media_url, duration, duration_seconds")
+    .select("transcript_id, case_id, job_id, media_url, duration, duration_seconds, based_on")
     .eq("transcript_id", jobId)
     .maybeSingle();
 
@@ -294,9 +296,9 @@ async function resolveMediaUrl(
 ): Promise<string> {
   const { data, error } = await supabase
     .from("case_audio")
-    .select("storage_path, media_url, uploaded_at")
+    .select("audio_id, storage_path, media_url")
     .eq("case_id", transcript.case_id)
-    .order("uploaded_at", { ascending: false })
+    .eq("audio_id", transcript.based_on ?? "")
     .limit(1)
     .maybeSingle();
 
