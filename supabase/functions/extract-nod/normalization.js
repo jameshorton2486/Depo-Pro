@@ -5,30 +5,85 @@ export function clampConfidence(value) {
   return Math.max(0, Math.min(1, value));
 }
 
-export function normalizeStringField(field) {
+function hasFieldEnvelope(field) {
+  return typeof field === "object" && field !== null && !Array.isArray(field) && "value" in field;
+}
+
+export function coerceExtractionField(field, options = {}) {
+  const confidence = clampConfidence(options.confidence ?? (hasFieldEnvelope(field) ? field.confidence : null));
+  const inferred = options.inferred === true || (hasFieldEnvelope(field) && field.inferred === true) || undefined;
+  if (hasFieldEnvelope(field)) {
+    return {
+      value: field.value ?? null,
+      confidence,
+      inferred,
+    };
+  }
+
+  if (field === undefined) {
+    return {
+      value: null,
+      confidence,
+      inferred,
+    };
+  }
+
   return {
-    value: field && typeof field.value === "string" && field.value.trim() ? field.value.trim() : null,
-    confidence: clampConfidence(field?.confidence),
-    inferred: field?.inferred === true || undefined,
+    value: field ?? null,
+    confidence: field == null ? confidence : confidence ?? 1,
+    inferred,
   };
 }
 
-export function normalizeStringArrayField(field) {
-  const value = Array.isArray(field?.value)
-    ? field.value.map((item) => typeof item === "string" ? item.trim() : "").filter(Boolean)
+function parseStringArrayCandidate(value) {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeStringField(field, options = {}) {
+  const coerced = coerceExtractionField(field, options);
+  return {
+    value: typeof coerced.value === "string" && coerced.value.trim() ? coerced.value.trim() : null,
+    confidence: coerced.confidence,
+    inferred: coerced.inferred,
+  };
+}
+
+export function normalizeStringArrayField(field, options = {}) {
+  const coerced = coerceExtractionField(field, options);
+  const value = Array.isArray(coerced.value)
+    ? coerced.value.map((item) => typeof item === "string" ? item.trim() : "").filter(Boolean)
     : [];
   return {
     value: value.length > 0 ? value : null,
-    confidence: clampConfidence(field?.confidence),
-    inferred: field?.inferred === true || undefined,
+    confidence: coerced.confidence,
+    inferred: coerced.inferred,
   };
 }
 
-export function normalizeBooleanField(field) {
+export function normalizeBooleanField(field, options = {}) {
+  const coerced = coerceExtractionField(field, options);
   return {
-    value: typeof field?.value === "boolean" ? field.value : null,
-    confidence: clampConfidence(field?.confidence),
-    inferred: field?.inferred === true || undefined,
+    value: typeof coerced.value === "boolean" ? coerced.value : null,
+    confidence: coerced.confidence,
+    inferred: coerced.inferred,
   };
 }
 
@@ -173,8 +228,15 @@ export function mapReportingMethod(value, isRemote, platform, sourceText = "") {
 }
 
 export function normalizeSide(value) {
-  if (value === "plaintiff" || value === "defense" || value === "other") {
-    return value;
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "plaintiff") {
+    return "plaintiff";
+  }
+  if (normalized === "defense" || normalized === "defendant") {
+    return "defense";
+  }
+  if (normalized === "other") {
+    return "other";
   }
   return null;
 }
@@ -208,7 +270,12 @@ export function inferAttorneySide(representing, plaintiff, defendants, attorneyF
 }
 
 export function normalizeDefendants(field, caseStyle) {
-  const normalized = normalizeStringArrayField(field);
+  const parsedValue = hasFieldEnvelope(field)
+    ? (parseStringArrayCandidate(field.value) ?? field.value)
+    : (parseStringArrayCandidate(field) ?? field);
+  const normalized = normalizeStringArrayField(
+    hasFieldEnvelope(field) ? { ...field, value: parsedValue } : parsedValue,
+  );
   if (normalized.value && normalized.value.length > 0) {
     return {
       ...normalized,
@@ -364,12 +431,13 @@ function toRawField(field) {
 }
 
 export function normalizeSideField(field, representing, plaintiff, defendants, attorneyFirm, plaintiffFirms) {
-  const explicitValue = field?.value === "" ? null : normalizeSide(field?.value);
+  const coerced = coerceExtractionField(field);
+  const explicitValue = coerced.value === "" ? null : normalizeSide(coerced.value);
   if (explicitValue) {
     return {
       value: explicitValue,
-      confidence: clampConfidence(field?.confidence),
-      inferred: field?.inferred === true || undefined,
+      confidence: coerced.confidence,
+      inferred: coerced.inferred,
     };
   }
 
@@ -377,8 +445,8 @@ export function normalizeSideField(field, representing, plaintiff, defendants, a
   if (!inferredValue) {
     return {
       value: null,
-      confidence: clampConfidence(field?.confidence),
-      inferred: field?.inferred === true || undefined,
+      confidence: coerced.confidence,
+      inferred: coerced.inferred,
     };
   }
 
@@ -459,6 +527,12 @@ export function normalizeLawFirm(lawFirm) {
 }
 
 export function normalizeFields(raw, sourceText = "") {
+  const location = raw.location ?? {};
+  const remote = raw.remote ?? {};
+  const witness = raw.witness ?? {};
+  const scheduling = raw.scheduling ?? {};
+  const service = raw.service ?? {};
+  const reporterRequests = raw.reporter_requests ?? {};
   const caseStyle = normalizeStringField(raw.case_style);
   const plaintiff = normalizeStringField(raw.plaintiff);
   const defendants = normalizeDefendants(raw.defendants, caseStyle.value);
@@ -467,7 +541,7 @@ export function normalizeFields(raw, sourceText = "") {
   const depositionDate = normalizeDateField(raw.deposition_date);
   const startTime = normalizeTimeField(raw.start_time);
   const endTime = normalizeTimeField(raw.end_time);
-  const reportingMethod = normalizeReportingMethodField(raw.reporting_method, { ...raw.remote, sourceText });
+  const reportingMethod = normalizeReportingMethodField(raw.reporting_method, { ...remote, sourceText });
   const courtName = normalizeCourtNameField(raw.court_name);
 
   const rawAttorneys = Array.isArray(raw.attorneys) ? raw.attorneys : [];
@@ -475,7 +549,7 @@ export function normalizeFields(raw, sourceText = "") {
 
   const plaintiffFirms = rawAttorneys
     .map((attorney) => {
-      const side = normalizeSide(attorney?.side?.value);
+      const side = normalizeSide(coerceExtractionField(attorney?.side).value);
       if (side !== "plaintiff") {
         return null;
       }
@@ -499,53 +573,59 @@ export function normalizeFields(raw, sourceText = "") {
     start_time: startTime,
     end_time: endTime,
     location: {
-      address: normalizeStringField(raw.location.address),
-      city: normalizeStringField(raw.location.city),
-      state: normalizeStringField(raw.location.state),
-      zip: normalizeStringField(raw.location.zip),
+      address: normalizeStringField(location.address),
+      city: normalizeStringField(location.city),
+      state: normalizeStringField(location.state),
+      zip: normalizeStringField(location.zip),
     },
     remote: {
-      is_remote: normalizeBooleanField(raw.remote.is_remote),
-      platform: normalizeStringField(raw.remote.platform),
+      is_remote: normalizeBooleanField(remote.is_remote),
+      platform: normalizeStringField(remote.platform),
     },
     reporting_method: reportingMethod,
     witness: {
-      name: normalizeStringField(raw.witness.name),
-      role: normalizeStringField(raw.witness.role),
-      party_affiliation: normalizeStringField(raw.witness.party_affiliation),
-      read_and_sign: normalizeStringField(raw.witness.read_and_sign),
-      interpreter_required: normalizeBooleanField(raw.witness.interpreter_required),
-      videographer_required: normalizeBooleanField(raw.witness.videographer_required),
+      name: normalizeStringField(witness.name),
+      role: normalizeStringField(witness.role),
+      party_affiliation: normalizeStringField(witness.party_affiliation),
+      read_and_sign: normalizeStringField(witness.read_and_sign),
+      interpreter_required: normalizeBooleanField(witness.interpreter_required),
+      videographer_required: normalizeBooleanField(witness.videographer_required),
     },
     parties: Array.isArray(raw.parties) ? raw.parties.map(normalizeParty) : [],
     attorneys: mergeAttorneysWithBackfill(rawAttorneys, sourceText, plaintiff.value, defendants.value, plaintiffFirms),
     law_firms: Array.isArray(raw.law_firms) ? raw.law_firms.map(normalizeLawFirm) : [],
     scheduling: {
-      proceeding_type: normalizeStringField(raw.scheduling?.proceeding_type),
-      remote_platform: normalizeStringField(raw.scheduling?.remote_platform),
-      noticing_party: normalizeStringField(raw.scheduling?.noticing_party),
-      ordered_by: normalizeStringField(raw.scheduling?.ordered_by),
-      scheduler: normalizeStringField(raw.scheduling?.scheduler),
-      scheduling_contact: normalizeStringField(raw.scheduling?.scheduling_contact),
-      service_type: normalizeStringField(raw.scheduling?.service_type),
-      time_zone: normalizeStringField(raw.scheduling?.time_zone),
-      remote_location: normalizeStringField(raw.scheduling?.remote_location),
+      proceeding_type: normalizeStringField(scheduling.proceeding_type),
+      remote_platform: normalizeStringField(scheduling.remote_platform),
+      noticing_party: normalizeStringField(scheduling.noticing_party),
+      ordered_by: normalizeStringField(scheduling.ordered_by),
+      scheduler: normalizeStringField(scheduling.scheduler),
+      scheduling_contact: normalizeStringField(scheduling.scheduling_contact),
+      service_type: normalizeStringField(scheduling.service_type),
+      time_zone: normalizeStringField(scheduling.time_zone),
+      remote_location: normalizeStringField(scheduling.remote_location),
     },
     service: {
-      certificate_of_service: normalizeBooleanField(raw.service?.certificate_of_service),
-      service_date: normalizeDateField(raw.service?.service_date),
-      served_parties: normalizeStringArrayField(raw.service?.served_parties),
-      service_emails: normalizeStringArrayField(raw.service?.service_emails),
+      certificate_of_service: normalizeBooleanField(service.certificate_of_service),
+      service_date: normalizeDateField(service.service_date),
+      served_parties: normalizeStringArrayField(service.served_parties, {
+        confidence: service.served_parties_confidence,
+        inferred: service.served_parties_inferred,
+      }),
+      service_emails: normalizeStringArrayField(service.service_emails, {
+        confidence: service.service_emails_confidence,
+        inferred: service.service_emails_inferred,
+      }),
     },
     reporter_requests: {
-      certified_reporter_required: normalizeBooleanField(raw.reporter_requests?.certified_reporter_required),
-      stenographic_recording: normalizeBooleanField(raw.reporter_requests?.stenographic_recording),
-      audiovisual_recording: normalizeBooleanField(raw.reporter_requests?.audiovisual_recording),
-      realtime_requested: normalizeBooleanField(raw.reporter_requests?.realtime_requested),
-      expedited_delivery: normalizeBooleanField(raw.reporter_requests?.expedited_delivery),
-      rush_delivery: normalizeBooleanField(raw.reporter_requests?.rush_delivery),
-      daily_copy: normalizeBooleanField(raw.reporter_requests?.daily_copy),
-      rough_draft: normalizeBooleanField(raw.reporter_requests?.rough_draft),
+      certified_reporter_required: normalizeBooleanField(reporterRequests.certified_reporter_required),
+      stenographic_recording: normalizeBooleanField(reporterRequests.stenographic_recording),
+      audiovisual_recording: normalizeBooleanField(reporterRequests.audiovisual_recording),
+      realtime_requested: normalizeBooleanField(reporterRequests.realtime_requested),
+      expedited_delivery: normalizeBooleanField(reporterRequests.expedited_delivery),
+      rush_delivery: normalizeBooleanField(reporterRequests.rush_delivery),
+      daily_copy: normalizeBooleanField(reporterRequests.daily_copy),
+      rough_draft: normalizeBooleanField(reporterRequests.rough_draft),
     },
     other_participants: rawParticipants.map(normalizeParticipant),
   };

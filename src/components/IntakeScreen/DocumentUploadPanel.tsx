@@ -20,7 +20,7 @@ import type { ExtractionDebugPayload } from "../../lib/parsing/aiExtractionTypes
 import { applyExtraction } from "../../lib/parsing/applyExtraction";
 import { applyJobSheetExtraction } from "../../lib/parsing/applyJobSheetExtraction";
 import { parseReporterNotes } from "../../lib/parsing/reporterNotesParser";
-import type { CaseAudio } from "../../types/case";
+import type { CaseAudio, CaseRecord } from "../../types/case";
 import type { FieldProvenanceRow, ProvenanceEventType } from "../conflict/types";
 import { intakeReducer } from "../../store/intakeReducer";
 import { harvestKeyterms } from "../../lib/keyterms/harvestKeyterms";
@@ -48,6 +48,8 @@ type ExtractionDiagnostics = {
   textPreview: string;
   docType: "nod" | "jobsheet";
   rawOutput: Record<string, unknown> | null;
+  normalizedOutput: Record<string, unknown> | null;
+  appliedOutput: Record<string, unknown> | null;
 };
 
 type DocumentUploadPanelProps = {
@@ -148,6 +150,49 @@ function formatUploadedAt(value: string | null): string | null {
     return null;
   }
   return parsed.toLocaleString();
+}
+
+function buildAppliedSnapshot(record: CaseRecord): Record<string, unknown> {
+  return {
+    cause_number: record.caption.case_number.value,
+    case_style: record.caption.case_style.value,
+    court_name: record.caption.court_name.value,
+    district: record.caption.judicial_district.value,
+    division: record.caption.division.value,
+    county: record.caption.county.value,
+    state: record.caption.state.value,
+    deposition_date: record.session.deposition_date.value,
+    start_time: record.session.start_time.value,
+    end_time: record.session.end_time.value,
+    reporting_method: record.session.reporting_method.value,
+    location: {
+      address: record.session.location_address.value,
+      city: record.session.location_city.value,
+      state: record.session.location_state.value,
+      zip: record.session.location_zip.value,
+    },
+    witnesses: record.witnesses.map((witness) => ({
+      name: witness.name.value,
+      role: witness.role.value,
+      party_affiliation: witness.party_affiliation.value,
+    })),
+    parties: record.parties.map((party) => ({
+      name: party.name.value,
+      role: party.role.value,
+    })),
+    attorneys: record.attorneys.map((attorney) => ({
+      name: attorney.name.value,
+      role: attorney.role.value,
+      representing: attorney.representing.value,
+      firm: attorney.firm.value,
+    })),
+    scheduling: {
+      noticing_party: record.scheduling.noticing_party.value,
+      ordered_by: record.scheduling.ordered_by.value,
+      scheduler: record.scheduling.scheduler.value,
+      scheduling_contact: record.scheduling.scheduling_contact.value,
+    },
+  };
 }
 
 function UploadCard({
@@ -706,13 +751,19 @@ export function DocumentUploadPanel({
   function buildDiagnostics(
     text: string,
     docType: "nod" | "jobsheet",
-    rawDebug?: ExtractionDebugPayload | null,
+    options?: {
+      rawDebug?: ExtractionDebugPayload | null;
+      normalizedOutput?: Record<string, unknown> | null;
+      appliedOutput?: Record<string, unknown> | null;
+    },
   ): ExtractionDiagnostics {
     return {
       textLength: text.length,
       textPreview: text.slice(0, TEXT_PREVIEW_CHARS),
       docType,
-      rawOutput: rawDebug?.rawModelOutput ?? null,
+      rawOutput: options?.rawDebug?.rawModelOutput ?? null,
+      normalizedOutput: options?.normalizedOutput ?? null,
+      appliedOutput: options?.appliedOutput ?? null,
     };
   }
 
@@ -733,10 +784,18 @@ export function DocumentUploadPanel({
       if ("error" in extraction) {
         throw new Error(`Extraction failed: ${extraction.error}. You can enter fields manually.`);
       }
-      setExtractDiagnosticsState(slotId, buildDiagnostics(text, "nod", extraction.debug));
+      setExtractDiagnosticsState(slotId, buildDiagnostics(text, "nod", { rawDebug: extraction.debug }));
 
       const application = applyExtraction(extraction.fields, record);
       const nextState = previewExtractionState(application);
+      setExtractDiagnosticsState(
+        slotId,
+        buildDiagnostics(text, "nod", {
+          rawDebug: extraction.debug,
+          normalizedOutput: extraction.fields as unknown as Record<string, unknown>,
+          appliedOutput: buildAppliedSnapshot(nextState.record),
+        }),
+      );
 
       const result = await applyAndPersistExtraction({
         caseId: record.case_id,
@@ -1034,9 +1093,26 @@ export function DocumentUploadPanel({
                             <p>Doc type: <span className="font-semibold text-slate-800">{extractDiagnostics[slot.id]?.docType}</span></p>
                             <p>Text length: <span className="font-semibold text-slate-800">{extractDiagnostics[slot.id]?.textLength.toLocaleString()}</span></p>
                           </div>
-                          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[10px] text-slate-700">
-                            {JSON.stringify(extractDiagnostics[slot.id]?.rawOutput, null, 2) || "No raw model output captured."}
-                          </pre>
+                          <div className="mt-2 grid gap-2 lg:grid-cols-3">
+                            <div>
+                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Raw</p>
+                              <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-slate-200 bg-slate-50 p-2 text-[10px] text-slate-700">
+                                {JSON.stringify(extractDiagnostics[slot.id]?.rawOutput, null, 2) || "No raw model output captured."}
+                              </pre>
+                            </div>
+                            <div>
+                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Normalized</p>
+                              <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-slate-200 bg-slate-50 p-2 text-[10px] text-slate-700">
+                                {JSON.stringify(extractDiagnostics[slot.id]?.normalizedOutput, null, 2) || "No normalized extraction captured."}
+                              </pre>
+                            </div>
+                            <div>
+                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Applied Preview</p>
+                              <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-slate-200 bg-slate-50 p-2 text-[10px] text-slate-700">
+                                {JSON.stringify(extractDiagnostics[slot.id]?.appliedOutput, null, 2) || "No applied preview captured."}
+                              </pre>
+                            </div>
+                          </div>
                         </details>
                       )}
                     </div>
