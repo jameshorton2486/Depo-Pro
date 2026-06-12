@@ -402,6 +402,7 @@ function applyAttorneyExtraction(
 
     const existing = record.attorneys.find((item) => normalizeName(item.name.value) === normalized);
     const representing = composeRepresenting(attorney, plaintiff, defenseParties);
+    const resolvedRole = resolveAttorneyRole(attorney, plaintiff, defenseParties, representing);
 
     if (existing) {
       const patch: Partial<Omit<Attorney, "attorney_id">> = {};
@@ -414,7 +415,7 @@ function applyAttorneyExtraction(
       if (!existing.zip && valueOf(attorney.zip)) patch.zip = cleanupValue(valueOf(attorney.zip)) || null;
       if (!existing.email && valueOf(attorney.email)) patch.email = cleanupValue(valueOf(attorney.email)) || null;
       if (!existing.phone && valueOf(attorney.phone)) patch.phone = cleanupValue(valueOf(attorney.phone)) || null;
-      if (!cleanupValue(existing.role.value)) patch.role = extractedField(mapAttorneyRole(valueOf(attorney.side)), confidenceOf(attorney.side));
+      if (!cleanupValue(existing.role.value)) patch.role = extractedField(resolvedRole, confidenceOf(attorney.side, attorney.representing));
       if (Object.keys(patch).length > 0) {
         attorneyPatches.push({ attorney_id: existing.attorney_id, patch });
       }
@@ -425,7 +426,7 @@ function applyAttorneyExtraction(
       attorney: {
         name: extractedField(attorneyName, confidenceOf(attorney.name)),
         firm: extractedField(orNull(valueOf(attorney.firm)), confidenceOf(attorney.firm)),
-        role: extractedField(mapAttorneyRole(valueOf(attorney.side)), confidenceOf(attorney.side)),
+        role: extractedField(resolvedRole, confidenceOf(attorney.side, attorney.representing)),
         representing: extractedField(orNull(representing), confidenceOf(attorney.representing, attorney.side)),
         bar_number: extractedField(orNull(valueOf(attorney.bar_number)), confidenceOf(attorney.bar_number)),
         address: orNull(valueOf(attorney.address)),
@@ -935,6 +936,48 @@ function mapAttorneyRole(side: "plaintiff" | "defense" | "other" | null): Attorn
   if (side === "plaintiff") return "EXAMINING";
   if (side === "defense") return "OPPOSING";
   return "OTHER";
+}
+
+function inferAttorneySideFromRepresentation(
+  representing: string,
+  plaintiff: string,
+  defenseParties: string[],
+): "plaintiff" | "defense" | "other" | null {
+  const normalized = cleanupValue(representing).toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (plaintiff && normalized.includes(plaintiff.toLowerCase())) {
+    return "plaintiff";
+  }
+  if (normalized.includes("plaintiff")) {
+    return "plaintiff";
+  }
+  if (normalized.includes("defendant") || normalized.includes("defense")) {
+    return "defense";
+  }
+  if (defenseParties.some((party) => {
+    const candidate = cleanupValue(party).toLowerCase();
+    const baseCandidate = candidate.split(/\s+a\/k\/a\s+/i)[0] ?? candidate;
+    return normalized.includes(candidate) || normalized.includes(baseCandidate);
+  })) {
+    return "defense";
+  }
+  return null;
+}
+
+function resolveAttorneyRole(
+  attorney: ExtractedAttorney,
+  plaintiff: string,
+  defenseParties: string[],
+  representing: string,
+): Attorney["role"]["value"] {
+  const explicitSide = valueOf(attorney.side);
+  if (explicitSide === "plaintiff" || explicitSide === "defense") {
+    return mapAttorneyRole(explicitSide);
+  }
+
+  return mapAttorneyRole(inferAttorneySideFromRepresentation(representing, plaintiff, defenseParties));
 }
 
 function sanitizeValue(value: unknown): unknown {
