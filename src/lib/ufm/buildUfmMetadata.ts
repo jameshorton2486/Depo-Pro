@@ -194,8 +194,16 @@ function hasValue(field: ExtractedField<string | null>): boolean {
   return normalizeValue(field.value) !== null;
 }
 
-function firstPopulatedField(fields: ExtractedField<string | null>[]) {
-  return fields.find(hasValue) ?? null;
+function hasCustodialAttorneyFunction(field: string | string[] | null | undefined): boolean {
+  if (Array.isArray(field)) {
+    return field.includes("CUSTODIAL_ATTORNEY");
+  }
+  return field === "CUSTODIAL_ATTORNEY";
+}
+
+function findCustodialAttorneyField(record: CaseRecord) {
+  const attorney = record.attorneys.find((candidate) => hasCustodialAttorneyFunction(candidate.function?.value));
+  return attorney?.name ?? null;
 }
 
 function joinLocation(record: CaseRecord): string | null {
@@ -501,11 +509,7 @@ export function buildUfmMetadata(args: {
   const depositionDate = normalizeValue(record.session.deposition_date.value);
   const dateParts = computeDateParts(depositionDate);
   const requestingPartyField = hasValue(record.scheduling.noticing_party) ? record.scheduling.noticing_party : null;
-  const custodialAttorneyField = firstPopulatedField([
-    record.scheduling.ordered_by,
-    record.scheduling.scheduler,
-    record.scheduling.scheduling_contact,
-  ]);
+  const custodialAttorneyField = findCustodialAttorneyField(record);
 
   const ufm_metadata: UfmMetadataEnvelope["ufm_metadata"] = {
     cause_number: normalizeValue(record.caption.case_number.value),
@@ -577,17 +581,7 @@ export function buildUfmMetadata(args: {
     ufmFirmRegistration: effectiveReporterProfile ? "profile" : mapFieldSource(record.reporter.firm_registration_number, "profile"),
     ufmCsrCertExpiration: effectiveReporterProfile ? "profile" : mapFieldSource(record.reporter.license_expiration, "profile"),
     ufmCustodialAttorney: custodialAttorneyField
-      ? mapFieldSource(
-          custodialAttorneyField,
-          sourceForPath(
-            provenance,
-            custodialAttorneyField === record.scheduling.ordered_by
-              ? "scheduling.ordered_by"
-              : custodialAttorneyField === record.scheduling.scheduler
-                ? "scheduling.scheduler"
-                : "scheduling.scheduling_contact",
-          ),
-        )
+      ? mapFieldSource(custodialAttorneyField, "manual")
       : "manual",
     ufmRequestingParty: requestingPartyField
       ? mapFieldSource(requestingPartyField, sourceForPath(provenance, "scheduling.noticing_party"))
