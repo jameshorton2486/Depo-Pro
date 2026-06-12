@@ -289,6 +289,20 @@ export async function listCompletedTranscriptJobsBySequence(caseId: string): Pro
   return (data ?? []) as unknown as TranscriptJobRow[];
 }
 
+export async function loadOrderedTranscriptSnapshotsForCase(caseId: string): Promise<Array<{
+  job: TranscriptJobRow;
+  speakers: TranscriptSpeakerRow[];
+  utterances: TranscriptUtteranceRow[];
+  words: TranscriptWordRow[];
+}>> {
+  const jobs = await listCompletedTranscriptJobsBySequence(caseId);
+  const snapshots = await Promise.all(
+    jobs.map((job) => loadTranscriptSnapshot(job.job_id)),
+  );
+
+  return snapshots.filter((snapshot): snapshot is NonNullable<typeof snapshot> => snapshot !== null);
+}
+
 export async function loadTranscriptSnapshot(jobId: string): Promise<{
   job: TranscriptJobRow;
   speakers: TranscriptSpeakerRow[];

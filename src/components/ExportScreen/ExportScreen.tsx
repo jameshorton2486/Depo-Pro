@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Download, FileArchive, FileText } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
+import { loadOrderedTranscriptSnapshotsForCase } from "../../api/transcriptRepository";
+import type { EditorDocument } from "../../api/types";
+import { buildExportTranscriptText, countExportWords, type ExportSegmentDocument } from "./exportAssembly";
 
 interface GeneratedArtifact {
   name: string;
@@ -30,6 +33,9 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const { record } = useIntake();
   const { setStage } = useStage();
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
+  const [exportSegments, setExportSegments] = useState<ExportSegmentDocument[]>([]);
+  const [loadingExport, setLoadingExport] = useState(true);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const certificationReady = useMemo(() => {
     try {
@@ -46,18 +52,56 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     }
   }, [jobId]);
 
-  const transcriptText = useMemo(() => {
-    if (!docState.document) return "";
-    const wordsById = Object.fromEntries(docState.document.words.map((w) => [w.word_id, w]));
-    return docState.document.utterances
-      .map((utterance) => {
-        const words = utterance.word_ids
-          .map((wordId) => wordsById[wordId]?.text ?? "")
-          .join(" ");
-        return `${utterance.utterance_id} [${utterance.speaker_id}]: ${words}`;
-      })
-      .join("\n");
-  }, [docState.document]);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadExportSegments() {
+      setLoadingExport(true);
+      setExportError(null);
+      try {
+        const snapshots = await loadOrderedTranscriptSnapshotsForCase(jobId);
+        if (cancelled) {
+          return;
+        }
+
+        setExportSegments(snapshots.map((snapshot) => ({
+          transcriptId: snapshot.job.transcript_id,
+          sequenceIndex: snapshot.job.sequence_index,
+          sourceFilename: snapshot.job.source_filename,
+          document: buildEditorDocumentFromSnapshot(snapshot),
+        })));
+      } catch (error) {
+        if (!cancelled) {
+          setExportError(error instanceof Error ? error.message : "Could not load ordered transcript segments.");
+          setExportSegments(docState.document ? [{
+            transcriptId: docState.document.job_id,
+            sequenceIndex: 0,
+            sourceFilename: null,
+            document: docState.document,
+          }] : []);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingExport(false);
+        }
+      }
+    }
+
+    void loadExportSegments();
+    return () => {
+      cancelled = true;
+    };
+  }, [docState.document, jobId]);
+
+  const transcriptText = useMemo(
+    () => buildExportTranscriptText(exportSegments),
+    [exportSegments],
+  );
+
+  const exportWordCount = useMemo(
+    () => countExportWords(exportSegments),
+    [exportSegments],
+  );
 
   const packageJson = useMemo(
     () =>
@@ -68,12 +112,12 @@ export function ExportScreen({ jobId }: { jobId: string }) {
           case_number: record.caption.case_number.value,
           generated_at: new Date().toISOString(),
           transcript_text: transcriptText,
-          word_count: docState.document?.words.length ?? 0,
+          word_count: exportWordCount,
         },
         null,
         2
       ),
-    [docState.document, jobId, record.caption.case_name.value, record.caption.case_number.value, transcriptText]
+    [exportWordCount, jobId, record.caption.case_name.value, record.caption.case_number.value, transcriptText]
   );
 
   return (
@@ -98,6 +142,14 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 ? "Certification is complete. Export actions are enabled."
                 : "Certification must be completed before export actions can be used."}
             </p>
+            {loadingExport && (
+              <p className="mt-2 text-sm text-slate-500">Loading ordered transcript segments…</p>
+            )}
+            {exportError && (
+              <p className="mt-2 text-sm text-amber-700">
+                Export used the current workspace segment because the full ordered segment load failed: {exportError}
+              </p>
+            )}
           </section>
 
           <section className="grid gap-4 md:grid-cols-2">
@@ -111,7 +163,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               </p>
               <button
                 type="button"
-                disabled={!certificationReady || !docState.document}
+                disabled={!certificationReady || loadingExport || exportSegments.length === 0}
                 onClick={() =>
                   setLastArtifact(
                     downloadBlob(
@@ -138,7 +190,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               </p>
               <button
                 type="button"
-                disabled={!certificationReady || !docState.document}
+                disabled={!certificationReady || loadingExport || exportSegments.length === 0}
                 onClick={() =>
                   setLastArtifact(
                     downloadBlob(
@@ -189,4 +241,48 @@ export function ExportScreen({ jobId }: { jobId: string }) {
       </footer>
     </div>
   );
+}
+
+function buildEditorDocumentFromSnapshot(snapshot: Awaited<ReturnType<typeof loadOrderedTranscriptSnapshotsForCase>>[number]): EditorDocument {
+  const wordIdsByUtterance = new Map<string, string[]>();
+  for (const word of snapshot.words) {
+    if (word.removed) {
+      continue;
+    }
+    const ids = wordIdsByUtterance.get(word.utterance_id) ?? [];
+    ids.push(word.word_id);
+    wordIdsByUtterance.set(word.utterance_id, ids);
+  }
+
+  return {
+    job_id: snapshot.job.transcript_id,
+    media_url: snapshot.job.media_url ?? "",
+    duration: snapshot.job.duration_seconds ?? snapshot.job.duration ?? 0,
+    speakers: snapshot.speakers.map((speaker) => ({
+      speaker_id: speaker.speaker_id,
+      display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
+      deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker,
+    })),
+    utterances: snapshot.utterances.map((utterance) => ({
+      utterance_id: utterance.utterance_id,
+      speaker_id: utterance.speaker_id,
+      start_time: utterance.start_time,
+      end_time: utterance.end_time,
+      word_ids: wordIdsByUtterance.get(utterance.utterance_id) ?? [],
+    })),
+    words: snapshot.words
+      .filter((word) => !word.removed)
+      .map((word) => ({
+        word_id: word.word_id,
+        text: word.working_text ?? word.raw_text,
+        raw_text: word.raw_text,
+        speaker_id: word.speaker_id,
+        utterance_id: word.utterance_id,
+        start_time: word.start_time,
+        end_time: word.end_time,
+        confidence: word.confidence,
+        reviewed: word.reviewed,
+        edited: Boolean(word.working_text && word.working_text !== word.raw_text),
+      })),
+  };
 }
