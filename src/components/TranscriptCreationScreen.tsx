@@ -2,19 +2,126 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mic, RefreshCw, Sparkles } from "lucide-react";
 
 import type { CaseAudioRecord } from "../api/fileService";
+import type { TranscriptJobRow } from "../api/transcriptRepository";
 import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
 import { listCaseAudio } from "../api/fileService";
 import { listTranscriptionJobs, startTranscription } from "../api/transcriptionService";
+import { listTranscriptJobs as listSegmentTranscripts } from "../api/transcriptRepository";
 import { saveCase } from "../api/caseService";
 import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
 import { isMockMode } from "../lib/runtime/mode";
 
+export type SourceTranscriptStatus = "completed" | "processing" | "queued" | "failed" | "pending";
+
+export interface SourceTranscriptRow {
+  audioId: string;
+  sourceIndex: number;
+  originalFilename: string;
+  mimeType: string;
+  durationSeconds: number | null;
+  transcriptId: string | null;
+  status: SourceTranscriptStatus;
+}
+
+function compareByUpdatedAtDesc(left: { updated_at: string }, right: { updated_at: string }) {
+  return right.updated_at.localeCompare(left.updated_at);
+}
+
+function normalizePendingStatus(job: TranscriptionJobRecord | undefined): Exclude<SourceTranscriptStatus, "completed" | "pending"> | "pending" {
+  if (!job) {
+    return "pending";
+  }
+
+  if (job.status === "complete") {
+    return "pending";
+  }
+
+  return job.status;
+}
+
+export function buildSourceTranscriptRows(
+  audioRows: CaseAudioRecord[],
+  transcriptRows: TranscriptJobRow[],
+  transcriptionJobs: TranscriptionJobRecord[],
+): SourceTranscriptRow[] {
+  const orderedAudio = audioRows
+    .slice()
+    .sort(
+      (left, right) =>
+        left.source_index - right.source_index
+        || (left.uploaded_at ?? "").localeCompare(right.uploaded_at ?? ""),
+    );
+
+  const transcriptBySequence = new Map<number, TranscriptJobRow>();
+  for (const transcript of transcriptRows
+    .slice()
+    .sort((left, right) => left.sequence_index - right.sequence_index || compareByUpdatedAtDesc(left, right))) {
+    if (!transcriptBySequence.has(transcript.sequence_index)) {
+      transcriptBySequence.set(transcript.sequence_index, transcript);
+    }
+  }
+
+  const jobBySourceIndex = new Map<number, TranscriptionJobRecord>();
+  for (const job of transcriptionJobs.slice().sort(compareByUpdatedAtDesc)) {
+    if (job.source_index == null || jobBySourceIndex.has(job.source_index)) {
+      continue;
+    }
+    jobBySourceIndex.set(job.source_index, job);
+  }
+
+  return orderedAudio.map((audioRow) => {
+    const transcript = transcriptBySequence.get(audioRow.source_index);
+    const job = jobBySourceIndex.get(audioRow.source_index);
+
+    return {
+      audioId: audioRow.audio_id,
+      sourceIndex: audioRow.source_index,
+      originalFilename: audioRow.original_filename,
+      mimeType: audioRow.mime_type,
+      durationSeconds: audioRow.duration_seconds,
+      transcriptId: transcript?.transcript_id ?? null,
+      status: transcript?.status === "completed" ? "completed" : normalizePendingStatus(job),
+    };
+  });
+}
+
+function statusLabel(status: SourceTranscriptStatus): string {
+  switch (status) {
+    case "completed":
+      return "Completed";
+    case "processing":
+      return "Processing";
+    case "queued":
+      return "Queued";
+    case "failed":
+      return "Failed";
+    case "pending":
+      return "Pending";
+  }
+}
+
+function statusClasses(status: SourceTranscriptStatus): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-100 text-emerald-700";
+    case "processing":
+      return "bg-blue-100 text-blue-700";
+    case "queued":
+      return "bg-amber-100 text-amber-700";
+    case "failed":
+      return "bg-rose-100 text-rose-700";
+    case "pending":
+      return "bg-slate-100 text-slate-600";
+  }
+}
+
 export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const { record } = useIntake();
   const { setStage } = useStage();
-  const [audio, setAudio] = useState<CaseAudioRecord | null>(null);
+  const [audioRows, setAudioRows] = useState<CaseAudioRecord[]>([]);
   const [jobs, setJobs] = useState<TranscriptionJobRecord[]>([]);
+  const [transcriptRows, setTranscriptRows] = useState<TranscriptJobRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,14 +134,16 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
       setLoading(true);
       setError(null);
       try {
-        const [audioRows, transcriptJobs] = await Promise.all([
+        const [nextAudioRows, transcriptJobs, nextTranscriptRows] = await Promise.all([
           listCaseAudio(caseId),
           listTranscriptionJobs(caseId),
+          listSegmentTranscripts(caseId),
         ]);
 
         if (!cancelled) {
-          setAudio(audioRows[0] ?? null);
+          setAudioRows(nextAudioRows);
           setJobs(transcriptJobs);
+          setTranscriptRows(nextTranscriptRows);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -63,9 +172,13 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     const intervalId = window.setInterval(() => {
       void (async () => {
         try {
-          const nextJobs = await listTranscriptionJobs(caseId);
+          const [nextJobs, nextTranscriptRows] = await Promise.all([
+            listTranscriptionJobs(caseId),
+            listSegmentTranscripts(caseId),
+          ]);
           if (!cancelled) {
             setJobs(nextJobs);
+            setTranscriptRows(nextTranscriptRows);
           }
         } catch (pollError) {
           if (!cancelled) {
@@ -87,7 +200,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   }, [record, setStage]);
 
   async function runTranscription() {
-    if (!audio) {
+    if (audioRows.length === 0) {
       setError("Upload audio before starting transcription.");
       return;
     }
@@ -97,8 +210,12 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
 
     try {
       await startTranscription(caseId);
-      const transcriptJobs = await listTranscriptionJobs(caseId);
+      const [transcriptJobs, nextTranscriptRows] = await Promise.all([
+        listTranscriptionJobs(caseId),
+        listSegmentTranscripts(caseId),
+      ]);
       setJobs(transcriptJobs);
+      setTranscriptRows(nextTranscriptRows);
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Transcription failed.");
     } finally {
@@ -108,6 +225,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
 
   const completedJob = jobs.find((job) => job.status === "complete") ?? null;
   const failedJob = jobs.find((job) => job.status === "failed") ?? null;
+  const sourceRows = buildSourceTranscriptRows(audioRows, transcriptRows, jobs);
 
   useEffect(() => {
     if (!completedJob || advancedJobIdRef.current === completedJob.id) {
@@ -146,21 +264,37 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                   <Mic size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Audio Source</p>
-                  <p className="text-xs text-slate-500">The job reads from case storage, not a second upload.</p>
+                  <p className="text-sm font-semibold text-slate-900">Audio Sources</p>
+                  <p className="text-xs text-slate-500">The job reads from ordered case storage, not a second upload.</p>
                 </div>
               </div>
 
               <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
                 {loading ? (
                   <p className="text-sm text-slate-500">Loading audio state…</p>
-                ) : audio ? (
-                  <>
-                    <p className="text-sm font-semibold text-slate-900">{audio.original_filename}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {audio.mime_type || "audio"}{audio.duration_seconds ? ` · ${audio.duration_seconds.toFixed(1)}s` : ""}
-                    </p>
-                  </>
+                ) : sourceRows.length > 0 ? (
+                  <div className="space-y-3">
+                    {sourceRows.map((sourceRow) => (
+                      <div
+                        key={sourceRow.audioId}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {sourceRow.sourceIndex + 1}. {sourceRow.originalFilename}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {sourceRow.mimeType || "audio"}
+                            {sourceRow.durationSeconds ? ` · ${sourceRow.durationSeconds.toFixed(1)}s` : ""}
+                            {sourceRow.transcriptId ? ` · transcript ${sourceRow.transcriptId}` : ""}
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusClasses(sourceRow.status)}`}>
+                          {statusLabel(sourceRow.status)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <p className="text-sm text-rose-600">No audio uploaded for this case yet.</p>
                 )}
@@ -176,7 +310,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 <button
                   type="button"
                   onClick={() => void runTranscription()}
-                  disabled={running || loading || !audio}
+                  disabled={running || loading || audioRows.length === 0}
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
                   {running ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
