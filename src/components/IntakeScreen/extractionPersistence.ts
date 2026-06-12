@@ -22,7 +22,7 @@ type ApplyAndPersistExtractionParams = {
     value: string,
     source: DisplaySource,
     confidence: number | null,
-  ) => void;
+  ) => void | Promise<void>;
   detectConflict: (
     caseId: string,
     fieldPath: string,
@@ -37,7 +37,7 @@ type ApplyAndPersistExtractionParams = {
       source: DisplaySource;
       confidence_score: number | null;
     },
-  ) => void;
+  ) => void | Promise<void>;
   onRevealExtractedFields: () => void;
   saveCaseRecord: (recordOverride?: CaseRecord) => Promise<unknown>;
   recordToSave?: CaseRecord;

@@ -10,6 +10,7 @@ import {
   useContext,
   useReducer,
   useCallback,
+  type Dispatch,
   type ReactNode,
 } from "react";
 import { getSupabaseClient } from "../../lib/supabase";
@@ -26,7 +27,7 @@ import { deriveOpenConflicts } from "../../lib/conflicts/deriveOpenConflicts";
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
-function conflictReducer(state: ConflictState, action: ConflictAction): ConflictState {
+export function conflictReducer(state: ConflictState, action: ConflictAction): ConflictState {
   switch (action.type) {
 
     case "RECORD_EXTRACTION": {
@@ -66,6 +67,23 @@ function conflictReducer(state: ConflictState, action: ConflictAction): Conflict
             resolution,
             ...(state.history[resolution.field_path] ?? []),
           ],
+        },
+      };
+    }
+
+    case "RESTORE_CONFLICT": {
+      const { conflict, failedResolutionId } = action.payload;
+      const nextHistory = (state.history[conflict.field_path] ?? []).filter(
+        (entry) => entry.id !== failedResolutionId,
+      );
+
+      return {
+        ...state,
+        active: { ...state.active, [conflict.field_path]: conflict },
+        modalFieldPath: conflict.field_path,
+        history: {
+          ...state.history,
+          [conflict.field_path]: nextHistory,
         },
       };
     }
@@ -144,13 +162,14 @@ function toDatabaseEntry(entry: ProvenanceEntry): Omit<ProvenanceEntry, "id"> {
 
 // ─── Supabase persistence helpers ─────────────────────────────────────────────
 
-async function persistEntry(entry: ProvenanceEntry): Promise<void> {
+export async function persistEntry(entry: ProvenanceEntry): Promise<boolean> {
   try {
     const client = await getSupabaseClient(`persistEntry:${entry.event_type}`);
     const { error } = await client.from("field_provenance").insert(toDatabaseEntry(entry));
     if (error) {
       throw error;
     }
+    return true;
   } catch (error) {
     console.error("[DEPO-PRO] Supabase provenance write failed", {
       operation: `persistEntry:${entry.event_type}`,
@@ -159,6 +178,19 @@ async function persistEntry(entry: ProvenanceEntry): Promise<void> {
       fieldPath: entry.field_path,
       message: error instanceof Error ? error.message : String(error),
     });
+    return false;
+  }
+}
+
+async function persistWithState(
+  dispatch: Dispatch<ConflictAction>,
+  entry: ProvenanceEntry,
+): Promise<boolean> {
+  dispatch({ type: "SET_PERSISTING", payload: { persisting: true } });
+  try {
+    return await persistEntry(entry);
+  } finally {
+    dispatch({ type: "SET_PERSISTING", payload: { persisting: false } });
   }
 }
 
@@ -213,7 +245,7 @@ interface ConflictContextValue {
     value: string,
     source: DisplaySource,
     confidence: number | null,
-  ) => void;
+  ) => Promise<void>;
 
   detectConflict: (
     caseId: string,
@@ -221,7 +253,7 @@ interface ConflictContextValue {
     fieldLabel: string,
     optionA: ConflictOption,
     optionB: ConflictOption,
-  ) => void;
+  ) => Promise<void>;
 
   resolveConflict: (
     fieldPath: string,
@@ -229,7 +261,7 @@ interface ConflictContextValue {
     rejected: ConflictOption,
     caseId: string,
     fieldLabel: string,
-  ) => void;
+  ) => Promise<boolean>;
 
   recordConfirm: (
     caseId: string,
@@ -237,7 +269,7 @@ interface ConflictContextValue {
     fieldLabel: string,
     value: string,
     source: DisplaySource,
-  ) => void;
+  ) => Promise<void>;
 
   openModal: (fieldPath: string) => void;
   closeModal: () => void;
@@ -262,7 +294,7 @@ export function ConflictProvider({
     `prov_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 
   const recordExtraction = useCallback(
-    (
+    async (
       caseId: string,
       fieldPath: string,
       fieldLabel: string,
@@ -286,13 +318,13 @@ export function ConflictProvider({
         resolved_at: new Date().toISOString(),
       };
       dispatch({ type: "RECORD_EXTRACTION", payload: entry });
-      persistEntry(entry);
+      await persistWithState(dispatch, entry);
     },
     [],
   );
 
   const detectConflict = useCallback(
-    (
+    async (
       caseId: string,
       fieldPath: string,
       fieldLabel: string,
@@ -328,13 +360,13 @@ export function ConflictProvider({
         return;
       }
       dispatch({ type: "DETECT_CONFLICT", payload: { conflict, entry } });
-      persistEntry(entry);
+      await persistWithState(dispatch, entry);
     },
     [state.active],
   );
 
   const resolveConflict = useCallback(
-    (
+    async (
       fieldPath: string,
       winning: ConflictOption,
       rejected: ConflictOption,
@@ -356,14 +388,22 @@ export function ConflictProvider({
         resolution_user: "reporter",
         resolved_at: new Date().toISOString(),
       };
+      const priorConflict = state.active[fieldPath];
       dispatch({ type: "RESOLVE_CONFLICT", payload: { resolution: entry } });
-      persistEntry(entry);
+      const ok = await persistWithState(dispatch, entry);
+      if (!ok && priorConflict) {
+        dispatch({
+          type: "RESTORE_CONFLICT",
+          payload: { conflict: priorConflict, failedResolutionId: entry.id },
+        });
+      }
+      return ok;
     },
-    [],
+    [state.active],
   );
 
   const recordConfirm = useCallback(
-    (
+    async (
       caseId: string,
       fieldPath: string,
       fieldLabel: string,
@@ -386,7 +426,7 @@ export function ConflictProvider({
         resolved_at: new Date().toISOString(),
       };
       dispatch({ type: "RECORD_CONFIRM", payload: entry });
-      persistEntry(entry);
+      await persistWithState(dispatch, entry);
     },
     [],
   );

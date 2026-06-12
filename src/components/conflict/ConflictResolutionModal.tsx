@@ -137,10 +137,42 @@ interface Props {
   onProvenanceOpen?: (fieldPath: string) => void;
 }
 
+export async function submitConflictResolution({
+  resolveConflict,
+  fieldPath,
+  winning,
+  rejected,
+  caseId,
+  fieldLabel,
+  onResolved,
+}: {
+  resolveConflict: (
+    fieldPath: string,
+    winning: ConflictOption,
+    rejected: ConflictOption,
+    caseId: string,
+    fieldLabel: string,
+  ) => Promise<boolean>;
+  fieldPath: string;
+  winning: ConflictOption;
+  rejected: ConflictOption;
+  caseId: string;
+  fieldLabel: string;
+  onResolved?: (fieldPath: string, winning: ConflictOption, rejected: ConflictOption) => void;
+}): Promise<string | null> {
+  const ok = await resolveConflict(fieldPath, winning, rejected, caseId, fieldLabel);
+  if (ok) {
+    onResolved?.(fieldPath, winning, rejected);
+    return null;
+  }
+  return "Could not save the conflict resolution. Please try again.";
+}
+
 export function ConflictResolutionModal({ caseId, onResolved, onProvenanceOpen }: Props) {
   const { state, resolveConflict, closeModal } = useConflict();
   const [selectedOption, setSelectedOption] = useState<"a" | "b" | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const fieldPath = state.modalFieldPath;
   const conflict = fieldPath ? state.active[fieldPath] : null;
@@ -149,6 +181,7 @@ export function ConflictResolutionModal({ caseId, onResolved, onProvenanceOpen }
   useEffect(() => {
     setSelectedOption(null);
     setSubmitting(false);
+    setSubmitError(null);
   }, [fieldPath]);
 
   // Close on Escape — but only if no unresolved conflict exists
@@ -175,11 +208,21 @@ export function ConflictResolutionModal({ caseId, onResolved, onProvenanceOpen }
   async function handleResolve() {
     if (!selectedOption || !conflict || !fieldPath) return;
     setSubmitting(true);
-    resolveConflict(fieldPath, winning, rejected, caseId, conflict.field_label);
-    onResolved?.(fieldPath, winning, rejected);
-    // brief delay so the user sees the submitting state
-    await new Promise((r) => setTimeout(r, 300));
+    setSubmitError(null);
+    const error = await submitConflictResolution({
+      resolveConflict,
+      fieldPath,
+      winning,
+      rejected,
+      caseId,
+      fieldLabel: conflict.field_label,
+      onResolved,
+    });
     setSubmitting(false);
+    if (error === null) {
+      return;
+    }
+    setSubmitError(error);
   }
 
   return (
@@ -265,6 +308,12 @@ export function ConflictResolutionModal({ caseId, onResolved, onProvenanceOpen }
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {submitError && (
+          <div className="mx-6 mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {submitError}
           </div>
         )}
 

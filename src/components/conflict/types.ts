@@ -71,6 +71,7 @@ export type ConflictAction =
   | { type: "RECORD_EXTRACTION"; payload: ProvenanceEntry }
   | { type: "DETECT_CONFLICT";   payload: { conflict: ActiveConflict; entry: ProvenanceEntry } }
   | { type: "RESOLVE_CONFLICT";  payload: { resolution: ProvenanceEntry } }
+  | { type: "RESTORE_CONFLICT";  payload: { conflict: ActiveConflict; failedResolutionId: string } }
   | { type: "RECORD_CONFIRM";    payload: ProvenanceEntry }
   | { type: "OPEN_MODAL";        payload: { field_path: string } }
   | { type: "CLOSE_MODAL" }
