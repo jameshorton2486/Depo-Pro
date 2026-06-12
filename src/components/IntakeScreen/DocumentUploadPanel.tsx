@@ -109,6 +109,57 @@ const DOCUMENT_SLOT_IDS: Array<Exclude<SlotId, "audio">> = ["notice", "schedulin
 const MIN_EXTRACT_TEXT_CHARS = 50;
 const TEXT_PREVIEW_CHARS = 500;
 
+export function filesFromSelection(files: FileList | null): File[] {
+  if (!files || files.length === 0) {
+    return [];
+  }
+
+  return Array.from(files);
+}
+
+export async function uploadSelectedAudioFiles(args: {
+  caseId: string;
+  files: File[];
+  uploadAudio: (caseId: string, file: File) => Promise<CaseAudioRecord>;
+  onUploaded?: (audioRecord: CaseAudioRecord) => void;
+}): Promise<CaseAudioRecord[]> {
+  const uploaded: CaseAudioRecord[] = [];
+
+  for (const file of args.files) {
+    const audioRecord = await args.uploadAudio(args.caseId, file);
+    uploaded.push(audioRecord);
+    args.onUploaded?.(audioRecord);
+  }
+
+  return uploaded;
+}
+
+export function mergeAppendedAudioRecords(
+  existingAudio: CaseAudioRecord[],
+  appendedAudio: CaseAudioRecord[],
+): CaseAudioRecord[] {
+  return [...existingAudio, ...appendedAudio].sort(
+    (left, right) => left.source_index - right.source_index || (left.uploaded_at ?? "").localeCompare(right.uploaded_at ?? ""),
+  );
+}
+
+export function moveOrderedAudioRecords(
+  orderedAudio: CaseAudioRecord[],
+  audioId: string,
+  direction: -1 | 1,
+): CaseAudioRecord[] | null {
+  const currentIndex = orderedAudio.findIndex((entry) => entry.audio_id === audioId);
+  const targetIndex = currentIndex + direction;
+  if (currentIndex === -1 || targetIndex < 0 || targetIndex >= orderedAudio.length) {
+    return null;
+  }
+
+  const nextAudio = [...orderedAudio];
+  const [moved] = nextAudio.splice(currentIndex, 1);
+  nextAudio.splice(targetIndex, 0, moved);
+  return nextAudio.map((entry, sourceIndex) => ({ ...entry, source_index: sourceIndex }));
+}
+
 function slotFileType(slotId: Exclude<SlotId, "audio">): "notice" | "scheduling" | "supporting" {
   return slotId;
 }
@@ -216,16 +267,17 @@ function UploadCard({
   uploadedAt: string | null;
   viewUrl: string | null;
   removable: boolean;
-  onDrop: (slotId: SlotId, file: File) => void;
+  onDrop: (slotId: SlotId, file: File) => Promise<void> | void;
   onRemove: (() => void) | null;
   children?: React.ReactNode;
 }) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    onDrop(slot.id, files[0]);
+  async function handleFiles(files: FileList | null) {
+    for (const file of filesFromSelection(files)) {
+      await onDrop(slot.id, file);
+    }
   }
 
   const uploadedLabel = formatUploadedAt(uploadedAt);
@@ -250,7 +302,11 @@ function UploadCard({
       onDrop={(event) => {
         event.preventDefault();
         setDragging(false);
-        handleFiles(event.dataTransfer.files);
+        const [file] = filesFromSelection(event.dataTransfer.files);
+        if (!file) {
+          return;
+        }
+        void onDrop(slot.id, file);
       }}
       className={`group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-5 transition-all ${
         dragging ? "border-blue-400 bg-blue-50/60"
@@ -262,9 +318,13 @@ function UploadCard({
       <input
         ref={inputRef}
         type="file"
+        multiple={slot.id === "audio"}
         accept={slot.accept}
         className="hidden"
-        onChange={(event) => handleFiles(event.target.files)}
+        onChange={(event) => {
+          void handleFiles(event.target.files);
+          event.target.value = "";
+        }}
       />
 
       <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
@@ -458,14 +518,34 @@ export function DocumentUploadPanel({
       await ensureUploadPrecondition();
 
       if (slotId === "audio") {
-        const uploadedAudio = await uploadCaseAudio(record.case_id, file);
-        onAudioUploaded(uploadedAudio);
-        setAudio(toCaseAudioRecord(uploadedAudio));
+        const uploadedAudio = await uploadSelectedAudioFiles({
+          caseId: record.case_id,
+          files: [file],
+          uploadAudio: uploadCaseAudio,
+          onUploaded: onAudioUploaded,
+        });
+        const nextAudio = mergeAppendedAudioRecords(audio, uploadedAudio);
+        setAudio(nextAudio[0] ? toCaseAudioRecord(nextAudio[0]) : null);
         setLocalFiles((previous) => ({ ...previous, [slotId]: file }));
 
-        if (uploadedAudio.storage_path) {
-          const signedUrl = await getSignedUrl(uploadedAudio.storage_path);
-          setViewUrls((previous) => ({ ...previous, [slotId]: signedUrl }));
+        const audioUrls = await Promise.all(
+          uploadedAudio.map(async (audioRecord) => {
+            if (!audioRecord.storage_path) {
+              return [audioRecord.audio_id, ""] as const;
+            }
+
+            const signedUrl = await getSignedUrl(audioRecord.storage_path);
+            return [audioRecord.audio_id, signedUrl] as const;
+          }),
+        );
+        setAudioViewUrls((previous) => ({
+          ...previous,
+          ...Object.fromEntries(audioUrls.filter(([, value]) => Boolean(value))),
+        }));
+
+        const lastUrl = audioUrls[audioUrls.length - 1]?.[1] ?? "";
+        if (lastUrl) {
+          setViewUrls((previous) => ({ ...previous, [slotId]: lastUrl }));
         }
       } else {
         const uploadedFile = await uploadCaseFile(record.case_id, file, slotFileType(slotId));
@@ -684,16 +764,10 @@ export function DocumentUploadPanel({
   }
 
   async function moveAudio(audioId: string, direction: -1 | 1) {
-    const currentIndex = orderedAudio.findIndex((entry) => entry.audio_id === audioId);
-    const targetIndex = currentIndex + direction;
-    if (currentIndex === -1 || targetIndex < 0 || targetIndex >= orderedAudio.length) {
+    const reordered = moveOrderedAudioRecords(orderedAudio, audioId, direction);
+    if (!reordered) {
       return;
     }
-
-    const nextAudio = [...orderedAudio];
-    const [moved] = nextAudio.splice(currentIndex, 1);
-    nextAudio.splice(targetIndex, 0, moved);
-    const reordered = nextAudio.map((entry, sourceIndex) => ({ ...entry, source_index: sourceIndex }));
 
     setReorderingAudioId(audioId);
     setSlotUi((previous) => ({
