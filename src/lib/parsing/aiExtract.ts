@@ -21,7 +21,7 @@ function isExtractionFailure(value: unknown): value is ExtractionFailure {
 export async function aiExtract(text: string, docType: ExtractionDocType): Promise<ExtractionResponse> {
   const supabase = await getSupabaseClient("extract-nod");
   const { data, error } = await supabase.functions.invoke("extract-nod", {
-    body: { text, docType },
+    body: { text, docType, debug: !import.meta.env.PROD },
   });
 
   if (error) {

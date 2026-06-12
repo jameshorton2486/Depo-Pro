@@ -167,9 +167,10 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const body = await request.json() as { text?: unknown; docType?: unknown };
+    const body = await request.json() as { text?: unknown; docType?: unknown; debug?: unknown };
     const text = typeof body.text === "string" ? body.text : "";
     const docType = isDocType(body.docType) ? body.docType : "nod";
+    const debug = body.debug === true;
 
     if (!text.trim()) {
       return respond({ error: "No document text was provided." }, 200);
@@ -195,6 +196,13 @@ Deno.serve(async (request) => {
       fields,
       model: result.payload.model ?? MODEL,
       usage: result.payload.usage ?? null,
+      debug: debug
+        ? {
+            docType,
+            textLength: text.length,
+            rawModelOutput: result.parsed,
+          }
+        : undefined,
     }, 200);
   } catch (error) {
     return respond({

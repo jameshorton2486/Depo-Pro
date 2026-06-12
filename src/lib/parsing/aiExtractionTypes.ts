@@ -127,10 +127,17 @@ export interface ExtractionUsage {
   output_tokens?: number;
 }
 
+export interface ExtractionDebugPayload {
+  docType: ExtractionDocType;
+  textLength: number;
+  rawModelOutput: Record<string, unknown> | null;
+}
+
 export interface ExtractionSuccess {
   fields: ExtractedNODFields;
   model: string;
   usage?: ExtractionUsage | null;
+  debug?: ExtractionDebugPayload | null;
 }
 
 export interface ExtractionFailure {

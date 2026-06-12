@@ -16,6 +16,7 @@ import { useConflict } from "../conflict/conflictStore";
 import { useKeyterms } from "../DeepgramKeytermManager/keytermStore";
 import { extractDocumentText } from "../../lib/parsing/documentText";
 import { aiExtract } from "../../lib/parsing/aiExtract";
+import type { ExtractionDebugPayload } from "../../lib/parsing/aiExtractionTypes";
 import { applyExtraction } from "../../lib/parsing/applyExtraction";
 import { applyJobSheetExtraction } from "../../lib/parsing/applyJobSheetExtraction";
 import { parseReporterNotes } from "../../lib/parsing/reporterNotesParser";
@@ -40,6 +41,13 @@ type UploadSlotConfig = {
 type SlotUiState = {
   status: UploadStatus;
   error: string | null;
+};
+
+type ExtractionDiagnostics = {
+  textLength: number;
+  textPreview: string;
+  docType: "nod" | "jobsheet";
+  rawOutput: Record<string, unknown> | null;
 };
 
 type DocumentUploadPanelProps = {
@@ -96,6 +104,8 @@ const SLOT_CONFIGS: UploadSlotConfig[] = [
 ];
 
 const DOCUMENT_SLOT_IDS: Array<Exclude<SlotId, "audio">> = ["notice", "scheduling", "supporting"];
+const MIN_EXTRACT_TEXT_CHARS = 50;
+const TEXT_PREVIEW_CHARS = 500;
 
 function slotFileType(slotId: Exclude<SlotId, "audio">): "notice" | "scheduling" | "supporting" {
   return slotId;
@@ -305,6 +315,7 @@ export function DocumentUploadPanel({
   const [extractingSlot, setExtractingSlot] = useState<SlotId | null>(null);
   const [extractErrors, setExtractErrors] = useState<Partial<Record<SlotId, string | null>>>({});
   const [extractSummaries, setExtractSummaries] = useState<Partial<Record<SlotId, ExtractionSummary | null>>>({});
+  const [extractDiagnostics, setExtractDiagnostics] = useState<Partial<Record<SlotId, ExtractionDiagnostics | null>>>({});
   const [reorderingAudioId, setReorderingAudioId] = useState<string | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -557,6 +568,10 @@ export function DocumentUploadPanel({
     setExtractSummaries((previous) => ({ ...previous, [slotId]: summary }));
   }
 
+  function setExtractDiagnosticsState(slotId: SlotId, diagnostics: ExtractionDiagnostics | null) {
+    setExtractDiagnostics((previous) => ({ ...previous, [slotId]: diagnostics }));
+  }
+
   function currentProvenanceRows(): FieldProvenanceRow[] {
     return Object.values(conflictState.history).flat();
   }
@@ -688,13 +703,37 @@ export function DocumentUploadPanel({
     );
   }
 
+  function buildDiagnostics(
+    text: string,
+    docType: "nod" | "jobsheet",
+    rawDebug?: ExtractionDebugPayload | null,
+  ): ExtractionDiagnostics {
+    return {
+      textLength: text.length,
+      textPreview: text.slice(0, TEXT_PREVIEW_CHARS),
+      docType,
+      rawOutput: rawDebug?.rawModelOutput ?? null,
+    };
+  }
+
+  function assertExtractableText(text: string) {
+    if (text.trim().length < MIN_EXTRACT_TEXT_CHARS) {
+      throw new Error(
+        `This file contains too little text to extract (${text.trim().length} characters). Did you upload the right document?`,
+      );
+    }
+  }
+
   async function runNoticeExtraction(file: File, slotId: SlotId) {
     try {
       const text = await extractDocumentText(file);
+      setExtractDiagnosticsState(slotId, buildDiagnostics(text, "nod"));
+      assertExtractableText(text);
       const extraction = await aiExtract(text, "nod");
       if ("error" in extraction) {
         throw new Error(`Extraction failed: ${extraction.error}. You can enter fields manually.`);
       }
+      setExtractDiagnosticsState(slotId, buildDiagnostics(text, "nod", extraction.debug));
 
       const application = applyExtraction(extraction.fields, record);
       const nextState = previewExtractionState(application);
@@ -722,6 +761,8 @@ export function DocumentUploadPanel({
 
   async function runJobSheetExtraction(file: File, slotId: SlotId) {
     const text = await extractDocumentText(file);
+    setExtractDiagnosticsState(slotId, buildDiagnostics(text, "jobsheet"));
+    assertExtractableText(text);
     const parsed = parseReporterNotes(text);
     const { application, droppedPaths } = applyJobSheetExtraction(parsed, record);
     const nextState = previewExtractionState(application);
@@ -757,6 +798,7 @@ export function DocumentUploadPanel({
 
     setExtractingSlot(slotId);
     setExtractState(slotId, null, null);
+    setExtractDiagnosticsState(slotId, null);
 
     try {
       if (mode === "notice") {
@@ -969,6 +1011,35 @@ export function DocumentUploadPanel({
                     <p className="text-center text-[11px] text-rose-600">
                       {extractErrors[slot.id]}
                     </p>
+                  )}
+                  {extractDiagnostics[slot.id] && (
+                    <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-left">
+                      <p className="text-[11px] text-slate-600">
+                        Extracted text: <span className="font-semibold text-slate-800">{extractDiagnostics[slot.id]?.textLength.toLocaleString()}</span> characters
+                      </p>
+                      <details className="rounded-md border border-slate-200 bg-white p-2">
+                        <summary className="cursor-pointer text-[11px] font-semibold text-slate-700">
+                          Extracted text preview
+                        </summary>
+                        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-[10px] text-slate-700">
+                          {extractDiagnostics[slot.id]?.textPreview || "(empty)"}
+                        </pre>
+                      </details>
+                      {!import.meta.env.PROD && (
+                        <details className="rounded-md border border-slate-200 bg-white p-2">
+                          <summary className="cursor-pointer text-[11px] font-semibold text-slate-700">
+                            Raw extraction debug
+                          </summary>
+                          <div className="mt-2 space-y-2 text-[11px] text-slate-600">
+                            <p>Doc type: <span className="font-semibold text-slate-800">{extractDiagnostics[slot.id]?.docType}</span></p>
+                            <p>Text length: <span className="font-semibold text-slate-800">{extractDiagnostics[slot.id]?.textLength.toLocaleString()}</span></p>
+                          </div>
+                          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[10px] text-slate-700">
+                            {JSON.stringify(extractDiagnostics[slot.id]?.rawOutput, null, 2) || "No raw model output captured."}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : null}
