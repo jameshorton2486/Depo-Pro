@@ -65,6 +65,14 @@ export interface WorkspaceMutationResult {
   speakerMapConfirmed?: boolean;
 }
 
+export interface SpeakerMapConfirmationResult {
+  jobId: string;
+  transcriptId: string | null;
+  caseId: string | null;
+  confirmed: boolean;
+  message?: string;
+}
+
 function mapSpeakerRole(role: string | null | undefined): Speaker["role"] | undefined {
   switch (role) {
     case "court_reporter":
@@ -293,6 +301,55 @@ async function requireFreshTranscript(
   }
 
   return job;
+}
+
+export async function requireConfirmedSpeakerMap(key: string): Promise<SpeakerMapConfirmationResult> {
+  try {
+    if (USE_MOCK_WORKSPACE) {
+      return {
+        jobId: key,
+        transcriptId: key,
+        caseId: null,
+        confirmed: false,
+        message: "Speaker mapping is unavailable in fixture mode.",
+      };
+    }
+
+    const resolved = await resolveWorkspaceTarget(key);
+    const target = resolved.target;
+    if (!target) {
+      return {
+        jobId: key,
+        transcriptId: null,
+        caseId: null,
+        confirmed: false,
+        message: "No transcript has been generated for this case yet.",
+      };
+    }
+
+    const confirmedSegments = resolved.orderedSegments.length > 0 ? resolved.orderedSegments : [target];
+    const confirmed = confirmedSegments.every((segment) => segment.speaker_map_confirmed);
+
+    return {
+      jobId: target.job_id,
+      transcriptId: target.transcript_id,
+      caseId: target.case_id,
+      confirmed,
+      message: confirmed
+        ? undefined
+        : "Speaker mapping not confirmed. Complete speaker mapping before exporting a certified transcript.",
+    };
+  } catch (error) {
+    return {
+      jobId: key,
+      transcriptId: null,
+      caseId: null,
+      confirmed: false,
+      message: error instanceof Error
+        ? `Could not verify speaker mapping status. ${error.message}`
+        : "Could not verify speaker mapping status.",
+    };
+  }
 }
 
 async function appendAuditEntries(entries: Array<{

@@ -3,10 +3,12 @@ import { ChevronLeft, Download, FileArchive, FileText } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
+import { requireConfirmedSpeakerMap } from "../../api/workspaceService";
 import { loadOrderedTranscriptSnapshotsForCase } from "../../api/transcriptRepository";
 import type { EditorDocument } from "../../api/types";
 import { buildExportTranscriptText, countExportWords, type ExportSegmentDocument } from "./exportAssembly";
 import { buildTranscriptDocxBlob, inferSpeakerRole } from "./docxFormatter";
+import { executeGuardedExport, prependDraftBanner, type ExportFormat } from "./exportGuard";
 
 interface GeneratedArtifact {
   name: string;
@@ -51,6 +53,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [exportSegments, setExportSegments] = useState<ExportSegmentDocument[]>([]);
   const [loadingExport, setLoadingExport] = useState(true);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   const certificationReady = useMemo(() => {
     try {
@@ -135,6 +138,51 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     [exportWordCount, jobId, record.caption.case_name.value, record.caption.case_number.value, transcriptText]
   );
 
+  async function runExport(format: ExportFormat) {
+    setExportMessage(null);
+    try {
+      const speakerMap = await requireConfirmedSpeakerMap(jobId);
+      const result = await executeGuardedExport(
+        format,
+        speakerMap,
+        async ({ banner }) => {
+          switch (format) {
+            case "txt":
+              return downloadBlob(
+                `${jobId}-transcript.txt`,
+                "text/plain;charset=utf-8",
+                banner ? prependDraftBanner(transcriptText, banner) : transcriptText,
+              );
+            case "package":
+              return downloadBlob(
+                `${jobId}-package.json`,
+                "application/json;charset=utf-8",
+                packageJson,
+              );
+            case "docx": {
+              const blob = await buildTranscriptDocxBlob(exportSegments);
+              return downloadExistingBlob(
+                `${jobId}-transcript.docx`,
+                blob,
+              );
+            }
+          }
+        },
+      );
+
+      if (!result.ok) {
+        setLastArtifact(null);
+        setExportMessage(result.message);
+        return;
+      }
+
+      setLastArtifact(result.artifact);
+    } catch (error) {
+      setLastArtifact(null);
+      setExportMessage(error instanceof Error ? error.message : "Export failed.");
+    }
+  }
+
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white px-5 py-4">
@@ -165,6 +213,9 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 Export used the current workspace segment because the full ordered segment load failed: {exportError}
               </p>
             )}
+            {exportMessage && (
+              <p className="mt-2 text-sm text-rose-700">{exportMessage}</p>
+            )}
           </section>
 
           <section className="grid gap-4 md:grid-cols-2">
@@ -179,15 +230,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               <button
                 type="button"
                 disabled={!certificationReady || loadingExport || exportSegments.length === 0}
-                onClick={() =>
-                  setLastArtifact(
-                    downloadBlob(
-                      `${jobId}-transcript.txt`,
-                      "text/plain;charset=utf-8",
-                      transcriptText
-                    )
-                  )
-                }
+                onClick={() => void runExport("txt")}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />
@@ -206,15 +249,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               <button
                 type="button"
                 disabled={!certificationReady || loadingExport || exportSegments.length === 0}
-                onClick={() =>
-                  setLastArtifact(
-                    downloadBlob(
-                      `${jobId}-package.json`,
-                      "application/json;charset=utf-8",
-                      packageJson
-                    )
-                  )
-                }
+                onClick={() => void runExport("package")}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />
@@ -233,15 +268,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               <button
                 type="button"
                 disabled={!certificationReady || loadingExport || exportSegments.length === 0}
-                onClick={async () => {
-                  const blob = await buildTranscriptDocxBlob(exportSegments);
-                  setLastArtifact(
-                    downloadExistingBlob(
-                      `${jobId}-transcript.docx`,
-                      blob,
-                    ),
-                  );
-                }}
+                onClick={() => void runExport("docx")}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />

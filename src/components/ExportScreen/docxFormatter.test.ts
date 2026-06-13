@@ -13,6 +13,7 @@ import {
   QA_LABEL_TAB_TWIPS,
   QA_TEXT_TAB_TWIPS,
 } from "./docxFormatter";
+import { getBlockRole } from "../../editor/pagination";
 
 function buildSegment(): ExportSegmentDocument {
   const document: EditorDocument = {
@@ -108,6 +109,8 @@ describe("docxFormatter", () => {
   it("derives Q/A paragraphs from the exported transcript document without two-space prefixes", () => {
     const paragraphs = buildTranscriptDocxParagraphSpecs([buildSegment()]);
 
+    expect(getBlockRole("ATTORNEY")).toBe("Q");
+    expect(getBlockRole("WITNESS")).toBe("A");
     expect(paragraphs).toHaveLength(3);
     expect(paragraphs[0].runs).toEqual([
       { kind: "text", text: "Q." },
