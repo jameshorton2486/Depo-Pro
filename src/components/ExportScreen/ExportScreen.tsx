@@ -6,6 +6,7 @@ import { useStage } from "../../context/StageContext";
 import { loadOrderedTranscriptSnapshotsForCase } from "../../api/transcriptRepository";
 import type { EditorDocument } from "../../api/types";
 import { buildExportTranscriptText, countExportWords, type ExportSegmentDocument } from "./exportAssembly";
+import { buildTranscriptDocxBlob, inferSpeakerRole } from "./docxFormatter";
 
 interface GeneratedArtifact {
   name: string;
@@ -26,6 +27,20 @@ function downloadBlob(filename: string, type: string, content: string) {
   link.click();
   URL.revokeObjectURL(url);
   return { name: filename, type, size: blob.size };
+}
+
+function downloadExistingBlob(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+  return {
+    name: filename,
+    type: blob.type || "application/octet-stream",
+    size: blob.size,
+  };
 }
 
 export function ExportScreen({ jobId }: { jobId: string }) {
@@ -206,12 +221,38 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 Export Package
               </button>
             </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <FileText size={16} className="text-slate-600" />
+                <h2 className="text-sm font-semibold text-slate-900">DOCX Transcript</h2>
+              </div>
+              <p className="mb-4 text-sm text-slate-600">
+                Export the ordered transcript as a DOCX file with Q/A tab formatting.
+              </p>
+              <button
+                type="button"
+                disabled={!certificationReady || loadingExport || exportSegments.length === 0}
+                onClick={async () => {
+                  const blob = await buildTranscriptDocxBlob(exportSegments);
+                  setLastArtifact(
+                    downloadExistingBlob(
+                      `${jobId}-transcript.docx`,
+                      blob,
+                    ),
+                  );
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Download size={13} />
+                Export DOCX
+              </button>
+            </div>
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">Other Formats</h2>
             <ul className="space-y-2 text-sm text-slate-600">
-              <li>DOCX: not implemented in this local remediation pass</li>
               <li>PDF: not implemented in this local remediation pass</li>
             </ul>
           </section>
@@ -262,6 +303,7 @@ function buildEditorDocumentFromSnapshot(snapshot: Awaited<ReturnType<typeof loa
       speaker_id: speaker.speaker_id,
       display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
       deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker,
+      role: inferSpeakerRole(speaker.speaker_role || speaker.role),
     })),
     utterances: snapshot.utterances.map((utterance) => ({
       utterance_id: utterance.utterance_id,
