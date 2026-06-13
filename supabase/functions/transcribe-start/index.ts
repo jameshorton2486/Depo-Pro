@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 import { buildDeepgramRequestFromStoredKeyterms } from "../../../src/lib/deepgram/buildDeepgramRequest.ts";
 import { fitStoredKeytermsToRequestBudget } from "../../../src/lib/deepgram/requestBudget.ts";
+import { seedStoredKeytermsFromParticipants } from "../../../src/lib/keyterms/managedKeyterms.ts";
 import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
 import {
   buildDeepgramRequestFileName,
@@ -91,7 +92,8 @@ Deno.serve(async (request) => {
     }
 
     const record = normalizeCaseRecord(caseRow.payload);
-    const budgetedKeyterms = fitStoredKeytermsToRequestBudget(record.deepgram.keyterms);
+    const seededKeyterms = seedStoredKeytermsFromParticipants(record, record.deepgram.keyterms);
+    const budgetedKeyterms = fitStoredKeytermsToRequestBudget(seededKeyterms);
     if (budgetedKeyterms.droppedCount > 0) {
       console.warn("[transcribe-start] trimmed keyterms to request budget", {
         caseId,

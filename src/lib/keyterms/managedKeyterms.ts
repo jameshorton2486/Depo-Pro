@@ -2,7 +2,7 @@ import type { ManagedKeyterm, KeytermSource } from "../../components/DeepgramKey
 import type { FieldProvenanceRow } from "../../components/conflict/types.ts";
 import type { CaseRecord, DeepgramKeyterm, KeytermCategory } from "../../types/case.ts";
 import { countTokens } from "../keytermRanker.ts";
-import { harvestKeyterms, type HarvestedKeyterm, type HarvestedKeytermSource } from "./harvestKeyterms.ts";
+import { harvestKeyterms, harvestParticipantKeyterms, type HarvestedKeyterm, type HarvestedKeytermSource } from "./harvestKeyterms.ts";
 
 const KEYTERM_META_PREFIX = "__depo_keyterm_meta__:";
 
@@ -207,4 +207,54 @@ export function mergeManagedDerivedKeyterms(
   }
 
   return Array.from(merged.values());
+}
+
+function toStoredKeyterm(suggestion: HarvestedKeyterm): DeepgramKeyterm {
+  return {
+    term: normalizeTerm(suggestion.term),
+    boost: Math.min(1, suggestion.boost / 10),
+    category: mapHarvestCategory(suggestion.category),
+    notes: encodeNotes({
+      selected: true,
+      pinned: false,
+      source: mapHarvestSource(suggestion.source),
+    }),
+  };
+}
+
+export function seedStoredKeytermsFromParticipants(
+  record: CaseRecord,
+  existingKeyterms: DeepgramKeyterm[],
+): DeepgramKeyterm[] {
+  const seeded: DeepgramKeyterm[] = [];
+  const used = new Set<string>();
+  const existingByKey = new Map<string, DeepgramKeyterm>();
+
+  for (const keyterm of existingKeyterms) {
+    const dedupeKey = normalizeTerm(keyterm.term).toLowerCase();
+    if (!existingByKey.has(dedupeKey)) {
+      existingByKey.set(dedupeKey, keyterm);
+    }
+  }
+
+  for (const suggestion of harvestParticipantKeyterms(record)) {
+    const dedupeKey = normalizeTerm(suggestion.term).toLowerCase();
+    if (used.has(dedupeKey)) {
+      continue;
+    }
+
+    seeded.push(existingByKey.get(dedupeKey) ?? toStoredKeyterm(suggestion));
+    used.add(dedupeKey);
+  }
+
+  for (const keyterm of existingKeyterms) {
+    const dedupeKey = normalizeTerm(keyterm.term).toLowerCase();
+    if (used.has(dedupeKey)) {
+      continue;
+    }
+    seeded.push(keyterm);
+    used.add(dedupeKey);
+  }
+
+  return seeded;
 }

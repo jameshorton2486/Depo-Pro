@@ -10,6 +10,18 @@ export interface HarvestedKeyterm {
   source: HarvestedKeytermSource;
 }
 
+type ParticipantSeedPriority =
+  | "witness"
+  | "party"
+  | "attorney"
+  | "law_firm"
+  | "reporter"
+  | "case_identifier";
+
+type ParticipantSeedCandidate = HarvestedKeyterm & {
+  priority: ParticipantSeedPriority;
+};
+
 const MAX_KEYTERMS = 100;
 const MIN_TERM_LENGTH = 4;
 
@@ -149,6 +161,134 @@ function collectValue(value: unknown): string[] {
   return [];
 }
 
+function participantPriorityRank(priority: ParticipantSeedPriority): number {
+  switch (priority) {
+    case "witness":
+      return 0;
+    case "party":
+      return 1;
+    case "attorney":
+      return 2;
+    case "law_firm":
+      return 3;
+    case "reporter":
+      return 4;
+    case "case_identifier":
+      return 5;
+  }
+}
+
+function pushParticipantCandidate(
+  candidates: ParticipantSeedCandidate[],
+  seen: Set<string>,
+  keyterm: ParticipantSeedCandidate,
+) {
+  const term = stripBoundaryNoise(keyterm.term);
+  const dedupeKey = `${term.toLowerCase()}::${keyterm.category}`;
+  if (!term || seen.has(dedupeKey) || !isValidTerm(term)) {
+    return;
+  }
+  seen.add(dedupeKey);
+  candidates.push({ ...keyterm, term });
+}
+
+function sortParticipantCandidates(candidates: ParticipantSeedCandidate[]): ParticipantSeedCandidate[] {
+  return candidates.slice().sort((left, right) => {
+    const priorityDelta = participantPriorityRank(left.priority) - participantPriorityRank(right.priority);
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    const termDelta = left.term.localeCompare(right.term, undefined, { sensitivity: "base" });
+    if (termDelta !== 0) {
+      return termDelta;
+    }
+
+    const categoryDelta = left.category.localeCompare(right.category, undefined, { sensitivity: "base" });
+    if (categoryDelta !== 0) {
+      return categoryDelta;
+    }
+
+    return left.term.localeCompare(right.term);
+  });
+}
+
+export function harvestParticipantKeyterms(record: CaseRecord): HarvestedKeyterm[] {
+  const candidates: ParticipantSeedCandidate[] = [];
+  const seen = new Set<string>();
+
+  for (const witness of record.witnesses) {
+    pushParticipantCandidate(candidates, seen, {
+      priority: "witness",
+      term: witness.name.value,
+      boost: 10,
+      category: "Person",
+      source: "manual",
+    });
+  }
+
+  const explicitParties = record.parties.map((party) => party.name.value).filter(Boolean);
+  const fallbackParties = explicitParties.length > 0
+    ? explicitParties
+    : collectValue(record.caption.case_name.value).concat(collectValue(record.caption.case_style.value));
+  for (const partyName of fallbackParties) {
+    pushParticipantCandidate(candidates, seen, {
+      priority: "party",
+      term: partyName,
+      boost: 10,
+      category: "Person",
+      source: "manual",
+    });
+  }
+
+  for (const attorney of record.attorneys) {
+    pushParticipantCandidate(candidates, seen, {
+      priority: "attorney",
+      term: attorney.name.value,
+      boost: 9,
+      category: "Person",
+      source: "manual",
+    });
+    if (attorney.firm.value) {
+      pushParticipantCandidate(candidates, seen, {
+        priority: "law_firm",
+        term: attorney.firm.value,
+        boost: 7,
+        category: "Law Firm",
+        source: "manual",
+      });
+    }
+  }
+
+  for (const lawFirm of record.law_firms) {
+    pushParticipantCandidate(candidates, seen, {
+      priority: "law_firm",
+      term: lawFirm.name.value,
+      boost: 7,
+      category: "Law Firm",
+      source: "manual",
+    });
+  }
+
+  pushParticipantCandidate(candidates, seen, {
+    priority: "reporter",
+    term: record.reporter.name.value,
+    boost: 8,
+    category: "Person",
+    source: "manual",
+  });
+
+  pushParticipantCandidate(candidates, seen, {
+    priority: "case_identifier",
+    term: record.caption.case_number.value,
+    boost: 6,
+    category: "Case Identifier",
+    source: "manual",
+  });
+
+  return sortParticipantCandidates(candidates).map(({ priority: _priority, ...keyterm }) => keyterm);
+}
+
 function harvestFreeText(
   text: string,
   source: HarvestedKeytermSource,
@@ -192,30 +332,8 @@ export function harvestKeyterms(
   const candidates: HarvestedKeyterm[] = [];
   const seen = new Set<string>();
 
-  for (const witness of record.witnesses) {
-    pushCandidate(candidates, seen, {
-      term: witness.name.value,
-      boost: 10,
-      category: "Person",
-      source: sourceForPath(provenance, "witnesses[0].name"),
-    });
-  }
-
-  for (const attorney of record.attorneys) {
-    pushCandidate(candidates, seen, {
-      term: attorney.name.value,
-      boost: 9,
-      category: "Person",
-      source: sourceForPath(provenance, "attorneys[0].name"),
-    });
-    if (attorney.firm.value) {
-      pushCandidate(candidates, seen, {
-        term: attorney.firm.value,
-        boost: 7,
-        category: "Law Firm",
-        source: sourceForPath(provenance, "attorneys[0].firm"),
-      });
-    }
+  for (const participantTerm of harvestParticipantKeyterms(record)) {
+    pushCandidate(candidates, seen, participantTerm);
   }
 
   pushCandidate(candidates, seen, {

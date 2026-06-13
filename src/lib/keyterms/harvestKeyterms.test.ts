@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { FieldProvenanceRow } from "../../components/conflict/types";
+import type { DeepgramKeyterm } from "../../types/case";
 import { emptyCaseRecord } from "../../types/case";
-import { harvestKeyterms } from "./harvestKeyterms";
-import { mergeManagedKeytermSuggestions } from "./managedKeyterms";
+import { fitStoredKeytermsToRequestBudget } from "../deepgram/requestBudget";
+import { harvestKeyterms, harvestParticipantKeyterms } from "./harvestKeyterms";
+import { mergeManagedKeytermSuggestions, seedStoredKeytermsFromParticipants } from "./managedKeyterms";
 
 function buildRecord() {
   const record = emptyCaseRecord("case_garza", "2026-06-05T20:00:00.000Z");
@@ -11,6 +13,59 @@ function buildRecord() {
   record.caption.case_number.value = "C-1628-25-E";
   record.caption.county.value = "Hidalgo County";
   record.caption.court_name.value = "275th Judicial District";
+  record.reporter.name.value = "Neibardel Corporal";
+  record.reporter.firm.value = "Valley Court Reporting";
+  record.witnesses = [
+    {
+      witness_id: "wit_1",
+      name: { value: "Mohammad Entiminan", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "EXPERT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      title: { value: "MD", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      employer: { value: "Houston Spine Institute", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      prefix_suffix: null,
+      party_affiliation: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      is_corporate_rep: false,
+      corporate_entity: null,
+      read_and_sign: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      spelling_corrections: [],
+      email: null,
+      phone: null,
+    },
+  ];
+  record.parties = [
+    {
+      party_id: "party_1",
+      name: { value: "Proceo Vargas", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "plaintiff", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role_modifier: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      entity_type: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      fka_or_dba: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    },
+    {
+      party_id: "party_2",
+      name: { value: "Standing Seam and Specialty Company Inc.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "defendant", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role_modifier: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      entity_type: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      fka_or_dba: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    },
+  ];
+  record.law_firms = [
+    {
+      law_firm_id: "firm_1",
+      name: { value: "Lopez Judge Garza Law Firm", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      address: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      city: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      state: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      zip: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      phone: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      fax: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      email: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      represented_party: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    },
+  ];
   record.attorneys = [
     {
       attorney_id: "atty_1",
@@ -187,5 +242,65 @@ describe("harvestKeyterms", () => {
         }),
       ]),
     );
+  });
+
+  it("seeds participant-derived names deterministically and keeps them inside the existing cap", () => {
+    const record = buildRecord();
+    const participantTerms = harvestParticipantKeyterms(record).map((keyterm) => keyterm.term);
+
+    expect(participantTerms).toEqual([
+      "Mohammad Entiminan",
+      "Proceo Vargas",
+      "Standing Seam and Specialty Company Inc.",
+      "Derek I. Salinas",
+      "Raul Garza",
+      "Goldman & Peterson, PLLC",
+      "Lopez Judge Garza Law Firm",
+      "Tijerina Legal Group, P.C.",
+      "Neibardel Corporal",
+      "C-1628-25-E",
+    ]);
+
+    const seededOnce = seedStoredKeytermsFromParticipants(record, []);
+    const seededTwice = seedStoredKeytermsFromParticipants(record, []);
+    expect(seededOnce).toEqual(seededTwice);
+    expect(seededOnce.map((keyterm) => keyterm.term)).toEqual(expect.arrayContaining(participantTerms));
+  });
+
+  it("dedupes participant seeds against existing keyterms and lets them win truncation through the current cap", () => {
+    const record = buildRecord();
+    const existing: DeepgramKeyterm[] = [
+      {
+        term: "raul garza",
+        boost: 0.9,
+        category: "technical",
+        notes: "custom",
+      },
+      ...Array.from({ length: 140 }, (_, index) => ({
+        term: `overflow term ${index + 1}`,
+        boost: 0.5,
+        category: "other" as const,
+        notes: "overflow",
+      })),
+    ];
+
+    const seeded = seedStoredKeytermsFromParticipants(record, existing);
+    const included = fitStoredKeytermsToRequestBudget(seeded).keyterms.map((keyterm) => keyterm.term.toLowerCase());
+
+    expect(included.filter((term) => term === "raul garza")).toHaveLength(1);
+    expect(included).toEqual(expect.arrayContaining([
+      "mohammad entiminan",
+      "proceo vargas",
+      "standing seam and specialty company inc.",
+      "derek i. salinas",
+      "raul garza",
+      "goldman & peterson, pllc",
+      "lopez judge garza law firm",
+      "tijerina legal group, p.c.",
+      "neibardel corporal",
+      "c-1628-25-e",
+    ]));
+    expect(included.length).toBeLessThanOrEqual(90);
+    expect(included).not.toContain("overflow term 140");
   });
 });
