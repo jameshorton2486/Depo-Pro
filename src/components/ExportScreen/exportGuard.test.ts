@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SpeakerMapConfirmationResult } from "../../api/workspaceService";
 import {
   UNCONFIRMED_SPEAKER_MAP_DRAFT_BANNER,
+  buildSpeakerMappingCallToAction,
   classifyExportLane,
   executeGuardedExport,
   prependDraftBanner,
@@ -23,6 +24,7 @@ describe("exportGuard", () => {
     expect(classifyExportLane("txt")).toBe("draft");
     expect(classifyExportLane("docx")).toBe("certified");
     expect(classifyExportLane("package")).toBe("certified");
+    expect(classifyExportLane("pdf")).toBe("certified");
   });
 
   it("blocks certified export when the speaker map is unconfirmed", async () => {
@@ -40,8 +42,32 @@ describe("exportGuard", () => {
     expect(result).toEqual({
       ok: false,
       lane: "certified",
-      message: "Speaker mapping not confirmed. Complete speaker mapping before exporting a certified transcript.",
+      message: "Certified export is unavailable because speaker roles have not been confirmed.",
+      cta: {
+        label: "Map Speakers Now",
+        transcriptId: "tr_123",
+        caseId: "case_123",
+        sidebarTab: "speakers",
+      },
     });
+    expect(produce).not.toHaveBeenCalled();
+  });
+
+  it("defaults unknown future formats to the certified blocked lane", async () => {
+    const produce = vi.fn(async () => "artifact");
+
+    const result = await executeGuardedExport(
+      "pdf",
+      buildSpeakerMapStatus({ confirmed: false }),
+      produce,
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.lane).toBe("certified");
+    expect(result.message).toBe("Certified export is unavailable because speaker roles have not been confirmed.");
     expect(produce).not.toHaveBeenCalled();
   });
 
@@ -90,5 +116,18 @@ describe("exportGuard", () => {
       },
     });
     expect(produce).toHaveBeenCalledOnce();
+  });
+
+  it("builds a speaker-mapping CTA with the exact transcript identifier", () => {
+    expect(buildSpeakerMappingCallToAction(buildSpeakerMapStatus({
+      confirmed: false,
+      transcriptId: "tr_failed_export",
+      caseId: "case_failed_export",
+    }))).toEqual({
+      label: "Map Speakers Now",
+      transcriptId: "tr_failed_export",
+      caseId: "case_failed_export",
+      sidebarTab: "speakers",
+    });
   });
 });

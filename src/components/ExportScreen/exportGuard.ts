@@ -3,7 +3,7 @@ import type { SpeakerMapConfirmationResult } from "../../api/workspaceService";
 export const UNCONFIRMED_SPEAKER_MAP_DRAFT_BANNER =
   "DRAFT - UNCONFIRMED SPEAKER MAP - NOT FOR CERTIFICATION";
 
-export type ExportFormat = "txt" | "docx" | "package";
+export type ExportFormat = "txt" | "docx" | "package" | (string & {});
 export type ExportLane = "draft" | "certified";
 
 export interface GuardedExportContext {
@@ -15,6 +15,7 @@ export type GuardedExportResult<T> =
       ok: false;
       lane: ExportLane;
       message: string;
+      cta: ExportBlockCallToAction | null;
     }
   | {
       ok: true;
@@ -23,12 +24,34 @@ export type GuardedExportResult<T> =
       banner: string | null;
     };
 
+export interface ExportBlockCallToAction {
+  label: "Map Speakers Now";
+  transcriptId: string;
+  caseId: string;
+  sidebarTab: "speakers";
+}
+
 export function classifyExportLane(format: ExportFormat): ExportLane {
   return format === "txt" ? "draft" : "certified";
 }
 
 export function prependDraftBanner(text: string, banner: string = UNCONFIRMED_SPEAKER_MAP_DRAFT_BANNER): string {
   return `${banner}\n\n${text}`;
+}
+
+export function buildSpeakerMappingCallToAction(
+  speakerMap: SpeakerMapConfirmationResult,
+): ExportBlockCallToAction | null {
+  if (speakerMap.confirmed || !speakerMap.transcriptId || !speakerMap.caseId) {
+    return null;
+  }
+
+  return {
+    label: "Map Speakers Now",
+    transcriptId: speakerMap.transcriptId,
+    caseId: speakerMap.caseId,
+    sidebarTab: "speakers",
+  };
 }
 
 export async function executeGuardedExport<T>(
@@ -42,9 +65,8 @@ export async function executeGuardedExport<T>(
     return {
       ok: false,
       lane,
-      message:
-        speakerMap.message
-        ?? "Speaker mapping not confirmed. Complete speaker mapping before exporting a certified transcript.",
+      message: "Certified export is unavailable because speaker roles have not been confirmed.",
+      cta: buildSpeakerMappingCallToAction(speakerMap),
     };
   }
 

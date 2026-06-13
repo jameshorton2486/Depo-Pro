@@ -19,6 +19,7 @@ import {
   type WorkspaceAudioSegment,
   type WorkspaceSegmentTarget,
 } from "../api/workspaceService";
+import { consumeWorkspaceFocusTranscript } from "../lib/workspaceFocus";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -223,6 +224,7 @@ export function documentReducer(state: State, action: Action): State {
 interface ContextValue {
   state: State;
   loadDocument: () => Promise<void>;
+  navigateToTranscript: (transcriptId: string | null) => Promise<void>;
   navigateToPreviousSegment: () => Promise<void>;
   navigateToNextSegment: () => Promise<void>;
   refreshMediaUrl: (segmentIndex?: number) => Promise<string | null>;
@@ -283,7 +285,7 @@ export function DocumentProvider({
   const [state, dispatch] = useReducer(documentReducer, createInitialDocumentState(jobId));
 
   const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const selectedTranscriptIdRef = useRef<string | null>(null);
+  const selectedTranscriptIdRef = useRef<string | null>(consumeWorkspaceFocusTranscript(jobId));
 
   const loadDocument = useCallback(async () => {
     dispatch({ type: "LOAD_START" });
@@ -482,6 +484,7 @@ export function DocumentProvider({
     () => ({
       state,
       loadDocument,
+      navigateToTranscript,
       navigateToPreviousSegment,
       navigateToNextSegment,
       refreshMediaUrl,
@@ -496,7 +499,7 @@ export function DocumentProvider({
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, navigateToPreviousSegment, navigateToNextSegment, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, navigateToTranscript, navigateToPreviousSegment, navigateToNextSegment, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -6,6 +6,8 @@ import { SuggestionsPanel } from "../SuggestionsPanel/SuggestionsPanel";
 import { ChangeLogPanel } from "../ChangeLogPanel/ChangeLogPanel";
 import { ConfidencePanel } from "../ConfidencePanel/ConfidencePanel";
 import { ExhibitsPanel } from "../ExhibitsPanel/ExhibitsPanel";
+import { useDocument } from "../../context/DocumentContext";
+import { consumeWorkspaceSidebarTab } from "../../lib/workspaceFocus";
 
 type Tab = "speakers" | "suggestions" | "confidence" | "exhibits" | "changelog";
 
@@ -18,7 +20,8 @@ const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
 ];
 
 export function RightSidebar() {
-  const [active, setActive] = useState<Tab>("suggestions");
+  const { state } = useDocument();
+  const [active, setActive] = useState<Tab>(() => consumeWorkspaceSidebarTab(state.jobId) ?? "suggestions");
 
   return (
     <aside className="w-72 border-l border-slate-200 bg-slate-50 flex flex-col shrink-0 h-full">

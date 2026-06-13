@@ -8,7 +8,14 @@ import { loadOrderedTranscriptSnapshotsForCase } from "../../api/transcriptRepos
 import type { EditorDocument } from "../../api/types";
 import { buildExportTranscriptText, countExportWords, type ExportSegmentDocument } from "./exportAssembly";
 import { buildTranscriptDocxBlob, inferSpeakerRole } from "./docxFormatter";
-import { executeGuardedExport, prependDraftBanner, type ExportFormat } from "./exportGuard";
+import {
+  buildSpeakerMappingCallToAction,
+  executeGuardedExport,
+  prependDraftBanner,
+  type ExportBlockCallToAction,
+  type ExportFormat,
+} from "./exportGuard";
+import { queueWorkspaceFocusTarget } from "../../lib/workspaceFocus";
 
 interface GeneratedArtifact {
   name: string;
@@ -46,7 +53,7 @@ function downloadExistingBlob(filename: string, blob: Blob) {
 }
 
 export function ExportScreen({ jobId }: { jobId: string }) {
-  const { state: docState } = useDocument();
+  const { state: docState, navigateToTranscript } = useDocument();
   const { record } = useIntake();
   const { setStage } = useStage();
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
@@ -54,6 +61,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [loadingExport, setLoadingExport] = useState(true);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [blockedExportAction, setBlockedExportAction] = useState<ExportBlockCallToAction | null>(null);
 
   const certificationReady = useMemo(() => {
     try {
@@ -140,6 +148,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
 
   async function runExport(format: ExportFormat) {
     setExportMessage(null);
+    setBlockedExportAction(null);
     try {
       const speakerMap = await requireConfirmedSpeakerMap(jobId);
       const result = await executeGuardedExport(
@@ -166,6 +175,8 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 blob,
               );
             }
+            default:
+              throw new Error(`Unsupported export format: ${format}`);
           }
         },
       );
@@ -173,6 +184,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
       if (!result.ok) {
         setLastArtifact(null);
         setExportMessage(result.message);
+        setBlockedExportAction(result.cta ?? buildSpeakerMappingCallToAction(speakerMap));
         return;
       }
 
@@ -180,6 +192,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     } catch (error) {
       setLastArtifact(null);
       setExportMessage(error instanceof Error ? error.message : "Export failed.");
+      setBlockedExportAction(null);
     }
   }
 
@@ -214,7 +227,28 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               </p>
             )}
             {exportMessage && (
-              <p className="mt-2 text-sm text-rose-700">{exportMessage}</p>
+              <div className="mt-2 space-y-3">
+                <p className="text-sm text-rose-700">{exportMessage}</p>
+                {blockedExportAction && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      queueWorkspaceFocusTarget(blockedExportAction.caseId, {
+                        transcriptId: null,
+                        sidebarTab: blockedExportAction.sidebarTab,
+                      });
+                      void navigateToTranscript(blockedExportAction.transcriptId).then(() => {
+                        setStage("workspace");
+                      }).catch(() => {
+                        setStage("workspace");
+                      });
+                    }}
+                    className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+                  >
+                    {blockedExportAction.label}
+                  </button>
+                )}
+              </div>
             )}
           </section>
 

@@ -328,12 +328,14 @@ export async function requireConfirmedSpeakerMap(key: string): Promise<SpeakerMa
     }
 
     const confirmedSegments = resolved.orderedSegments.length > 0 ? resolved.orderedSegments : [target];
-    const confirmed = confirmedSegments.every((segment) => segment.speaker_map_confirmed);
+    const firstUnconfirmedSegment = confirmedSegments.find((segment) => !segment.speaker_map_confirmed) ?? null;
+    const resolutionTarget = firstUnconfirmedSegment ?? target;
+    const confirmed = firstUnconfirmedSegment === null;
 
     return {
-      jobId: target.job_id,
-      transcriptId: target.transcript_id,
-      caseId: target.case_id,
+      jobId: resolutionTarget.job_id,
+      transcriptId: resolutionTarget.transcript_id,
+      caseId: resolutionTarget.case_id,
       confirmed,
       message: confirmed
         ? undefined
