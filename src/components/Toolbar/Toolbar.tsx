@@ -4,6 +4,7 @@ import { useEditorContext } from "../../context/EditorContext";
 import { useStage } from "../../context/StageContext";
 import { useCase } from "../../context/useCase";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
+import { SpeakerMapStatusBadge } from "../SpeakerMapStatusBadge";
 
 interface Props {
   jobId: string;
@@ -156,6 +157,10 @@ export function Toolbar({ jobId, onSave }: Props) {
             />
           </div>
           <span className="text-xs font-mono text-slate-400 w-8 text-right">{reviewPct}%</span>
+        </div>
+
+        <div className="border-l border-slate-700 pl-4">
+          <SpeakerMapStatusBadge confirmed={state.speakerMapConfirmed} />
         </div>
 
         <div className="border-l border-slate-700 pl-4">
