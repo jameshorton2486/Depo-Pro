@@ -134,7 +134,7 @@ describe("listRecentCases", () => {
       in: async () => ({ data: [{ case_id: "case_live" }], error: null }),
     });
     transcriptsSelect.mockReturnValue({
-      in: async () => ({ data: [{ case_id: "case_live" }], error: null }),
+      in: async () => ({ data: [{ case_id: "case_live", speaker_map_confirmed: true }], error: null }),
     });
     exhibitsSelect.mockReturnValue({
       in: async () => ({ data: [{ case_id: "case_live" }, { case_id: "case_live" }], error: null }),
@@ -157,6 +157,7 @@ describe("listRecentCases", () => {
         hasTranscript: true,
         exhibitCount: 2,
         certified: true,
+        speakerMapConfirmed: true,
       },
     ]);
   });
@@ -205,6 +206,60 @@ describe("listRecentCases", () => {
         hasTranscript: false,
         exhibitCount: 0,
         certified: false,
+        speakerMapConfirmed: true,
+      },
+    ]);
+  });
+
+  it("marks a case row unconfirmed when any transcript row is unconfirmed", async () => {
+    casesSelect.mockReturnValue({
+      order: () => ({
+        limit: async () => ({
+          data: [{
+            case_id: "case_multi",
+            stage: "workspace",
+            updated_at: "2026-06-05T20:10:00.000Z",
+            payload: {},
+          }],
+          error: null,
+        }),
+      }),
+    });
+
+    caseAudioSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    transcriptsSelect.mockReturnValue({
+      in: async () => ({
+        data: [
+          { case_id: "case_multi", speaker_map_confirmed: true },
+          { case_id: "case_multi", speaker_map_confirmed: false },
+        ],
+        error: null,
+      }),
+    });
+    exhibitsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    certificationsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+
+    await expect(listRecentCases()).resolves.toEqual([
+      {
+        case_id: "case_multi",
+        stage: "workspace",
+        updated_at: "2026-06-05T20:10:00.000Z",
+        archived: false,
+        caseName: "Untitled Case",
+        caseStyle: "",
+        caseNumber: "",
+        witnessName: "",
+        hasAudio: false,
+        hasTranscript: true,
+        exhibitCount: 0,
+        certified: false,
+        speakerMapConfirmed: false,
       },
     ]);
   });

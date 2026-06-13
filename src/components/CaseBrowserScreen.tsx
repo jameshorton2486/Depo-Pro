@@ -4,6 +4,7 @@ import { listRecentCases, type CaseBrowserSummary } from "../api/caseService";
 import { caseStatusFromStage, matchesCaseSearch } from "../lib/caseLifecycle";
 import { useCase } from "../context/useCase";
 import { AuthStatusChip } from "./AuthGate/AuthGate";
+import { SpeakerMapStatusBadge } from "./SpeakerMapStatusBadge";
 
 function StatusChip({
   stage,
@@ -27,7 +28,7 @@ function StatusChip({
   );
 }
 
-function CaseCard({
+export function CaseCard({
   summary,
   onOpen,
 }: {
@@ -52,7 +53,10 @@ function CaseCard({
           <p className="truncate text-sm font-semibold text-slate-900">{summary.caseName}</p>
           <p className="mt-1 truncate font-mono text-[11px] text-slate-500">{summary.case_id}</p>
         </div>
-        <StatusChip stage={summary.stage} certified={summary.certified} />
+        <div className="flex flex-col items-end gap-2">
+          <StatusChip stage={summary.stage} certified={summary.certified} />
+          <SpeakerMapStatusBadge confirmed={summary.speakerMapConfirmed} />
+        </div>
       </div>
 
       <div className="space-y-1 text-xs text-slate-600">

@@ -19,6 +19,7 @@ type CaseIndicatorSummary = {
   hasTranscript: boolean;
   exhibitCount: number;
   certified: boolean;
+  speakerMapConfirmed: boolean;
 };
 
 export interface CaseBrowserSummary {
@@ -34,6 +35,7 @@ export interface CaseBrowserSummary {
   hasTranscript: boolean;
   exhibitCount: number;
   certified: boolean;
+  speakerMapConfirmed: boolean;
 }
 
 type MinimalExtractedField = {
@@ -158,7 +160,7 @@ function getSummaryText(record: unknown) {
 
 function summarizeIndicators(
   audioRows: Array<{ case_id: string }>,
-  transcriptRows: Array<{ case_id: string }>,
+  transcriptRows: Array<{ case_id: string; speaker_map_confirmed: boolean }>,
   exhibitRows: Array<{ case_id: string }>,
   certificationRows: CaseCertificationRow[],
 ): Map<string, CaseIndicatorSummary> {
@@ -175,6 +177,7 @@ function summarizeIndicators(
       hasTranscript: false,
       exhibitCount: 0,
       certified: false,
+      speakerMapConfirmed: true,
     };
     indicators.set(caseId, created);
     return created;
@@ -185,7 +188,9 @@ function summarizeIndicators(
   }
 
   for (const row of transcriptRows) {
-    ensure(row.case_id).hasTranscript = true;
+    const summary = ensure(row.case_id);
+    summary.hasTranscript = true;
+    summary.speakerMapConfirmed = summary.speakerMapConfirmed && row.speaker_map_confirmed;
   }
 
   for (const row of exhibitRows) {
@@ -227,7 +232,7 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
   const [audioResult, transcriptResult, exhibitResult, certificationResult] =
     await Promise.all([
       client.from("case_audio").select("case_id").in("case_id", caseIds),
-      client.from("transcripts").select("case_id").in("case_id", caseIds),
+      client.from("transcripts").select("case_id, speaker_map_confirmed").in("case_id", caseIds),
       client.from("case_exhibits").select("case_id").in("case_id", caseIds),
       client.from("case_certifications").select("case_id").in("case_id", caseIds),
     ]);
@@ -251,6 +256,7 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
       hasTranscript: false,
       exhibitCount: 0,
       certified: false,
+      speakerMapConfirmed: true,
     };
 
     return {
@@ -263,9 +269,10 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
       caseNumber: summary.caseNumber,
       witnessName: summary.witnessName,
       hasAudio: indicator.hasAudio,
-      hasTranscript: indicator.hasTranscript,
-      exhibitCount: indicator.exhibitCount,
-      certified: indicator.certified,
-    };
+        hasTranscript: indicator.hasTranscript,
+        exhibitCount: indicator.exhibitCount,
+        certified: indicator.certified,
+        speakerMapConfirmed: indicator.speakerMapConfirmed,
+      };
   });
 }
