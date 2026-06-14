@@ -83,7 +83,7 @@ export function buildAttributionParagraphSpec(text: string): TranscriptDocxParag
   };
 }
 
-function buildColloquyParagraphSpec(label: string, text: string): TranscriptDocxParagraphSpec {
+export function buildColloquyParagraphSpec(label: string, text: string): TranscriptDocxParagraphSpec {
   return {
     kind: "colloquy",
     runs: [
@@ -95,7 +95,7 @@ function buildColloquyParagraphSpec(label: string, text: string): TranscriptDocx
   };
 }
 
-function buildParentheticalParagraphSpec(text: string): TranscriptDocxParagraphSpec {
+export function buildParentheticalParagraphSpec(text: string): TranscriptDocxParagraphSpec {
   return {
     kind: "parenthetical",
     alignment: AlignmentType.CENTER,
@@ -107,7 +107,7 @@ function buildParentheticalParagraphSpec(text: string): TranscriptDocxParagraphS
   };
 }
 
-function buildSegmentHeadingParagraphSpec(text: string): TranscriptDocxParagraphSpec {
+export function buildSegmentHeadingParagraphSpec(text: string): TranscriptDocxParagraphSpec {
   return {
     kind: "segment_heading",
     alignment: AlignmentType.CENTER,
@@ -216,7 +216,13 @@ export function buildTranscriptDocxParagraphSpecs(
 export async function buildTranscriptDocxBlob(
   segments: ExportSegmentDocument[],
 ): Promise<Blob> {
-  const sectionChildren = buildTranscriptDocxParagraphSpecs(segments).map(createParagraphFromSpec);
+  return buildTranscriptDocxBlobFromParagraphSpecs(buildTranscriptDocxParagraphSpecs(segments));
+}
+
+export async function buildTranscriptDocxBlobFromParagraphSpecs(
+  paragraphSpecs: TranscriptDocxParagraphSpec[],
+): Promise<Blob> {
+  const sectionChildren = paragraphSpecs.map(createParagraphFromSpec);
   const document = new Document({
     sections: [{
       properties: {

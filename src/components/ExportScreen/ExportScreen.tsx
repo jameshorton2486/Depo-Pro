@@ -6,8 +6,9 @@ import { useStage } from "../../context/StageContext";
 import { requireConfirmedSpeakerMap } from "../../api/workspaceService";
 import { loadOrderedTranscriptSnapshotsForCase } from "../../api/transcriptRepository";
 import type { EditorDocument } from "../../api/types";
-import { buildExportTranscriptText, countExportWords, type ExportSegmentDocument } from "./exportAssembly";
-import { buildTranscriptDocxBlob, inferSpeakerRole } from "./docxFormatter";
+import { buildExportTranscriptText, countExportWords } from "./exportAssembly";
+import { inferSpeakerRole } from "./docxFormatter";
+import { buildExportDocxBlob, type ExportTranscriptSegment } from "./exportDocx";
 import {
   buildSpeakerMappingCallToAction,
   executeGuardedExport,
@@ -57,7 +58,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const { record } = useIntake();
   const { setStage } = useStage();
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
-  const [exportSegments, setExportSegments] = useState<ExportSegmentDocument[]>([]);
+  const [exportSegments, setExportSegments] = useState<ExportTranscriptSegment[]>([]);
   const [loadingExport, setLoadingExport] = useState(true);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
@@ -95,6 +96,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
           sequenceIndex: snapshot.job.sequence_index,
           sourceFilename: snapshot.job.source_filename,
           document: buildEditorDocumentFromSnapshot(snapshot),
+          snapshot,
         })));
       } catch (error) {
         if (!cancelled) {
@@ -169,7 +171,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 packageJson,
               );
             case "docx": {
-              const blob = await buildTranscriptDocxBlob(exportSegments);
+              const blob = await buildExportDocxBlob(exportSegments, record);
               return downloadExistingBlob(
                 `${jobId}-transcript.docx`,
                 blob,
