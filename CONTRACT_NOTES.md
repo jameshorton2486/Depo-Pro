@@ -33,3 +33,4 @@ _None._
 | `TranscriptJobRow` and local transcript row types | `src/api/transcriptRepository.ts` | Local Supabase row extensions used until generated database types are refreshed after the migration is pushed. |
 | `workspaceApi` | `src/api/workspaceService.ts` | Local workspace persistence seam that switches between MSW and Supabase without reshaping the frozen transcript contract. |
 | `WorkspaceLoadResult` / `WorkspaceMutationResult` | `src/api/workspaceService.ts` | Local workspace persistence metadata carrying transcript `updatedAt` and speaker-map confirmation without changing the frozen API contract. |
+| `SaveWorkingContractResponse` / `WorkspaceMutationContractResponse` | `src/api/client.ts` | Local client response types that thread server-returned transcript `updatedAt` through existing save endpoints without changing the frozen API contract. |

@@ -23,6 +23,7 @@ type TranscriptRow = {
   duration: number | null;
   duration_seconds?: number | null;
   based_on?: string | null;
+  speaker_map_confirmed?: boolean | null;
 };
 
 type TranscriptSpeakerRow = {
@@ -413,7 +414,10 @@ async function handlePutWorking(context: RouteContext): Promise<Response> {
     saved: typeof data === "number" ? data : 0,
   };
 
-  return respondJson(200, response);
+  return respondJson(200, {
+    ...response,
+    updatedAt: await touchTranscriptUpdatedAt(context),
+  });
 }
 
 async function parseJsonBody(request: Request): Promise<unknown> {
@@ -499,7 +503,10 @@ async function handlePutReview(context: RouteContext): Promise<Response> {
     throw new HttpError(500, "failed to save review");
   }
 
-  return respondJson(200, { ok: true });
+  return respondJson(200, {
+    ok: true,
+    updatedAt: await touchTranscriptUpdatedAt(context),
+  });
 }
 
 async function handlePutSpeakers(context: RouteContext): Promise<Response> {
@@ -573,13 +580,38 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
   const transcriptResult = await context.supabase
     .from("transcripts")
     .update({ speaker_map_confirmed: speakerMapConfirmed })
-    .eq("transcript_id", transcriptId);
+    .eq("transcript_id", transcriptId)
+    .select("updated_at")
+    .single();
 
-  if (transcriptResult.error) {
+  if (transcriptResult.error || !transcriptResult.data?.updated_at) {
     throw new HttpError(500, "failed to save speakers");
   }
 
-  return respondJson(200, { ok: true });
+  return respondJson(200, {
+    ok: true,
+    updatedAt: transcriptResult.data.updated_at as string,
+  });
+}
+
+async function touchTranscriptUpdatedAt(
+  context: RouteContext,
+): Promise<string> {
+  const { data, error } = await context.supabase
+    .from("transcripts")
+    .update({
+      based_on: context.transcript.based_on ?? null,
+      job_id: context.transcript.job_id,
+    })
+    .eq("transcript_id", context.transcript.transcript_id)
+    .select("updated_at")
+    .single();
+
+  if (error || !data?.updated_at) {
+    throw new HttpError(500, "failed to load transcript version");
+  }
+
+  return data.updated_at as string;
 }
 
 function validateReviewPayload(value: unknown): ReviewPayload {

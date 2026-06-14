@@ -15,6 +15,15 @@ import { AuthRequiredError, supabase } from "../lib/supabase";
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
 
+type SaveWorkingContractResponse = SaveWorkingResponse & {
+  updatedAt?: string | null;
+};
+
+type WorkspaceMutationContractResponse = {
+  ok: true;
+  updatedAt?: string | null;
+};
+
 let _baseUrl = "";
 
 export function configureClient(apiBaseUrl: string) {
@@ -104,13 +113,13 @@ export const api = {
     request<EditorDocument>("GET", url(jobId, "document")),
 
   saveWorking: (jobId: string, payload: SaveWorkingPayload) =>
-    request<SaveWorkingResponse>("PUT", url(jobId, "working"), payload),
+    request<SaveWorkingContractResponse>("PUT", url(jobId, "working"), payload),
 
   saveReview: (jobId: string, payload: ReviewPayload) =>
-    request<{ ok: true }>("PUT", url(jobId, "review"), payload),
+    request<WorkspaceMutationContractResponse>("PUT", url(jobId, "review"), payload),
 
   saveSpeakers: (jobId: string, payload: SpeakersPayload) =>
-    request<{ ok: true }>("PUT", url(jobId, "speakers"), payload),
+    request<WorkspaceMutationContractResponse>("PUT", url(jobId, "speakers"), payload),
 
   getSuggestions: (jobId: string) =>
     request<AiSuggestion[]>("GET", url(jobId, "suggestions")),

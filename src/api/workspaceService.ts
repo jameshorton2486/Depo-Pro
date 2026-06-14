@@ -757,7 +757,8 @@ export const workspaceApi = {
 
   if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
-      return { ...(await contractApi.saveWorking(target.transcript_id, payload)), updatedAt: target.updated_at };
+      const result = await contractApi.saveWorking(target.transcript_id, payload);
+      return { ...result, updatedAt: result.updatedAt ?? target.updated_at };
     }
 
     return naivePersistWorking(jobId, payload, options);
@@ -769,7 +770,8 @@ export const workspaceApi = {
 
   if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
-      return { ...(await contractApi.saveReview(target.transcript_id, payload)), updatedAt: target.updated_at };
+      const result = await contractApi.saveReview(target.transcript_id, payload);
+      return { ...result, updatedAt: result.updatedAt ?? target.updated_at };
     }
 
     return persistReview(jobId, payload, options);
@@ -781,10 +783,10 @@ export const workspaceApi = {
 
   if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
-      await contractApi.saveSpeakers(target.transcript_id, payload);
+      const result = await contractApi.saveSpeakers(target.transcript_id, payload);
       return {
         ok: true,
-        updatedAt: target.updated_at,
+        updatedAt: result.updatedAt ?? target.updated_at,
         speakerMapConfirmed: isSpeakerMapConfirmed(payload.speakers),
       };
     }
