@@ -41,7 +41,7 @@ type TranscriptJobInsert = Omit<TranscriptJobRow, "id" | "created_at" | "updated
 
 type TranscriptJobUpdate = Partial<TranscriptJobInsert>;
 
-type TranscriptSpeakerRow = {
+export type TranscriptSpeakerRow = {
   id: string;
   transcript_id: string;
   speaker_id: string;
