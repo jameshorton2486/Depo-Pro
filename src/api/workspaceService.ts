@@ -18,15 +18,28 @@ import {
   listTranscriptJobs,
   loadTranscriptSnapshot,
   updateTranscriptJob,
+  type SpeakerResolutionCurrentRow,
+  type TranscriptSpeakerRow,
   type TranscriptJobRow,
 } from "./transcriptRepository";
 import { getSupabaseClient } from "../lib/supabase";
 import { resolveSegmentWorkspaceSelection } from "../lib/transcript/segmentWorkspace";
+import {
+  buildParticipantId,
+  buildResolvedSpeakerViews,
+  isResolvedSpeakerMappingComplete,
+  type ResolvedSpeakerView,
+} from "../lib/transcript/resolvedSpeakers";
+import type { Database } from "../types/database";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
 
+type SpeakerResolutionHistoryRow =
+  Database["public"]["Tables"]["speaker_resolution_history"]["Row"];
+
 export interface WorkspaceLoadResult {
   document: EditorDocument;
+  resolvedSpeakers: ResolvedSpeakerView[];
   updatedAt: string | null;
   speakerMapConfirmed: boolean;
   audioSegments: WorkspaceAudioSegment[];
@@ -63,7 +76,10 @@ export interface WorkspaceMutationResult {
   ok: true;
   updatedAt: string | null;
   speakerMapConfirmed?: boolean;
+  resolvedSpeakers?: ResolvedSpeakerView[];
 }
+
+export type { ResolvedSpeakerView } from "../lib/transcript/resolvedSpeakers";
 
 export interface SpeakerMapConfirmationResult {
   jobId: string;
@@ -108,12 +124,7 @@ function buildEditorDocumentFromSnapshot(
     job_id: snapshot.job.transcript_id,
     media_url: mediaUrl,
     duration: snapshot.job.duration_seconds ?? snapshot.job.duration ?? 0,
-    speakers: snapshot.speakers.map((speaker) => ({
-      speaker_id: speaker.speaker_id,
-      display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
-      deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker,
-      role: mapSpeakerRole(speaker.speaker_role || speaker.role),
-    })),
+    speakers: buildRawDocumentSpeakers(snapshot.speakers),
     utterances: snapshot.utterances.map((utterance) => ({
       utterance_id: utterance.utterance_id,
       speaker_id: utterance.speaker_id,
@@ -136,6 +147,17 @@ function buildEditorDocumentFromSnapshot(
         edited: Boolean(word.working_text && word.working_text !== word.raw_text),
       })),
   };
+}
+
+function buildRawDocumentSpeakers(
+  speakers: TranscriptSpeakerRow[],
+): EditorDocument["speakers"] {
+  return speakers.map((speaker) => ({
+    speaker_id: speaker.speaker_id,
+    display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
+    deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker,
+    role: mapSpeakerRole(speaker.speaker_role || speaker.role),
+  }));
 }
 
 async function resolveWorkspaceTarget(value: string): Promise<{
@@ -200,6 +222,7 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
 
   return {
     document: buildEditorDocumentFromSnapshot(snapshot, mediaUrl),
+    resolvedSpeakers: buildResolvedSpeakerViews(snapshot.speakers, snapshot.speakerResolutionOverlay),
     updatedAt: snapshot.job.updated_at,
     speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
     audioSegments: await loadAudioSegments(snapshot.job, mediaUrl),
@@ -559,11 +582,79 @@ async function persistReview(
   });
 }
 
-function isSpeakerMapConfirmed(speakers: SpeakersPayload["speakers"]): boolean {
-  return speakers.length > 0 && speakers.every((speaker) => {
-    const displayName = speaker.display_name.trim();
-    return displayName.length > 0 && speaker.role;
-  });
+function buildFallbackResolvedSpeakers(speakers: EditorDocument["speakers"]): ResolvedSpeakerView[] {
+  return speakers.map((speaker) => ({
+    ...speaker,
+    participantId: `raw:${speaker.speaker_id}`,
+    rawSpeakerIds: [speaker.speaker_id],
+    speakerIndices: [speaker.deepgram_speaker],
+  }));
+}
+
+async function requireCurrentUserId(client: Awaited<ReturnType<typeof getSupabaseClient>>): Promise<string> {
+  const { data, error } = await client.auth.getUser();
+  if (error) {
+    throw error;
+  }
+
+  const userId = data.user?.id ?? null;
+  if (!userId) {
+    throw new Error("Authenticated user id is required for speaker resolution writes.");
+  }
+
+  return userId;
+}
+
+async function loadCurrentSpeakerResolutionRows(
+  client: Awaited<ReturnType<typeof getSupabaseClient>>,
+  transcriptId: string,
+  rawSpeakerIds: string[],
+): Promise<SpeakerResolutionCurrentRow[]> {
+  if (rawSpeakerIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await client
+    .from("speaker_resolution_current")
+    .select("*")
+    .eq("transcript_id", transcriptId)
+    .in("raw_speaker_id", rawSpeakerIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as SpeakerResolutionCurrentRow[];
+}
+
+async function loadLatestSpeakerResolutionHistoryRows(
+  client: Awaited<ReturnType<typeof getSupabaseClient>>,
+  transcriptId: string,
+  rawSpeakerIds: string[],
+): Promise<Map<string, SpeakerResolutionHistoryRow>> {
+  const latest = new Map<string, SpeakerResolutionHistoryRow>();
+  if (rawSpeakerIds.length === 0) {
+    return latest;
+  }
+
+  const { data, error } = await client
+    .from("speaker_resolution_history")
+    .select("*")
+    .eq("transcript_id", transcriptId)
+    .in("raw_speaker_id", rawSpeakerIds)
+    .order("resolved_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  for (const row of (data ?? []) as SpeakerResolutionHistoryRow[]) {
+    if (!latest.has(row.raw_speaker_id)) {
+      latest.set(row.raw_speaker_id, row);
+    }
+  }
+
+  return latest;
 }
 
 async function persistSpeakers(
@@ -575,6 +666,17 @@ async function persistSpeakers(
 
   return withRetry(async () => {
     const client = await getSupabaseClient("persistSpeakers");
+    const snapshot = await loadTranscriptSnapshot(job.job_id);
+    if (!snapshot) {
+      throw new Error(`Transcript job ${job.job_id} was not found.`);
+    }
+
+    const userId = await requireCurrentUserId(client);
+    const rawSpeakerById = new Map(snapshot.speakers.map((speaker) => [speaker.speaker_id, speaker]));
+    const rawSpeakerIds = payload.speakers.map((speaker) => speaker.speaker_id);
+    const currentRows = await loadCurrentSpeakerResolutionRows(client, job.transcript_id, rawSpeakerIds);
+    const currentRowBySpeakerId = new Map(currentRows.map((row) => [row.raw_speaker_id, row]));
+    const latestHistoryBySpeakerId = await loadLatestSpeakerResolutionHistoryRows(client, job.transcript_id, rawSpeakerIds);
     const auditEntries: Array<{
       transcript_id: string;
       case_id: string;
@@ -586,31 +688,80 @@ async function persistSpeakers(
       after_text?: string | null;
     }> = [];
 
+    const now = new Date().toISOString();
+    const changedCurrentRows: Database["public"]["Tables"]["speaker_resolution_current"]["Insert"][] = [];
+    const changedHistoryRows: Database["public"]["Tables"]["speaker_resolution_history"]["Insert"][] = [];
+
     for (const speaker of payload.speakers) {
+      const rawSpeaker = rawSpeakerById.get(speaker.speaker_id);
+      if (!rawSpeaker) {
+        throw new Error(`Unknown raw speaker ${speaker.speaker_id} for transcript ${job.transcript_id}.`);
+      }
+
+      const resolvedLabel = speaker.display_name.trim();
+      const resolvedRole = speaker.role ? speaker.role.toLowerCase() : null;
+      const participantId = buildParticipantId(speaker.role, resolvedLabel);
+      const currentRow = currentRowBySpeakerId.get(speaker.speaker_id) ?? null;
+      const changed = !currentRow
+        || currentRow.participant_id !== participantId
+        || currentRow.resolved_label !== resolvedLabel
+        || currentRow.resolved_role !== resolvedRole;
+
+      if (changed) {
+        changedCurrentRows.push({
+          transcript_id: job.transcript_id,
+          raw_speaker_id: rawSpeaker.speaker_id,
+          raw_speaker_index: rawSpeaker.speaker_index,
+          participant_id: participantId,
+          resolved_role: resolvedRole,
+          resolved_label: resolvedLabel,
+          resolved_by: userId,
+          resolved_at: now,
+          owner_user_id: userId,
+        });
+
+        changedHistoryRows.push({
+          transcript_id: job.transcript_id,
+          raw_speaker_id: rawSpeaker.speaker_id,
+          raw_speaker_index: rawSpeaker.speaker_index,
+          participant_id: participantId,
+          resolved_role: resolvedRole,
+          resolved_label: resolvedLabel,
+          resolved_by: userId,
+          resolved_at: now,
+          supersedes_resolution_id: latestHistoryBySpeakerId.get(rawSpeaker.speaker_id)?.resolution_id ?? null,
+          owner_user_id: userId,
+        });
+
+        auditEntries.push({
+          transcript_id: job.transcript_id,
+          case_id: job.case_id,
+          job_id: job.job_id,
+          action: "assign_speaker",
+          before_text: rawSpeaker.speaker_id,
+          after_text: `${resolvedLabel}${speaker.role ? ` (${speaker.role})` : ""}`,
+        });
+      }
+    }
+
+    if (changedCurrentRows.length > 0) {
       const { error } = await client
-        .from("transcript_speakers")
-        .update({
-          assigned_name: speaker.display_name,
-          speaker_label: speaker.display_name,
-          display_name: speaker.display_name,
-          speaker_role: speaker.role ? speaker.role.toLowerCase() : null,
-          role: speaker.role ? speaker.role.toLowerCase() : null,
-        })
-        .eq("job_id", job.job_id)
-        .eq("speaker_id", speaker.speaker_id);
+        .from("speaker_resolution_current")
+        .upsert(changedCurrentRows, { onConflict: "transcript_id,raw_speaker_id" });
 
       if (error) {
         throw error;
       }
+    }
 
-      auditEntries.push({
-        transcript_id: job.transcript_id,
-        case_id: job.case_id,
-        job_id: job.job_id,
-        action: "assign_speaker",
-        before_text: speaker.speaker_id,
-        after_text: `${speaker.display_name}${speaker.role ? ` (${speaker.role})` : ""}`,
-      });
+    if (changedHistoryRows.length > 0) {
+      const { error } = await client
+        .from("speaker_resolution_history")
+        .insert(changedHistoryRows);
+
+      if (error) {
+        throw error;
+      }
     }
 
     if (payload.utterance_speaker_map) {
@@ -655,15 +806,25 @@ async function persistSpeakers(
 
     await appendAuditEntries(auditEntries);
 
+    const refreshedSnapshot = await loadTranscriptSnapshot(job.job_id);
+    if (!refreshedSnapshot) {
+      throw new Error(`Transcript job ${job.job_id} was not found after speaker resolution save.`);
+    }
+    const resolvedSpeakers = buildResolvedSpeakerViews(
+      refreshedSnapshot.speakers,
+      refreshedSnapshot.speakerResolutionOverlay,
+    );
+
     const updatedJob = await updateTranscriptJob(job.transcript_id, {
       status: job.status,
-      speaker_map_confirmed: isSpeakerMapConfirmed(payload.speakers),
+      speaker_map_confirmed: isResolvedSpeakerMappingComplete(resolvedSpeakers),
     });
 
     return {
       ok: true,
       updatedAt: updatedJob.updated_at,
       speakerMapConfirmed: updatedJob.speaker_map_confirmed,
+      resolvedSpeakers,
     };
   });
 }
@@ -680,6 +841,7 @@ async function getTranscriptChecklist(key: string): Promise<CertifyChecklist> {
   }
 
   const client = await getSupabaseClient("getTranscriptChecklist");
+  const snapshot = await loadTranscriptSnapshot(job.job_id);
   const { count, error } = await client
     .from("transcript_words")
     .select("word_id", { count: "exact", head: true })
@@ -691,10 +853,13 @@ async function getTranscriptChecklist(key: string): Promise<CertifyChecklist> {
   }
 
   const reviewComplete = (count ?? 0) === 0;
+  const resolvedSpeakers = snapshot
+    ? buildResolvedSpeakerViews(snapshot.speakers, snapshot.speakerResolutionOverlay)
+    : [];
 
   return {
     review_complete: reviewComplete,
-    speaker_mapping_complete: job.speaker_map_confirmed,
+    speaker_mapping_complete: isResolvedSpeakerMappingComplete(resolvedSpeakers),
     confidence_review_complete: reviewComplete,
   };
 }
@@ -710,8 +875,10 @@ export async function listWorkspaceTranscriptJobs(caseId: string) {
 export const workspaceApi = {
   getDocument: async (caseId: string): Promise<WorkspaceLoadResult> => {
     if (USE_MOCK_WORKSPACE) {
+      const document = await contractApi.getDocument(caseId);
       return {
-        document: await contractApi.getDocument(caseId),
+        document,
+        resolvedSpeakers: buildFallbackResolvedSpeakers(document.speakers),
         updatedAt: null,
         speakerMapConfirmed: false,
         audioSegments: [],
@@ -723,7 +890,7 @@ export const workspaceApi = {
       };
     }
 
-  if (isRealApiMode()) {
+    if (isRealApiMode()) {
       const resolved = await resolveWorkspaceTarget(caseId);
       const target = resolved.target;
       if (!target) {
@@ -731,8 +898,10 @@ export const workspaceApi = {
       }
 
       const document = await contractApi.getDocument(target.transcript_id);
+      const resolvedSpeakers = await contractApi.getResolvedSpeakers(target.transcript_id);
       return {
         document,
+        resolvedSpeakers,
         updatedAt: target.updated_at,
         speakerMapConfirmed: target.speaker_map_confirmed,
         audioSegments: await loadAudioSegments(target, document.media_url),
@@ -755,7 +924,7 @@ export const workspaceApi = {
       return { ...(await contractApi.saveWorking(jobId, payload)), updatedAt: null };
     }
 
-  if (isRealApiMode()) {
+    if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
       const result = await contractApi.saveWorking(target.transcript_id, payload);
       return { ...result, updatedAt: result.updatedAt ?? target.updated_at };
@@ -768,7 +937,7 @@ export const workspaceApi = {
       return { ...(await contractApi.saveReview(jobId, payload)), updatedAt: null };
     }
 
-  if (isRealApiMode()) {
+    if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
       const result = await contractApi.saveReview(target.transcript_id, payload);
       return { ...result, updatedAt: result.updatedAt ?? target.updated_at };
@@ -778,16 +947,24 @@ export const workspaceApi = {
   },
   saveSpeakers: async (jobId: string, payload: SpeakersPayload, options?: WorkspaceMutationOptions) => {
     if (USE_MOCK_WORKSPACE) {
-      return { ...(await contractApi.saveSpeakers(jobId, payload)), updatedAt: null, speakerMapConfirmed: false };
+      const document = await contractApi.getDocument(jobId);
+      return {
+        ...(await contractApi.saveSpeakers(jobId, payload)),
+        updatedAt: null,
+        speakerMapConfirmed: false,
+        resolvedSpeakers: buildFallbackResolvedSpeakers(document.speakers),
+      };
     }
 
-  if (isRealApiMode()) {
+    if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
       const result = await contractApi.saveSpeakers(target.transcript_id, payload);
+      const resolvedSpeakers = await contractApi.getResolvedSpeakers(target.transcript_id);
       return {
         ok: true,
         updatedAt: result.updatedAt ?? target.updated_at,
-        speakerMapConfirmed: isSpeakerMapConfirmed(payload.speakers),
+        speakerMapConfirmed: isResolvedSpeakerMappingComplete(resolvedSpeakers),
+        resolvedSpeakers,
       };
     }
 
@@ -798,7 +975,7 @@ export const workspaceApi = {
       return contractApi.getSuggestions(jobId);
     }
 
-  if (isRealApiMode()) {
+    if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId);
       return contractApi.getSuggestions(target.transcript_id);
     }

@@ -12,6 +12,12 @@ import type {
   Utterance,
   Word,
 } from "../../../src/api/types.ts";
+import {
+  buildParticipantId,
+  buildResolvedSpeakerViews,
+  isResolvedSpeakerMappingComplete,
+  type ResolvedSpeakerView,
+} from "../../../src/lib/transcript/resolvedSpeakers.ts";
 
 type Database = Record<string, never>;
 
@@ -35,6 +41,62 @@ type TranscriptSpeakerRow = {
   speaker_label?: string | null;
   assigned_name?: string | null;
   speaker_role?: string | null;
+  transcript_id?: string;
+};
+
+type SpeakerResolutionCurrentRow = {
+  id: string;
+  transcript_id: string;
+  raw_speaker_id: string;
+  raw_speaker_index: number;
+  participant_id: string;
+  resolved_role: string | null;
+  resolved_label: string | null;
+  resolved_by: string;
+  resolved_at: string;
+  owner_user_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type SpeakerResolutionCurrentInsert = {
+  transcript_id: string;
+  raw_speaker_id: string;
+  raw_speaker_index: number;
+  participant_id: string;
+  resolved_role: string | null;
+  resolved_label: string | null;
+  resolved_by: string;
+  resolved_at: string;
+  owner_user_id: string;
+};
+
+type SpeakerResolutionHistoryRow = {
+  resolution_id: string;
+  transcript_id: string;
+  raw_speaker_id: string;
+  raw_speaker_index: number;
+  participant_id: string;
+  resolved_role: string | null;
+  resolved_label: string | null;
+  resolved_by: string;
+  resolved_at: string;
+  supersedes_resolution_id: string | null;
+  owner_user_id: string;
+  created_at: string;
+};
+
+type SpeakerResolutionHistoryInsert = {
+  transcript_id: string;
+  raw_speaker_id: string;
+  raw_speaker_index: number;
+  participant_id: string;
+  resolved_role: string | null;
+  resolved_label: string | null;
+  resolved_by: string;
+  resolved_at: string;
+  supersedes_resolution_id: string | null;
+  owner_user_id: string;
 };
 
 type TranscriptUtteranceRow = {
@@ -78,6 +140,7 @@ type RouteContext = {
 
 type RouteMatch =
   | { kind: "document"; jobId: string }
+  | { kind: "resolvedSpeakers"; jobId: string }
   | { kind: "working"; jobId: string }
   | { kind: "review"; jobId: string }
   | { kind: "speakers"; jobId: string }
@@ -143,6 +206,8 @@ Deno.serve(async (request) => {
     switch (match.kind) {
       case "document":
         return handleGetDocument(context);
+      case "resolvedSpeakers":
+        return handleGetResolvedSpeakers(context);
       case "working":
         return handlePutWorking(context);
       case "review":
@@ -221,6 +286,15 @@ async function handleGetDocument(context: RouteContext): Promise<Response> {
   return respondJson(200, document);
 }
 
+async function handleGetResolvedSpeakers(context: RouteContext): Promise<Response> {
+  const resolvedSpeakers = await loadResolvedSpeakerViews(
+    context.supabase,
+    context.transcript.transcript_id,
+  );
+
+  return respondJson(200, resolvedSpeakers);
+}
+
 async function loadSpeakers(
   supabase: SupabaseClient<Database>,
   transcriptId: string,
@@ -255,6 +329,36 @@ async function loadUtterances(
   }
 
   return (data ?? []) as TranscriptUtteranceRow[];
+}
+
+async function loadSpeakerResolutionOverlay(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+): Promise<SpeakerResolutionCurrentRow[]> {
+  const { data, error } = await supabase
+    .from("speaker_resolution_current")
+    .select("*")
+    .eq("transcript_id", transcriptId)
+    .order("raw_speaker_index", { ascending: true });
+
+  if (error) {
+    throw new HttpError(500, "failed to load speaker resolution overlay");
+  }
+
+  return (data ?? []) as SpeakerResolutionCurrentRow[];
+}
+
+async function loadResolvedSpeakerViews(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+  speakerRows?: TranscriptSpeakerRow[],
+): Promise<ResolvedSpeakerView[]> {
+  const [rawSpeakers, overlayRows] = await Promise.all([
+    speakerRows ? Promise.resolve(speakerRows) : loadSpeakers(supabase, transcriptId),
+    loadSpeakerResolutionOverlay(supabase, transcriptId),
+  ]);
+
+  return buildResolvedSpeakerViews(rawSpeakers, overlayRows);
 }
 
 async function loadWords(
@@ -513,25 +617,94 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
   const body = await parseJsonBody(context.request);
   const payload = validateSpeakersPayload(body);
   const transcriptId = context.transcript.transcript_id;
-  const speakerMapConfirmed = payload.speakers.length > 0 && payload.speakers.every((speaker) => {
-    return speaker.display_name.trim().length > 0 && Boolean(speaker.role);
-  });
+  const userId = await requireCurrentUserId(context.supabase);
+  const rawSpeakerRows = await loadSpeakers(context.supabase, transcriptId);
+  const rawSpeakerById = new Map(rawSpeakerRows.map((speaker) => [speaker.speaker_id, speaker]));
+  const rawSpeakerIds = payload.speakers.map((speaker) => speaker.speaker_id);
+  const currentRows = await loadCurrentSpeakerResolutionRows(context.supabase, transcriptId, rawSpeakerIds);
+  const currentRowBySpeakerId = new Map(currentRows.map((row) => [row.raw_speaker_id, row]));
+  const latestHistoryBySpeakerId = await loadLatestSpeakerResolutionHistoryRows(
+    context.supabase,
+    transcriptId,
+    rawSpeakerIds,
+  );
+  const now = new Date().toISOString();
+  const changedCurrentRows: SpeakerResolutionCurrentInsert[] = [];
+  const changedHistoryRows: SpeakerResolutionHistoryInsert[] = [];
+  const auditRows: AuditInsertRow[] = [];
 
   for (const speaker of payload.speakers) {
-    const normalizedRole = normalizeSpeakerRoleForDatabase(speaker.role);
-    const updateResult = await context.supabase
-      .from("transcript_speakers")
-      .update({
-        display_name: speaker.display_name,
-        assigned_name: speaker.display_name,
-        speaker_label: speaker.display_name,
-        role: normalizedRole,
-        speaker_role: normalizedRole,
-      })
-      .eq("transcript_id", transcriptId)
-      .eq("speaker_id", speaker.speaker_id);
+    const rawSpeaker = rawSpeakerById.get(speaker.speaker_id);
+    if (!rawSpeaker) {
+      throw new HttpError(400, `unknown raw speaker ${speaker.speaker_id}`);
+    }
 
-    if (updateResult.error) {
+    const resolvedLabel = speaker.display_name.trim();
+    const resolvedRole = normalizeSpeakerRoleForDatabase(speaker.role);
+    const participantId = buildParticipantId(speaker.role, resolvedLabel);
+    const currentRow = currentRowBySpeakerId.get(speaker.speaker_id) ?? null;
+    const changed = !currentRow
+      || currentRow.participant_id !== participantId
+      || currentRow.resolved_label !== resolvedLabel
+      || currentRow.resolved_role !== resolvedRole;
+
+    if (!changed) {
+      continue;
+    }
+
+    changedCurrentRows.push({
+      transcript_id: transcriptId,
+      raw_speaker_id: rawSpeaker.speaker_id,
+      raw_speaker_index: rawSpeaker.speaker_index ?? rawSpeaker.deepgram_speaker,
+      participant_id: participantId,
+      resolved_role: resolvedRole,
+      resolved_label: resolvedLabel,
+      resolved_by: userId,
+      resolved_at: now,
+      owner_user_id: userId,
+    });
+
+    changedHistoryRows.push({
+      transcript_id: transcriptId,
+      raw_speaker_id: rawSpeaker.speaker_id,
+      raw_speaker_index: rawSpeaker.speaker_index ?? rawSpeaker.deepgram_speaker,
+      participant_id: participantId,
+      resolved_role: resolvedRole,
+      resolved_label: resolvedLabel,
+      resolved_by: userId,
+      resolved_at: now,
+      supersedes_resolution_id: latestHistoryBySpeakerId.get(rawSpeaker.speaker_id)?.resolution_id ?? null,
+      owner_user_id: userId,
+    });
+
+    auditRows.push({
+      utterance_id: null,
+      word_id: null,
+      source: "workspace",
+      action: "assign_speaker",
+      old_text: rawSpeaker.speaker_id,
+      new_text: `${resolvedLabel}${speaker.role ? ` (${speaker.role})` : ""}`,
+      before_text: rawSpeaker.speaker_id,
+      after_text: `${resolvedLabel}${speaker.role ? ` (${speaker.role})` : ""}`,
+    });
+  }
+
+  if (changedCurrentRows.length > 0) {
+    const upsertResult = await context.supabase
+      .from("speaker_resolution_current")
+      .upsert(changedCurrentRows, { onConflict: "transcript_id,raw_speaker_id" });
+
+    if (upsertResult.error) {
+      throw new HttpError(500, "failed to save speakers");
+    }
+  }
+
+  if (changedHistoryRows.length > 0) {
+    const insertResult = await context.supabase
+      .from("speaker_resolution_history")
+      .insert(changedHistoryRows);
+
+    if (insertResult.error) {
       throw new HttpError(500, "failed to save speakers");
     }
   }
@@ -564,7 +737,7 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
         throw new HttpError(500, "failed to save speakers");
       }
 
-      await appendAuditRows(context, [{
+      auditRows.push({
         utterance_id: assignment.utterance_id,
         word_id: null,
         source: "workspace",
@@ -573,9 +746,18 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
         new_text: assignment.speaker_id,
         before_text: "speaker reassignment",
         after_text: assignment.speaker_id,
-      }]);
+      });
     }
   }
+
+  await appendAuditRows(context, auditRows);
+
+  const resolvedSpeakers = await loadResolvedSpeakerViews(
+    context.supabase,
+    transcriptId,
+    rawSpeakerRows,
+  );
+  const speakerMapConfirmed = isResolvedSpeakerMappingComplete(resolvedSpeakers);
 
   const transcriptResult = await context.supabase
     .from("transcripts")
@@ -732,6 +914,74 @@ async function countAllWords(
   }
 
   return count ?? 0;
+}
+
+async function requireCurrentUserId(
+  supabase: SupabaseClient<Database>,
+): Promise<string> {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    throw new HttpError(500, "failed to load authenticated user");
+  }
+
+  const userId = data.user?.id ?? null;
+  if (!userId) {
+    throw new HttpError(401, "unauthorized");
+  }
+
+  return userId;
+}
+
+async function loadCurrentSpeakerResolutionRows(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+  rawSpeakerIds: string[],
+): Promise<SpeakerResolutionCurrentRow[]> {
+  if (rawSpeakerIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("speaker_resolution_current")
+    .select("*")
+    .eq("transcript_id", transcriptId)
+    .in("raw_speaker_id", rawSpeakerIds);
+
+  if (error) {
+    throw new HttpError(500, "failed to load speaker resolution overlay");
+  }
+
+  return (data ?? []) as SpeakerResolutionCurrentRow[];
+}
+
+async function loadLatestSpeakerResolutionHistoryRows(
+  supabase: SupabaseClient<Database>,
+  transcriptId: string,
+  rawSpeakerIds: string[],
+): Promise<Map<string, SpeakerResolutionHistoryRow>> {
+  const latest = new Map<string, SpeakerResolutionHistoryRow>();
+  if (rawSpeakerIds.length === 0) {
+    return latest;
+  }
+
+  const { data, error } = await supabase
+    .from("speaker_resolution_history")
+    .select("*")
+    .eq("transcript_id", transcriptId)
+    .in("raw_speaker_id", rawSpeakerIds)
+    .order("resolved_at", { ascending: false });
+
+  if (error) {
+    throw new HttpError(500, "failed to load speaker resolution history");
+  }
+
+  for (const row of (data ?? []) as SpeakerResolutionHistoryRow[]) {
+    if (!latest.has(row.raw_speaker_id)) {
+      latest.set(row.raw_speaker_id, row);
+    }
+  }
+
+  return latest;
 }
 
 type AuditInsertRow = {
@@ -947,18 +1197,15 @@ async function handleGetExhibits(context: RouteContext): Promise<Response> {
 }
 
 async function handleGetCertifyStatus(context: RouteContext): Promise<Response> {
-  const [unreviewedCount, lowConfidenceUnreviewedCount, speakerRows] = await Promise.all([
+  const [unreviewedCount, lowConfidenceUnreviewedCount, resolvedSpeakers] = await Promise.all([
     countUnreviewedWords(context.supabase, context.transcript.transcript_id),
     countLowConfidenceUnreviewedWords(context.supabase, context.transcript.transcript_id),
-    loadSpeakers(context.supabase, context.transcript.transcript_id),
+    loadResolvedSpeakerViews(context.supabase, context.transcript.transcript_id),
   ]);
 
   const checklist: CertifyChecklist = {
     review_complete: unreviewedCount === 0,
-    speaker_mapping_complete: speakerRows.every((speaker) => {
-      const displayName = (speaker.assigned_name || speaker.display_name || speaker.speaker_label || "").trim();
-      return displayName.length > 0 && Boolean(normalizeSpeakerRole(speaker.speaker_role ?? speaker.role));
-    }),
+    speaker_mapping_complete: isResolvedSpeakerMappingComplete(resolvedSpeakers),
     confidence_review_complete: lowConfidenceUnreviewedCount === 0,
   };
 
@@ -1012,6 +1259,15 @@ function matchRoute(request: Request): RouteMatch | null {
 
   if (routeParts.length === 2 && request.method === "GET" && routeParts[1] === "document") {
     return { kind: "document", jobId: routeParts[0] };
+  }
+
+  if (
+    routeParts.length === 3
+    && request.method === "GET"
+    && routeParts[1] === "speakers"
+    && routeParts[2] === "resolved"
+  ) {
+    return { kind: "resolvedSpeakers", jobId: routeParts[0] };
   }
 
   if (routeParts.length === 2 && request.method === "PUT" && routeParts[1] === "working") {

@@ -47,6 +47,7 @@ describe("documentReducer save sequencing", () => {
     state = documentReducer(state, {
       type: "LOAD_OK",
       doc: buildDocument(),
+      resolvedSpeakers: [],
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
       audioSegments: [],
@@ -80,6 +81,7 @@ describe("documentReducer save sequencing", () => {
     state = documentReducer(state, {
       type: "LOAD_OK",
       doc: buildDocument(),
+      resolvedSpeakers: [],
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
       audioSegments: [],

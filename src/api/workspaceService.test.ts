@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ReviewPayload, SaveWorkingPayload, SpeakersPayload } from "./types";
-import type { TranscriptJobRow } from "./transcriptRepository";
+import { buildTranscriptDocxParagraphSpecs } from "../components/ExportScreen/docxFormatter";
+import type { SpeakerResolutionCurrentRow, TranscriptSnapshot, TranscriptSpeakerRow, TranscriptJobRow } from "./transcriptRepository";
+import type { ResolvedSpeakerView } from "../lib/transcript/resolvedSpeakers";
 
 const mocks = vi.hoisted(() => ({
   contractApi: {
     saveWorking: vi.fn(),
     saveReview: vi.fn(),
     saveSpeakers: vi.fn(),
+    getResolvedSpeakers: vi.fn(),
   },
   transcriptRepository: {
     getTranscriptJobByTranscriptId: vi.fn(),
@@ -17,19 +20,137 @@ const mocks = vi.hoisted(() => ({
     loadTranscriptSnapshot: vi.fn(),
     updateTranscriptJob: vi.fn(),
   },
+  runtimeMode: {
+    isRealApiMode: vi.fn(() => true),
+  },
 }));
 
 vi.mock("./client", () => ({
   api: mocks.contractApi,
 }));
 
+vi.mock("./fileService", () => ({
+  getSignedUrl: vi.fn(async () => "signed://audio"),
+}));
+
 vi.mock("../lib/runtime/mode", () => ({
-  isRealApiMode: () => true,
+  isRealApiMode: mocks.runtimeMode.isRealApiMode,
 }));
 
 vi.mock("./transcriptRepository", () => mocks.transcriptRepository);
 
 import { workspaceApi } from "./workspaceService";
+
+const RESOLVED_SPEAKERS: ResolvedSpeakerView[] = [
+  {
+    speaker_id: "pty_witness_the_witness",
+    participantId: "pty_witness_the_witness",
+    display_name: "THE WITNESS",
+    deepgram_speaker: 0,
+    role: "WITNESS",
+    rawSpeakerIds: ["spk_001"],
+    speakerIndices: [0],
+  },
+];
+
+function buildRawSpeaker(overrides: Partial<TranscriptSpeakerRow>): TranscriptSpeakerRow {
+  return {
+    id: "speaker-row",
+    transcript_id: "tr_001",
+    speaker_id: "spk_001",
+    display_name: "Speaker 1",
+    deepgram_speaker: 0,
+    role: "other",
+    job_id: "job_001",
+    speaker_index: 0,
+    speaker_label: "Speaker 1",
+    assigned_name: null,
+    speaker_role: "other",
+    word_count: 10,
+    ...overrides,
+  };
+}
+
+function buildOverlayRow(overrides: Partial<SpeakerResolutionCurrentRow>): SpeakerResolutionCurrentRow {
+  return {
+    created_at: "2026-06-15T00:00:00.000Z",
+    id: "overlay_001",
+    owner_user_id: "user_001",
+    participant_id: "pty_attorney_mr_nunez",
+    raw_speaker_id: "spk_001",
+    raw_speaker_index: 0,
+    resolved_at: "2026-06-15T00:00:00.000Z",
+    resolved_by: "user_001",
+    resolved_label: "MR. NUNEZ",
+    resolved_role: "attorney",
+    transcript_id: "tr_001",
+    updated_at: "2026-06-15T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function buildSnapshot(job = buildJob("2026-06-14T17:00:00.000Z")): TranscriptSnapshot {
+  return {
+    job,
+    speakers: [
+      buildRawSpeaker({
+        speaker_id: "spk_002",
+        speaker_index: 2,
+        display_name: "Speaker 2",
+        speaker_label: "Speaker 2",
+        assigned_name: null,
+        role: "other",
+        speaker_role: "other",
+      }),
+    ],
+    utterances: [
+      {
+        id: "utt-row-001",
+        transcript_id: "tr_001",
+        utterance_id: "utt_001",
+        speaker_id: "spk_002",
+        start_time: 0,
+        end_time: 1,
+        ordinal: 0,
+        job_id: "job_001",
+        utterance_index: 0,
+        speaker_index: 2,
+        speaker_label: "Speaker 2",
+        text: "Proceed.",
+        avg_confidence: "0.9000",
+      },
+    ],
+    words: [
+      {
+        id: "word-row-001",
+        transcript_id: "tr_001",
+        utterance_id: "utt_001",
+        word_id: "w_001",
+        speaker_id: "spk_002",
+        ordinal: 0,
+        text: "Proceed.",
+        raw_text: "Proceed.",
+        start_time: 0,
+        end_time: 1,
+        confidence: 0.9,
+        reviewed: true,
+        edited: false,
+        job_id: "job_001",
+        word_index: 0,
+        working_text: null,
+        speaker_index: 2,
+        is_filler: false,
+        removed: false,
+      },
+    ],
+    speakerResolutionOverlay: [
+      buildOverlayRow({
+        raw_speaker_id: "spk_002",
+        raw_speaker_index: 2,
+      }),
+    ],
+  };
+}
 
 function buildJob(updatedAt: string): TranscriptJobRow {
   return {
@@ -65,11 +186,13 @@ function buildJob(updatedAt: string): TranscriptJobRow {
 describe("workspaceApi real-API save wrappers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.runtimeMode.isRealApiMode.mockReturnValue(true);
     mocks.transcriptRepository.getTranscriptJobByTranscriptId.mockImplementation(async () => buildJob("2026-06-14T17:00:00.000Z"));
     mocks.transcriptRepository.getTranscriptJobByJobId.mockResolvedValue(null);
     mocks.transcriptRepository.listCompletedTranscriptJobsBySequence.mockImplementation(async () => [
       buildJob("2026-06-14T17:00:00.000Z"),
     ]);
+    mocks.contractApi.getResolvedSpeakers.mockResolvedValue(RESOLVED_SPEAKERS);
   });
 
   async function expectConsecutiveSaveStaysFresh<TPayload, TResult extends { updatedAt: string | null }>(
@@ -168,5 +291,56 @@ describe("workspaceApi real-API save wrappers", () => {
     })).rejects.toThrow("Transcript changed elsewhere — reload.");
 
     expect(mocks.contractApi.saveSpeakers).not.toHaveBeenCalled();
+  });
+});
+
+describe("workspaceApi local Step 3 resolved-speaker split", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.runtimeMode.isRealApiMode.mockReturnValue(false);
+    mocks.transcriptRepository.getTranscriptJobByTranscriptId.mockImplementation(async () => buildJob("2026-06-14T17:00:00.000Z"));
+    mocks.transcriptRepository.getTranscriptJobByJobId.mockResolvedValue(null);
+    mocks.transcriptRepository.listCompletedTranscriptJobsBySequence.mockResolvedValue([
+      buildJob("2026-06-14T17:00:00.000Z"),
+    ]);
+    mocks.transcriptRepository.loadTranscriptSnapshot.mockResolvedValue(buildSnapshot());
+  });
+
+  it("shows resolved speaker labels in the panel view while export remains raw-backed", async () => {
+    const result = await workspaceApi.getDocument("tr_001");
+
+    expect(result.resolvedSpeakers).toEqual([
+      expect.objectContaining({
+        participantId: "pty_attorney_mr_nunez",
+        display_name: "MR. NUNEZ",
+        role: "ATTORNEY",
+        rawSpeakerIds: ["spk_002"],
+      }),
+    ]);
+    expect(result.document.speakers).toEqual([
+      expect.objectContaining({
+        speaker_id: "spk_002",
+        display_name: "Speaker 2",
+        role: "OTHER",
+      }),
+    ]);
+
+    const paragraphs = buildTranscriptDocxParagraphSpecs([{
+      transcriptId: "tr_001",
+      sequenceIndex: 0,
+      sourceFilename: "segment.mp3",
+      document: result.document,
+    }]);
+
+    expect(paragraphs).toEqual([
+      expect.objectContaining({
+        kind: "colloquy",
+        runs: [
+          { kind: "text", text: "Speaker 2:" },
+          { kind: "tab" },
+          { kind: "text", text: "Proceed." },
+        ],
+      }),
+    ]);
   });
 });

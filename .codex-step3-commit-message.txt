@@ -1,0 +1,13 @@
+feat(speakers): normalize speaker mapping via overlay (many labels -> one participant)
+
+Step 3 of the speaker-resolution overlay architecture. Speaker mapping now
+writes speaker_resolution_current + history instead of labelling raw
+transcript_speakers; multiple diarization labels resolve to one participant
+(alias), ending the revert bug. Adds an additive resolvedSpeakers view
+(via the Step 2 resolver) consumed by the panel + confirm flow; raw-backed
+document.speakers is left untouched so export/buildEditorContent are
+unaffected (Step 5). Certify completeness counts resolved participants, not
+raw labels. participant_id = pty_{role}_{labelSlug} is rename-sensitive and
+can collide for same-name same-role participants (acceptable under Step 1's
+bare-identifier model). Raw tables not written; un-resolved transcripts
+render unchanged.

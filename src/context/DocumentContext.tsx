@@ -16,6 +16,7 @@ import type {
 import type { ChangeLogEntry, ChangeSource } from "../types";
 import {
   workspaceApi,
+  type ResolvedSpeakerView,
   type WorkspaceAudioSegment,
   type WorkspaceSegmentTarget,
 } from "../api/workspaceService";
@@ -29,6 +30,7 @@ function nextChangeId(): string {
 interface State {
   jobId: string;
   document: EditorDocument | null;
+  resolvedSpeakers: ResolvedSpeakerView[];
   loading: boolean;
   error: string | null;
   dirty: boolean;
@@ -55,6 +57,7 @@ type Action =
   | {
       type: "LOAD_OK";
       doc: EditorDocument;
+      resolvedSpeakers: ResolvedSpeakerView[];
       updatedAt: string | null;
       speakerMapConfirmed: boolean;
       audioSegments: WorkspaceAudioSegment[];
@@ -80,6 +83,7 @@ type Action =
   | { type: "SAVE_OK"; savedSeq: number; updatedAt: string | null }
   | { type: "SAVE_ERR"; error: string }
   | { type: "UPDATE_SPEAKERS"; speakers: Speaker[] }
+  | { type: "UPDATE_RESOLVED_SPEAKERS"; speakers: ResolvedSpeakerView[] }
   | { type: "SET_TRANSCRIPT_VERSION"; updatedAt: string | null }
   | { type: "SET_SPEAKER_MAP_CONFIRMED"; confirmed: boolean }
   | { type: "MARK_REVIEWED"; word_ids: string[] }
@@ -101,6 +105,7 @@ export function documentReducer(state: State, action: Action): State {
         ...state,
         loading: false,
         document: action.doc,
+        resolvedSpeakers: action.resolvedSpeakers,
         wordMap: buildWordMap(action.doc),
         workingTexts: {},
         dirty: false,
@@ -184,6 +189,12 @@ export function documentReducer(state: State, action: Action): State {
       };
     }
 
+    case "UPDATE_RESOLVED_SPEAKERS":
+      return {
+        ...state,
+        resolvedSpeakers: action.speakers,
+      };
+
     case "SET_TRANSCRIPT_VERSION":
       return { ...state, jobUpdatedAt: action.updatedAt };
 
@@ -240,6 +251,7 @@ interface ContextValue {
   ) => void;
   saveNow: () => Promise<void>;
   updateSpeakers: (speakers: Speaker[]) => void;
+  updateResolvedSpeakers: (speakers: ResolvedSpeakerView[]) => void;
   setTranscriptVersion: (updatedAt: string | null) => void;
   setSpeakerMapConfirmed: (confirmed: boolean) => void;
   markReviewed: (word_ids: string[]) => void;
@@ -253,6 +265,7 @@ export function createInitialDocumentState(jobId: string): State {
   return {
     jobId,
     document: null,
+    resolvedSpeakers: [],
     loading: false,
     error: null,
     dirty: false,
@@ -296,6 +309,7 @@ export function DocumentProvider({
       dispatch({
         type: "LOAD_OK",
         doc: loaded.document,
+        resolvedSpeakers: loaded.resolvedSpeakers,
         updatedAt: loaded.updatedAt,
         speakerMapConfirmed: loaded.speakerMapConfirmed,
         audioSegments: loaded.audioSegments,
@@ -393,6 +407,7 @@ export function DocumentProvider({
       dispatch({
         type: "LOAD_OK",
         doc: loaded.document,
+        resolvedSpeakers: loaded.resolvedSpeakers,
         updatedAt: loaded.updatedAt,
         speakerMapConfirmed: loaded.speakerMapConfirmed,
         audioSegments: loaded.audioSegments,
@@ -448,6 +463,10 @@ export function DocumentProvider({
     dispatch({ type: "UPDATE_SPEAKERS", speakers });
   }, []);
 
+  const updateResolvedSpeakers = useCallback((speakers: ResolvedSpeakerView[]) => {
+    dispatch({ type: "UPDATE_RESOLVED_SPEAKERS", speakers });
+  }, []);
+
   const setTranscriptVersion = useCallback((updatedAt: string | null) => {
     dispatch({ type: "SET_TRANSCRIPT_VERSION", updatedAt });
   }, []);
@@ -493,13 +512,14 @@ export function DocumentProvider({
       logSuggestionEdit,
       saveNow,
       updateSpeakers,
+      updateResolvedSpeakers,
       setTranscriptVersion,
       setSpeakerMapConfirmed,
       markReviewed,
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, navigateToTranscript, navigateToPreviousSegment, navigateToNextSegment, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, navigateToTranscript, navigateToPreviousSegment, navigateToNextSegment, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, updateResolvedSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

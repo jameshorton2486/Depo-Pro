@@ -4,6 +4,7 @@ import type { Speaker } from "../../types";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { workspaceApi } from "../../api/workspaceService";
+import type { ResolvedSpeakerView } from "../../lib/transcript/resolvedSpeakers";
 import { Check, X, Edit2, Users } from "lucide-react";
 
 const ROLES: Speaker["role"][] = [
@@ -34,11 +35,10 @@ function getSpeakerSourceFileLabel(speakerId: string): string | null {
 export function SpeakerPanel() {
   const {
     state,
-    updateSpeakers,
+    updateResolvedSpeakers,
     setTranscriptVersion,
     setSpeakerMapConfirmed,
   } = useDocument();
-  const { editor } = useEditorContext();
 
   const [editing, setEditing] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<
@@ -47,15 +47,16 @@ export function SpeakerPanel() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const speakers = state.document?.speakers ?? [];
+  const rawSpeakers = state.document?.speakers ?? [];
+  const speakers = state.resolvedSpeakers;
   const speakerMapConfirmed = state.speakerMapConfirmed;
 
-  const startEdit = useCallback((spk: Speaker) => {
-    setEditing(spk.speaker_id);
+  const startEdit = useCallback((spk: ResolvedSpeakerView) => {
+    setEditing(spk.participantId);
     setSaveError(null);
     setDrafts((d) => ({
       ...d,
-      [spk.speaker_id]: { display_name: spk.display_name, role: spk.role },
+      [spk.participantId]: { display_name: spk.display_name, role: spk.role },
     }));
   }, []);
 
@@ -68,55 +69,42 @@ export function SpeakerPanel() {
     });
   }, []);
 
-  // Apply updated speaker attrs to every matching utterance node in the TipTap doc.
-  // This is the "instant relabeling" — no page reload, no full content rebuild.
-  const relabelInEditor = useCallback(
-    (speakerId: string, display_name: string, role: Speaker["role"] | undefined) => {
-      if (!editor) return;
-      const { tr, doc } = editor.state;
-      let changed = false;
-
-      doc.descendants((node, pos) => {
-        if (node.type.name !== "utterance") return;
-        if (node.attrs.speaker_id !== speakerId) return;
-        tr.setNodeMarkup(pos, undefined, {
-          ...node.attrs,
-          speaker_label: display_name,
-          role: role ?? null,
-        });
-        changed = true;
-      });
-
-      if (changed) editor.view.dispatch(tr);
-    },
-    [editor]
+  const buildSpeakerSavePayload = useCallback(
+    (resolved: ResolvedSpeakerView[]) => resolved.flatMap((participant) =>
+      participant.rawSpeakerIds.map((rawSpeakerId) => ({
+        speaker_id: rawSpeakerId,
+        display_name: participant.display_name,
+        role: participant.role,
+      }))
+    ),
+    []
   );
 
   const commitEdit = useCallback(
     async (id: string) => {
       const draft = drafts[id];
       if (!draft) return;
-      const updated = speakers.map((s) =>
-        s.speaker_id === id ? { ...s, ...draft } : s
+      const updated = speakers.map((speaker) =>
+        speaker.participantId === id
+          ? {
+              ...speaker,
+              display_name: draft.display_name.trim(),
+              role: draft.role,
+            }
+          : speaker
       );
       setSaving(true);
       setSaveError(null);
       try {
         const jobId = state.document?.job_id ?? "";
         const result = await workspaceApi.saveSpeakers(jobId, {
-          speakers: updated.map((s) => ({
-            speaker_id: s.speaker_id,
-            display_name: s.display_name,
-            role: s.role,
-          })),
+          speakers: buildSpeakerSavePayload(updated),
         }, {
           lastKnownUpdatedAt: state.jobUpdatedAt,
         });
-        // Optimistic: update context + relabel editor nodes simultaneously
-        updateSpeakers(updated);
+        updateResolvedSpeakers(result.resolvedSpeakers ?? updated);
         setTranscriptVersion(result.updatedAt);
         setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false);
-        relabelInEditor(id, draft.display_name, draft.role);
         setEditing(null);
         setDrafts((d) => {
           const next = { ...d };
@@ -131,14 +119,14 @@ export function SpeakerPanel() {
       }
     },
     [
+      buildSpeakerSavePayload,
       drafts,
-      relabelInEditor,
       setSpeakerMapConfirmed,
       setTranscriptVersion,
       speakers,
       state.document,
       state.jobUpdatedAt,
-      updateSpeakers,
+      updateResolvedSpeakers,
     ]
   );
 
@@ -172,14 +160,14 @@ export function SpeakerPanel() {
         )}
 
         {speakers.map((spk) => {
-          const isEditing = editing === spk.speaker_id;
-          const draft = drafts[spk.speaker_id];
+          const isEditing = editing === spk.participantId;
+          const draft = drafts[spk.participantId];
           const role = draft?.role ?? spk.role;
           const roleColor = role ? ROLE_COLORS[role] : "bg-slate-100 text-slate-500";
 
           return (
             <SpeakerCard
-              key={spk.speaker_id}
+              key={spk.participantId}
               spk={spk}
               isEditing={isEditing}
               draft={draft}
@@ -204,7 +192,8 @@ export function SpeakerPanel() {
 
       {/* Utterance reassignment section */}
       <UtteranceReassignment
-        speakers={speakers}
+        speakers={rawSpeakers}
+        resolvedSpeakers={speakers}
         jobUpdatedAt={state.jobUpdatedAt}
         setTranscriptVersion={setTranscriptVersion}
         setSpeakerMapConfirmed={setSpeakerMapConfirmed}
@@ -216,12 +205,12 @@ export function SpeakerPanel() {
 // ─── Speaker card ─────────────────────────────────────────────────────────────
 
 interface CardProps {
-  spk: Speaker;
+  spk: ResolvedSpeakerView;
   isEditing: boolean;
   draft?: { display_name: string; role?: Speaker["role"] };
   saving: boolean;
   roleColor: string;
-  onStartEdit: (spk: Speaker) => void;
+  onStartEdit: (spk: ResolvedSpeakerView) => void;
   onCancelEdit: (id: string) => void;
   onCommitEdit: (id: string) => void;
   onDraftChange: (id: string, patch: { display_name?: string; role?: Speaker["role"] }) => void;
@@ -245,10 +234,10 @@ function SpeakerCard({
   }, [isEditing]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") onCommitEdit(spk.speaker_id);
-    if (e.key === "Escape") onCancelEdit(spk.speaker_id);
+    if (e.key === "Enter") onCommitEdit(spk.participantId);
+    if (e.key === "Escape") onCancelEdit(spk.participantId);
   };
-  const sourceFileLabel = getSpeakerSourceFileLabel(spk.speaker_id);
+  const sourceFileLabel = getSpeakerSourceFileLabel(spk.rawSpeakerIds[0] ?? "");
 
   return (
     <div
@@ -291,7 +280,7 @@ function SpeakerCard({
             type="text"
             value={draft?.display_name ?? spk.display_name}
             onChange={(e) =>
-              onDraftChange(spk.speaker_id, { display_name: e.target.value })
+              onDraftChange(spk.participantId, { display_name: e.target.value })
             }
             onKeyDown={handleKeyDown}
             className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 font-semibold text-slate-800"
@@ -300,7 +289,7 @@ function SpeakerCard({
           <select
             value={draft?.role ?? ""}
             onChange={(e) =>
-              onDraftChange(spk.speaker_id, {
+              onDraftChange(spk.participantId, {
                 role: (e.target.value || undefined) as Speaker["role"],
               })
             }
@@ -316,7 +305,7 @@ function SpeakerCard({
 
           <div className="flex gap-1.5 pt-0.5">
             <button
-              onClick={() => onCommitEdit(spk.speaker_id)}
+              onClick={() => onCommitEdit(spk.participantId)}
               disabled={saving || !draft?.display_name?.trim()}
               className="flex items-center gap-1 text-xs px-2.5 py-1.5 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-40 transition-colors font-medium"
             >
@@ -324,7 +313,7 @@ function SpeakerCard({
               Save
             </button>
             <button
-              onClick={() => onCancelEdit(spk.speaker_id)}
+              onClick={() => onCancelEdit(spk.participantId)}
               className="flex items-center gap-1 text-xs px-2.5 py-1.5 border border-slate-300 rounded hover:bg-slate-50 transition-colors text-slate-600"
             >
               <X size={11} />
@@ -354,11 +343,13 @@ function SpeakerCard({
 
 function UtteranceReassignment({
   speakers,
+  resolvedSpeakers,
   jobUpdatedAt,
   setTranscriptVersion,
   setSpeakerMapConfirmed,
 }: {
   speakers: Speaker[];
+  resolvedSpeakers: ResolvedSpeakerView[];
   jobUpdatedAt: string | null;
   setTranscriptVersion: (updatedAt: string | null) => void;
   setSpeakerMapConfirmed: (confirmed: boolean) => void;
@@ -415,11 +406,13 @@ function UtteranceReassignment({
       try {
         const jobId = state.document?.job_id ?? "";
         const result = await workspaceApi.saveSpeakers(jobId, {
-          speakers: speakers.map((s) => ({
-            speaker_id: s.speaker_id,
-            display_name: s.display_name,
-            role: s.role,
-          })),
+          speakers: resolvedSpeakers.flatMap((participant) =>
+            participant.rawSpeakerIds.map((rawSpeakerId) => ({
+              speaker_id: rawSpeakerId,
+              display_name: participant.display_name,
+              role: participant.role,
+            }))
+          ),
           utterance_speaker_map: [
             {
               utterance_id: activeId,
@@ -440,6 +433,7 @@ function UtteranceReassignment({
     [
       activeId,
       editor,
+      resolvedSpeakers,
       setSpeakerMapConfirmed,
       setTranscriptVersion,
       speakers,

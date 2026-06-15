@@ -58,6 +58,9 @@ export type TranscriptSpeakerRow = {
 
 type TranscriptSpeakerInsert = Omit<TranscriptSpeakerRow, "id"> & { id?: string };
 
+export type SpeakerResolutionCurrentRow =
+  Database["public"]["Tables"]["speaker_resolution_current"]["Row"];
+
 type TranscriptUtteranceRow = {
   id: string;
   transcript_id: string;
@@ -163,6 +166,14 @@ type TranscriptDatabase = Omit<Database, "public"> & {
 };
 
 const WORD_CHUNK_SIZE = 500;
+
+export interface TranscriptSnapshot {
+  job: TranscriptJobRow;
+  speakers: TranscriptSpeakerRow[];
+  utterances: TranscriptUtteranceRow[];
+  words: TranscriptWordRow[];
+  speakerResolutionOverlay: SpeakerResolutionCurrentRow[];
+}
 
 function getTranscriptClient(client: SupabaseClient<Database>): SupabaseClient<TranscriptDatabase> {
   return client as unknown as SupabaseClient<TranscriptDatabase>;
@@ -289,12 +300,7 @@ export async function listCompletedTranscriptJobsBySequence(caseId: string): Pro
   return (data ?? []) as unknown as TranscriptJobRow[];
 }
 
-export async function loadOrderedTranscriptSnapshotsForCase(caseId: string): Promise<Array<{
-  job: TranscriptJobRow;
-  speakers: TranscriptSpeakerRow[];
-  utterances: TranscriptUtteranceRow[];
-  words: TranscriptWordRow[];
-}>> {
+export async function loadOrderedTranscriptSnapshotsForCase(caseId: string): Promise<TranscriptSnapshot[]> {
   const jobs = await listCompletedTranscriptJobsBySequence(caseId);
   const snapshots = await Promise.all(
     jobs.map((job) => loadTranscriptSnapshot(job.job_id)),
@@ -303,12 +309,7 @@ export async function loadOrderedTranscriptSnapshotsForCase(caseId: string): Pro
   return snapshots.filter((snapshot): snapshot is NonNullable<typeof snapshot> => snapshot !== null);
 }
 
-export async function loadTranscriptSnapshot(jobId: string): Promise<{
-  job: TranscriptJobRow;
-  speakers: TranscriptSpeakerRow[];
-  utterances: TranscriptUtteranceRow[];
-  words: TranscriptWordRow[];
-} | null> {
+export async function loadTranscriptSnapshot(jobId: string): Promise<TranscriptSnapshot | null> {
   const job = await getTranscriptJobByJobId(jobId);
   if (!job) {
     return null;
@@ -316,7 +317,7 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
 
   const client = await getSupabaseClient("loadTranscriptSnapshot");
   const transcriptClient = getTranscriptClient(client);
-  const [speakersResult, utterancesResult, wordsResult] = await Promise.all([
+  const [speakersResult, utterancesResult, wordsResult, overlayResult] = await Promise.all([
     transcriptClient
       .from("transcript_speakers")
       .select("*")
@@ -332,6 +333,11 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
       .select("*")
       .eq("job_id", jobId)
       .order("word_index", { ascending: true }),
+    transcriptClient
+      .from("speaker_resolution_current")
+      .select("*")
+      .eq("transcript_id", job.transcript_id)
+      .order("raw_speaker_index", { ascending: true }),
   ]);
 
   if (speakersResult.error) {
@@ -343,12 +349,16 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
   if (wordsResult.error) {
     throw wordsResult.error;
   }
+  if (overlayResult.error) {
+    throw overlayResult.error;
+  }
 
   return {
     job,
     speakers: (speakersResult.data ?? []) as unknown as TranscriptSpeakerRow[],
     utterances: (utterancesResult.data ?? []) as unknown as TranscriptUtteranceRow[],
     words: (wordsResult.data ?? []) as unknown as TranscriptWordRow[],
+    speakerResolutionOverlay: (overlayResult.data ?? []) as unknown as SpeakerResolutionCurrentRow[],
   };
 }
 

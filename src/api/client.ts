@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { isRealApiMode } from "../lib/runtime/mode";
 import { AuthRequiredError, supabase } from "../lib/supabase";
+import type { ResolvedSpeakerView } from "../lib/transcript/resolvedSpeakers";
 
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
@@ -111,6 +112,9 @@ function url(jobId: string, path: string): string {
 export const api = {
   getDocument: (jobId: string) =>
     request<EditorDocument>("GET", url(jobId, "document")),
+
+  getResolvedSpeakers: (jobId: string) =>
+    request<ResolvedSpeakerView[]>("GET", url(jobId, "speakers/resolved")),
 
   saveWorking: (jobId: string, payload: SaveWorkingPayload) =>
     request<SaveWorkingContractResponse>("PUT", url(jobId, "working"), payload),
