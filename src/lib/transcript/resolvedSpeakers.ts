@@ -1,6 +1,6 @@
 import type { Speaker } from "../../api/types";
 import type { TranscriptSpeakerRow } from "../../api/transcriptRepository";
-import { resolveSpeakers } from "./speakerResolution";
+import { resolveSpeakers } from "./speakerResolution.ts";
 import type { Database } from "../../types/database";
 
 type SpeakerResolutionCurrentRow =
