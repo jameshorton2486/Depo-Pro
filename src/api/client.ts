@@ -12,6 +12,10 @@ import type {
 import { isRealApiMode } from "../lib/runtime/mode";
 import { AuthRequiredError, supabase } from "../lib/supabase";
 import type { ResolvedSpeakerView } from "../lib/transcript/resolvedSpeakers";
+import type {
+  TranscriptReassemblyApplyResult,
+  TranscriptReassemblyPreview,
+} from "../lib/transcript/reassembly";
 
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
@@ -140,4 +144,10 @@ export const api = {
 
   getCertifyStatus: (jobId: string) =>
     request<CertifyChecklist>("GET", url(jobId, "certify/status")),
+
+  getTranscriptReassemblyPreview: (jobId: string) =>
+    request<TranscriptReassemblyPreview>("GET", url(jobId, "reassembly/preview")),
+
+  applyTranscriptReassembly: (jobId: string, previewToken: string) =>
+    request<TranscriptReassemblyApplyResult>("POST", url(jobId, "reassembly/apply"), { previewToken }),
 };

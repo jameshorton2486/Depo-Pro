@@ -18,6 +18,18 @@ import {
   isResolvedSpeakerMappingComplete,
   type ResolvedSpeakerView,
 } from "../../../src/lib/transcript/resolvedSpeakers.ts";
+import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
+import type { DeepgramResponse } from "../../../src/lib/transcript/types.ts";
+import {
+  buildNormalizedTranscriptMetrics,
+  buildReassemblyPreviewToken,
+  buildStoredTranscriptMetrics,
+  CURRENT_ASSEMBLY_VERSION,
+  evaluateReassemblyEligibility,
+  LATEST_ASSEMBLY_VERSION,
+  type TranscriptReassemblyApplyResult,
+  type TranscriptReassemblyPreview,
+} from "../../../src/lib/transcript/reassembly.ts";
 
 type Database = Record<string, never>;
 
@@ -30,6 +42,9 @@ type TranscriptRow = {
   duration_seconds?: number | null;
   based_on?: string | null;
   speaker_map_confirmed?: boolean | null;
+  raw_storage_path?: string | null;
+  raw_checksum?: string | null;
+  updated_at?: string | null;
 };
 
 type TranscriptSpeakerRow = {
@@ -147,7 +162,9 @@ type RouteMatch =
   | { kind: "suggestions"; jobId: string }
   | { kind: "resolveSuggestion"; jobId: string; suggestionId: string }
   | { kind: "exhibits"; jobId: string }
-  | { kind: "certifyStatus"; jobId: string };
+  | { kind: "certifyStatus"; jobId: string }
+  | { kind: "reassemblyPreview"; jobId: string }
+  | { kind: "reassemblyApply"; jobId: string };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -222,6 +239,10 @@ Deno.serve(async (request) => {
         return handleGetExhibits(context);
       case "certifyStatus":
         return handleGetCertifyStatus(context);
+      case "reassemblyPreview":
+        return handleGetReassemblyPreview(context);
+      case "reassemblyApply":
+        return handlePostReassemblyApply(context);
     }
   } catch (error) {
     if (error instanceof HttpError) {
@@ -243,7 +264,7 @@ async function requireTranscript(
 ): Promise<TranscriptRow> {
   const { data, error } = await supabase
     .from("transcripts")
-    .select("transcript_id, case_id, job_id, media_url, duration, duration_seconds, based_on")
+    .select("transcript_id, case_id, job_id, media_url, duration, duration_seconds, based_on, raw_storage_path, raw_checksum, updated_at")
     .eq("transcript_id", jobId)
     .maybeSingle();
 
@@ -916,6 +937,269 @@ async function countAllWords(
   return count ?? 0;
 }
 
+async function countRowsByFilter(
+  supabase: SupabaseClient<Database>,
+  table: "transcript_review_state" | "transcript_suggestions" | "case_certifications" | "exports",
+  column: "transcript_id" | "case_id",
+  value: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq(column, value);
+
+  if (error) {
+    throw new HttpError(500, `failed to load ${table}`);
+  }
+
+  return count ?? 0;
+}
+
+async function loadRawDeepgramResponse(
+  supabase: SupabaseClient<Database>,
+  rawStoragePath: string | null | undefined,
+): Promise<DeepgramResponse> {
+  if (!rawStoragePath || !rawStoragePath.endsWith(".json") || rawStoragePath.endsWith("_multifile_manifest.json")) {
+    throw new HttpError(400, "transcript rebuild requires a preserved raw Deepgram JSON response");
+  }
+
+  const { data, error } = await supabase.storage
+    .from(CASE_FILES_BUCKET)
+    .download(rawStoragePath);
+
+  if (error) {
+    throw new HttpError(500, "failed to load raw Deepgram response");
+  }
+
+  return JSON.parse(await data.text()) as DeepgramResponse;
+}
+
+async function buildReassemblyPreview(
+  context: RouteContext,
+): Promise<TranscriptReassemblyPreview> {
+  const transcriptId = context.transcript.transcript_id;
+  const [speakers, utterances, words, reviewStateCount, suggestionCount, certificationCount, exportCount, rawResponse] = await Promise.all([
+    loadSpeakers(context.supabase, transcriptId),
+    loadUtterances(context.supabase, transcriptId),
+    loadWords(context.supabase, transcriptId),
+    countRowsByFilter(context.supabase, "transcript_review_state", "transcript_id", transcriptId),
+    countRowsByFilter(context.supabase, "transcript_suggestions", "transcript_id", transcriptId),
+    countRowsByFilter(context.supabase, "case_certifications", "case_id", context.transcript.case_id),
+    countRowsByFilter(context.supabase, "exports", "case_id", context.transcript.case_id),
+    loadRawDeepgramResponse(context.supabase, context.transcript.raw_storage_path),
+  ]);
+
+  const currentMetrics = buildStoredTranscriptMetrics(speakers, utterances, words);
+  const candidateMetrics = buildNormalizedTranscriptMetrics(normalizeTranscriptResponse(rawResponse));
+  const eligibility = evaluateReassemblyEligibility({
+    reviewStateCount,
+    suggestionCount,
+    certificationCount,
+    exportCount,
+  });
+
+  return {
+    currentAssemblyVersion: CURRENT_ASSEMBLY_VERSION,
+    latestAssemblyVersion: LATEST_ASSEMBLY_VERSION,
+    canApply: eligibility.canApply,
+    blockedReasons: eligibility.blockedReasons,
+    currentMetrics,
+    candidateMetrics,
+    impacts: eligibility.impacts,
+    previewToken: buildReassemblyPreviewToken({
+      transcriptId,
+      updatedAt: context.transcript.updated_at ?? null,
+      rawStoragePath: context.transcript.raw_storage_path ?? null,
+      currentMetrics,
+      candidateMetrics,
+    }),
+  };
+}
+
+async function replaceTranscriptDerivedRows(
+  supabase: SupabaseClient<Database>,
+  transcript: TranscriptRow,
+  normalized: ReturnType<typeof normalizeTranscriptResponse>,
+): Promise<void> {
+  const transcriptId = transcript.transcript_id;
+
+  const deleteWordsResult = await supabase
+    .from("transcript_words")
+    .delete()
+    .eq("transcript_id", transcriptId);
+
+  if (deleteWordsResult.error) {
+    throw new HttpError(500, "failed to replace transcript words");
+  }
+
+  const deleteUtterancesResult = await supabase
+    .from("transcript_utterances")
+    .delete()
+    .eq("transcript_id", transcriptId);
+
+  if (deleteUtterancesResult.error) {
+    throw new HttpError(500, "failed to replace transcript utterances");
+  }
+
+  const deleteSpeakersResult = await supabase
+    .from("transcript_speakers")
+    .delete()
+    .eq("transcript_id", transcriptId);
+
+  if (deleteSpeakersResult.error) {
+    throw new HttpError(500, "failed to replace transcript speakers");
+  }
+
+  const speakerRows = normalized.speakers.map((speaker) => ({
+    transcript_id: transcriptId,
+    speaker_id: speaker.speaker_id,
+    display_name: speaker.speaker_label,
+    deepgram_speaker: speaker.speaker_index,
+    role: null,
+    job_id: transcript.job_id,
+    speaker_index: speaker.speaker_index,
+    speaker_label: speaker.speaker_label,
+    assigned_name: null,
+    speaker_role: null,
+    word_count: speaker.word_count,
+  }));
+
+  const utteranceRows = normalized.utterances.map((utterance) => ({
+    transcript_id: transcriptId,
+    utterance_id: utterance.utterance_id,
+    speaker_id: utterance.speaker_id,
+    start_time: utterance.start_time,
+    end_time: utterance.end_time,
+    ordinal: utterance.utterance_index,
+    job_id: transcript.job_id,
+    utterance_index: utterance.utterance_index,
+    speaker_index: utterance.speaker_index,
+    speaker_label: utterance.speaker_label,
+    text: utterance.text,
+    avg_confidence: utterance.avg_confidence.toFixed(4),
+  }));
+
+  const wordRows = normalized.words.map((word) => ({
+    transcript_id: transcriptId,
+    utterance_id: word.utterance_id,
+    word_id: word.word_id,
+    speaker_id: word.speaker_id,
+    ordinal: word.word_index,
+    text: word.raw_text,
+    raw_text: word.raw_text,
+    start_time: word.start_time,
+    end_time: word.end_time,
+    confidence: word.confidence,
+    reviewed: false,
+    edited: false,
+    job_id: transcript.job_id,
+    word_index: word.word_index,
+    working_text: null,
+    speaker_index: word.speaker_index,
+    removed: false,
+    is_filler: word.is_filler,
+  }));
+
+  if (speakerRows.length > 0) {
+    const speakerInsertResult = await supabase.from("transcript_speakers").insert(speakerRows);
+    if (speakerInsertResult.error) {
+      throw new HttpError(500, "failed to replace transcript speakers");
+    }
+  }
+
+  if (utteranceRows.length > 0) {
+    const utteranceInsertResult = await supabase.from("transcript_utterances").insert(utteranceRows);
+    if (utteranceInsertResult.error) {
+      throw new HttpError(500, "failed to replace transcript utterances");
+    }
+  }
+
+  const wordChunkSize = 500;
+  for (let index = 0; index < wordRows.length; index += wordChunkSize) {
+    const chunk = wordRows.slice(index, index + wordChunkSize);
+    const wordInsertResult = await supabase.from("transcript_words").insert(chunk);
+    if (wordInsertResult.error) {
+      throw new HttpError(500, "failed to replace transcript words");
+    }
+  }
+}
+
+async function handleGetReassemblyPreview(context: RouteContext): Promise<Response> {
+  const preview = await buildReassemblyPreview(context);
+  return respondJson(200, preview);
+}
+
+async function handlePostReassemblyApply(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  if (!body || typeof body !== "object" || typeof (body as Record<string, unknown>).previewToken !== "string") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const preview = await buildReassemblyPreview(context);
+  const previewToken = (body as Record<string, unknown>).previewToken as string;
+  if (preview.previewToken !== previewToken) {
+    throw new HttpError(409, "transcript rebuild preview is stale");
+  }
+
+  if (!preview.canApply) {
+    throw new HttpError(409, preview.blockedReasons[0] ?? "transcript rebuild is blocked");
+  }
+
+  const rawResponse = await loadRawDeepgramResponse(context.supabase, context.transcript.raw_storage_path);
+  const normalized = normalizeTranscriptResponse(rawResponse);
+  await replaceTranscriptDerivedRows(context.supabase, context.transcript, normalized);
+
+  const auditInsertResult = await context.supabase
+    .from("transcript_audit_log")
+    .insert({
+      transcript_id: context.transcript.transcript_id,
+      change_id: `chg_${context.transcript.job_id}_${Date.now()}_reassembly`,
+      utterance_id: null,
+      word_id: null,
+      old_text: `mixed_utterances:${preview.currentMetrics.mixedCanonicalUtterances}`,
+      new_text: `mixed_utterances:${preview.candidateMetrics.mixedCanonicalUtterances}`,
+      source: "system",
+      suggestion_id: null,
+      reviewer_user_id: null,
+      case_id: context.transcript.case_id,
+      job_id: context.transcript.job_id,
+      actor: null,
+      action: "bulk_save",
+      before_text: `reassembly_preview:${preview.currentMetrics.mixedCanonicalUtterances}`,
+      after_text: `reassembly_apply:${preview.candidateMetrics.mixedCanonicalUtterances}`,
+    });
+
+  if (auditInsertResult.error) {
+    throw new HttpError(500, "failed to append rebuild audit event");
+  }
+
+  const transcriptUpdateResult = await context.supabase
+    .from("transcripts")
+    .update({
+      duration_seconds: normalized.durationSeconds,
+      word_count: normalized.words.length,
+      utterance_count: normalized.utterances.length,
+      speaker_count: normalized.speakers.length,
+      avg_confidence: normalized.avgConfidence == null ? null : normalized.avgConfidence.toFixed(4),
+    })
+    .eq("transcript_id", context.transcript.transcript_id)
+    .select("updated_at")
+    .single();
+
+  if (transcriptUpdateResult.error || !transcriptUpdateResult.data?.updated_at) {
+    throw new HttpError(500, "failed to update transcript after rebuild");
+  }
+
+  const response: TranscriptReassemblyApplyResult = {
+    ok: true,
+    updatedAt: transcriptUpdateResult.data.updated_at as string,
+    currentMetrics: preview.currentMetrics,
+    candidateMetrics: preview.candidateMetrics,
+  };
+
+  return respondJson(200, response);
+}
+
 async function requireCurrentUserId(
   supabase: SupabaseClient<Database>,
 ): Promise<string> {
@@ -1310,6 +1594,24 @@ function matchRoute(request: Request): RouteMatch | null {
     && routeParts[2] === "status"
   ) {
     return { kind: "certifyStatus", jobId: routeParts[0] };
+  }
+
+  if (
+    routeParts.length === 3
+    && request.method === "GET"
+    && routeParts[1] === "reassembly"
+    && routeParts[2] === "preview"
+  ) {
+    return { kind: "reassemblyPreview", jobId: routeParts[0] };
+  }
+
+  if (
+    routeParts.length === 3
+    && request.method === "POST"
+    && routeParts[1] === "reassembly"
+    && routeParts[2] === "apply"
+  ) {
+    return { kind: "reassemblyApply", jobId: routeParts[0] };
   }
 
   return null;

@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
     saveReview: vi.fn(),
     saveSpeakers: vi.fn(),
     getResolvedSpeakers: vi.fn(),
+    getTranscriptReassemblyPreview: vi.fn(),
+    applyTranscriptReassembly: vi.fn(),
   },
   transcriptRepository: {
     getTranscriptJobByTranscriptId: vi.fn(),
@@ -291,6 +293,48 @@ describe("workspaceApi real-API save wrappers", () => {
     })).rejects.toThrow("Transcript changed elsewhere — reload.");
 
     expect(mocks.contractApi.saveSpeakers).not.toHaveBeenCalled();
+  });
+
+  it("routes transcript reassembly preview through the real-API wrapper with transcript freshness", async () => {
+    mocks.contractApi.getTranscriptReassemblyPreview.mockResolvedValue({
+      currentAssemblyVersion: "persisted",
+      latestAssemblyVersion: "latest",
+      canApply: true,
+      blockedReasons: [],
+      currentMetrics: { mixedCanonicalUtterances: 114, utteranceCount: 1968, speakerCount: 8, wordCount: 13954 },
+      candidateMetrics: { mixedCanonicalUtterances: 0, utteranceCount: 2105, speakerCount: 8, wordCount: 13954 },
+      impacts: {
+        reviewStateImpact: "none",
+        suggestionsImpact: "none",
+        auditImpact: "append-rebuild-event",
+        certificationImpact: "none",
+        exportImpact: "none",
+      },
+      previewToken: "preview-token",
+    });
+
+    const result = await workspaceApi.getTranscriptReassemblyPreview("tr_001", {
+      lastKnownUpdatedAt: "2026-06-14T17:00:00.000Z",
+    });
+
+    expect(mocks.contractApi.getTranscriptReassemblyPreview).toHaveBeenCalledWith("tr_001");
+    expect(result.previewToken).toBe("preview-token");
+  });
+
+  it("routes transcript reassembly apply through the real-API wrapper with transcript freshness", async () => {
+    mocks.contractApi.applyTranscriptReassembly.mockResolvedValue({
+      ok: true,
+      updatedAt: "2026-06-14T17:00:01.000Z",
+      currentMetrics: { mixedCanonicalUtterances: 114, utteranceCount: 1968, speakerCount: 8, wordCount: 13954 },
+      candidateMetrics: { mixedCanonicalUtterances: 0, utteranceCount: 2105, speakerCount: 8, wordCount: 13954 },
+    });
+
+    const result = await workspaceApi.applyTranscriptReassembly("tr_001", "preview-token", {
+      lastKnownUpdatedAt: "2026-06-14T17:00:00.000Z",
+    });
+
+    expect(mocks.contractApi.applyTranscriptReassembly).toHaveBeenCalledWith("tr_001", "preview-token");
+    expect(result.updatedAt).toBe("2026-06-14T17:00:01.000Z");
   });
 });
 

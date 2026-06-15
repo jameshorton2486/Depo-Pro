@@ -30,6 +30,18 @@ import {
   isResolvedSpeakerMappingComplete,
   type ResolvedSpeakerView,
 } from "../lib/transcript/resolvedSpeakers";
+import { normalizeTranscriptResponse } from "../lib/transcript/normalize";
+import type { DeepgramResponse } from "../lib/transcript/types";
+import {
+  buildNormalizedTranscriptMetrics,
+  buildReassemblyPreviewToken,
+  buildStoredTranscriptMetrics,
+  CURRENT_ASSEMBLY_VERSION,
+  evaluateReassemblyEligibility,
+  LATEST_ASSEMBLY_VERSION,
+  type TranscriptReassemblyApplyResult,
+  type TranscriptReassemblyPreview,
+} from "../lib/transcript/reassembly";
 import type { Database } from "../types/database";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
@@ -657,6 +669,267 @@ async function loadLatestSpeakerResolutionHistoryRows(
   return latest;
 }
 
+async function loadRawDeepgramResponse(
+  client: Awaited<ReturnType<typeof getSupabaseClient>>,
+  rawStoragePath: string | null,
+): Promise<DeepgramResponse> {
+  if (!rawStoragePath || !rawStoragePath.endsWith(".json") || rawStoragePath.endsWith("_multifile_manifest.json")) {
+    throw new Error("Transcript rebuild requires a preserved raw Deepgram JSON response.");
+  }
+
+  const { data, error } = await client.storage
+    .from("case-files")
+    .download(rawStoragePath);
+
+  if (error) {
+    throw error;
+  }
+
+  return JSON.parse(await data.text()) as DeepgramResponse;
+}
+
+async function loadTranscriptReassemblyLifecycleCounts(
+  client: Awaited<ReturnType<typeof getSupabaseClient>>,
+  transcriptId: string,
+  caseId: string,
+): Promise<{
+  reviewStateCount: number;
+  suggestionCount: number;
+  certificationCount: number;
+  exportCount: number;
+}> {
+  const [
+    reviewStateResult,
+    suggestionResult,
+    certificationResult,
+    exportResult,
+  ] = await Promise.all([
+    client
+      .from("transcript_review_state")
+      .select("id", { count: "exact", head: true })
+      .eq("transcript_id", transcriptId),
+    client
+      .from("transcript_suggestions")
+      .select("id", { count: "exact", head: true })
+      .eq("transcript_id", transcriptId),
+    client
+      .from("case_certifications")
+      .select("id", { count: "exact", head: true })
+      .eq("case_id", caseId),
+    client
+      .from("exports")
+      .select("id", { count: "exact", head: true })
+      .eq("case_id", caseId),
+  ]);
+
+  if (reviewStateResult.error) {
+    throw reviewStateResult.error;
+  }
+  if (suggestionResult.error) {
+    throw suggestionResult.error;
+  }
+  if (certificationResult.error) {
+    throw certificationResult.error;
+  }
+  if (exportResult.error) {
+    throw exportResult.error;
+  }
+
+  return {
+    reviewStateCount: reviewStateResult.count ?? 0,
+    suggestionCount: suggestionResult.count ?? 0,
+    certificationCount: certificationResult.count ?? 0,
+    exportCount: exportResult.count ?? 0,
+  };
+}
+
+async function buildTranscriptReassemblyPreview(
+  key: string,
+  options: WorkspaceMutationOptions = {},
+): Promise<TranscriptReassemblyPreview> {
+  const job = await requireFreshTranscript(key, options.lastKnownUpdatedAt);
+  const snapshot = await loadTranscriptSnapshot(job.job_id);
+  if (!snapshot) {
+    throw new Error(`Transcript job ${job.job_id} was not found.`);
+  }
+
+  const client = await getSupabaseClient("buildTranscriptReassemblyPreview");
+  const lifecycleCounts = await loadTranscriptReassemblyLifecycleCounts(client, job.transcript_id, job.case_id);
+  const eligibility = evaluateReassemblyEligibility(lifecycleCounts);
+  const rawResponse = await loadRawDeepgramResponse(client, job.raw_storage_path);
+  const normalized = normalizeTranscriptResponse(rawResponse);
+  const currentMetrics = buildStoredTranscriptMetrics(snapshot.speakers, snapshot.utterances, snapshot.words);
+  const candidateMetrics = buildNormalizedTranscriptMetrics(normalized);
+
+  return {
+    currentAssemblyVersion: CURRENT_ASSEMBLY_VERSION,
+    latestAssemblyVersion: LATEST_ASSEMBLY_VERSION,
+    canApply: eligibility.canApply,
+    blockedReasons: eligibility.blockedReasons,
+    currentMetrics,
+    candidateMetrics,
+    impacts: eligibility.impacts,
+    previewToken: buildReassemblyPreviewToken({
+      transcriptId: job.transcript_id,
+      updatedAt: job.updated_at,
+      rawStoragePath: job.raw_storage_path,
+      currentMetrics,
+      candidateMetrics,
+    }),
+  };
+}
+
+async function replaceTranscriptDerivedRows(
+  client: Awaited<ReturnType<typeof getSupabaseClient>>,
+  job: TranscriptJobRow,
+  normalized: ReturnType<typeof normalizeTranscriptResponse>,
+): Promise<void> {
+  const { error: deleteWordsError } = await client
+    .from("transcript_words")
+    .delete()
+    .eq("transcript_id", job.transcript_id);
+
+  if (deleteWordsError) {
+    throw deleteWordsError;
+  }
+
+  const { error: deleteUtterancesError } = await client
+    .from("transcript_utterances")
+    .delete()
+    .eq("transcript_id", job.transcript_id);
+
+  if (deleteUtterancesError) {
+    throw deleteUtterancesError;
+  }
+
+  const { error: deleteSpeakersError } = await client
+    .from("transcript_speakers")
+    .delete()
+    .eq("transcript_id", job.transcript_id);
+
+  if (deleteSpeakersError) {
+    throw deleteSpeakersError;
+  }
+
+  const speakerRows = normalized.speakers.map((speaker) => ({
+    transcript_id: job.transcript_id,
+    speaker_id: speaker.speaker_id,
+    display_name: speaker.speaker_label,
+    deepgram_speaker: speaker.speaker_index,
+    role: null,
+    job_id: job.job_id,
+    speaker_index: speaker.speaker_index,
+    speaker_label: speaker.speaker_label,
+    assigned_name: null,
+    speaker_role: null,
+    word_count: speaker.word_count,
+  }));
+
+  const utteranceRows = normalized.utterances.map((utterance) => ({
+    transcript_id: job.transcript_id,
+    utterance_id: utterance.utterance_id,
+    speaker_id: utterance.speaker_id,
+    start_time: utterance.start_time,
+    end_time: utterance.end_time,
+    ordinal: utterance.utterance_index,
+    job_id: job.job_id,
+    utterance_index: utterance.utterance_index,
+    speaker_index: utterance.speaker_index,
+    speaker_label: utterance.speaker_label,
+    text: utterance.text,
+    avg_confidence: utterance.avg_confidence.toFixed(4),
+  }));
+
+  const wordRows = normalized.words.map((word) => ({
+    transcript_id: job.transcript_id,
+    utterance_id: word.utterance_id,
+    word_id: word.word_id,
+    speaker_id: word.speaker_id,
+    ordinal: word.word_index,
+    text: word.raw_text,
+    raw_text: word.raw_text,
+    start_time: word.start_time,
+    end_time: word.end_time,
+    confidence: word.confidence,
+    reviewed: false,
+    edited: false,
+    job_id: job.job_id,
+    word_index: word.word_index,
+    working_text: null,
+    speaker_index: word.speaker_index,
+    is_filler: word.is_filler,
+    removed: false,
+  }));
+
+  if (speakerRows.length > 0) {
+    const { error } = await client.from("transcript_speakers").insert(speakerRows);
+    if (error) {
+      throw error;
+    }
+  }
+
+  if (utteranceRows.length > 0) {
+    const { error } = await client.from("transcript_utterances").insert(utteranceRows);
+    if (error) {
+      throw error;
+    }
+  }
+
+  const wordChunkSize = 500;
+  for (let index = 0; index < wordRows.length; index += wordChunkSize) {
+    const chunk = wordRows.slice(index, index + wordChunkSize);
+    const { error } = await client.from("transcript_words").insert(chunk);
+    if (error) {
+      throw error;
+    }
+  }
+}
+
+async function applyTranscriptReassembly(
+  key: string,
+  previewToken: string,
+  options: WorkspaceMutationOptions = {},
+): Promise<TranscriptReassemblyApplyResult> {
+  const preview = await buildTranscriptReassemblyPreview(key, options);
+  if (preview.previewToken !== previewToken) {
+    throw new Error("Transcript rebuild preview is stale. Refresh preview before applying.");
+  }
+
+  if (!preview.canApply) {
+    throw new Error(preview.blockedReasons[0] ?? "Transcript rebuild is blocked.");
+  }
+
+  const job = await requireFreshTranscript(key, options.lastKnownUpdatedAt);
+  const client = await getSupabaseClient("applyTranscriptReassembly");
+  const rawResponse = await loadRawDeepgramResponse(client, job.raw_storage_path);
+  const normalized = normalizeTranscriptResponse(rawResponse);
+
+  await replaceTranscriptDerivedRows(client, job, normalized);
+  await appendAuditEntries([{
+    transcript_id: job.transcript_id,
+    case_id: job.case_id,
+    job_id: job.job_id,
+    action: "bulk_save",
+    before_text: `reassembly ${preview.currentMetrics.mixedCanonicalUtterances}`,
+    after_text: `reassembly ${preview.candidateMetrics.mixedCanonicalUtterances}`,
+  }]);
+
+  const updatedJob = await updateTranscriptJob(job.transcript_id, {
+    duration_seconds: normalized.durationSeconds,
+    word_count: normalized.words.length,
+    utterance_count: normalized.utterances.length,
+    speaker_count: normalized.speakers.length,
+    avg_confidence: normalized.avgConfidence == null ? null : normalized.avgConfidence.toFixed(4),
+  });
+
+  return {
+    ok: true,
+    updatedAt: updatedJob.updated_at,
+    currentMetrics: preview.currentMetrics,
+    candidateMetrics: preview.candidateMetrics,
+  };
+}
+
 async function persistSpeakers(
   key: string,
   payload: SpeakersPayload,
@@ -1017,5 +1290,33 @@ export const workspaceApi = {
     }
 
     return getTranscriptChecklist(jobId);
+  },
+  getTranscriptReassemblyPreview: async (jobId: string, options?: WorkspaceMutationOptions) => {
+    if (USE_MOCK_WORKSPACE) {
+      throw new Error("Transcript rebuild preview is unavailable in fixture mode.");
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
+      return contractApi.getTranscriptReassemblyPreview(target.transcript_id);
+    }
+
+    return buildTranscriptReassemblyPreview(jobId, options);
+  },
+  applyTranscriptReassembly: async (
+    jobId: string,
+    previewToken: string,
+    options?: WorkspaceMutationOptions,
+  ) => {
+    if (USE_MOCK_WORKSPACE) {
+      throw new Error("Transcript rebuild apply is unavailable in fixture mode.");
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
+      return contractApi.applyTranscriptReassembly(target.transcript_id, previewToken);
+    }
+
+    return applyTranscriptReassembly(jobId, previewToken, options);
   },
 };

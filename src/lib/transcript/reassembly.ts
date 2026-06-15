@@ -11,6 +11,24 @@ export interface ReassemblyMetrics {
   wordCount: number;
 }
 
+export interface TranscriptReassemblyPreview {
+  currentAssemblyVersion: string;
+  latestAssemblyVersion: string;
+  canApply: boolean;
+  blockedReasons: string[];
+  currentMetrics: ReassemblyMetrics;
+  candidateMetrics: ReassemblyMetrics;
+  impacts: ReassemblyImpactSummary;
+  previewToken: string;
+}
+
+export interface TranscriptReassemblyApplyResult {
+  ok: true;
+  updatedAt: string | null;
+  currentMetrics: ReassemblyMetrics;
+  candidateMetrics: ReassemblyMetrics;
+}
+
 export interface ReassemblyEligibilityInput {
   reviewStateCount: number;
   suggestionCount: number;

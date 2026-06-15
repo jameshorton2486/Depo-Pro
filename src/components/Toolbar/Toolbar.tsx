@@ -5,6 +5,7 @@ import { useStage } from "../../context/StageContext";
 import { useCase } from "../../context/useCase";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
 import { SpeakerMapStatusBadge } from "../SpeakerMapStatusBadge";
+import { TranscriptReassemblyDialog } from "../TranscriptReassembly/TranscriptReassemblyDialog";
 
 interface Props {
   jobId: string;
@@ -73,6 +74,8 @@ export function Toolbar({ jobId, onSave }: Props) {
       >
         Certification
       </button>
+
+      <TranscriptReassemblyDialog />
 
       {state.segmentTargets.length > 1 && (
         <div className="flex items-center gap-2 rounded border border-slate-700 px-2 py-1">
