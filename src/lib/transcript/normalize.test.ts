@@ -90,29 +90,62 @@ describe("normalizeTranscriptResponse", () => {
 
     const normalized = normalizeTranscriptResponse(response);
 
-    expect(normalized.utterances).toHaveLength(1);
+    expect(normalized.utterances).toHaveLength(3);
+    expect(normalized.utterances.map((utterance) => utterance.utterance_id)).toEqual([
+      "utt_000000",
+      "utt_000000_s001",
+      "utt_000000_s002",
+    ]);
     expect(normalized.words.map((word) => word.utterance_id)).toEqual([
       "utt_000000",
       "utt_000000",
-      "utt_000000",
-      "utt_000000",
-      "utt_000000",
+      "utt_000000_s001",
+      "utt_000000_s001",
+      "utt_000000_s002",
     ]);
-    expect(new Set(normalized.words.map((word) => word.speaker_index))).toEqual(new Set([0, 1]));
-    expect(normalized.utterances[0]?.speaker_index).toBe(0);
+    expect(normalized.utterances.map((utterance) => utterance.speaker_index)).toEqual([0, 1, 0]);
   });
 
-  it("can produce a canonical utterance whose words span multiple speakers", () => {
+  it("produces only speaker-pure canonical utterances after normalization", () => {
     const response = createMixedSpeakerUtteranceResponse();
 
     const normalized = normalizeTranscriptResponse(response);
-    const mixedSpeakerWordSet = new Set(
+    const wordSpeakerSets = normalized.utterances.map((utterance) => new Set(
       normalized.words
-        .filter((word) => word.utterance_id === normalized.utterances[0]?.utterance_id)
+        .filter((word) => word.utterance_id === utterance.utterance_id)
         .map((word) => word.speaker_index),
-    );
+    ));
 
-    expect(mixedSpeakerWordSet).toEqual(new Set([0, 1]));
-    expect(normalized.utterances[0]?.text).toBe("Good afternoon. How are you?");
+    expect(wordSpeakerSets).toEqual([
+      new Set([0]),
+      new Set([1]),
+      new Set([0]),
+    ]);
+    expect(normalized.utterances.map((utterance) => utterance.text)).toEqual([
+      "Good afternoon.",
+      "How are",
+      "you?",
+    ]);
+  });
+
+  it("preserves word stream, ordering, and counts when splitting mixed-speaker utterances", () => {
+    const response = createMixedSpeakerUtteranceResponse();
+
+    const normalized = normalizeTranscriptResponse(response);
+    const sourceWords = response.results.utterances?.[0]?.words ?? [];
+
+    expect(normalized.words).toHaveLength(sourceWords.length);
+    expect(normalized.words.map((word) => word.raw_text)).toEqual(
+      sourceWords.map((word) => word.punctuated_word ?? word.word),
+    );
+    expect(normalized.words.map((word) => word.word_index)).toEqual([0, 1, 2, 3, 4]);
+    expect(normalized.speakers.map((speaker) => speaker.speaker_index)).toEqual([0, 1]);
+    expect(normalized.words.map((word) => [word.start_time, word.end_time, word.confidence])).toEqual(
+      sourceWords.map((word) => [
+        word.start,
+        word.end,
+        Number(word.confidence.toFixed(4)),
+      ]),
+    );
   });
 });

@@ -60,6 +60,11 @@ function utteranceIdForIndex(index: number): string {
   return `utt_${String(index).padStart(6, "0")}`;
 }
 
+function utteranceSegmentIdForIndex(index: number, segmentIndex: number): string {
+  const baseId = utteranceIdForIndex(index);
+  return segmentIndex === 0 ? baseId : `${baseId}_s${String(segmentIndex).padStart(3, "0")}`;
+}
+
 function wordIdForIndex(index: number): string {
   return `w_${String(index).padStart(8, "0")}`;
 }
@@ -122,6 +127,59 @@ function buildFallbackUtterances(words: DeepgramWord[]): DeepgramUtterance[] {
   return utterances;
 }
 
+function splitUtteranceBySpeakerTransitions(
+  utterance: DeepgramUtterance,
+  utteranceIndex: number,
+): Array<DeepgramUtterance & { canonical_utterance_id: string }> {
+  if (utterance.words.length === 0) {
+    return [{
+      ...utterance,
+      canonical_utterance_id: utteranceIdForIndex(utteranceIndex),
+    }];
+  }
+
+  const segments: Array<DeepgramUtterance & { canonical_utterance_id: string }> = [];
+  let currentWords: DeepgramWord[] = [];
+  let currentSpeaker = utterance.words[0]?.speaker ?? utterance.speaker ?? 0;
+
+  const pushSegment = () => {
+    if (currentWords.length === 0) {
+      return;
+    }
+
+    const start = currentWords[0]?.start ?? utterance.start;
+    const end = currentWords[currentWords.length - 1]?.end ?? utterance.end;
+    const confidence = roundConfidence(
+      currentWords.reduce((sum, word) => sum + (word.confidence ?? 0), 0) / currentWords.length,
+    );
+
+    segments.push({
+      speaker: currentSpeaker,
+      start,
+      end,
+      transcript: currentWords.map((word) => getRawText(word)).join(" "),
+      confidence,
+      words: currentWords,
+      canonical_utterance_id: utteranceSegmentIdForIndex(utteranceIndex, segments.length),
+    });
+  };
+
+  for (const word of utterance.words) {
+    const wordSpeaker = word.speaker ?? currentSpeaker;
+    if (currentWords.length > 0 && wordSpeaker !== currentSpeaker) {
+      pushSegment();
+      currentWords = [];
+      currentSpeaker = wordSpeaker;
+    }
+
+    currentWords.push(word);
+  }
+
+  pushSegment();
+
+  return segments;
+}
+
 export function normalizeTranscriptResponse(response: DeepgramResponse): NormalizedTranscriptData {
   const alternative = response.results.channels[0]?.alternatives[0];
   const sourceWords = alternative?.words ?? [];
@@ -133,55 +191,61 @@ export function normalizeTranscriptResponse(response: DeepgramResponse): Normali
   const utterances: CanonicalUtteranceRow[] = [];
   const speakerCounts = new Map<number, number>();
   let globalWordIndex = 0;
+  let globalUtteranceIndex = 0;
 
-  sourceUtterances.forEach((utterance, utteranceIndex) => {
-    const speakerIndex = utterance.speaker ?? utterance.words[0]?.speaker ?? 0;
-    const speakerId = speakerIdForIndex(speakerIndex);
-    const utteranceId = utteranceIdForIndex(utteranceIndex);
-    const utteranceWordStart = globalWordIndex;
+  sourceUtterances.forEach((utterance, sourceUtteranceIndex) => {
+    const canonicalUtterances = splitUtteranceBySpeakerTransitions(utterance, sourceUtteranceIndex);
 
-    for (const sourceWord of utterance.words) {
-      const wordSpeakerIndex = sourceWord.speaker ?? speakerIndex;
-      const wordSpeakerId = speakerIdForIndex(wordSpeakerIndex);
-      const rawText = getRawText(sourceWord);
+    canonicalUtterances.forEach((canonicalUtterance) => {
+      const speakerIndex = canonicalUtterance.speaker ?? canonicalUtterance.words[0]?.speaker ?? 0;
+      const speakerId = speakerIdForIndex(speakerIndex);
+      const utteranceWordStart = globalWordIndex;
 
-      words.push({
-        word_id: wordIdForIndex(globalWordIndex),
-        utterance_id: utteranceId,
-        word_index: globalWordIndex,
-        raw_text: rawText,
-        working_text: null,
-        speaker_id: wordSpeakerId,
-        speaker_index: wordSpeakerIndex,
-        start_time: sourceWord.start,
-        end_time: sourceWord.end,
-        confidence: roundConfidence(sourceWord.confidence),
-        is_filler: isFillerWord(sourceWord),
-        reviewed: false,
-        edited: false,
+      for (const sourceWord of canonicalUtterance.words) {
+        const wordSpeakerIndex = sourceWord.speaker ?? speakerIndex;
+        const wordSpeakerId = speakerIdForIndex(wordSpeakerIndex);
+        const rawText = getRawText(sourceWord);
+
+        words.push({
+          word_id: wordIdForIndex(globalWordIndex),
+          utterance_id: canonicalUtterance.canonical_utterance_id,
+          word_index: globalWordIndex,
+          raw_text: rawText,
+          working_text: null,
+          speaker_id: wordSpeakerId,
+          speaker_index: wordSpeakerIndex,
+          start_time: sourceWord.start,
+          end_time: sourceWord.end,
+          confidence: roundConfidence(sourceWord.confidence),
+          is_filler: isFillerWord(sourceWord),
+          reviewed: false,
+          edited: false,
+        });
+
+        speakerCounts.set(wordSpeakerIndex, (speakerCounts.get(wordSpeakerIndex) ?? 0) + 1);
+        globalWordIndex += 1;
+      }
+
+      const utteranceWords = words.slice(utteranceWordStart, globalWordIndex);
+      const avgConfidence = utteranceWords.length > 0
+        ? roundConfidence(
+            utteranceWords.reduce((sum, word) => sum + word.confidence, 0) / utteranceWords.length,
+          )
+        : roundConfidence(canonicalUtterance.confidence);
+
+      utterances.push({
+        utterance_id: canonicalUtterance.canonical_utterance_id,
+        utterance_index: globalUtteranceIndex,
+        speaker_id: speakerId,
+        speaker_index: speakerIndex,
+        speaker_label: `Speaker ${speakerIndex}`,
+        start_time: canonicalUtterance.start,
+        end_time: canonicalUtterance.end,
+        text: canonicalUtterance.transcript?.trim() || utteranceWords.map((word) => word.raw_text).join(" "),
+        avg_confidence: avgConfidence,
       });
 
-      speakerCounts.set(wordSpeakerIndex, (speakerCounts.get(wordSpeakerIndex) ?? 0) + 1);
-      globalWordIndex += 1;
-    }
-
-    const utteranceWords = words.slice(utteranceWordStart, globalWordIndex);
-    const avgConfidence = utteranceWords.length > 0
-      ? roundConfidence(
-          utteranceWords.reduce((sum, word) => sum + word.confidence, 0) / utteranceWords.length,
-        )
-      : roundConfidence(utterance.confidence);
-
-    utterances.push({
-      utterance_id: utteranceId,
-      utterance_index: utteranceIndex,
-      speaker_id: speakerId,
-      speaker_index: speakerIndex,
-      speaker_label: `Speaker ${speakerIndex}`,
-      start_time: utterance.start,
-      end_time: utterance.end,
-      text: utterance.transcript?.trim() || utteranceWords.map((word) => word.raw_text).join(" "),
-      avg_confidence: avgConfidence,
+      globalUtteranceIndex += 1;
     });
   });
 
