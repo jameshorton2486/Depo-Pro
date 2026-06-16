@@ -5,11 +5,11 @@ boundaries, line density, the tab hierarchy with exact measurements, wrapping/in
 line-shaping. This is the authority the renderer, DOCX export, PDF export, Copy Transcript, and
 certification output all conform to. It is the specification the Geometry Engine implements.
 
-**Authority.** This document **resolves the tab-position conflict** formerly open in
-`GEOMETRY_ENGINE_RULES.md` §0.1 and `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16 (#4). The tab model in §5 is
-**canonical**; any other tab values in earlier docs are superseded. It also **corrects the
-hanging-indent rule**: wrapped Q/A and colloquy return flush to the left text margin (0.0″), not
-to the text-body tab.
+**Authority.** This document **resolves the tab-position conflict** formerly tracked in
+`GEOMETRY_ENGINE_RULES.md` §0.1 and `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16 (#2/#4). The Formatter
+tab model in §5 is **canonical**; any other tab values in earlier docs are superseded. It also
+**resolves the hanging-indent rule**: wrapped Q/A continues at the testimony-text tab (1.0″ /
+1440 twips), not at the left text margin.
 
 **Scope.** Geometry only. Punctuation/number/style rules → `MORSONS_TRANSCRIPT_RULES.md`;
 assembly/indexes/certificates → `TRANSCRIPT_ASSEMBLY_STANDARD.md`; deterministic transforms →
@@ -90,19 +90,20 @@ This separation must hold before Word-style editing is built, or editing corrupt
 
 ## 5. Tabulation hierarchy (CANONICAL)
 
-A strict sequence of tab stops, measured from the left text margin. For 10-pitch document
-engineering:
+A strict sequence of placement stops, measured from the left text margin. This is the **Formatter
+model** and is the only live geometry.
 
-| Tab | Space | Inches | Twips | Used for |
-|---|---|---|---|---|
-| **Tab 1** | 5th | 0.25″ | 360 | `Q.` and `A.` designations **only** |
-| **Tab 2** | 10th | 0.625″ | 900 | Start of testimony text after `Q.`/`A.` |
-| **Tab 3** | 15th | 1.0″ | 1440 | Speaker-label placement; start of new paragraphs |
-| **Tab 4** | — | 1.5″ | 2160 | Parenthetical placement |
-| **Tab 5** | — | 2.0″ | 2880 | Technical/scopist-flag indents |
+| Element | Inches | Twips | Used for |
+|---|---|---|---|
+| `Q.` / `A.` marker | 0.5″ | 720 | The `Q.` / `A.` designation only |
+| Q/A testimony text | 1.0″ | 1440 | Start of testimony text after `Q.` / `A.` |
+| Speaker label | 1.5″ | 2160 | `THE REPORTER:`, `MR. NUNEZ:`, etc. |
+| `EXAMINATION` header | 1.5″ | 2160 | Examination heading placement |
+| Parenthetical | 1.5″ | 2160 | Parenthetical placement |
+| `BY MR./MS. ___:` byline | 0.0″ | 0 | Left-margin byline placement |
 
-(Navy-blue parenthetical text and orange scopist-flag text are **style-layer** concerns, §11 —
-the table above governs only *position*.)
+(Navy-blue parenthetical text is a **style-layer** concern, §11 — the table above governs only
+*position*.)
 
 ---
 
@@ -110,12 +111,13 @@ the table above governs only *position*.)
 
 Two wrap behaviors, by content type:
 
-- **Hanging indent (Q/A and speaker colloquy):** when the line wraps, the continuation returns
-  **flush to the left text margin (0.0″)** — to the left of the `Q.`/`A.` marker. This is the
-  hanging-indent shape and it matches certified-transcript practice.
+- **Q/A continuation:** when a question or answer wraps, the continuation returns to the **Q/A
+  testimony-text position (1.0″ / 1440 twips)**, not to the left text margin.
+- **Speaker colloquy:** label remains at the speaker-label position; the colloquy text continues in
+  the same text body after the colon.
 - **Block indent (parentheticals):** when a parenthetical spans multiple lines, **every**
-  subsequent line **maintains the first line's indentation** (Tab 4). It does **not** return to the
-  left margin.
+  subsequent line **maintains the first line's indentation** (1.5″ / 2160 twips). It does **not**
+  return to the left margin.
 
 ---
 
@@ -123,12 +125,16 @@ Two wrap behaviors, by content type:
 
 The Geometry Engine shapes lines by position only; it does not decide label text or content.
 
-- **Q. / A. lines:** a tab before the letter, then another tab before the text —
-  `[TAB1]Q.[TAB2][question text]` / `[TAB1]A.[TAB2][answer text]`.
-- **Speaker labels:** **three tabs** (landing at Tab 3, 1.0″/1440 twips). The label is rendered
-  bold all-caps, colon-terminated, followed by two spaces before text begins — `[TAB3][LABEL]:  [text]`.
+- **Q. / A. lines:** tab to **0.5″ / 720 twips**, render the marker, then tab to **1.0″ / 1440
+  twips** before the text — `[TAB0.5]Q.[TAB1.0][question text]` /
+  `[TAB0.5]A.[TAB1.0][answer text]`.
+- **Speaker labels:** rendered at **1.5″ / 2160 twips**. The label is bold all-caps,
+  colon-terminated, followed by two spaces after the colon —
+  `[TAB1.5][LABEL]:  [text]`.
   (What the label *says* and its casing/honorific rules belong to
-  `GEOMETRY_ENGINE_RULES.md` §5; geometry owns only the Tab 3 position and the two-space gap.)
+  `GEOMETRY_ENGINE_RULES.md` §5; geometry owns only the 1.5-inch position and the two-space gap.)
+- **`EXAMINATION` header:** rendered at **1.5″ / 2160 twips**, bold all-caps.
+- **`BY MR./MS. ___:` byline:** rendered at the **left margin (0.0″ / 0 twips)**, bold.
 
 ---
 
@@ -138,12 +144,13 @@ These must **never vary**, on any output target, for any transcript:
 
 1. **25 lines per page.**
 2. **6.5″ text-area width.**
-3. **Canonical tab hierarchy** (§5) — the five positions are fixed.
-4. **Hanging-indent behavior** — Q/A and colloquy wrap to 0.0″ (§6).
+3. **Canonical tab hierarchy** (§5) — the Formatter positions are fixed.
+4. **Q/A continuation behavior** — wrapped Q/A continues at 1.0″ / 1440 twips (§6).
 5. **Block-indent behavior** — parentheticals hold their indent on wrap (§6).
-6. **Speaker-label position** — Tab 3, 1.0″/1440 twips.
-7. **Parenthetical position** — Tab 4, 1.5″/2160 twips.
-8. **Line numbers** — visual, non-editable, auto-regenerated, copy-excluded (§3.2).
+6. **Speaker-label position** — 1.5″ / 2160 twips.
+7. **`EXAMINATION` header position** — 1.5″ / 2160 twips; **BY-line position** — 0.0″ / 0 twips.
+8. **Parenthetical position** — 1.5″ / 2160 twips.
+9. **Line numbers** — visual, non-editable, auto-regenerated, copy-excluded (§3.2).
 
 A change to any of these is a change to the legal shape of the record and requires deliberate
 sign-off, not an implementation decision.
@@ -186,25 +193,27 @@ the other.
 
 ## 11. Worked example (structural)
 
-Showing canonical tab stops, two-space terminal spacing, both wrap behaviors. **Content is shown as
+Showing canonical tab stops, the Q/A tab shape, and both wrap behaviors. **Content is shown as
 placeholders** — geometry cares where things sit, not what they say.
 
 ```
-col:   0.0"        0.25"   0.625"        1.0"                          1.5"
-       |           |       |             |                             |
-       [TAB1]Q.[TAB2][question text that is long enough to wrap to a
-second line and therefore returns flush to the 0.0" left margin]
-       [TAB1]A.[TAB2][answer text]
-                     [TAB3][SPEAKER LABEL]:  [colloquy text]
-                                       [TAB4]([parenthetical text that
-                                       wraps and holds the Tab 4 indent
-                                       on every subsequent line])
+col:   0.0"                  0.5"          1.0"                        1.5"
+       |                     |             |                           |
+                 [TAB0.5]Q.[TAB1.0][question text that is long enough
+                                 to wrap and continue at the 1.0" text tab]
+                 [TAB0.5]A.[TAB1.0][answer text]
+[BY MR. NUNEZ:]
+                                                               [TAB1.5]EXAMINATION
+                                                               [TAB1.5][SPEAKER LABEL]:  [colloquy text]
+                                                               [TAB1.5]([parenthetical text that
+                                                               wraps and holds the same indent
+                                                               on every subsequent line])
 ```
 
-- `Q.`/`A.` markers at Tab 1; testimony text at Tab 2.
-- The wrapped question line returns flush to **0.0″** — hanging indent (§6).
-- Speaker label at Tab 3 (three tabs), colon, two spaces before text — *placement only*.
-- The parenthetical wraps but each line holds Tab 4 — block indent (§6).
+- `Q.`/`A.` markers at 0.5″; testimony text at 1.0″.
+- The wrapped question line continues at **1.0″** — Q/A continuation (§6).
+- Speaker label and `EXAMINATION` header at **1.5″**; `BY MR./MS. ___:` at the left margin.
+- The parenthetical wraps but each line holds the 1.5″ indent — block indent (§6).
 - Two spaces after each sentence-ending mark and after the speaker-label colon (the *spacing* is
   geometry-relevant; the punctuation *rules* live in `MORSONS_TRANSCRIPT_RULES.md`).
 
@@ -221,9 +230,12 @@ DOCX export · PDF export · Certification output.** The rendering technology di
 ## 13. Cross-reference & what this resolves
 
 **Resolved here:**
-- **Tab model:** Model A (0.25″/0.625″/1.0″/1.5″/2.0″ → 360/900/1440/2160/2880 twips) is canonical.
-- **Speaker-label position:** three tabs → Tab 3 → 1.0″/1440 twips.
-- **Hanging indent:** wrapped Q/A and colloquy return to 0.0″ (supersedes any "return to Tab 2" note).
+- **Tab model:** Formatter model is canonical: Q/A marker 0.5″/720; Q/A text + wrap 1.0″/1440;
+  speaker labels / `EXAMINATION` / parentheticals 1.5″/2160; byline 0.0″/0.
+- **Speaker-label position:** 1.5″ / 2160 twips.
+- **Q/A continuation:** wrapped Q/A continues at 1.0″ / 1440 twips (supersedes any "return to
+  0.0″" or "return to Tab 2" note).
+- **Q/A line shape:** tab to marker, tab to text; no `Q.` + two-space line-shape rule survives.
 
 **Owned elsewhere:**
 - Punctuation, numbers, italics, capitalization → `MORSONS_TRANSCRIPT_RULES.md`
@@ -231,4 +243,5 @@ DOCX export · PDF export · Certification output.** The rendering technology di
 - Assembly, indexes, certificates → `TRANSCRIPT_ASSEMBLY_STANDARD.md`
 - Editor behavior, line-number interaction during editing → `WORKSPACE_EDITING_AND_PROOFING.md`
 
-**Still open (not geometry):** dash glyph, by-line alignment — see `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
+**Resolved in the register and consumed here:** dash glyph `--`; `EXAMINATION` at 1.5″ and byline
+at the left margin — see `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.

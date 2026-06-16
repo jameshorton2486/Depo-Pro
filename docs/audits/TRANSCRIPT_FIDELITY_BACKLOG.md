@@ -38,10 +38,10 @@ Q. Okay. And can you please state your age and date of birth?
 A. Fifty seven, May seventh, nineteen sixty eight.
 
 expected:
-[TAB]Q.[TAB]Good afternoon.  Can you please state your full name for the record?
-[TAB]A.[TAB]Heath Thomas.
-[TAB]Q.[TAB]Okay.  And can you please state your age and date of birth?
-[TAB]A.[TAB]57, May 7, 1968.
+[TAB0.5]Q.[TAB1.0]Good afternoon.  Can you please state your full name for the record?
+[TAB0.5]A.[TAB1.0]Heath Thomas.
+[TAB0.5]Q.[TAB1.0]Okay.  And can you please state your age and date of birth?
+[TAB0.5]A.[TAB1.0]57, May 7, 1968.
 ```
 (Two spaces after "afternoon." and "Okay."; ages → figures; date → `May 7, 1968`.)
 
@@ -51,9 +51,10 @@ Normalization · Priority: Critical · Deterministic: Yes · AI Required: No · 
 Transcript-Specific: No.
 
 ### Requirements
-- `[TAB1]Q.[TAB2]text` / `[TAB1]A.[TAB2]text` per the canonical tab model
-  (`TRANSCRIPT_GEOMETRY_STANDARD.md` §5). Markers at Tab 1, text at Tab 2.
-- Wrapped lines return flush to the left text margin (0.0″), not under the Q./A. marker.
+- `[TAB0.5]Q.[TAB1.0]text` / `[TAB0.5]A.[TAB1.0]text` per the canonical Formatter model
+  (`TRANSCRIPT_GEOMETRY_STANDARD.md` §5). Markers at 0.5″ / 720, text at 1.0″ / 1440.
+- Wrapped lines continue at the testimony-text position (1.0″ / 1440), not under the Q./A.
+  marker and not at the left margin.
 - Numbers/dates: ages → figures (Morson 175); complete date → figures, drop ordinals (Morson 179).
   Deterministic when context is unambiguous; otherwise human review.
 
@@ -76,7 +77,7 @@ Transcript-Specific: No.
 
 ### Rules (canonical detail in `MORSONS_TRANSCRIPT_RULES.md`)
 **1. Period.** Statements, commands, indirect questions, polite requests-as-questions, condensed
-fragment answers (`A.  Not me.`). Two spaces after a sentence-ending period. Period inside a
+fragment answers (`Not me.` in answer form). Two spaces after a sentence-ending period. Period inside a
 closing quote. Sentence ending in an abbreviation keeps one period (`Mr. Thomas.`, never `..`).
 **2. Question Mark.** Direct questions, connected series, echo questions (`It's true, isn't it?`).
 Two spaces after. Placement by quotation logic.
@@ -87,9 +88,9 @@ Two spaces after. Placement by quotation logic.
 readback; two spaces after a speaker-label colon; not after a preposition or "that"; outside quotes.
 **6. Comma.** Clauses joined by a conjunction, series, appositives, direct address. Comma after
 conversational fillers (`Now,` `Well,`) but not after logical openers (`so`, `yet`, `hence`, `thus`).
-**7. Dash.** Interruptions, false starts, self-corrections, resumed thoughts. Spaced dash; mid-word
+**7. Dash.** Interruptions, false starts, self-corrections, resumed thoughts use `--`; mid-word
 cutoff attaches directly (`subp--`); never comma/colon/semicolon adjacent; resumed word not
-capitalized unless proper noun/`I`. **Glyph open — §5.**
+capitalized unless proper noun/`I`.
 **8. Quotation Marks.** Direct quotes, words-as-words, short titles; nested = single quotes;
 periods/commas inside, semicolons/colons outside, question marks by logic.
 **9. Parentheses.** Reporter notations only; complete sentence, capitalized, end punctuation inside,
@@ -128,7 +129,8 @@ Engine: Transcript Geometry Engine · Category: Speaker Label Formatting, UFM Co
 Critical · Deterministic: Yes · AI Required: No · Reusable: Yes · Transcript-Specific: No.
 
 ### Requirements
-- **Placement:** Tab 3 (three tabs → 1.0″ / 1440 twips). Wrapped text → hanging indent to 0.0″.
+- **Placement:** 1.5″ / 2160 twips for speaker labels. Colloquy text remains in the text body after
+  the colon; Q/A wrap behavior is governed by ITEM 1 / `TRANSCRIPT_GEOMETRY_STANDARD.md`.
 - **Typography:** BOLD ALL CAPS, colon-terminated, two spaces after the colon.
 - **Honorific:** normalized from participant metadata; honorific always included; exactly one period;
   no duplicated punctuation. **One space after the honorific period** in a label/by-line
@@ -139,9 +141,10 @@ Critical · Deterministic: Yes · AI Required: No · Reusable: Yes · Transcript
   - Court reporter → `THE REPORTER:` (never `THE COURT REPORTER:`).
   - Judge → `THE COURT:`. Videographer → `THE VIDEOGRAPHER:`. Interpreter → `THE INTERPRETER:`.
   - Witness → `THE WITNESS:` only in oath/colloquy/off-examination; during examination it is `A.`.
-- **Interrupted examination:** resuming question carries inline attribution `Q.  (BY MR. NUNEZ)  …`;
+- **Interrupted examination:** resuming question carries inline attribution
+  `[TAB0.5]Q.[TAB1.0](BY MR. NUNEZ)  …`;
   preserve attorney identity; do not open a new examination section for an objection/colloquy.
-  (By-line punctuation form pending §5.)
+  (Inline attribution punctuation resolved to `(BY MR. NUNEZ)`.)
 
 ### Acceptance Criteria
 Correct labels, placement, casing, and colon spacing across all outputs. Detail in
@@ -205,10 +208,10 @@ Critical · Deterministic: Yes · AI Required: No · Reusable: Yes · Transcript
 - **Lines:** exactly 25 per page, numbered 1–25 outside the left box; double-spaced; **no blank lines**
   in the body (anti-insertion); pagination engine handles continuation.
 - **Typography:** Courier New 12 pt (≈ 9–10 pitch).
-- **Tab model (canonical — Model A, resolved §5):** Tab 1 0.25″/360 (Q./A.); Tab 2 0.625″/900 (text);
-  Tab 3 1.0″/1440 (speaker labels, new paragraphs); Tab 4 1.5″/2160 (parentheticals, navy blue);
-  Tab 5 2.0″/2880 (scopist flags).
-- **Wrapping:** Q/A and colloquy → hanging indent to 0.0″; parentheticals → block indent holding Tab 4.
+- **Tab model (canonical — Formatter model, resolved §5):** `Q.` / `A.` marker 0.5″/720; Q/A text
+  and wrapped continuation 1.0″/1440; speaker labels / `EXAMINATION` / parentheticals 1.5″/2160;
+  `BY MR./MS. ___:` byline 0.0″/0.
+- **Wrapping:** Q/A continues at 1.0″/1440; parentheticals hold 1.5″/2160 block indent.
 
 ### Acceptance Criteria
 Transcript visually resembles a certified Texas deposition (25-line geometry, UFM tabs, hanging-indent
@@ -217,22 +220,19 @@ across Workspace, Copy Transcript, DOCX, PDF, Certification. No hardcoding.
 
 ---
 
-## 5. Open conflicts
+## 5. Resolved conflicts
 
 Master register in `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
 
-1. **Tab model — RESOLVED.** Model A (0.25″/0.625″/1.0″/1.5″/2.0″ → 360/900/1440/2160/2880 twips),
-   per `TRANSCRIPT_GEOMETRY_STANDARD.md`.
+1. **Tab model — RESOLVED.** Formatter model: `Q.` / `A.` marker 0.5″/720; Q/A text and wrapped
+   continuation 1.0″/1440; speaker labels / `EXAMINATION` / parentheticals 1.5″/2160; byline 0.0″/0.
 2. **Honorific spacing — RESOLVED.** One space after every honorific period, everywhere — in
    ALL-CAPS labels and by-lines (`MR. NUNEZ:`) and in lowercase prose (`Mr. Nunez`). Court-reporter
    decision (James Horton); supersedes the earlier two-space-in-labels reading. (The two-space rules
    for sentence-ending punctuation and after a speaker-label colon are separate and unchanged.)
-3. **Dash glyph — OPEN.** Spaced hyphen ` - ` (these drafts / Morson's as rendered) vs em dash `—`
-   (platform memory) vs typed `--`. Default per authority (platform) until confirmed; rules written
-   glyph-agnostic.
-4. **BY-line / EXAMINATION alignment — OPEN.** Drafts say *centered*; platform spec says
-   *left-aligned* (`EXAMINATION` / `BY MR. JENKINS:`, no centering spaces). **Default: left-aligned.**
-   Resolve against the primary UFM figure before building the BY-line renderer.
+3. **Dash glyph — RESOLVED.** The transcript record uses `--`; the em-dash glyph `—` is not used.
+4. **BY-line / EXAMINATION alignment — RESOLVED.** `EXAMINATION` at 1.5″ / 2160 twips, bold
+   all-caps; `BY MR. JENKINS:` at the left margin, bold; neither centered.
 
 ---
 

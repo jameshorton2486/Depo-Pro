@@ -17,8 +17,9 @@ preserved so engines can cite them. Internal engineering reference, not a substi
 **Source gap.** The uploaded copy ends at the index; the appended NCRA Transcript Format Guidelines
 and worked selections (printed pp. 229–254) are absent and not included. §13 lists what to supply.
 
-**Authority note.** Where a Morson's rule and the platform spec disagree (dash glyph, by-line
-alignment), the platform spec wins; tracked in `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16, not duplicated here.
+**Authority note.** Where a Morson's rule and the platform spec disagree, the resolved decision in
+`TRANSCRIPT_ASSEMBLY_STANDARD.md` §16 wins. The dash glyph is resolved there to the Texas-UFM
+double hyphen `--`.
 
 ---
 
@@ -134,7 +135,7 @@ see Question Mark.*
 
 **The Question Mark (Rules 9–18) [JUDG].** Direct questions, connected series, echo questions
 (`It's true, isn't it?`). Two spaces after [DET]. **Fragment punctuation is reporter judgment:**
-`Q.␣␣Approximately.` vs `Q.␣␣Approximately?` depends on interrogative inflection in the audio — the
+`Q.` followed by transcript text `Approximately.` vs `Approximately?` depends on interrogative inflection in the audio — the
 engine flags, a human decides. Placement by quotation logic.
 
 **The Exclamation Point [DET — remove].** Do not use in transcripts; replace with a period. Force
@@ -156,10 +157,10 @@ after logical openers (`so`, `yet`, `hence`, `thus`). Largely judgment — comma
 meaning.
 
 **The Dash (Rules 85–93) [DET spacing; JUDG placement].** Interruptions, false starts,
-self-corrections, resumed thoughts. Mid-word cutoff attaches directly (`subp--`), no space [DET].
-Never comma/colon/semicolon adjacent to a dash [DET]. Resumed word not capitalized unless proper
-noun/`I` [DET]. *Glyph open — `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.* Whether a moment is an interruption is
-[JUDG].
+self-corrections, resumed thoughts use the **double hyphen `--`**. Mid-word cutoff attaches
+directly (`subp--`), no space [DET]. Never comma/colon/semicolon adjacent to a dash [DET].
+Resumed word not capitalized unless proper noun/`I` [DET]. The **em-dash glyph `—` is not used**
+in the transcript record. Whether a moment is an interruption is [JUDG].
 
 **Quotation Marks (Rules 94–117) [DET hierarchy; JUDG quote-vs-not].** Direct quotes, words-as-
 words, short titles; nested = single quotes. Hierarchy [DET]: periods/commas inside; semicolons/
@@ -254,7 +255,8 @@ here). An objection is colloquy: speaker label at Tab 3, then the objection text
 - Two spaces after each period [DET]. Do not expand, abbreviate, or normalize the objecting
   attorney's wording beyond Morson's spacing/punctuation.
 - After an objection/colloquy block, the resuming question carries inline attribution
-  (`Q.␣␣(BY MR. NUNEZ)␣␣…`) — placement/format in `GEOMETRY_ENGINE_RULES.md` §6.
+  (`Q.` at the marker tab, `(BY MR. NUNEZ)␣␣…` at the testimony-text tab) — placement/format in
+  `GEOMETRY_ENGINE_RULES.md` §6.
 
 ---
 

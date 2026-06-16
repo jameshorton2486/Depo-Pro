@@ -18,8 +18,8 @@ looks (geometry) or how text is written (punctuation/style); those live in dedic
 The Geometry Engine consumes `TRANSCRIPT_GEOMETRY_STANDARD.md`; the Assembly Engine consumes this
 file. They never read the same rule from two places.
 
-**Open-conflict register.** §16 remains the master register for cross-document conflicts; other
-files reference `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
+**Conflict register.** §16 remains the master register for cross-document conflict resolutions;
+other files reference `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
 
 ---
 
@@ -259,17 +259,17 @@ published guidelines. (Mirror of the note in `MORSONS_TRANSCRIPT_RULES.md` §13.
 
 ---
 
-## 16. Open-conflict register (master)
+## 16. Conflict register (master)
 
-Master register for cross-document conflicts. Other files reference this section. Each entry:
-Conflict · Authority A · Authority B · Decision · Status.
+Master register for cross-document conflicts and their resolutions. Other files reference this
+section. Each entry: Conflict · Authority A · Authority B · Decision · Status.
 
 | # | Conflict | Authority A | Authority B | Decision | Status |
 |---|---|---|---|---|---|
 | 1 | Honorific spacing | Morson (one space) | Earlier platform reading (two spaces in labels) | **One space after every honorific period, everywhere** (`MR. NUNEZ:`, `Mr. Nunez`). Court-reporter decision (James Horton). Sentence-ending and after-colon two-space rules unchanged. | **RESOLVED** |
-| 2 | Tab model | Backlog "Nth space" (0.25/0.625/1.0/1.5/2.0) | Earlier platform stops (0.5/1.0/1.5) | **Model A** (0.25″/0.625″/1.0″/1.5″/2.0″ → 360/900/1440/2160/2880 twips), per `TRANSCRIPT_GEOMETRY_STANDARD.md`. | **RESOLVED** |
-| 3 | Dash glyph | Morson / backlog (spaced hyphen ` - `) | Platform memory (em dash `—`) | Default to platform (em dash) until confirmed; rules written glyph-agnostic. | **OPEN** |
-| 4 | BY-line / EXAMINATION alignment | Drafts (centered) | Platform spec (left-aligned) | Default **left-aligned** (`EXAMINATION` / `BY MR. JENKINS:`). | **OPEN — resolve against primary UFM figure** |
+| 2 | Tab model | Backlog "Nth space" (0.25/0.625/1.0/1.5/2.0) **[superseded history]** | Earlier platform stops (0.5/1.0/1.5) | **Formatter model**: `Q.` / `A.` marker at 0.5″ / 720; Q/A text and wrapped continuation at 1.0″ / 1440; speaker labels, `EXAMINATION`, and parentheticals at 1.5″ / 2160; `BY MR./MS. ___:` at the left margin. Supersedes Model A. | **RESOLVED** |
+| 3 | Dash glyph | Morson / backlog convention | Platform memory glyph | **Double hyphen `--` per Texas UFM**. The dash as punctuation is preserved; the em-dash glyph `—` is not used in the transcript record. | **RESOLVED** |
+| 4 | BY-line / EXAMINATION alignment | Drafts (centered) | Platform spec (left-aligned) | `EXAMINATION` at **1.5″ / 2160 twips**, bold all-caps; `BY MR./MS. ___:` at the **left margin**, bold. Neither centered. | **RESOLVED** |
 
 **Note on the stored platform standard:** conflict #1's resolution (one space) must also be applied
 to the stored platform memory / system standard, which an engine prompt may read independently of

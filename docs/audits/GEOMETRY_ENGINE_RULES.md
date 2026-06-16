@@ -25,24 +25,22 @@ explicitly marked **[CONTEXT]**.
 
 ## 0. CONFLICT STATUS
 
-Cross-document conflicts and their status. Tab model and honorific spacing are **resolved**; dash
-glyph and by-line alignment remain open. Master register: `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
+All four register conflicts are **resolved**. Master register: `TRANSCRIPT_ASSEMBLY_STANDARD.md`
+§16.
 
-### 0.1 Tab positions — RESOLVED (Model A)
-The canonical tab model is **Model A**, resolved in `TRANSCRIPT_GEOMETRY_STANDARD.md` §5 and
-recorded as conflict #2 RESOLVED in `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16. The renderer, DOCX
-export, and PDF export all use it. These are not placeholders.
+### 0.1 Tab positions — RESOLVED (Formatter model)
+The canonical tab model is the **Formatter model**, resolved in
+`TRANSCRIPT_GEOMETRY_STANDARD.md` §5 and recorded as conflict #2 RESOLVED in
+`TRANSCRIPT_ASSEMBLY_STANDARD.md` §16. The renderer, DOCX export, and PDF export all use it.
 
-| Tab | Inches | Twips | Used for |
+| Element | Inches | Twips | Used for |
 |---|---|---|---|
-| Tab 1 | 0.25″ | 360 | `Q.` / `A.` designations only |
-| Tab 2 | 0.625″ | 900 | Q/A testimony text |
-| Tab 3 | 1.0″ | 1440 | Speaker labels; new paragraphs |
-| Tab 4 | 1.5″ | 2160 | Parentheticals |
-| Tab 5 | 2.0″ | 2880 | Scopist flags / metadata |
-
-(The earlier "Model B" 0.5/1.0/1.5 reading is superseded. "Speaker labels = 3 tabs" and "speaker
-labels at the 1.0-inch / 1440-twip stop" both describe Model A and agree.)
+| `Q.` / `A.` marker | 0.5″ | 720 | `Q.` / `A.` designations only |
+| Q/A testimony text | 1.0″ | 1440 | Q/A testimony text and wrapped continuation |
+| Speaker label | 1.5″ | 2160 | Speaker labels |
+| `EXAMINATION` header | 1.5″ | 2160 | Examination heading |
+| Parenthetical | 1.5″ | 2160 | Parentheticals |
+| `BY MR./MS. ___:` byline | 0.0″ | 0 | Left-margin byline |
 
 ### 0.2 Honorific spacing — RESOLVED
 **One space after every honorific period, everywhere** (court-reporter decision, James Horton):
@@ -55,17 +53,16 @@ labels at the 1.0-inch / 1440-twip stop" both describe Model A and agree.)
 Supersedes the earlier "two spaces in ALL-CAPS labels" reading. Tracked as conflict #1 in
 `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
 
-### 0.3 Dash glyph
-Backlog convention: spaced single hyphen ` - ` for mid-sentence interruption/self-correction;
-`--` (no spaces) for a mid-word cutoff. Platform memory: em dash `—` for stutters/
-self-corrections/trailing off. **Decision needed:** confirm the canonical glyph. Conflict #2 in
-`TRANSCRIPT_ASSEMBLY_STANDARD.md` §16. Rules in §7.4 below are written in the backlog convention; swap the
-glyph once decided.
+### 0.3 Dash glyph — RESOLVED
+The transcript record uses the **double hyphen `--`** for interruptions, false starts,
+self-corrections, resumed thoughts, and mid-word cutoffs. The **em-dash glyph `—` is not used** in
+the record. Recorded as conflict #3 RESOLVED in `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
 
-### 0.4 By-line attribution format
-Backlog: `Q. (BY MR. NUNEZ)  question` (no colon after BY). Platform memory:
-`Q.  (BY: MR. JENKINS)  question` (colon after BY). **Decision needed:** pick one punctuation
-form for the inline attribution and apply it everywhere.
+### 0.4 By-line attribution format — RESOLVED
+Inline resumed-question attribution renders as `(BY MR. NUNEZ)` with **no colon after `BY`**.
+Standalone `BY MR./MS. ___:` bylines render at the **left margin**; `EXAMINATION` renders at
+**1.5″ / 2160 twips**. Recorded as conflict #4 RESOLVED in
+`TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
 
 ---
 
@@ -88,14 +85,12 @@ Applies to every output target (§11).
 
 ## 2. Tab hierarchy
 
-Enforce fixed tab stops (positions per the Model chosen in §0.1).
+Enforce the fixed Formatter positions from §0.1.
 
-- **Tab 1 →** `Q.` / `A.` markers only.
-- **Tab 2 →** Q/A testimony text immediately after the marker.
-- **Tab 3 →** speaker labels, examination headers, new paragraphs, colloquy blocks.
-- **Tab 4 →** parentheticals; Depo-Pro renders these **navy blue** `RGB(0x1E,0x3A,0x5F)`.
-- **Tab 5 →** scopist flags / technical annotations (bold orange `RGB(0xB4,0x5F,0x06)` per
-  platform); removed for clean delivery.
+- **0.5″ / 720 →** `Q.` / `A.` markers only.
+- **1.0″ / 1440 →** Q/A testimony text immediately after the marker and on wrapped continuation.
+- **1.5″ / 2160 →** speaker labels, examination headers, parentheticals.
+- **0.0″ / 0 →** standalone `BY MR./MS. ___:` bylines at the left margin.
 
 ---
 
@@ -105,18 +100,19 @@ Enforce fixed tab stops (positions per the Model chosen in §0.1).
 ```
 current:   Q. Good afternoon. Can you please state your full name for the record?
            A. Heath Thomas.
-expected:  [TAB1]Q.[TAB2]Good afternoon.  Can you please state your full name for the record?
-           [TAB1]A.[TAB2]Heath Thomas.
+expected:  [TAB0.5]Q.[TAB1.0]Good afternoon.  Can you please state your full name for the record?
+           [TAB0.5]A.[TAB1.0]Heath Thomas.
 ```
-Requirements: `Q.`/`A.` at Tab 1; text at Tab 2; markers and text each vertically aligned;
+Requirements: `Q.`/`A.` at 0.5″ / 720; text at 1.0″ / 1440; markers and text each vertically aligned;
 two spaces after every sentence-ending period (note the double space after "afternoon.").
 
-**Wrapping — hanging indent.** When testimony wraps, subsequent lines return flush to the **left
-text margin (0.0″)**, never under the `Q.`/`A.` marker and never to Tab 2
+**Wrapping — testimony-text continuation.** When testimony wraps, subsequent lines return to the
+**Q/A testimony-text position (1.0″ / 1440 twips)**, never under the `Q.`/`A.` marker and never to
+the left text margin
 (`TRANSCRIPT_GEOMETRY_STANDARD.md` §6).
 ```
-[TAB1]Q.[TAB2]Please state your name and address and
-              your employer and your title.
+[TAB0.5]Q.[TAB1.0]Please state your name and address and
+               your employer and your title.
 ```
 
 ---
@@ -141,12 +137,12 @@ expected:  [TAB1]A.[TAB2]57, May 7, 1968.
 ## 5. Speaker labels
 
 ### 5.1 Placement & typography
-At Tab 3; **bold, uppercase, colon-terminated**, then **two spaces** before text.
+At 1.5″ / 2160 twips; **bold, uppercase, colon-terminated**, then **two spaces** before text.
 ```
 current:   THE REPORTER: Good afternoon.
-expected:  [TAB3]THE REPORTER:  Good afternoon.
+expected:  [TAB1.5]THE REPORTER:  Good afternoon.
 current:   MR. NUNEZ: Please state your name.
-expected:  [TAB3]MR. NUNEZ:  Please state your name.
+expected:  [TAB1.5]MR. NUNEZ:  Please state your name.
 ```
 Requirements: exactly one colon; two spaces after the colon; no `\xa0` non-breaking spaces.
 
@@ -185,12 +181,12 @@ guessed.
 When examination resumes after an objection or colloquy, attribute the resuming question inline
 rather than opening a new examination section.
 ```
-expected:  [TAB1]Q.  (BY MR. NUNEZ)  Please state your name.
-           [TAB1]Q.  (BY MS. ZAHN)  Did you see the incident?
+expected:  [TAB0.5]Q.[TAB1.0](BY MR. NUNEZ)  Please state your name.
+           [TAB0.5]Q.[TAB1.0](BY MS. ZAHN)  Did you see the incident?
 ```
 Requirements: preserve attorney identity across the interruption; maintain examination
 continuity; do **not** start a new examination heading solely because of an objection/colloquy.
-(By-line punctuation form pending §0.4.)
+(Inline attribution punctuation resolved in §0.4.)
 
 ---
 
@@ -204,9 +200,9 @@ continuity; do **not** start a new examination heading solely because of an obje
 
 ### 7.2 Condensed fragments **[CONTEXT]**
 Fragments that function as complete statements take a period:
-`A.  Not me.` · `Q.  Approximately.` · `Objection.  Form.`
+`Not me.` in answer form · `Approximately.` in question form · `Objection.  Form.`
 A fragment phrased as a question takes a question mark **only** when interrogative inflection is
-present: `Q.  Approximately?` vs `Q.  Approximately.` — this distinction depends on the audio,
+present: `Approximately?` vs `Approximately.` in question form — this distinction depends on the audio,
 so flag for review when inflection is uncertain.
 
 ### 7.3 Sentence vs abbreviation spacing
@@ -216,10 +212,10 @@ so flag for review when inflection is uncertain.
   `I spoke with Mr. Thomas.` — never `Mr. Thomas..`.
 
 ### 7.4 Dash (glyph per §0.3)
-- Mid-sentence interruption / false start / self-correction: spaced ` - `.
-  `I was walking - no, I was running.`
+- Mid-sentence interruption / false start / self-correction: `--`.
+  `I was walking -- no, I was running.`
 - Resumed thought: a second dash, resumed word not capitalized unless proper noun / `I`.
-  `I was going to - no, wait.  - tell you what happened.`
+  `I was going to -- no, wait.  -- tell you what happened.`
 - Mid-word cutoff: `--` with **no** surrounding spaces. `Let me expl--` · `subp--`
 - **Never** place a comma, colon, or semicolon immediately before or after a dash.
 

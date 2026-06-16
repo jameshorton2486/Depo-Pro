@@ -47,8 +47,9 @@ read-only render with a side panel. Editor is TipTap v3 (existing).
 - **Change words:** edit/replace word text; the change writes `working_text` for the affected
   word(s), preserving `raw_text` and timings (§1).
 - **Carriage returns:** split a paragraph at the cursor (new Q, new A, new colloquy block).
-- **Tabs:** insert/adjust tabulation consistent with the canonical tab model
-  (`TRANSCRIPT_GEOMETRY_STANDARD.md` §5).
+- **Tabs:** insert/adjust tabulation consistent with the canonical Formatter model
+  (`TRANSCRIPT_GEOMETRY_STANDARD.md` §5): `Q.` / `A.` marker at 0.5″, testimony text at 1.0″,
+  labels / `EXAMINATION` / parentheticals at 1.5″, byline at the left margin.
 - **Paragraph splits and merges:** divide one paragraph into two, or join two into one.
 - **Standard editing affordances:** selection, cut/copy/paste, undo/redo, backspace/delete.
 
@@ -143,4 +144,5 @@ this is an **implementation** gap in the label renderer / speaker-identity map
 - Tab model for inserted tabs → `TRANSCRIPT_GEOMETRY_STANDARD.md` §5.
 - Label formatting the renderer must satisfy → `GEOMETRY_ENGINE_RULES.md` §5.
 - Parenthetical formatting for reconstructed procedurals → `GEOMETRY_ENGINE_RULES.md` §7.6.
-- Open conflicts (tabs resolved; honorific/dash/by-line pending) → `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
+- Conflict register (honorific, tab model, dash, and EXAMINATION/byline decisions all resolved) →
+  `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.

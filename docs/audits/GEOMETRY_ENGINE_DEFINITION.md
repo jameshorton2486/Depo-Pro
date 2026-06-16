@@ -63,26 +63,25 @@ delegated style rule, not general styling authority.
 ## Responsibilities
 
 ### 1. Q/A geometry
-`Q. text` → `[TAB1]Q.[TAB2]text`; `A. text` → `[TAB1]A.[TAB2]text`. Hanging indent: wrapped lines
-return flush to the **left text margin (0.0″)**, not under the Q./A. marker.
+`Q. text` → `[TAB0.5]Q.[TAB1.0]text`; `A. text` → `[TAB0.5]A.[TAB1.0]text`. Wrapped lines continue
+at the **Q/A testimony-text position (1.0″ / 1440 twips)**, not under the Q./A. marker and not at
+the left text margin.
 
 ### 2. Speaker-label geometry
-Render at Tab 3 (1.0″/1440 twips): bold, uppercase, colon-terminated, **two spaces after the
+Render at 1.5″ / 2160 twips: bold, uppercase, colon-terminated, **two spaces after the
 colon**. **One space after the honorific period** (`MR. NUNEZ:`, not `MR.  NUNEZ:`) — resolved,
 one space after every honorific period everywhere; the two-space rule applies only to the colon and
 to sentence-ending punctuation. The engine renders the label text it is given; it does not decide
 casing or which honorific attaches (that is upstream / `GEOMETRY_ENGINE_RULES.md` §5).
 
 ### 3. Parenthetical geometry
-Render at Tab 4 (1.5″/2160 twips). Wrapped parentheticals retain block indentation — do **not**
-return to the left margin. Navy blue in Workspace (style layer; preserved per target capability).
+Render at 1.5″ / 2160 twips. Wrapped parentheticals retain block indentation — do **not** return
+to the left margin. Navy blue in Workspace (style layer; preserved per target capability).
 
 ### 4. Examination / BY-line geometry
-Render `EXAMINATION` and `BY MR. NUNEZ:` by **placement only** — no reconstruction. Alignment:
-**left-aligned (provisional)** — this is open conflict #4 in `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16
-(drafts said centered; platform spec says left-aligned; default left-aligned pending the primary
-UFM figure). Do not hardcode centered; treat alignment as a single configurable value resolved by
-that conflict.
+Render `EXAMINATION` and `BY MR. NUNEZ:` by **placement only** — no reconstruction.
+`EXAMINATION` is bold all-caps at **1.5″ / 2160 twips**. `BY MR. NUNEZ:` is bold at the **left
+margin (0.0″ / 0 twips)**. Neither is centered.
 
 ### 5. Page geometry
 Apply 25 lines per page, line numbering, the format box, Courier New 12 pt, double spacing. This
@@ -147,4 +146,5 @@ Copy, DOCX, PDF, and Certification at once). Engines built after, each consuming
 - All eight non-negotiable invariants (`TRANSCRIPT_GEOMETRY_STANDARD.md` §8) hold.
 - The engine renders misclassified input faithfully rather than correcting it (scope proof).
 - No rule from a dependency is duplicated here.
-- Open conflicts (#3 dash glyph, #4 by-line alignment) are read from the register, not hardcoded.
+- The resolved register decisions (#2 tab model, #3 dash glyph, #4 by-line alignment) are honored
+  exactly and are not reinterpreted per target.
