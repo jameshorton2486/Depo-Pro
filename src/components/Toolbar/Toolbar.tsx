@@ -1,8 +1,11 @@
-import { Save, AlertCircle, CheckCircle, FileText, Languages } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Save, AlertCircle, CheckCircle, Copy, FileText, Languages } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { useStage } from "../../context/StageContext";
 import { useCase } from "../../context/useCase";
+import { useIntake } from "../../context/useIntake";
+import { buildTranscriptClipboardText } from "../../lib/transcript/transcriptClipboard";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
 import { SpeakerMapStatusBadge } from "../SpeakerMapStatusBadge";
 import { TranscriptReassemblyDialog } from "../TranscriptReassembly/TranscriptReassemblyDialog";
@@ -25,13 +28,62 @@ export function Toolbar({ jobId, onSave }: Props) {
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
   const { setStage } = useStage();
   const { showBrowser } = useCase();
+  const { record } = useIntake();
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+  const [copyErrorToast, setCopyErrorToast] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   const reviewedCount = Object.values(state.wordMap).filter((w) => w.reviewed).length;
   const totalWords = Object.keys(state.wordMap).length;
   const reviewPct = totalWords > 0 ? Math.round((reviewedCount / totalWords) * 100) : 0;
+  const clipboardText = useMemo(
+    () => (state.document ? buildTranscriptClipboardText(state.document, state.resolvedSpeakers, record) : ""),
+    [record, state.document, state.resolvedSpeakers],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current !== null) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function showCopyToast(message: string, kind: "success" | "error") {
+    if (toastTimeoutRef.current !== null) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    if (kind === "success") {
+      setCopyToast(message);
+      setCopyErrorToast(null);
+    } else {
+      setCopyErrorToast(message);
+      setCopyToast(null);
+    }
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setCopyToast(null);
+      setCopyErrorToast(null);
+      toastTimeoutRef.current = null;
+    }, 2200);
+  }
+
+  async function handleCopyTranscript() {
+    if (!clipboardText) {
+      showCopyToast("Unable to copy transcript", "error");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(clipboardText);
+      showCopyToast("Transcript copied to clipboard", "success");
+    } catch {
+      showCopyToast("Unable to copy transcript", "error");
+    }
+  }
 
   return (
-    <header className="h-12 bg-slate-900 text-white flex items-center gap-4 px-4 shrink-0">
+    <>
+      <header className="h-12 bg-slate-900 text-white flex items-center gap-4 px-4 shrink-0">
       {/* Branding */}
       <div className="flex items-center gap-2 mr-4">
         <FileText size={16} className="text-blue-400" />
@@ -150,6 +202,15 @@ export function Toolbar({ jobId, onSave }: Props) {
           Save
         </button>
 
+        <button
+          onClick={() => void handleCopyTranscript()}
+          disabled={!state.document || state.loading}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default transition-colors"
+        >
+          <Copy size={12} />
+          Copy Transcript
+        </button>
+
         {/* Review progress */}
         <div className="flex items-center gap-2 border-l border-slate-700 pl-4 ml-1">
           <span className="text-xs text-slate-400">Reviewed</span>
@@ -170,6 +231,19 @@ export function Toolbar({ jobId, onSave }: Props) {
           <AuthStatusChip />
         </div>
       </div>
-    </header>
+      </header>
+
+      {copyToast && (
+        <div className="fixed right-4 top-16 z-50 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {copyToast}
+        </div>
+      )}
+
+      {copyErrorToast && (
+        <div className="fixed right-4 top-16 z-50 rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {copyErrorToast}
+        </div>
+      )}
+    </>
   );
 }
