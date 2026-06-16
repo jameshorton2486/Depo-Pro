@@ -44,13 +44,13 @@ describe("stageSToDocx", () => {
     ]);
 
     expect(paragraphs.map((paragraph) => paragraph.kind)).toEqual([
-      "attribution",
-      "attribution",
-      "qa",
-      "qa",
-      "colloquy",
-      "colloquy",
-      "parenthetical",
+      "BY_LINE",
+      "BY_LINE",
+      "Q",
+      "A",
+      "COLLOQUY",
+      "COLLOQUY",
+      "PARENTHETICAL",
     ]);
     expect(paragraphs[0]?.runs).toEqual([
       { kind: "tab" },

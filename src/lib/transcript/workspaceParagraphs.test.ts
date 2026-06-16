@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { EditorDocument } from "../../api/types";
 import { emptyCaseRecord } from "../../types/case";
-import { buildWorkspaceParagraphs } from "./workspaceParagraphs";
+import { buildTranscriptParagraphs, buildWorkspaceParagraphs } from "./workspaceParagraphs";
 
 function makeDocument(): EditorDocument {
   return {
@@ -78,5 +78,74 @@ describe("buildWorkspaceParagraphs", () => {
       mode: "A",
       label: "MR. THOMAS",
     });
+  });
+
+  it("builds a shared paragraph model including examination and by-line structure", () => {
+    const record = emptyCaseRecord("case_workspace", "2026-06-16T12:00:00.000Z");
+    record.reporter.name.value = "Mia Bardot";
+    record.witnesses = [{
+      witness_id: "wit_001",
+      name: { value: "Heath Thomas", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "WITNESS", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      title: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      employer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      prefix_suffix: "Mr",
+      party_affiliation: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      is_corporate_rep: false,
+      corporate_entity: null,
+      read_and_sign: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      spelling_corrections: [],
+      email: null,
+      phone: null,
+    }];
+
+    const paragraphs = buildTranscriptParagraphs(makeDocument(), [], record);
+
+    expect(paragraphs).toEqual([
+      {
+        kind: "COLLOQUY",
+        label: "THE REPORTER",
+        text: "Good afternoon.",
+        sourceUtteranceIds: ["utt-1"],
+        utteranceId: "utt-1",
+      },
+      {
+        kind: "COLLOQUY",
+        label: "MR. NUNEZ",
+        text: "Of course.",
+        sourceUtteranceIds: ["utt-2"],
+        utteranceId: "utt-2",
+      },
+      {
+        kind: "EXAMINATION",
+        label: "",
+        text: "EXAMINATION",
+        sourceUtteranceIds: ["utt-3"],
+        utteranceId: null,
+      },
+      {
+        kind: "BY_LINE",
+        label: "",
+        text: "BY MR. NUNEZ:",
+        sourceUtteranceIds: ["utt-3"],
+        utteranceId: null,
+      },
+      {
+        kind: "Q",
+        label: "Q.",
+        text: "Please state your name for the record.",
+        sourceUtteranceIds: ["utt-3"],
+        utteranceId: "utt-3",
+      },
+      {
+        kind: "A",
+        label: "A.",
+        text: "Heath Thomas.",
+        sourceUtteranceIds: ["utt-4"],
+        utteranceId: "utt-4",
+      },
+    ]);
   });
 });

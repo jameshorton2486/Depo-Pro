@@ -4,12 +4,24 @@ import type { ResolvedSpeakerView } from "./resolvedSpeakers";
 import { buildTranscriptSpeakerIdentityMap } from "./speakerIdentity";
 
 export type WorkspaceParagraphMode = "COLLOQUY" | "Q" | "A" | "PARENTHETICAL";
+export type TranscriptParagraphKind =
+  | WorkspaceParagraphMode
+  | "BY_LINE"
+  | "EXAMINATION";
 
 export interface WorkspaceParagraphDescriptor {
   mode: WorkspaceParagraphMode;
   label: string;
   examinationHeader: boolean;
   byLine: string | null;
+}
+
+export interface TranscriptParagraph {
+  kind: TranscriptParagraphKind;
+  label: string;
+  text: string;
+  sourceUtteranceIds: string[];
+  utteranceId: string | null;
 }
 
 interface SpeakerView {
@@ -30,6 +42,76 @@ const QUESTION_PATTERNS = [
 ] as const;
 
 export function buildWorkspaceParagraphs(
+  document: EditorDocument,
+  resolvedSpeakers: ResolvedSpeakerView[],
+  record?: CaseRecord | null,
+): Map<string, WorkspaceParagraphDescriptor> {
+  return buildParagraphDescriptorMap(document, resolvedSpeakers, record);
+}
+
+export function buildTranscriptParagraphs(
+  document: EditorDocument,
+  resolvedSpeakers: ResolvedSpeakerView[],
+  record?: CaseRecord | null,
+): TranscriptParagraph[] {
+  const descriptorByUtteranceId = buildParagraphDescriptorMap(document, resolvedSpeakers, record);
+  const wordById = new Map(document.words.map((word) => [word.word_id, word]));
+  const paragraphs: TranscriptParagraph[] = [];
+
+  for (const utterance of document.utterances) {
+    const descriptor = descriptorByUtteranceId.get(utterance.utterance_id);
+    if (!descriptor) {
+      continue;
+    }
+
+    const text = utterance.word_ids
+      .map((wordId) => wordById.get(wordId)?.text ?? "")
+      .join(" ")
+      .trim();
+
+    if (descriptor.examinationHeader) {
+      paragraphs.push({
+        kind: "EXAMINATION",
+        label: "",
+        text: "EXAMINATION",
+        sourceUtteranceIds: [utterance.utterance_id],
+        utteranceId: null,
+      });
+    }
+
+    if (descriptor.byLine) {
+      paragraphs.push({
+        kind: "BY_LINE",
+        label: "",
+        text: descriptor.byLine,
+        sourceUtteranceIds: [utterance.utterance_id],
+        utteranceId: null,
+      });
+    }
+
+    paragraphs.push({
+      kind: descriptor.mode,
+      label: paragraphLabel(descriptor),
+      text,
+      sourceUtteranceIds: [utterance.utterance_id],
+      utteranceId: utterance.utterance_id,
+    });
+  }
+
+  return paragraphs;
+}
+
+function paragraphLabel(descriptor: WorkspaceParagraphDescriptor): string {
+  if (descriptor.mode === "Q") {
+    return "Q.";
+  }
+  if (descriptor.mode === "A") {
+    return "A.";
+  }
+  return descriptor.label;
+}
+
+function buildParagraphDescriptorMap(
   document: EditorDocument,
   resolvedSpeakers: ResolvedSpeakerView[],
   record?: CaseRecord | null,

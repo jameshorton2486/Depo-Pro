@@ -12,6 +12,7 @@ import {
 import type { EditorDocument, Speaker } from "../../api/types";
 import type { ExportSegmentDocument } from "./exportAssembly";
 import { getBlockRole, type BlockRole } from "../../editor/pagination";
+import type { TranscriptParagraph } from "../../lib/transcript/workspaceParagraphs";
 
 export const DOCX_PAGE_WIDTH_TWIPS = 12240;
 export const DOCX_PAGE_HEIGHT_TWIPS = 15840;
@@ -31,7 +32,7 @@ export type ParagraphRunSpec =
   | { kind: "tab" };
 
 export interface TranscriptDocxParagraphSpec {
-  kind: "qa" | "attribution" | "colloquy" | "parenthetical" | "segment_heading";
+  kind: "Q" | "A" | "BY_LINE" | "COLLOQUY" | "PARENTHETICAL" | "EXAMINATION" | "SEGMENT_HEADING";
   alignment?: (typeof AlignmentType)[keyof typeof AlignmentType];
   indent?: {
     left?: number;
@@ -55,7 +56,7 @@ export function buildBodyTabStops() {
 
 export function buildQaParagraphSpec(label: "Q." | "A.", text: string): TranscriptDocxParagraphSpec {
   return {
-    kind: "qa",
+    kind: label === "Q." ? "Q" : "A",
     indent: {
       left: QA_TEXT_TAB_TWIPS,
       hanging: QA_HANGING_INDENT_TWIPS,
@@ -71,7 +72,7 @@ export function buildQaParagraphSpec(label: "Q." | "A.", text: string): Transcri
 
 export function buildAttributionParagraphSpec(text: string): TranscriptDocxParagraphSpec {
   return {
-    kind: "attribution",
+    kind: "BY_LINE",
     indent: {
       left: QA_TEXT_TAB_TWIPS,
     },
@@ -85,7 +86,7 @@ export function buildAttributionParagraphSpec(text: string): TranscriptDocxParag
 
 export function buildColloquyParagraphSpec(label: string, text: string): TranscriptDocxParagraphSpec {
   return {
-    kind: "colloquy",
+    kind: "COLLOQUY",
     runs: [
       { kind: "text", text: `${label}:` },
       { kind: "tab" },
@@ -97,7 +98,7 @@ export function buildColloquyParagraphSpec(label: string, text: string): Transcr
 
 export function buildParentheticalParagraphSpec(text: string): TranscriptDocxParagraphSpec {
   return {
-    kind: "parenthetical",
+    kind: "PARENTHETICAL",
     alignment: AlignmentType.CENTER,
     runs: [
       { kind: "tab" },
@@ -109,9 +110,23 @@ export function buildParentheticalParagraphSpec(text: string): TranscriptDocxPar
 
 export function buildSegmentHeadingParagraphSpec(text: string): TranscriptDocxParagraphSpec {
   return {
-    kind: "segment_heading",
+    kind: "SEGMENT_HEADING",
     alignment: AlignmentType.CENTER,
     runs: [{ kind: "text", text }],
+    tabStops: [...buildBodyTabStops()],
+  };
+}
+
+export function buildExaminationParagraphSpec(text: string): TranscriptDocxParagraphSpec {
+  return {
+    kind: "EXAMINATION",
+    indent: {
+      left: QA_TEXT_TAB_TWIPS,
+    },
+    runs: [
+      { kind: "tab" },
+      { kind: "text", text },
+    ],
     tabStops: [...buildBodyTabStops()],
   };
 }
@@ -210,6 +225,28 @@ export function buildTranscriptDocxParagraphSpecs(
       buildSegmentHeadingParagraphSpec(`Segment ${index + 1}: ${sourceLabel(segment, index)}`),
       ...segmentParagraphs,
     ];
+  });
+}
+
+export function buildTranscriptDocxParagraphSpecsFromParagraphModel(
+  paragraphs: TranscriptParagraph[],
+): TranscriptDocxParagraphSpec[] {
+  return paragraphs.map((paragraph) => {
+    switch (paragraph.kind) {
+      case "Q":
+        return buildQaParagraphSpec("Q.", paragraph.text);
+      case "A":
+        return buildQaParagraphSpec("A.", paragraph.text);
+      case "BY_LINE":
+        return buildAttributionParagraphSpec(paragraph.text);
+      case "PARENTHETICAL":
+        return buildParentheticalParagraphSpec(paragraph.text);
+      case "EXAMINATION":
+        return buildExaminationParagraphSpec(paragraph.text);
+      case "COLLOQUY":
+      default:
+        return buildColloquyParagraphSpec(paragraph.label, paragraph.text);
+    }
   });
 }
 

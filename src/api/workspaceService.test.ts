@@ -378,7 +378,7 @@ describe("workspaceApi local Step 3 resolved-speaker split", () => {
 
     expect(paragraphs).toEqual([
       expect.objectContaining({
-        kind: "colloquy",
+        kind: "COLLOQUY",
         runs: [
           { kind: "text", text: "Speaker 2:" },
           { kind: "tab" },
