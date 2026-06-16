@@ -58,6 +58,27 @@ Observed target geometry from that document:
 8. Reporter interruptions break the Q/A stream and render as labeled reporter paragraphs.
 9. Recesses render as standalone parenthetical paragraphs.
 10. Continued examination returns to `Q.` / `A.` geometry after interruptions or recesses.
+11. Speaker-labeled colloquy is a **single paragraph line**, not a label line followed by a body line.
+12. Example target content shape:
+
+```text
+THE REPORTER:  Good afternoon, Mr. Nunez.
+```
+
+with:
+
+- exactly two spaces after the colon
+- the spoken text on the same paragraph line as the label
+- rendered inside the colloquy margin defined by existing transcript geometry, not as a detached heading
+
+13. The same colloquy geometry applies to lines such as:
+
+- `THE REPORTER:  How are you?`
+- `MR. NUNEZ:  Good afternoon.`
+- `MR. NUNEZ:  Doing well.`
+- `THE WITNESS:  Yes.`
+- `MR. NUNEZ:  Objection.`
+- `THE VIDEOGRAPHER:  We are off the record.`
 
 ## Branch
 
@@ -186,6 +207,29 @@ Outside examination mode:
   - `MR. NUNEZ:`
   - `MS. ZHAN:`
   - `MR. THOMAS:`
+- colloquy paragraphs must render as one line/paragraph in the form:
+
+```text
+SPEAKER LABEL:  text...
+```
+
+- colloquy geometry must align with existing transcript architecture and Stage S / export conventions:
+  - inline speaker label
+  - exactly two spaces after the colon
+  - rendered within the colloquy margin
+  - label is not treated as a heading
+  - content remains one colloquy paragraph, not split into separate label/body blocks
+- do **not** render:
+  - label on its own line
+  - label as a detached block above the speech
+  - a single-space form like `THE REPORTER: Good afternoon...`
+  - chat-style speaker blocks
+
+Where existing repo geometry is already established, follow it rather than inventing a new one. In particular:
+
+- existing colloquy/export formatting in `src/components/ExportScreen/docxFormatter.ts`
+- Stage S colloquy two-space rule in `src/editor/stageS/colloquy.ts`
+- transcript structure references in `docs/DATA_STRUCTURES_REFERENCE.md`
 
 ### Examination
 
@@ -273,11 +317,12 @@ At minimum:
 At minimum:
 
 1. proceedings colloquy renders with visible speaker labels
-2. examination utterances render as `Q.` / `A.` by role
-3. reporter interruptions break examination flow correctly
-4. recess parentheticals render as standalone structural paragraphs
-5. consecutive same-speaker colloquy can merge when no structural break exists
-6. no change to word order or utterance order
+2. proceedings colloquy renders as a single paragraph with inline label geometry and exactly two spaces after the colon
+3. examination utterances render as `Q.` / `A.` by role
+4. reporter interruptions break examination flow correctly
+5. recess parentheticals render as standalone structural paragraphs
+6. consecutive same-speaker colloquy can merge when no structural break exists
+7. no change to word order or utterance order
 
 ### Commit 3 — Validation
 
