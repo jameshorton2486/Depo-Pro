@@ -1,7 +1,11 @@
 export const COLON_GAP = "  ";
 
+export function normalizeHonorificSpacing(text: string): string {
+  return text.replace(/\b(MR|MS|MRS|DR)\.\s+/gi, (_match, honorific: string) => `${honorific.toUpperCase()}. `);
+}
+
 export function colloquyLabel(speakerLabel: string): string {
-  const base = speakerLabel.trim().toUpperCase().replace(/:+$/, "");
+  const base = normalizeHonorificSpacing(speakerLabel).trim().toUpperCase().replace(/:+$/, "");
   return base ? `${base}:` : ":";
 }
 

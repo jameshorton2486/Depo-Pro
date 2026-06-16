@@ -102,7 +102,7 @@ describe("docxFormatter", () => {
     expect(paragraph.indent).toEqual({ left: QA_TEXT_TAB_TWIPS });
     expect(paragraph.runs).toEqual([
       { kind: "tab" },
-      { kind: "text", text: "(BY MR.  NUNEZ)" },
+      { kind: "text", text: "(BY MR. NUNEZ)" },
     ]);
   });
 

@@ -1,4 +1,5 @@
 import type { EditorDocument, Speaker } from "../../api/types";
+import { normalizeHonorificSpacing } from "../../editor/stageS/colloquy";
 import type { CaseRecord } from "../../types/case";
 import type { ResolvedSpeakerView } from "./resolvedSpeakers";
 import { buildTranscriptSpeakerIdentityMap } from "./speakerIdentity";
@@ -293,6 +294,6 @@ function speakerLabelForRole(
 }
 
 function normalizeSpeakerLabel(label: string): string {
-  const normalized = label.trim().replace(/:+$/, "").replace(/\s+/g, " ").toUpperCase();
+  const normalized = normalizeHonorificSpacing(label).trim().replace(/:+$/, "").replace(/\s+/g, " ").toUpperCase();
   return normalized || "UNIDENTIFIED SPEAKER";
 }

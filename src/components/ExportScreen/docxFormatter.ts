@@ -11,6 +11,7 @@ import {
 
 import type { EditorDocument, Speaker } from "../../api/types";
 import type { ExportSegmentDocument } from "./exportAssembly";
+import { normalizeHonorificSpacing } from "../../editor/stageS/colloquy";
 import { getBlockRole, type BlockRole } from "../../editor/pagination";
 import type { TranscriptParagraph } from "../../lib/transcript/workspaceParagraphs";
 
@@ -78,7 +79,7 @@ export function buildAttributionParagraphSpec(text: string): TranscriptDocxParag
     },
     runs: [
       { kind: "tab" },
-      { kind: "text", text },
+      { kind: "text", text: normalizeHonorificSpacing(text) },
     ],
     tabStops: [...buildBodyTabStops()],
   };
@@ -88,7 +89,7 @@ export function buildColloquyParagraphSpec(label: string, text: string): Transcr
   return {
     kind: "COLLOQUY",
     runs: [
-      { kind: "text", text: `${label}:` },
+      { kind: "text", text: `${normalizeHonorificSpacing(label)}:` },
       { kind: "tab" },
       { kind: "text", text },
     ],

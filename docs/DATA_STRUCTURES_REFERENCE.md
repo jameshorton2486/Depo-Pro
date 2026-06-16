@@ -448,7 +448,7 @@ interface CorrectionLogEntry {
   "stage": "typography",
   "utterance_id": "uuid-here",
   "before": "mr. Smith",
-  "after": "MR.  Smith"
+  "after": "MR. Smith"
 }
 ```
 

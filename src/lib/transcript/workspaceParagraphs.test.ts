@@ -11,7 +11,7 @@ function makeDocument(): EditorDocument {
     duration: 120,
     speakers: [
       { speaker_id: "spk-reporter", display_name: "Speaker 0", deepgram_speaker: 0, role: "REPORTER" },
-      { speaker_id: "spk-attorney", display_name: "MR. NUNEZ", deepgram_speaker: 1, role: "ATTORNEY" },
+      { speaker_id: "spk-attorney", display_name: "MR.  NUNEZ", deepgram_speaker: 1, role: "ATTORNEY" },
       { speaker_id: "spk-witness", display_name: "HEATH THOMAS", deepgram_speaker: 2, role: "WITNESS" },
     ],
     utterances: [

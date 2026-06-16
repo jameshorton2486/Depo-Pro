@@ -31,13 +31,13 @@
 - The corrected DOCX renders the opening as deposition geometry, not chat geometry. It starts with:
   - `PROCEEDINGS`
   - `THE REPORTER:  Today is April 30th, 2026. ...`
-  - `MR.  NUNEZ:  Steven Nunez. ...`
-  - `MS.  ZHAN:  Lucia Zhan. ...`
-  - `MR.  THOMAS:  I do.`
+  - `MR. NUNEZ:  Steven Nunez. ...`
+  - `MS. ZHAN:  Lucia Zhan. ...`
+  - `MR. THOMAS:  I do.`
   - `HEATH THOMAS,`
   - `having been first duly sworn, testified as follows:`
   - `EXAMINATION`
-  - `BY MR.  NUNEZ:`
+  - `BY MR. NUNEZ:`
   - `Q.  Good afternoon.  Can you please state your full name for the record?`
   - `A.  Heath P. Thomas.`
 - The corrected DOCX contains procedural parentheticals and exhibit handling, for example:

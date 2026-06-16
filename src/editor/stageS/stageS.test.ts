@@ -40,7 +40,11 @@ describe("stageS models", () => {
 describe("stageS colloquy helpers", () => {
   it("normalizes colloquy labels and applies the two-space colon gap", () => {
     expect(colloquyLabel("Mr. Madrid")).toBe("MR. MADRID:");
+    expect(colloquyLabel("Mr.  Madrid")).toBe("MR. MADRID:");
     expect(colloquyInlineText("Mr. Madrid", "Objection. Vague and ambiguous.")).toBe(
+      `MR. MADRID:${COLON_GAP}Objection. Vague and ambiguous.`,
+    );
+    expect(colloquyInlineText("Mr.  Madrid", "Objection. Vague and ambiguous.")).toBe(
       `MR. MADRID:${COLON_GAP}Objection. Vague and ambiguous.`,
     );
   });
@@ -64,7 +68,7 @@ describe("stageS line builders", () => {
       auditNote: "",
     });
 
-    expect(qaLine("s-0002", "A", "Heath Thomas.", ["utt-2"], ON_RECORD, "Mr. Nunez")).toEqual({
+    expect(qaLine("s-0002", "A", "Heath Thomas.", ["utt-2"], ON_RECORD, "Mr.  Nunez")).toEqual({
       lineId: "s-0002",
       lineType: LINE_A,
       text: "(BY MR. NUNEZ)  Heath Thomas.",
@@ -102,7 +106,7 @@ describe("stageS line builders", () => {
       auditNote: "transition",
     });
 
-    expect(byAttributionLine("s-0005", "mr. nunez")).toEqual({
+    expect(byAttributionLine("s-0005", "mr.  nunez")).toEqual({
       lineId: "s-0005",
       lineType: LINE_BY,
       text: "BY MR. NUNEZ:",

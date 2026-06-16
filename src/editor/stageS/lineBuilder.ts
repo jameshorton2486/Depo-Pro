@@ -1,5 +1,5 @@
 import { roleToQaMode, type StageSRole } from "../speakerMapping";
-import { colloquyInlineText, colloquyLabel } from "./colloquy";
+import { colloquyInlineText, colloquyLabel, normalizeHonorificSpacing } from "./colloquy";
 import {
   LINE_A,
   LINE_BY,
@@ -27,7 +27,7 @@ export function qaLine(
 ): RenderLine {
   let body = text.trim();
   if (byLabel) {
-    body = `(BY ${byLabel.trim().toUpperCase()})  ${body}`;
+    body = `(BY ${normalizeHonorificSpacing(byLabel).trim().toUpperCase()})  ${body}`;
   }
 
   return {
@@ -88,7 +88,7 @@ export function byAttributionLine(
   examinerLabel: string,
   renderState: RenderState = ON_RECORD,
 ): RenderLine {
-  const label = examinerLabel.trim().toUpperCase().replace(/:+$/, "");
+  const label = normalizeHonorificSpacing(examinerLabel).trim().toUpperCase().replace(/:+$/, "");
   const text = `BY ${label}:`;
 
   return {
