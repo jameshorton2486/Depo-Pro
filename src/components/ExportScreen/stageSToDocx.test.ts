@@ -53,11 +53,9 @@ describe("stageSToDocx", () => {
       "PARENTHETICAL",
     ]);
     expect(paragraphs[0]?.runs).toEqual([
-      { kind: "tab" },
       { kind: "text", text: "EXAMINATION" },
     ]);
     expect(paragraphs[1]?.runs).toEqual([
-      { kind: "tab" },
       { kind: "text", text: "BY MR. NUNEZ:" },
     ]);
     expect(paragraphs[2]?.runs).toEqual([
@@ -71,17 +69,12 @@ describe("stageSToDocx", () => {
       { kind: "text", text: "Heath Thomas." },
     ]);
     expect(paragraphs[4]?.runs).toEqual([
-      { kind: "text", text: "MR. MADRID:" },
-      { kind: "tab" },
-      { kind: "text", text: "Objection, form." },
+      { kind: "text", text: "MR. MADRID:  Objection, form." },
     ]);
     expect(paragraphs[5]?.runs).toEqual([
-      { kind: "text", text: "Speaker 8:" },
-      { kind: "tab" },
-      { kind: "text", text: "Unknown testimony." },
+      { kind: "text", text: "Speaker 8:  Unknown testimony." },
     ]);
     expect(paragraphs[6]?.runs).toEqual([
-      { kind: "tab" },
       { kind: "text", text: "(Recess taken at 10:42 a.m.)" },
     ]);
   });

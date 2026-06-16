@@ -27,6 +27,7 @@ export const QA_TEXT_TAB_TWIPS = 1440;
 export const COLLOQUY_TAB_TWIPS = 2160;
 export const CENTER_TAB_TWIPS = (DOCX_PAGE_WIDTH_TWIPS / 2) - DOCX_MARGIN_LEFT_TWIPS;
 export const QA_HANGING_INDENT_TWIPS = 720;
+export const BYLINE_LEFT_TWIPS = 0;
 
 export type ParagraphRunSpec =
   | { kind: "text"; text: string }
@@ -72,27 +73,37 @@ export function buildQaParagraphSpec(label: "Q." | "A.", text: string): Transcri
 }
 
 export function buildAttributionParagraphSpec(text: string): TranscriptDocxParagraphSpec {
+  const normalized = normalizeHonorificSpacing(text);
+
+  if (/^\(BY\b/i.test(normalized)) {
+    return {
+      kind: "BY_LINE",
+      indent: {
+        left: QA_TEXT_TAB_TWIPS,
+      },
+      runs: [{ kind: "text", text: normalized }],
+      tabStops: [...buildBodyTabStops()],
+    };
+  }
+
   return {
     kind: "BY_LINE",
     indent: {
-      left: QA_TEXT_TAB_TWIPS,
+      left: BYLINE_LEFT_TWIPS,
     },
-    runs: [
-      { kind: "tab" },
-      { kind: "text", text: normalizeHonorificSpacing(text) },
-    ],
+    runs: [{ kind: "text", text: normalized }],
     tabStops: [...buildBodyTabStops()],
   };
 }
 
 export function buildColloquyParagraphSpec(label: string, text: string): TranscriptDocxParagraphSpec {
+  const normalizedLabel = normalizeHonorificSpacing(label);
   return {
     kind: "COLLOQUY",
-    runs: [
-      { kind: "text", text: `${normalizeHonorificSpacing(label)}:` },
-      { kind: "tab" },
-      { kind: "text", text },
-    ],
+    indent: {
+      left: COLLOQUY_TAB_TWIPS,
+    },
+    runs: [{ kind: "text", text: `${normalizedLabel}:  ${text}` }],
     tabStops: [...buildBodyTabStops()],
   };
 }
@@ -100,11 +111,10 @@ export function buildColloquyParagraphSpec(label: string, text: string): Transcr
 export function buildParentheticalParagraphSpec(text: string): TranscriptDocxParagraphSpec {
   return {
     kind: "PARENTHETICAL",
-    alignment: AlignmentType.CENTER,
-    runs: [
-      { kind: "tab" },
-      { kind: "text", text },
-    ],
+    indent: {
+      left: COLLOQUY_TAB_TWIPS,
+    },
+    runs: [{ kind: "text", text }],
     tabStops: [...buildBodyTabStops()],
   };
 }
@@ -122,12 +132,9 @@ export function buildExaminationParagraphSpec(text: string): TranscriptDocxParag
   return {
     kind: "EXAMINATION",
     indent: {
-      left: QA_TEXT_TAB_TWIPS,
+      left: COLLOQUY_TAB_TWIPS,
     },
-    runs: [
-      { kind: "tab" },
-      { kind: "text", text },
-    ],
+    runs: [{ kind: "text", text }],
     tabStops: [...buildBodyTabStops()],
   };
 }

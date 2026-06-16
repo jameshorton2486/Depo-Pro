@@ -115,11 +115,9 @@ describe("buildExportDocxBlob", () => {
 
     expect(paragraphs.map((paragraph) => paragraph.kind)).toEqual(["EXAMINATION", "BY_LINE", "Q", "A"]);
     expect(paragraphs[0]?.runs).toEqual([
-      { kind: "tab" },
       { kind: "text", text: "EXAMINATION" },
     ]);
     expect(paragraphs[1]?.runs).toEqual([
-      { kind: "tab" },
       { kind: "text", text: "BY MR. NUNEZ:" },
     ]);
     expect(paragraphs[2]?.runs).toEqual([

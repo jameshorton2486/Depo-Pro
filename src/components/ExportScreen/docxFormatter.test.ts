@@ -5,8 +5,12 @@ import type { ExportSegmentDocument } from "./exportAssembly";
 import {
   buildAttributionParagraphSpec,
   buildBodyTabStops,
+  buildColloquyParagraphSpec,
+  buildExaminationParagraphSpec,
+  buildParentheticalParagraphSpec,
   buildQaParagraphSpec,
   buildTranscriptDocxParagraphSpecs,
+  BYLINE_LEFT_TWIPS,
   CENTER_TAB_TWIPS,
   COLLOQUY_TAB_TWIPS,
   QA_HANGING_INDENT_TWIPS,
@@ -96,14 +100,43 @@ describe("docxFormatter", () => {
     ]);
   });
 
-  it("starts attribution lines at the 1.0 inch position", () => {
+  it("renders standalone by-lines at the left margin", () => {
+    const paragraph = buildAttributionParagraphSpec("BY MR.  NUNEZ:");
+
+    expect(paragraph.indent).toEqual({ left: BYLINE_LEFT_TWIPS });
+    expect(paragraph.runs).toEqual([
+      { kind: "text", text: "BY MR. NUNEZ:" },
+    ]);
+  });
+
+  it("keeps inline by-attribution text at the testimony tab when formatting legacy attribution lines", () => {
     const paragraph = buildAttributionParagraphSpec("(BY MR.  NUNEZ)");
 
     expect(paragraph.indent).toEqual({ left: QA_TEXT_TAB_TWIPS });
     expect(paragraph.runs).toEqual([
-      { kind: "tab" },
       { kind: "text", text: "(BY MR. NUNEZ)" },
     ]);
+  });
+
+  it("indents colloquy, examination, and parentheticals to the 1.5 inch geometry stop", () => {
+    expect(buildColloquyParagraphSpec("MR.  NUNEZ", "Good afternoon.")).toEqual(
+      expect.objectContaining({
+        indent: { left: COLLOQUY_TAB_TWIPS },
+        runs: [{ kind: "text", text: "MR. NUNEZ:  Good afternoon." }],
+      }),
+    );
+    expect(buildExaminationParagraphSpec("EXAMINATION")).toEqual(
+      expect.objectContaining({
+        indent: { left: COLLOQUY_TAB_TWIPS },
+        runs: [{ kind: "text", text: "EXAMINATION" }],
+      }),
+    );
+    expect(buildParentheticalParagraphSpec("(Recess taken.)")).toEqual(
+      expect.objectContaining({
+        indent: { left: COLLOQUY_TAB_TWIPS },
+        runs: [{ kind: "text", text: "(Recess taken.)" }],
+      }),
+    );
   });
 
   it("derives Q/A paragraphs from the exported transcript document without two-space prefixes", () => {
@@ -123,7 +156,6 @@ describe("docxFormatter", () => {
       { kind: "text", text: "Parkland. Hospital." },
     ]);
     expect(paragraphs[2].runs).toEqual([
-      { kind: "tab" },
       { kind: "text", text: "(BY MR. NUNEZ)" },
     ]);
     expect(paragraphs[0].runs.some((run) => run.kind === "text" && run.text.includes("Q.  "))).toBe(false);
