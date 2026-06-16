@@ -1,6 +1,8 @@
 import type { JSONContent } from "@tiptap/core";
 import type { EditorDocument } from "../api/types";
-import { buildPages } from "../editor/pagination";
+import { buildPages, type BlockRole } from "../editor/pagination";
+import type { ResolvedSpeakerView } from "./transcript/resolvedSpeakers";
+import { buildWorkspaceParagraphs } from "./transcript/workspaceParagraphs";
 
 // Converts the flat EditorDocument into TipTap JSON content.
 // Each utterance → one 'utterance' block node with UFM page/line attrs.
@@ -10,13 +12,12 @@ import { buildPages } from "../editor/pagination";
 // interpreter layer (UI-only attr on utterance node, not part of contract).
 export function buildEditorContent(
   doc: EditorDocument,
-  languageMap?: Map<string, string>
+  resolvedSpeakers: ResolvedSpeakerView[] = [],
+  languageMap?: Map<string, string>,
 ): JSONContent {
   const wordById = new Map(doc.words.map((w) => [w.word_id, w]));
   const speakerById = new Map(doc.speakers.map((s) => [s.speaker_id, s]));
-
-  // Build speaker role map for pagination
-  const speakerRoles = new Map(doc.speakers.map((s) => [s.speaker_id, s.role]));
+  const paragraphDescriptors = buildWorkspaceParagraphs(doc, resolvedSpeakers);
 
   // Word count per utterance (used for line estimation)
   const wordCountByUtt = new Map<string, number>(
@@ -27,10 +28,10 @@ export function buildEditorContent(
   const pageInfoMap = buildPages(
     doc.utterances.map((u) => ({
       utterance_id: u.utterance_id,
-      speaker_id: u.speaker_id,
       wordCount: wordCountByUtt.get(u.utterance_id) ?? 0,
+      labelLength: paragraphDescriptors.get(u.utterance_id)?.label.length ?? 0,
+      blockRole: toBlockRole(paragraphDescriptors.get(u.utterance_id)?.mode),
     })),
-    speakerRoles
   );
 
   const blocks: JSONContent[] = [];
@@ -40,6 +41,7 @@ export function buildEditorContent(
     const speaker = speakerById.get(utt.speaker_id);
     const info = pageInfoMap.get(utt.utterance_id);
     const uttPage = info?.pageNumber ?? 1;
+    const descriptor = paragraphDescriptors.get(utt.utterance_id);
 
     // Insert page break node at each page transition (not before page 1)
     if (uttPage > currentPage) {
@@ -100,10 +102,20 @@ export function buildEditorContent(
         start_time: utt.start_time,
         role: speaker?.role ?? null,
         language: languageMap?.get(utt.utterance_id) ?? null,
+        display_mode: descriptor?.mode ?? "COLLOQUY",
+        display_label: descriptor?.label ?? speaker?.display_name ?? utt.speaker_id,
+        display_heading: descriptor?.examinationHeader ? "EXAMINATION" : null,
+        display_by_line: descriptor?.byLine ?? null,
       },
       content: inlineNodes,
     });
   });
 
   return { type: "doc", content: blocks };
+}
+
+function toBlockRole(mode: string | undefined): BlockRole {
+  if (mode === "Q") return "Q";
+  if (mode === "A") return "A";
+  return "COLLOQUY";
 }

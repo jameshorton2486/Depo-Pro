@@ -106,8 +106,8 @@ export function TranscriptEditor({ readOnly }: Props) {
   editUtteranceRef.current = editUtterance;
 
   const editorContent = useMemo(
-    () => (state.document ? buildEditorContent(state.document, languageMap) : null),
-    [state.document, languageMap]
+    () => (state.document ? buildEditorContent(state.document, state.resolvedSpeakers, languageMap) : null),
+    [state.document, state.resolvedSpeakers, languageMap]
   );
 
   const wordTimings = useMemo(

@@ -1,8 +1,9 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { Speaker } from "../api/types";
 import type { DOMOutputSpec } from "@tiptap/pm/model";
-import { getBlockRole } from "../editor/pagination";
-import { formatUtteranceTimeTitle, getUtterancePrefix } from "../editor/utteranceRender";
+import type { BlockRole } from "../editor/pagination";
+import { formatUtteranceTimeTitle } from "../editor/utteranceRender";
+import { colloquyLabel, COLON_GAP } from "../editor/stageS/colloquy";
 
 export const UtteranceNode = Node.create({
   name: "utterance",
@@ -23,6 +24,10 @@ export const UtteranceNode = Node.create({
       role:             { default: null },
       // UI-only: ISO language tag for interpreter layer ("en" | "es" | null)
       language:         { default: null },
+      display_mode:     { default: "COLLOQUY" },
+      display_label:    { default: "" },
+      display_heading:  { default: null },
+      display_by_line:  { default: null },
     };
   },
 
@@ -40,6 +45,10 @@ export const UtteranceNode = Node.create({
       start_time,
       role,
       language,
+      display_mode,
+      display_label,
+      display_heading,
+      display_by_line,
     } = HTMLAttributes as Record<string, unknown>;
 
     const numericStartTime = typeof start_time === "number" ? start_time : 0;
@@ -49,10 +58,12 @@ export const UtteranceNode = Node.create({
     const roleValue =
       role === null || role === undefined ? null : (String(role) as Speaker["role"]);
     const languageValue = typeof language === "string" ? language : null;
-    const blockRole = getBlockRole(roleValue);
+    const blockRole = parseDisplayMode(display_mode);
+    const displayLabelText = typeof display_label === "string" ? display_label : speakerLabelText;
+    const displayHeadingText = typeof display_heading === "string" ? display_heading : null;
+    const displayByLineText = typeof display_by_line === "string" ? display_by_line : null;
     const isInterpreter = roleValue === "INTERPRETER";
     const displayLine = numericPageLineNumber > 0 ? numericPageLineNumber : numericLineNumber;
-    const prefix = getUtterancePrefix(roleValue, speakerLabelText);
     const className = [
       "utterance-block",
       `utterance-block--${blockRole.toLowerCase()}`,
@@ -61,38 +72,97 @@ export const UtteranceNode = Node.create({
       .filter(Boolean)
       .join(" ");
 
-    const specParts: unknown[] = [
-      "div",
-      mergeAttributes({
-        class: className,
-        "data-utterance-id": utterance_id,
-        "data-speaker-id": speaker_id,
-        "data-speaker-label": speaker_label,
-        "data-line": line_number,
-        "data-page-line": page_line_number,
-        "data-start": start_time,
-        "data-role": role,
-        "data-lang": language,
-      }),
-      [
-        "span",
-        {
-          class: "utt-line-num",
-          contenteditable: "false",
-          title: formatUtteranceTimeTitle(numericStartTime),
-        },
-        String(displayLine),
-      ],
-      [
-        "span",
-        {
-          class: `utt-prefix ${blockRole === "COLLOQUY" ? "utt-prefix--colloquy" : "utt-prefix--qa"}`,
-          contenteditable: "false",
-        },
-        prefix,
-      ],
-      ["span", { class: "utt-content" }, 0],
+    const blockAttrs = mergeAttributes({
+      class: className,
+      "data-utterance-id": utterance_id,
+      "data-speaker-id": speaker_id,
+      "data-speaker-label": speaker_label,
+      "data-line": line_number,
+      "data-page-line": page_line_number,
+      "data-start": start_time,
+      "data-role": role,
+      "data-lang": language,
+      "data-display-mode": display_mode,
+      "data-display-label": display_label,
+    });
+
+    const lineNumberSpec: unknown[] = [
+      "span",
+      {
+        class: "utt-line-num",
+        contenteditable: "false",
+        title: formatUtteranceTimeTitle(numericStartTime),
+      },
+      String(displayLine),
     ];
+
+    const specParts: unknown[] = ["div", blockAttrs, lineNumberSpec];
+    const structuralLines: unknown[] = [];
+
+    if (displayHeadingText) {
+      structuralLines.push([
+        "div",
+        {
+          class: "utt-structural utt-structural--heading",
+          contenteditable: "false",
+        },
+        displayHeadingText,
+      ]);
+    }
+
+    if (displayByLineText) {
+      structuralLines.push([
+        "div",
+        {
+          class: "utt-structural utt-structural--byline",
+          contenteditable: "false",
+        },
+        displayByLineText,
+      ]);
+    }
+
+    if (structuralLines.length > 0) {
+      specParts.splice(2, 0, ...structuralLines);
+    }
+
+    if (blockRole === "COLLOQUY") {
+      specParts.push([
+        "span",
+        {
+          class: "utt-colloquy-line",
+        },
+        [
+          "span",
+          {
+            class: "utt-prefix utt-prefix--colloquy",
+            contenteditable: "false",
+          },
+          `${colloquyLabel(displayLabelText)}${COLON_GAP}`,
+        ],
+        ["span", { class: "utt-content utt-content--colloquy" }, 0],
+      ]);
+    } else if (blockRole === "PARENTHETICAL") {
+      specParts.push([
+        "span",
+        {
+          class: "utt-parenthetical-line",
+        },
+        ["span", { class: "utt-content utt-content--parenthetical" }, 0],
+      ]);
+    } else {
+      const prefix = blockRole === "Q" ? "Q." : "A.";
+      specParts.push(
+        [
+          "span",
+          {
+            class: "utt-prefix utt-prefix--qa",
+            contenteditable: "false",
+          },
+          prefix,
+        ],
+        ["span", { class: "utt-content" }, 0],
+      );
+    }
 
     if (isInterpreter) {
       specParts.push([
@@ -109,3 +179,11 @@ export const UtteranceNode = Node.create({
     return specParts as unknown as DOMOutputSpec;
   },
 });
+
+function parseDisplayMode(value: unknown): BlockRole | "PARENTHETICAL" {
+  if (value === "Q" || value === "A" || value === "COLLOQUY" || value === "PARENTHETICAL") {
+    return value;
+  }
+
+  return "COLLOQUY";
+}

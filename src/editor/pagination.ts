@@ -28,16 +28,18 @@ export function getBlockRole(role: Speaker["role"] | null | undefined): BlockRol
  *
  * Layout rules:
  *  Q / A: 1 blank line + text lines (prefix "Q.  " / "A.  " counts toward first line)
- *  COLLOQUY: 1 blank + 1 speaker-name line + text lines
+ *  COLLOQUY: 1 blank + inline speaker label + text lines
  */
-export function estimateLineCount(wordCount: number, role: BlockRole): number {
+export function estimateLineCount(wordCount: number, role: BlockRole, labelLength = 0): number {
   const estimatedChars = Math.max(1, wordCount) * AVG_CHARS_PER_WORD;
-  const textLines = Math.ceil(estimatedChars / CHARS_PER_LINE);
+  const textLines = Math.ceil(
+    (role === "COLLOQUY" ? estimatedChars + labelLength + 2 : estimatedChars) / CHARS_PER_LINE,
+  );
 
   if (role === "Q" || role === "A") {
     return 1 + textLines; // 1 blank before + wrapped text
   }
-  return 1 + 1 + textLines; // 1 blank + speaker-name line + wrapped text
+  return 1 + textLines; // 1 blank before + inline colloquy text
 }
 
 export interface PageInfo {
@@ -55,10 +57,10 @@ export interface PageInfo {
 export function buildPages(
   utterances: Array<{
     utterance_id: string;
-    speaker_id: string;
     wordCount: number;
+    labelLength: number;
+    blockRole: BlockRole;
   }>,
-  speakerRoles: Map<string, Speaker["role"] | undefined>
 ): Map<string, PageInfo> {
   const result = new Map<string, PageInfo>();
 
@@ -66,9 +68,7 @@ export function buildPages(
   let lineUsed = 0; // lines consumed on the current page
 
   for (const utt of utterances) {
-    const rawRole = speakerRoles.get(utt.speaker_id);
-    const role = getBlockRole(rawRole);
-    const lines = estimateLineCount(utt.wordCount, role);
+    const lines = estimateLineCount(utt.wordCount, utt.blockRole, utt.labelLength);
 
     // Start a new page if this utterance won't fit (and there's already content)
     if (lineUsed > 0 && lineUsed + lines > LINES_PER_PAGE) {

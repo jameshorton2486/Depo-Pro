@@ -39,6 +39,8 @@ export interface DevAuthBypassConfig {
   password: string | null;
 }
 
+export type DevAuthMode = "disabled" | "password-bypass" | "anonymous";
+
 const listeners = new Set<() => void>();
 let authBootstrapPromise: Promise<Session | null> | null = null;
 let authSnapshot: AuthSnapshot = {
@@ -84,6 +86,25 @@ export function getDevAuthBypassConfig(
     email: normalizeEnvValue(env.VITE_DEV_AUTH_BYPASS_EMAIL),
     password: normalizeEnvValue(env.VITE_DEV_AUTH_BYPASS_PASSWORD),
   };
+}
+
+export function getDevAuthMode(
+  env: DevAuthBypassEnv = import.meta.env,
+): DevAuthMode {
+  if (env.DEV !== true) {
+    return "disabled";
+  }
+
+  const config = getDevAuthBypassConfig(env);
+  if (config.enabled) {
+    return "password-bypass";
+  }
+
+  if (config.email && config.password) {
+    return "password-bypass";
+  }
+
+  return "anonymous";
 }
 
 export async function initializeSupabaseSession(tokens?: {
@@ -169,28 +190,41 @@ export async function getSupabaseClient(operation: string) {
 }
 
 async function signInWithDevBypass(): Promise<Session | null> {
-  const config = getDevAuthBypassConfig();
-  if (!config.enabled) {
+  const mode = getDevAuthMode();
+  if (mode === "disabled") {
     setAuthSnapshot({ loading: false, session: null });
     return null;
-  }
-
-  emitDevAuthBypassWarning();
-
-  if (!config.email || !config.password) {
-    throw new Error(
-      "VITE_DEV_AUTH_BYPASS is enabled but VITE_DEV_AUTH_BYPASS_EMAIL or VITE_DEV_AUTH_BYPASS_PASSWORD is missing.",
-    );
   }
 
   if (!supabase) {
     return null;
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: config.email,
-    password: config.password,
-  });
+  let data: { session: Session | null } | null = null;
+  let error: Error | null = null;
+
+  if (mode === "password-bypass") {
+    const config = getDevAuthBypassConfig();
+    emitDevAuthBypassWarning();
+
+    if (!config.email || !config.password) {
+      throw new Error(
+        "VITE_DEV_AUTH_BYPASS is enabled but VITE_DEV_AUTH_BYPASS_EMAIL or VITE_DEV_AUTH_BYPASS_PASSWORD is missing.",
+      );
+    }
+
+    const result = await supabase.auth.signInWithPassword({
+      email: config.email,
+      password: config.password,
+    });
+    data = result.data;
+    error = result.error;
+  } else {
+    console.warn("[DEPO-PRO] DEV ANONYMOUS AUTH ENABLED — not for production.");
+    const result = await supabase.auth.signInAnonymously();
+    data = result.data;
+    error = result.error;
+  }
 
   if (error) {
     throw error;

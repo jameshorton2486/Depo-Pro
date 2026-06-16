@@ -36,13 +36,11 @@ Locked conclusions:
 3. The remaining gap is not only attribution preservation; it is visible paragraph geometry.
 4. The corrected reference transcript demonstrates the target structure more clearly than the current workspace rendering.
 
-## Normative Reference Artifact
+## Normative Reference Geometry
 
-Use this corrected transcript as the rendering reference:
+The corrected Thomas transcript geometry has been captured directly in this prompt, so no local DOCX dependency is required for implementation.
 
-- `C:\Users\james\projects\depo-pro\tmp_thomas_corrected.docx`
-
-Observed target geometry from that document:
+Observed target geometry:
 
 1. `PROCEEDINGS` is a heading.
 2. Pre-examination colloquy is rendered as labeled speaker paragraphs:
@@ -144,7 +142,7 @@ visible transcript reflects proceedings / colloquy / Q-A / recess structure
 
 Before touching code, verify and report:
 
-1. The corrected DOCX remains available at the path above.
+1. The corrected Thomas transcript geometry embedded in this prompt still matches the intended deposition layout target.
 2. The current workspace renderer still flows through `src/lib/buildEditorContent.ts`.
 3. No newer code has already introduced a speaker-aware paragraph renderer.
 4. The audited / rebuilt transcript data for `tr_1781563788609_b38j6p` can still be used as the primary validation target.
@@ -279,10 +277,6 @@ This prompt must **not** change:
 Primary validation target:
 
 - `tr_1781563788609_b38j6p`
-
-Compare against the corrected reference DOCX:
-
-- `tmp_thomas_corrected.docx`
 
 Validation is successful when the workspace visible paragraph structure moves materially closer to the corrected transcript shape in these specific ways:
 

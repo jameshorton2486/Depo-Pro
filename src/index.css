@@ -123,6 +123,18 @@ html, body, #root {
   padding-top: 2px;
 }
 
+.utt-colloquy-line {
+  grid-column: 2 / 4;
+  display: block;
+  min-height: 1.65em;
+}
+
+.utt-parenthetical-line {
+  grid-column: 2 / 4;
+  display: block;
+  min-height: 1.65em;
+}
+
 /* ─── Editable content area ──────────────────────────────────────────────── */
 .utt-content {
   font-family: 'Libre Baskerville', serif;
@@ -138,6 +150,40 @@ html, body, #root {
   margin: 0;
 }
 
+.utt-content--colloquy {
+  display: inline;
+  color: #374151;
+  font-style: italic;
+}
+
+.utt-content--parenthetical {
+  display: block;
+  color: #475569;
+  font-style: italic;
+}
+
+.utt-structural {
+  grid-column: 2 / 4;
+  font-family: 'Libre Baskerville', serif;
+  color: #1e293b;
+  user-select: none;
+  cursor: default;
+}
+
+.utt-structural--heading {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.utt-structural--byline {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
 /* ─── Block-role visual differentiation ─────────────────────────────────── */
 .utterance-block--q .utt-content {
   color: #1e293b;
@@ -150,11 +196,23 @@ html, body, #root {
 .utterance-block--colloquy {
   margin-top: 10px;
   margin-bottom: 2px;
+  grid-template-columns: 2.25rem 1fr;
 }
 
-.utterance-block--colloquy .utt-content {
-  color: #374151;
-  font-style: italic;
+.utterance-block--colloquy .utt-prefix {
+  display: inline;
+  padding-right: 0;
+  white-space: pre-wrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.utterance-block--colloquy .utt-content > p {
+  display: inline;
+}
+
+.utterance-block--parenthetical {
+  grid-template-columns: 2.25rem 1fr;
 }
 
 /* ─── Word tokens ────────────────────────────────────────────────────────── */
