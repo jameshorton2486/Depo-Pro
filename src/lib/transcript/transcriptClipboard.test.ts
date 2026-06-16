@@ -64,12 +64,12 @@ describe("buildTranscriptClipboardText", () => {
 
     expect(buildTranscriptClipboardText(makeDocument(), [], record)).toBe(
       [
-        "THE REPORTER:  Good afternoon, mister Nunez.",
-        "EXAMINATION",
+        "\t\t\tTHE REPORTER:  Good afternoon, mister Nunez.",
+        "\t\t\tEXAMINATION",
         "BY MR. NUNEZ:",
-        "Q.  Good afternoon. How are you?",
-        "A.  Doing well.",
-        "( Recess taken )",
+        "\tQ.\tGood afternoon. How are you?",
+        "\tA.\tDoing well.",
+        "\t\t\t( Recess taken )",
       ].join("\n\n"),
     );
   });

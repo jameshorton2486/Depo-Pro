@@ -1,8 +1,11 @@
 import type { EditorDocument } from "../../api/types";
 import type { CaseRecord } from "../../types/case";
-import { colloquyInlineText, COLON_GAP } from "../../editor/stageS/colloquy";
+import { colloquyInlineText } from "../../editor/stageS/colloquy";
 import type { ResolvedSpeakerView } from "./resolvedSpeakers";
 import { buildTranscriptParagraphs } from "./workspaceParagraphs";
+
+const TAB = "\t";
+const COLLOQUY_TABS = `${TAB}${TAB}${TAB}`;
 
 export function buildTranscriptClipboardText(
   document: EditorDocument,
@@ -13,13 +16,15 @@ export function buildTranscriptClipboardText(
     .map((paragraph) => {
       switch (paragraph.kind) {
         case "COLLOQUY":
-          return colloquyInlineText(paragraph.label, paragraph.text);
+          return `${COLLOQUY_TABS}${colloquyInlineText(paragraph.label, paragraph.text)}`;
         case "Q":
         case "A":
-          return `${paragraph.label}${COLON_GAP}${paragraph.text}`;
-        case "BY_LINE":
+          return `${TAB}${paragraph.label}${TAB}${paragraph.text}`;
         case "EXAMINATION":
         case "PARENTHETICAL":
+          return `${COLLOQUY_TABS}${paragraph.text}`;
+        case "BY_LINE":
+          return paragraph.text;
         default:
           return paragraph.text;
       }
