@@ -6,7 +6,7 @@ import { SQL } from "bun";
 import { buildStageSDocxParagraphSpecs, type ExportTranscriptSegment } from "../src/components/ExportScreen/exportDocx.ts";
 import { normalizeCaseRecord } from "../src/lib/normalizeCaseRecord.ts";
 import { buildResolvedSpeakerViews } from "../src/lib/transcript/resolvedSpeakers.ts";
-import { buildWorkspaceParagraphs } from "../src/lib/transcript/workspaceParagraphs.ts";
+import { buildTranscriptParagraphs } from "../src/lib/transcript/workspaceParagraphs.ts";
 import type { EditorDocument, Speaker } from "../src/api/types.ts";
 import type { Database } from "../src/types/database.ts";
 import type { CaseRecord } from "../src/types/case.ts";
@@ -73,14 +73,14 @@ type SpeakerResolutionCurrentRow =
   Database["public"]["Tables"]["speaker_resolution_current"]["Row"];
 
 interface WorkspaceSemanticLine {
-  kind: "examination" | "by_line" | "colloquy" | "Q" | "A" | "parenthetical";
+  kind: "EXAMINATION" | "BY_LINE" | "COLLOQUY" | "Q" | "A" | "PARENTHETICAL";
   label: string;
   text: string;
   sourceUtteranceIds: string[];
 }
 
 interface ExportSemanticLine {
-  kind: "segment_heading" | "attribution" | "colloquy" | "qa" | "parenthetical";
+  kind: "SEGMENT_HEADING" | "BY_LINE" | "COLLOQUY" | "Q" | "A" | "PARENTHETICAL" | "EXAMINATION";
   label: string;
   text: string;
 }
@@ -184,46 +184,12 @@ function buildWorkspaceSemanticLines(
   record: CaseRecord,
   resolvedSpeakers: ReturnType<typeof buildResolvedSpeakerViews>,
 ): WorkspaceSemanticLine[] {
-  const descriptors = buildWorkspaceParagraphs(document, resolvedSpeakers, record);
-  const wordById = new Map(document.words.map((word) => [word.word_id, word]));
-  const lines: WorkspaceSemanticLine[] = [];
-
-  for (const utterance of document.utterances) {
-    const descriptor = descriptors.get(utterance.utterance_id);
-    if (!descriptor) continue;
-
-    const text = utterance.word_ids
-      .map((wordId) => wordById.get(wordId)?.text ?? "")
-      .join(" ")
-      .trim();
-
-    if (descriptor.examinationHeader) {
-      lines.push({
-        kind: "examination",
-        label: "",
-        text: "EXAMINATION",
-        sourceUtteranceIds: [utterance.utterance_id],
-      });
-    }
-
-    if (descriptor.byLine) {
-      lines.push({
-        kind: "by_line",
-        label: "",
-        text: descriptor.byLine,
-        sourceUtteranceIds: [utterance.utterance_id],
-      });
-    }
-
-    lines.push({
-      kind: descriptor.mode,
-      label: descriptor.label,
-      text,
-      sourceUtteranceIds: [utterance.utterance_id],
-    });
-  }
-
-  return lines;
+  return buildTranscriptParagraphs(document, resolvedSpeakers, record).map((paragraph) => ({
+    kind: paragraph.kind,
+    label: paragraph.label,
+    text: paragraph.text,
+    sourceUtteranceIds: paragraph.sourceUtteranceIds,
+  }));
 }
 
 function buildExportSemanticLines(
@@ -233,6 +199,7 @@ function buildExportSemanticLines(
   speakers: TranscriptSpeakerRow[],
   utterances: TranscriptUtteranceRow[],
   words: TranscriptWordRow[],
+  overlay: SpeakerResolutionCurrentRow[],
 ): ExportSemanticLine[] {
   const paragraphSpecs = buildStageSDocxParagraphSpecs([{
     transcriptId: transcript.transcript_id,
@@ -244,22 +211,22 @@ function buildExportSemanticLines(
       speakers: speakers as never,
       utterances: utterances as never,
       words: words as never,
-      speakerResolutionOverlay: [] as never,
+      speakerResolutionOverlay: overlay as never,
     },
   } satisfies ExportTranscriptSegment], caseRecord);
 
   return paragraphSpecs.map((spec) => {
-    if (spec.kind === "qa") {
+    if (spec.kind === "Q" || spec.kind === "A") {
       const label = spec.runs[0]?.kind === "text" ? spec.runs[0].text : "";
       const text = spec.runs[2]?.kind === "text" ? spec.runs[2].text : "";
-      return { kind: "qa", label, text };
+      return { kind: spec.kind, label, text };
     }
 
-    if (spec.kind === "colloquy") {
+    if (spec.kind === "COLLOQUY") {
       const labelRun = spec.runs[0]?.kind === "text" ? spec.runs[0].text : "";
       const textRun = spec.runs[2]?.kind === "text" ? spec.runs[2].text : "";
       return {
-        kind: "colloquy",
+        kind: "COLLOQUY",
         label: labelRun.replace(/:+$/, ""),
         text: textRun,
       };
@@ -365,7 +332,7 @@ async function main() {
     const resolvedSpeakers = buildResolvedSpeakerViews(speakers as never, overlay);
 
     const workspaceLines = buildWorkspaceSemanticLines(document, record, resolvedSpeakers);
-    const exportLines = buildExportSemanticLines(transcript, record, document, speakers, utterances, words);
+    const exportLines = buildExportSemanticLines(transcript, record, document, speakers, utterances, words, overlay);
 
     const joinedWordTextByUtterance = new Map(
       document.utterances.map((utterance) => [
@@ -419,9 +386,9 @@ async function main() {
   - \`transcript_utterances\`
   - \`transcript_words\`
 - They do **not** use the same representation after load.
-- The first structural split is:
+- The first structural split before unification was:
   - Workspace: \`EditorDocument -> buildEditorContent(...) -> buildWorkspaceParagraphs(...)\`
-  - Export: \`snapshot rows -> buildStageSDocxParagraphSpecs(...) -> renderStageS(...)\`
+  - Export: \`snapshot rows -> buildStageSDocxParagraphSpecs(...)\`
 - The first text-source split is:
   - Workspace text comes from word-level \`working_text ?? raw_text\`
   - Export text comes from persisted \`transcript_utterances.text\` when a snapshot is present
@@ -459,9 +426,9 @@ Yes.
 - Workspace document words are built from:
   - [workspaceService.ts](/abs/path/C:/Users/james/Projects/Depo-Pro/src/api/workspaceService.ts:151)
   - \`text: word.working_text ?? word.raw_text\`
-- Export Stage S utterances are built from snapshot utterance rows:
+- Export paragraph text is built from the shared paragraph model created from the same snapshot/document inputs:
   - [exportDocx.ts](/abs/path/C:/Users/james/Projects/Depo-Pro/src/components/ExportScreen/exportDocx.ts:81)
-  - \`text: utterance.text\`
+  - DOCX paragraph text is emitted from the shared paragraph model
 
 Measured on this transcript:
 
@@ -476,17 +443,17 @@ ${utteranceTextMismatches.length === 0 ? "- none" : utteranceTextMismatches.slic
 
 ### For speaker transformations such as \`THE REPORTER:\` or \`MR. THOMAS:\`, which path contains the transformation?
 
-Both paths perform transformations, but they do it **differently**.
+Both paths perform transformations, and after unification they should do it through the same shared paragraph model.
 
 - Workspace speaker/paragraph rendering:
   - [buildEditorContent](/abs/path/C:/Users/james/Projects/Depo-Pro/src/lib/buildEditorContent.ts:14)
   - [buildWorkspaceParagraphs](/abs/path/C:/Users/james/Projects/Depo-Pro/src/lib/transcript/workspaceParagraphs.ts:32)
   - [buildTranscriptSpeakerIdentityMap](/abs/path/C:/Users/james/Projects/Depo-Pro/src/lib/transcript/speakerIdentity.ts:31)
 - Export speaker/paragraph rendering:
-  - [buildStageSDocxParagraphSpecs](/abs/path/C:/Users/james/Projects/Depo-Pro/src/components/ExportScreen/exportDocx.ts:55)
-  - [renderStageS](/abs/path/C:/Users/james/Projects/Depo-Pro/src/editor/stageS/renderer.ts:33)
+  - [buildStageSDocxParagraphSpecs](/abs/path/C:/Users/james/Projects/Depo-Pro/src/components/ExportScreen/exportDocx.ts:49)
+  - [buildTranscriptParagraphs](/abs/path/C:/Users/james/Projects/Depo-Pro/src/lib/transcript/workspaceParagraphs.ts:47)
 
-This means identity and formatting are currently duplicated:
+If this audit still shows differences after the unification change, they now represent defects in the shared-model adoption rather than two independent paragraph engines:
 
 - Workspace labels are derived from workspace identity + paragraph classification
 - Export labels are derived from Stage S participant mapping + Stage S line rendering
