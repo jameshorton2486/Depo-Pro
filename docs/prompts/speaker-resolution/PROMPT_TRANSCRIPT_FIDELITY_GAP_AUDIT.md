@@ -115,6 +115,8 @@ Audit all of the following:
 10. Transcript Formatting
 11. Pagination
 12. Certification Elements
+13. Rule Classification
+14. Editor Capability Gap
 
 ## Required Questions Per Category
 
@@ -133,6 +135,31 @@ Where possible, also include:
 - concrete example from the corrected DOCX
 - whether the gap is data, rendering, geometry, or formatting
 
+## Root Cause Classification
+
+For every identified gap, classify whether it is primarily solvable by:
+
+- deterministic code
+- regex / pattern rules
+- AI assist
+- human review only
+
+Do not treat the corrected transcript as a correction source.
+
+Treat it as a gold-standard reference used to learn:
+
+- what rules can be generalized
+- what structure can be reconstructed
+- what still requires human review
+
+The question is:
+
+Can we build a reusable transcript engine for all future transcripts?
+
+Not:
+
+Can we copy one corrected transcript into one DEPO-PRO transcript?
+
 ## Required Comparison Areas
 
 The audit must explicitly identify differences in:
@@ -150,6 +177,7 @@ The audit must explicitly identify differences in:
 - spacing
 - pagination
 - certification / final transcript elements
+- editor capabilities relative to Word-style transcript editing
 
 ## Classification Rules
 
@@ -165,6 +193,12 @@ For each gap, classify whether it is primarily:
 - certification/export gap
 
 If a gap spans multiple areas, name the first proven locus.
+
+For each gap, also state whether it is:
+
+- reusable engine work
+- transcript-specific manual correction
+- likely impossible without missing source evidence
 
 ## Required Evidence Standard
 
@@ -196,6 +230,8 @@ Include:
 5. deterministic vs AI-needed assessment
 6. likely file/symbol responsibility
 7. prioritized roadmap summary
+8. editor capability gap summary
+9. engine inventory
 
 ## Final Recommendation
 
@@ -213,6 +249,58 @@ The final recommendation should answer:
 2. What is recoverable deterministically?
 3. What should be built next?
 
+## Engine Inventory Requirement
+
+The audit must include an `Engine Inventory` section that classifies the current system as:
+
+- `Complete`
+- `Partial`
+- `Missing`
+
+At minimum, inventory the following engines:
+
+- Deepgram Ingestion
+- Raw Deepgram Preservation
+- Word-Level Confidence / Timing Preservation
+- Speaker Attribution Preservation
+- Transcript Reassembly Engine
+- Candidate / Preview / Apply Workflow
+- Audit Trail Infrastructure
+- Low-Confidence Review
+- Basic Transcript Editor
+- Speaker Identity Resolution Engine
+- Q/A Reconstruction Engine
+- Transcript Geometry Engine
+- Procedural Reconstruction Engine
+- Word-Style Editing Engine
+
+The purpose of this section is to prevent the final audit from collapsing into “we need a transcript engine.”
+
+The audit should explicitly distinguish:
+
+- foundations already built
+- engines partially built
+- engines still missing
+
+## Editor Capability Requirement
+
+The audit must explicitly compare the current editor against the desired Word-style workflow for:
+
+- word editing
+- punctuation editing
+- carriage returns
+- tabs
+- paragraph splitting
+- paragraph merging
+- parenthetical creation
+- transcript block manipulation
+- low-confidence highlighting during proofreading
+
+This section must distinguish:
+
+- transcript generation gaps
+- transcript editor capability gaps
+
 ## Final Rule
 
 This is an audit, not an implementation prompt.
@@ -228,4 +316,3 @@ Do not change exports.
 Do not change certification logic.
 
 Only identify the gaps and write the audit.
-
