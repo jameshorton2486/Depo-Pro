@@ -1,5 +1,7 @@
 import type { EditorDocument, Speaker } from "../../api/types";
+import type { CaseRecord } from "../../types/case";
 import type { ResolvedSpeakerView } from "./resolvedSpeakers";
+import { buildTranscriptSpeakerIdentityMap } from "./speakerIdentity";
 
 export type WorkspaceParagraphMode = "COLLOQUY" | "Q" | "A" | "PARENTHETICAL";
 
@@ -30,9 +32,10 @@ const QUESTION_PATTERNS = [
 export function buildWorkspaceParagraphs(
   document: EditorDocument,
   resolvedSpeakers: ResolvedSpeakerView[],
+  record?: CaseRecord | null,
 ): Map<string, WorkspaceParagraphDescriptor> {
   const descriptorByUtteranceId = new Map<string, WorkspaceParagraphDescriptor>();
-  const speakerViews = buildSpeakerViewMap(document, resolvedSpeakers);
+  const speakerViews = buildSpeakerViewMap(document, resolvedSpeakers, record);
   const wordById = new Map(document.words.map((word) => [word.word_id, word]));
   let state: RenderState = {
     inExamination: false,
@@ -57,24 +60,19 @@ export function buildWorkspaceParagraphs(
 function buildSpeakerViewMap(
   document: EditorDocument,
   resolvedSpeakers: ResolvedSpeakerView[],
+  record?: CaseRecord | null,
 ): Map<string, SpeakerView> {
-  const resolvedByRawSpeakerId = new Map<string, ResolvedSpeakerView>();
-
-  for (const speaker of resolvedSpeakers) {
-    for (const rawSpeakerId of speaker.rawSpeakerIds) {
-      resolvedByRawSpeakerId.set(rawSpeakerId, speaker);
-    }
-  }
+  const identities = buildTranscriptSpeakerIdentityMap(document, resolvedSpeakers, record);
 
   return new Map(document.speakers.map((speaker) => {
-    const resolved = resolvedByRawSpeakerId.get(speaker.speaker_id);
-    const role = resolved?.role ?? speaker.role;
-    const displayName = resolved?.display_name ?? speaker.display_name;
+    const identity = identities.get(speaker.speaker_id);
+    const role = identity?.role ?? speaker.role;
+    const displayName = speaker.display_name;
     return [
       speaker.speaker_id,
       {
         role,
-        label: speakerLabelForRole(role, displayName),
+        label: identity?.transcriptLabel ?? speakerLabelForRole(role, displayName),
       },
     ] satisfies [string, SpeakerView];
   }));

@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import type { EditorDocument } from "../api/types";
+import type { CaseRecord } from "../types/case";
 import { buildPages, type BlockRole } from "../editor/pagination";
 import type { ResolvedSpeakerView } from "./transcript/resolvedSpeakers";
 import { buildWorkspaceParagraphs } from "./transcript/workspaceParagraphs";
@@ -14,10 +15,11 @@ export function buildEditorContent(
   doc: EditorDocument,
   resolvedSpeakers: ResolvedSpeakerView[] = [],
   languageMap?: Map<string, string>,
+  record?: CaseRecord | null,
 ): JSONContent {
   const wordById = new Map(doc.words.map((w) => [w.word_id, w]));
   const speakerById = new Map(doc.speakers.map((s) => [s.speaker_id, s]));
-  const paragraphDescriptors = buildWorkspaceParagraphs(doc, resolvedSpeakers);
+  const paragraphDescriptors = buildWorkspaceParagraphs(doc, resolvedSpeakers, record);
 
   // Word count per utterance (used for line estimation)
   const wordCountByUtt = new Map<string, number>(

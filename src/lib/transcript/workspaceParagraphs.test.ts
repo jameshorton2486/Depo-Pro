@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EditorDocument } from "../../api/types";
+import { emptyCaseRecord } from "../../types/case";
 import { buildWorkspaceParagraphs } from "./workspaceParagraphs";
 
 function makeDocument(): EditorDocument {
@@ -38,7 +39,27 @@ function makeDocument(): EditorDocument {
 
 describe("buildWorkspaceParagraphs", () => {
   it("keeps pre-examination attorney colloquy labeled inline and opens examination on the first question", () => {
-    const descriptors = buildWorkspaceParagraphs(makeDocument(), []);
+    const record = emptyCaseRecord("case_workspace", "2026-06-16T12:00:00.000Z");
+    record.reporter.name.value = "Mia Bardot";
+    record.witnesses = [{
+      witness_id: "wit_001",
+      name: { value: "Heath Thomas", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "WITNESS", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      title: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      employer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      prefix_suffix: "Mr",
+      party_affiliation: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      is_corporate_rep: false,
+      corporate_entity: null,
+      read_and_sign: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      spelling_corrections: [],
+      email: null,
+      phone: null,
+    }];
+
+    const descriptors = buildWorkspaceParagraphs(makeDocument(), [], record);
 
     expect(descriptors.get("utt-1")).toMatchObject({
       mode: "COLLOQUY",
@@ -55,7 +76,7 @@ describe("buildWorkspaceParagraphs", () => {
     });
     expect(descriptors.get("utt-4")).toMatchObject({
       mode: "A",
-      label: "THE WITNESS",
+      label: "MR. THOMAS",
     });
   });
 });

@@ -13,6 +13,7 @@ import { buildWordTimings, findWordAtTime } from "../../lib/wordTimings";
 import { useDocument } from "../../context/DocumentContext";
 import { useAudio } from "../../context/AudioContext";
 import { useEditorContext } from "../../context/EditorContext";
+import { useIntake } from "../../context/useIntake";
 import { createConfidencePlugin } from "../../extensions/ConfidencePlugin";
 import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
 
@@ -88,6 +89,7 @@ export function TranscriptEditor({ readOnly }: Props) {
   const { state, editUtterance, setActive } = useDocument();
   const audio = useAudio();
   const { setEditor, showInterpreterLayer, languageMap } = useEditorContext();
+  const { record } = useIntake();
   const { playing } = audio;
 
   // Refs for RAF highlight loop
@@ -106,8 +108,8 @@ export function TranscriptEditor({ readOnly }: Props) {
   editUtteranceRef.current = editUtterance;
 
   const editorContent = useMemo(
-    () => (state.document ? buildEditorContent(state.document, state.resolvedSpeakers, languageMap) : null),
-    [state.document, state.resolvedSpeakers, languageMap]
+    () => (state.document ? buildEditorContent(state.document, state.resolvedSpeakers, languageMap, record) : null),
+    [record, state.document, state.resolvedSpeakers, languageMap]
   );
 
   const wordTimings = useMemo(
