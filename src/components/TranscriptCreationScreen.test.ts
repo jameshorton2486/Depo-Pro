@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CaseAudioRecord } from "../api/fileService";
 import type { TranscriptJobRow } from "../api/transcriptRepository";
 import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
-import { buildSourceTranscriptRows } from "./TranscriptCreationScreen";
+import { buildSourceTranscriptRows, hasCompletedTranscriptRow } from "./TranscriptCreationScreen";
 
 function buildAudio(sourceIndex: number, name: string): CaseAudioRecord {
   return {
@@ -115,5 +115,11 @@ describe("buildSourceTranscriptRows", () => {
       status: "completed",
       transcriptId: "tr_0",
     });
+  });
+
+  it("requires a completed transcript row before considering workspace ready", () => {
+    expect(hasCompletedTranscriptRow([buildTranscript(0, "assembling")])).toBe(false);
+    expect(hasCompletedTranscriptRow([buildTranscript(0, "failed")])).toBe(false);
+    expect(hasCompletedTranscriptRow([buildTranscript(0, "completed")])).toBe(true);
   });
 });

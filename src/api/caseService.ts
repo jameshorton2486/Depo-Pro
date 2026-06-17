@@ -341,7 +341,6 @@ export async function saveCase(record: CaseRecord): Promise<CaseRecord> {
   const existingCaseId = await findMatchingCaseId(client, record);
 
   if (existingCaseId && existingCaseId !== record.case_id) {
-    await purgeCaseArtifacts(client, existingCaseId, false);
     await reassignCaseArtifacts(client, record.case_id, existingCaseId);
   }
 
@@ -509,7 +508,7 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
   const [audioResult, transcriptResult, exhibitResult, certificationResult] =
     await Promise.all([
       client.from("case_audio").select("case_id").in("case_id", caseIds),
-      client.from("transcripts").select("case_id, speaker_map_confirmed").in("case_id", caseIds),
+      client.from("transcripts").select("case_id, speaker_map_confirmed").eq("status", "completed").in("case_id", caseIds),
       client.from("case_exhibits").select("case_id").in("case_id", caseIds),
       client.from("case_certifications").select("case_id").in("case_id", caseIds),
     ]);
@@ -546,10 +545,10 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
       caseNumber: summary.caseNumber,
       witnessName: summary.witnessName,
       hasAudio: indicator.hasAudio,
-        hasTranscript: indicator.hasTranscript,
-        exhibitCount: indicator.exhibitCount,
-        certified: indicator.certified,
-        speakerMapConfirmed: indicator.speakerMapConfirmed,
-      };
+      hasTranscript: indicator.hasTranscript,
+      exhibitCount: indicator.exhibitCount,
+      certified: indicator.certified,
+      speakerMapConfirmed: indicator.speakerMapConfirmed,
+    };
   });
 }

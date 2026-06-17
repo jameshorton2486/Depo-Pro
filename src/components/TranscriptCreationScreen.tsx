@@ -24,6 +24,10 @@ export interface SourceTranscriptRow {
   status: SourceTranscriptStatus;
 }
 
+export function hasCompletedTranscriptRow(transcriptRows: TranscriptJobRow[]): boolean {
+  return transcriptRows.some((row) => row.status === "completed");
+}
+
 function compareByUpdatedAtDesc(left: { updated_at: string }, right: { updated_at: string }) {
   return right.updated_at.localeCompare(left.updated_at);
 }
@@ -194,10 +198,17 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     };
   }, [caseId, jobs]);
 
+  const hasCompletedTranscript = hasCompletedTranscriptRow(transcriptRows);
+
   const openWorkspace = useCallback(async () => {
+    if (!hasCompletedTranscript) {
+      setError("Transcript is not ready for the workspace yet. Wait for the completed transcript row to appear.");
+      return;
+    }
+
     await saveCase({ ...record, stage: "workspace" });
     setStage("workspace");
-  }, [record, setStage]);
+  }, [hasCompletedTranscript, record, setStage]);
 
   async function runTranscription() {
     if (audioRows.length === 0) {
@@ -228,13 +239,13 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const sourceRows = buildSourceTranscriptRows(audioRows, transcriptRows, jobs);
 
   useEffect(() => {
-    if (!completedJob || advancedJobIdRef.current === completedJob.id) {
+    if (!completedJob || !hasCompletedTranscript || advancedJobIdRef.current === completedJob.id) {
       return;
     }
 
     advancedJobIdRef.current = completedJob.id;
     void openWorkspace();
-  }, [completedJob, openWorkspace]);
+  }, [completedJob, hasCompletedTranscript, openWorkspace]);
 
   useEffect(() => {
     if (failedJob?.error) {
@@ -368,7 +379,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
               <button
                 type="button"
                 onClick={() => void openWorkspace()}
-                disabled={!completedJob || running}
+                disabled={!hasCompletedTranscript || running}
                 className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 <CheckCircle2 size={14} />

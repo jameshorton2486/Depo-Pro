@@ -8,13 +8,13 @@ const {
   loadCaseMock,
   listCaseFilesMock,
   listCaseAudioMock,
-  listTranscriptJobsMock,
+  listCompletedTranscriptJobsMock,
   listFieldProvenanceMock,
 } = vi.hoisted(() => ({
   loadCaseMock: vi.fn(),
   listCaseFilesMock: vi.fn(),
   listCaseAudioMock: vi.fn(),
-  listTranscriptJobsMock: vi.fn(),
+  listCompletedTranscriptJobsMock: vi.fn(),
   listFieldProvenanceMock: vi.fn(),
 }));
 
@@ -32,7 +32,7 @@ vi.mock("./provenanceService", () => ({
 }));
 
 vi.mock("./transcriptRepository", () => ({
-  listTranscriptJobs: listTranscriptJobsMock,
+  listCompletedTranscriptJobs: listCompletedTranscriptJobsMock,
 }));
 
 describe("loadCaseBundle", () => {
@@ -40,7 +40,7 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockReset();
     listCaseFilesMock.mockReset();
     listCaseAudioMock.mockReset();
-    listTranscriptJobsMock.mockReset();
+    listCompletedTranscriptJobsMock.mockReset();
     listFieldProvenanceMock.mockReset();
   });
 
@@ -48,7 +48,7 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(null);
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
-    listTranscriptJobsMock.mockResolvedValue([]);
+    listCompletedTranscriptJobsMock.mockResolvedValue([]);
     listFieldProvenanceMock.mockResolvedValue([]);
 
     await expect(loadCaseBundle("case_missing")).resolves.toBeNull();
@@ -103,7 +103,7 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(record);
     listCaseFilesMock.mockResolvedValue(files);
     listCaseAudioMock.mockResolvedValue(audio);
-    listTranscriptJobsMock.mockResolvedValue([]);
+    listCompletedTranscriptJobsMock.mockResolvedValue([]);
     listFieldProvenanceMock.mockResolvedValue(provenance);
 
     await expect(loadCaseBundle(record.case_id)).resolves.toEqual({
@@ -120,7 +120,7 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(record);
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
-    listTranscriptJobsMock.mockResolvedValue([]);
+    listCompletedTranscriptJobsMock.mockResolvedValue([]);
     listFieldProvenanceMock.mockResolvedValue([]);
 
     const bundle = await loadCaseBundle(record.case_id);
@@ -140,7 +140,7 @@ describe("loadCaseBundle", () => {
     loadCaseMock.mockResolvedValue(normalizeCaseRecord(legacyPayload));
     listCaseFilesMock.mockResolvedValue([]);
     listCaseAudioMock.mockResolvedValue([]);
-    listTranscriptJobsMock.mockResolvedValue([]);
+    listCompletedTranscriptJobsMock.mockResolvedValue([]);
     listFieldProvenanceMock.mockResolvedValue([]);
 
     const bundle = await loadCaseBundle("job_demo_001");

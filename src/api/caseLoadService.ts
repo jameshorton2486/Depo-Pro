@@ -1,7 +1,7 @@
 import { loadCase } from "./caseService";
 import { listCaseAudio, listCaseFiles, type CaseAudioRecord, type CaseFileRecord } from "./fileService";
 import { listFieldProvenance } from "./provenanceService";
-import { listTranscriptJobs, type TranscriptJobRow } from "./transcriptRepository";
+import { listCompletedTranscriptJobs, type TranscriptJobRow } from "./transcriptRepository";
 import type { FieldProvenanceRow } from "../components/conflict/types";
 import type { CaseRecord } from "../types/case";
 
@@ -20,7 +20,7 @@ export async function loadCaseBundle(caseId: string): Promise<CaseBundle | null>
     loadCase(caseId),
     listCaseFiles(caseId),
     listCaseAudio(caseId),
-    listTranscriptJobs(caseId),
+    listCompletedTranscriptJobs(caseId),
     listFieldProvenance(caseId),
   ]);
 

@@ -231,6 +231,23 @@ export async function listTranscriptJobs(caseId: string): Promise<TranscriptJobR
   return (data ?? []) as unknown as TranscriptJobRow[];
 }
 
+export async function listCompletedTranscriptJobs(caseId: string): Promise<TranscriptJobRow[]> {
+  const client = await getSupabaseClient("listCompletedTranscriptJobs");
+  const transcriptClient = getTranscriptClient(client);
+  const { data, error } = await transcriptClient
+    .from("transcripts")
+    .select("*")
+    .eq("case_id", caseId)
+    .eq("status", "completed")
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as unknown as TranscriptJobRow[];
+}
+
 export async function getTranscriptJobByJobId(jobId: string): Promise<TranscriptJobRow | null> {
   const client = await getSupabaseClient("getTranscriptJobByJobId");
   const transcriptClient = getTranscriptClient(client);

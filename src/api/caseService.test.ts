@@ -8,6 +8,18 @@ const transcriptsSelect = vi.fn();
 const exhibitsSelect = vi.fn();
 const certificationsSelect = vi.fn();
 
+function buildInChain(result: unknown) {
+  return {
+    in: async () => result,
+  };
+}
+
+function buildTranscriptStatusChain(result: unknown) {
+  return {
+    eq: () => buildInChain(result),
+  };
+}
+
 vi.mock("../lib/supabase", () => ({
   getSupabaseClient: vi.fn(async () => ({
     from(table: string) {
@@ -133,9 +145,10 @@ describe("listRecentCases", () => {
     caseAudioSelect.mockReturnValue({
       in: async () => ({ data: [{ case_id: "case_live" }], error: null }),
     });
-    transcriptsSelect.mockReturnValue({
-      in: async () => ({ data: [{ case_id: "case_live", speaker_map_confirmed: true }], error: null }),
-    });
+    transcriptsSelect.mockReturnValue(buildTranscriptStatusChain({
+      data: [{ case_id: "case_live", speaker_map_confirmed: true }],
+      error: null,
+    }));
     exhibitsSelect.mockReturnValue({
       in: async () => ({ data: [{ case_id: "case_live" }, { case_id: "case_live" }], error: null }),
     });
@@ -182,9 +195,7 @@ describe("listRecentCases", () => {
     caseAudioSelect.mockReturnValue({
       in: async () => ({ data: [], error: null }),
     });
-    transcriptsSelect.mockReturnValue({
-      in: async () => ({ data: [], error: null }),
-    });
+    transcriptsSelect.mockReturnValue(buildTranscriptStatusChain({ data: [], error: null }));
     exhibitsSelect.mockReturnValue({
       in: async () => ({ data: [], error: null }),
     });
@@ -229,15 +240,13 @@ describe("listRecentCases", () => {
     caseAudioSelect.mockReturnValue({
       in: async () => ({ data: [], error: null }),
     });
-    transcriptsSelect.mockReturnValue({
-      in: async () => ({
-        data: [
-          { case_id: "case_multi", speaker_map_confirmed: true },
-          { case_id: "case_multi", speaker_map_confirmed: false },
-        ],
-        error: null,
-      }),
-    });
+    transcriptsSelect.mockReturnValue(buildTranscriptStatusChain({
+      data: [
+        { case_id: "case_multi", speaker_map_confirmed: true },
+        { case_id: "case_multi", speaker_map_confirmed: false },
+      ],
+      error: null,
+    }));
     exhibitsSelect.mockReturnValue({
       in: async () => ({ data: [], error: null }),
     });
@@ -282,9 +291,7 @@ describe("listRecentCases", () => {
     caseAudioSelect.mockReturnValue({
       in: async () => ({ data: [{ case_id: "case_needs_transcript" }], error: null }),
     });
-    transcriptsSelect.mockReturnValue({
-      in: async () => ({ data: [], error: null }),
-    });
+    transcriptsSelect.mockReturnValue(buildTranscriptStatusChain({ data: [], error: null }));
     exhibitsSelect.mockReturnValue({
       in: async () => ({ data: [], error: null }),
     });
@@ -297,6 +304,41 @@ describe("listRecentCases", () => {
         case_id: "case_needs_transcript",
         stage: "creation",
         hasAudio: true,
+        hasTranscript: false,
+      }),
+    ]);
+  });
+
+  it("ignores non-completed transcript rows when deciding workspace readiness", async () => {
+    casesSelect.mockReturnValue({
+      order: () => ({
+        limit: async () => ({
+          data: [{
+            case_id: "case_incomplete_transcript",
+            stage: "workspace",
+            updated_at: "2026-06-17T16:00:00.000Z",
+            payload: {},
+          }],
+          error: null,
+        }),
+      }),
+    });
+
+    caseAudioSelect.mockReturnValue({
+      in: async () => ({ data: [{ case_id: "case_incomplete_transcript" }], error: null }),
+    });
+    transcriptsSelect.mockReturnValue(buildTranscriptStatusChain({ data: [], error: null }));
+    exhibitsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    certificationsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+
+    await expect(listRecentCases()).resolves.toEqual([
+      expect.objectContaining({
+        case_id: "case_incomplete_transcript",
+        stage: "creation",
         hasTranscript: false,
       }),
     ]);
