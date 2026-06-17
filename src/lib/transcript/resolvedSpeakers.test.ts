@@ -90,4 +90,26 @@ describe("resolvedSpeakers", () => {
     expect(resolved).toHaveLength(1);
     expect(isResolvedSpeakerMappingComplete(resolved)).toBe(true);
   });
+
+  it("treats raw fallback participants as unresolved even when they carry a role and label", () => {
+    const resolved = buildResolvedSpeakerViews([
+      buildRawSpeaker({
+        speaker_id: "spk_001",
+        speaker_index: 1,
+        display_name: "THE REPORTER",
+        speaker_label: "THE REPORTER",
+        assigned_name: "THE REPORTER",
+        speaker_role: "reporter",
+      }),
+    ], []);
+
+    expect(resolved).toEqual([
+      expect.objectContaining({
+        participantId: "raw:spk_001",
+        display_name: "THE REPORTER",
+        role: "REPORTER",
+      }),
+    ]);
+    expect(isResolvedSpeakerMappingComplete(resolved)).toBe(false);
+  });
 });

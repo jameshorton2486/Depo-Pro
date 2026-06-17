@@ -1,5 +1,6 @@
 import type { Speaker } from "../../api/types";
 import type { TranscriptSpeakerRow } from "../../api/transcriptRepository";
+import { isUnresolvedSpeakerLabel } from "./speakerIdentity";
 import { resolveSpeakers } from "./speakerResolution.ts";
 import type { Database } from "../../types/database";
 
@@ -52,7 +53,12 @@ export function buildParticipantId(
 
 export function isResolvedSpeakerMappingComplete(speakers: ResolvedSpeakerView[]): boolean {
   return speakers.length > 0 && speakers.every((speaker) => {
-    return speaker.display_name.trim().length > 0 && Boolean(speaker.role);
+    return (
+      !speaker.participantId.startsWith("raw:")
+      && speaker.display_name.trim().length > 0
+      && !isUnresolvedSpeakerLabel(speaker.display_name)
+      && Boolean(speaker.role)
+    );
   });
 }
 

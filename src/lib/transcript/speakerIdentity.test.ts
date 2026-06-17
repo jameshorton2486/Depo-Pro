@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { EditorDocument } from "../../api/types";
 import { emptyCaseRecord } from "../../types/case";
 import type { ResolvedSpeakerView } from "./resolvedSpeakers";
-import { buildTranscriptSpeakerIdentityMap, isGenericSpeakerLabel } from "./speakerIdentity";
+import {
+  buildTranscriptSpeakerIdentityMap,
+  buildUnresolvedSpeakerLabel,
+  isGenericSpeakerLabel,
+} from "./speakerIdentity";
 
 function buildRecord() {
   const record = emptyCaseRecord("case_identity", "2026-06-16T12:00:00.000Z");
@@ -157,8 +161,43 @@ describe("speakerIdentity", () => {
   it("keeps generic fallbacks when no deterministic case metadata exists", () => {
     const identities = buildTranscriptSpeakerIdentityMap(buildDocument(), RESOLVED_SPEAKERS, null);
 
-    expect(identities.get("spk-attorney-q")?.transcriptLabel).toBe("SPEAKER 1");
-    expect(identities.get("spk-witness")?.transcriptLabel).toBe("THE WITNESS");
+    expect(identities.get("spk-reporter")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(0));
+    expect(identities.get("spk-attorney-q")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(1));
+    expect(identities.get("spk-witness")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(2));
+  });
+
+  it("preserves an explicit reporter label without defaulting generic reporter-role clusters", () => {
+    const document = buildDocument();
+    document.speakers = [
+      { speaker_id: "spk-reporter-explicit", display_name: "THE REPORTER", deepgram_speaker: 0, role: "REPORTER" },
+      { speaker_id: "spk-reporter-generic", display_name: "Speaker 9", deepgram_speaker: 9, role: "REPORTER" },
+    ];
+    document.utterances = [];
+    document.words = [];
+
+    const identities = buildTranscriptSpeakerIdentityMap(document, [
+      {
+        speaker_id: "raw:spk-reporter-explicit",
+        participantId: "raw:spk-reporter-explicit",
+        display_name: "THE REPORTER",
+        deepgram_speaker: 0,
+        role: "REPORTER",
+        rawSpeakerIds: ["spk-reporter-explicit"],
+        speakerIndices: [0],
+      },
+      {
+        speaker_id: "raw:spk-reporter-generic",
+        participantId: "raw:spk-reporter-generic",
+        display_name: "Speaker 9",
+        deepgram_speaker: 9,
+        role: "REPORTER",
+        rawSpeakerIds: ["spk-reporter-generic"],
+        speakerIndices: [9],
+      },
+    ], null);
+
+    expect(identities.get("spk-reporter-explicit")?.transcriptLabel).toBe("THE REPORTER");
+    expect(identities.get("spk-reporter-generic")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(9));
   });
 
   it("recognizes generic speaker labels", () => {

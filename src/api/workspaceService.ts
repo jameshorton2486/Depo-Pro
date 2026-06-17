@@ -30,6 +30,7 @@ import {
   isResolvedSpeakerMappingComplete,
   type ResolvedSpeakerView,
 } from "../lib/transcript/resolvedSpeakers";
+import { buildUnresolvedSpeakerLabel } from "../lib/transcript/speakerIdentity";
 import { normalizeTranscriptResponse } from "../lib/transcript/normalize";
 import type { DeepgramResponse } from "../lib/transcript/types";
 import {
@@ -1040,11 +1041,13 @@ async function persistSpeakers(
     if (payload.utterance_speaker_map) {
       for (const assignment of payload.utterance_speaker_map) {
         const speaker = payload.speakers.find((item) => item.speaker_id === assignment.speaker_id);
+        const rawSpeaker = rawSpeakerById.get(assignment.speaker_id);
         const { error: utteranceError } = await client
           .from("transcript_utterances")
           .update({
             speaker_id: assignment.speaker_id,
-            speaker_label: speaker?.display_name ?? assignment.speaker_id,
+            speaker_label: speaker?.display_name
+              ?? buildUnresolvedSpeakerLabel(rawSpeaker?.speaker_index ?? 0),
           })
           .eq("job_id", job.job_id)
           .eq("utterance_id", assignment.utterance_id);

@@ -29,11 +29,21 @@ interface AttorneyClusterMetrics {
 }
 
 const GENERIC_SPEAKER_PATTERN = /^SPEAKER\s+\d+$/i;
+const RAW_SPEAKER_ID_PATTERN = /^spk_(\d+)$/i;
+const UNRESOLVED_SPEAKER_PATTERN = /^\[UNIDENTIFIED SPEAKER \d+\]$/i;
 const QUESTION_PATTERNS = [
   /\?\s*$/,
   /^(please|would you|will you|can you|could you|did you|do you|were you|have you|has anyone|what|when|where|who|why|how)\b/i,
   /^(state|tell|describe|identify|explain|mark|read)\b/i,
 ] as const;
+
+export function buildUnresolvedSpeakerLabel(speakerIndex: number): string {
+  return `[UNIDENTIFIED SPEAKER ${speakerIndex}]`;
+}
+
+export function isUnresolvedSpeakerLabel(label: string): boolean {
+  return UNRESOLVED_SPEAKER_PATTERN.test(label.trim());
+}
 
 export function buildTranscriptSpeakerIdentityMap(
   document: EditorDocument,
@@ -58,10 +68,17 @@ export function buildTranscriptSpeakerIdentityMap(
     const participantId = resolvedSpeaker?.participantId ?? `raw:${speaker.speaker_id}`;
     const role = resolvedSpeaker?.role ?? speaker.role;
     const stageRole = adaptSpeakerRoleToStageS(role);
+    const speakerIndex = resolvedSpeaker?.speakerIndices[0] ?? speaker.deepgram_speaker;
     const candidate = record
       ? resolveIdentityCandidate(resolvedSpeaker, speaker, stageRole, record, attorneyAssignments)
       : null;
-    const transcriptLabel = buildTranscriptLabel(candidate, stageRole, resolvedSpeaker?.display_name ?? speaker.display_name);
+    const transcriptLabel = buildTranscriptLabel(
+      candidate,
+      stageRole,
+      resolvedSpeaker?.display_name ?? speaker.display_name,
+      speakerIndex,
+      Boolean(resolvedSpeaker && !resolvedSpeaker.participantId.startsWith("raw:")),
+    );
 
     identityByRawSpeakerId.set(speaker.speaker_id, {
       participantId,
@@ -283,6 +300,8 @@ function buildTranscriptLabel(
   candidate: IdentityCandidate | null,
   stageRole: StageSRole,
   fallbackLabel: string,
+  speakerIndex: number,
+  hasDeterministicResolution: boolean,
 ): string {
   if (candidate) {
     const formatted = participantLabel(candidate.stageRole, candidate.name, candidate.honorific);
@@ -302,12 +321,16 @@ function buildTranscriptLabel(
     }
   }
 
-  if (stageRole === "court_reporter") return "THE REPORTER";
-  if (stageRole === "videographer") return "THE VIDEOGRAPHER";
-  if (stageRole === "interpreter") return "THE INTERPRETER";
-  if (stageRole === "witness") return "THE WITNESS";
+  const normalizedFallback = normalizeSpeakerLabel(fallbackLabel);
+  if (hasDeterministicResolution && normalizedFallback) {
+    return normalizedFallback;
+  }
 
-  return normalizeSpeakerLabel(fallbackLabel);
+  if (isExplicitResolvedLabel(stageRole, normalizedFallback)) {
+    return normalizedFallback;
+  }
+
+  return buildUnresolvedSpeakerLabel(speakerIndex);
 }
 
 function attorneyToStageRole(attorney: CaseRecord["attorneys"][number]): StageSRole {
@@ -418,6 +441,29 @@ function normalizeName(value: string): string {
 function normalizeSpeakerLabel(label: string): string {
   const normalized = label.trim().replace(/:+$/, "").replace(/\s+/g, " ").toUpperCase();
   return normalized || "UNIDENTIFIED SPEAKER";
+}
+
+function isExplicitResolvedLabel(stageRole: StageSRole, label: string): boolean {
+  if (!label || isGenericSpeakerLabel(label) || isUnresolvedSpeakerLabel(label) || RAW_SPEAKER_ID_PATTERN.test(label)) {
+    return false;
+  }
+
+  if (/^(MR|MS|MRS|DR)\.\s+[A-Z0-9]/.test(label)) {
+    return true;
+  }
+
+  switch (stageRole) {
+    case "court_reporter":
+      return label === "THE REPORTER";
+    case "videographer":
+      return label === "THE VIDEOGRAPHER";
+    case "interpreter":
+      return label === "THE INTERPRETER";
+    case "witness":
+      return label === "THE WITNESS";
+    default:
+      return false;
+  }
 }
 
 function isNamedRole(role: StageSRole): boolean {

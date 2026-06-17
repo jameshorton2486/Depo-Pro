@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { EditorDocument } from "../../api/types";
 import { emptyCaseRecord } from "../../types/case";
+import { buildUnresolvedSpeakerLabel } from "./speakerIdentity";
 import { buildTranscriptParagraphs, buildWorkspaceParagraphs } from "./workspaceParagraphs";
 
 function makeDocument(): EditorDocument {
@@ -145,6 +146,31 @@ describe("buildWorkspaceParagraphs", () => {
         text: "Heath Thomas.",
         sourceUtteranceIds: ["utt-4"],
         utteranceId: "utt-4",
+      },
+    ]);
+  });
+
+  it("surfaces unresolved markers instead of defaulting generic speaker labels", () => {
+    const document = makeDocument();
+    document.speakers = [
+      { speaker_id: "spk-unknown", display_name: "Speaker 6", deepgram_speaker: 6, role: "OTHER" },
+    ];
+    document.utterances = [
+      { utterance_id: "utt-unknown", speaker_id: "spk-unknown", start_time: 0, end_time: 1, word_ids: ["w-unknown"] },
+    ];
+    document.words = [
+      { word_id: "w-unknown", text: "Proceed.", raw_text: "Proceed.", speaker_id: "spk-unknown", utterance_id: "utt-unknown", start_time: 0, end_time: 1, confidence: 1, reviewed: false, edited: false },
+    ];
+
+    const paragraphs = buildTranscriptParagraphs(document, [], null);
+
+    expect(paragraphs).toEqual([
+      {
+        kind: "COLLOQUY",
+        label: buildUnresolvedSpeakerLabel(6),
+        text: "Proceed.",
+        sourceUtteranceIds: ["utt-unknown"],
+        utteranceId: "utt-unknown",
       },
     ]);
   });

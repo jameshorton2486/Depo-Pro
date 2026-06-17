@@ -2,7 +2,7 @@ import type { EditorDocument, Speaker } from "../../api/types";
 import { normalizeHonorificSpacing } from "../../editor/stageS/colloquy";
 import type { CaseRecord } from "../../types/case";
 import type { ResolvedSpeakerView } from "./resolvedSpeakers";
-import { buildTranscriptSpeakerIdentityMap } from "./speakerIdentity";
+import { buildTranscriptSpeakerIdentityMap, buildUnresolvedSpeakerLabel } from "./speakerIdentity";
 
 export type WorkspaceParagraphMode = "COLLOQUY" | "Q" | "A" | "PARENTHETICAL";
 export type TranscriptParagraphKind =
@@ -150,12 +150,11 @@ function buildSpeakerViewMap(
   return new Map(document.speakers.map((speaker) => {
     const identity = identities.get(speaker.speaker_id);
     const role = identity?.role ?? speaker.role;
-    const displayName = speaker.display_name;
     return [
       speaker.speaker_id,
       {
         role,
-        label: identity?.transcriptLabel ?? speakerLabelForRole(role, displayName),
+        label: identity?.transcriptLabel ?? buildUnresolvedSpeakerLabel(speaker.deepgram_speaker),
       },
     ] satisfies [string, SpeakerView];
   }));
@@ -164,7 +163,7 @@ function buildSpeakerViewMap(
 function fallbackSpeakerView(speakerId: string): SpeakerView {
   return {
     role: undefined,
-    label: normalizeSpeakerLabel(speakerId),
+    label: buildUnresolvedSpeakerLabel(speakerIndexFromSpeakerId(speakerId)),
   };
 }
 
@@ -283,17 +282,12 @@ function buildByLine(label: string): string {
   return `BY ${normalizeSpeakerLabel(label).replace(/:+$/, "")}:`;
 }
 
-function speakerLabelForRole(
-  role: Speaker["role"] | undefined,
-  displayName: string,
-): string {
-  if (role === "REPORTER") return "THE REPORTER";
-  if (role === "INTERPRETER") return "THE INTERPRETER";
-  if (role === "WITNESS") return "THE WITNESS";
-  return normalizeSpeakerLabel(displayName);
-}
-
 function normalizeSpeakerLabel(label: string): string {
   const normalized = normalizeHonorificSpacing(label).trim().replace(/:+$/, "").replace(/\s+/g, " ").toUpperCase();
   return normalized || "UNIDENTIFIED SPEAKER";
+}
+
+function speakerIndexFromSpeakerId(speakerId: string): number {
+  const match = speakerId.match(/(\d+)$/);
+  return match ? Number.parseInt(match[1], 10) : 0;
 }
