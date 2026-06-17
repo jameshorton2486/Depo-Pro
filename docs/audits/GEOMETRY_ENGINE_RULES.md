@@ -59,9 +59,10 @@ self-corrections, resumed thoughts, and mid-word cutoffs. The **em-dash glyph `�
 the record. Recorded as conflict #3 RESOLVED in `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
 
 ### 0.4 By-line attribution format — RESOLVED
-Inline resumed-question attribution renders as `(BY MR. NUNEZ)` with **no colon after `BY`**.
-Standalone `BY MR./MS. ___:` bylines render at the **left margin**; `EXAMINATION` renders at
-**1.5″ / 2160 twips**. Recorded as conflict #4 RESOLVED in
+Inline resumed-question attribution renders as `(BY MR. NUNEZ)` with **no colon after `BY`** and
+travels at the **Q/A testimony-text position (1.0″ / 1440 twips)** with the resuming question.
+Standalone `BY MR./MS. ___:` bylines render at the **left margin (0.0″ / 0 twips)**;
+`EXAMINATION` renders at **1.5″ / 2160 twips**. Recorded as conflict #4 RESOLVED in
 `TRANSCRIPT_ASSEMBLY_STANDARD.md` §16.
 
 ---
@@ -186,7 +187,10 @@ expected:  [TAB0.5]Q.[TAB1.0](BY MR. NUNEZ)  Please state your name.
 ```
 Requirements: preserve attorney identity across the interruption; maintain examination
 continuity; do **not** start a new examination heading solely because of an objection/colloquy.
-(Inline attribution punctuation resolved in §0.4.)
+The inline `(BY MR./MS. ___)` attribution sits at the **Q/A testimony-text position (1.0″ /
+1440 twips)** and travels with the question text; it is distinct from the standalone
+`BY MR./MS. ___:` byline at the **left margin (0.0″ / 0 twips)**. (Inline attribution punctuation
+resolved in §0.4.)
 
 ---
 

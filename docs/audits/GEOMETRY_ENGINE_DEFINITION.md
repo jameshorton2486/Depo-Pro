@@ -81,7 +81,10 @@ to the left margin. Navy blue in Workspace (style layer; preserved per target ca
 ### 4. Examination / BY-line geometry
 Render `EXAMINATION` and `BY MR. NUNEZ:` by **placement only** — no reconstruction.
 `EXAMINATION` is bold all-caps at **1.5″ / 2160 twips**. `BY MR. NUNEZ:` is bold at the **left
-margin (0.0″ / 0 twips)**. Neither is centered.
+margin (0.0″ / 0 twips)**. Inline resumed-question attribution `(BY MR./MS. ___)` is not a
+standalone by-line; it rides at the **Q/A testimony-text position (1.0″ / 1440 twips)** with the
+question text. Neither form is centered; canonical rule details live in
+`GEOMETRY_ENGINE_RULES.md` §0.4 and §6.
 
 ### 5. Page geometry
 Apply 25 lines per page, line numbering, the format box, Courier New 12 pt, double spacing. This

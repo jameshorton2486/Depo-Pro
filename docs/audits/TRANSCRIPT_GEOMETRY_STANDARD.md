@@ -135,6 +135,9 @@ The Geometry Engine shapes lines by position only; it does not decide label text
   `GEOMETRY_ENGINE_RULES.md` §5; geometry owns only the 1.5-inch position and the two-space gap.)
 - **`EXAMINATION` header:** rendered at **1.5″ / 2160 twips**, bold all-caps.
 - **`BY MR./MS. ___:` byline:** rendered at the **left margin (0.0″ / 0 twips)**, bold.
+- **Inline `(BY MR./MS. ___)` attribution:** when it rides with a resumed `Q.`, it sits at the
+  **Q/A testimony-text position (1.0″ / 1440 twips)** rather than at the margin; see
+  `GEOMETRY_ENGINE_RULES.md` §6.
 
 ---
 
@@ -213,6 +216,8 @@ col:   0.0"                  0.5"          1.0"                        1.5"
 - `Q.`/`A.` markers at 0.5″; testimony text at 1.0″.
 - The wrapped question line continues at **1.0″** — Q/A continuation (§6).
 - Speaker label and `EXAMINATION` header at **1.5″**; `BY MR./MS. ___:` at the left margin.
+- Inline resumed-question `(BY MR./MS. ___)` attribution, when present, travels at **1.0″** with
+  the `Q.` text rather than at the left margin.
 - The parenthetical wraps but each line holds the 1.5″ indent — block indent (§6).
 - Two spaces after each sentence-ending mark and after the speaker-label colon (the *spacing* is
   geometry-relevant; the punctuation *rules* live in `MORSONS_TRANSCRIPT_RULES.md`).
