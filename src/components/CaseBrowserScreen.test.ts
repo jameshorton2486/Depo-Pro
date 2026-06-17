@@ -29,6 +29,8 @@ describe("CaseCard speaker-map badge", () => {
     const html = renderToStaticMarkup(createElement(CaseCard, {
       summary: buildSummary({ speakerMapConfirmed: false }),
       onOpen: vi.fn(async () => undefined),
+      onDelete: vi.fn(async () => undefined),
+      deleting: false,
     }));
 
     expect(html).toContain("Speakers: Unconfirmed");
@@ -38,8 +40,21 @@ describe("CaseCard speaker-map badge", () => {
     const html = renderToStaticMarkup(createElement(CaseCard, {
       summary: buildSummary({ speakerMapConfirmed: true }),
       onOpen: vi.fn(async () => undefined),
+      onDelete: vi.fn(async () => undefined),
+      deleting: false,
     }));
 
     expect(html).not.toContain("Speakers: Unconfirmed");
+  });
+
+  it("renders a delete control for each case card", () => {
+    const html = renderToStaticMarkup(createElement(CaseCard, {
+      summary: buildSummary(),
+      onOpen: vi.fn(async () => undefined),
+      onDelete: vi.fn(async () => undefined),
+      deleting: false,
+    }));
+
+    expect(html).toContain("Delete case case_123");
   });
 });

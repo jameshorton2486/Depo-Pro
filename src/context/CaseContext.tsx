@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createCase } from "../api/caseService";
+import { createCase, deriveAccessibleCaseStage } from "../api/caseService";
 import { loadCaseBundle, type CaseBundle } from "../api/caseLoadService";
 import type { AppStage } from "./StageContext";
 import { CaseContext } from "./caseContextShared";
@@ -66,16 +66,24 @@ async function resolveLaunch(caseId: string): Promise<{
   provenance: CaseBundle["provenance"];
 } | null> {
   const bundle = await loadCaseBundle(caseId);
-  const record = bundle?.record ?? null;
+  if (!bundle) {
+    return null;
+  }
+
+  const record = bundle.record;
   if (!record || isArchivedRecord(record)) {
     return null;
   }
 
   return {
     caseId: record.case_id,
-    stage: record.stage as AppStage,
+    stage: deriveAccessibleCaseStage(
+      record.stage,
+      bundle.audio.length > 0,
+      bundle.transcripts.length > 0,
+    ) as AppStage,
     record,
-    provenance: bundle?.provenance ?? [],
+    provenance: bundle.provenance,
   };
 }
 
@@ -214,6 +222,14 @@ export function CaseProvider({
     await requestIntent({ type: "browser" });
   }, [requestIntent]);
 
+  const adoptCaseRecord = useCallback((
+    record: CaseRecord,
+    stage?: AppStage | null,
+    provenance: CaseBundle["provenance"] = [],
+  ) => {
+    setActiveCase(record.case_id, stage ?? (record.stage as AppStage), record, provenance);
+  }, [setActiveCase]);
+
   const registerNavigationGuard = useCallback((guard: NavigationGuard | null) => {
     guardRef.current = guard;
   }, []);
@@ -266,6 +282,7 @@ export function CaseProvider({
     setBrowserQuery,
     openCase,
     createAndOpen,
+    adoptCaseRecord,
     showBrowser,
     registerNavigationGuard,
     switchDialog: {
@@ -283,6 +300,7 @@ export function CaseProvider({
     activeRecord,
     activeStage,
     browserQuery,
+    adoptCaseRecord,
     cancelSwitch,
     createAndOpen,
     dialogBusy,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FileAudio2, FileSearch, FolderOpen, ListMusic, Plus, Search } from "lucide-react";
-import { listRecentCases, type CaseBrowserSummary } from "../api/caseService";
+import { AlertTriangle, FileAudio2, FileSearch, FolderOpen, ListMusic, Plus, Search, Trash2 } from "lucide-react";
+import { deleteCase, listRecentCases, type CaseBrowserSummary } from "../api/caseService";
 import { caseStatusFromStage, matchesCaseSearch } from "../lib/caseLifecycle";
 import { useCase } from "../context/useCase";
 import { AuthStatusChip } from "./AuthGate/AuthGate";
@@ -31,9 +31,13 @@ function StatusChip({
 export function CaseCard({
   summary,
   onOpen,
+  onDelete,
+  deleting,
 }: {
   summary: CaseBrowserSummary;
   onOpen: (summary: CaseBrowserSummary) => Promise<void>;
+  onDelete: (summary: CaseBrowserSummary) => Promise<void>;
+  deleting: boolean;
 }) {
   const updatedLabel = new Intl.DateTimeFormat(undefined, {
     month: "short",
@@ -43,19 +47,26 @@ export function CaseCard({
   }).format(new Date(summary.updated_at));
 
   return (
-    <button
-      type="button"
-      onClick={() => void onOpen(summary)}
-      className="flex w-full flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-    >
+    <div className="flex h-full flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-300 hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900">{summary.caseName}</p>
           <p className="mt-1 truncate font-mono text-[11px] text-slate-500">{summary.case_id}</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <StatusChip stage={summary.stage} certified={summary.certified} />
-          <SpeakerMapStatusBadge confirmed={summary.speakerMapConfirmed} />
+        <div className="flex items-start gap-2">
+          <div className="flex flex-col items-end gap-2">
+            <StatusChip stage={summary.stage} certified={summary.certified} />
+            <SpeakerMapStatusBadge confirmed={summary.speakerMapConfirmed} />
+          </div>
+          <button
+            type="button"
+            aria-label={`Delete case ${summary.case_id}`}
+            onClick={() => void onDelete(summary)}
+            disabled={deleting}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
       </div>
 
@@ -79,8 +90,17 @@ export function CaseCard({
         </span>
       </div>
 
-      <p className="text-[11px] text-slate-400">Updated {updatedLabel}</p>
-    </button>
+      <div className="mt-auto flex items-center justify-between gap-3">
+        <p className="text-[11px] text-slate-400">Updated {updatedLabel}</p>
+        <button
+          type="button"
+          onClick={() => void onOpen(summary)}
+          className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          Open
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -91,6 +111,8 @@ export function CaseBrowserScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +152,30 @@ export function CaseBrowserScreen() {
   async function handleOpen(summary: CaseBrowserSummary) {
     setOpenError(null);
     await openCase(summary.case_id, summary.stage);
+  }
+
+  async function handleDelete(summary: CaseBrowserSummary) {
+    setDeleteError(null);
+    const confirmed = window.confirm(
+      `Delete case ${summary.case_id}? This removes the saved case and its linked files, audio, transcript data, and exports.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingCaseId(summary.case_id);
+
+    try {
+      await deleteCase(summary.case_id);
+      setRecentCases((previous) => previous.filter((item) => item.case_id !== summary.case_id));
+      if (openCaseId.trim() === summary.case_id) {
+        setOpenCaseId("");
+      }
+    } catch (deleteCaseError) {
+      setDeleteError(deleteCaseError instanceof Error ? deleteCaseError.message : String(deleteCaseError));
+    } finally {
+      setDeletingCaseId(null);
+    }
   }
 
   async function handleOpenById() {
@@ -207,6 +253,12 @@ export function CaseBrowserScreen() {
               {openError}
             </div>
           )}
+          {deleteError && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <AlertTriangle size={14} />
+              {deleteError}
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -232,7 +284,13 @@ export function CaseBrowserScreen() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filteredCases.map((summary) => (
-              <CaseCard key={summary.case_id} summary={summary} onOpen={handleOpen} />
+              <CaseCard
+                key={summary.case_id}
+                summary={summary}
+                onOpen={handleOpen}
+                onDelete={handleDelete}
+                deleting={deletingCaseId === summary.case_id}
+              />
             ))}
           </div>
         )}

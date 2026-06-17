@@ -19,6 +19,7 @@ export interface CaseContextValue {
   setBrowserQuery: (value: string) => void;
   openCase: (caseId: string, stageHint?: AppStage | null) => Promise<void>;
   createAndOpen: () => Promise<void>;
+  adoptCaseRecord: (record: CaseRecord, stage?: AppStage | null, provenance?: CaseBundle["provenance"]) => void;
   showBrowser: () => Promise<void>;
   registerNavigationGuard: (guard: NavigationGuard | null) => void;
   switchDialog: {

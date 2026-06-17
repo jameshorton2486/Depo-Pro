@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateCaseId, listRecentCases } from "./caseService";
+import { deriveAccessibleCaseStage, generateCaseId, listRecentCases } from "./caseService";
 import { emptyCaseRecord } from "../types/case";
 
 const casesSelect = vi.fn();
@@ -195,7 +195,7 @@ describe("listRecentCases", () => {
     await expect(listRecentCases()).resolves.toEqual([
       {
         case_id: "case_sparse",
-        stage: "creation",
+        stage: "intake",
         updated_at: "2026-06-05T19:10:00.000Z",
         archived: false,
         caseName: "Untitled Case",
@@ -262,5 +262,60 @@ describe("listRecentCases", () => {
         speakerMapConfirmed: false,
       },
     ]);
+  });
+
+  it("falls back to creation when a workspace case still has audio but no transcript", async () => {
+    casesSelect.mockReturnValue({
+      order: () => ({
+        limit: async () => ({
+          data: [{
+            case_id: "case_needs_transcript",
+            stage: "workspace",
+            updated_at: "2026-06-17T15:00:00.000Z",
+            payload: {},
+          }],
+          error: null,
+        }),
+      }),
+    });
+
+    caseAudioSelect.mockReturnValue({
+      in: async () => ({ data: [{ case_id: "case_needs_transcript" }], error: null }),
+    });
+    transcriptsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    exhibitsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+    certificationsSelect.mockReturnValue({
+      in: async () => ({ data: [], error: null }),
+    });
+
+    await expect(listRecentCases()).resolves.toEqual([
+      expect.objectContaining({
+        case_id: "case_needs_transcript",
+        stage: "creation",
+        hasAudio: true,
+        hasTranscript: false,
+      }),
+    ]);
+  });
+});
+
+describe("deriveAccessibleCaseStage", () => {
+  it("routes transcript-less late-stage cases back to creation when audio exists", () => {
+    expect(deriveAccessibleCaseStage("workspace", true, false)).toBe("creation");
+    expect(deriveAccessibleCaseStage("export", true, false)).toBe("creation");
+  });
+
+  it("routes transcript-less cases with no audio back to intake", () => {
+    expect(deriveAccessibleCaseStage("workspace", false, false)).toBe("intake");
+    expect(deriveAccessibleCaseStage("creation", false, false)).toBe("intake");
+  });
+
+  it("preserves the saved stage when a transcript exists", () => {
+    expect(deriveAccessibleCaseStage("workspace", true, true)).toBe("workspace");
+    expect(deriveAccessibleCaseStage("export", false, true)).toBe("export");
   });
 });

@@ -1365,7 +1365,7 @@ export function IntakeScreen({ jobId }: Props) {
   } = useIntake();
   const { state: keytermState } = useKeyterms();
   const { setStage } = useStage();
-  const { registerNavigationGuard } = useCase();
+  const { adoptCaseRecord, registerNavigationGuard } = useCase();
   const mockMode = isMockMode();
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1534,12 +1534,18 @@ export function IntakeScreen({ jobId }: Props) {
         const savedRecord = await saveCase(withSaveMeta(currentRecord, source, saveSeq, startedAt));
         setPersisted(true);
         setSavedAt(savedRecord.updated_at);
-        if (editSeqRef.current === saveSeq) {
+        if (savedRecord.case_id !== currentRecord.case_id) {
+          adoptCaseRecord(savedRecord, "intake");
+        } else if (editSeqRef.current === saveSeq) {
           loadCase(savedRecord);
           setSaveState("saved");
           setSaveError(null);
         } else {
           setSaveState("idle");
+        }
+        if (savedRecord.case_id !== currentRecord.case_id) {
+          setSaveState("saved");
+          setSaveError(null);
         }
         return savedRecord;
       } catch (error) {
@@ -1560,7 +1566,7 @@ export function IntakeScreen({ jobId }: Props) {
     })();
     savePromiseRef.current = savePromise;
     return savePromise;
-  }, [clearAutosaveTimer, loadCase]);
+  }, [adoptCaseRecord, clearAutosaveTimer, loadCase]);
 
   const handleSave = useCallback(async () => {
     try {

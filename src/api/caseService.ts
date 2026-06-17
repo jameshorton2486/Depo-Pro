@@ -1,5 +1,8 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { getSupabaseClient } from "../lib/supabase";
 import { normalizeCaseRecord } from "../lib/normalizeCaseRecord";
+import type { Database } from "../types/database";
 import { emptyCaseRecord, type CaseRecord } from "../types/case";
 
 type CaseRow = {
@@ -12,6 +15,63 @@ type CaseRow = {
 
 type CaseCertificationRow = {
   case_id: string;
+};
+
+type CaseStorageRow = {
+  storage_path: string | null;
+};
+
+type CaseTranscriptIdRow = {
+  transcript_id: string;
+};
+
+type CaseServiceDatabase = Omit<Database, "public"> & {
+  public: Omit<Database["public"], "Tables"> & {
+    Tables: Database["public"]["Tables"] & {
+      case_files: {
+        Row: {
+          case_id: string;
+          storage_path: string | null;
+        };
+        Insert: {
+          case_id: string;
+          storage_path: string | null;
+        };
+        Update: {
+          case_id?: string;
+          storage_path?: string | null;
+        };
+        Relationships: [];
+      };
+      transcription_jobs: {
+        Row: {
+          case_id: string;
+        };
+        Insert: {
+          case_id: string;
+        };
+        Update: {
+          case_id?: string;
+        };
+        Relationships: [];
+      };
+      transcript_audit_log: {
+        Row: {
+          case_id: string;
+          transcript_id: string;
+        };
+        Insert: {
+          case_id: string;
+          transcript_id: string;
+        };
+        Update: {
+          case_id?: string;
+          transcript_id?: string;
+        };
+        Relationships: [];
+      };
+    };
+  };
 };
 
 type CaseIndicatorSummary = {
@@ -46,6 +106,10 @@ type MinimalWitness = {
   name?: MinimalExtractedField | null;
 };
 
+function getExtendedClient(client: SupabaseClient<Database>): SupabaseClient<CaseServiceDatabase> {
+  return client as unknown as SupabaseClient<CaseServiceDatabase>;
+}
+
 function toCaseRow(record: CaseRecord): CaseRow {
   return {
     case_id: record.case_id,
@@ -63,6 +127,188 @@ function withSaveTimestamp(record: CaseRecord, now: string): CaseRecord {
   };
 }
 
+function normalizeIdentityValue(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function getCaseIdentity(record: CaseRecord | unknown): { caseNumber: string; witnessName: string } | null {
+  const summary = getSummaryText(record);
+  const caseNumber = normalizeIdentityValue(summary.caseNumber);
+  const witnessName = normalizeIdentityValue(summary.witnessName);
+
+  if (!caseNumber || !witnessName) {
+    return null;
+  }
+
+  return { caseNumber, witnessName };
+}
+
+async function findMatchingCaseId(
+  client: SupabaseClient<Database>,
+  record: CaseRecord,
+): Promise<string | null> {
+  const identity = getCaseIdentity(record);
+  if (!identity) {
+    return null;
+  }
+
+  const { data, error } = await client
+    .from("cases")
+    .select("case_id, payload")
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  for (const row of data ?? []) {
+    if (row.case_id === record.case_id || parseArchivedFlag(row.payload)) {
+      continue;
+    }
+
+    const candidate = getCaseIdentity(row.payload);
+    if (!candidate) {
+      continue;
+    }
+
+    if (candidate.caseNumber === identity.caseNumber && candidate.witnessName === identity.witnessName) {
+      return row.case_id;
+    }
+  }
+
+  return null;
+}
+
+async function removeStoragePaths(
+  client: SupabaseClient<Database>,
+  paths: string[],
+): Promise<void> {
+  if (paths.length === 0) {
+    return;
+  }
+
+  const { error } = await client.storage.from("case-files").remove(paths);
+  if (error) {
+    throw error;
+  }
+}
+
+async function deleteRowsByTranscriptIds(
+  client: SupabaseClient<Database>,
+  transcriptIds: string[],
+): Promise<void> {
+  if (transcriptIds.length === 0) {
+    return;
+  }
+
+  const operations = await Promise.all([
+    client.from("speaker_resolution_current").delete().in("transcript_id", transcriptIds),
+    client.from("speaker_resolution_history").delete().in("transcript_id", transcriptIds),
+    client.from("transcript_review_state").delete().in("transcript_id", transcriptIds),
+    client.from("transcript_suggestions").delete().in("transcript_id", transcriptIds),
+    client.from("transcript_words").delete().in("transcript_id", transcriptIds),
+    client.from("transcript_utterances").delete().in("transcript_id", transcriptIds),
+    client.from("transcript_speakers").delete().in("transcript_id", transcriptIds),
+    client.from("transcript_audit_log").delete().in("transcript_id", transcriptIds),
+  ]);
+
+  for (const result of operations) {
+    if (result.error) {
+      throw result.error;
+    }
+  }
+}
+
+async function purgeCaseArtifacts(
+  client: SupabaseClient<Database>,
+  caseId: string,
+  includeCaseRow: boolean,
+): Promise<void> {
+  const extendedClient = getExtendedClient(client);
+  const [fileResult, audioResult, transcriptResult] = await Promise.all([
+    extendedClient.from("case_files").select("storage_path").eq("case_id", caseId),
+    client.from("case_audio").select("storage_path").eq("case_id", caseId),
+    client.from("transcripts").select("transcript_id").eq("case_id", caseId),
+  ]);
+
+  if (fileResult.error) throw fileResult.error;
+  if (audioResult.error) throw audioResult.error;
+  if (transcriptResult.error) throw transcriptResult.error;
+
+  const storagePaths = [
+    ...(fileResult.data ?? []),
+    ...(audioResult.data ?? []),
+  ]
+    .map((row) => (row as CaseStorageRow).storage_path)
+    .filter((path): path is string => typeof path === "string" && path.length > 0);
+
+  const transcriptIds = (transcriptResult.data ?? []).map((row) => (row as CaseTranscriptIdRow).transcript_id);
+
+  await deleteRowsByTranscriptIds(client, transcriptIds);
+
+  const rowDeletes = await Promise.all([
+    client.from("exports").delete().eq("case_id", caseId),
+    client.from("case_certifications").delete().eq("case_id", caseId),
+    client.from("case_exhibits").delete().eq("case_id", caseId),
+    client.from("field_provenance").delete().eq("case_id", caseId),
+    extendedClient.from("transcription_jobs").delete().eq("case_id", caseId),
+    client.from("transcripts").delete().eq("case_id", caseId),
+    extendedClient.from("transcript_audit_log").delete().eq("case_id", caseId),
+    extendedClient.from("case_files").delete().eq("case_id", caseId),
+    client.from("case_audio").delete().eq("case_id", caseId),
+  ]);
+
+  for (const result of rowDeletes) {
+    if (result.error) {
+      throw result.error;
+    }
+  }
+
+  await removeStoragePaths(client, storagePaths);
+
+  if (includeCaseRow) {
+    const { error } = await client.from("cases").delete().eq("case_id", caseId);
+    if (error) {
+      throw error;
+    }
+  }
+}
+
+async function reassignCaseArtifacts(
+  client: SupabaseClient<Database>,
+  sourceCaseId: string,
+  targetCaseId: string,
+): Promise<void> {
+  if (sourceCaseId === targetCaseId) {
+    return;
+  }
+
+  const extendedClient = getExtendedClient(client);
+
+  const operations = await Promise.all([
+    extendedClient.from("case_files").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    client.from("case_audio").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    client.from("field_provenance").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    client.from("case_exhibits").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    client.from("case_certifications").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    client.from("exports").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    extendedClient.from("transcription_jobs").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    client.from("transcripts").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+    extendedClient.from("transcript_audit_log").update({ case_id: targetCaseId }).eq("case_id", sourceCaseId),
+  ]);
+
+  for (const result of operations) {
+    if (result.error) {
+      throw result.error;
+    }
+  }
+
+  const { error } = await client.from("cases").delete().eq("case_id", sourceCaseId);
+  if (error) {
+    throw error;
+  }
+}
+
 export function generateCaseId(now = new Date(), random = Math.random()): string {
   const date = [
     now.getUTCFullYear(),
@@ -73,16 +319,47 @@ export function generateCaseId(now = new Date(), random = Math.random()): string
   return `case_${date}_${suffix}`;
 }
 
+export function deriveAccessibleCaseStage(
+  stage: CaseRecord["stage"],
+  hasAudio: boolean,
+  hasTranscript: boolean,
+): CaseRecord["stage"] {
+  if (hasTranscript) {
+    return stage;
+  }
+
+  if (stage === "intake" || stage === "creation") {
+    return hasAudio ? "creation" : "intake";
+  }
+
+  return hasAudio ? "creation" : "intake";
+}
+
 export async function saveCase(record: CaseRecord): Promise<CaseRecord> {
   const client = await getSupabaseClient("saveCase");
   const now = new Date().toISOString();
-  const nextRecord = withSaveTimestamp(record, now);
+  const existingCaseId = await findMatchingCaseId(client, record);
+
+  if (existingCaseId && existingCaseId !== record.case_id) {
+    await purgeCaseArtifacts(client, existingCaseId, false);
+    await reassignCaseArtifacts(client, record.case_id, existingCaseId);
+  }
+
+  const nextRecord = withSaveTimestamp({
+    ...record,
+    case_id: existingCaseId ?? record.case_id,
+  }, now);
   const { error } = await client
     .from("cases")
     .upsert(toCaseRow(nextRecord), { onConflict: "case_id" });
 
   if (error) throw error;
   return nextRecord;
+}
+
+export async function deleteCase(caseId: string): Promise<void> {
+  const client = await getSupabaseClient("deleteCase");
+  await purgeCaseArtifacts(client, caseId, true);
 }
 
 export async function loadCase(caseId: string): Promise<CaseRecord | null> {
@@ -261,7 +538,7 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
 
     return {
       case_id: row.case_id,
-      stage: row.stage,
+      stage: deriveAccessibleCaseStage(row.stage, indicator.hasAudio, indicator.hasTranscript),
       updated_at: row.updated_at,
       archived: false,
       caseName: summary.caseName,
