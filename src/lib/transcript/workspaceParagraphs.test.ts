@@ -110,6 +110,7 @@ describe("buildWorkspaceParagraphs", () => {
         label: "THE REPORTER",
         text: "Good afternoon.",
         sourceUtteranceIds: ["utt-1"],
+        sourceWordIds: ["w-1", "w-2"],
         utteranceId: "utt-1",
       },
       {
@@ -117,6 +118,7 @@ describe("buildWorkspaceParagraphs", () => {
         label: "MR. NUNEZ",
         text: "Of course.",
         sourceUtteranceIds: ["utt-2"],
+        sourceWordIds: ["w-3", "w-4"],
         utteranceId: "utt-2",
       },
       {
@@ -124,6 +126,7 @@ describe("buildWorkspaceParagraphs", () => {
         label: "",
         text: "EXAMINATION",
         sourceUtteranceIds: ["utt-3"],
+        sourceWordIds: ["w-5", "w-6", "w-7", "w-8", "w-9", "w-10"],
         utteranceId: null,
       },
       {
@@ -131,6 +134,7 @@ describe("buildWorkspaceParagraphs", () => {
         label: "",
         text: "BY MR. NUNEZ:",
         sourceUtteranceIds: ["utt-3"],
+        sourceWordIds: ["w-5", "w-6", "w-7", "w-8", "w-9", "w-10"],
         utteranceId: null,
       },
       {
@@ -138,6 +142,7 @@ describe("buildWorkspaceParagraphs", () => {
         label: "Q.",
         text: "Please state your name for the record.",
         sourceUtteranceIds: ["utt-3"],
+        sourceWordIds: ["w-5", "w-6", "w-7", "w-8", "w-9", "w-10"],
         utteranceId: "utt-3",
       },
       {
@@ -145,9 +150,75 @@ describe("buildWorkspaceParagraphs", () => {
         label: "A.",
         text: "Heath Thomas.",
         sourceUtteranceIds: ["utt-4"],
+        sourceWordIds: ["w-11", "w-12"],
         utteranceId: "utt-4",
       },
     ]);
+  });
+
+  it("merges consecutive same-speaker answer utterances into one paragraph while preserving provenance", () => {
+    const document = makeDocument();
+    document.utterances = [
+      { utterance_id: "utt-1", speaker_id: "spk-attorney", start_time: 0, end_time: 1, word_ids: ["w-1", "w-2", "w-3", "w-4"] },
+      { utterance_id: "utt-2", speaker_id: "spk-witness", start_time: 1, end_time: 2, word_ids: ["w-5", "w-6"] },
+      { utterance_id: "utt-3", speaker_id: "spk-witness", start_time: 2, end_time: 3, word_ids: ["w-7", "w-8"] },
+      { utterance_id: "utt-4", speaker_id: "spk-reporter", start_time: 3, end_time: 4, word_ids: ["w-9"] },
+      { utterance_id: "utt-5", speaker_id: "spk-witness", start_time: 4, end_time: 5, word_ids: ["w-10", "w-11"] },
+    ];
+    document.words = [
+      { word_id: "w-1", text: "Please", raw_text: "Please", speaker_id: "spk-attorney", utterance_id: "utt-1", start_time: 0, end_time: 0.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-2", text: "state", raw_text: "state", speaker_id: "spk-attorney", utterance_id: "utt-1", start_time: 0.1, end_time: 0.2, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-3", text: "your", raw_text: "your", speaker_id: "spk-attorney", utterance_id: "utt-1", start_time: 0.2, end_time: 0.3, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-4", text: "address.", raw_text: "address.", speaker_id: "spk-attorney", utterance_id: "utt-1", start_time: 0.3, end_time: 0.4, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-5", text: "12135", raw_text: "12135", speaker_id: "spk-witness", utterance_id: "utt-2", start_time: 1, end_time: 1.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-6", text: "Stoney", raw_text: "Stoney", speaker_id: "spk-witness", utterance_id: "utt-2", start_time: 1.1, end_time: 1.2, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-7", text: "Glen,", raw_text: "Glen,", speaker_id: "spk-witness", utterance_id: "utt-3", start_time: 2, end_time: 2.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-8", text: "Texas.", raw_text: "Texas.", speaker_id: "spk-witness", utterance_id: "utt-3", start_time: 2.1, end_time: 2.2, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-9", text: "(Recess)", raw_text: "(Recess)", speaker_id: "spk-reporter", utterance_id: "utt-4", start_time: 3, end_time: 3.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-10", text: "San", raw_text: "San", speaker_id: "spk-witness", utterance_id: "utt-5", start_time: 4, end_time: 4.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-11", text: "Antonio.", raw_text: "Antonio.", speaker_id: "spk-witness", utterance_id: "utt-5", start_time: 4.1, end_time: 4.2, confidence: 1, reviewed: false, edited: false },
+    ];
+
+    const record = emptyCaseRecord("case_workspace", "2026-06-16T12:00:00.000Z");
+    record.reporter.name.value = "Mia Bardot";
+    record.witnesses = [{
+      witness_id: "wit_001",
+      name: { value: "Heath Thomas", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "WITNESS", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      title: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      employer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      prefix_suffix: "Mr",
+      party_affiliation: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      is_corporate_rep: false,
+      corporate_entity: null,
+      read_and_sign: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      spelling_corrections: [],
+      email: null,
+      phone: null,
+    }];
+
+    const paragraphs = buildTranscriptParagraphs(document, [], record);
+
+    expect(paragraphs.map((paragraph) => paragraph.kind)).toEqual(["EXAMINATION", "BY_LINE", "Q", "A", "PARENTHETICAL", "A"]);
+    expect(paragraphs[3]).toMatchObject({
+      kind: "A",
+      label: "A.",
+      text: "12135 Stoney Glen, Texas.",
+      sourceUtteranceIds: ["utt-2", "utt-3"],
+      sourceWordIds: ["w-5", "w-6", "w-7", "w-8"],
+      utteranceId: "utt-2",
+    });
+    expect(paragraphs[5]).toMatchObject({
+      kind: "A",
+      text: "San Antonio.",
+      sourceUtteranceIds: ["utt-5"],
+      sourceWordIds: ["w-10", "w-11"],
+    });
+
+    const sourceWordIds = new Set(paragraphs.flatMap((paragraph) => paragraph.sourceWordIds));
+    expect(sourceWordIds).toEqual(new Set(document.words.map((word) => word.word_id)));
   });
 
   it("surfaces unresolved markers instead of defaulting generic speaker labels", () => {
@@ -170,6 +241,7 @@ describe("buildWorkspaceParagraphs", () => {
         label: buildUnresolvedSpeakerLabel(6),
         text: "Proceed.",
         sourceUtteranceIds: ["utt-unknown"],
+        sourceWordIds: ["w-unknown"],
         utteranceId: "utt-unknown",
       },
     ]);

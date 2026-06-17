@@ -2,6 +2,7 @@ import type { EditorDocument, Speaker } from "../../api/types";
 import { normalizeHonorificSpacing } from "../../editor/stageS/colloquy";
 import type { CaseRecord } from "../../types/case";
 import type { ResolvedSpeakerView } from "./resolvedSpeakers";
+import { applyParagraphDisplayImprovements } from "./paragraphDisplayImprovements";
 import { buildTranscriptSpeakerIdentityMap, buildUnresolvedSpeakerLabel } from "./speakerIdentity";
 
 export type WorkspaceParagraphMode = "COLLOQUY" | "Q" | "A" | "PARENTHETICAL";
@@ -22,6 +23,7 @@ export interface TranscriptParagraph {
   label: string;
   text: string;
   sourceUtteranceIds: string[];
+  sourceWordIds: string[];
   utteranceId: string | null;
 }
 
@@ -58,6 +60,17 @@ export function buildTranscriptParagraphs(
   const descriptorByUtteranceId = buildParagraphDescriptorMap(document, resolvedSpeakers, record);
   const wordById = new Map(document.words.map((word) => [word.word_id, word]));
   const paragraphs: TranscriptParagraph[] = [];
+  let pendingContentParagraph: TranscriptParagraph | null = null;
+
+  function flushPendingContentParagraph() {
+    if (!pendingContentParagraph) {
+      return;
+    }
+
+    pendingContentParagraph.text = applyParagraphDisplayImprovements(pendingContentParagraph.text);
+    paragraphs.push(pendingContentParagraph);
+    pendingContentParagraph = null;
+  }
 
   for (const utterance of document.utterances) {
     const descriptor = descriptorByUtteranceId.get(utterance.utterance_id);
@@ -71,35 +84,83 @@ export function buildTranscriptParagraphs(
       .trim();
 
     if (descriptor.examinationHeader) {
+      flushPendingContentParagraph();
       paragraphs.push({
         kind: "EXAMINATION",
         label: "",
         text: "EXAMINATION",
         sourceUtteranceIds: [utterance.utterance_id],
+        sourceWordIds: [...utterance.word_ids],
         utteranceId: null,
       });
     }
 
     if (descriptor.byLine) {
+      flushPendingContentParagraph();
       paragraphs.push({
         kind: "BY_LINE",
         label: "",
         text: descriptor.byLine,
         sourceUtteranceIds: [utterance.utterance_id],
+        sourceWordIds: [...utterance.word_ids],
         utteranceId: null,
       });
     }
 
-    paragraphs.push({
+    const nextParagraph: TranscriptParagraph = {
       kind: descriptor.mode,
       label: paragraphLabel(descriptor),
       text,
       sourceUtteranceIds: [utterance.utterance_id],
+      sourceWordIds: [...utterance.word_ids],
       utteranceId: utterance.utterance_id,
-    });
+    };
+
+    if (canMergeParagraphs(pendingContentParagraph, nextParagraph)) {
+      const currentParagraph: TranscriptParagraph = pendingContentParagraph;
+      pendingContentParagraph = {
+        ...currentParagraph,
+        text: joinParagraphText(currentParagraph.text, nextParagraph.text),
+        sourceUtteranceIds: [...currentParagraph.sourceUtteranceIds, ...nextParagraph.sourceUtteranceIds],
+        sourceWordIds: [...currentParagraph.sourceWordIds, ...nextParagraph.sourceWordIds],
+      };
+      continue;
+    }
+
+    flushPendingContentParagraph();
+    pendingContentParagraph = nextParagraph;
   }
 
+  flushPendingContentParagraph();
+
   return paragraphs;
+}
+
+function canMergeParagraphs(
+  current: TranscriptParagraph | null,
+  next: TranscriptParagraph,
+): current is TranscriptParagraph {
+  if (!current) {
+    return false;
+  }
+
+  return isMergeableContentKind(current.kind)
+    && current.kind === next.kind
+    && current.label === next.label;
+}
+
+function isMergeableContentKind(kind: TranscriptParagraphKind): kind is WorkspaceParagraphMode {
+  return kind === "COLLOQUY" || kind === "Q" || kind === "A";
+}
+
+function joinParagraphText(left: string, right: string): string {
+  if (!left) {
+    return right;
+  }
+  if (!right) {
+    return left;
+  }
+  return `${left} ${right}`.trim();
 }
 
 function paragraphLabel(descriptor: WorkspaceParagraphDescriptor): string {
