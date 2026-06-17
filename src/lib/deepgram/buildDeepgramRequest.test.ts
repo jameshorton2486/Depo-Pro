@@ -32,12 +32,14 @@ describe("buildDeepgramRequest", () => {
       computed_at: "2026-06-05T22:30:00.000Z",
       deepgram_request: {
         model: "nova-3",
+        language: "en-US",
         punctuate: "true",
         paragraphs: "true",
         diarize: "true",
         filler_words: "true",
         utterances: "true",
         smart_format: "true",
+        utt_split: "1.2",
         mip_opt_out: "true",
       },
       keyterms: [
@@ -71,9 +73,11 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("boost");
     expect(request.wireQueryString).not.toContain("category");
     expect(request.wireQueryString).not.toContain("source");
+    expect(request.wireQueryString).toContain("language=en-US");
     expect(request.wireQueryString).toContain("diarize=true");
     expect(request.wireQueryString).not.toContain("diarize_model");
     expect(request.wireQueryString).toContain("mip_opt_out=true");
+    expect(request.wireQueryString).toContain("utt_split=1.2");
   });
 
   it("caps the wire request at 100 terms and reports the cut", () => {
@@ -113,8 +117,10 @@ describe("buildDeepgramRequest", () => {
     expect(buildDeepgramRequest({ caseId: "case_defaults", keyterms: [] }).envelope.deepgram_request).toEqual(
       expect.objectContaining({
         model: "nova-3",
+        language: "en-US",
         diarize: "true",
         smart_format: "true",
+        utt_split: "1.2",
       }),
     );
   });

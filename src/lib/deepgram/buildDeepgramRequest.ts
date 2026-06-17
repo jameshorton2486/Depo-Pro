@@ -15,12 +15,14 @@ export interface DeepgramRequestPreviewEnvelope {
   computed_at: string;
   deepgram_request: {
     model: string;
+    language: string;
     punctuate: string;
     paragraphs: string;
     diarize: string;
     filler_words: string;
     utterances: string;
     smart_format: string;
+    utt_split: string;
     mip_opt_out: string;
   };
   keyterms: Array<{
@@ -44,15 +46,19 @@ export interface DeepgramRequestBuildResult {
 
 const DEEPGRAM_ENDPOINT = "https://api.deepgram.com/v1/listen";
 const MAX_KEYTERMS = 100;
+const DEEPGRAM_REQUEST_LANGUAGE = "en-US";
+const UTT_SPLIT_SECONDS = "1.2";
 
 export const DEEPGRAM_REQUEST_PARAMS = {
   model: "nova-3",
+  language: DEEPGRAM_REQUEST_LANGUAGE,
   punctuate: "true",
   paragraphs: "true",
   diarize: "true",
   filler_words: "true",
   utterances: "true",
   smart_format: "true",
+  utt_split: UTT_SPLIT_SECONDS,
   mip_opt_out: "true",
 } as const;
 
