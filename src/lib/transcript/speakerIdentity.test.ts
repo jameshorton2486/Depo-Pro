@@ -137,25 +137,19 @@ const RESOLVED_SPEAKERS: ResolvedSpeakerView[] = [
 ];
 
 describe("speakerIdentity", () => {
-  it("maps generic speaker clusters to deterministic participant-aware labels", () => {
+  it("uses only deterministic CaseRecord ties and does not auto-name generic attorney clusters", () => {
     const identities = buildTranscriptSpeakerIdentityMap(buildDocument(), RESOLVED_SPEAKERS, buildRecord());
 
     expect(identities.get("spk-reporter")).toMatchObject({
       identityKey: "reporter",
       transcriptLabel: "THE REPORTER",
     });
-    expect(identities.get("spk-attorney-q")).toMatchObject({
-      name: "Steven Nunez",
-      transcriptLabel: "NUNEZ",
-    });
     expect(identities.get("spk-witness")).toMatchObject({
       name: "Heath Thomas",
       transcriptLabel: "MR. THOMAS",
     });
-    expect(identities.get("spk-attorney-d")).toMatchObject({
-      name: "Lucia Zhan",
-      transcriptLabel: "ZHAN",
-    });
+    expect(identities.get("spk-attorney-q")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(1));
+    expect(identities.get("spk-attorney-d")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(3));
   });
 
   it("keeps generic fallbacks when no deterministic case metadata exists", () => {
@@ -198,6 +192,43 @@ describe("speakerIdentity", () => {
 
     expect(identities.get("spk-reporter-explicit")?.transcriptLabel).toBe("THE REPORTER");
     expect(identities.get("spk-reporter-generic")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(9));
+  });
+
+  it("uses the CaseRecord spelling on deterministic exact name matches", () => {
+    const document = buildDocument();
+    document.speakers = [
+      { speaker_id: "spk-attorney-exact", display_name: "Lucia Zhan", deepgram_speaker: 4, role: "ATTORNEY" },
+      { speaker_id: "spk-attorney-misspelled", display_name: "Lucia Zahn", deepgram_speaker: 5, role: "ATTORNEY" },
+    ];
+    document.utterances = [];
+    document.words = [];
+
+    const identities = buildTranscriptSpeakerIdentityMap(document, [
+      {
+        speaker_id: "raw:spk-attorney-exact",
+        participantId: "raw:spk-attorney-exact",
+        display_name: "Lucia Zhan",
+        deepgram_speaker: 4,
+        role: "ATTORNEY",
+        rawSpeakerIds: ["spk-attorney-exact"],
+        speakerIndices: [4],
+      },
+      {
+        speaker_id: "raw:spk-attorney-misspelled",
+        participantId: "raw:spk-attorney-misspelled",
+        display_name: "Lucia Zahn",
+        deepgram_speaker: 5,
+        role: "ATTORNEY",
+        rawSpeakerIds: ["spk-attorney-misspelled"],
+        speakerIndices: [5],
+      },
+    ], buildRecord());
+
+    expect(identities.get("spk-attorney-exact")).toMatchObject({
+      name: "Lucia Zhan",
+      transcriptLabel: "ZHAN",
+    });
+    expect(identities.get("spk-attorney-misspelled")?.transcriptLabel).toBe(buildUnresolvedSpeakerLabel(5));
   });
 
   it("recognizes generic speaker labels", () => {

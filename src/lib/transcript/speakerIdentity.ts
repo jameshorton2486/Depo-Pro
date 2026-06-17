@@ -22,20 +22,9 @@ interface IdentityCandidate {
   honorific: string;
 }
 
-interface AttorneyClusterMetrics {
-  participantId: string;
-  questionCount: number;
-  rawSpeakerIds: string[];
-}
-
 const GENERIC_SPEAKER_PATTERN = /^SPEAKER\s+\d+$/i;
 const RAW_SPEAKER_ID_PATTERN = /^spk_(\d+)$/i;
 const UNRESOLVED_SPEAKER_PATTERN = /^\[UNIDENTIFIED SPEAKER \d+\]$/i;
-const QUESTION_PATTERNS = [
-  /\?\s*$/,
-  /^(please|would you|will you|can you|could you|did you|do you|were you|have you|has anyone|what|when|where|who|why|how)\b/i,
-  /^(state|tell|describe|identify|explain|mark|read)\b/i,
-] as const;
 
 export function buildUnresolvedSpeakerLabel(speakerIndex: number): string {
   return `[UNIDENTIFIED SPEAKER ${speakerIndex}]`;
@@ -60,7 +49,7 @@ export function buildTranscriptSpeakerIdentityMap(
   }
 
   const attorneyAssignments = record
-    ? assignAttorneyIdentities(document, resolvedSpeakers, record)
+    ? assignAttorneyIdentities(resolvedSpeakers, record)
     : new Map<string, IdentityCandidate>();
 
   for (const speaker of document.speakers) {
@@ -104,6 +93,7 @@ function resolveIdentityCandidate(
   attorneyAssignments: Map<string, IdentityCandidate>,
 ): IdentityCandidate | null {
   const label = resolvedSpeaker?.display_name ?? speaker.display_name;
+  const participantId = resolvedSpeaker?.participantId ?? null;
 
   if (stageRole === "court_reporter") {
     const reporterName = record.reporter.name.value.trim();
@@ -116,12 +106,18 @@ function resolveIdentityCandidate(
   }
 
   if (stageRole === "witness") {
-    const exact = findNamedMatch(record.witnesses.map((entry) => ({
+    const witnessCandidates = record.witnesses.map((entry) => ({
       identityKey: entry.witness_id,
       stageRole,
       name: entry.name.value,
       honorific: entry.prefix_suffix ?? "",
-    })), label);
+    }));
+    const byParticipantId = findCandidateByIdentityKey(witnessCandidates, participantId);
+    if (byParticipantId) {
+      return byParticipantId;
+    }
+
+    const exact = findNamedMatch(witnessCandidates, label);
     if (exact) {
       return exact;
     }
@@ -138,12 +134,18 @@ function resolveIdentityCandidate(
   }
 
   if (stageRole === "interpreter") {
-    const exact = findNamedMatch(record.interpreters.map((entry) => ({
+    const interpreterCandidates = record.interpreters.map((entry) => ({
       identityKey: entry.interpreter_id,
       stageRole,
       name: entry.name.value,
       honorific: "",
-    })), label);
+    }));
+    const byParticipantId = findCandidateByIdentityKey(interpreterCandidates, participantId);
+    if (byParticipantId) {
+      return byParticipantId;
+    }
+
+    const exact = findNamedMatch(interpreterCandidates, label);
     if (exact) {
       return exact;
     }
@@ -160,12 +162,18 @@ function resolveIdentityCandidate(
   }
 
   if (stageRole === "videographer") {
-    const exact = findNamedMatch(record.videographers.map((entry) => ({
+    const videographerCandidates = record.videographers.map((entry) => ({
       identityKey: entry.videographer_id,
       stageRole,
       name: entry.name.value,
       honorific: "",
-    })), label);
+    }));
+    const byParticipantId = findCandidateByIdentityKey(videographerCandidates, participantId);
+    if (byParticipantId) {
+      return byParticipantId;
+    }
+
+    const exact = findNamedMatch(videographerCandidates, label);
     if (exact) {
       return exact;
     }
@@ -182,7 +190,13 @@ function resolveIdentityCandidate(
   }
 
   if (stageRole === "examining_attorney" || stageRole === "defending_attorney" || stageRole === "co_counsel") {
-    const exact = findNamedMatch(buildAttorneyCandidates(record), label);
+    const attorneyCandidates = buildAttorneyCandidates(record);
+    const byParticipantId = findCandidateByIdentityKey(attorneyCandidates, participantId);
+    if (byParticipantId) {
+      return byParticipantId;
+    }
+
+    const exact = findNamedMatch(attorneyCandidates, label);
     if (exact) {
       return exact;
     }
@@ -190,12 +204,18 @@ function resolveIdentityCandidate(
     return attorneyAssignments.get(resolvedSpeaker?.participantId ?? speaker.speaker_id) ?? null;
   }
 
-  const participantMatch = findNamedMatch(record.participants.map((entry) => ({
+  const participantCandidates = record.participants.map((entry) => ({
     identityKey: entry.participant_id,
     stageRole: participantRoleToStageRole(entry.role),
     name: entry.name.value,
     honorific: "",
-  })), label);
+  }));
+  const byParticipantId = findCandidateByIdentityKey(participantCandidates, participantId);
+  if (byParticipantId) {
+    return byParticipantId;
+  }
+
+  const participantMatch = findNamedMatch(participantCandidates, label);
   return participantMatch;
 }
 
@@ -209,91 +229,25 @@ function buildAttorneyCandidates(record: CaseRecord): IdentityCandidate[] {
 }
 
 function assignAttorneyIdentities(
-  document: EditorDocument,
   resolvedSpeakers: ResolvedSpeakerView[],
   record: CaseRecord,
 ): Map<string, IdentityCandidate> {
   const assignments = new Map<string, IdentityCandidate>();
   const attorneyCandidates = buildAttorneyCandidates(record);
-  const remainingCandidates = [...attorneyCandidates];
   const attorneySpeakers = resolvedSpeakers
     .filter((speaker) => speaker.role === "ATTORNEY")
     .sort((left, right) => (left.speakerIndices[0] ?? 0) - (right.speakerIndices[0] ?? 0));
 
   for (const speaker of attorneySpeakers) {
-    const exact = findNamedMatch(remainingCandidates, speaker.display_name);
+    const exact = findNamedMatch(attorneyCandidates, speaker.display_name);
     if (!exact) {
       continue;
     }
 
     assignments.set(speaker.participantId, exact);
-    removeCandidate(remainingCandidates, exact.identityKey);
-  }
-
-  if (remainingCandidates.length === 0) {
-    return assignments;
-  }
-
-  const unassignedSpeakers = attorneySpeakers.filter((speaker) => !assignments.has(speaker.participantId));
-  if (unassignedSpeakers.length === 0) {
-    return assignments;
-  }
-
-  const examiningCandidate = remainingCandidates.find((candidate) => candidate.stageRole === "examining_attorney") ?? null;
-  if (examiningCandidate) {
-    const clusterMetrics = buildAttorneyClusterMetrics(document, unassignedSpeakers);
-    const bestCluster = clusterMetrics[0];
-    if (bestCluster && bestCluster.questionCount > 0) {
-      assignments.set(bestCluster.participantId, examiningCandidate);
-      removeCandidate(remainingCandidates, examiningCandidate.identityKey);
-    }
-  }
-
-  const finalUnassignedSpeakers = unassignedSpeakers.filter((speaker) => !assignments.has(speaker.participantId));
-  if (finalUnassignedSpeakers.length === remainingCandidates.length) {
-    for (let index = 0; index < finalUnassignedSpeakers.length; index += 1) {
-      const speaker = finalUnassignedSpeakers[index];
-      const candidate = remainingCandidates[index];
-      if (!speaker || !candidate) {
-        continue;
-      }
-
-      assignments.set(speaker.participantId, candidate);
-    }
   }
 
   return assignments;
-}
-
-function buildAttorneyClusterMetrics(
-  document: EditorDocument,
-  speakers: ResolvedSpeakerView[],
-): AttorneyClusterMetrics[] {
-  const wordById = new Map(document.words.map((word) => [word.word_id, word]));
-
-  return speakers
-    .map((speaker) => ({
-      participantId: speaker.participantId,
-      rawSpeakerIds: speaker.rawSpeakerIds,
-      questionCount: document.utterances.reduce((count, utterance) => {
-        if (!speaker.rawSpeakerIds.includes(utterance.speaker_id)) {
-          return count;
-        }
-
-        const text = utterance.word_ids
-          .map((wordId) => wordById.get(wordId)?.text ?? "")
-          .join(" ")
-          .trim();
-        return count + (looksLikeQuestion(text) ? 1 : 0);
-      }, 0),
-    }))
-    .sort((left, right) => {
-      if (right.questionCount !== left.questionCount) {
-        return right.questionCount - left.questionCount;
-      }
-
-      return left.rawSpeakerIds[0]?.localeCompare(right.rawSpeakerIds[0] ?? "") ?? 0;
-    });
 }
 
 function buildTranscriptLabel(
@@ -398,11 +352,15 @@ function findNamedMatch<T extends IdentityCandidate>(entries: T[], label: string
   return null;
 }
 
-function removeCandidate(candidates: IdentityCandidate[], identityKey: string): void {
-  const index = candidates.findIndex((candidate) => candidate.identityKey === identityKey);
-  if (index >= 0) {
-    candidates.splice(index, 1);
+function findCandidateByIdentityKey<T extends IdentityCandidate>(
+  entries: T[],
+  identityKey: string | null,
+): T | null {
+  if (!identityKey) {
+    return null;
   }
+
+  return entries.find((entry) => entry.identityKey === identityKey) ?? null;
 }
 
 function extractSurnameLabel(name: string): string {
@@ -468,11 +426,6 @@ function isExplicitResolvedLabel(stageRole: StageSRole, label: string): boolean 
 
 function isNamedRole(role: StageSRole): boolean {
   return role === "examining_attorney" || role === "defending_attorney" || role === "co_counsel" || role === "witness";
-}
-
-function looksLikeQuestion(text: string): boolean {
-  const normalized = text.trim();
-  return QUESTION_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 export function isGenericSpeakerLabel(label: string): boolean {
