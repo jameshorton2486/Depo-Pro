@@ -10,6 +10,7 @@ import {
   buildParentheticalParagraphSpec,
   buildQaParagraphSpec,
   buildTranscriptDocxParagraphSpecs,
+  BODY_LINE_SPACING_TWIPS,
   BYLINE_LEFT_TWIPS,
   CENTER_TAB_TWIPS,
   COLLOQUY_TAB_TWIPS,
@@ -88,6 +89,8 @@ describe("docxFormatter", () => {
 
     expect(qParagraph.indent).toEqual({ left: QA_TEXT_TAB_TWIPS, hanging: QA_HANGING_INDENT_TWIPS });
     expect(aParagraph.indent).toEqual({ left: QA_TEXT_TAB_TWIPS, hanging: QA_HANGING_INDENT_TWIPS });
+    expect(qParagraph.spacing).toEqual({ line: BODY_LINE_SPACING_TWIPS, lineRule: "auto" });
+    expect(aParagraph.spacing).toEqual({ line: BODY_LINE_SPACING_TWIPS, lineRule: "auto" });
     expect(qParagraph.runs).toEqual([
       { kind: "text", text: "Q." },
       { kind: "tab" },
@@ -104,6 +107,7 @@ describe("docxFormatter", () => {
     const paragraph = buildAttributionParagraphSpec("BY MR.  NUNEZ:");
 
     expect(paragraph.indent).toEqual({ left: BYLINE_LEFT_TWIPS });
+    expect(paragraph.spacing).toEqual({ line: BODY_LINE_SPACING_TWIPS, lineRule: "auto" });
     expect(paragraph.runs).toEqual([
       { kind: "text", text: "BY MR. NUNEZ:" },
     ]);
@@ -113,6 +117,7 @@ describe("docxFormatter", () => {
     const paragraph = buildAttributionParagraphSpec("(BY MR.  NUNEZ)");
 
     expect(paragraph.indent).toEqual({ left: QA_TEXT_TAB_TWIPS });
+    expect(paragraph.spacing).toEqual({ line: BODY_LINE_SPACING_TWIPS, lineRule: "auto" });
     expect(paragraph.runs).toEqual([
       { kind: "text", text: "(BY MR. NUNEZ)" },
     ]);
@@ -122,18 +127,21 @@ describe("docxFormatter", () => {
     expect(buildColloquyParagraphSpec("MR.  NUNEZ", "Good afternoon.")).toEqual(
       expect.objectContaining({
         indent: { left: COLLOQUY_TAB_TWIPS },
+        spacing: { line: BODY_LINE_SPACING_TWIPS, lineRule: "auto" },
         runs: [{ kind: "text", text: "MR. NUNEZ:  Good afternoon." }],
       }),
     );
     expect(buildExaminationParagraphSpec("EXAMINATION")).toEqual(
       expect.objectContaining({
         indent: { left: COLLOQUY_TAB_TWIPS },
+        spacing: { line: BODY_LINE_SPACING_TWIPS, lineRule: "auto" },
         runs: [{ kind: "text", text: "EXAMINATION" }],
       }),
     );
     expect(buildParentheticalParagraphSpec("(Recess taken.)")).toEqual(
       expect.objectContaining({
         indent: { left: COLLOQUY_TAB_TWIPS },
+        spacing: { line: BODY_LINE_SPACING_TWIPS, lineRule: "auto" },
         runs: [{ kind: "text", text: "(Recess taken.)" }],
       }),
     );

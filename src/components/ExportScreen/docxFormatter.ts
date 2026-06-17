@@ -28,6 +28,7 @@ export const COLLOQUY_TAB_TWIPS = 2160;
 export const CENTER_TAB_TWIPS = (DOCX_PAGE_WIDTH_TWIPS / 2) - DOCX_MARGIN_LEFT_TWIPS;
 export const QA_HANGING_INDENT_TWIPS = 720;
 export const BYLINE_LEFT_TWIPS = 0;
+export const BODY_LINE_SPACING_TWIPS = 480;
 
 export type ParagraphRunSpec =
   | { kind: "text"; text: string }
@@ -40,11 +41,22 @@ export interface TranscriptDocxParagraphSpec {
     left?: number;
     hanging?: number;
   };
+  spacing?: {
+    line: number;
+    lineRule: "auto";
+  };
   runs: ParagraphRunSpec[];
   tabStops: Array<{
     type: (typeof TabStopType)[keyof typeof TabStopType];
     position: number;
   }>;
+}
+
+function buildBodyParagraphSpacing() {
+  return {
+    line: BODY_LINE_SPACING_TWIPS,
+    lineRule: "auto" as const,
+  };
 }
 
 export function buildBodyTabStops() {
@@ -63,6 +75,7 @@ export function buildQaParagraphSpec(label: "Q." | "A.", text: string): Transcri
       left: QA_TEXT_TAB_TWIPS,
       hanging: QA_HANGING_INDENT_TWIPS,
     },
+    spacing: buildBodyParagraphSpacing(),
     runs: [
       { kind: "text", text: label },
       { kind: "tab" },
@@ -81,6 +94,7 @@ export function buildAttributionParagraphSpec(text: string): TranscriptDocxParag
       indent: {
         left: QA_TEXT_TAB_TWIPS,
       },
+      spacing: buildBodyParagraphSpacing(),
       runs: [{ kind: "text", text: normalized }],
       tabStops: [...buildBodyTabStops()],
     };
@@ -91,6 +105,7 @@ export function buildAttributionParagraphSpec(text: string): TranscriptDocxParag
     indent: {
       left: BYLINE_LEFT_TWIPS,
     },
+    spacing: buildBodyParagraphSpacing(),
     runs: [{ kind: "text", text: normalized }],
     tabStops: [...buildBodyTabStops()],
   };
@@ -103,6 +118,7 @@ export function buildColloquyParagraphSpec(label: string, text: string): Transcr
     indent: {
       left: COLLOQUY_TAB_TWIPS,
     },
+    spacing: buildBodyParagraphSpacing(),
     runs: [{ kind: "text", text: `${normalizedLabel}:  ${text}` }],
     tabStops: [...buildBodyTabStops()],
   };
@@ -114,6 +130,7 @@ export function buildParentheticalParagraphSpec(text: string): TranscriptDocxPar
     indent: {
       left: COLLOQUY_TAB_TWIPS,
     },
+    spacing: buildBodyParagraphSpacing(),
     runs: [{ kind: "text", text }],
     tabStops: [...buildBodyTabStops()],
   };
@@ -134,6 +151,7 @@ export function buildExaminationParagraphSpec(text: string): TranscriptDocxParag
     indent: {
       left: COLLOQUY_TAB_TWIPS,
     },
+    spacing: buildBodyParagraphSpacing(),
     runs: [{ kind: "text", text }],
     tabStops: [...buildBodyTabStops()],
   };
@@ -155,6 +173,7 @@ function createParagraphFromSpec(spec: TranscriptDocxParagraphSpec): Paragraph {
     })),
     alignment: spec.alignment,
     ...(spec.indent ? { indent: spec.indent } : {}),
+    ...(spec.spacing ? { spacing: spec.spacing } : {}),
   };
 
   return new Paragraph(options);
