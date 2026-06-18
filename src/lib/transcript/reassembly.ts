@@ -11,6 +11,77 @@ export interface ReassemblyMetrics {
   wordCount: number;
 }
 
+export type HumanWorkSignal =
+  | "edited-words"
+  | "review-progress"
+  | "speaker-resolution"
+  | "workspace-audit-history";
+
+export interface HumanWorkSummary {
+  hasHumanWork: boolean;
+  signals: HumanWorkSignal[];
+}
+
+export interface TranscriptReassemblySnapshotSpeaker {
+  speaker_id: string;
+  display_name: string;
+  deepgram_speaker: number;
+  role: string | null;
+  job_id: string;
+  speaker_index: number;
+  speaker_label: string;
+  assigned_name: string | null;
+  speaker_role: string | null;
+  word_count: number;
+}
+
+export interface TranscriptReassemblySnapshotUtterance {
+  utterance_id: string;
+  speaker_id: string;
+  start_time: number;
+  end_time: number;
+  ordinal: number;
+  job_id: string;
+  utterance_index: number;
+  speaker_index: number;
+  speaker_label: string;
+  text: string;
+  avg_confidence: string | null;
+}
+
+export interface TranscriptReassemblySnapshotWord {
+  utterance_id: string;
+  word_id: string;
+  speaker_id: string;
+  ordinal: number;
+  text: string;
+  raw_text: string;
+  start_time: number;
+  end_time: number;
+  confidence: number;
+  reviewed: boolean;
+  edited: boolean;
+  job_id: string;
+  word_index: number;
+  working_text: string | null;
+  speaker_index: number;
+  is_filler: boolean;
+  removed: boolean;
+}
+
+export interface TranscriptReassemblyUndoSnapshot {
+  transcriptId: string;
+  durationSeconds: number | null;
+  wordCount: number;
+  utteranceCount: number;
+  speakerCount: number;
+  avgConfidence: string | null;
+  speakerMapConfirmed: boolean;
+  speakers: TranscriptReassemblySnapshotSpeaker[];
+  utterances: TranscriptReassemblySnapshotUtterance[];
+  words: TranscriptReassemblySnapshotWord[];
+}
+
 export interface TranscriptReassemblyPreview {
   currentAssemblyVersion: string;
   latestAssemblyVersion: string;
@@ -20,6 +91,7 @@ export interface TranscriptReassemblyPreview {
   candidateMetrics: ReassemblyMetrics;
   impacts: ReassemblyImpactSummary;
   previewToken: string;
+  humanWorkSummary: HumanWorkSummary;
 }
 
 export interface TranscriptReassemblyApplyResult {
@@ -27,6 +99,12 @@ export interface TranscriptReassemblyApplyResult {
   updatedAt: string | null;
   currentMetrics: ReassemblyMetrics;
   candidateMetrics: ReassemblyMetrics;
+  undoSnapshot: TranscriptReassemblyUndoSnapshot | null;
+}
+
+export interface TranscriptReassemblyRestoreResult {
+  ok: true;
+  updatedAt: string | null;
 }
 
 export interface ReassemblyEligibilityInput {

@@ -15,6 +15,8 @@ import type { ResolvedSpeakerView } from "../lib/transcript/resolvedSpeakers";
 import type {
   TranscriptReassemblyApplyResult,
   TranscriptReassemblyPreview,
+  TranscriptReassemblyRestoreResult,
+  TranscriptReassemblyUndoSnapshot,
 } from "../lib/transcript/reassembly";
 
 // Re-export all contract types so the rest of the app imports from one place.
@@ -150,4 +152,7 @@ export const api = {
 
   applyTranscriptReassembly: (jobId: string, previewToken: string) =>
     request<TranscriptReassemblyApplyResult>("POST", url(jobId, "reassembly/apply"), { previewToken }),
+
+  restoreTranscriptReassembly: (jobId: string, snapshot: TranscriptReassemblyUndoSnapshot) =>
+    request<TranscriptReassemblyRestoreResult>("POST", url(jobId, "reassembly/restore"), { snapshot }),
 };

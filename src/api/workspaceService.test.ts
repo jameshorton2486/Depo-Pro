@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     getResolvedSpeakers: vi.fn(),
     getTranscriptReassemblyPreview: vi.fn(),
     applyTranscriptReassembly: vi.fn(),
+    restoreTranscriptReassembly: vi.fn(),
   },
   transcriptRepository: {
     getTranscriptJobByTranscriptId: vi.fn(),
@@ -311,6 +312,10 @@ describe("workspaceApi real-API save wrappers", () => {
         exportImpact: "none",
       },
       previewToken: "preview-token",
+      humanWorkSummary: {
+        hasHumanWork: true,
+        signals: ["edited-words", "review-progress"],
+      },
     });
 
     const result = await workspaceApi.getTranscriptReassemblyPreview("tr_001", {
@@ -327,6 +332,18 @@ describe("workspaceApi real-API save wrappers", () => {
       updatedAt: "2026-06-14T17:00:01.000Z",
       currentMetrics: { mixedCanonicalUtterances: 114, utteranceCount: 1968, speakerCount: 8, wordCount: 13954 },
       candidateMetrics: { mixedCanonicalUtterances: 0, utteranceCount: 2105, speakerCount: 8, wordCount: 13954 },
+      undoSnapshot: {
+        transcriptId: "tr_001",
+        durationSeconds: 120,
+        wordCount: 13954,
+        utteranceCount: 1968,
+        speakerCount: 8,
+        avgConfidence: "0.9000",
+        speakerMapConfirmed: false,
+        speakers: [],
+        utterances: [],
+        words: [],
+      },
     });
 
     const result = await workspaceApi.applyTranscriptReassembly("tr_001", "preview-token", {
@@ -335,6 +352,32 @@ describe("workspaceApi real-API save wrappers", () => {
 
     expect(mocks.contractApi.applyTranscriptReassembly).toHaveBeenCalledWith("tr_001", "preview-token");
     expect(result.updatedAt).toBe("2026-06-14T17:00:01.000Z");
+  });
+
+  it("routes transcript reassembly restore through the real-API wrapper with transcript freshness", async () => {
+    const snapshot = {
+      transcriptId: "tr_001",
+      durationSeconds: 120,
+      wordCount: 13954,
+      utteranceCount: 1968,
+      speakerCount: 8,
+      avgConfidence: "0.9000",
+      speakerMapConfirmed: false,
+      speakers: [],
+      utterances: [],
+      words: [],
+    };
+    mocks.contractApi.restoreTranscriptReassembly.mockResolvedValue({
+      ok: true,
+      updatedAt: "2026-06-14T17:00:02.000Z",
+    });
+
+    const result = await workspaceApi.restoreTranscriptReassembly("tr_001", snapshot, {
+      lastKnownUpdatedAt: "2026-06-14T17:00:00.000Z",
+    });
+
+    expect(mocks.contractApi.restoreTranscriptReassembly).toHaveBeenCalledWith("tr_001", snapshot);
+    expect(result.updatedAt).toBe("2026-06-14T17:00:02.000Z");
   });
 });
 

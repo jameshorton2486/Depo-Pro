@@ -40,8 +40,12 @@ import {
   CURRENT_ASSEMBLY_VERSION,
   evaluateReassemblyEligibility,
   LATEST_ASSEMBLY_VERSION,
+  type HumanWorkSignal,
+  type HumanWorkSummary,
   type TranscriptReassemblyApplyResult,
   type TranscriptReassemblyPreview,
+  type TranscriptReassemblyRestoreResult,
+  type TranscriptReassemblyUndoSnapshot,
 } from "../lib/transcript/reassembly";
 import type { Database } from "../types/database";
 
@@ -744,6 +748,111 @@ async function loadTranscriptReassemblyLifecycleCounts(
   };
 }
 
+async function countWorkspaceAuditEvents(
+  client: Awaited<ReturnType<typeof getSupabaseClient>>,
+  transcriptId: string,
+): Promise<number> {
+  const { count, error } = await client
+    .from("transcript_audit_log")
+    .select("id", { count: "exact", head: true })
+    .eq("transcript_id", transcriptId)
+    .eq("source", "workspace")
+    .in("action", ["edit_word", "mark_reviewed", "assign_speaker"]);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
+function buildHumanWorkSummary(
+  snapshot: NonNullable<Awaited<ReturnType<typeof loadTranscriptSnapshot>>>,
+  lifecycleCounts: Awaited<ReturnType<typeof loadTranscriptReassemblyLifecycleCounts>>,
+  workspaceAuditCount: number,
+): HumanWorkSummary {
+  const signals: HumanWorkSignal[] = [];
+
+  if (snapshot.words.some((word) => word.working_text != null || word.edited)) {
+    signals.push("edited-words");
+  }
+
+  if (snapshot.words.some((word) => word.reviewed) || lifecycleCounts.reviewStateCount > 0) {
+    signals.push("review-progress");
+  }
+
+  if (snapshot.speakerResolutionOverlay.length > 0) {
+    signals.push("speaker-resolution");
+  }
+
+  if (workspaceAuditCount > 0) {
+    signals.push("workspace-audit-history");
+  }
+
+  return {
+    hasHumanWork: signals.length > 0,
+    signals,
+  };
+}
+
+function buildUndoSnapshot(
+  snapshot: NonNullable<Awaited<ReturnType<typeof loadTranscriptSnapshot>>>,
+): TranscriptReassemblyUndoSnapshot {
+  return {
+    transcriptId: snapshot.job.transcript_id,
+    durationSeconds: snapshot.job.duration_seconds ?? snapshot.job.duration,
+    wordCount: snapshot.job.word_count,
+    utteranceCount: snapshot.job.utterance_count,
+    speakerCount: snapshot.job.speaker_count,
+    avgConfidence: snapshot.job.avg_confidence,
+    speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
+    speakers: snapshot.speakers.map((speaker) => ({
+      speaker_id: speaker.speaker_id,
+      display_name: speaker.display_name,
+      deepgram_speaker: speaker.deepgram_speaker,
+      role: speaker.role,
+      job_id: speaker.job_id,
+      speaker_index: speaker.speaker_index,
+      speaker_label: speaker.speaker_label,
+      assigned_name: speaker.assigned_name,
+      speaker_role: speaker.speaker_role,
+      word_count: speaker.word_count,
+    })),
+    utterances: snapshot.utterances.map((utterance) => ({
+      utterance_id: utterance.utterance_id,
+      speaker_id: utterance.speaker_id,
+      start_time: utterance.start_time,
+      end_time: utterance.end_time,
+      ordinal: utterance.ordinal,
+      job_id: utterance.job_id,
+      utterance_index: utterance.utterance_index,
+      speaker_index: utterance.speaker_index,
+      speaker_label: utterance.speaker_label,
+      text: utterance.text,
+      avg_confidence: utterance.avg_confidence,
+    })),
+    words: snapshot.words.map((word) => ({
+      utterance_id: word.utterance_id,
+      word_id: word.word_id,
+      speaker_id: word.speaker_id,
+      ordinal: word.ordinal,
+      text: word.text,
+      raw_text: word.raw_text,
+      start_time: word.start_time,
+      end_time: word.end_time,
+      confidence: word.confidence,
+      reviewed: word.reviewed,
+      edited: word.edited,
+      job_id: word.job_id,
+      word_index: word.word_index,
+      working_text: word.working_text,
+      speaker_index: word.speaker_index,
+      is_filler: word.is_filler,
+      removed: word.removed,
+    })),
+  };
+}
+
 async function buildTranscriptReassemblyPreview(
   key: string,
   options: WorkspaceMutationOptions = {},
@@ -756,6 +865,7 @@ async function buildTranscriptReassemblyPreview(
 
   const client = await getSupabaseClient("buildTranscriptReassemblyPreview");
   const lifecycleCounts = await loadTranscriptReassemblyLifecycleCounts(client, job.transcript_id, job.case_id);
+  const workspaceAuditCount = await countWorkspaceAuditEvents(client, job.transcript_id);
   const eligibility = evaluateReassemblyEligibility(lifecycleCounts);
   const rawResponse = await loadRawDeepgramResponse(client, job.raw_storage_path);
   const normalized = normalizeTranscriptResponse(rawResponse);
@@ -770,6 +880,7 @@ async function buildTranscriptReassemblyPreview(
     currentMetrics,
     candidateMetrics,
     impacts: eligibility.impacts,
+    humanWorkSummary: buildHumanWorkSummary(snapshot, lifecycleCounts, workspaceAuditCount),
     previewToken: buildReassemblyPreviewToken({
       transcriptId: job.transcript_id,
       updatedAt: job.updated_at,
@@ -902,6 +1013,10 @@ async function applyTranscriptReassembly(
 
   const job = await requireFreshTranscript(key, options.lastKnownUpdatedAt);
   const client = await getSupabaseClient("applyTranscriptReassembly");
+  const snapshot = await loadTranscriptSnapshot(job.job_id);
+  if (!snapshot) {
+    throw new Error(`Transcript job ${job.job_id} was not found.`);
+  }
   const rawResponse = await loadRawDeepgramResponse(client, job.raw_storage_path);
   const normalized = normalizeTranscriptResponse(rawResponse);
 
@@ -928,6 +1043,149 @@ async function applyTranscriptReassembly(
     updatedAt: updatedJob.updated_at,
     currentMetrics: preview.currentMetrics,
     candidateMetrics: preview.candidateMetrics,
+    undoSnapshot: buildUndoSnapshot(snapshot),
+  };
+}
+
+async function restoreTranscriptDerivedRows(
+  client: Awaited<ReturnType<typeof getSupabaseClient>>,
+  job: TranscriptJobRow,
+  snapshot: TranscriptReassemblyUndoSnapshot,
+): Promise<void> {
+  const { error: deleteWordsError } = await client
+    .from("transcript_words")
+    .delete()
+    .eq("transcript_id", job.transcript_id);
+
+  if (deleteWordsError) {
+    throw deleteWordsError;
+  }
+
+  const { error: deleteUtterancesError } = await client
+    .from("transcript_utterances")
+    .delete()
+    .eq("transcript_id", job.transcript_id);
+
+  if (deleteUtterancesError) {
+    throw deleteUtterancesError;
+  }
+
+  const { error: deleteSpeakersError } = await client
+    .from("transcript_speakers")
+    .delete()
+    .eq("transcript_id", job.transcript_id);
+
+  if (deleteSpeakersError) {
+    throw deleteSpeakersError;
+  }
+
+  if (snapshot.speakers.length > 0) {
+    const { error } = await client.from("transcript_speakers").insert(
+      snapshot.speakers.map((speaker) => ({
+        transcript_id: job.transcript_id,
+        speaker_id: speaker.speaker_id,
+        display_name: speaker.display_name,
+        deepgram_speaker: speaker.deepgram_speaker,
+        role: speaker.role,
+        job_id: speaker.job_id,
+        speaker_index: speaker.speaker_index,
+        speaker_label: speaker.speaker_label,
+        assigned_name: speaker.assigned_name,
+        speaker_role: speaker.speaker_role,
+        word_count: speaker.word_count,
+      })),
+    );
+    if (error) {
+      throw error;
+    }
+  }
+
+  if (snapshot.utterances.length > 0) {
+    const { error } = await client.from("transcript_utterances").insert(
+      snapshot.utterances.map((utterance) => ({
+        transcript_id: job.transcript_id,
+        utterance_id: utterance.utterance_id,
+        speaker_id: utterance.speaker_id,
+        start_time: utterance.start_time,
+        end_time: utterance.end_time,
+        ordinal: utterance.ordinal,
+        job_id: utterance.job_id,
+        utterance_index: utterance.utterance_index,
+        speaker_index: utterance.speaker_index,
+        speaker_label: utterance.speaker_label,
+        text: utterance.text,
+        avg_confidence: utterance.avg_confidence,
+      })),
+    );
+    if (error) {
+      throw error;
+    }
+  }
+
+  const wordChunkSize = 500;
+  for (let index = 0; index < snapshot.words.length; index += wordChunkSize) {
+    const chunk = snapshot.words.slice(index, index + wordChunkSize);
+    const { error } = await client.from("transcript_words").insert(
+      chunk.map((word) => ({
+        transcript_id: job.transcript_id,
+        utterance_id: word.utterance_id,
+        word_id: word.word_id,
+        speaker_id: word.speaker_id,
+        ordinal: word.ordinal,
+        text: word.text,
+        raw_text: word.raw_text,
+        start_time: word.start_time,
+        end_time: word.end_time,
+        confidence: word.confidence,
+        reviewed: word.reviewed,
+        edited: word.edited,
+        job_id: word.job_id,
+        word_index: word.word_index,
+        working_text: word.working_text,
+        speaker_index: word.speaker_index,
+        is_filler: word.is_filler,
+        removed: word.removed,
+      })),
+    );
+    if (error) {
+      throw error;
+    }
+  }
+}
+
+async function restoreTranscriptReassembly(
+  key: string,
+  snapshot: TranscriptReassemblyUndoSnapshot,
+  options: WorkspaceMutationOptions = {},
+): Promise<TranscriptReassemblyRestoreResult> {
+  const job = await requireFreshTranscript(key, options.lastKnownUpdatedAt);
+  if (snapshot.transcriptId !== job.transcript_id) {
+    throw new Error("Refine undo snapshot does not match the current transcript.");
+  }
+
+  const client = await getSupabaseClient("restoreTranscriptReassembly");
+  await restoreTranscriptDerivedRows(client, job, snapshot);
+  await appendAuditEntries([{
+    transcript_id: job.transcript_id,
+    case_id: job.case_id,
+    job_id: job.job_id,
+    action: "bulk_save",
+    before_text: "reassembly_apply",
+    after_text: "reassembly_undo",
+  }]);
+
+  const updatedJob = await updateTranscriptJob(job.transcript_id, {
+    duration_seconds: snapshot.durationSeconds,
+    word_count: snapshot.wordCount,
+    utterance_count: snapshot.utteranceCount,
+    speaker_count: snapshot.speakerCount,
+    avg_confidence: snapshot.avgConfidence,
+    speaker_map_confirmed: snapshot.speakerMapConfirmed,
+  });
+
+  return {
+    ok: true,
+    updatedAt: updatedJob.updated_at,
   };
 }
 
@@ -1321,5 +1579,21 @@ export const workspaceApi = {
     }
 
     return applyTranscriptReassembly(jobId, previewToken, options);
+  },
+  restoreTranscriptReassembly: async (
+    jobId: string,
+    snapshot: TranscriptReassemblyUndoSnapshot,
+    options?: WorkspaceMutationOptions,
+  ) => {
+    if (USE_MOCK_WORKSPACE) {
+      throw new Error("Transcript rebuild restore is unavailable in fixture mode.");
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
+      return contractApi.restoreTranscriptReassembly(target.transcript_id, snapshot);
+    }
+
+    return restoreTranscriptReassembly(jobId, snapshot, options);
   },
 };

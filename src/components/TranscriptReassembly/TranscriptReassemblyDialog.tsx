@@ -3,7 +3,32 @@ import { useState } from "react";
 
 import { workspaceApi } from "../../api/workspaceService";
 import { useDocument } from "../../context/DocumentContext";
-import type { TranscriptReassemblyPreview } from "../../lib/transcript/reassembly";
+import type {
+  HumanWorkSummary,
+  TranscriptReassemblyPreview,
+  TranscriptReassemblyUndoSnapshot,
+} from "../../lib/transcript/reassembly";
+
+export function buildRefineOverwriteMessage(summary: HumanWorkSummary): string {
+  const labels = summary.signals.map((signal) => {
+    switch (signal) {
+      case "edited-words":
+        return "edited transcript text";
+      case "review-progress":
+        return "review progress";
+      case "speaker-resolution":
+        return "speaker reassignment work";
+      case "workspace-audit-history":
+        return "workspace correction history";
+    }
+  });
+
+  const suffix = labels.length > 0
+    ? `Detected work: ${labels.join(", ")}.`
+    : "Detected existing human corrections or review work.";
+
+  return `Refine rebuilds the transcript from raw audio output and may overwrite existing human corrections or review work.\n\n${suffix}\n\nContinue?`;
+}
 
 export function TranscriptReassemblyDialog() {
   const { state, saveNow, loadDocument } = useDocument();
@@ -11,7 +36,9 @@ export function TranscriptReassemblyDialog() {
   const [preview, setPreview] = useState<TranscriptReassemblyPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [undoing, setUndoing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUndoSnapshot, setLastUndoSnapshot] = useState<TranscriptReassemblyUndoSnapshot | null>(null);
 
   const transcriptId = state.currentTranscriptId;
 
@@ -44,12 +71,20 @@ export function TranscriptReassemblyDialog() {
       return;
     }
 
+    if (
+      preview.humanWorkSummary.hasHumanWork
+      && !window.confirm(buildRefineOverwriteMessage(preview.humanWorkSummary))
+    ) {
+      return;
+    }
+
     setApplying(true);
     setError(null);
     try {
-      await workspaceApi.applyTranscriptReassembly(transcriptId, preview.previewToken, {
+      const result = await workspaceApi.applyTranscriptReassembly(transcriptId, preview.previewToken, {
         lastKnownUpdatedAt: state.jobUpdatedAt,
       });
+      setLastUndoSnapshot(result.undoSnapshot);
       await loadDocument();
       setOpen(false);
       setPreview(null);
@@ -60,17 +95,49 @@ export function TranscriptReassemblyDialog() {
     }
   }
 
+  async function handleUndoLastRefine() {
+    if (!transcriptId || !lastUndoSnapshot) {
+      return;
+    }
+
+    setUndoing(true);
+    setError(null);
+    try {
+      await workspaceApi.restoreTranscriptReassembly(transcriptId, lastUndoSnapshot, {
+        lastKnownUpdatedAt: state.jobUpdatedAt,
+      });
+      await loadDocument();
+      setLastUndoSnapshot(null);
+    } catch (nextError) {
+      setError(String(nextError));
+    } finally {
+      setUndoing(false);
+    }
+  }
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => void handlePreview()}
-        disabled={!transcriptId || state.loading || state.saving}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
-      >
-        <RefreshCw size={13} />
-        Refine
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void handlePreview()}
+          disabled={!transcriptId || state.loading || state.saving || undoing}
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
+        >
+          <RefreshCw size={13} />
+          Refine
+        </button>
+        {lastUndoSnapshot && (
+          <button
+            type="button"
+            onClick={() => void handleUndoLastRefine()}
+            disabled={undoing || state.loading || state.saving}
+            className="text-xs px-2.5 py-1 rounded border border-amber-500 text-amber-200 hover:bg-amber-500/10 disabled:opacity-40 disabled:cursor-default"
+          >
+            {undoing ? "Undoing..." : "Undo Last Refine"}
+          </button>
+        )}
+      </div>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4">
@@ -144,6 +211,21 @@ export function TranscriptReassemblyDialog() {
                   <ImpactCard label="Audit Impact" value={preview.impacts.auditImpact} />
                 </div>
 
+                {preview.humanWorkSummary.hasHumanWork && (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    <div className="font-semibold">Human work detected</div>
+                    <p className="mt-2">
+                      Refine will rebuild the transcript from the raw audio output and can overwrite
+                      current edits or review work.
+                    </p>
+                    <ul className="mt-2 list-disc pl-5">
+                      {preview.humanWorkSummary.signals.map((signal) => (
+                        <li key={signal}>{humanWorkSignalLabel(signal)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {preview.blockedReasons.length > 0 && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     <div className="font-semibold">Apply blocked</div>
@@ -212,4 +294,17 @@ function ImpactCard({ label, value }: { label: string; value: string }) {
       <div className="mt-3 text-sm font-mono text-slate-800">{value}</div>
     </div>
   );
+}
+
+function humanWorkSignalLabel(signal: HumanWorkSummary["signals"][number]): string {
+  switch (signal) {
+    case "edited-words":
+      return "Edited transcript text is present.";
+    case "review-progress":
+      return "Review progress is recorded.";
+    case "speaker-resolution":
+      return "Speaker reassignment work is recorded.";
+    case "workspace-audit-history":
+      return "Workspace correction history is recorded.";
+  }
 }
