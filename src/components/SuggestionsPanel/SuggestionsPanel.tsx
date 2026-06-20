@@ -13,6 +13,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 
+const ENABLE_DISPLAY_TURN_SEGMENTATION = true;
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function confColor(c: number) {
@@ -117,12 +119,25 @@ export function SuggestionsPanel() {
   const getUtteranceTextFromEditor = useCallback(
     (uttId: string): string => {
       if (!editor) return "";
+
+      if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
+        let legacyText = "";
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === "utterance" && node.attrs.utterance_id === uttId) {
+            legacyText = node.textContent;
+          }
+        });
+        return legacyText;
+      }
+
+      const parts: string[] = [];
       let text = "";
       editor.state.doc.descendants((node) => {
         if (node.type.name === "utterance" && node.attrs.utterance_id === uttId) {
-          text = node.textContent;
+          parts.push(node.textContent);
         }
       });
+      text = parts.join(" ");
       return text;
     },
     [editor]

@@ -6,6 +6,8 @@ import { useEditorContext } from "../../context/EditorContext";
 import { workspaceApi } from "../../api/workspaceService";
 import { Check, X, Edit2, Users } from "lucide-react";
 
+const ENABLE_DISPLAY_TURN_SEGMENTATION = true;
+
 const ROLES: Speaker["role"][] = [
   "REPORTER",
   "WITNESS",
@@ -29,6 +31,34 @@ function getSpeakerSourceFileLabel(speakerId: string): string | null {
   }
 
   return `File ${Number.parseInt(match[1], 10) + 1}`;
+}
+
+function getActiveUtteranceInfo(editor: ReturnType<typeof useEditorContext>["editor"], activeId: string | null) {
+  if (!editor || !activeId) {
+    return {
+      activeSpeakerId: null as string | null,
+      matchingNodeCount: 0,
+      hasMultipleSegments: false,
+    };
+  }
+
+  let activeSpeakerId: string | null = null;
+  let matchingNodeCount = 0;
+
+  editor.state.doc.descendants((node) => {
+    if (node.type.name !== "utterance" || node.attrs.utterance_id !== activeId) {
+      return;
+    }
+
+    matchingNodeCount += 1;
+    activeSpeakerId = node.attrs.speaker_id as string;
+  });
+
+  return {
+    activeSpeakerId,
+    matchingNodeCount,
+    hasMultipleSegments: ENABLE_DISPLAY_TURN_SEGMENTATION && matchingNodeCount > 1,
+  };
 }
 
 export function SpeakerPanel() {
@@ -369,22 +399,13 @@ function UtteranceReassignment({
   const [saving, setSaving] = useState(false);
 
   const activeId = state.activeUtteranceId;
-
-  // Derive active utterance's current speaker from the editor doc (source of truth)
-  let activeSpeakerId: string | null = null;
-  if (editor && activeId) {
-    editor.state.doc.descendants((node) => {
-      if (node.type.name === "utterance" && node.attrs.utterance_id === activeId) {
-        activeSpeakerId = node.attrs.speaker_id as string;
-      }
-    });
-  }
+  const { activeSpeakerId, hasMultipleSegments } = getActiveUtteranceInfo(editor, activeId);
 
   const activeSpeaker = speakers.find((s) => s.speaker_id === activeSpeakerId);
 
   const reassign = useCallback(
     async (newSpeakerId: string) => {
-      if (!editor || !activeId) return;
+      if (!editor || !activeId || hasMultipleSegments) return;
       const newSpk = speakers.find((s) => s.speaker_id === newSpeakerId);
       if (!newSpk) return;
 
@@ -440,6 +461,7 @@ function UtteranceReassignment({
     [
       activeId,
       editor,
+      hasMultipleSegments,
       setSpeakerMapConfirmed,
       setTranscriptVersion,
       speakers,
@@ -468,11 +490,15 @@ function UtteranceReassignment({
           {activeId}
         </span>
         <span className="ml-auto text-xs font-semibold text-slate-700 truncate max-w-[80px]">
-          {activeSpeaker?.display_name ?? activeSpeakerId}
+          {hasMultipleSegments ? "Multiple speakers" : (activeSpeaker?.display_name ?? activeSpeakerId)}
         </span>
       </div>
 
-      {assigning ? (
+      {hasMultipleSegments ? (
+        <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-2 text-[10px] text-amber-700">
+          Speaker reassignment unavailable — utterance contains multiple speakers.
+        </div>
+      ) : assigning ? (
         <div className="mt-2 space-y-1">
           <p className="text-[10px] text-slate-500 mb-1">Reassign to:</p>
           {speakers.map((spk) => (
@@ -509,6 +535,7 @@ function UtteranceReassignment({
       ) : (
         <button
           onClick={() => setAssigning(true)}
+          disabled={hasMultipleSegments}
           className="mt-2 w-full text-xs px-2 py-1.5 border border-slate-200 rounded hover:border-slate-300 hover:bg-slate-50 text-slate-600 transition-colors"
         >
           Reassign speaker…
