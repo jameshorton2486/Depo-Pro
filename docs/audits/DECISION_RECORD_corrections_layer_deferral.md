@@ -60,6 +60,26 @@ Definition of done for the corrections layer:
   - never silently drop corrections
 - Extend the existing speaker overlay pattern rather than inventing a parallel system.
 
+### Addendum — speaker reassignment granularity
+Audit re-verification during frozen speaker-resolution Step 4 work found a hard granularity mismatch:
+
+- Current reassignment behavior is **per-utterance**.
+- The UI targets one active utterance and sends `utterance_id` + `speaker_id`.
+- Both current save paths persist that reassignment by updating canonical
+  `transcript_utterances` / `transcript_words` rows for that specific utterance.
+- The existing speaker-resolution overlay is **label-level** only, keyed by
+  `raw_speaker_id` / `raw_speaker_index`.
+- Therefore the current overlay cannot represent "this utterance only belongs to a different
+  speaker."
+
+Implication for the deferred corrections-layer build:
+
+- Post-freeze speaker reassignment must support **utterance-grain** resolution/corrections.
+- Downgrading reassignment to label-level only would remove an operator capability needed for
+  merged-speaker transcripts, where one diarization label may contain multiple real speakers.
+- This finding sharpens the deferred design; it does **not** authorize schema work during
+  BETA_FREEZE.
+
 This is a schema change and requires explicit approval to proceed.
 
 ## Open items
@@ -69,4 +89,3 @@ These do not block the deferral decision, but should be closed deliberately:
   locally on `main` and was not pushed, deployed, or merged.
 - Confirm the Refine confirmation control is a deliberate gate and not easy to dismiss accidentally,
   because it is the primary protection while undo remains session-scoped.
-
