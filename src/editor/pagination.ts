@@ -10,10 +10,8 @@
 // each UtteranceNode's attrs so they survive TipTap serialisation.
 
 import type { Speaker } from "../api/types";
-
-export const LINES_PER_PAGE = 25;
-const CHARS_PER_LINE = 58;
-const AVG_CHARS_PER_WORD = 6.5;
+import { DEFAULT_GEOMETRY_PROFILE } from "../lib/format/geometryProfile";
+import type { GeometryProfile } from "../lib/format/types";
 
 export type BlockRole = "Q" | "A" | "COLLOQUY";
 
@@ -30,9 +28,13 @@ export function getBlockRole(role: Speaker["role"] | null | undefined): BlockRol
  *  Q / A: 1 blank line + text lines (prefix "Q.  " / "A.  " counts toward first line)
  *  COLLOQUY: 1 blank + 1 speaker-name line + text lines
  */
-export function estimateLineCount(wordCount: number, role: BlockRole): number {
-  const estimatedChars = Math.max(1, wordCount) * AVG_CHARS_PER_WORD;
-  const textLines = Math.ceil(estimatedChars / CHARS_PER_LINE);
+export function estimateLineCount(
+  wordCount: number,
+  role: BlockRole,
+  geometry: GeometryProfile = DEFAULT_GEOMETRY_PROFILE
+): number {
+  const estimatedChars = Math.max(1, wordCount) * geometry.averageCharsPerWord;
+  const textLines = Math.ceil(estimatedChars / geometry.charsPerLine);
 
   if (role === "Q" || role === "A") {
     return 1 + textLines; // 1 blank before + wrapped text
@@ -58,7 +60,8 @@ export function buildPages(
     speaker_id: string;
     wordCount: number;
   }>,
-  speakerRoles: Map<string, Speaker["role"] | undefined>
+  speakerRoles: Map<string, Speaker["role"] | undefined>,
+  geometry: GeometryProfile = DEFAULT_GEOMETRY_PROFILE
 ): Map<string, PageInfo> {
   const result = new Map<string, PageInfo>();
 
@@ -68,10 +71,10 @@ export function buildPages(
   for (const utt of utterances) {
     const rawRole = speakerRoles.get(utt.speaker_id);
     const role = getBlockRole(rawRole);
-    const lines = estimateLineCount(utt.wordCount, role);
+    const lines = estimateLineCount(utt.wordCount, role, geometry);
 
     // Start a new page if this utterance won't fit (and there's already content)
-    if (lineUsed > 0 && lineUsed + lines > LINES_PER_PAGE) {
+    if (lineUsed > 0 && lineUsed + lines > geometry.linesPerPage) {
       pageNumber++;
       lineUsed = 0;
     }

@@ -1,7 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
 import type { EditorDocument } from "../api/types";
 import { buildPages } from "../editor/pagination";
-import { ENABLE_DISPLAY_TURN_SEGMENTATION, segmentUtterance } from "./format/grouping";
+import { abbreviationRegistry } from "./format/abbreviationRegistry";
+import { cfe } from "./format/cfe";
+import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
+import { ENABLE_DISPLAY_TURN_SEGMENTATION } from "./format/grouping";
 
 function buildLegacyEditorContent(
   doc: EditorDocument,
@@ -104,14 +107,21 @@ function buildLegacyEditorContent(
 }
 
 function buildInlineNodes(
-  wordIds: string[],
-  wordById: Map<string, EditorDocument["words"][number]>
+  words: Array<{
+    word_id: string;
+    utterance_id: string;
+    speaker_id: string;
+    start_time: number;
+    end_time: number;
+    confidence: number;
+    reviewed: boolean;
+    text: string;
+    trailing_space: string;
+  }>
 ): JSONContent[] {
   const inlineNodes: JSONContent[] = [];
 
-  wordIds.forEach((wid, index) => {
-    const word = wordById.get(wid);
-    if (!word) return;
+  words.forEach((word) => {
     if (!word.text || word.text.length === 0) return;
 
     inlineNodes.push({
@@ -133,8 +143,8 @@ function buildInlineNodes(
       ],
     });
 
-    if (index < wordIds.length - 1) {
-      inlineNodes.push({ type: "text", text: " " });
+    if (word.trailing_space.length > 0) {
+      inlineNodes.push({ type: "text", text: word.trailing_space });
     }
   });
 
@@ -159,58 +169,46 @@ export function buildEditorContent(
     return buildLegacyEditorContent(doc, languageMap);
   }
 
-  const wordById = new Map(doc.words.map((w) => [w.word_id, w]));
-  const speakerById = new Map(doc.speakers.map((s) => [s.speaker_id, s]));
-  const speakerRoles = new Map(doc.speakers.map((s) => [s.speaker_id, s.role]));
-  const segmentedUtterances = doc.utterances.flatMap((utt) => segmentUtterance(utt, wordById));
-  const pageInfoMap = buildPages(
-    segmentedUtterances.map((segment) => ({
-      utterance_id: `${segment.utterance_id}#${segment.segment_index}`,
-      speaker_id: segment.speaker_id,
-      wordCount: segment.word_ids.length,
-    })),
-    speakerRoles
-  );
+  const formatted = cfe(doc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
 
   const blocks: JSONContent[] = [];
   let currentPage = 0;
-  let lineNumber = 0;
 
-  doc.utterances.forEach((utt) => {
-    const segments = segmentUtterance(utt, wordById);
-    segments.forEach((segment) => {
-      lineNumber += 1;
-      const compositeKey = `${segment.utterance_id}#${segment.segment_index}`;
-      const speaker = speakerById.get(segment.speaker_id);
-      const info = pageInfoMap.get(compositeKey);
-      const blockPage = info?.pageNumber ?? 1;
+  formatted.lines.forEach((line) => {
+    const blockPage = line.page_number;
 
-      if (blockPage > currentPage) {
-        if (currentPage > 0) {
-          blocks.push({
-            type: "pageBreak",
-            attrs: { pageNumber: blockPage },
-          });
-        }
-        currentPage = blockPage;
+    if (blockPage > currentPage) {
+      if (currentPage > 0) {
+        blocks.push({
+          type: "pageBreak",
+          attrs: { pageNumber: blockPage },
+        });
       }
+      currentPage = blockPage;
+    }
 
-      blocks.push({
-        type: "utterance",
-        attrs: {
-          utterance_id: segment.utterance_id,
-          speaker_id: segment.speaker_id,
-          speaker_label: speaker?.display_name ?? segment.speaker_id,
-          line_number: lineNumber,
-          page_line_number: info?.lineInPage ?? lineNumber,
-          start_time: utt.start_time,
-          role: speaker?.role ?? null,
-          language: languageMap?.get(utt.utterance_id) ?? null,
-          segment_index: segment.segment_index,
-          segment_count: segment.segment_count,
-        },
-        content: buildInlineNodes(segment.word_ids, wordById),
-      });
+    const role =
+      line.role === "q"
+        ? "ATTORNEY"
+        : line.role === "a"
+          ? "WITNESS"
+          : doc.speakers.find((speaker) => speaker.speaker_id === line.speaker_id)?.role ?? null;
+
+    blocks.push({
+      type: "utterance",
+      attrs: {
+        utterance_id: line.utterance_id,
+        speaker_id: line.speaker_id,
+        speaker_label: line.speaker_label,
+        line_number: line.line_number,
+        page_line_number: line.page_line_number,
+        start_time: line.start_time,
+        role,
+        language: languageMap?.get(line.utterance_id) ?? null,
+        segment_index: line.segment_index,
+        segment_count: line.segment_count,
+      },
+      content: buildInlineNodes(line.words),
     });
   });
 
