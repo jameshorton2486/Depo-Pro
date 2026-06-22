@@ -21,6 +21,13 @@ type RawSegment = {
 };
 
 const MIN_SEGMENT_WORDS = 2;
+const LOW_CONFIDENCE_THRESHOLD = 0.70;
+
+type SpacingRules = {
+  oneSpaceTokens: Set<string>;
+  oneSpacePatterns: RegExp[];
+  sentenceBoundaries: Set<string>;
+};
 
 function collapseShortRuns(runs: RawSegment[]): RawSegment[] {
   if (runs.length <= 1) {
@@ -94,14 +101,111 @@ function toLineRole(role: EditorDocument["speakers"][number]["role"] | null | un
   return "speaker_label";
 }
 
+function buildSpacingRules(registry: AbbreviationRegistry): SpacingRules {
+  const oneSpaceTokens = new Set(
+    Object.values(registry.one_space_tokens)
+      .flat()
+      .map((token) => token.toLowerCase())
+  );
+  const oneSpacePatterns = registry.one_space_patterns.map((pattern) => new RegExp(pattern.regex));
+  const sentenceBoundaries = new Set(registry.rule.two_space_boundaries);
+
+  return {
+    oneSpaceTokens,
+    oneSpacePatterns,
+    sentenceBoundaries,
+  };
+}
+
+function stripTrailingClosers(token: string): string {
+  return token.replace(/["')\]]+$/g, "");
+}
+
+function closesSentenceWithQuote(token: string): boolean {
+  const stripped = stripTrailingClosers(token);
+  if (stripped.length === token.length) {
+    return false;
+  }
+  const lastCoreChar = stripped[stripped.length - 1];
+  return lastCoreChar === "." || lastCoreChar === "?" || lastCoreChar === "!";
+}
+
+function isRegistryToken(token: string, nextToken: string | undefined, rules: SpacingRules): boolean {
+  const normalized = token.toLowerCase();
+  if (rules.oneSpaceTokens.has(normalized)) {
+    if (normalized !== "no.") {
+      return true;
+    }
+    if (nextToken === undefined || /^no\.$/i.test(nextToken)) {
+      return false;
+    }
+    return /^[A-Za-z0-9(]/.test(nextToken);
+  }
+
+  const stripped = stripTrailingClosers(token);
+  if (rules.oneSpaceTokens.has(stripped.toLowerCase())) {
+    return true;
+  }
+
+  return rules.oneSpacePatterns.some((pattern) => pattern.test(stripped));
+}
+
+function isSentenceBoundary(token: string, nextToken: string | undefined, rules: SpacingRules): boolean {
+  if (isRegistryToken(token, nextToken, rules)) {
+    return false;
+  }
+
+  const stripped = stripTrailingClosers(token);
+  const lastCoreChar = stripped[stripped.length - 1];
+  if (!lastCoreChar || !rules.sentenceBoundaries.has(lastCoreChar)) {
+    return false;
+  }
+
+  if (nextToken === undefined) {
+    return true;
+  }
+
+  return /^[A-Z"'([]/.test(nextToken);
+}
+
+function buildTrailingSpace(
+  token: string,
+  nextToken: string | undefined,
+  rules: SpacingRules
+): string {
+  if (nextToken === undefined) {
+    return "";
+  }
+
+  if (closesSentenceWithQuote(token) || isSentenceBoundary(token, nextToken, rules)) {
+    return "  ";
+  }
+
+  return " ";
+}
+
+function formatSpeakerPrefix(
+  role: FormattedLine["role"],
+  speakerLabel: string
+): string {
+  if (role === "q") {
+    return "Q.";
+  }
+  if (role === "a") {
+    return "A.";
+  }
+  return `${speakerLabel.toUpperCase()}:`;
+}
+
 export function cfe(
   doc: EditorDocument,
   geometry: GeometryProfile,
-  _registry: AbbreviationRegistry
+  registry: AbbreviationRegistry
 ): FormattedDocument {
   const wordById = new Map(doc.words.map((word) => [word.word_id, word]));
   const speakerById = new Map(doc.speakers.map((speaker) => [speaker.speaker_id, speaker]));
   const speakerRoles = new Map(doc.speakers.map((speaker) => [speaker.speaker_id, speaker.role]));
+  const spacingRules = buildSpacingRules(registry);
   const segments = doc.utterances.flatMap((utterance) => classifyUtteranceParagraphs(utterance, wordById));
   const pageInfoMap = buildPages(
     segments.map((segment) => ({
@@ -129,6 +233,11 @@ export function cfe(
       const speaker = speakerById.get(segment.speaker_id);
       const pageInfo = pageInfoMap.get(`${segment.utterance_id}#${segment.segment_index}`);
       const role = toLineRole(speaker?.role ?? null);
+      const prefixText = formatSpeakerPrefix(role, speaker?.display_name ?? segment.speaker_id);
+      const flags = [
+        ...(sourceWords.some((word) => word.confidence < LOW_CONFIDENCE_THRESHOLD) ? ["LOW_CONFIDENCE"] : []),
+        ...(speaker?.role ? [] : ["UNCERTAIN_SPEAKER"]),
+      ];
 
       lines.push({
         role,
@@ -137,7 +246,7 @@ export function cfe(
         utterance_id: segment.utterance_id,
         speaker_id: segment.speaker_id,
         speaker_label: speaker?.display_name ?? segment.speaker_id,
-        prefix_text: "",
+        prefix_text: prefixText,
         source_word_ids: segment.word_ids,
         words: sourceWords.map((word, index) => ({
           word_id: word.word_id,
@@ -150,7 +259,11 @@ export function cfe(
           confidence: word.confidence,
           reviewed: word.reviewed,
           edited: word.edited,
-          trailing_space: index < sourceWords.length - 1 ? " " : "",
+          trailing_space: buildTrailingSpace(
+            word.text,
+            sourceWords[index + 1]?.text,
+            spacingRules
+          ),
         })),
         page_number: pageInfo?.pageNumber ?? 1,
         page_line_number: pageInfo?.lineInPage ?? paragraphIndex,
@@ -160,7 +273,7 @@ export function cfe(
         segment_index: segment.segment_index,
         segment_count: segment.segment_count,
         language: null,
-        flags: [],
+        flags,
       });
     });
   });

@@ -14,6 +14,7 @@ export const UtteranceNode = Node.create({
       utterance_id:     { default: null },
       speaker_id:       { default: null },
       speaker_label:    { default: "" },
+      prefix_text:      { default: "" },
       // Global 1-based utterance index (used for display when page info absent)
       line_number:      { default: 0 },
       // 1-based line number within the current page (1–25)
@@ -35,6 +36,7 @@ export const UtteranceNode = Node.create({
       utterance_id,
       speaker_id,
       speaker_label,
+      prefix_text,
       line_number,
       page_line_number,
       start_time,
@@ -52,7 +54,8 @@ export const UtteranceNode = Node.create({
     const blockRole = getBlockRole(roleValue);
     const isInterpreter = roleValue === "INTERPRETER";
     const displayLine = numericPageLineNumber > 0 ? numericPageLineNumber : numericLineNumber;
-    const prefix = getUtterancePrefix(roleValue, speakerLabelText);
+    const explicitPrefix = typeof prefix_text === "string" ? prefix_text : "";
+    const prefix = explicitPrefix || getUtterancePrefix(roleValue, speakerLabelText);
     const className = [
       "utterance-block",
       `utterance-block--${blockRole.toLowerCase()}`,

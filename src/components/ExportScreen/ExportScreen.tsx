@@ -3,6 +3,10 @@ import { ChevronLeft, Download, FileArchive, FileText } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
+import { abbreviationRegistry } from "../../lib/format/abbreviationRegistry";
+import { cfe } from "../../lib/format/cfe";
+import { DEFAULT_GEOMETRY_PROFILE } from "../../lib/format/geometryProfile";
+import { serializeFormattedDocument } from "../../lib/format/serialize";
 
 interface GeneratedArtifact {
   name: string;
@@ -48,15 +52,9 @@ export function ExportScreen({ jobId }: { jobId: string }) {
 
   const transcriptText = useMemo(() => {
     if (!docState.document) return "";
-    const wordsById = Object.fromEntries(docState.document.words.map((w) => [w.word_id, w]));
-    return docState.document.utterances
-      .map((utterance) => {
-        const words = utterance.word_ids
-          .map((wordId) => wordsById[wordId]?.text ?? "")
-          .join(" ");
-        return `${utterance.utterance_id} [${utterance.speaker_id}]: ${words}`;
-      })
-      .join("\n");
+    return serializeFormattedDocument(
+      cfe(docState.document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry)
+    );
   }, [docState.document]);
 
   const packageJson = useMemo(

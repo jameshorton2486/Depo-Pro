@@ -200,6 +200,7 @@ export function buildEditorContent(
         utterance_id: line.utterance_id,
         speaker_id: line.speaker_id,
         speaker_label: line.speaker_label,
+        prefix_text: line.prefix_text,
         line_number: line.line_number,
         page_line_number: line.page_line_number,
         start_time: line.start_time,
