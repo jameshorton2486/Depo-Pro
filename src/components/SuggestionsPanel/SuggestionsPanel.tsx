@@ -4,6 +4,7 @@ import { workspaceApi } from "../../api/workspaceService";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { suggestionPluginKey } from "../../extensions/SuggestionPlugin";
+import { getUtteranceTextFromDoc } from "../../lib/format/editorFragments";
 import {
   CheckCircle,
   XCircle,
@@ -12,8 +13,6 @@ import {
   ArrowRight,
   RotateCcw,
 } from "lucide-react";
-
-const ENABLE_DISPLAY_TURN_SEGMENTATION = true;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -119,26 +118,7 @@ export function SuggestionsPanel() {
   const getUtteranceTextFromEditor = useCallback(
     (uttId: string): string => {
       if (!editor) return "";
-
-      if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
-        let legacyText = "";
-        editor.state.doc.descendants((node) => {
-          if (node.type.name === "utterance" && node.attrs.utterance_id === uttId) {
-            legacyText = node.textContent;
-          }
-        });
-        return legacyText;
-      }
-
-      const parts: string[] = [];
-      let text = "";
-      editor.state.doc.descendants((node) => {
-        if (node.type.name === "utterance" && node.attrs.utterance_id === uttId) {
-          parts.push(node.textContent);
-        }
-      });
-      text = parts.join(" ");
-      return text;
+      return getUtteranceTextFromDoc(editor.state.doc, uttId);
     },
     [editor]
   );

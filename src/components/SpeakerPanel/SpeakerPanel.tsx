@@ -4,9 +4,8 @@ import type { Speaker } from "../../types";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { workspaceApi } from "../../api/workspaceService";
+import { getActiveUtteranceInfoFromDoc } from "../../lib/format/editorFragments";
 import { Check, X, Edit2, Users } from "lucide-react";
-
-const ENABLE_DISPLAY_TURN_SEGMENTATION = true;
 
 const ROLES: Speaker["role"][] = [
   "REPORTER",
@@ -41,24 +40,7 @@ function getActiveUtteranceInfo(editor: ReturnType<typeof useEditorContext>["edi
       hasMultipleSegments: false,
     };
   }
-
-  let activeSpeakerId: string | null = null;
-  let matchingNodeCount = 0;
-
-  editor.state.doc.descendants((node) => {
-    if (node.type.name !== "utterance" || node.attrs.utterance_id !== activeId) {
-      return;
-    }
-
-    matchingNodeCount += 1;
-    activeSpeakerId = node.attrs.speaker_id as string;
-  });
-
-  return {
-    activeSpeakerId,
-    matchingNodeCount,
-    hasMultipleSegments: ENABLE_DISPLAY_TURN_SEGMENTATION && matchingNodeCount > 1,
-  };
+  return getActiveUtteranceInfoFromDoc(editor.state.doc, activeId);
 }
 
 export function SpeakerPanel() {

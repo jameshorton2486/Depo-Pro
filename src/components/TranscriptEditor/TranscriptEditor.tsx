@@ -9,6 +9,7 @@ import { PageBreakNode } from "../../extensions/PageBreakNode";
 import { ExhibitRefNode } from "../../extensions/ExhibitRefNode";
 import { ExhibitRefNodeView } from "./ExhibitRefNodeView";
 import { buildEditorContent } from "../../lib/buildEditorContent";
+import { extractUtteranceTextsFromDoc } from "../../lib/format/editorFragments";
 import { buildWordTimings, findWordAtTime } from "../../lib/wordTimings";
 import { useDocument } from "../../context/DocumentContext";
 import { useAudio } from "../../context/AudioContext";
@@ -19,8 +20,6 @@ import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
 interface Props {
   readOnly: boolean;
 }
-
-const ENABLE_DISPLAY_TURN_SEGMENTATION = true;
 
 // Wrap ProseMirror plugins in TipTap Extensions. Both are instantiated once
 // here so the plugin instances are stable across renders.
@@ -75,39 +74,8 @@ const EXTENSIONS = [
   SuggestionExtension,
 ];
 
-function extractLegacyUtteranceTexts(editor: Editor): Map<string, string> {
-  const texts = new Map<string, string>();
-  editor.state.doc.descendants((node) => {
-    if (node.type.name === "utterance") {
-      texts.set(node.attrs.utterance_id as string, node.textContent);
-    }
-  });
-  return texts;
-}
-
-// Extract utterance_id → text mapping from the live ProseMirror document.
 function extractUtteranceTexts(editor: Editor): Map<string, string> {
-  if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
-    return extractLegacyUtteranceTexts(editor);
-  }
-
-  const texts = new Map<string, string>();
-  const orderedTexts = new Map<string, string[]>();
-
-  editor.state.doc.descendants((node) => {
-    if (node.type.name === "utterance") {
-      const utteranceId = node.attrs.utterance_id as string;
-      const parts = orderedTexts.get(utteranceId) ?? [];
-      parts.push(node.textContent);
-      orderedTexts.set(utteranceId, parts);
-    }
-  });
-
-  orderedTexts.forEach((parts, utteranceId) => {
-    texts.set(utteranceId, parts.join(" "));
-  });
-
-  return texts;
+  return extractUtteranceTextsFromDoc(editor.state.doc);
 }
 
 export function TranscriptEditor({ readOnly }: Props) {
