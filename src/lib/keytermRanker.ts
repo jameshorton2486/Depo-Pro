@@ -37,15 +37,96 @@ const DERIVED_ORIGIN_WEIGHT = {
   location: 2,
 } as const;
 
+const MULTIWORD_SURNAME_PARTICLES = new Set(["de", "del", "la", "van", "von", "san", "st", "el"]);
+
 type DerivedOrigin = keyof typeof DERIVED_ORIGIN_WEIGHT;
 
-function readDerivedOrigin(notes: string): DerivedOrigin | null {
+type DerivedNoteMeta = {
+  origin: DerivedOrigin | null;
+  qualifiers: string[];
+};
+
+function readDerivedNoteMeta(notes: string): DerivedNoteMeta {
   if (!notes.startsWith("derived:")) {
-    return notes === "derived" ? "other_person" : null;
+    return {
+      origin: notes === "derived" ? "other_person" : null,
+      qualifiers: [],
+    };
   }
 
-  const origin = notes.slice("derived:".length) as DerivedOrigin;
-  return origin in DERIVED_ORIGIN_WEIGHT ? origin : null;
+  const [, rawOrigin = "", ...qualifiers] = notes.split(":");
+  const origin = rawOrigin in DERIVED_ORIGIN_WEIGHT ? rawOrigin as DerivedOrigin : null;
+  return { origin, qualifiers };
+}
+
+function looksLikeOrganizationPhrase(term: string, origin: DerivedOrigin | null): boolean {
+  if (origin !== "organization" && origin !== "firm") {
+    return false;
+  }
+
+  return term.split(/\s+/).length >= 3 || term.includes("&");
+}
+
+function looksLikeMedicalCandidate(term: string, origin: DerivedOrigin | null): boolean {
+  if (origin === "medical_provider") {
+    return true;
+  }
+
+  return /(?:ology|otomy|scopy|vascular|ligament|cervical|lumbar|thoracic|neurology|radiology|orthopedic|surgery|clinic|hospital|medical|spine)/i.test(term);
+}
+
+function hasMultiWordSurname(term: string): boolean {
+  const tokens = term.split(/\s+/).map((token) => token.replace(/[^A-Za-z'’-]/g, "")).filter(Boolean);
+  if (tokens.length < 3) {
+    return false;
+  }
+
+  return MULTIWORD_SURNAME_PARTICLES.has(tokens[tokens.length - 2].toLowerCase());
+}
+
+function hasUncommonSurnamePattern(term: string): boolean {
+  const tokens = term.split(/\s+/).map((token) => token.replace(/[^A-Za-z'’-]/g, "")).filter(Boolean);
+  const surname = tokens[tokens.length - 1] ?? "";
+  if (surname.length < 6) {
+    return false;
+  }
+
+  return /(?:[qxzj]|tz|cz|kh|gh|eaux|quez|yan|ian|ov|eva|tj|dj|mn)/i.test(surname);
+}
+
+function computeDifficultyBonus(keyterm: Omit<ManagedKeyterm, "priority">): number {
+  const { origin, qualifiers } = readDerivedNoteMeta(keyterm.notes);
+  let bonus = 0;
+
+  if (qualifiers.includes("sbot")) {
+    bonus += 0.2;
+  }
+
+  if (/[-'’]/.test(keyterm.term)) {
+    bonus += 0.08;
+  }
+
+  if (/\b[A-Z]\./.test(keyterm.term)) {
+    bonus += 0.05;
+  }
+
+  if (hasMultiWordSurname(keyterm.term)) {
+    bonus += 0.08;
+  }
+
+  if (hasUncommonSurnamePattern(keyterm.term)) {
+    bonus += 0.12;
+  }
+
+  if (looksLikeMedicalCandidate(keyterm.term, origin)) {
+    bonus += 0.12;
+  }
+
+  if (looksLikeOrganizationPhrase(keyterm.term, origin)) {
+    bonus += 0.08;
+  }
+
+  return Math.min(0.3, bonus);
 }
 
 export function countTokens(term: string): number {
@@ -59,10 +140,11 @@ export function computePriority(keyterm: Omit<ManagedKeyterm, "priority">): numb
   const srcScore = SOURCE_WEIGHT[keyterm.source] ?? 5;
   const boostScore = keyterm.boost * 10;
   const confirmBonus = keyterm.confidence >= 0.8 ? 5 : keyterm.confidence >= 0.6 ? 2 : 0;
-  const originScore = DERIVED_ORIGIN_WEIGHT[readDerivedOrigin(keyterm.notes) ?? "other_person"];
+  const originScore = DERIVED_ORIGIN_WEIGHT[readDerivedNoteMeta(keyterm.notes).origin ?? "other_person"];
+  const difficultyBonus = computeDifficultyBonus(keyterm);
 
-  const raw = catScore * 0.25 + srcScore * 0.2 + originScore * 0.35 + boostScore * 0.1 + confirmBonus * 0.1;
-  return Math.min(100, Math.round((raw / 10) * 100));
+  const raw = catScore * 0.2 + srcScore * 0.15 + originScore * 0.45 + boostScore * 0.1 + confirmBonus * 0.1 + difficultyBonus;
+  return Math.min(100, Number(((raw / 10) * 100).toFixed(2)));
 }
 
 export function rankKeyterms(terms: ManagedKeyterm[]): ManagedKeyterm[] {

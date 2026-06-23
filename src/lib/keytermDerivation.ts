@@ -75,6 +75,7 @@ type DerivedCandidate = {
 
 type PersonGroupOptions = {
   includeHonorificVariants?: boolean;
+  noteOverride?: string;
 };
 
 type DerivedGroup = {
@@ -164,23 +165,24 @@ function collectPersonGroup(
 
   const firstName = tokens[0];
   const surname = tokens[tokens.length - 1];
+  const note = options.noteOverride ?? derivedNote(origin);
   const candidates: DerivedCandidate[] = [{
     term: fullName,
     category,
-    notes: derivedNote(origin),
+    notes: note,
   }];
 
   if (isSurnameToken(surname) && surname.toLowerCase() !== fullName.toLowerCase()) {
-    candidates.push({ term: surname, category, notes: derivedNote(origin) });
+    candidates.push({ term: surname, category, notes: note });
     if (options.includeHonorificVariants) {
-      candidates.push({ term: `Mr. ${surname}`, category, notes: derivedNote(origin) });
-      candidates.push({ term: `Ms. ${surname}`, category, notes: derivedNote(origin) });
+      candidates.push({ term: `Mr. ${surname}`, category, notes: note });
+      candidates.push({ term: `Ms. ${surname}`, category, notes: note });
     }
   }
 
   // Honorific variants are intentionally omitted because the bare surname already covers them.
   if (isDistinctiveToken(firstName) && firstName.toLowerCase() !== surname.toLowerCase()) {
-    candidates.push({ term: firstName, category, notes: derivedNote(origin) });
+    candidates.push({ term: firstName, category, notes: note });
   }
 
   return { priority: 0, allOrNothing: true, candidates };
@@ -399,7 +401,9 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
   }
 
   for (const attorney of record.attorneys) {
-    const group = collectPersonGroup(valueOf(attorney.name), "proper_name", "attorney");
+    const group = collectPersonGroup(valueOf(attorney.name), "proper_name", "attorney", {
+      noteOverride: valueOf(attorney.bar_number) ? "derived:attorney:sbot" : undefined,
+    });
     if (group) groups.push({ ...group, priority: 4 });
   }
 

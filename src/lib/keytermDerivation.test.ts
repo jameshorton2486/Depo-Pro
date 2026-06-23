@@ -688,6 +688,29 @@ describe("deriveKeytermsWithBudget", () => {
     expect(terms).toContain("Acme");
     expect(terms).not.toContain("Video");
   });
+
+  it("tags bar-number attorneys as SBOT-derived candidates", () => {
+    const record = emptyCaseRecord("case_sbot", "2026-06-06T20:00:00.000Z");
+    record.attorneys = [{
+      attorney_id: "a1",
+      name: manualField("Curtis L. Cukjati"),
+      firm: manualField("Cukjati Law Firm, PLLC"),
+      role: manualField("EXAMINING"),
+      representing: manualField("Plaintiff"),
+      bar_number: manualField("24012345"),
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      time_used: null,
+      email: null,
+      phone: null,
+    }];
+
+    const attorneyTerm = deriveKeytermsWithBudget(record).included.find((keyterm) => keyterm.term === "Curtis L. Cukjati");
+
+    expect(attorneyTerm?.notes).toBe("derived:attorney:sbot");
+  });
 });
 
 describe("mergeManagedDerivedKeyterms", () => {
