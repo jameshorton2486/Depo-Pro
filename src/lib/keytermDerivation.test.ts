@@ -321,7 +321,7 @@ describe("deriveKeytermsWithBudget", () => {
       "stenographically",
       "Texas Rules of Civil Procedure",
     ]);
-    expect(result.included.every((keyterm) => keyterm.notes === "derived")).toBe(true);
+    expect(result.included.every((keyterm) => keyterm.notes.startsWith("derived:"))).toBe(true);
   });
 
   it("skips common first names but keeps uncommon ones", () => {

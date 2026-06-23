@@ -202,7 +202,7 @@ export function mergeManagedDerivedKeyterms(
       selected: true,
       pinned: false,
       confidence: 1,
-      notes: "derived",
+      notes: keyterm.notes,
     }));
   }
 

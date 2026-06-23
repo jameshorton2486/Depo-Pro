@@ -55,10 +55,22 @@ const DEFAULT_KEYTERM_TERMS = [
   "Texas Rules of Civil Procedure",
 ] as const;
 
+type DerivedOrigin =
+  | "witness"
+  | "attorney"
+  | "expert"
+  | "organization"
+  | "firm"
+  | "medical_provider"
+  | "caption_entity"
+  | "legal_term"
+  | "other_person"
+  | "location";
+
 type DerivedCandidate = {
   term: string;
   category: KeytermCategory;
-  notes: "derived";
+  notes: string;
 };
 
 type PersonGroupOptions = {
@@ -134,9 +146,14 @@ function valueOf<T>(field: { value: T } | null | undefined): T | null {
   return field ? field.value : null;
 }
 
+function derivedNote(origin: DerivedOrigin): string {
+  return `derived:${origin}`;
+}
+
 function collectPersonGroup(
   name: string | null | undefined,
   category: KeytermCategory,
+  origin: DerivedOrigin,
   options: PersonGroupOptions = {},
 ): DerivedGroup | null {
   const fullName = sanitizePhrase(name ?? "");
@@ -150,20 +167,20 @@ function collectPersonGroup(
   const candidates: DerivedCandidate[] = [{
     term: fullName,
     category,
-    notes: "derived",
+    notes: derivedNote(origin),
   }];
 
   if (isSurnameToken(surname) && surname.toLowerCase() !== fullName.toLowerCase()) {
-    candidates.push({ term: surname, category, notes: "derived" });
+    candidates.push({ term: surname, category, notes: derivedNote(origin) });
     if (options.includeHonorificVariants) {
-      candidates.push({ term: `Mr. ${surname}`, category, notes: "derived" });
-      candidates.push({ term: `Ms. ${surname}`, category, notes: "derived" });
+      candidates.push({ term: `Mr. ${surname}`, category, notes: derivedNote(origin) });
+      candidates.push({ term: `Ms. ${surname}`, category, notes: derivedNote(origin) });
     }
   }
 
   // Honorific variants are intentionally omitted because the bare surname already covers them.
   if (isDistinctiveToken(firstName) && firstName.toLowerCase() !== surname.toLowerCase()) {
-    candidates.push({ term: firstName, category, notes: "derived" });
+    candidates.push({ term: firstName, category, notes: derivedNote(origin) });
   }
 
   return { priority: 0, allOrNothing: true, candidates };
@@ -175,7 +192,7 @@ function collectFirmTokens(name: string | null | undefined): string[] {
     .filter((token) => !KNOWN_BRAND_TOKENS.has(token.toLowerCase()));
 }
 
-function collectOrganizationPhrases(values: Array<string | null | undefined>): DerivedCandidate[] {
+function collectOrganizationPhrases(values: Array<string | null | undefined>, origin: DerivedOrigin): DerivedCandidate[] {
   const seen = new Set<string>();
   const candidates: DerivedCandidate[] = [];
 
@@ -191,7 +208,7 @@ function collectOrganizationPhrases(values: Array<string | null | undefined>): D
     }
 
     seen.add(key);
-    candidates.push({ term: phrase, category: "company", notes: "derived" });
+    candidates.push({ term: phrase, category: "company", notes: derivedNote(origin) });
   }
 
   return candidates;
@@ -227,12 +244,12 @@ function collectPartyGroups(record: CaseRecord): DerivedGroup[] {
       groups.push({
         priority: 2,
         allOrNothing: true,
-        candidates: [{ term: name, category: "company", notes: "derived" }],
+        candidates: [{ term: name, category: "company", notes: derivedNote("caption_entity") }],
       });
       continue;
     }
 
-    const personGroup = collectPersonGroup(name, "proper_name");
+    const personGroup = collectPersonGroup(name, "proper_name", "caption_entity");
     if (personGroup) {
       groups.push({ ...personGroup, priority: 2 });
     }
@@ -297,7 +314,7 @@ function collectAddressCandidates(values: Array<string | null | undefined>): Der
     const phraseKey = phrase.toLowerCase();
     if (!seen.has(phraseKey) && /[A-Za-z]/.test(phrase) && !/^\d+$/.test(phrase)) {
       seen.add(phraseKey);
-      candidates.push({ term: phrase, category: "location", notes: "derived" });
+      candidates.push({ term: phrase, category: "location", notes: derivedNote("location") });
     }
 
     for (const token of tokenize(phrase)) {
@@ -309,7 +326,7 @@ function collectAddressCandidates(values: Array<string | null | undefined>): Der
         continue;
       }
       seen.add(tokenKey);
-      candidates.push({ term: token, category: "location", notes: "derived" });
+      candidates.push({ term: token, category: "location", notes: derivedNote("location") });
     }
   }
 
@@ -320,7 +337,7 @@ function collectParticipantGroups(record: CaseRecord): DerivedGroup[] {
   const groups: DerivedGroup[] = [];
 
   for (const participant of record.participants) {
-    const personGroup = collectPersonGroup(valueOf(participant.name), "proper_name");
+    const personGroup = collectPersonGroup(valueOf(participant.name), "proper_name", "other_person");
     if (personGroup) {
       groups.push({ ...personGroup, priority: 8 });
     }
@@ -330,7 +347,7 @@ function collectParticipantGroups(record: CaseRecord): DerivedGroup[] {
       groups.push({
         priority: 8,
         allOrNothing: true,
-        candidates: [{ term: organization, category: "company", notes: "derived" }],
+        candidates: [{ term: organization, category: "company", notes: derivedNote(looksLikeMedicalProvider(organization, participant.role_in_this_proceeding) ? "medical_provider" : "organization") }],
       });
     }
   }
@@ -345,7 +362,7 @@ function collectParticipantGroups(record: CaseRecord): DerivedGroup[] {
       groups.push({
         priority: 8,
         allOrNothing: true,
-        candidates: [{ term: employer, category: "company", notes: "derived" }],
+        candidates: [{ term: employer, category: "company", notes: derivedNote("medical_provider") }],
       });
     }
   }
@@ -357,33 +374,42 @@ function collectDefaultTerms(): string[] {
   return [...DEFAULT_KEYTERM_TERMS];
 }
 
+function looksLikeMedicalProvider(organization: string, roleInProceeding: string | null | undefined): boolean {
+  const normalizedOrganization = organization.toLowerCase();
+  const normalizedRole = (roleInProceeding ?? "").toLowerCase();
+
+  return normalizedRole.includes("medical")
+    || normalizedRole.includes("provider")
+    || /\b(?:clinic|hospital|medical|orthopedic|spine|neurology|radiology|surgery)\b/.test(normalizedOrganization);
+}
+
 function buildGroups(record: CaseRecord): DerivedGroup[] {
   const groups: DerivedGroup[] = [];
 
   for (const witness of record.witnesses) {
-    const group = collectPersonGroup(valueOf(witness.name), "proper_name", { includeHonorificVariants: true });
+    const group = collectPersonGroup(valueOf(witness.name), "proper_name", valueOf(witness.role) === "EXPERT" ? "expert" : "witness", { includeHonorificVariants: true });
     if (group) groups.push({ ...group, priority: 1 });
   }
 
   groups.push(...collectPartyGroups(record));
 
   {
-    const group = collectPersonGroup(valueOf(record.reporter.name), "proper_name");
+    const group = collectPersonGroup(valueOf(record.reporter.name), "proper_name", "other_person");
     if (group) groups.push({ ...group, priority: 3 });
   }
 
   for (const attorney of record.attorneys) {
-    const group = collectPersonGroup(valueOf(attorney.name), "proper_name");
+    const group = collectPersonGroup(valueOf(attorney.name), "proper_name", "attorney");
     if (group) groups.push({ ...group, priority: 4 });
   }
 
   for (const interpreter of record.interpreters) {
-    const group = collectPersonGroup(valueOf(interpreter.name), "proper_name");
+    const group = collectPersonGroup(valueOf(interpreter.name), "proper_name", "other_person");
     if (group) groups.push({ ...group, priority: 5 });
   }
 
   for (const videographer of record.videographers) {
-    const group = collectPersonGroup(valueOf(videographer.name), "proper_name");
+    const group = collectPersonGroup(valueOf(videographer.name), "proper_name", "other_person");
     if (group) groups.push({ ...group, priority: 5 });
   }
 
@@ -393,7 +419,7 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
     ...record.videographers.map((videographer) => valueOf(videographer.firm)),
     ...record.interpreters.map((interpreter) => interpreter.agency),
     valueOf(record.reporter.firm),
-  ]);
+  ], "firm");
   if (organizationPhrases.length > 0) {
     groups.push({
       priority: 6,
@@ -411,7 +437,7 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
     groups.push({
       priority: 6,
       allOrNothing: false,
-      candidates: firmTokens.map((term) => ({ term, category: "company", notes: "derived" })),
+      candidates: firmTokens.map((term) => ({ term, category: "company", notes: derivedNote("firm") })),
     });
   }
 
@@ -420,7 +446,7 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
     groups.push({
       priority: 7,
       allOrNothing: false,
-      candidates: countyTerms.map((term) => ({ term, category: "location", notes: "derived" })),
+      candidates: countyTerms.map((term) => ({ term, category: "location", notes: derivedNote("location") })),
     });
   }
 
@@ -444,7 +470,7 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
     groups.push({
       priority: 9,
       allOrNothing: false,
-      candidates: partyTokens.map((term) => ({ term, category: "other", notes: "derived" })),
+      candidates: partyTokens.map((term) => ({ term, category: "other", notes: derivedNote("caption_entity") })),
     });
   }
 
@@ -453,7 +479,7 @@ function buildGroups(record: CaseRecord): DerivedGroup[] {
   groups.push({
     priority: 10,
     allOrNothing: false,
-    candidates: collectDefaultTerms().map((term) => ({ term, category: "legal_term", notes: "derived" })),
+    candidates: collectDefaultTerms().map((term) => ({ term, category: "legal_term", notes: derivedNote("legal_term") })),
   });
 
   return groups;
