@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ShieldCheck, ChevronRight, CheckCircle, RotateCcw } from "lucide-react";
 import { useEditorContext } from "../../context/EditorContext";
 import { useDocument } from "../../context/DocumentContext";
@@ -27,14 +27,10 @@ export function ConfidencePanel() {
 
   // Pull live state from ProseMirror plugin
   const pluginState = editor ? getConfidenceState(editor.state) : undefined;
-  const lowConfWords: LowConfWord[] = useMemo(
-    () => pluginState?.lowConfWords ?? [],
-    [pluginState]
-  );
-  const reviewedIds: Set<string> = useMemo(
-    () => pluginState?.reviewedIds ?? new Set(),
-    [pluginState]
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- lowConfWords derived inline; useMemo deferred post-beta
+  const lowConfWords: LowConfWord[] = pluginState?.lowConfWords ?? [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reviewedIds derived inline; useMemo deferred post-beta
+  const reviewedIds: Set<string> = pluginState?.reviewedIds ?? new Set();
 
   // Total low-conf count = queue (unreviewed) + reviewed
   const totalLowConf = lowConfWords.length + reviewedIds.size;

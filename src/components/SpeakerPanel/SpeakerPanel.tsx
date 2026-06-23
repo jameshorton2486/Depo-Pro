@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Speaker } from "../../types";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
@@ -59,7 +59,8 @@ export function SpeakerPanel() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const speakers = useMemo(() => state.document?.speakers ?? [], [state.document?.speakers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- speakers derived inline; useMemo deferred post-beta
+  const speakers = state.document?.speakers ?? [];
   const speakerMapConfirmed = state.speakerMapConfirmed;
 
   const startEdit = useCallback((spk: Speaker) => {
