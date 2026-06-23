@@ -1,51 +1,79 @@
 # Binding Confirm Report
 
+## Scope
+
+- Branch: `feature/stage3-workspace-core`
+- Scope class respected: additive, flag-gated, non-schema
+- No backend, schema, contract, or dependency changes were made in this turn
+
 ## Files changed
 
-- `.env.example` — 7 total lines, `+2/-0` for the new `VITE_REQUIRE_BINDING_CONFIRM` flag.
-- `src/components/TranscriptCreationScreen.tsx` — 311 total lines, `+58/-2` to add the confirmation gate, request preview reuse, and dialog wiring.
-- `src/components/PreTranscriptionConfirmDialog.tsx` — new file, 145 lines.
-- `src/components/PreTranscriptionConfirmDialog.test.tsx` — new file, 128 lines.
+- `src/components/TranscriptCreationScreen.tsx`
+  - Diff line count for this turn: `+7 / -3`
+  - Change: use the envelope count field from the existing Deepgram preview contract and keep the transcription trigger clickable when audio is missing so the existing `"Upload audio before starting transcription."` guard still fires
 
-## Envelope fields reused from `DeepgramPayloadPreview.tsx`
+## Supporting files already present on this branch and used by the feature
 
-I reused the same envelope fields already read by `DeepgramPayloadPreview.tsx`:
+- `src/components/PreTranscriptionConfirmDialog.tsx`
+- `src/components/PreTranscriptionConfirmDialog.test.tsx`
+- `.env.example`
 
-- `request.envelope.keyterms.length` for the count. Source: `src/components/DeepgramKeytermManager/DeepgramPayloadPreview.tsx:78`, `src/components/TranscriptCreationScreen.tsx:40-44`.
-- `request.envelope.estimated_token_usage` for the token estimate. Source: `src/components/DeepgramKeytermManager/DeepgramPayloadPreview.tsx:202`, `src/components/TranscriptCreationScreen.tsx:40-44`.
-- `request.envelope.keyterms[].term` for the preview sample. The screen takes the first 12 terms from the same envelope array. Source: `src/lib/deepgram/buildDeepgramRequest.ts:121-143`, `src/components/TranscriptCreationScreen.tsx:40-44`.
+## Deepgram envelope fields reused
 
-## Case identity fields used
+These names were taken from `src/components/DeepgramKeytermManager/DeepgramPayloadPreview.tsx` and reused verbatim:
 
-The screen already had the required record data in scope through `useIntake()`. I used:
+- Count field: `request.envelope.keyterms_count`
+- Estimated token field: `request.envelope.estimated_token_usage`
+- Sample source: `request.envelope.keyterms`, reading each `term`
+
+## Case identity fields sourced from `record`
+
+The dialog wiring uses only already-loaded intake state:
 
 - `record.case_id`
 - `record.caption.case_name.value`
 - `record.caption.case_style.value`
 - `record.witnesses[0]?.name.value`
 
-Sources: `src/components/TranscriptCreationScreen.tsx:17-44`, `src/types/case.ts:385-413`.
+Rendering behavior:
 
-Any empty string or missing value is normalized to `null` in the screen and rendered by the dialog as `—`. Source: `src/components/TranscriptCreationScreen.tsx:33-38`, `src/components/PreTranscriptionConfirmDialog.tsx:23-25`, `src/components/PreTranscriptionConfirmDialog.tsx:63-78`.
+- `caseId` always renders from `record.case_id`
+- `caseName`, `caseStyle`, and `witnessName` render as `—` when the source string is empty after trimming
 
 ## Gate behavior matrix
 
-| Flag state | Trigger behavior |
-|---|---|
-| Default / unset | Gate ON. Clicking the button opens `PreTranscriptionConfirmDialog`; `startTranscription()` is not reachable until `onConfirm`. Sources: `src/components/TranscriptCreationScreen.tsx:15`, `src/components/TranscriptCreationScreen.tsx:150-167`, `src/components/TranscriptCreationScreen.tsx:218-220`, `src/components/TranscriptCreationScreen.tsx:297-307`. |
-| `VITE_REQUIRE_BINDING_CONFIRM="false"` | Gate OFF. Clicking the button calls `runTranscription()` directly, which preserves today’s path. Sources: `src/components/TranscriptCreationScreen.tsx:156-158`. |
+- Default / env unset:
+  - `const REQUIRE_BINDING_CONFIRM = import.meta.env.VITE_REQUIRE_BINDING_CONFIRM !== "false";`
+  - Result: gate ON
+  - Clicking the trigger with audio opens the confirmation dialog
+  - `startTranscription(caseId)` is not reachable until dialog `onConfirm`, because `startTranscription` is only called inside `runTranscription()`, and with gate ON the trigger path only does `setConfirmOpen(true)`
+- `VITE_REQUIRE_BINDING_CONFIRM="false"`:
+  - Result: gate OFF
+  - Clicking the trigger calls `void runTranscription()` directly
+  - This preserves today's direct path, including the existing `audio` guard and unchanged `runTranscription()` body
 
-## Dialog behavior
+## Manual reasoning check
 
-- The dialog is presentational and controlled by props only; it performs no fetches, no local persistence, and no data derivation beyond rendering props. Source: `src/components/PreTranscriptionConfirmDialog.tsx:1-145`.
-- Confirm is disabled when `audio` is `null`. Source: `src/components/PreTranscriptionConfirmDialog.tsx:130-138`.
-- Backdrop click and Cancel both close the dialog through `onCancel`. Source: `src/components/PreTranscriptionConfirmDialog.tsx:46-50`, `src/components/PreTranscriptionConfirmDialog.tsx:121-129`.
+With the gate ON:
+
+- Trigger button -> `handleTriggerTranscription()`
+- If `audio` is missing, it sets the existing error and returns
+- If `audio` exists, it calls `setConfirmOpen(true)` and does nothing else
+- The dialog confirm button calls `handleConfirmTranscription()`
+- `handleConfirmTranscription()` closes the dialog, then calls `void runTranscription()`
+- `runTranscription()` is the only function that calls `startTranscription(caseId)`
+
+With the gate OFF:
+
+- Trigger button -> `handleTriggerTranscription()`
+- After the same `audio` guard, the code path is `void runTranscription()`
+- `runTranscription()` itself is unchanged
 
 ## Acceptance gates
 
 ### 1. `npm run typecheck`
 
-Pass.
+Passed.
 
 ```text
 > vite-react-typescript-starter@0.0.0 typecheck
@@ -54,62 +82,112 @@ Pass.
 
 ### 2. `npm run lint`
 
-The full-project lint gate does **not** pass, but the failures are pre-existing and outside this scope. The blocking errors are in unrelated files such as `Audit/runAudit.ts`, `src/api/intakeDesktopService.ts`, `src/lib/parsing/nodParser.ts`, `src/lib/parsing/reporterNotesParser.ts`, `src/mocks/fixtures.ts`, `src/types/database.ts`, and `supabase/functions/transcribe-callback/index.ts`.
+Repo-wide lint did not pass because of pre-existing unrelated errors outside this scope. No new lint errors were introduced in the touched transcription-confirm files.
 
-Relevant result:
-
-```text
-✖ 71 problems (44 errors, 27 warnings)
-```
-
-To confirm this change did not add lint debt, I ran targeted lint on the touched files:
+Changed-file lint passed:
 
 ```text
 npx eslint src/components/TranscriptCreationScreen.tsx src/components/PreTranscriptionConfirmDialog.tsx src/components/PreTranscriptionConfirmDialog.test.tsx
 ```
 
-That targeted lint pass returned clean.
+Repo-wide lint output:
+
+```text
+> vite-react-typescript-starter@0.0.0 lint
+> eslint .
+
+C:\Users\james\Projects\Depo-Pro\Audit\runAudit.ts
+  238:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  258:12  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  287:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  301:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  365:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  368:49  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  378:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  465:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  468:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  470:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  498:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  499:73  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  500:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  508:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  525:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  574:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  577:88  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  765:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\james\Projects\Depo-Pro\src\api\intakeDesktopService.ts
+  35:11  error  Empty block statement  no-empty
+
+C:\Users\james\Projects\Depo-Pro\src\components\conflict\conflictStore.tsx
+  58:40  error  '_removed' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\james\Projects\Depo-Pro\src\lib\parsing\nodParser.ts
+  62:20   error  Unnecessary escape character: \.  no-useless-escape
+  69:46   error  Unnecessary escape character: \.  no-useless-escape
+  69:48   error  Unnecessary escape character: \/  no-useless-escape
+  168:39  error  Unnecessary escape character: \.  no-useless-escape
+  168:52  error  Unnecessary escape character: \.  no-useless-escape
+  181:188 error  Unnecessary escape character: \.  no-useless-escape
+  224:41  error  Unnecessary escape character: \.  no-useless-escape
+  224:43  error  Unnecessary escape character: \/  no-useless-escape
+  251:78  error  Unnecessary escape character: \.  no-useless-escape
+  251:91  error  Unnecessary escape character: \.  no-useless-escape
+
+C:\Users\james\Projects\Depo-Pro\src\lib\parsing\reporterNotesParser.ts
+  68:140 error  Unnecessary escape character: \.  no-useless-escape
+  73:48  error  Unnecessary escape character: \.  no-useless-escape
+  73:93  error  Unnecessary escape character: \.  no-useless-escape
+  154:63 error  Unnecessary escape character: \.  no-useless-escape
+  154:76 error  Unnecessary escape character: \.  no-useless-escape
+  197:53 error  Unnecessary escape character: \.  no-useless-escape
+  197:66 error  Unnecessary escape character: \.  no-useless-escape
+
+C:\Users\james\Projects\Depo-Pro\src\lib\transcript\normalize.test.ts
+  40:5 error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  48:5 error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  49:5 error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+  50:5 error  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+C:\Users\james\Projects\Depo-Pro\src\mocks\fixtures.ts
+  68:20 error  '_pos' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\james\Projects\Depo-Pro\src\types\database.ts
+  1:0 error  Parsing error: File appears to be binary
+
+C:\Users\james\Projects\Depo-Pro\supabase\functions\transcribe-callback\index.ts
+  132:5 error  Unnecessary try/catch wrapper  no-useless-catch
+
+✖ 71 problems (44 errors, 27 warnings)
+```
 
 ### 3. `npx vitest run`
 
-Pass.
+Passed.
 
-Before this change, the suite would have contained 52 test files / 256 tests. This change adds 1 file and 3 tests. After the change, the full suite reports:
+Before/after suite counts for this turn are unchanged because `src/components/PreTranscriptionConfirmDialog.test.tsx` was already present on the branch when this prompt was resumed.
+
+- Before this turn: `53` files, `259` tests
+- After this turn: `53` files, `259` tests
 
 ```text
+RUN  v4.1.8 C:/Users/james/Projects/Depo-Pro
+
 Test Files  53 passed (53)
-Tests       259 passed (259)
+     Tests  259 passed (259)
+  Start at  07:14:43
+  Duration  3.72s (transform 14.50s, setup 0ms, import 23.44s, tests 1.15s, environment 8ms)
 ```
 
-The new dialog test covers:
+### 4. Confirmed constraints
 
-- rendering of the three blocks from props
-- disabled confirm when `audio` is null
-- `onConfirm` and `onCancel` firing from the primary and secondary buttons
-
-Sources: `src/components/PreTranscriptionConfirmDialog.test.tsx:41-127`.
-
-### 4. Manual reasoning check
-
-With the gate ON, the button no longer invokes `runTranscription()` directly. It calls `handleTriggerTranscription()`, which:
-
-- preserves the existing no-audio error behavior
-- branches to `setConfirmOpen(true)` when the flag is ON
-- only calls `runTranscription()` directly when the flag is OFF
-
-`startTranscription()` remains encapsulated inside `runTranscription()`, and the ON-path reaches `runTranscription()` only through the dialog’s `onConfirm` handler. Sources: `src/components/TranscriptCreationScreen.tsx:112-130`, `src/components/TranscriptCreationScreen.tsx:150-167`, `src/components/TranscriptCreationScreen.tsx:297-307`.
-
-## Confirmed no out-of-scope change
-
-- No file under `supabase/` was modified.
-- No schema or migration change.
-- No `package.json` or dependency change.
-- No `src/api/types.ts` or contract change.
-- No `src/api/*Service.ts` change.
-- No new `fetch()` call site.
-- No `localStorage` or `sessionStorage`.
-- `runTranscription()` keeps the same body; only the caller path changed. Source: `src/components/TranscriptCreationScreen.tsx:112-130`.
-
-## Status
-
-Implementation is complete and scoped correctly. The only acceptance caveat is the pre-existing project-wide lint baseline, which remains outside this diff.
+- No file under `supabase/` was modified
+- No `*.sql` file or migration was created or modified
+- No change to `src/api/types.ts`
+- No change to `src/api/client.ts`
+- No change to any `src/api/*Service.ts`
+- No new dependency was added
+- No new `fetch()` call site was added
+- No `localStorage` or `sessionStorage` was added
+- No transcript-domain shapes were touched
+- `runTranscription()` remains unchanged; only the trigger path to it was tightened

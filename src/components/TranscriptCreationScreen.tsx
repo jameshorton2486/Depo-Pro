@@ -38,10 +38,14 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   }), [record.caption.case_name.value, record.caption.case_style.value, record.case_id, record.witnesses]);
 
   const keytermPreview = useMemo(() => ({
-    count: requestPreview.envelope.keyterms.length,
+    count: requestPreview.envelope.keyterms_count,
     estimatedTokens: requestPreview.envelope.estimated_token_usage,
     sample: requestPreview.envelope.keyterms.slice(0, 12).map((keyterm) => keyterm.term),
-  }), [requestPreview.envelope.estimated_token_usage, requestPreview.envelope.keyterms]);
+  }), [
+    requestPreview.envelope.estimated_token_usage,
+    requestPreview.envelope.keyterms,
+    requestPreview.envelope.keyterms_count,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,7 +222,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 <button
                   type="button"
                   onClick={handleTriggerTranscription}
-                  disabled={running || loading || !audio}
+                  disabled={running || loading}
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
                   {running ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
