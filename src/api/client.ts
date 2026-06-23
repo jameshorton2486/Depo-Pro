@@ -10,7 +10,7 @@ import type {
   CertifyChecklist,
 } from "./types";
 import { isRealApiMode } from "../lib/runtime/mode";
-import { AuthRequiredError, supabase } from "../lib/supabase";
+import { AuthRequiredError, getSupabaseAccessToken } from "../lib/supabase";
 
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
@@ -47,16 +47,7 @@ async function request<T>(
 }
 
 async function getAccessToken(): Promise<string | null> {
-  if (!supabase) {
-    return null;
-  }
-
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    throw error;
-  }
-
-  return data.session?.access_token ?? null;
+  return getSupabaseAccessToken();
 }
 
 export async function externalRequest(

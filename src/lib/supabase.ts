@@ -45,6 +45,7 @@ function setAuthSnapshot(next: AuthSnapshot) {
 
 if (supabase) {
   supabase.auth.onAuthStateChange((_event, session) => {
+    authBootstrapPromise = null;
     setAuthSnapshot({ loading: false, session });
   });
 }
@@ -77,11 +78,72 @@ export async function initializeSupabaseSession(tokens?: {
     if (error) {
       throw error;
     }
-    setAuthSnapshot({ loading: false, session: data.session });
-    return data.session;
+    const session = await validateSupabaseSession(data.session);
+    setAuthSnapshot({ loading: false, session });
+    return session;
   }
 
   return ensureSupabaseSession();
+}
+
+function isInvalidSessionError(error: unknown): boolean {
+  if (!error) {
+    return false;
+  }
+
+  if (typeof error === "object" && "status" in error) {
+    const status = (error as { status?: unknown }).status;
+    if (status === 401 || status === 403) {
+      return true;
+    }
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("jwt")
+    || normalized.includes("session")
+    || normalized.includes("refresh token")
+    || normalized.includes("invalid claim")
+    || normalized.includes("auth")
+  );
+}
+
+async function clearLocalSupabaseSession() {
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.auth.signOut({ scope: "local" });
+  if (error) {
+    console.warn("[DEPO-PRO] Failed to clear local Supabase session:", error);
+  }
+
+  authBootstrapPromise = null;
+  setAuthSnapshot({ loading: false, session: null });
+}
+
+async function validateSupabaseSession(session: Session | null): Promise<Session | null> {
+  if (!supabase || !session) {
+    return session;
+  }
+
+  const { data, error } = await supabase.auth.getUser(session.access_token);
+  if (error) {
+    if (!isInvalidSessionError(error)) {
+      throw error;
+    }
+
+    await clearLocalSupabaseSession();
+    return null;
+  }
+
+  if (!data.user) {
+    await clearLocalSupabaseSession();
+    return null;
+  }
+
+  return session;
 }
 
 async function ensureSupabaseSession(): Promise<Session | null> {
@@ -90,24 +152,29 @@ async function ensureSupabaseSession(): Promise<Session | null> {
     return null;
   }
 
-  if (!authBootstrapPromise) {
-    authBootstrapPromise = (async () => {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      const session = sessionData.session ?? null;
-      setAuthSnapshot({ loading: false, session });
-      return session;
-    })().catch((error) => {
-      authBootstrapPromise = null;
-      setAuthSnapshot({ loading: false, session: null });
-      throw error;
-    });
+  if (authBootstrapPromise) {
+    return authBootstrapPromise;
   }
 
-  return authBootstrapPromise;
+  authBootstrapPromise = (async () => {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    const session = await validateSupabaseSession(sessionData.session ?? null);
+    setAuthSnapshot({ loading: false, session });
+    return session;
+  })();
+
+  try {
+    return await authBootstrapPromise;
+  } catch (error) {
+    setAuthSnapshot({ loading: false, session: null });
+    throw error;
+  } finally {
+    authBootstrapPromise = null;
+  }
 }
 
 export async function signOutSupabaseSession() {
@@ -119,6 +186,11 @@ export async function signOutSupabaseSession() {
   if (error) {
     throw error;
   }
+}
+
+export async function getSupabaseAccessToken(): Promise<string | null> {
+  const session = await ensureSupabaseSession();
+  return session?.access_token ?? null;
 }
 
 if (typeof window !== "undefined" && import.meta.env.MODE !== "test") {

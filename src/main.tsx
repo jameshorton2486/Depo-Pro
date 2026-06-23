@@ -40,10 +40,14 @@ export async function mountEditor(config: DepoEditorConfig) {
       : config.apiBaseUrl;
 
   configureClient(resolvedApiBaseUrl);
-  await initializeSupabaseSession({
-    accessToken: config.supabaseAccessToken,
-    refreshToken: config.supabaseRefreshToken,
-  });
+  try {
+    await initializeSupabaseSession({
+      accessToken: config.supabaseAccessToken,
+      refreshToken: config.supabaseRefreshToken,
+    });
+  } catch (error) {
+    console.warn("[DEPO-PRO] Supabase session bootstrap failed; continuing to auth gate.", error);
+  }
 
   const el = document.querySelector(config.mountSelector);
   if (!el) {
