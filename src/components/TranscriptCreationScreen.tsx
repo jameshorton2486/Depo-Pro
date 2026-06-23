@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mic, RefreshCw, Sparkles } from "lucide-react";
 
 import type { CaseAudioRecord } from "../api/fileService";
@@ -8,7 +8,11 @@ import { listTranscriptionJobs, startTranscription } from "../api/transcriptionS
 import { saveCase } from "../api/caseService";
 import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
+import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
 import { isMockMode } from "../lib/runtime/mode";
+import { PreTranscriptionConfirmDialog } from "./PreTranscriptionConfirmDialog";
+
+const REQUIRE_BINDING_CONFIRM = import.meta.env.VITE_REQUIRE_BINDING_CONFIRM !== "false";
 
 export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const { record } = useIntake();
@@ -18,7 +22,26 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const advancedJobIdRef = useRef<string | null>(null);
+
+  const requestPreview = useMemo(() => buildDeepgramRequestFromStoredKeyterms({
+    caseId,
+    keyterms: record.deepgram.keyterms,
+  }), [caseId, record.deepgram.keyterms]);
+
+  const caseIdentity = useMemo(() => ({
+    caseId: record.case_id,
+    caseName: record.caption.case_name.value.trim() || null,
+    caseStyle: record.caption.case_style.value.trim() || null,
+    witnessName: record.witnesses[0]?.name.value.trim() || null,
+  }), [record.caption.case_name.value, record.caption.case_style.value, record.case_id, record.witnesses]);
+
+  const keytermPreview = useMemo(() => ({
+    count: requestPreview.envelope.keyterms.length,
+    estimatedTokens: requestPreview.envelope.estimated_token_usage,
+    sample: requestPreview.envelope.keyterms.slice(0, 12).map((keyterm) => keyterm.term),
+  }), [requestPreview.envelope.estimated_token_usage, requestPreview.envelope.keyterms]);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +147,25 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     }
   }, [failedJob]);
 
+  function handleTriggerTranscription() {
+    if (!audio) {
+      setError("Upload audio before starting transcription.");
+      return;
+    }
+
+    if (!REQUIRE_BINDING_CONFIRM) {
+      void runTranscription();
+      return;
+    }
+
+    setConfirmOpen(true);
+  }
+
+  function handleConfirmTranscription() {
+    setConfirmOpen(false);
+    void runTranscription();
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-10">
       <div className="mx-auto max-w-4xl rounded-[28px] border border-slate-200 bg-white shadow-xl">
@@ -175,7 +217,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => void runTranscription()}
+                  onClick={handleTriggerTranscription}
                   disabled={running || loading || !audio}
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
@@ -252,6 +294,18 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
           </aside>
         </div>
       </div>
+      <PreTranscriptionConfirmDialog
+        open={confirmOpen}
+        caseIdentity={caseIdentity}
+        audio={audio ? {
+          filename: audio.original_filename,
+          durationSeconds: audio.duration_seconds,
+          mimeType: audio.mime_type,
+        } : null}
+        keyterms={keytermPreview}
+        onConfirm={handleConfirmTranscription}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
