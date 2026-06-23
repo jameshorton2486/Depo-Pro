@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 import { buildDeepgramRequestFromStoredKeyterms } from "../../../src/lib/deepgram/buildDeepgramRequest.ts";
 import { fitStoredKeytermsToRequestBudget } from "../../../src/lib/deepgram/requestBudget.ts";
+import { assertCaseAudioIntegrity } from "../../../src/lib/keyterms/caseAudioIntegrity.ts";
 import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
 import {
   buildDeepgramRequestFileName,
@@ -91,6 +92,7 @@ Deno.serve(async (request) => {
     }
 
     const record = normalizeCaseRecord(caseRow.payload);
+    assertCaseAudioIntegrity(record, firstAudio.original_filename);
     const budgetedKeyterms = fitStoredKeytermsToRequestBudget(record.deepgram.keyterms);
     if (budgetedKeyterms.droppedCount > 0) {
       console.warn("[transcribe-start] trimmed keyterms to request budget", {
