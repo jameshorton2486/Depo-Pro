@@ -2,6 +2,9 @@ type UtteranceNodeLike = {
   type: { name: string };
   attrs: Record<string, unknown>;
   textContent: string;
+  text?: string | null;
+  childCount?: number;
+  child?: (index: number) => UtteranceNodeLike;
 };
 
 type DescendantDocLike = {
@@ -14,6 +17,26 @@ export type UtteranceFragment = {
   textContent: string;
 };
 
+function normalizeUtteranceText(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function readNodeText(node: UtteranceNodeLike): string {
+  if (
+    typeof node.childCount === "number" &&
+    node.childCount > 0 &&
+    typeof node.child === "function"
+  ) {
+    let text = "";
+    for (let index = 0; index < node.childCount; index += 1) {
+      text += readNodeText(node.child(index));
+    }
+    return text;
+  }
+
+  return node.text ?? node.textContent;
+}
+
 export function collectUtteranceFragments(doc: DescendantDocLike): UtteranceFragment[] {
   const fragments: UtteranceFragment[] = [];
 
@@ -25,7 +48,7 @@ export function collectUtteranceFragments(doc: DescendantDocLike): UtteranceFrag
     fragments.push({
       utteranceId: String(node.attrs.utterance_id),
       speakerId: typeof node.attrs.speaker_id === "string" ? node.attrs.speaker_id : null,
-      textContent: node.textContent,
+      textContent: normalizeUtteranceText(readNodeText(node)),
     });
   });
 
@@ -45,7 +68,7 @@ export function reassembleUtteranceTexts(
 
   const texts = new Map<string, string>();
   orderedTexts.forEach((parts, utteranceId) => {
-    texts.set(utteranceId, parts.join(" "));
+    texts.set(utteranceId, normalizeUtteranceText(parts.join(" ")));
   });
 
   return texts;

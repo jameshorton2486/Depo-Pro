@@ -78,6 +78,28 @@ function extractUtteranceTexts(editor: Editor): Map<string, string> {
   return extractUtteranceTextsFromDoc(editor.state.doc);
 }
 
+export type UtteranceTextChange = {
+  utteranceId: string;
+  oldText: string;
+  newText: string;
+};
+
+export function diffUtteranceTextSnapshots(
+  previousTexts: Map<string, string>,
+  nextTexts: Map<string, string>
+): UtteranceTextChange[] {
+  const changes: UtteranceTextChange[] = [];
+
+  nextTexts.forEach((newText, utteranceId) => {
+    const oldText = previousTexts.get(utteranceId);
+    if (oldText !== undefined && oldText !== newText) {
+      changes.push({ utteranceId, oldText, newText });
+    }
+  });
+
+  return changes;
+}
+
 export function TranscriptEditor({ readOnly }: Props) {
   const { state, editUtterance, setActive } = useDocument();
   const audio = useAudio();
@@ -138,11 +160,8 @@ export function TranscriptEditor({ readOnly }: Props) {
 
     function handleUpdate() {
       const newTexts = extractUtteranceTexts(editor!);
-      newTexts.forEach((newText, uttId) => {
-        const prev = prevTextsRef.current.get(uttId);
-        if (prev !== undefined && prev !== newText) {
-          editUtteranceRef.current(uttId, prev, newText);
-        }
+      diffUtteranceTextSnapshots(prevTextsRef.current, newTexts).forEach((change) => {
+        editUtteranceRef.current(change.utteranceId, change.oldText, change.newText);
       });
       prevTextsRef.current = newTexts;
     }
