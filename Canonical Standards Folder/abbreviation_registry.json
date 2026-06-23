@@ -1,0 +1,35 @@
+{
+  "registry": "depo-pro-abbreviation-registry",
+  "version": "1.0",
+  "authority": "DP-010 (Sentence Boundary & Abbreviation Spacing)",
+  "purpose": "Single source of truth for which trailing periods are ABBREVIATIONS (one space after) versus SENTENCE BOUNDARIES (two spaces after). Consumed by Workspace, Copy Transcript, DOCX export, PDF export, Stage S, and the AI Structuring Layer. Do NOT hardcode abbreviation lists per-module.",
+  "rule": {
+    "two_space_boundaries": [".", "?", "!"],
+    "two_space_boundaries_note": "A '.', '?', or '!' that TERMINATES A SENTENCE is followed by exactly two spaces. When the sentence-ending punctuation falls inside a closing quotation mark, the two spaces follow the CLOSING QUOTE (e.g. 'hurting.\"  And I take...'). So is the colon in a speaker label (e.g. 'MR. ETMINAN:  I do.').",
+    "one_space_tokens_note": "Any token below, when followed by its trailing period, takes exactly ONE space. Honorifics are one space whether mixed case (running text) or all caps (speaker label).",
+    "precedence": "If a token is in the registry, it is one space. Otherwise a trailing '.', '?', or '!' before a capital (or end of sentence) is a sentence boundary -> two spaces."
+  },
+  "one_space_tokens": {
+    "honorifics": ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Hon.", "Rev.", "Sr.", "Jr."],
+    "honorifics_caps": ["MR.", "MRS.", "MS.", "DR."],
+    "credentials": ["M.D.", "Ph.D.", "D.O.", "D.C.", "J.D.", "R.N.", "P.A.", "Esq."],
+    "reference": ["No.", "Ex.", "Vol.", "Fig.", "p.", "pp."],
+    "time": ["a.m.", "p.m."],
+    "entity": ["Inc.", "Co.", "Corp.", "Ltd.", "L.P.", "L.L.C."],
+    "latin_legal": ["vs.", "v.", "etc.", "et al.", "e.g.", "i.e."],
+    "geographic": ["St.", "Ave.", "Blvd.", "Rd.", "Mt."]
+  },
+  "one_space_patterns": [
+    { "name": "single_initial", "regex": "^[A-Z]\\.$", "desc": "single uppercase initial, e.g. J. R. C." },
+    { "name": "inner_dotted",   "regex": "[A-Za-z]\\.[A-Za-z]\\.?$", "desc": "inner-dotted abbreviation, e.g. M.D. U.S. a.m. e.g." }
+  ],
+  "context_sensitive": {
+    "No.": "ONE space only when it means 'number' (followed by a figure/identifier: 'No. 12129', 'NO. C-5722-24-L'). When 'No.' is the spoken word 'No' ending a sentence ('1991.  No.  No.  No.  I'm sorry.  2001.'), it is a SENTENCE BOUNDARY -> TWO spaces. Never collapse 'No.  No.' runs.",
+    "Dr.": "Doctor in deposition context (one space). Also abbreviates 'Drive' in addresses; the same one-space rule applies."
+  },
+  "notes": [
+    "Miss takes no period and does not participate in period spacing.",
+    "Running-text honorifics are mixed case (Ms. Vargas, Dr. Etminan); only the speaker-label designation is all caps (MR. ETMINAN:). Spacing is one space in both cases.",
+    "This is the ONLY abbreviation list. New abbreviations are added here, not in individual formatters."
+  ]
+}
