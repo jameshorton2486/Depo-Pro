@@ -25,3 +25,6 @@ test-results/
 supabase/.temp/
 bolt_export/
 .tmp/
+.aider*
+**/__pycache__/
+*.pyc
