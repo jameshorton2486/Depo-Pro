@@ -37,7 +37,9 @@ describe("normalizeTranscriptResponse", () => {
   it("falls back to bare word when punctuated_word is missing", () => {
     const response = createOfflineDeepgramFixture("case_c");
     response.results.channels[0].alternatives[0].words[0].punctuated_word = undefined;
-    response.results.utterances?.[0]?.words[0] && (response.results.utterances[0].words[0].punctuated_word = undefined);
+    if (response.results.utterances?.[0]?.words[0]) {
+      response.results.utterances[0].words[0].punctuated_word = undefined;
+    }
 
     const normalized = normalizeTranscriptResponse(response);
     expect(normalized.words[0]?.raw_text).toBe("good");
@@ -45,9 +47,13 @@ describe("normalizeTranscriptResponse", () => {
 
   it("uses word-level speaker indices and rounds confidence to four decimals", () => {
     const response = createOfflineDeepgramFixture("case_d");
-    response.results.utterances?.[0] && (response.results.utterances[0].speaker = 99);
-    response.results.utterances?.[0]?.words[0] && (response.results.utterances[0].words[0].speaker = 3);
-    response.results.utterances?.[0]?.words[0] && (response.results.utterances[0].words[0].confidence = 0.987654321);
+    if (response.results.utterances?.[0]) {
+      response.results.utterances[0].speaker = 99;
+    }
+    if (response.results.utterances?.[0]?.words[0]) {
+      response.results.utterances[0].words[0].speaker = 3;
+      response.results.utterances[0].words[0].confidence = 0.987654321;
+    }
     response.results.channels[0].alternatives[0].words[0].speaker = 3;
     response.results.channels[0].alternatives[0].words[0].confidence = 0.987654321;
 

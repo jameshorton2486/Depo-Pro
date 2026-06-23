@@ -65,7 +65,7 @@ function buildDocumentFromScript(
     const wordIds: string[] = [];
     let cursor = t;
 
-    ws.forEach((w, _pos) => {
+    ws.forEach((w) => {
       const absoluteIdx = wi - wordIndexOffset;
       const dur = 0.15 + w.length * 0.04 + (wi % 7) * 0.02;
       const conf = LOW_CONF_INDICES.has(absoluteIdx)

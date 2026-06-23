@@ -65,12 +65,12 @@ function parseReporterInfo(text: string): ReporterInfo {
   if (csrMatch) result.csrNumber = csrMatch[1];
 
   const agencyMatch = text.match(
-    /(?:Court\s+Reporting|Reporting\s+Services?|Legal\s+Solutions?|Steno)\s*(?:Agency|LLC|PLLC|Inc\.?)?\s*(?:\n|:|\s{3,})?([A-Z][A-Za-z\s&,\.]+?)(?:\n|$)/im,
+    /(?:Court\s+Reporting|Reporting\s+Services?|Legal\s+Solutions?|Steno)\s*(?:Agency|LLC|PLLC|Inc.?)?\s*(?:\n|:|\s{3,})?([A-Z][A-Za-z\s&,.]+?)(?:\n|$)/im,
   );
   if (agencyMatch) {
     result.agency = agencyMatch[1].trim();
   } else {
-    const headerAgency = text.match(/([A-Z][A-Z\.\s]+(?:LEGAL|REPORTING|SOLUTIONS|STENO)[A-Z\.\s]*)/i);
+    const headerAgency = text.match(/([A-Z][A-Z.\s]+(?:LEGAL|REPORTING|SOLUTIONS|STENO)[A-Z.\s]*)/i);
     if (headerAgency) result.agency = headerAgency[1].trim();
   }
 
@@ -151,7 +151,7 @@ function parseBilling(text: string): BillingInfo {
   const firmMatch = text.match(/Firm\s*:\s*\n?\s*([^\n]+)/i);
   if (firmMatch) result.orderingFirm = firmMatch[1].trim();
 
-  const phoneMatch = text.match(/Phone\s*:\s*(\(?\d{3}\)?[\s\-\.]\d{3}[\s\-\.]\d{4})/i);
+  const phoneMatch = text.match(/Phone\s*:\s*(\(?\d{3}\)?[\s\-.]\d{3}[\s\-.]\d{4})/i);
   if (phoneMatch) result.orderingPhone = phoneMatch[1].trim();
 
   const emailMatch = text.match(/Email\s*:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
@@ -194,13 +194,13 @@ function parseCopyOrders(text: string): CopyOrder[] {
     const firmMatch = chunk.match(/Firm\s*:\s*\n?\s*([^\n]+)/i);
     if (firmMatch) order.firmName = firmMatch[1].trim();
 
-    const phoneMatch = chunk.match(/\(?\d{3}\)?[\s\-\.]\d{3}[\s\-\.]\d{4}/);
+    const phoneMatch = chunk.match(/\(?\d{3}\)?[\s\-.]\d{3}[\s\-.]\d{4}/);
     if (phoneMatch) order.phone = phoneMatch[0];
 
     const emailMatch = chunk.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
     if (emailMatch) order.email = emailMatch[1];
 
-    const addressMatch = chunk.match(/(\d+\s+[^\n]+(?:Suite|Ste\.?|Ave|Street)[^\n]*)/i);
+    const addressMatch = chunk.match(/(\d+\s+[^\n]+(?:Suite|Ste.?|Ave|Street)[^\n]*)/i);
     if (addressMatch) order.address = addressMatch[1].trim();
 
     if (/Original/i.test(chunk)) order.format.push("Original");

@@ -32,7 +32,9 @@ export async function openJsonPreviewInNotepad(filename: string, content: string
     if (response.ok) {
       return "notepad";
     }
-  } catch {
+  } catch (error) {
+    // Intentional: desktop service unavailable in web context; log for diagnostics.
+    console.error("[intakeDesktopService] Desktop service call failed:", error);
   }
 
   downloadJson(filename, content);

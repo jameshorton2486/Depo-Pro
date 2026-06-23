@@ -257,7 +257,7 @@ export function TranscriptEditor({ readOnly }: Props) {
     }
 
     rafRef.current = requestAnimationFrame(highlightLoop);
-  }, [audio.currentTimeRef, clearHighlightedWord, editor, maybeScrollWordIntoView, playing, wordTimings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [audio.currentTimeRef, clearHighlightedWord, editor, maybeScrollWordIntoView, playing, wordTimings]);
 
   useEffect(() => {
     if (!playing) {

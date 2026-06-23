@@ -59,14 +59,14 @@ function parseCaseInfo(text: string): CaseInfo {
   if (divisionMatch) result.division = `${divisionMatch[1].trim()} DIVISION`;
 
   const plaintiffMatch = text.match(
-    /^([A-Z][A-Z\s,\.]+?)\s*\n+\s*(?:Plaintiff|PLAINTIFF)/m,
+    /^([A-Z][A-Z\s,.]+?)\s*\n+\s*(?:Plaintiff|PLAINTIFF)/m,
   );
   if (plaintiffMatch) {
     result.plaintiff = plaintiffMatch[1].replace(/,\s*$/, "").trim();
   }
 
   const defendantMatch = text.match(
-    /vs?\.\s+(?:CIVIL[^\n]*\n+)?([A-Z][A-Z\s,\.\/\-&]+?)\s*\n+\s*(?:Defendant|DEFENDANT)/im,
+    /vs?\.\s+(?:CIVIL[^\n]*\n+)?([A-Z][A-Z\s,./\-&]+?)\s*\n+\s*(?:Defendant|DEFENDANT)/im,
   );
   if (defendantMatch) {
     result.defendant = defendantMatch[1]
@@ -122,7 +122,7 @@ function parseDepositionDetails(text: string, caseInfo: CaseInfo): DepositionDet
   );
   if (dateMatch) result.date = dateMatch[1].replace(",", "").trim();
 
-  const timeMatch = text.match(/Time\s*:\s+(\d{1,2}:\d{2}\s*(?:a\.?m\.?|p\.?m\.?)?(?:\s*\(Central Time\))?)/i);
+  const timeMatch = text.match(/Time\s*:\s+(\d{1,2}:\d{2}\s*(?:a.?m.?|p.?m.?)?(?:\s*\(Central Time\))?)/i);
   if (timeMatch) {
     result.time = timeMatch[1]
       .replace(/\(Central Time\)/i, "")
@@ -165,7 +165,7 @@ function parseAppearances(text: string, caseInfo: CaseInfo): AttorneyAppearance[
 
     const combined = lines.join(" ");
     const hasEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(combined);
-    const hasPhone = /\(?\d{3}\)?[\s\-\.]\d{3}[\s\-\.]\d{4}/.test(combined);
+    const hasPhone = /\(?\d{3}\)?[\s\-.]\d{3}[\s\-.]\d{4}/.test(combined);
     const hasBarNo = /State\s+Bar\s+No\./i.test(combined);
 
     if (!hasEmail && !hasPhone && !hasBarNo) continue;
@@ -178,7 +178,7 @@ function parseAppearances(text: string, caseInfo: CaseInfo): AttorneyAppearance[
   }
 
   const toMatch = text.match(
-    /TO:\s+(?:Defendant|Plaintiff)[^,]*,\s+(?:by and through its attorney of record,\s+)?([A-Z][a-z]+(?:\s+[A-Z]\.?\s+[A-Z][a-z]+)?),\s+([A-Z][A-Z\s,&]+?(?:P\.C\.|PLLC|L\.L\.P|LLP|LLC))[,\.]?\s+([^\n]+)/i,
+    /TO:\s+(?:Defendant|Plaintiff)[^,]*,\s+(?:by and through its attorney of record,\s+)?([A-Z][a-z]+(?:\s+[A-Z].?\s+[A-Z][a-z]+)?),\s+([A-Z][A-Z\s,&]+?(?:P.C.|PLLC|L.L.P|LLP|LLC))[,.]?\s+([^\n]+)/i,
   );
   if (toMatch) {
     const name = toMatch[1].trim();
@@ -221,7 +221,7 @@ function extractAttorneyBlock(lines: string[], caseInfo: CaseInfo): AttorneyAppe
     result.represents = caseInfo.plaintiff || "Plaintiff";
   }
 
-  const firmPattern = /^([A-Z][A-Z\s,&\-\.\/]+(?:PLLC|P\.C\.|LLC|LLP|L\.L\.P\.|INC\.|CORP\.))\s*$/m;
+  const firmPattern = /^([A-Z][A-Z\s,&\-./]+(?:PLLC|P.C.|LLC|LLP|L.L.P.|INC.|CORP.))\s*$/m;
   const firmMatch = lines.find((line) => firmPattern.test(line));
   if (firmMatch) result.firmName = firmMatch.trim();
 
@@ -248,7 +248,7 @@ function extractAttorneyBlock(lines: string[], caseInfo: CaseInfo): AttorneyAppe
   const barMatch = combined.match(/State\s+Bar\s+No\.?\s*([0-9]+)/i);
   if (barMatch) result.stateBarNo = barMatch[1];
 
-  const phoneMatch = combined.match(/(?:Tel|Phone|Ph)[\s.:]*(\(?\d{3}\)?[\s\-\.]\d{3}[\s\-\.]\d{4})/i);
+  const phoneMatch = combined.match(/(?:Tel|Phone|Ph)[\s.:]*(\(?\d{3}\)?[\s\-.]\d{3}[\s\-.]\d{4})/i);
   if (phoneMatch) result.phone = phoneMatch[1].trim();
 
   const emailMatch = combined.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);

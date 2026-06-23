@@ -55,7 +55,9 @@ export function conflictReducer(state: ConflictState, action: ConflictAction): C
 
     case "RESOLVE_CONFLICT": {
       const { resolution } = action.payload;
-      const { [resolution.field_path]: _removed, ...remainingActive } = state.active;
+      const remainingActive = Object.fromEntries(
+        Object.entries(state.active).filter(([fieldPath]) => fieldPath !== resolution.field_path),
+      );
       return {
         ...state,
         active: remainingActive,

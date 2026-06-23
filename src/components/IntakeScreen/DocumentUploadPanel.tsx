@@ -369,7 +369,7 @@ export function DocumentUploadPanel({
     notice: files.find((file) => file.file_type === "notice") ?? null,
     scheduling: files.find((file) => file.file_type === "scheduling") ?? null,
     supporting: files.find((file) => file.file_type === "supporting") ?? null,
-  }), [audio, files]);
+  }), [files]);
   const orderedAudio = useMemo(
     () => [...audio].sort((left, right) => left.source_index - right.source_index || (left.uploaded_at ?? "").localeCompare(right.uploaded_at ?? "")),
     [audio],

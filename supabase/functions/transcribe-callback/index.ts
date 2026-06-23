@@ -129,65 +129,61 @@ Deno.serve(async (request) => {
       return respondJson(200, { ok: true, status: "failed" });
     }
 
-    try {
-      const outcome = await advanceOrFinalizeMultifileJob({
-        job,
-        orderedAudio,
-        currentAudio,
-        totalSources,
-        responsePath,
-      }, {
-        requireRequestArtifact: (requestPath) => requireRequestArtifact(serviceClient, requestPath),
-        submitNextDeepgramJob: (jobRecord, audioRecord, sourceCount, requestArtifact) =>
-          submitNextDeepgramJob(serviceClient, jobRecord, audioRecord, sourceCount, requestArtifact),
-        updateJob: (jobId, patch) => updateJob(serviceClient, jobId, patch),
-        finalize: async () => {
-          const sourceSegments = await loadSourceTranscriptSegments(serviceClient, job, orderedAudio);
-          const merged = mergeSourceTranscriptSegments(sourceSegments);
-          const deepgramRequestId = totalSources === 1
-            ? sourceSegments[0]?.response.metadata.request_id ?? null
-            : `${job.id}_multifile`;
-          const finalArtifact = totalSources === 1
-            ? { path: responsePath, checksum: rawChecksum }
-            : await (async () => {
-                const manifestPath = buildTranscriptionArtifactPath(
-                  job.owner_user_id,
-                  job.case_id,
-                  `${job.id}_multifile_manifest.json`,
-                );
-                const checksum = await uploadJsonArtifact(
-                  serviceClient,
-                  manifestPath,
-                  buildMergeManifest(job, merged.segments, sourceSegments),
-                );
-                return { path: manifestPath, checksum };
-              })();
+    const outcome = await advanceOrFinalizeMultifileJob({
+      job,
+      orderedAudio,
+      currentAudio,
+      totalSources,
+      responsePath,
+    }, {
+      requireRequestArtifact: (requestPath) => requireRequestArtifact(serviceClient, requestPath),
+      submitNextDeepgramJob: (jobRecord, audioRecord, sourceCount, requestArtifact) =>
+        submitNextDeepgramJob(serviceClient, jobRecord, audioRecord, sourceCount, requestArtifact),
+      updateJob: (jobId, patch) => updateJob(serviceClient, jobId, patch),
+      finalize: async () => {
+        const sourceSegments = await loadSourceTranscriptSegments(serviceClient, job, orderedAudio);
+        const merged = mergeSourceTranscriptSegments(sourceSegments);
+        const deepgramRequestId = totalSources === 1
+          ? sourceSegments[0]?.response.metadata.request_id ?? null
+          : `${job.id}_multifile`;
+        const finalArtifact = totalSources === 1
+          ? { path: responsePath, checksum: rawChecksum }
+          : await (async () => {
+              const manifestPath = buildTranscriptionArtifactPath(
+                job.owner_user_id,
+                job.case_id,
+                `${job.id}_multifile_manifest.json`,
+              );
+              const checksum = await uploadJsonArtifact(
+                serviceClient,
+                manifestPath,
+                buildMergeManifest(job, merged.segments, sourceSegments),
+              );
+              return { path: manifestPath, checksum };
+            })();
 
-          await ingestTranscript(
-            serviceClient,
-            job,
-            merged.segments,
-            merged.normalized,
-            deepgramRequestId,
-            finalArtifact.path,
-            finalArtifact.checksum,
-          );
-          await updateJob(serviceClient, job.id, {
-            status: "complete",
-            response_path: finalArtifact.path,
-            error: null,
-          });
-          return finalArtifact.path;
-        },
-        cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
-        failJob: (jobId, failedResponsePath, errorMessage) =>
-          failJob(serviceClient, jobId, failedResponsePath, errorMessage),
-      });
+        await ingestTranscript(
+          serviceClient,
+          job,
+          merged.segments,
+          merged.normalized,
+          deepgramRequestId,
+          finalArtifact.path,
+          finalArtifact.checksum,
+        );
+        await updateJob(serviceClient, job.id, {
+          status: "complete",
+          response_path: finalArtifact.path,
+          error: null,
+        });
+        return finalArtifact.path;
+      },
+      cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
+      failJob: (jobId, failedResponsePath, errorMessage) =>
+        failJob(serviceClient, jobId, failedResponsePath, errorMessage),
+    });
 
-      return respondJson(200, { ok: true, status: outcome.status });
-    } catch (error) {
-      throw error;
-    }
+    return respondJson(200, { ok: true, status: outcome.status });
   } catch (error) {
     console.error("[transcribe-callback] unexpected error", {
       jobId,

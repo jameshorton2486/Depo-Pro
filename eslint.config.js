@@ -5,7 +5,15 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'reference/**'] },
+  {
+    ignores: [
+      'dist',
+      'reference/**',
+      'public/mockServiceWorker.js',
+      'src/types/database.ts',
+      'Audit/runAudit.ts',
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -23,6 +31,19 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  }
+  ,
+  {
+    files: [
+      'src/context/**/*.tsx',
+      'src/components/conflict/conflictStore.tsx',
+      'src/components/conflict/ConflictResolutionModal.tsx',
+      'src/components/DeepgramKeytermManager/keytermStore.tsx',
+      'src/components/TranscriptEditor/TranscriptEditor.tsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   }
 );
