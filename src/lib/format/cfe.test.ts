@@ -104,7 +104,77 @@ describe("cfe spacing and serialization", () => {
     expect(serializeFormattedDocument(sentence)).toContain("Q. No.  No.");
   });
 
-  it("adds a low-confidence flag without rewriting the token", () => {
+  it("moves a question mark outside the closing quote when the sentence is the question", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "August" },
+        { word_id: "w2", text: "17th?\"" },
+        { word_id: "w3", text: "What" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. August 17\"?  What");
+  });
+
+  it("removes commas immediately against interrupting dashes", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "one-year,\"" },
+        { word_id: "w2", text: "--" },
+        { word_id: "w3", text: "no." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. one-year\" -- no.");
+    expect(serializeFormattedDocument(formatted)).not.toContain(",\" --");
+  });
+
+  it("normalizes month-day ordinals deterministically", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "August" },
+        { word_id: "w2", text: "17th" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[1].text).toBe("17");
+  });
+
+  it("normalizes age expressions to figures", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "fifty-seven" },
+        { word_id: "w2", text: "years" },
+        { word_id: "w3", text: "old." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. 57 years old.");
+  });
+
+  it("capitalizes direct-address titles after commas", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "yourself," },
+        { word_id: "w2", text: "doctor," },
+        { word_id: "w3", text: "if" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. yourself, Doctor, if");
+  });
+
+  it("renders inline scopist flags for low-confidence words without rewriting the token", () => {
     const formatted = cfe(
       makeDoc([
         { word_id: "w1", text: "lameness", confidence: 0.5 },
@@ -114,6 +184,23 @@ describe("cfe spacing and serialization", () => {
     );
 
     expect(formatted.lines[0].words[0].text).toBe("lameness");
-    expect(formatted.lines[0].flags).toContain("LOW_CONFIDENCE");
+    expect(formatted.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
+    expect(serializeFormattedDocument(formatted)).toContain(
+      'Q. lameness [SCOPIST: FLAG 1: "lameness" — verify from audio]'
+    );
+  });
+
+  it("attaches geometry metadata to each formatted line", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "Hello." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].continuation_mode).toBe("return_to_margin");
+    expect(formatted.lines[0].geometry.tabs.qaLabelInches).toBe(0.5);
+    expect(formatted.lines[0].geometry.lineSpacingPoints).toBe(28);
   });
 });

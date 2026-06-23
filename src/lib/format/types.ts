@@ -20,6 +20,18 @@ export interface GeometryProfile {
   linesPerPage: number;
   charsPerLine: number;
   averageCharsPerWord: number;
+  formatBoxWidthInches: number;
+  leftMarginInches: number;
+  rightMarginInches: number;
+  lineSpacingPoints: number;
+  tabs: {
+    qaLabelInches: number;
+    qaTextInches: number;
+    speakerInches: number;
+    parentheticalInches: number;
+    centerInches: number;
+    continuationInches: number;
+  };
 }
 
 export interface AbbreviationPattern {
@@ -56,6 +68,7 @@ export interface FormattedWord {
   confidence: number;
   reviewed: boolean;
   edited: boolean;
+  inline_flag: string | null;
   trailing_space: string;
 }
 
@@ -77,6 +90,8 @@ export interface FormattedLine {
   segment_index: number;
   segment_count: number;
   language: string | null;
+  geometry: GeometryProfile;
+  continuation_mode: "return_to_margin";
   flags: string[];
 }
 

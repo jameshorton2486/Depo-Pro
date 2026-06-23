@@ -11,19 +11,27 @@ export const UtteranceNode = Node.create({
 
   addAttributes() {
     return {
-      utterance_id:     { default: null },
-      speaker_id:       { default: null },
-      speaker_label:    { default: "" },
-      prefix_text:      { default: "" },
-      // Global 1-based utterance index (used for display when page info absent)
-      line_number:      { default: 0 },
-      // 1-based line number within the current page (1–25)
+      utterance_id: { default: null },
+      speaker_id: { default: null },
+      speaker_label: { default: "" },
+      prefix_text: { default: "" },
+      line_number: { default: 0 },
       page_line_number: { default: 0 },
-      start_time:       { default: 0 },
-      // Speaker role determines Q./A./colloquy rendering
-      role:             { default: null },
-      // UI-only: ISO language tag for interpreter layer ("en" | "es" | null)
-      language:         { default: null },
+      start_time: { default: 0 },
+      role: { default: null },
+      language: { default: null },
+      indent_intent: { default: null },
+      continuation_mode: { default: null },
+      format_box_width_inches: { default: null },
+      left_margin_inches: { default: null },
+      right_margin_inches: { default: null },
+      line_spacing_points: { default: null },
+      tab_qa_label_inches: { default: null },
+      tab_qa_text_inches: { default: null },
+      tab_speaker_inches: { default: null },
+      tab_parenthetical_inches: { default: null },
+      tab_center_inches: { default: null },
+      tab_continuation_inches: { default: null },
     };
   },
 
@@ -42,6 +50,18 @@ export const UtteranceNode = Node.create({
       start_time,
       role,
       language,
+      indent_intent,
+      continuation_mode,
+      format_box_width_inches,
+      left_margin_inches,
+      right_margin_inches,
+      line_spacing_points,
+      tab_qa_label_inches,
+      tab_qa_text_inches,
+      tab_speaker_inches,
+      tab_parenthetical_inches,
+      tab_center_inches,
+      tab_continuation_inches,
     } = HTMLAttributes as Record<string, unknown>;
 
     const numericStartTime = typeof start_time === "number" ? start_time : 0;
@@ -76,6 +96,18 @@ export const UtteranceNode = Node.create({
         "data-start": start_time,
         "data-role": role,
         "data-lang": language,
+        "data-indent-intent": indent_intent,
+        "data-continuation-mode": continuation_mode,
+        "data-format-box-width-inches": format_box_width_inches,
+        "data-left-margin-inches": left_margin_inches,
+        "data-right-margin-inches": right_margin_inches,
+        "data-line-spacing-points": line_spacing_points,
+        "data-tab-qa-label-inches": tab_qa_label_inches,
+        "data-tab-qa-text-inches": tab_qa_text_inches,
+        "data-tab-speaker-inches": tab_speaker_inches,
+        "data-tab-parenthetical-inches": tab_parenthetical_inches,
+        "data-tab-center-inches": tab_center_inches,
+        "data-tab-continuation-inches": tab_continuation_inches,
       }),
       [
         "span",

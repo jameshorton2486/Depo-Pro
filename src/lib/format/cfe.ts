@@ -22,6 +22,55 @@ type RawSegment = {
 
 const MIN_SEGMENT_WORDS = 2;
 const LOW_CONFIDENCE_THRESHOLD = 0.70;
+const MONTH_NAMES = new Set([
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+]);
+const DIRECT_ADDRESS_TITLES = new Map([
+  ["doctor", "Doctor"],
+  ["judge", "Judge"],
+  ["counselor", "Counselor"],
+]);
+const SIMPLE_NUMBER_WORDS = new Map<string, number>([
+  ["zero", 0],
+  ["one", 1],
+  ["two", 2],
+  ["three", 3],
+  ["four", 4],
+  ["five", 5],
+  ["six", 6],
+  ["seven", 7],
+  ["eight", 8],
+  ["nine", 9],
+  ["ten", 10],
+  ["eleven", 11],
+  ["twelve", 12],
+  ["thirteen", 13],
+  ["fourteen", 14],
+  ["fifteen", 15],
+  ["sixteen", 16],
+  ["seventeen", 17],
+  ["eighteen", 18],
+  ["nineteen", 19],
+  ["twenty", 20],
+  ["thirty", 30],
+  ["forty", 40],
+  ["fifty", 50],
+  ["sixty", 60],
+  ["seventy", 70],
+  ["eighty", 80],
+  ["ninety", 90],
+]);
 
 type SpacingRules = {
   oneSpaceTokens: Set<string>;
@@ -121,6 +170,21 @@ function stripTrailingClosers(token: string): string {
   return token.replace(/["')\]]+$/g, "");
 }
 
+function normalizeAlphaToken(token: string | undefined): string {
+  return (token ?? "").replace(/^[^A-Za-z]+|[^A-Za-z]+$/g, "").toLowerCase();
+}
+
+function splitTrailingPunctuation(token: string): { core: string; trailer: string } {
+  const match = token.match(/^(.*?)([,:;.!?"')\]]*)$/);
+  if (!match) {
+    return { core: token, trailer: "" };
+  }
+  return {
+    core: match[1],
+    trailer: match[2],
+  };
+}
+
 function closesSentenceWithQuote(token: string): boolean {
   const stripped = stripTrailingClosers(token);
   if (stripped.length === token.length) {
@@ -197,6 +261,131 @@ function formatSpeakerPrefix(
   return `${speakerLabel.toUpperCase()}:`;
 }
 
+function normalizeInterruptingDash(token: string, nextToken: string | undefined): string {
+  if (nextToken !== "--") {
+    return token;
+  }
+
+  return token
+    .replace(/,(["'])$/, "$1")
+    .replace(/,$/, "");
+}
+
+function normalizeQuotedQuestionMark(token: string, nextToken: string | undefined): string {
+  if (!nextToken || !/^[A-Z"'([]/.test(nextToken)) {
+    return token;
+  }
+
+  return token.replace(/\?(["'])$/, "$1?");
+}
+
+function normalizeDateOrdinal(token: string, previousToken: string | undefined): string {
+  if (!MONTH_NAMES.has(normalizeAlphaToken(previousToken))) {
+    return token;
+  }
+
+  return token.replace(/^(\d{1,2})(st|nd|rd|th)([.,?!"']*)$/i, "$1$3");
+}
+
+function parseNumberWord(core: string): number | null {
+  const normalized = core.toLowerCase();
+  const direct = SIMPLE_NUMBER_WORDS.get(normalized);
+  if (direct !== undefined) {
+    return direct;
+  }
+
+  if (!normalized.includes("-")) {
+    return null;
+  }
+
+  const parts = normalized.split("-");
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const tens = SIMPLE_NUMBER_WORDS.get(parts[0]);
+  const units = SIMPLE_NUMBER_WORDS.get(parts[1]);
+  if (tens === undefined || units === undefined || tens < 20 || units >= 10) {
+    return null;
+  }
+
+  return tens + units;
+}
+
+function shouldNormalizeNumberWord(
+  previousToken: string | undefined,
+  nextToken: string | undefined
+): boolean {
+  const previous = normalizeAlphaToken(previousToken);
+  const next = normalizeAlphaToken(nextToken);
+
+  return previous === "age" || previous === "aged" || next === "year" || next === "years" || next === "old";
+}
+
+function normalizeNumberWord(
+  token: string,
+  previousToken: string | undefined,
+  nextToken: string | undefined
+): string {
+  if (!shouldNormalizeNumberWord(previousToken, nextToken)) {
+    return token;
+  }
+
+  const { core, trailer } = splitTrailingPunctuation(token);
+  const value = parseNumberWord(core);
+  if (value === null) {
+    return token;
+  }
+
+  return `${value}${trailer}`;
+}
+
+function capitalizeDirectAddressTitle(
+  token: string,
+  previousToken: string | undefined,
+  nextToken: string | undefined,
+  index: number
+): string {
+  const { core, trailer } = splitTrailingPunctuation(token);
+  const normalized = core.toLowerCase();
+  const replacement = DIRECT_ADDRESS_TITLES.get(normalized);
+  if (!replacement) {
+    return token;
+  }
+
+  const previousEndsComma = /,$/.test(previousToken ?? "");
+  const sentenceInitialAddress = index === 0 && /[,?!]$/.test(token);
+  const nextIsDash = nextToken === "--";
+
+  if (!previousEndsComma && !sentenceInitialAddress && !nextIsDash) {
+    return token;
+  }
+
+  return `${replacement}${trailer}`;
+}
+
+function buildInlineFlag(word: EditorDocument["words"][number], flagNumber: number): string {
+  return `[SCOPIST: FLAG ${flagNumber}: "${word.raw_text}" — verify from audio]`;
+}
+
+function normalizeDisplayToken(
+  word: EditorDocument["words"][number],
+  index: number,
+  words: EditorDocument["words"][number][]
+): string {
+  let text = word.text;
+  const previousToken = words[index - 1]?.text;
+  const nextToken = words[index + 1]?.text;
+
+  text = normalizeInterruptingDash(text, nextToken);
+  text = normalizeQuotedQuestionMark(text, nextToken);
+  text = normalizeDateOrdinal(text, previousToken);
+  text = normalizeNumberWord(text, previousToken, nextToken);
+  text = capitalizeDirectAddressTitle(text, previousToken, nextToken, index);
+
+  return text;
+}
+
 export function cfe(
   doc: EditorDocument,
   geometry: GeometryProfile,
@@ -239,6 +428,40 @@ export function cfe(
         ...(speaker?.role ? [] : ["UNCERTAIN_SPEAKER"]),
       ];
 
+      let flagNumber = 0;
+      const displayTexts = sourceWords.map((word, index) => {
+        if (word.confidence < LOW_CONFIDENCE_THRESHOLD) {
+          return word.text;
+        }
+        return normalizeDisplayToken(word, index, sourceWords);
+      });
+
+      const formattedWords = sourceWords.map((word, index) => {
+        const inlineFlag = word.confidence < LOW_CONFIDENCE_THRESHOLD
+          ? buildInlineFlag(word, ++flagNumber)
+          : null;
+        const displayText = displayTexts[index];
+
+        return {
+          word_id: word.word_id,
+          utterance_id: word.utterance_id,
+          speaker_id: word.speaker_id,
+          text: displayText,
+          raw_text: word.raw_text,
+          start_time: word.start_time,
+          end_time: word.end_time,
+          confidence: word.confidence,
+          reviewed: word.reviewed,
+          edited: word.edited,
+          inline_flag: inlineFlag,
+          trailing_space: buildTrailingSpace(
+            displayText,
+            displayTexts[index + 1],
+            spacingRules
+          ),
+        };
+      });
+
       lines.push({
         role,
         indent_intent: role === "q" || role === "a" ? "qa" : "speaker",
@@ -248,23 +471,7 @@ export function cfe(
         speaker_label: speaker?.display_name ?? segment.speaker_id,
         prefix_text: prefixText,
         source_word_ids: segment.word_ids,
-        words: sourceWords.map((word, index) => ({
-          word_id: word.word_id,
-          utterance_id: word.utterance_id,
-          speaker_id: word.speaker_id,
-          text: word.text,
-          raw_text: word.raw_text,
-          start_time: word.start_time,
-          end_time: word.end_time,
-          confidence: word.confidence,
-          reviewed: word.reviewed,
-          edited: word.edited,
-          trailing_space: buildTrailingSpace(
-            word.text,
-            sourceWords[index + 1]?.text,
-            spacingRules
-          ),
-        })),
+        words: formattedWords,
         page_number: pageInfo?.pageNumber ?? 1,
         page_line_number: pageInfo?.lineInPage ?? paragraphIndex,
         line_number: paragraphIndex,
@@ -273,6 +480,8 @@ export function cfe(
         segment_index: segment.segment_index,
         segment_count: segment.segment_count,
         language: null,
+        geometry,
+        continuation_mode: "return_to_margin",
         flags,
       });
     });

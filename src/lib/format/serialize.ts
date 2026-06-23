@@ -1,7 +1,12 @@
-import type { FormattedDocument, FormattedLine } from "./types";
+import type { FormattedDocument, FormattedLine, FormattedWord } from "./types";
+
+function serializeWord(word: FormattedWord): string {
+  const inlineFlag = word.inline_flag ? ` ${word.inline_flag}` : "";
+  return `${word.text}${inlineFlag}${word.trailing_space}`;
+}
 
 function serializeWords(line: FormattedLine): string {
-  return line.words.map((word) => `${word.text}${word.trailing_space}`).join("");
+  return line.words.map(serializeWord).join("");
 }
 
 function lineSeparator(line: FormattedLine): string {

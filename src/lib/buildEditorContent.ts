@@ -13,15 +13,11 @@ function buildLegacyEditorContent(
   const wordById = new Map(doc.words.map((w) => [w.word_id, w]));
   const speakerById = new Map(doc.speakers.map((s) => [s.speaker_id, s]));
 
-  // Build speaker role map for pagination
   const speakerRoles = new Map(doc.speakers.map((s) => [s.speaker_id, s.role]));
-
-  // Word count per utterance (used for line estimation)
   const wordCountByUtt = new Map<string, number>(
     doc.utterances.map((u) => [u.utterance_id, u.word_ids.length])
   );
 
-  // Compute UFM page layout
   const pageInfoMap = buildPages(
     doc.utterances.map((u) => ({
       utterance_id: u.utterance_id,
@@ -39,7 +35,6 @@ function buildLegacyEditorContent(
     const info = pageInfoMap.get(utt.utterance_id);
     const uttPage = info?.pageNumber ?? 1;
 
-    // Insert page break node at each page transition (not before page 1)
     if (uttPage > currentPage) {
       if (currentPage > 0) {
         blocks.push({
@@ -50,7 +45,6 @@ function buildLegacyEditorContent(
       currentPage = uttPage;
     }
 
-    // Build inline word nodes with wordMark marks
     const inlineNodes: JSONContent[] = [];
     utt.word_ids.forEach((wid, i) => {
       const word = wordById.get(wid);
@@ -76,13 +70,11 @@ function buildLegacyEditorContent(
         ],
       });
 
-      // Space between words — intentionally unmarked (not click-seekable)
       if (i < utt.word_ids.length - 1) {
         inlineNodes.push({ type: "text", text: " " });
       }
     });
 
-    // ProseMirror requires at least one non-empty inline node per block.
     if (inlineNodes.length === 0) {
       inlineNodes.push({ type: "text", text: " " });
     }
@@ -116,6 +108,7 @@ function buildInlineNodes(
     confidence: number;
     reviewed: boolean;
     text: string;
+    inline_flag: string | null;
     trailing_space: string;
   }>
 ): JSONContent[] {
@@ -143,6 +136,10 @@ function buildInlineNodes(
       ],
     });
 
+    if (word.inline_flag) {
+      inlineNodes.push({ type: "text", text: ` ${word.inline_flag}` });
+    }
+
     if (word.trailing_space.length > 0) {
       inlineNodes.push({ type: "text", text: word.trailing_space });
     }
@@ -155,12 +152,6 @@ function buildInlineNodes(
   return inlineNodes;
 }
 
-// Converts the flat EditorDocument into TipTap JSON content.
-// Each utterance → one 'utterance' block node with UFM page/line attrs.
-// Each word → text node with a 'wordMark' mark carrying ASR metadata.
-// PageBreak nodes are inserted between pages.
-// languageMap: optional utterance_id → ISO 639-1 language tag for the
-// interpreter layer (UI-only attr on utterance node, not part of contract).
 export function buildEditorContent(
   doc: EditorDocument,
   languageMap?: Map<string, string>
@@ -208,6 +199,18 @@ export function buildEditorContent(
         language: languageMap?.get(line.utterance_id) ?? null,
         segment_index: line.segment_index,
         segment_count: line.segment_count,
+        indent_intent: line.indent_intent,
+        continuation_mode: line.continuation_mode,
+        format_box_width_inches: line.geometry.formatBoxWidthInches,
+        left_margin_inches: line.geometry.leftMarginInches,
+        right_margin_inches: line.geometry.rightMarginInches,
+        line_spacing_points: line.geometry.lineSpacingPoints,
+        tab_qa_label_inches: line.geometry.tabs.qaLabelInches,
+        tab_qa_text_inches: line.geometry.tabs.qaTextInches,
+        tab_speaker_inches: line.geometry.tabs.speakerInches,
+        tab_parenthetical_inches: line.geometry.tabs.parentheticalInches,
+        tab_center_inches: line.geometry.tabs.centerInches,
+        tab_continuation_inches: line.geometry.tabs.continuationInches,
       },
       content: buildInlineNodes(line.words),
     });
