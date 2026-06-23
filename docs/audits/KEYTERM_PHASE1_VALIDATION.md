@@ -1,134 +1,112 @@
 # KEYTERM PHASE 1 VALIDATION
 
 Date: 2026-06-23  
-Branch: `feature/stage3-workspace-core`  
-Validation target: `etminan_response.json`
+Branch: `feature/stage3-workspace-core`
+
+## Scope
+
+This validation covers request-budget preservation only. It does not change derivation, ranking, storage, or Deepgram request shape.
 
 ## Fixture Basis
 
-This validation used two inputs together:
+Validation terms were sourced from the opening Etminan transcript content in `etminan_response.json`, including:
 
-1. `etminan_response.json`
-   - real Deepgram transcript artifact showing recurring transcript entities
-2. the Etminan case fixture now codified in the keyterm tests
-   - used to generate the current keyterm set deterministically on this branch
-
-Reason:
-
-The workspace contains the transcript artifact, but not a persisted Etminan `CaseRecord` JSON payload. The case fixture matches the visible transcript entities needed for ranking validation.
-
-## Baseline Result
-
-- Derived keyterms included: `37`
-- Derived keyterms dropped during derivation: `0`
-- Estimated token usage after derivation: `111`
-- Request-budget kept count: `37`
-- Request-budget dropped count: `0`
-- Request-budget estimated tokens: `111`
-
-The Etminan keyterm set is comfortably under both the soft request caps:
-
-- soft term cap: `90`
-- soft token cap: `400`
-
-## Top Generated Keyterms
-
-Top ranked output on the current branch:
-
-1. `Etminan` — `derived:witness` — priority `90`
-2. `Mohammad` — `derived:witness` — priority `90`
-3. `Mohammad Etminan` — `derived:witness` — priority `90`
-4. `Mr. Etminan` — `derived:witness` — priority `90`
-5. `Ms. Etminan` — `derived:witness` — priority `90`
-6. `Christian` — `derived:attorney:sbot` — priority `88.5`
-7. `Christian R. Ramon` — `derived:attorney:sbot` — priority `88`
-8. `Bentley` — `derived:attorney:sbot` — priority `87.5`
-9. `Dennis` — `derived:attorney:sbot` — priority `87.5`
-10. `Dennis Bentley` — `derived:attorney:sbot` — priority `87.5`
-11. `Ramon` — `derived:attorney:sbot` — priority `87.5`
-12. `Bentley Law Group, PLLC` — `derived:firm` — priority `70.8`
-13. `Ramon Law Firm, PLLC` — `derived:firm` — priority `70.8`
-14. `Quantum Pain` — `derived:medical_provider` — priority `66.7`
-15. `Leonardo Isaias Rodriguez` — `derived:caption_entity` — priority `64.2`
-16. `Rodriguez` — `derived:caption_entity` — priority `64.2`
-17. `Koepke` — `derived:caption_entity` — priority `63`
-18. `Leonardo` — `derived:caption_entity` — priority `63`
-19. `Rocio` — `derived:caption_entity` — priority `63`
-20. `Rocio Laura Elizondo Vargas` — `derived:caption_entity` — priority `63`
-
-## Named Verification Targets
-
-Expected transcript/context entities all resolved into the generated set:
-
-| Target | Present | Notes |
-|---|---|---|
-| `Mohammad Etminan` | Yes | witness full name |
-| `Etminan` | Yes | witness surname |
-| `Rocio Laura Elizondo Vargas` | Yes | caption party |
-| `Vargas` | Yes | caption surname |
-| `Dennis Bentley` | Yes | attorney |
-| `Christian R. Ramon` | Yes | attorney |
-| `Bentley Law Group, PLLC` | Yes | firm |
-| `Ramon Law Firm, PLLC` | Yes | firm |
-| `Standing Seam & Specialty Company, Inc.` | Yes | caption organization |
-| `Quantum Pain` | Yes | medical provider / organization |
-| `Koepke` | Yes | caption surname |
-
-## Terms Promoted
-
-Promoted by the new ranking logic:
-
+- `Mohammad Etminan`
+- `Rocio Laura Elizondo Vargas`
+- `Dennis Malley`
 - `Christian R. Ramon`
-  - promoted by attorney provenance, SBOT-style bar-number signal, and difficult-name bonus
-- `Dennis Bentley`
-  - promoted by attorney provenance and SBOT-style bar-number signal
-- `Bentley Law Group, PLLC`
-  - promoted as a firm phrase instead of falling behind generic legal vocabulary
-- `Ramon Law Firm, PLLC`
-  - promoted as a firm phrase instead of falling behind generic legal vocabulary
-- `Quantum Pain`
-  - promoted as a medical-provider organization instead of being treated as a generic company token
+- `Rico Law Firm, PLLC`
+- `Standing Seam & Specialty Company, Inc.`
+- `Hidalgo County, Texas`
+- `Cause Number C572224L`
 
-## Terms Pruned
+The overflow set also included generic legal/deposition boilerplate present in the repo's canonical defaults, such as:
 
-No Etminan terms were pruned in this validation run.
+- `oral deposition`
+- `read and sign`
+- `certified court reporter`
+- `stenographically`
+- `Texas Rules of Civil Procedure`
+- `remote video conference`
+- `civil action`
 
-- derivation dropped count: `0`
-- request-budget dropped count: `0`
-- UI prune deselections: `0`
+## Baseline Scenario
 
-## Transcript Cross-Check Against `etminan_response.json`
+The validation scenario intentionally placed Tier 4 legal boilerplate ahead of Etminan/Vargas entities to reproduce the exact risk identified in `KEYTERM_PHASE1_BASELINE.md`: correct entities exist, but request-budget trimming can still crowd them out.
 
-Recurring transcript-side entities visible in the Deepgram artifact:
+## Before
 
-- `Etminan`
-- `Vargas`
-- `doctor Mohammad Etminan`
-- `Dennis Bentley`
-- `Christian R. Ramon`
-- `Quantum Pain`
+Legacy request-budget behavior:
 
-The generated keyterm set covers those transcript-visible entities without needing schema changes, AI inference, or a second keyterm pipeline.
+- preserved terms were taken in stored order
+- no entity protection existed at request time
+- term cap and token cap were still respected
 
-## Safety Checks
+Result:
 
-Confirmed:
+- token count: `399`
+- protected entities surviving:
+  - `Mohammad Etminan`
+  - `Rocio Laura Elizondo Vargas`
+- protected entities lost:
+  - `Dennis Malley`
+  - `Christian R. Ramon`
+  - `Rico Law Firm, PLLC`
+  - `Standing Seam & Specialty Company, Inc.`
+  - `Hidalgo County, Texas`
+  - `Cause Number C572224L`
 
-- no schema changes
-- no migrations
-- no Deepgram request contract change
-- no transcript content mutation
-- no AI inference
+## After
 
-This phase changes only keyterm selection, integrity enforcement, and ranking behavior.
+Current request-budget behavior:
 
-## Bottom Line
+- Tier 1 preserved before Tier 4
+- Tier 2 preserved before Tier 4
+- Tier 3 preserved before Tier 4
+- original order is preserved inside each tier
+- term cap and token cap remain unchanged
 
-Phase 1 repaired the highest-risk part of the pipeline:
+Result:
 
-- case/audio mismatches are now rejected before transcription start
-- names and entities outrank generic legal terms
-- difficult spellings are promoted deterministically
-- the Etminan validation set remains comfortably under budget
+- token count: `400`
+- protected entities surviving:
+  - `Mohammad Etminan`
+  - `Rocio Laura Elizondo Vargas`
+  - `Dennis Malley`
+  - `Christian R. Ramon`
+  - `Rico Law Firm, PLLC`
+  - `Standing Seam & Specialty Company, Inc.`
+  - `Hidalgo County, Texas`
+  - `Cause Number C572224L`
 
-The keyterm pipeline is still the existing pipeline. This work hardened and prioritized it rather than replacing it.
+## Tier 4 Terms Removed First
+
+Examples displaced by the new preservation logic:
+
+- `oral deposition`
+- `read and sign`
+- `certified court reporter`
+- `stenographically`
+- `Texas Rules of Civil Procedure`
+- `remote video conference`
+- `civil action`
+
+## Explicit Checks
+
+- `Etminan` preserved: yes
+- `Vargas` preserved: yes
+- attorney names preserved: yes
+- firm names preserved: yes
+- organization names preserved: yes
+- budget limits unchanged: yes
+- Deepgram request shape unchanged: yes
+
+## Regression Risk
+
+The classifier is intentionally narrow and uses only metadata already present on stored keyterms:
+
+- derived provenance notes
+- existing category
+- case-identifier / jurisdiction heuristics
+
+This keeps the change scoped to request-budget ordering rather than creating a new derivation path or a second ranking system.
