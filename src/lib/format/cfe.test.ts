@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { EditorDocument } from "../../api/types";
@@ -52,6 +54,102 @@ function makeDoc(words: Array<{
       edited: false,
     })),
   };
+}
+
+
+type DeepgramWordFixture = {
+  punctuated_word?: string;
+  word?: string;
+  speaker?: number;
+  start?: number;
+  end?: number;
+  confidence?: number;
+};
+
+type DeepgramUtteranceFixture = {
+  words?: DeepgramWordFixture[];
+  speaker?: number;
+  start?: number;
+  end?: number;
+};
+
+function buildEtminanFixtureDoc(): EditorDocument {
+  const payload = JSON.parse(readFileSync(path.resolve(process.cwd(), "etminan_response.json"), "utf8")) as {
+    metadata?: { request_id?: string; duration?: number };
+    results?: {
+      utterances?: DeepgramUtteranceFixture[];
+      channels?: Array<{ alternatives?: Array<{ words?: DeepgramWordFixture[] }> }>;
+    };
+  };
+  const utterances = payload.results?.utterances ?? [];
+  const allWords = payload.results?.channels?.[0]?.alternatives?.[0]?.words ?? [];
+  const speakerIds = [...new Set<number>(allWords.map((word) => Number.isFinite(word.speaker) ? Number(word.speaker) : -1))]
+    .filter((speakerId) => speakerId >= 0)
+    .sort((left, right) => left - right);
+
+  const roleBySpeaker = new Map<number, EditorDocument["speakers"][number]["role"]>([
+    [0, "REPORTER"],
+    [1, "ATTORNEY"],
+    [2, "WITNESS"],
+  ]);
+
+  const speakers: EditorDocument["speakers"] = speakerIds.map((speakerId) => ({
+    speaker_id: `spk_${String(speakerId).padStart(3, "0")}`,
+    display_name: `SPEAKER ${speakerId}`,
+    deepgram_speaker: speakerId,
+    role: roleBySpeaker.get(speakerId) ?? "OTHER",
+  }));
+
+  const words: EditorDocument["words"] = [];
+  const docUtterances: EditorDocument["utterances"] = [];
+  let globalIndex = 0;
+
+  utterances.forEach((utterance, utteranceIndex) => {
+    const utteranceId = `utt_${String(utteranceIndex).padStart(6, "0")}`;
+    const wordIds: string[] = [];
+
+    (utterance.words ?? []).forEach((word) => {
+      const wordId = `w_${String(globalIndex).padStart(8, "0")}`;
+      globalIndex += 1;
+      wordIds.push(wordId);
+      words.push({
+        word_id: wordId,
+        text: word.punctuated_word ?? word.word ?? "",
+        raw_text: word.punctuated_word ?? word.word ?? "",
+        speaker_id: `spk_${String(Number.isFinite(word.speaker) ? word.speaker : utterance.speaker ?? 0).padStart(3, "0")}`,
+        utterance_id: utteranceId,
+        start_time: word.start ?? utterance.start ?? 0,
+        end_time: word.end ?? utterance.end ?? 0,
+        confidence: word.confidence ?? 1,
+        reviewed: false,
+        edited: false,
+      });
+    });
+
+    docUtterances.push({
+      utterance_id: utteranceId,
+      speaker_id: `spk_${String(Number.isFinite(utterance.speaker) ? utterance.speaker : 0).padStart(3, "0")}`,
+      start_time: utterance.start ?? 0,
+      end_time: utterance.end ?? 0,
+      word_ids: wordIds,
+    });
+  });
+
+  return {
+    job_id: payload?.metadata?.request_id ?? "etminan",
+    media_url: "",
+    duration: payload?.metadata?.duration ?? 0,
+    speakers,
+    utterances: docUtterances,
+    words,
+  };
+}
+
+function countInlineFlags(doc: EditorDocument): number {
+  const formatted = cfe(doc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  return formatted.lines.reduce((count, line) => (
+    count + line.words.filter((word) => word.inline_flag).length
+  ), 0);
 }
 
 describe("cfe spacing and serialization", () => {
@@ -188,6 +286,100 @@ describe("cfe spacing and serialization", () => {
     expect(serializeFormattedDocument(formatted)).toContain(
       'Q. lameness [SCOPIST: FLAG 1: "lameness" — verify from audio]'
     );
+  });
+
+  it("suppresses inline flags for function words", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "the", confidence: 0.2 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].inline_flag).toBeNull();
+  });
+
+  it("preserves inline flags for proper nouns", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "Etminan", confidence: 0.5 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
+  });
+
+  it("preserves inline flags for medical terms", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "disc", confidence: 0.5 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
+  });
+
+  it("preserves inline flags for legal terms", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "witness", confidence: 0.5 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
+  });
+
+  it("preserves inline flags for organization tokens", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "PLLC", confidence: 0.5 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
+  });
+
+  it("uses a stricter threshold for common words", () => {
+    const suppressed = cfe(
+      makeDoc([
+        { word_id: "w1", text: "just", confidence: 0.5 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+    const flagged = cfe(
+      makeDoc([
+        { word_id: "w1", text: "just", confidence: 0.2 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(suppressed.lines[0].words[0].inline_flag).toBeNull();
+    expect(flagged.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
+  });
+
+  it("reduces inline flag noise on the Etminan regression fixture while preserving real flags", () => {
+    const doc = buildEtminanFixtureDoc();
+    const formatted = cfe(doc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+    const flaggedWords = formatted.lines.flatMap((line) => line.words.filter((word) => word.inline_flag));
+    const flaggedTokens = new Set(flaggedWords.map((word) => word.raw_text));
+
+    expect(countInlineFlags(doc)).toBeLessThan(499);
+    expect(flaggedTokens.has("the")).toBe(false);
+    expect(flaggedTokens.has("and")).toBe(false);
+    expect(flaggedTokens.has("Rico")).toBe(true);
+    expect(flaggedTokens.has("PLLC,")).toBe(true);
+    expect(flaggedTokens.has("disc")).toBe(true);
   });
 
   it("attaches geometry metadata to each formatted line", () => {

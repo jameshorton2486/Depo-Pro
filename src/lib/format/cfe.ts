@@ -22,6 +22,36 @@ type RawSegment = {
 
 const MIN_SEGMENT_WORDS = 2;
 const LOW_CONFIDENCE_THRESHOLD = 0.70;
+const COMMON_WORD_FLAG_THRESHOLD = 0.35;
+const FUNCTION_WORDS = new Set([
+  "a", "an", "and", "are", "as", "at", "be", "been", "being", "because", "but", "by",
+  "could", "did", "do", "does", "for", "from", "had", "have", "he", "her", "hers",
+  "i", "if", "in", "is", "it", "its", "me", "my", "of", "on", "or", "she", "so",
+  "that", "the", "their", "them", "there", "these", "they", "this", "those", "to",
+  "was", "were", "what", "when", "which", "who", "with", "would", "will", "you", "your",
+  "such", "very",
+]);
+const COMMON_WORDS = new Set([
+  "date", "essentially", "first", "good", "got", "just", "kinda", "know", "like",
+  "looking", "miss", "new", "okay", "out", "probably", "remote", "roll", "say",
+  "severe", "shadow", "sure", "thing", "yeah",
+]);
+const MEDICAL_TERMS = new Set([
+  "clinical", "disc", "discectomy", "doctor", "epidural", "foraminal", "fusion",
+  "injury", "ligamentous", "lumbar", "medical", "pathology", "radicular", "spine",
+  "surgery", "thecal", "vertebrae",
+]);
+const LEGAL_TERMS = new Set([
+  "action", "agreement", "civil", "counsel", "court", "defendant", "deposition",
+  "exhibit", "jury", "malpractice", "objection", "plaintiff", "record", "reporter",
+  "rules", "trial", "witness",
+]);
+const ORGANIZATION_SUFFIXES = new Set([
+  "co", "corp", "corporation", "inc", "llc", "llp", "pc", "pllc",
+]);
+const COMMON_CAPITALIZED_FUNCTION_WORDS = new Set([
+  "And", "But", "Could", "Do", "I", "If", "Is", "It", "Not", "So", "This", "What", "Will",
+]);
 const MONTH_NAMES = new Set([
   "january",
   "february",
@@ -77,6 +107,15 @@ type SpacingRules = {
   oneSpacePatterns: RegExp[];
   sentenceBoundaries: Set<string>;
 };
+
+type FlagTokenClass =
+  | "FUNCTION_WORD"
+  | "COMMON_WORD"
+  | "PROPER_NOUN"
+  | "MEDICAL_TERM"
+  | "LEGAL_TERM"
+  | "ORGANIZATION"
+  | "OTHER";
 
 function collapseShortRuns(runs: RawSegment[]): RawSegment[] {
   if (runs.length <= 1) {
@@ -192,6 +231,72 @@ function closesSentenceWithQuote(token: string): boolean {
   }
   const lastCoreChar = stripped[stripped.length - 1];
   return lastCoreChar === "." || lastCoreChar === "?" || lastCoreChar === "!";
+}
+
+function stripTokenEdges(token: string): string {
+  return token.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "");
+}
+
+function isAllCapsToken(token: string): boolean {
+  return /^[A-Z0-9]+$/.test(token) && /[A-Z]/.test(token);
+}
+
+function isTitleCaseToken(token: string): boolean {
+  return /^[A-Z][a-z]+(?:[A-Z][a-z]+)?$/.test(token);
+}
+
+export function classifyFlagToken(token: string): FlagTokenClass {
+  const stripped = stripTokenEdges(token);
+  const lower = stripped.toLowerCase();
+
+  if (!stripped) {
+    return "OTHER";
+  }
+
+  if (FUNCTION_WORDS.has(lower) || COMMON_CAPITALIZED_FUNCTION_WORDS.has(stripped)) {
+    return "FUNCTION_WORD";
+  }
+
+  if (COMMON_WORDS.has(lower)) {
+    return "COMMON_WORD";
+  }
+
+  if (MEDICAL_TERMS.has(lower)) {
+    return "MEDICAL_TERM";
+  }
+
+  if (LEGAL_TERMS.has(lower)) {
+    return "LEGAL_TERM";
+  }
+
+  if (ORGANIZATION_SUFFIXES.has(lower) || isAllCapsToken(stripped)) {
+    return "ORGANIZATION";
+  }
+
+  if (/^\d+$/.test(stripped) || stripped.length === 1) {
+    return "OTHER";
+  }
+
+  if (isTitleCaseToken(stripped)) {
+    return "PROPER_NOUN";
+  }
+
+  return "OTHER";
+}
+
+export function shouldEmitInlineFlag(word: EditorDocument["words"][number]): boolean {
+  if (word.confidence >= LOW_CONFIDENCE_THRESHOLD) {
+    return false;
+  }
+
+  const tokenClass = classifyFlagToken(word.raw_text);
+  if (tokenClass === "FUNCTION_WORD") {
+    return false;
+  }
+  if (tokenClass === "COMMON_WORD") {
+    return word.confidence < COMMON_WORD_FLAG_THRESHOLD;
+  }
+  return true;
 }
 
 function isRegistryToken(token: string, nextToken: string | undefined, rules: SpacingRules): boolean {
@@ -437,7 +542,7 @@ export function cfe(
       });
 
       const formattedWords = sourceWords.map((word, index) => {
-        const inlineFlag = word.confidence < LOW_CONFIDENCE_THRESHOLD
+        const inlineFlag = shouldEmitInlineFlag(word)
           ? buildInlineFlag(word, ++flagNumber)
           : null;
         const displayText = displayTexts[index];
