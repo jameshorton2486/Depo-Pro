@@ -70,18 +70,26 @@ Add a status banner to the top of each (docs-only):
 
 ## 6. DP-012 numbering collision — resolution
 
-Two documents claim "DP-012": the approved **Punctuation / Garble-Flags** standard, and the **Option-A unified-engine migration report**. The DP-### series is for **formatting standards only**; a migration/architecture document does not belong in it.
+The historical collision is now resolved on disk. `DP-012` remains the approved
+**Punctuation / Garble-Flags** standard, and the former architecture-side use of
+that number now lives under the wave record
+`Canonical Standards Folder/WAVE21_CANONICAL_EXPORT_ARCHITECTURE.md`. The
+DP-### series is for **formatting standards only**; a migration/architecture
+document does not belong in it.
 
 - **Keep:** `DP-012` = *Quotation Punctuation, Date Reconciliation & Inline Garble Flags*.
-- **Renumber:** the migration report → **`WAVE21_CANONICAL_EXPORT_ARCHITECTURE.md`** (architecture record, not a DP standard). If you prefer a generic series, `ADR-0001_UNIFIED_EXPORT_ENGINE.md`.
-- **Action:** rename the file, change its internal "Decision ID: DP-012" to "Wave 21 / ADR-0001," and add a one-line note: *"Renamed from DP-012 (number reserved for the Punctuation standard)."*
+- **Resolved as:** `WAVE21_CANONICAL_EXPORT_ARCHITECTURE.md` (architecture
+  record, not a DP standard).
+- **Residual rule:** any future architecture decision of this class belongs in
+  the `ADR-###` or `WAVE-##` namespace, never the `DP-###` namespace.
 
 ---
 
 ## 7. Corrected sequence (replaces the naive add-and-re-run)
 
 1. Apply §3 resolutions and §5 status banners to the three legacy specs (docs-only).
-2. Apply §6 renumbering to the migration report.
+2. Confirm the architecture record remains outside the `DP-###` series and
+   that no stale references reintroduce the old label.
 3. Gather DP-011 + the corrected legacy specs into the Canonical Standards Folder (complete the corpus). Decide whether the certified PDF can be added (closes DP-011 §E residuals).
 4. **Then** re-run STANDARDS_CONSISTENCY_AUDIT. Expected: geometry conflicts → 0 (G4 may remain as a documented residual, not a conflict), numbering collisions → 0, corpus verdict → COMPLETE (or PARTIAL only on the certified PDF if still absent).
 5. Freeze: build `CANONICAL_STANDARDS_INDEX.md` with the numbering registry.
