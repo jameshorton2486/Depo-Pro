@@ -6,6 +6,15 @@ Purpose: single source of truth for standards status, authority order, and citat
 
 Nothing is a live standard unless it is registered here.
 
+## Top-Level Governing Policy
+
+### Canonical Editorial Policy
+
+- File: [CANONICAL_EDITORIAL_POLICY.md](/C:/Users/james/projects/depo-pro/Canonical%20Standards%20Folder/CANONICAL_EDITORIAL_POLICY.md)
+- Status: `APPROVED`
+- Role: top-level governing policy for all DP-### records and transcript-formatting decisions
+- Precedence: every DP-### record inherits from this policy and must conform to it
+
 ## Active Standards
 
 ### DP-010 — Spacing
@@ -66,7 +75,13 @@ Namespace rules:
 
 ## Authority Hierarchy
 
-### Level 1 — Approved DP Standards
+### Level 1 — Canonical Editorial Policy
+
+- `CANONICAL_EDITORIAL_POLICY.md`
+
+This is the top-level governing policy. Every DP-### record inherits from it.
+
+### Level 2 — Approved DP Standards
 
 - `DP-010`
 - `DP-011`
@@ -74,20 +89,20 @@ Namespace rules:
 
 These are the live authorities for CFE Phase 1 implementation.
 
-### Level 2 — Canonical Registry Data
+### Level 3 — Canonical Registry Data
 
 - [abbreviation_registry.json](/C:/Users/james/projects/depo-pro/Canonical%20Standards%20Folder/abbreviation_registry.json)
 
 This is canonical data consumed under `DP-010`. It is not a peer decision record; it is controlled data under the approved spacing standard.
 
-### Level 3 — Historical Architecture Documents
+### Level 4 — Historical Architecture Documents
 
 - `DEPO_PRO_FORMATTER_SPEC.md`
 - `DEPO_PRO_FORMATTER_RULE_ENGINE.md`
 
 These are retained for context only.
 
-### Level 4 — Legacy Notes / Changelogs
+### Level 5 — Legacy Notes / Changelogs
 
 - prompt indexes
 - changelogs
@@ -122,6 +137,7 @@ These are historical references, not active authority over capitalization.
 
 Implementation work should currently cite:
 
+- `CANONICAL_EDITORIAL_POLICY.md` for top-level policy and authority hierarchy
 - `DP-010` for spacing
 - `DP-011` for geometry
 - `DP-012` for punctuation, deterministic formatting normalization, garble flags, paragraph rules, and direct-address capitalization
