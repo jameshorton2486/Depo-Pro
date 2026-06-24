@@ -7,6 +7,7 @@ import { abbreviationRegistry } from "./abbreviationRegistry";
 import { cfe } from "./cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./geometryProfile";
 import { serializeFormattedDocument } from "./serialize";
+import type { AbbreviationRegistry } from "./types";
 
 function makeDoc(words: Array<{
   word_id: string;
@@ -200,6 +201,24 @@ describe("cfe spacing and serialization", () => {
 
     expect(serializeFormattedDocument(numeric)).toContain("Q. No. 12129");
     expect(serializeFormattedDocument(sentence)).toContain("Q. No.  No.");
+  });
+
+  it("derives the No. exception from registry context-sensitive metadata", () => {
+    const registryWithoutContextRule: AbbreviationRegistry = {
+      ...abbreviationRegistry,
+      context_sensitive: {},
+    };
+
+    const sentence = cfe(
+      makeDoc([
+        { word_id: "w1", text: "No." },
+        { word_id: "w2", text: "No." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      registryWithoutContextRule
+    );
+
+    expect(serializeFormattedDocument(sentence)).toContain("Q. No. No.");
   });
 
   it("moves a question mark outside the closing quote when the sentence is the question", () => {

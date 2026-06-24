@@ -106,6 +106,7 @@ type SpacingRules = {
   oneSpaceTokens: Set<string>;
   oneSpacePatterns: RegExp[];
   sentenceBoundaries: Set<string>;
+  contextSensitiveTokens: Set<string>;
 };
 
 type FlagTokenClass =
@@ -197,11 +198,16 @@ function buildSpacingRules(registry: AbbreviationRegistry): SpacingRules {
   );
   const oneSpacePatterns = registry.one_space_patterns.map((pattern) => new RegExp(pattern.regex));
   const sentenceBoundaries = new Set(registry.rule.two_space_boundaries);
+  const contextSensitiveTokens = new Set(
+    Object.keys(registry.context_sensitive)
+      .map((token) => token.toLowerCase())
+  );
 
   return {
     oneSpaceTokens,
     oneSpacePatterns,
     sentenceBoundaries,
+    contextSensitiveTokens,
   };
 }
 
@@ -299,16 +305,30 @@ export function shouldEmitInlineFlag(word: EditorDocument["words"][number]): boo
   return true;
 }
 
+function usesNumberAbbreviationRule(
+  token: string,
+  nextToken: string | undefined,
+  rules: SpacingRules
+): boolean {
+  if (!rules.contextSensitiveTokens.has(token.toLowerCase())) {
+    return false;
+  }
+
+  if (nextToken === undefined || /^no\.$/i.test(nextToken)) {
+    return false;
+  }
+
+  return /^[A-Za-z0-9(]/.test(nextToken);
+}
+
 function isRegistryToken(token: string, nextToken: string | undefined, rules: SpacingRules): boolean {
   const normalized = token.toLowerCase();
   if (rules.oneSpaceTokens.has(normalized)) {
-    if (normalized !== "no.") {
+    if (!rules.contextSensitiveTokens.has(normalized)) {
       return true;
     }
-    if (nextToken === undefined || /^no\.$/i.test(nextToken)) {
-      return false;
-    }
-    return /^[A-Za-z0-9(]/.test(nextToken);
+
+    return usesNumberAbbreviationRule(token, nextToken, rules);
   }
 
   const stripped = stripTrailingClosers(token);
