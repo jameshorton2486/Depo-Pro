@@ -61,3 +61,7 @@ export function buildDeepgramResponseFileName(jobId: string, sourceIndex: number
 
   return `${jobId}_file_${padSourceIndex(sourceIndex)}_deepgram_response.json`;
 }
+
+export function buildRetranscriptionAuditFileName(jobId: string): string {
+  return `${jobId}_retranscription_audit.json`;
+}

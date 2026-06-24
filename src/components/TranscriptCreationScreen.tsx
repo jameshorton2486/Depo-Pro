@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Loader2, Mic, RefreshCw, Sparkles } from "lucide-react";
 
 import type { CaseAudioRecord } from "../api/fileService";
@@ -11,19 +11,22 @@ import { useStage } from "../context/StageContext";
 import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
 import { isMockMode } from "../lib/runtime/mode";
 import { PreTranscriptionConfirmDialog } from "./PreTranscriptionConfirmDialog";
+import { RetranscriptionConfirmDialog } from "./TranscriptCreation/RetranscriptionConfirmDialog";
+import { TranscriptHistoryPanel } from "./TranscriptCreation/TranscriptHistoryPanel";
 
 const REQUIRE_BINDING_CONFIRM = import.meta.env.VITE_REQUIRE_BINDING_CONFIRM !== "false";
 
 export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const { record } = useIntake();
-  const { setStage } = useStage();
+  const { openWorkspace } = useStage();
   const [audio, setAudio] = useState<CaseAudioRecord | null>(null);
   const [jobs, setJobs] = useState<TranscriptionJobRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const advancedJobIdRef = useRef<string | null>(null);
+  const [retranscribeConfirmOpen, setRetranscribeConfirmOpen] = useState(false);
+  const [selectedTranscriptId, setSelectedTranscriptId] = useState<string | null>(null);
 
   const requestPreview = useMemo(() => buildDeepgramRequestFromStoredKeyterms({
     caseId,
@@ -46,6 +49,23 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     requestPreview.envelope.keyterms,
     requestPreview.envelope.keyterms_count,
   ]);
+
+  const completedJobs = useMemo(
+    () => jobs.filter((job) => job.status === "complete"),
+    [jobs],
+  );
+
+  useEffect(() => {
+    if (completedJobs.length === 0) {
+      setSelectedTranscriptId(null);
+      return;
+    }
+
+    const currentStillExists = completedJobs.some((job) => job.transcript_id === selectedTranscriptId);
+    if (!currentStillExists) {
+      setSelectedTranscriptId(completedJobs[0]?.transcript_id ?? null);
+    }
+  }, [completedJobs, selectedTranscriptId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,12 +128,11 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     };
   }, [caseId, jobs]);
 
-  const openWorkspace = useCallback(async () => {
+  const persistWorkspaceStage = useCallback(async () => {
     await saveCase({ ...record, stage: "workspace" });
-    setStage("workspace");
-  }, [record, setStage]);
+  }, [record]);
 
-  async function runTranscription() {
+  async function runTranscription(sourceTranscriptId?: string | null) {
     if (!audio) {
       setError("Upload audio before starting transcription.");
       return;
@@ -123,7 +142,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     setError(null);
 
     try {
-      await startTranscription(caseId);
+      await startTranscription(caseId, { sourceTranscriptId: sourceTranscriptId ?? null });
       const transcriptJobs = await listTranscriptionJobs(caseId);
       setJobs(transcriptJobs);
     } catch (runError) {
@@ -132,18 +151,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
       setRunning(false);
     }
   }
-
-  const completedJob = jobs.find((job) => job.status === "complete") ?? null;
   const failedJob = jobs.find((job) => job.status === "failed") ?? null;
-
-  useEffect(() => {
-    if (!completedJob || advancedJobIdRef.current === completedJob.id) {
-      return;
-    }
-
-    advancedJobIdRef.current = completedJob.id;
-    void openWorkspace();
-  }, [completedJob, openWorkspace]);
 
   useEffect(() => {
     if (failedJob?.error) {
@@ -163,6 +171,30 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     }
 
     setConfirmOpen(true);
+  }
+
+  async function handleOpenWorkspace() {
+    if (!selectedTranscriptId) {
+      setError("Select a transcript before opening Workspace.");
+      return;
+    }
+
+    await persistWorkspaceStage();
+    openWorkspace(selectedTranscriptId);
+  }
+
+  function handleTriggerRetranscription() {
+    if (!selectedTranscriptId) {
+      setError("Select a source transcript before retranscribing.");
+      return;
+    }
+
+    setRetranscribeConfirmOpen(true);
+  }
+
+  function handleConfirmRetranscription() {
+    setRetranscribeConfirmOpen(false);
+    void runTranscription(selectedTranscriptId);
   }
 
   function handleConfirmTranscription() {
@@ -226,7 +258,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
                   {running ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                  {running ? "Transcribing…" : completedJob ? "Re-run Transcription" : "Generate Transcript"}
+                  {running ? "Transcribing…" : completedJobs.length > 0 ? "Create New Transcript" : "Generate Transcript"}
                 </button>
               </div>
 
@@ -260,6 +292,18 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 )}
               </div>
             </div>
+
+            {completedJobs.length > 0 && (
+              <TranscriptHistoryPanel
+                audioFilename={audio?.original_filename ?? null}
+                transcripts={completedJobs}
+                selectedTranscriptId={selectedTranscriptId}
+                onSelectTranscript={setSelectedTranscriptId}
+                onOpenWorkspace={() => void handleOpenWorkspace()}
+                onRetranscribe={handleTriggerRetranscription}
+                disabled={running}
+              />
+            )}
           </section>
 
           <aside className="space-y-6">
@@ -279,8 +323,8 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
               </p>
               <button
                 type="button"
-                onClick={() => void openWorkspace()}
-                disabled={!completedJob || running}
+                onClick={() => void handleOpenWorkspace()}
+                disabled={!selectedTranscriptId || running}
                 className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
                 <CheckCircle2 size={14} />
@@ -309,6 +353,12 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
         keyterms={keytermPreview}
         onConfirm={handleConfirmTranscription}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <RetranscriptionConfirmDialog
+        open={retranscribeConfirmOpen}
+        transcriptId={selectedTranscriptId}
+        onCancel={() => setRetranscribeConfirmOpen(false)}
+        onConfirm={handleConfirmRetranscription}
       />
     </div>
   );

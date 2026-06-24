@@ -67,6 +67,13 @@ export function Toolbar({ jobId, onSave }: Props) {
       </button>
 
       <button
+        onClick={() => setStage("creation")}
+        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+      >
+        Transcript Creation
+      </button>
+
+      <button
         onClick={() => setStage("certification")}
         className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
       >

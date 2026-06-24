@@ -6,6 +6,7 @@ import { assertCaseAudioIntegrity } from "../../../src/lib/keyterms/caseAudioInt
 import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
 import {
   buildDeepgramRequestFileName,
+  buildRetranscriptionAuditFileName,
   buildTranscriptionArtifactPath,
   createCallbackToken,
   createTranscriptBusinessId,
@@ -13,6 +14,7 @@ import {
   TRANSCRIPTION_SIGNED_URL_TTL_SECONDS,
   type TranscriptionJobRecord,
 } from "../../../src/lib/transcriptionJobs.ts";
+import { buildRetranscriptionAuditArtifact } from "../../../src/lib/retranscription.ts";
 
 type Database = Record<string, never>;
 
@@ -31,6 +33,11 @@ type CaseAudioRow = {
   storage_path: string | null;
   media_url: string | null;
   uploaded_at: string | null;
+};
+
+type TranscriptRow = {
+  transcript_id: string;
+  case_id: string;
 };
 
 const corsHeaders = {
@@ -64,8 +71,14 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const body = await request.json() as { case_id?: unknown };
+    const body = await request.json() as {
+      case_id?: unknown;
+      source_transcript_id?: unknown;
+    };
     const caseId = typeof body.case_id === "string" ? body.case_id.trim() : "";
+    const sourceTranscriptId = typeof body.source_transcript_id === "string" && body.source_transcript_id.trim().length > 0
+      ? body.source_transcript_id.trim()
+      : null;
     if (!caseId) {
       return respondError(400, "bad payload");
     }
@@ -93,6 +106,9 @@ Deno.serve(async (request) => {
 
     const record = normalizeCaseRecord(caseRow.payload);
     assertCaseAudioIntegrity(record, firstAudio.original_filename);
+    const sourceTranscript = sourceTranscriptId
+      ? await requireTranscriptForCase(supabase, caseId, sourceTranscriptId)
+      : null;
     const budgetedKeyterms = fitStoredKeytermsToRequestBudget(record.deepgram.keyterms);
     if (budgetedKeyterms.droppedCount > 0) {
       console.warn("[transcribe-start] trimmed keyterms to request budget", {
@@ -129,6 +145,7 @@ Deno.serve(async (request) => {
       totalSources: audioRows.length,
       callbackUrl,
       requestPreview,
+      sourceTranscriptId: sourceTranscript?.transcript_id ?? null,
     });
 
     return respondJson(200, {
@@ -204,6 +221,29 @@ async function requireOrderedAudio(supabase: SupabaseClient<Database>, caseId: s
   }));
 }
 
+async function requireTranscriptForCase(
+  supabase: SupabaseClient<Database>,
+  caseId: string,
+  transcriptId: string,
+): Promise<TranscriptRow> {
+  const { data, error } = await supabase
+    .from("transcripts")
+    .select("transcript_id, case_id")
+    .eq("case_id", caseId)
+    .eq("transcript_id", transcriptId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!data) {
+    throw new Error(`Transcript ${transcriptId} does not belong to case ${caseId}.`);
+  }
+
+  return data as TranscriptRow;
+}
+
 async function findActiveJob(
   supabase: SupabaseClient<Database>,
   caseId: string,
@@ -276,6 +316,7 @@ async function submitDeepgramJob(params: {
   totalSources: number;
   callbackUrl: string;
   requestPreview: ReturnType<typeof buildDeepgramRequestFromStoredKeyterms>;
+  sourceTranscriptId: string | null;
 }): Promise<string> {
   const {
     supabase,
@@ -286,6 +327,7 @@ async function submitDeepgramJob(params: {
     totalSources,
     callbackUrl,
     requestPreview,
+    sourceTranscriptId,
   } = params;
 
   if (!audio.storage_path) {
@@ -313,6 +355,14 @@ async function submitDeepgramJob(params: {
     total_sources: totalSources,
     source_filename: audio.original_filename,
     storage_path: audio.storage_path,
+    retranscription: sourceTranscriptId
+      ? buildRetranscriptionAuditArtifact({
+        caseId,
+        sourceAudioId: audio.audio_id,
+        sourceTranscriptId,
+        newTranscriptId: job.transcript_id,
+      })
+      : null,
   };
 
   const requestPath = buildTranscriptionArtifactPath(
@@ -321,6 +371,23 @@ async function submitDeepgramJob(params: {
     buildDeepgramRequestFileName(job.id, audio.source_index ?? 0, totalSources),
   );
   await uploadJsonArtifact(supabase, requestPath, requestArtifact);
+  if (sourceTranscriptId) {
+    const auditPath = buildTranscriptionArtifactPath(
+      ownerUserId,
+      caseId,
+      buildRetranscriptionAuditFileName(job.id),
+    );
+    await uploadJsonArtifact(
+      supabase,
+      auditPath,
+      buildRetranscriptionAuditArtifact({
+        caseId,
+        sourceAudioId: audio.audio_id,
+        sourceTranscriptId,
+        newTranscriptId: job.transcript_id,
+      }),
+    );
+  }
   await updateJob(supabase, job.id, {
     status: "queued",
     source_audio_id: audio.audio_id,

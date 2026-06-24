@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DocumentProvider, useDocument } from "../context/DocumentContext";
 import { AudioProvider } from "../context/AudioContext";
 import { EditorProvider, useEditorContext } from "../context/EditorContext";
@@ -25,6 +25,9 @@ import { useIntake } from "../context/useIntake";
 import { saveCase } from "../api/caseService";
 import { buildManagedKeyterms } from "../lib/keyterms/managedKeyterms";
 import { AuthGate } from "./AuthGate/AuthGate";
+import { listWorkspaceTranscriptJobs } from "../api/workspaceService";
+import type { TranscriptJobRow } from "../api/transcriptRepository";
+import { WorkspaceTranscriptChooser } from "./WorkspaceTranscriptChooser";
 
 // ─── Editor workspace (stages 2-7) ───────────────────────────────────────────
 
@@ -94,6 +97,10 @@ function StageRouter({
     return <TranscriptCreationScreen caseId={activeCaseId} />;
   }
 
+  if (stage === "workspace") {
+    return <WorkspaceStage config={config} activeCaseId={activeCaseId} />;
+  }
+
   return (
     <AudioProvider>
       <DocumentProvider jobId={activeCaseId}>
@@ -106,6 +113,120 @@ function StageRouter({
             ) : (
               <EditorInner config={{ ...config, jobId: activeCaseId }} />
             )}
+          </ExhibitsPanelProvider>
+        </EditorProvider>
+      </DocumentProvider>
+    </AudioProvider>
+  );
+}
+
+function WorkspaceStage({
+  config,
+  activeCaseId,
+}: {
+  config: DepoEditorConfig;
+  activeCaseId: string;
+}) {
+  const { workspaceTargetId, openWorkspace, setStage } = useStage();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [transcripts, setTranscripts] = useState<TranscriptJobRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTranscriptChoices() {
+      setLoading(true);
+      setError(null);
+      try {
+        const jobs = await listWorkspaceTranscriptJobs(activeCaseId);
+        if (!cancelled) {
+          setTranscripts(jobs.filter((job) => job.status === "completed"));
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : String(loadError));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadTranscriptChoices();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCaseId]);
+
+  const resolvedTargetId = useMemo(() => {
+    if (workspaceTargetId) {
+      return workspaceTargetId;
+    }
+    if (transcripts.length === 1) {
+      return transcripts[0].transcript_id;
+    }
+    return null;
+  }, [transcripts, workspaceTargetId]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 text-sm text-slate-500">
+        Loading transcript selection...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+          Failed to load transcripts: {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (transcripts.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+        <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Transcript Workspace</p>
+          <h1 className="mt-2 text-2xl font-semibold text-slate-900">No transcript is available yet.</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Generate a transcript from Stage 2 before opening the Workspace.
+          </p>
+          <button
+            type="button"
+            onClick={() => setStage("creation")}
+            className="mt-6 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Go to Transcript Creation
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!resolvedTargetId) {
+    return (
+      <div className="min-h-screen bg-slate-100 px-6 py-10">
+        <WorkspaceTranscriptChooser
+          transcripts={transcripts}
+          onOpenTranscript={(transcriptId) => openWorkspace(transcriptId)}
+          onOpenTranscriptCreation={() => setStage("creation")}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <AudioProvider>
+      <DocumentProvider key={resolvedTargetId} jobId={resolvedTargetId}>
+        <EditorProvider>
+          <ExhibitsPanelProvider>
+            <EditorInner config={{ ...config, jobId: resolvedTargetId }} />
           </ExhibitsPanelProvider>
         </EditorProvider>
       </DocumentProvider>

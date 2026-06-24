@@ -32,6 +32,9 @@ export const STAGE_ORDER: AppStage[] = [
 interface StageContextValue {
   stage: AppStage;
   setStage: (s: Stage) => void;
+  workspaceTargetId: string | null;
+  setWorkspaceTargetId: (targetId: string | null) => void;
+  openWorkspace: (targetId?: string | null) => void;
 }
 
 const StageContext = createContext<StageContextValue | null>(null);
@@ -44,14 +47,24 @@ export function StageProvider({
   children: React.ReactNode;
 }) {
   const [stage, setStageInternal] = useState<AppStage>(initialStage);
+  const [workspaceTargetId, setWorkspaceTargetId] = useState<string | null>(null);
 
   function setStage(s: Stage) {
     // Map legacy "editor" alias to "workspace"
-    setStageInternal(s === "editor" ? "workspace" : s);
+    const nextStage = s === "editor" ? "workspace" : s;
+    if (nextStage !== "workspace") {
+      setWorkspaceTargetId(null);
+    }
+    setStageInternal(nextStage);
+  }
+
+  function openWorkspace(targetId?: string | null) {
+    setWorkspaceTargetId(targetId ?? null);
+    setStageInternal("workspace");
   }
 
   return (
-    <StageContext.Provider value={{ stage, setStage }}>
+    <StageContext.Provider value={{ stage, setStage, workspaceTargetId, setWorkspaceTargetId, openWorkspace }}>
       {children}
     </StageContext.Provider>
   );

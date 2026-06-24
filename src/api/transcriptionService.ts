@@ -121,7 +121,12 @@ function scheduleMockCompletion(caseId: string) {
   }, MOCK_LATENCY_MS);
 }
 
-export async function startTranscription(caseId: string): Promise<TranscriptionJobRecord> {
+export async function startTranscription(
+  caseId: string,
+  options: {
+    sourceTranscriptId?: string | null;
+  } = {},
+): Promise<TranscriptionJobRecord> {
   if (isMockMode()) {
     const existing = mockJobs.get(caseId)?.job ?? null;
     if (existing && (existing.status === "queued" || existing.status === "processing")) {
@@ -143,7 +148,10 @@ export async function startTranscription(caseId: string): Promise<TranscriptionJ
 
   const client = await getSupabaseClient("startTranscription");
   const { data, error } = await client.functions.invoke("transcribe-start", {
-    body: { case_id: caseId },
+    body: {
+      case_id: caseId,
+      source_transcript_id: options.sourceTranscriptId ?? null,
+    },
   });
 
   if (error) {
