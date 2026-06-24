@@ -9,6 +9,8 @@
 | **Relates to** | DP-009 / DP-010 (punctuation spacing) · DP-012 §7/§9 (tab architecture, by-line) |
 | **Scope (single authority for)** | Workspace · Copy Transcript · DOCX · PDF · Stage S · AI Structuring Layer · the unified Geometry/Format Engine (Wave 21) |
 
+**Inherits from:** `CANONICAL_EDITORIAL_POLICY.md`
+
 ---
 
 ## Authority hierarchy (resolves every conflict in this record)

@@ -10,6 +10,8 @@
 | **Scope** | AI Structuring Layer (primary) · Copy Transcript · DOCX/PDF export rendering |
 | **Defers to** | DP-010 (spacing) |
 
+**Inherits from:** `CANONICAL_EDITORIAL_POLICY.md`
+
 ---
 
 ## Authority hierarchy (the rule that resolves every conflict in this record)

@@ -10,6 +10,8 @@
 | **Canonical data** | `abbreviation_registry.json` |
 | **Scope (single authority for)** | Workspace · Copy Transcript · DOCX export · PDF export · Stage S · AI Structuring Layer |
 
+**Inherits from:** `CANONICAL_EDITORIAL_POLICY.md`
+
 **Related decisions:** DP-009 (Honorific and Abbreviation Spacing) is consolidated into this decision and retained for history only. DP-011 (Capitalization of Direct-Address Titles) is a separate, orthogonal decision governing capitalization — not spacing — and is not encoded in `abbreviation_registry.json`.
 
 ---
