@@ -1,5 +1,10 @@
 import { FileStack, RotateCcw } from "lucide-react";
 import type { TranscriptJobRow } from "../api/transcriptRepository";
+import {
+  buildTranscriptVersionLabels,
+  formatTranscriptStatus,
+  sortTranscriptsByCreatedAt,
+} from "../lib/transcriptVersionLabels";
 
 interface WorkspaceTranscriptChooserProps {
   transcripts: TranscriptJobRow[];
@@ -16,6 +21,9 @@ export function WorkspaceTranscriptChooser({
   onOpenTranscript,
   onOpenTranscriptCreation,
 }: WorkspaceTranscriptChooserProps) {
+  const orderedTranscripts = sortTranscriptsByCreatedAt(transcripts);
+  const versionLabels = buildTranscriptVersionLabels(orderedTranscripts);
+
   return (
     <div
       data-testid="workspace-transcript-chooser"
@@ -35,7 +43,7 @@ export function WorkspaceTranscriptChooser({
       </div>
 
       <div className="mt-6 space-y-3">
-        {transcripts.map((job) => (
+        {orderedTranscripts.map((job) => (
           <button
             key={job.id}
             type="button"
@@ -44,11 +52,12 @@ export function WorkspaceTranscriptChooser({
             className="flex w-full items-start justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
           >
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">{job.transcript_id}</p>
+              <p className="text-sm font-semibold text-slate-900">{versionLabels.get(job.transcript_id) ?? "Transcript"}</p>
               <p className="mt-1 text-xs text-slate-500">Created {formatTimestamp(job.created_at)}</p>
+              <p className="mt-1 text-xs text-slate-500">Transcript ID: {job.transcript_id}</p>
             </div>
             <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-              {job.status}
+              {formatTranscriptStatus(job.status)}
             </span>
           </button>
         ))}

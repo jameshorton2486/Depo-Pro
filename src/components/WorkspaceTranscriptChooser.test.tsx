@@ -37,6 +37,24 @@ function findByTestId(node: ReactNode, testId: string): ElementWithChildren {
   return match;
 }
 
+function collectText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+
+  if (!isValidElement(node)) {
+    return "";
+  }
+
+  const element = node as ElementWithChildren;
+  const children = element.props.children;
+  if (Array.isArray(children)) {
+    return children.map((child) => collectText(child)).join(" ");
+  }
+
+  return collectText(children);
+}
+
 describe("WorkspaceTranscriptChooser", () => {
   const transcripts = [
     {
@@ -109,6 +127,9 @@ describe("WorkspaceTranscriptChooser", () => {
 
     expect(isValidElement(tree)).toBe(true);
     expect(findByTestId(tree, "workspace-transcript-chooser")).toBeTruthy();
+    expect(collectText(tree)).toContain("Original");
+    expect(collectText(tree)).toContain("Retranscription 1");
+    expect(collectText(tree)).toContain("Complete");
 
     (findByTestId(tree, "workspace-transcript-option-tr_rerun").props.onClick as (() => void) | undefined)?.();
     (findByTestId(tree, "workspace-transcript-go-to-creation").props.onClick as (() => void) | undefined)?.();

@@ -1,5 +1,10 @@
 import { CheckCircle2, FileAudio2, History, RotateCcw } from "lucide-react";
 import type { TranscriptionJobRecord } from "../../lib/transcriptionJobs";
+import {
+  buildTranscriptVersionLabels,
+  formatTranscriptStatus,
+  sortTranscriptsByCreatedAt,
+} from "../../lib/transcriptVersionLabels";
 
 interface TranscriptHistoryPanelProps {
   audioFilename: string | null;
@@ -24,7 +29,9 @@ export function TranscriptHistoryPanel({
   onRetranscribe,
   disabled = false,
 }: TranscriptHistoryPanelProps) {
-  const selected = transcripts.find((job) => job.transcript_id === selectedTranscriptId) ?? transcripts[0] ?? null;
+  const orderedTranscripts = sortTranscriptsByCreatedAt(transcripts);
+  const versionLabels = buildTranscriptVersionLabels(orderedTranscripts);
+  const selected = orderedTranscripts.find((job) => job.transcript_id === selectedTranscriptId) ?? orderedTranscripts[0] ?? null;
 
   return (
     <section
@@ -48,15 +55,17 @@ export function TranscriptHistoryPanel({
           data-testid="transcript-history-summary"
           className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
         >
-          <p><span className="font-semibold text-slate-900">Transcript ID:</span> {selected.transcript_id}</p>
+          <p><span className="font-semibold text-slate-900">Version:</span> {versionLabels.get(selected.transcript_id) ?? "Transcript"}</p>
           <p className="mt-1"><span className="font-semibold text-slate-900">Created:</span> {formatTimestamp(selected.created_at)}</p>
+          <p className="mt-1"><span className="font-semibold text-slate-900">Transcript ID:</span> {selected.transcript_id}</p>
           <p className="mt-1"><span className="font-semibold text-slate-900">Audio:</span> {audioFilename ?? "Unknown audio"}</p>
         </div>
       )}
 
       <div className="mt-4 space-y-3">
-        {transcripts.map((job) => {
+        {orderedTranscripts.map((job) => {
           const isSelected = job.transcript_id === selectedTranscriptId;
+          const versionLabel = versionLabels.get(job.transcript_id) ?? "Transcript";
           return (
             <button
               key={job.id}
@@ -70,11 +79,19 @@ export function TranscriptHistoryPanel({
               }`}
             >
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900">{job.transcript_id}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-900">{versionLabel}</p>
+                  {isSelected && (
+                    <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                      Current
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 text-xs text-slate-500">Created {formatTimestamp(job.created_at)}</p>
+                <p className="mt-1 text-xs text-slate-500">Transcript ID: {job.transcript_id}</p>
               </div>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                {job.status}
+                {formatTranscriptStatus(job.status)}
               </span>
             </button>
           );

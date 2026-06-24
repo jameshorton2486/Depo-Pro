@@ -10,6 +10,11 @@ import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
 import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
 import { isMockMode } from "../lib/runtime/mode";
+import {
+  buildTranscriptVersionLabels,
+  formatTranscriptStatus,
+  sortTranscriptsByCreatedAt,
+} from "../lib/transcriptVersionLabels";
 import { PreTranscriptionConfirmDialog } from "./PreTranscriptionConfirmDialog";
 import { RetranscriptionConfirmDialog } from "./TranscriptCreation/RetranscriptionConfirmDialog";
 import { TranscriptHistoryPanel } from "./TranscriptCreation/TranscriptHistoryPanel";
@@ -53,6 +58,11 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const completedJobs = useMemo(
     () => jobs.filter((job) => job.status === "complete"),
     [jobs],
+  );
+  const orderedJobs = useMemo(() => sortTranscriptsByCreatedAt(jobs), [jobs]);
+  const transcriptVersionLabels = useMemo(
+    () => buildTranscriptVersionLabels(orderedJobs),
+    [orderedJobs],
   );
 
   useEffect(() => {
@@ -274,17 +284,20 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                     No transcript jobs yet.
                   </p>
                 ) : (
-                  jobs.map((job) => (
+                  orderedJobs.map((job) => (
                     <div key={job.id} className="rounded-xl border border-slate-200 px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">{job.transcript_id}</p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            transcript {job.transcript_id} · updated {new Date(job.updated_at).toLocaleString()}
+                          <p className="text-sm font-semibold text-slate-900">
+                            {transcriptVersionLabels.get(job.transcript_id) ?? "Transcript"}
                           </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Created {new Date(job.created_at).toLocaleString()} · Updated {new Date(job.updated_at).toLocaleString()}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">Transcript ID: {job.transcript_id}</p>
                         </div>
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                          {job.status}
+                          {formatTranscriptStatus(job.status)}
                         </span>
                       </div>
                     </div>
