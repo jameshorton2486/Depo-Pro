@@ -67,6 +67,7 @@ Registry disposition:
 - `DP-012` is reserved for the punctuation / garble standards document only
 - architecture-program material belongs in the `ADR-###` or `WAVE-##` namespace
 - the registered wave-side equivalent is `WAVE-21`
+- the historical architecture record is now filed as `WAVE21_CANONICAL_EXPORT_ARCHITECTURE.md`
 
 ## Ownership Model
 

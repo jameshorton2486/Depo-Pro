@@ -73,7 +73,7 @@ One space after registry abbreviations/honorifics; two spaces after sentence-end
 - Tabs 0.5/1.0/1.5 match DP-009/010/012; 2.0″ parenthetical matches DP-012 §7. **No conflict.**
 - Continuation (§A4) matches all three records. **No conflict.**
 - Spacing boundary clean: placement (DP-011) vs spacing (DP-010). **No overlap.**
-- **⚠ Numbering collision (carry to the standards index):** "DP-012" is the approved **Punctuation/Garble** standard. The **Option-A / unified-engine migration report** was also labeled "DP-012." That report is an **architecture decision, not a formatting standard** — renumber it out of the DP-### series (ADR / Wave 21 record). DP-012 = Punctuation keeps the number.
+- **Historical numbering collision (resolved):** `DP-012` remains the approved **Punctuation/Garble** standard. The former architecture-side use of that number now lives under the wave record `WAVE21_CANONICAL_EXPORT_ARCHITECTURE.md`. Architecture records belong in the `ADR-###` or `WAVE-##` namespace; `DP-012` remains reserved for the punctuation standard.
 
 ---
 

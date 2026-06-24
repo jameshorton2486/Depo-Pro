@@ -12,8 +12,9 @@ line-shaping. This is the authority the renderer, DOCX export, PDF export, Copy 
 certification output all conform to. It is the specification the Geometry Engine implements.
 
 **Authority.** Geometry authority now lives in
-`DP-011_CANONICAL_GEOMETRY_AUTHORITY.md`. This document is retained only for
-historical context where its non-geometry prose still agrees with DP-011.
+`DP-011_CANONICAL_GEOMETRY_AUTHORITY.md`, which is the **sole source** of
+canonical geometry values. This document is retained only for historical
+context where its non-geometry prose still agrees with DP-011.
 
 **Scope.** Geometry only. Punctuation/number/style rules → `MORSONS_TRANSCRIPT_RULES.md`;
 assembly/indexes/certificates → `UFM_FORMATTING_DATA.md`; deterministic transforms →
