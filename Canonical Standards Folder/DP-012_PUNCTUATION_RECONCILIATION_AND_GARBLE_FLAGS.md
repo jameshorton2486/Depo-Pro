@@ -4,7 +4,7 @@
 |-------|-------|
 | **Decision ID** | DP-012 |
 | **Title** | Quotation Punctuation, Date Reconciliation & Inline Garble Flags (Morson reconciliation surfaced from medical-deposition QA review) |
-| **Status** | **APPROVED — ratified 2026-06-23, with revised owner-approved text in §1 and §5.** |
+| **Status** | **APPROVED — ratified 2026-06-23; amended 2026-06-24: §4 split into 4a deterministic figures / 4b suggestion-only date ordinals; §5 reverted to certified-aligned (no auto-capitalization). Supersedes the 2026-06-23 §4/§5 text.** |
 | **Authority** | Certified Transcript Ground Truth — *Etminan* validation fixture (Miah Bardot, CSR 12129) |
 | **Source** | QA review of structured medical-deposition output (disc-degeneration / whiplash-article blocks) |
 | **Scope** | AI Structuring Layer (primary) · Copy Transcript · DOCX/PDF export rendering |
@@ -66,42 +66,64 @@ support of it." And I'll      →   support of it."  And I'll
 
 This is **not new** — it is the closing-quote clause of **DP-010** (the two spaces follow the closing quote). Listed here only because the QA review surfaced it; the authority remains DP-010 and `abbreviation_registry.json`.
 
-## 4. Number / date normalization — APPROVED
+## 4. Number / date normalization — APPROVED (figures), SUGGESTION-ONLY (date ordinals)
 
-Number and date normalization governed by fixed court-reporting rules is treated in this platform as **deterministic transcript formatting**, not AI correction.
+> **Supersedes the 2026-06-23 version of §4**, which framed all number/date normalization as
+> deterministic and auto-applicable (example `August 17th → August 17`). That framing contradicted
+> the certified record (which retains spoken-date ordinals) and the locked normalization-scope
+> decision (interpretive transforms removed from auto-apply). Corrected below.
 
-Approved examples include:
+Number and date handling splits into two distinct classes:
 
-- `August 17th` → `August 17`
-- `fifty-seven` → `57` where the governing transcription rule calls for figures
-- ages rendered as figures where the governing transcription rule calls for figures
+**4a. Figures-for-numbers — APPROVED as deterministic (bounded).**
+Spoken numbers are rendered as figures **only where the governing transcription rule is
+unambiguous** and the result matches certified practice. The Canonical Formatting Engine may apply
+these automatically.
+- `fifty-seven` → `57` (ages and similar counts rendered as figures)
+- `50 to 60 percent` → figures (matches certified usage)
 
-These transforms may be applied automatically by the Canonical Formatting Engine when the governing rule is clear and deterministic.
+This is **not** a blanket spoken-number→digit pass. Do **not** auto-convert where the rule is not
+clearly determinate, including: sentence-initial numbers, "one" used as a pronoun ("the one who…"),
+fractions, and idiomatic quantities ("a hundred"). Where ambiguous, leave the token as transcribed.
+The certified Etminan transcript is the boundary reference for which conversions are in-scope.
 
-Transforms with no clear governing deterministic rule remain outside this section and should not be guessed at automatically.
+**4b. Date ordinal stripping — SUGGESTION-ONLY (not auto-applied).**
+Stripping the ordinal from a spoken date (`August 17th` → `August 17`) is **not** an automatic
+transform. The certified record retains spoken-date ordinals — "September 15th, 2023," "October
+18th," "May 23rd," "December 19th" — so auto-stripping would diverge from certified style.
+- Handle as a **reversible, human-confirmable suggestion** only (per DP-008), recorded in
+  `transforms` with `reversible: true`, never silently auto-applied, shipped disabled by default.
+- This matches the AI Structuring prompt's DP-008 handling; §4b and DP-008 must stay in agreement.
 
-## 5. Capitalizing a direct-address title (Morson Rule 215) — REVISED AND APPROVED
+## 5. Direct-address title capitalization — certified record governs; NOT auto-capitalized
 
-Direct-address titles of respect are treated in this platform as **deterministic transcript formatting** when the title is being used in direct address rather than as a descriptive noun.
+> **Supersedes the 2026-06-23 version of §5**, which adopted Morson Rule 215 to capitalize
+> direct-address titles ("Doctor," "Judge," "Counselor") as deterministic formatting. That reversed
+> the prior certified-aligned decision and contradicted (a) the certified Etminan record (lowercase,
+> 13 instances), (b) the AI Structuring prompt's DP-002b, (c) CHANGELOG_dp012_qa_review (REJECTED),
+> and (d) DP-012's own authority hierarchy (certified > Morson). Corrected below.
 
-Approved examples:
+A professional title used as **direct address without a surname** is **not** capitalized, and is
+**never auto-capitalized** by any engine. The certified record governs.
 
-- `Doctor`
-- `Judge`
-- `Counselor`
+- Correct (certified): `Good afternoon, doctor.` · `what does that surgery entail, doctor?` ·
+  `read the whole thing to yourself, doctor.`
+- The only capital form is **sentence-initial**, which is ordinary sentence capitalization
+  (`Doctor, I'm going to mark...`), not a direct-address capitalization rule.
+- `Dr.` + surname (`Dr. Etminan`) is unaffected — that is an honorific abbreviation, not a
+  direct-address title.
 
-Examples in use:
+**Morson Rule 215 is rejected for this platform** on this point, because the certified record
+outranks Morson. Distinguishing vocative direct address from descriptive use ("the doctor said") is
+a judgment call, not a deterministic transform; therefore even as a suggestion it must **flag, not
+auto-correct.** Do not let any QA pass re-introduce the capital (see the standing guard in the AI
+Structuring prompt's DP-002b).
 
-- `Tell us, Doctor, what dosage you prescribed.`
-- `Would you clarify that, Judge?`
-- `Go ahead, Counselor.`
-
-Boundary conditions:
-
-- this rule applies to direct address
-- `Dr.` + surname (`Dr. Etminan`) remains unaffected
-- descriptive lower-case uses that are not direct address are not rewritten by this rule
-- this authority is housed in `DP-012`; it does not defer to `DP-011`
+> **House-style override clause (only if the owner later chooses to depart from certified):** Adopting
+> Morson-style capitalization going forward would be a deliberate departure from certified ground
+> truth. If ever chosen, it must be recorded **as an explicit override of the authority hierarchy**
+> in a new decision record — not encoded here as if consistent with the certified record — and it
+> still may not be auto-applied (vocative detection is not deterministic).
 
 ## 6. Inline garble flags — flag, never silently correct — ADOPT
 
@@ -179,7 +201,7 @@ When examination resumes after a colloquy interruption (objection, etc.), the ex
 
 ## Directive
 
-1. `DP-012` approves §2, §2b, §4, §6, §7, and §9 as written in their ratified form, and approves the revised owner-aligned text in §1 and §5. Reaffirm §3 under `DP-010`.
+1. §5 directs that direct-address titles follow the certified record (lowercase, not auto-capitalized); Morson Rule 215 is rejected on this point. §4a (figures) may be applied deterministically within its bounds; §4b (date ordinals) is suggestion-only per DP-008.
 2. Consuming prompts **cite DP-012** rather than re-deriving or hardcoding these rules.
 3. Apply §1/§2 as confidence-gated formatting; **flag on ambiguity** rather than guessing which clause is the question.
 4. **Do not change spoken testimony content.** Only punctuation placement, spacing, and flagging.
