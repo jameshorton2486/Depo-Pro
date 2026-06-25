@@ -2,7 +2,7 @@
 
 ## Phase 0 Verdict
 
-Phase 0 supports a controlled re-transcription experiment, but not a production switch. The code path confirms the current request is still `nova-3 + diarize=true + filler_words + utterances + smart_format + mip_opt_out + case-driven keyterms`, the name-garble root cause is still the already-proven case↔audio binding defect, and the ingestion path already supports a non-destructive re-transcription into a new job/transcript. The two open audit gaps are external: account-plan entitlement for `diarize_model=latest` / `nova-3-medical`, and the absence of the human-corrected Etminan reference artifact in this working tree. Sources: `src/lib/deepgram/buildDeepgramRequest.ts:46-57`, `supabase/functions/transcribe-start/index.ts:86-130`, `supabase/functions/transcribe-callback/index.ts:247-288`, `KEYTERM_PIPELINE_FINDINGS.md:3-5`, `AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md:396`.
+Phase 0 supports a controlled re-transcription experiment, but not a production switch. The code path confirms the current request is still `nova-3 + diarize=true + filler_words + utterances + smart_format + mip_opt_out + case-driven keyterms`, the name-garble root cause is still the already-proven case↔audio binding defect, and the ingestion path already supports a non-destructive re-transcription into a new job/transcript. The two open audit gaps are external: account-plan entitlement for `diarize_model=latest` / `nova-3-medical`, and the absence of the human-corrected Etminan reference artifact in this working tree. Sources: `src/lib/deepgram/buildDeepgramRequest.ts:46-57`, `supabase/functions/transcribe-start/index.ts:86-130`, `supabase/functions/transcribe-callback/index.ts:247-288`, `KEYTERM_PIPELINE_FINDINGS.md:3-5`, `docs/audits/AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md:396`.
 
 ## 1. Request Construction Map
 
@@ -106,7 +106,7 @@ I could not verify this project’s **actual contracted Deepgram rate card** fro
 
 The repo does **not** currently contain the stated human-corrected Etminan comparison artifact as a local structured file:
 
-- `AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md` explicitly states: “No certified Etminan transcript was found in repo as a structured comparison artifact.” Source: `AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md:396`.
+- `docs/audits/AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md` explicitly states: “No certified Etminan transcript was found in repo as a structured comparison artifact.” Source: `docs/audits/AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md:396`.
 - A recursive file search in this working tree did not find `Dr_Etminan_Transcript.docx`, `case_20260620_iuks6c-transcript.txt`, or any other obvious Etminan/Vargas reference transcript file.
 
 What **is** present is prior evidence that the transcript/data rows exist, and a preserved raw-response-side artifact path has already been established in the earlier data-reality audit. Sources: `DATA_REALITY_FINDINGS.md:5-6`, `DATA_REALITY_FINDINGS.md:45-47`.
