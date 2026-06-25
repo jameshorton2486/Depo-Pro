@@ -1,9 +1,16 @@
-import { Save, AlertCircle, CheckCircle, FileText, Languages } from "lucide-react";
+import { useMemo } from "react";
+import { Save, AlertCircle, CheckCircle, FileJson, FileText, FileType, Languages } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { useStage } from "../../context/StageContext";
 import { useCase } from "../../context/useCase";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
+import {
+  buildFormattedTranscriptText,
+  buildWordTranscriptHtml,
+  buildWorkspaceTranscriptJson,
+  downloadBlob,
+} from "../../lib/transcriptDownloads";
 
 interface Props {
   jobId: string;
@@ -27,10 +34,17 @@ export function Toolbar({ jobId, onSave }: Props) {
   const reviewedCount = Object.values(state.wordMap).filter((w) => w.reviewed).length;
   const totalWords = Object.keys(state.wordMap).length;
   const reviewPct = totalWords > 0 ? Math.round((reviewedCount / totalWords) * 100) : 0;
+  const transcriptText = useMemo(
+    () => (state.document ? buildFormattedTranscriptText(state.document) : ""),
+    [state.document],
+  );
+  const transcriptJson = useMemo(
+    () => (state.document ? buildWorkspaceTranscriptJson(state.document) : ""),
+    [state.document],
+  );
 
   return (
     <header className="h-12 bg-slate-900 text-white flex items-center gap-4 px-4 shrink-0">
-      {/* Branding */}
       <div className="flex items-center gap-2 mr-4">
         <FileText size={16} className="text-blue-400" />
         <span className="text-sm font-semibold tracking-wide">DEPO-PRO</span>
@@ -38,7 +52,6 @@ export function Toolbar({ jobId, onSave }: Props) {
         <span className="font-mono text-xs text-slate-400">{jobId}</span>
       </div>
 
-      {/* Interpreter layer toggle */}
       <button
         onClick={() => setShowInterpreterLayer(!showInterpreterLayer)}
         className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded transition-colors ${
@@ -80,7 +93,54 @@ export function Toolbar({ jobId, onSave }: Props) {
         Certification
       </button>
 
-      {/* Save state indicator */}
+      <button
+        onClick={() =>
+          downloadBlob(
+            `${jobId}-transcript.txt`,
+            "text/plain;charset=utf-8",
+            transcriptText,
+          )
+        }
+        disabled={!state.document}
+        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
+        title="Download the full formatted transcript as text"
+      >
+        <FileText size={13} />
+        TXT
+      </button>
+
+      <button
+        onClick={() =>
+          downloadBlob(
+            `${jobId}-transcript.doc`,
+            "application/msword;charset=utf-8",
+            buildWordTranscriptHtml(`${jobId} Transcript`, transcriptText),
+          )
+        }
+        disabled={!state.document}
+        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
+        title="Download the full formatted transcript as a Word-compatible document"
+      >
+        <FileType size={13} />
+        Word
+      </button>
+
+      <button
+        onClick={() =>
+          downloadBlob(
+            `${jobId}-transcript.json`,
+            "application/json;charset=utf-8",
+            transcriptJson,
+          )
+        }
+        disabled={!state.document}
+        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
+        title="Download the transcript JSON currently loaded in the workspace"
+      >
+        <FileJson size={13} />
+        JSON
+      </button>
+
       <div className="flex items-center gap-2 ml-auto">
         {state.saving && (
           <span className="text-xs text-slate-400 flex items-center gap-1.5">
@@ -129,7 +189,6 @@ export function Toolbar({ jobId, onSave }: Props) {
           Save
         </button>
 
-        {/* Review progress */}
         <div className="flex items-center gap-2 border-l border-slate-700 pl-4 ml-1">
           <span className="text-xs text-slate-400">Reviewed</span>
           <div className="w-20 h-1.5 bg-slate-700 rounded-full overflow-hidden">
