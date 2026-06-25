@@ -5,9 +5,8 @@ import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { serializeFormattedDocument } from "./format/serialize";
 
 export function buildFormattedTranscriptText(document: EditorDocument): string {
-  return serializeFormattedDocument(
-    cfe(document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry),
-  );
+  const formatted = cfe(document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  return serializeFormattedDocument(formatted);
 }
 
 export function buildWorkspaceTranscriptJson(document: EditorDocument): string {
@@ -19,7 +18,7 @@ function escapeHtml(value: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
