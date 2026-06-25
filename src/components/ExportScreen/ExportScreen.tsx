@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronLeft, Download, FileArchive, FileText } from "lucide-react";
+import { ChevronLeft, Clipboard, Download, FileArchive, FileText } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
@@ -34,6 +34,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const { record } = useIntake();
   const { setStage } = useStage();
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   const certificationReady = useMemo(() => {
     try {
@@ -49,6 +50,18 @@ export function ExportScreen({ jobId }: { jobId: string }) {
       return false;
     }
   }, [jobId]);
+
+  async function handleCopyTranscript() {
+    if (!transcriptText) return;
+    try {
+      await navigator.clipboard.writeText(transcriptText);
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 2000);
+    } catch {
+      setCopyState("error");
+      setTimeout(() => setCopyState("idle"), 3000);
+    }
+  }
 
   const transcriptText = useMemo(() => {
     if (!docState.document) return "";
@@ -98,7 +111,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
             </p>
           </section>
 
-          <section className="grid gap-4 md:grid-cols-2">
+          <section className="grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-3 flex items-center gap-2">
                 <FileText size={16} className="text-slate-600" />
@@ -151,6 +164,28 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 <Download size={13} />
                 Export Package
               </button>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <Clipboard size={16} className="text-slate-600" />
+                <h2 className="text-sm font-semibold text-slate-900">Copy to Clipboard</h2>
+              </div>
+              <p className="mb-4 text-sm text-slate-600">
+                Copy the formatted transcript text to the clipboard for pasting into another tool.
+              </p>
+              <button
+                type="button"
+                disabled={!docState.document || copyState === "copied"}
+                onClick={() => void handleCopyTranscript()}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Clipboard size={13} />
+                {copyState === "copied" ? "Copied!" : "Copy Transcript"}
+              </button>
+              {copyState === "error" && (
+                <p className="mt-2 text-xs text-red-600">Copy failed — try Export TXT instead.</p>
+              )}
             </div>
           </section>
 
