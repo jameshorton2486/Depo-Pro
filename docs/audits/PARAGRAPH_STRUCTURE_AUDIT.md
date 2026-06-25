@@ -198,6 +198,10 @@ This preserves Layer 1 best, but it requires new persisted metadata. Under the c
 
 Do not implement paragraph merge/split as a persistent feature under the current frozen assumptions.
 
+This deferral is not standalone. It belongs to the same post-freeze Layer-2 overlay decision as durable corrections and speaker-structure persistence:
+
+- [docs/audits/DECISION_RECORD_corrections_layer_deferral.md](C:/Users/james/projects/depo-pro/docs/audits/DECISION_RECORD_corrections_layer_deferral.md)
+
 If product wants durability, choose one of these scope changes explicitly:
 
 1. Approve structural mutation of canonical utterances.
