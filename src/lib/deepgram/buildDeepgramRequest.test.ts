@@ -33,11 +33,13 @@ describe("buildDeepgramRequest", () => {
       deepgram_request: {
         model: "nova-3",
         punctuate: "true",
-        paragraphs: "true",
         diarize: "true",
         filler_words: "true",
+        numerals: "true",
         utterances: "true",
+        utt_split: "1",
         smart_format: "true",
+        language: "en",
         mip_opt_out: "true",
       },
       keyterms: [
@@ -73,6 +75,9 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("source");
     expect(request.wireQueryString).toContain("diarize=true");
     expect(request.wireQueryString).not.toContain("diarize_model");
+    expect(request.wireQueryString).toContain("numerals=true");
+    expect(request.wireQueryString).toContain("utt_split=1");
+    expect(request.wireQueryString).toContain("language=en");
     expect(request.wireQueryString).toContain("mip_opt_out=true");
   });
 

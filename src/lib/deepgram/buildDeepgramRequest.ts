@@ -16,11 +16,13 @@ export interface DeepgramRequestPreviewEnvelope {
   deepgram_request: {
     model: string;
     punctuate: string;
-    paragraphs: string;
     diarize: string;
     filler_words: string;
+    numerals: string;
     utterances: string;
+    utt_split: string;
     smart_format: string;
+    language: string;
     mip_opt_out: string;
   };
   keyterms: Array<{
@@ -48,11 +50,13 @@ const MAX_KEYTERMS = 100;
 export const DEEPGRAM_REQUEST_PARAMS = {
   model: "nova-3",
   punctuate: "true",
-  paragraphs: "true",
   diarize: "true",
   filler_words: "true",
+  numerals: "true",
   utterances: "true",
+  utt_split: "1",
   smart_format: "true",
+  language: "en",
   mip_opt_out: "true",
 } as const;
 

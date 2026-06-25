@@ -122,19 +122,69 @@ function buildFallbackUtterances(words: DeepgramWord[]): DeepgramUtterance[] {
   return utterances;
 }
 
+function splitUtterancesBySpeaker(utterances: DeepgramUtterance[]): DeepgramUtterance[] {
+  const split: DeepgramUtterance[] = [];
+
+  for (const utterance of utterances) {
+    if (utterance.words.length === 0) {
+      split.push(utterance);
+      continue;
+    }
+
+    let currentWords: DeepgramWord[] = [];
+    let currentSpeaker = utterance.words[0]?.speaker ?? utterance.speaker ?? 0;
+
+    for (const word of utterance.words) {
+      const wordSpeaker = word.speaker ?? currentSpeaker;
+      if (currentWords.length > 0 && wordSpeaker !== currentSpeaker) {
+        split.push({
+          speaker: currentSpeaker,
+          start: currentWords[0]?.start ?? utterance.start,
+          end: currentWords[currentWords.length - 1]?.end ?? utterance.end,
+          transcript: currentWords.map((item) => getRawText(item)).join(" "),
+          confidence: roundConfidence(
+            currentWords.reduce((sum, item) => sum + (item.confidence ?? 0), 0) / currentWords.length,
+          ),
+          words: currentWords,
+        });
+        currentWords = [];
+      }
+
+      currentSpeaker = wordSpeaker;
+      currentWords.push(word);
+    }
+
+    if (currentWords.length > 0) {
+      split.push({
+        speaker: currentSpeaker,
+        start: currentWords[0]?.start ?? utterance.start,
+        end: currentWords[currentWords.length - 1]?.end ?? utterance.end,
+        transcript: currentWords.map((item) => getRawText(item)).join(" "),
+        confidence: roundConfidence(
+          currentWords.reduce((sum, item) => sum + (item.confidence ?? 0), 0) / currentWords.length,
+        ),
+        words: currentWords,
+      });
+    }
+  }
+
+  return split;
+}
+
 export function normalizeTranscriptResponse(response: DeepgramResponse): NormalizedTranscriptData {
   const alternative = response.results.channels[0]?.alternatives[0];
   const sourceWords = alternative?.words ?? [];
   const sourceUtterances = response.results.utterances?.length
     ? response.results.utterances
     : buildFallbackUtterances(sourceWords);
+  const canonicalSourceUtterances = splitUtterancesBySpeaker(sourceUtterances);
 
   const words: CanonicalWordRow[] = [];
   const utterances: CanonicalUtteranceRow[] = [];
   const speakerCounts = new Map<number, number>();
   let globalWordIndex = 0;
 
-  sourceUtterances.forEach((utterance, utteranceIndex) => {
+  canonicalSourceUtterances.forEach((utterance, utteranceIndex) => {
     const speakerIndex = utterance.speaker ?? utterance.words[0]?.speaker ?? 0;
     const speakerId = speakerIdForIndex(speakerIndex);
     const utteranceId = utteranceIdForIndex(utteranceIndex);
