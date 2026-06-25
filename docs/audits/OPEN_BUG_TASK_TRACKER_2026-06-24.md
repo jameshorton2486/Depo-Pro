@@ -5,36 +5,27 @@ Work top-to-bottom. Each item: what's wrong → first action (audit-first) → d
 
 ---
 
-## P1 — saveReview "Transcript changed elsewhere — reload"  [ROOT-CAUSED · FIX READY]
-- **Wrong:** review/confidence saves fail; `requireFreshTranscript` (workspaceService.ts:229) throws.
-  Fires from `saveReview` via `ConfidencePanel.tsx:102`.
-- **ROOT CAUSE (audit `P1_SAVE_REVIEW_FRESHNESS_AUDIT`):** the guard is correct; the data it's fed is
-  stale. Real-API mutation wrappers (`saveWorking`, `saveReview`, `saveSpeakers`) return the
-  PRE-save `target.updated_at`. The client stores that stale token into `jobUpdatedAt`. The
-  `transcripts` table's `before update` trigger bumps `updated_at=now()` on every write, so after a
-  `saveSpeakers` the client token is already invalid → the next `saveReview` is correctly rejected.
-  Repro: load → save speakers → stale token → confidence save → throw (matches console, incl. 2× fire).
-- **FIX (freeze-safe; no schema/contract/migration; do NOT remove the guard):** in the real-API
-  branches of all THREE wrappers, run the mutation, then re-resolve the transcript row WITHOUT passing
-  `lastKnownUpdatedAt` (a plain/unguarded resolve), and return the POST-save `updated_at`.
-- **Implementation cautions:**
-  - Post-save read must be UNGUARDED (don't route it back through the freshness check → would throw on
-    your own write / create a read-after-write race).
-  - Single-writer assumption: re-reading the timestamp after your own write is safe for single-user
-    beta. The hardened version is to have the mutation RPC RETURN the `updated_at` it set (token = the
-    one your transaction wrote). That likely touches the Edge Function contract → POST-BETA. Add a code
-    comment: "single-writer assumption; RPC-returned token is post-beta hardening."
-  - Fix ALL THREE wrappers in one pass (same bug, three hats) — not just `saveReview`.
-- **Tests:** (1) real-API `saveSpeakers` returns post-save token; (2) real-API `saveReview` returns
-  post-save token; (3) speaker-save → confidence-save does NOT trip the guard when no true external
-  change occurred.
-- **Done when:** all three wrappers return post-save tokens, three tests pass, guard intact.
+## P1 — saveReview "Transcript changed elsewhere — reload"  [✅ CLOSED — `f529467`]
+- Closed by commit `f529467`.
+- Real-API `saveWorking`, `saveReview`, and `saveSpeakers` now return a post-save `updated_at` token
+  via an unguarded reread.
+- `requireFreshTranscript` was preserved unchanged.
+- Regression coverage added in `src/api/workspaceService.test.ts`.
+- Verified with:
+  - `npx tsc --noEmit`
+  - `npx vitest run`
+  - `npm run build`
 
-## P4 — "Cannot copy transcript"  [QUICK WIN]
-- **Wrong:** copy-transcript action fails on the generated transcript.
-- **First action:** reproduce; locate the copy handler; identify failure (clipboard API? empty source?
-  serialization?).
-- **Done when:** copy produces the expected transcript text.
+## P4 — "Cannot copy transcript"  [✅ CLOSED — `44e8071`]
+- Closed by commit `44e8071`.
+- Added an ungated `Copy to Clipboard` card to Stage 7 Export using the existing
+  `docState.document -> cfe() -> serializeFormattedDocument()` path.
+- The button is available before certification, while TXT / Package export remain certification-gated.
+- Clipboard success/error feedback now resets automatically in the Export screen.
+- Verified with:
+  - `npx tsc --noEmit`
+  - `npx vitest run`
+  - `npm run build`
 
 ## P2 — Speaker tools: add / remove / reassign-by-paragraph  [HIGH VALUE — AUDIT FIRST]
 - **Wrong:** no way to add missing speakers (3 clusters for 5 voices), remove extras, or right-click a
