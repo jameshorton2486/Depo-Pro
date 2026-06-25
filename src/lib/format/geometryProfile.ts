@@ -5,7 +5,7 @@ export const DEFAULT_GEOMETRY_PROFILE: GeometryProfile = {
   charsPerLine: 58,
   averageCharsPerWord: 6.5,
   formatBoxWidthInches: 6.5,
-  leftMarginInches: 0.75,
+  leftMarginInches: 1.25, // DP-011 §A2: 1.25" left margin (UFM standard)
   rightMarginInches: 0.75,
   lineSpacingPoints: 28,
   tabs: {

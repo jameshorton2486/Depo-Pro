@@ -52,11 +52,6 @@ const ORGANIZATION_SUFFIXES = new Set([
 const COMMON_CAPITALIZED_FUNCTION_WORDS = new Set([
   "And", "But", "Could", "Do", "I", "If", "Is", "It", "Not", "So", "This", "What", "Will",
 ]);
-const DIRECT_ADDRESS_TITLES = new Map([
-  ["doctor", "Doctor"],
-  ["judge", "Judge"],
-  ["counselor", "Counselor"],
-]);
 const SIMPLE_NUMBER_WORDS = new Map<string, number>([
   ["zero", 0],
   ["one", 1],
@@ -443,30 +438,6 @@ function normalizeNumberWord(
   return `${value}${trailer}`;
 }
 
-function capitalizeDirectAddressTitle(
-  token: string,
-  previousToken: string | undefined,
-  nextToken: string | undefined,
-  index: number
-): string {
-  const { core, trailer } = splitTrailingPunctuation(token);
-  const normalized = core.toLowerCase();
-  const replacement = DIRECT_ADDRESS_TITLES.get(normalized);
-  if (!replacement) {
-    return token;
-  }
-
-  const previousEndsComma = /,$/.test(previousToken ?? "");
-  const sentenceInitialAddress = index === 0 && /[,?!]$/.test(token);
-  const nextIsDash = nextToken === "--";
-
-  if (!previousEndsComma && !sentenceInitialAddress && !nextIsDash) {
-    return token;
-  }
-
-  return `${replacement}${trailer}`;
-}
-
 function buildInlineFlag(word: EditorDocument["words"][number], flagNumber: number): string {
   return `[SCOPIST: FLAG ${flagNumber}: "${word.raw_text}" — verify from audio]`;
 }
@@ -483,7 +454,6 @@ function normalizeDisplayToken(
   text = normalizeInterruptingDash(text, nextToken);
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
-  text = capitalizeDirectAddressTitle(text, previousToken, nextToken, index);
 
   return text;
 }

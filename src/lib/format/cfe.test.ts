@@ -277,7 +277,7 @@ describe("cfe spacing and serialization", () => {
     expect(serializeFormattedDocument(formatted)).toContain("Q. 57 years old.");
   });
 
-  it("capitalizes direct-address titles after commas", () => {
+  it("preserves direct-address titles in lowercase after commas (DP-012 §5)", () => {
     const formatted = cfe(
       makeDoc([
         { word_id: "w1", text: "yourself," },
@@ -288,7 +288,7 @@ describe("cfe spacing and serialization", () => {
       abbreviationRegistry
     );
 
-    expect(serializeFormattedDocument(formatted)).toContain("Q. yourself, Doctor, if");
+    expect(serializeFormattedDocument(formatted)).toContain("Q. yourself, doctor, if");
   });
 
   it("renders inline scopist flags for low-confidence words without rewriting the token", () => {

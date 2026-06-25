@@ -215,7 +215,7 @@ describe("buildEditorContent", () => {
       ])
     );
 
-    expect(readUtteranceContentText(capitalization)).toBe("yourself, Doctor, if");
+    expect(readUtteranceContentText(capitalization)).toBe("yourself, doctor, if");
     expect(readUtteranceContentText(numerals)).toBe("57 years old.");
     expect(readUtteranceContentText(flagged)).toContain("lameness [SCOPIST: FLAG 1:");
   });
