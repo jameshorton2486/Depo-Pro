@@ -169,7 +169,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-3 flex items-center gap-2">
                 <Clipboard size={16} className="text-slate-600" />
-                <h2 className="text-sm font-semibold text-slate-900">Copy to Clipboard</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Copy Transcript</h2>
               </div>
               <p className="mb-4 text-sm text-slate-600">
                 Copy the formatted transcript text to the clipboard for pasting into another tool.

@@ -177,6 +177,11 @@ export function SpeakerPanel() {
         </span>
       </div>
 
+      <div className="px-4 pt-3 pb-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          Rename / Re-role
+        </p>
+      </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {speakers.length === 0 && (
           <p className="text-xs text-slate-400 text-center py-8">
@@ -455,9 +460,13 @@ function UtteranceReassignment({
 
   if (!activeId) {
     return (
-      <div className="border-t border-slate-200 px-4 py-3">
-        <p className="text-[10px] text-slate-400 text-center">
-          Click an utterance to reassign its speaker.
+      <div className="border-t border-slate-200 px-4 py-3 space-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          Utterance Reassignment
+        </p>
+        <p className="text-[10px] text-slate-400">
+          Click any paragraph in the transcript to select it, then reassign it to a different
+          speaker above.
         </p>
       </div>
     );
@@ -478,8 +487,12 @@ function UtteranceReassignment({
       </div>
 
       {hasMultipleSegments ? (
-        <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-2 text-[10px] text-amber-700">
-          Speaker reassignment unavailable — utterance contains multiple speakers.
+        <div className="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-2 text-[10px] text-amber-700 space-y-1">
+          <p className="font-semibold">Reassignment unavailable</p>
+          <p>
+            This utterance contains speech from multiple speakers that were merged during
+            diarization. Re-transcription with updated diarization settings may separate them.
+          </p>
         </div>
       ) : assigning ? (
         <div className="mt-2 space-y-1">
