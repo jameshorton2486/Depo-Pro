@@ -52,20 +52,6 @@ const ORGANIZATION_SUFFIXES = new Set([
 const COMMON_CAPITALIZED_FUNCTION_WORDS = new Set([
   "And", "But", "Could", "Do", "I", "If", "Is", "It", "Not", "So", "This", "What", "Will",
 ]);
-const MONTH_NAMES = new Set([
-  "january",
-  "february",
-  "march",
-  "april",
-  "may",
-  "june",
-  "july",
-  "august",
-  "september",
-  "october",
-  "november",
-  "december",
-]);
 const DIRECT_ADDRESS_TITLES = new Map([
   ["doctor", "Doctor"],
   ["judge", "Judge"],
@@ -404,14 +390,6 @@ function normalizeQuotedQuestionMark(token: string, nextToken: string | undefine
   return token.replace(/\?(["'])$/, "$1?");
 }
 
-function normalizeDateOrdinal(token: string, previousToken: string | undefined): string {
-  if (!MONTH_NAMES.has(normalizeAlphaToken(previousToken))) {
-    return token;
-  }
-
-  return token.replace(/^(\d{1,2})(st|nd|rd|th)([.,?!"']*)$/i, "$1$3");
-}
-
 function parseNumberWord(core: string): number | null {
   const normalized = core.toLowerCase();
   const direct = SIMPLE_NUMBER_WORDS.get(normalized);
@@ -504,7 +482,6 @@ function normalizeDisplayToken(
 
   text = normalizeInterruptingDash(text, nextToken);
   text = normalizeQuotedQuestionMark(text, nextToken);
-  text = normalizeDateOrdinal(text, previousToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
   text = capitalizeDirectAddressTitle(text, previousToken, nextToken, index);
 

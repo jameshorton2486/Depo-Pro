@@ -33,11 +33,11 @@ describe("buildDeepgramRequest", () => {
       deepgram_request: {
         model: "nova-3",
         punctuate: "true",
-        diarize: "true",
+        diarize_model: "latest",
         filler_words: "true",
         numerals: "true",
         utterances: "true",
-        utt_split: "1",
+        utt_split: "0.8",
         smart_format: "true",
         language: "en",
         mip_opt_out: "true",
@@ -73,10 +73,10 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("boost");
     expect(request.wireQueryString).not.toContain("category");
     expect(request.wireQueryString).not.toContain("source");
-    expect(request.wireQueryString).toContain("diarize=true");
-    expect(request.wireQueryString).not.toContain("diarize_model");
+    expect(request.wireQueryString).toContain("diarize_model=latest");
+    expect(request.wireQueryString).not.toContain("diarize=true");
     expect(request.wireQueryString).toContain("numerals=true");
-    expect(request.wireQueryString).toContain("utt_split=1");
+    expect(request.wireQueryString).toContain("utt_split=0.8");
     expect(request.wireQueryString).toContain("language=en");
     expect(request.wireQueryString).toContain("mip_opt_out=true");
   });
@@ -108,7 +108,7 @@ describe("buildDeepgramRequest", () => {
     expect(source).not.toContain("nova-");
   });
 
-  it("keeps the default request params aligned with the case defaults", async () => {
+  it("keeps the default request params aligned on model and smart formatting", async () => {
     const { defaultDeepgramConfig } = await import("../../types/case");
     const defaults = defaultDeepgramConfig();
 
@@ -118,7 +118,7 @@ describe("buildDeepgramRequest", () => {
     expect(buildDeepgramRequest({ caseId: "case_defaults", keyterms: [] }).envelope.deepgram_request).toEqual(
       expect.objectContaining({
         model: "nova-3",
-        diarize: "true",
+        diarize_model: "latest",
         smart_format: "true",
       }),
     );

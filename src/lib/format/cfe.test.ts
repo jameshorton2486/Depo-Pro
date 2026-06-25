@@ -232,7 +232,7 @@ describe("cfe spacing and serialization", () => {
       abbreviationRegistry
     );
 
-    expect(serializeFormattedDocument(formatted)).toContain("Q. August 17\"?  What");
+    expect(serializeFormattedDocument(formatted)).toContain("Q. August 17th\"?  What");
   });
 
   it("removes commas immediately against interrupting dashes", () => {
@@ -250,7 +250,7 @@ describe("cfe spacing and serialization", () => {
     expect(serializeFormattedDocument(formatted)).not.toContain(",\" --");
   });
 
-  it("normalizes month-day ordinals deterministically", () => {
+  it("preserves spoken date ordinals", () => {
     const formatted = cfe(
       makeDoc([
         { word_id: "w1", text: "August" },
@@ -260,7 +260,7 @@ describe("cfe spacing and serialization", () => {
       abbreviationRegistry
     );
 
-    expect(formatted.lines[0].words[1].text).toBe("17");
+    expect(formatted.lines[0].words[1].text).toBe("17th");
   });
 
   it("normalizes age expressions to figures", () => {

@@ -181,7 +181,7 @@ describe("buildEditorContent", () => {
       ])
     );
 
-    expect(readUtteranceContentText(question)).toBe("August 17\"?  What");
+    expect(readUtteranceContentText(question)).toBe("August 17th\"?  What");
     expect(readUtteranceContentText(dash)).toBe("one-year\" -- no.");
   });
 

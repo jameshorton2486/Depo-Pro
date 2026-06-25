@@ -16,7 +16,7 @@ export interface DeepgramRequestPreviewEnvelope {
   deepgram_request: {
     model: string;
     punctuate: string;
-    diarize: string;
+    diarize_model: string;
     filler_words: string;
     numerals: string;
     utterances: string;
@@ -50,11 +50,11 @@ const MAX_KEYTERMS = 100;
 export const DEEPGRAM_REQUEST_PARAMS = {
   model: "nova-3",
   punctuate: "true",
-  diarize: "true",
+  diarize_model: "latest",
   filler_words: "true",
   numerals: "true",
   utterances: "true",
-  utt_split: "1",
+  utt_split: "0.8",
   smart_format: "true",
   language: "en",
   mip_opt_out: "true",
