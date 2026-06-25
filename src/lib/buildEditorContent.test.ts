@@ -92,6 +92,15 @@ function readUtteranceContentText(content: ReturnType<typeof buildEditorContent>
     .join("");
 }
 
+function firstUtteranceAttrs(content: ReturnType<typeof buildEditorContent>) {
+  const utterance = content.content?.find((node) => node.type === "utterance");
+  if (!utterance?.attrs) {
+    throw new Error("Expected utterance attrs.");
+  }
+
+  return utterance.attrs as Record<string, unknown>;
+}
+
 describe("buildEditorContent", () => {
   it("skips empty-text words and leaves a valid placeholder when an utterance has no renderable words", () => {
     const doc = makeDoc({
@@ -209,5 +218,29 @@ describe("buildEditorContent", () => {
     expect(readUtteranceContentText(capitalization)).toBe("yourself, Doctor, if");
     expect(readUtteranceContentText(numerals)).toBe("57 years old.");
     expect(readUtteranceContentText(flagged)).toContain("lameness [SCOPIST: FLAG 1:");
+  });
+
+  it("does not emit non-breaking spaces in workspace content", () => {
+    const content = buildEditorContent(
+      makeSingleUtteranceDoc([
+        makeWord("word-1", "No."),
+        makeWord("word-2", "No."),
+      ])
+    );
+
+    expect(readUtteranceContentText(content)).not.toContain("\u00a0");
+  });
+
+  it("exposes canonical Tab3 and Tab4 geometry on utterance attrs", () => {
+    const content = buildEditorContent(
+      makeSingleUtteranceDoc([
+        makeWord("word-1", "Hello."),
+      ])
+    );
+
+    const attrs = firstUtteranceAttrs(content);
+
+    expect(attrs.tab_speaker_inches).toBe(1.5);
+    expect(attrs.tab_parenthetical_inches).toBe(2.0);
   });
 });

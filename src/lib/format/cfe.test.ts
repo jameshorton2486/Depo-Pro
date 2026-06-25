@@ -6,8 +6,8 @@ import type { EditorDocument } from "../../api/types";
 import { abbreviationRegistry } from "./abbreviationRegistry";
 import { cfe } from "./cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./geometryProfile";
-import { serializeFormattedDocument } from "./serialize";
-import type { AbbreviationRegistry } from "./types";
+import { serializeFormattedDocument, serializeFormattedLine } from "./serialize";
+import type { AbbreviationRegistry, FormattedLine } from "./types";
 
 function makeDoc(words: Array<{
   word_id: string;
@@ -413,5 +413,32 @@ describe("cfe spacing and serialization", () => {
     expect(formatted.lines[0].continuation_mode).toBe("return_to_margin");
     expect(formatted.lines[0].geometry.tabs.qaLabelInches).toBe(0.5);
     expect(formatted.lines[0].geometry.lineSpacingPoints).toBe(28);
+  });
+
+  it("locks Tab3 and Tab4 geometry at the canonical speaker and parenthetical positions", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "Hello." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].geometry.tabs.speakerInches).toBe(1.5);
+    expect(formatted.lines[0].geometry.tabs.parentheticalInches).toBe(2.0);
+  });
+
+  it("preserves the no-colon by-line format when serializing by-lines", () => {
+    const line: FormattedLine = {
+      ...cfe(makeDoc([{ word_id: "w1", text: "Hello." }]), DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry).lines[0],
+      role: "by_line",
+      indent_intent: "by_line",
+      prefix_text: "(BY MR. NUNEZ)",
+      words: [],
+      flags: [],
+    };
+
+    expect(serializeFormattedLine(line)).toBe("(BY MR. NUNEZ)");
+    expect(serializeFormattedLine(line)).not.toContain("(BY: MR.");
   });
 });
