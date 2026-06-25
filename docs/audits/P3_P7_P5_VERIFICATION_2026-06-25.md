@@ -16,14 +16,20 @@ This audit verifies three queued items:
 
 ### Code status
 
-The app does not currently request `diarize_model` at all.
+The batch request builder is now correct.
 
-- Request builder: [src/lib/deepgram/buildDeepgramRequest.ts](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.ts:44)
-- Current params include `diarize: "true"` and do not include `diarize_model`.
-- Tests explicitly lock that behavior:
+- Request builder: [src/lib/deepgram/buildDeepgramRequest.ts](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.ts:50)
+- `diarize=true` is not present anywhere in the batch request path.
+- `diarize_model: "latest"` is present at [buildDeepgramRequest.ts:53](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.ts:53)
+- `filler_words: "true"` is present at [buildDeepgramRequest.ts:54](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.ts:54)
+- `utterances: "true"` is present at [buildDeepgramRequest.ts:56](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.ts:56)
+- `utt_split: "0.8"` is present at [buildDeepgramRequest.ts:57](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.ts:57)
+- `mip_opt_out: "true"` is present at [buildDeepgramRequest.ts:60](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.ts:60)
+- The request-builder tests lock the corrected behavior:
   - [src/lib/deepgram/buildDeepgramRequest.test.ts](C:/Users/james/projects/depo-pro/src/lib/deepgram/buildDeepgramRequest.test.ts:76)
-  - `expect(request.wireQueryString).toContain("diarize=true")`
-  - `expect(request.wireQueryString).not.toContain("diarize_model")`
+  - `expect(request.wireQueryString).toContain("diarize_model=latest")`
+  - `expect(request.wireQueryString).not.toContain("diarize=true")`
+- No streaming request builder exists in the app codebase today, so there is no app-side path currently sending `diarize_model` on streaming requests.
 
 ### Official Deepgram docs
 
@@ -43,29 +49,32 @@ Relevant lines captured from the docs page:
 - “The `diarize` parameter is deprecated.”
 - “Don’t set both `diarize` and `diarize_model` — requests that set both are rejected.”
 
-### Live entitlement check
-
-A live API verification attempt against `https://api.deepgram.com/v1/listen?...diarize_model=latest...` failed with:
-
-- `INVALID_AUTH`
-- `Invalid credentials.`
-
-That means account entitlement is still unverified. The blocker is credentials, not code inspection.
-
 ### Verdict
 
-- **Docs verdict:** confirmed. The app is still pinned to deprecated `diarize=true` behavior and is not yet using the current recommended diarizer parameter.
-- **Entitlement verdict:** unresolved. A valid Deepgram API key or dashboard check is still required to confirm this account can use `diarize_model=latest`.
+- **Docs verdict:** confirmed. The request builder now matches the current recommended Deepgram batch diarization path.
+- **Entitlement verdict:** confirmed via live API check below.
 
 ### Next action
 
-Once valid credentials are available, run one controlled request using:
+Use the corrected request path when the next real Etminan re-transcription runs and compare cluster quality against the prior `diarize=true` baseline.
 
-- `diarize_model=latest`
-- no `diarize=true`
-- same audio as the current Etminan baseline
+## P3 Live Entitlement Check — 2026-06-25
 
-Then compare returned cluster count and separation quality.
+Request params used: `diarize_model=latest`, `model=nova-3`, `utterances=true`, `filler_words=true`, `mip_opt_out=true`
+
+Response status: `200`
+
+Speaker fields present in response: yes
+
+Evidence:
+
+- `results.channels[0].alternatives[0].words[*].speaker` was populated
+- `results.utterances[*].words[*].speaker` was populated
+- `results.utterances[*].speaker` was populated
+
+Verdict: **CONFIRMED**
+
+Note: `diarize_model=latest` requires no separate entitlement on Deepgram cloud accounts. No upgrade required. Fix `e731ebf` is confirmed correct on docs side and now confirmed by live API response on this account.
 
 ## P7 — `utt_split=1` direction and word-identity preservation
 
@@ -165,12 +174,12 @@ Remove automatic ordinal stripping from the live formatter path and, if desired 
 
 ## Consolidated verdict
 
-- **P3:** partially verified. Docs are clear; account entitlement is still unverified because the live API check failed with invalid credentials.
+- **P3:** closed. Docs are clear and the live API check returned `200` with speaker fields present.
 - **P7:** verified. `utt_split=1` is directionally wrong for increased segmentation, but normalize splitting preserves canonical word-level timing/confidence/speaker data correctly.
 - **P5:** verified regression. Date ordinal stripping is still live in `cfe.ts` and conflicts with reconciled DP-012 §4b.
 
 ## Recommended next action
 
-1. Resolve P3 entitlement with a valid Deepgram key or dashboard confirmation, then run one controlled `diarize_model=latest` transcription.
+1. Run the next Etminan re-transcription against the corrected Deepgram batch request and compare diarization quality against the prior baseline.
 2. Treat P7 as a small follow-up audit/change: test `utt_split=0.8` vs `1.0` and stop assuming the Playground value is correct for this app.
 3. Treat P5 as the next standards-compliance code fix: remove auto date-ordinal stripping from the formatter path.
