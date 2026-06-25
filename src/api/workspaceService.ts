@@ -629,7 +629,10 @@ export const workspaceApi = {
 
   if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
-      return { ...(await contractApi.saveWorking(target.transcript_id, payload)), updatedAt: target.updated_at };
+      const result = await contractApi.saveWorking(target.transcript_id, payload);
+      // Post-save re-read: single-writer assumption; RPC-returned token is post-beta hardening.
+      const refreshed = await getTranscriptJobByTranscriptId(target.transcript_id);
+      return { ...result, updatedAt: refreshed?.updated_at ?? target.updated_at };
     }
 
     return naivePersistWorking(jobId, payload, options);
@@ -641,7 +644,10 @@ export const workspaceApi = {
 
   if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
-      return { ...(await contractApi.saveReview(target.transcript_id, payload)), updatedAt: target.updated_at };
+      const result = await contractApi.saveReview(target.transcript_id, payload);
+      // Post-save re-read: single-writer assumption; RPC-returned token is post-beta hardening.
+      const refreshed = await getTranscriptJobByTranscriptId(target.transcript_id);
+      return { ...result, updatedAt: refreshed?.updated_at ?? target.updated_at };
     }
 
     return persistReview(jobId, payload, options);
@@ -654,9 +660,11 @@ export const workspaceApi = {
   if (isRealApiMode()) {
       const target = await requireFreshTranscript(jobId, options?.lastKnownUpdatedAt);
       await contractApi.saveSpeakers(target.transcript_id, payload);
+      // Post-save re-read: single-writer assumption; RPC-returned token is post-beta hardening.
+      const refreshed = await getTranscriptJobByTranscriptId(target.transcript_id);
       return {
         ok: true,
-        updatedAt: target.updated_at,
+        updatedAt: refreshed?.updated_at ?? target.updated_at,
         speakerMapConfirmed: isSpeakerMapConfirmed(payload.speakers),
       };
     }
