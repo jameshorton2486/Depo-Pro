@@ -31,6 +31,42 @@ function cloneParagraph(
   };
 }
 
+function mergeParagraph(left: TranscriptParagraph, right: TranscriptParagraph): TranscriptParagraph {
+  return {
+    ...left,
+    text: `${left.text} ${right.text}`.trim(),
+    sourceUtteranceIds: [...left.sourceUtteranceIds, ...right.sourceUtteranceIds],
+    sourceWordIds: [...left.sourceWordIds, ...right.sourceWordIds],
+  };
+}
+
+function canMergeParagraphs(current: TranscriptParagraph | null, next: TranscriptParagraph): current is TranscriptParagraph {
+  if (!current) {
+    return false;
+  }
+
+  return current.kind === next.kind
+    && current.kind !== "SECTION_HEADER"
+    && current.kind !== "BY_LINE"
+    && current.label === next.label;
+}
+
+function remergeConsecutive(paragraphs: TranscriptParagraph[]): TranscriptParagraph[] {
+  const merged: TranscriptParagraph[] = [];
+
+  for (const paragraph of paragraphs) {
+    const previous = merged[merged.length - 1] ?? null;
+    if (canMergeParagraphs(previous, paragraph)) {
+      merged[merged.length - 1] = mergeParagraph(previous, paragraph);
+      continue;
+    }
+
+    merged.push(paragraph);
+  }
+
+  return merged;
+}
+
 function splitEmbeddedObjections(paragraph: TranscriptParagraph): TranscriptParagraph[] {
   const match = paragraph.text.match(OBJECTION_PATTERN);
   if (!match || match.index === undefined) {
@@ -112,5 +148,5 @@ export function applyQaFixer(paragraphs: TranscriptParagraph[]): TranscriptParag
     result.push(cloneParagraph(paragraph, paragraph.kind, paragraph.label, paragraph.text));
   }
 
-  return result;
+  return remergeConsecutive(result);
 }
