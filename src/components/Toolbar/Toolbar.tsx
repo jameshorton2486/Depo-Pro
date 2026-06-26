@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Save, AlertCircle, CheckCircle, FileJson, FileText, FileType, Languages } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
-import { useStage } from "../../context/StageContext";
+import { STAGE_LABELS, STAGE_ORDER, useStage } from "../../context/StageContext";
 import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
@@ -26,12 +26,19 @@ function formatSavedTime(ts: number): string {
   });
 }
 
+function formatJobIdSuffix(jobId: string): string {
+  const parts = jobId.split("_");
+  const suffix = parts.length > 0 ? parts[parts.length - 1] : jobId;
+  return `#${suffix.slice(-8)}`;
+}
+
 export function Toolbar({ jobId, onSave }: Props) {
   const { state } = useDocument();
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
-  const { setStage } = useStage();
+  const { stage, setStage } = useStage();
   const { showBrowser } = useCase();
   const { record } = useIntake();
+  const shortJobId = formatJobIdSuffix(jobId);
 
   const reviewedCount = Object.values(state.wordMap).filter((w) => w.reviewed).length;
   const totalWords = Object.keys(state.wordMap).length;
@@ -49,127 +56,127 @@ export function Toolbar({ jobId, onSave }: Props) {
   );
 
   return (
-    <header className="h-12 bg-slate-900 text-white flex items-center gap-4 px-4 shrink-0">
-      <div className="flex items-center gap-2 mr-4">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-900 px-4 text-white">
+      <div className="flex min-w-0 items-center gap-2">
         <FileText size={16} className="text-blue-400" />
-        <span className="text-sm font-semibold tracking-wide">DEPO-PRO</span>
-        <span className="text-slate-500 text-sm">|</span>
-        <span className="font-mono text-xs text-slate-400">{jobId}</span>
+        <span className="text-sm font-bold tracking-wide">DEPO-PRO</span>
+        <span className="text-slate-600">|</span>
+        <span className="font-mono text-xs text-slate-400">{shortJobId}</span>
       </div>
 
-      <button
-        onClick={() => setShowInterpreterLayer(!showInterpreterLayer)}
-        className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded transition-colors ${
-          showInterpreterLayer
-            ? "bg-teal-700 text-teal-100 hover:bg-teal-600"
-            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-        }`}
-        title="Toggle interpreter layer"
-      >
-        <Languages size={13} />
-        <span className="hidden sm:inline">Interpreter</span>
-      </button>
+      <div className="flex min-w-0 flex-1 justify-center px-2">
+        <div className="flex items-center gap-1 overflow-x-auto rounded-full bg-slate-800 px-1 py-1">
+          <button
+            onClick={() => void showBrowser()}
+            className="rounded-full px-3 py-1 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
+          >
+            Cases
+          </button>
+          {STAGE_ORDER.map((stageKey) => {
+            const isActive = stageKey === stage;
 
-      <button
-        onClick={() => void showBrowser()}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
-      >
-        Cases
-      </button>
+            return (
+              <button
+                key={stageKey}
+                onClick={() => setStage(stageKey)}
+                className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                  isActive
+                    ? "bg-blue-600 font-medium text-white"
+                    : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                }`}
+              >
+                {STAGE_LABELS[stageKey]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-      <button
-        onClick={() => setStage("intake")}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
-      >
-        Intake
-      </button>
+      <div className="flex items-center gap-3 border-l border-slate-800 pl-4">
+        <button
+          onClick={() => setShowInterpreterLayer(!showInterpreterLayer)}
+          className={`flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm transition-colors ${
+            showInterpreterLayer
+              ? "bg-teal-700 text-teal-100 hover:bg-teal-600"
+              : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          }`}
+          title="Toggle interpreter layer"
+        >
+          <Languages size={14} />
+          <span className="hidden xl:inline">Interpreter</span>
+        </button>
 
-      <button
-        onClick={() => setStage("creation")}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
-      >
-        Transcript Creation
-      </button>
+        <button
+          onClick={() =>
+            downloadBlob(
+              `${jobId}-transcript.txt`,
+              "text/plain;charset=utf-8",
+              transcriptText,
+            )
+          }
+          disabled={!state.document}
+          className="flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1.5 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-default disabled:opacity-40"
+          title="Download the full formatted transcript as text"
+        >
+          <FileText size={14} />
+          TXT
+        </button>
 
-      <button
-        onClick={() => setStage("certification")}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
-      >
-        Certification
-      </button>
+        <button
+          onClick={() =>
+            downloadBlob(
+              `${jobId}-transcript.doc`,
+              "application/msword;charset=utf-8",
+              buildWordTranscriptHtml(`${jobId} Transcript`, transcriptText),
+            )
+          }
+          disabled={!state.document}
+          className="flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1.5 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-default disabled:opacity-40"
+          title="Download the full formatted transcript as a Word-compatible document"
+        >
+          <FileType size={14} />
+          Word
+        </button>
 
-      <button
-        onClick={() =>
-          downloadBlob(
-            `${jobId}-transcript.txt`,
-            "text/plain;charset=utf-8",
-            transcriptText,
-          )
-        }
-        disabled={!state.document}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
-        title="Download the full formatted transcript as text"
-      >
-        <FileText size={13} />
-        TXT
-      </button>
+        <button
+          onClick={() =>
+            downloadBlob(
+              `${jobId}-transcript.json`,
+              "application/json;charset=utf-8",
+              transcriptJson,
+            )
+          }
+          disabled={!state.document}
+          className="flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1.5 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-default disabled:opacity-40"
+          title="Download the transcript JSON currently loaded in the workspace"
+        >
+          <FileJson size={14} />
+          JSON
+        </button>
 
-      <button
-        onClick={() =>
-          downloadBlob(
-            `${jobId}-transcript.doc`,
-            "application/msword;charset=utf-8",
-            buildWordTranscriptHtml(`${jobId} Transcript`, transcriptText),
-          )
-        }
-        disabled={!state.document}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
-        title="Download the full formatted transcript as a Word-compatible document"
-      >
-        <FileType size={13} />
-        Word
-      </button>
-
-      <button
-        onClick={() =>
-          downloadBlob(
-            `${jobId}-transcript.json`,
-            "application/json;charset=utf-8",
-            transcriptJson,
-          )
-        }
-        disabled={!state.document}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-default"
-        title="Download the transcript JSON currently loaded in the workspace"
-      >
-        <FileJson size={13} />
-        JSON
-      </button>
-
-      <div className="flex items-center gap-2 ml-auto">
         {state.saving && (
-          <span className="text-xs text-slate-400 flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-sm text-slate-400">
             <span className="w-3 h-3 border border-slate-400 border-t-transparent rounded-full animate-spin" />
             Saving…
           </span>
         )}
 
         {!state.saving && state.dirty && !state.saveError && (
-          <span className="text-xs text-amber-400 flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-sm text-amber-400">
             <AlertCircle size={12} />
             Unsaved changes
           </span>
         )}
 
         {!state.saving && !state.dirty && !state.saveError && state.lastSavedAt && (
-          <span className="text-xs text-slate-400 flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-sm text-slate-400">
             <CheckCircle size={12} className="text-emerald-400" />
             Saved {formatSavedTime(state.lastSavedAt)}
           </span>
         )}
 
         {!state.saving && !state.dirty && !state.saveError && !state.lastSavedAt && !state.loading && (
-          <span className="text-xs text-slate-500 flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-sm text-slate-500">
             <CheckCircle size={12} className="text-slate-500" />
             No changes
           </span>
@@ -177,7 +184,7 @@ export function Toolbar({ jobId, onSave }: Props) {
 
         {state.saveError && !state.saving && (
           <span
-            className="text-xs text-red-400 flex items-center gap-1.5 cursor-help"
+            className="flex cursor-help items-center gap-1.5 text-sm text-red-400"
             title={state.saveError}
           >
             <AlertCircle size={12} />
@@ -188,21 +195,21 @@ export function Toolbar({ jobId, onSave }: Props) {
         <button
           onClick={onSave}
           disabled={!state.dirty || state.saving}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-default rounded transition-colors ml-1"
+          className="ml-1 flex items-center gap-1.5 rounded bg-blue-600 px-4 py-1.5 text-sm transition-colors hover:bg-blue-500 disabled:cursor-default disabled:opacity-40"
         >
-          <Save size={12} />
+          <Save size={14} />
           Save
         </button>
 
-        <div className="flex items-center gap-2 border-l border-slate-700 pl-4 ml-1">
-          <span className="text-xs text-slate-400">Reviewed</span>
-          <div className="w-20 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+        <div className="ml-1 flex items-center gap-2 border-l border-slate-700 pl-4">
+          <span className="text-sm text-slate-400">Reviewed</span>
+          <div className="h-2 w-28 overflow-hidden rounded-full bg-slate-700">
             <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+              className="h-full rounded-full bg-emerald-500 transition-all duration-500"
               style={{ width: `${reviewPct}%` }}
             />
           </div>
-          <span className="text-xs font-mono text-slate-400 w-8 text-right">{reviewPct}%</span>
+          <span className="w-10 text-right font-mono text-sm text-slate-400">{reviewPct}%</span>
         </div>
 
         <div className="border-l border-slate-700 pl-4">

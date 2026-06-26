@@ -28,10 +28,10 @@ export function RightSidebar() {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+            className={`flex-1 flex flex-col items-center gap-0.5 pb-1 pt-2 text-xs font-medium transition-colors ${
               active === t.id
-                ? "text-blue-700 border-b-2 border-blue-700 bg-white"
-                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                ? "border-b-2 border-blue-400 bg-white text-blue-400"
+                : "text-slate-400 hover:bg-slate-50 hover:text-slate-200"
             }`}
             title={t.label}
           >

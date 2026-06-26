@@ -11,6 +11,7 @@ import { Toolbar } from "./Toolbar/Toolbar";
 import { TranscriptEditor } from "./TranscriptEditor/TranscriptEditor";
 import { AudioPlayer } from "./AudioPlayer/AudioPlayer";
 import { RightSidebar } from "./RightSidebar/RightSidebar";
+import { WorkspaceSidebar } from "./WorkspaceSidebar/WorkspaceSidebar";
 import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
 import { TranscriptCreationScreen } from "./TranscriptCreationScreen";
 import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
@@ -66,6 +67,7 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
       <Toolbar jobId={config.jobId ?? ""} onSave={saveNow} />
 
       <div className="flex-1 min-h-0 flex overflow-hidden">
+        <WorkspaceSidebar />
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
           <TranscriptEditor readOnly={config.readOnly ?? false} />
           {mediaUrl && (
