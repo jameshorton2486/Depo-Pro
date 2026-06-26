@@ -4,6 +4,7 @@ import { listRecentCases, type CaseBrowserSummary } from "../api/caseService";
 import { caseStatusFromStage, matchesCaseSearch } from "../lib/caseLifecycle";
 import { useCase } from "../context/useCase";
 import { AuthStatusChip } from "./AuthGate/AuthGate";
+import { WorkflowSidebar } from "./WorkspaceSidebar/WorkspaceSidebar";
 
 function StatusChip({
   stage,
@@ -144,8 +145,10 @@ export function CaseBrowserScreen() {
   }
 
   return (
-    <div className="min-h-full bg-slate-100 text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-5 py-8">
+    <div className="flex min-h-full bg-slate-100 text-slate-900">
+      <WorkflowSidebar activeTarget="cases" hasActiveCase={false} />
+
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-1 flex-col gap-6 px-5 py-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>

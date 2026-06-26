@@ -8,6 +8,7 @@ import { cfe } from "../../lib/format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "../../lib/format/geometryProfile";
 import { serializeFormattedDocument } from "../../lib/format/serialize";
 import { WorkflowStageNav } from "../WorkflowStageNav";
+import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
 interface GeneratedArtifact {
   name: string;
@@ -92,19 +93,23 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     <div className="flex h-full flex-col bg-slate-100 text-slate-900">
       <WorkflowStageNav jobId={jobId} />
 
-      <header className="border-b border-slate-200 bg-white px-5 py-4">
-        <div className="flex items-center gap-3">
-          <FileArchive size={18} className="text-blue-700" />
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Stage 7</p>
-            <h1 className="text-lg font-semibold text-slate-900">Export</h1>
-          </div>
-          <span className="ml-auto text-xs text-slate-500">{record.caption.case_name.value || jobId}</span>
-        </div>
-      </header>
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <WorkspaceSidebar />
 
-      <div className="flex-1 overflow-y-auto px-5 py-5">
-        <div className="mx-auto max-w-4xl space-y-5">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <header className="border-b border-slate-200 bg-white px-5 py-4">
+            <div className="flex items-center gap-3">
+              <FileArchive size={18} className="text-blue-700" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Stage 7</p>
+                <h1 className="text-lg font-semibold text-slate-900">Export</h1>
+              </div>
+              <span className="ml-auto text-xs text-slate-500">{record.caption.case_name.value || jobId}</span>
+            </div>
+          </header>
+
+          <div className="flex-1 overflow-y-auto px-5 py-5">
+            <div className="mx-auto max-w-4xl space-y-5">
           <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">Export Status</h2>
             <p className="text-sm text-slate-600">
@@ -208,21 +213,23 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               </p>
             </section>
           )}
+            </div>
+          </div>
+
+          <footer className="border-t border-slate-200 bg-white px-5 py-3">
+            <div className="mx-auto flex max-w-4xl items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setStage("certification")}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <ChevronLeft size={13} />
+                Back to Certification
+              </button>
+            </div>
+          </footer>
         </div>
       </div>
-
-      <footer className="border-t border-slate-200 bg-white px-5 py-3">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setStage("certification")}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            <ChevronLeft size={13} />
-            Back to Certification
-          </button>
-        </div>
-      </footer>
     </div>
   );
 }
