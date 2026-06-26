@@ -44,6 +44,7 @@ import { serializeManagedKeyterms } from "../../lib/keyterms/managedKeyterms";
 import { UfmPayloadPreview } from "./UfmPayloadPreview";
 import { ParticipantsPanel } from "./ParticipantsPanel";
 import { WorkflowStageNav } from "../WorkflowStageNav";
+import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1604,12 +1605,16 @@ export function IntakeScreen({ jobId }: Props) {
       {/* ── Workflow stage nav ── */}
       <WorkflowStageNav jobId={jobId} />
 
-      {/* ── Case status banner ── */}
-      <CaseStatusBanner validation={intakeValidation} conflictAlternates={conflictAlternates} />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <WorkspaceSidebar />
 
-      {/* ── Main scrollable body ── */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[1400px] space-y-5 px-5 py-5">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* ── Case status banner ── */}
+          <CaseStatusBanner validation={intakeValidation} conflictAlternates={conflictAlternates} />
+
+          {/* ── Main scrollable body ── */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-[1400px] space-y-5 px-5 py-5">
           {!persisted && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               New case - nothing saved yet.
@@ -1699,20 +1704,22 @@ export function IntakeScreen({ jobId }: Props) {
             <DeepgramKeytermManager />
           </section>
 
+            </div>
+          </div>
+
+          {/* ── Footer ── */}
+          <IntakeFooter
+            onSave={handleSave}
+            onProceed={handleProceed}
+            canProceed={canProceed}
+            remainingRequiredCount={intakeValidation.failCount}
+            dirty={dirty}
+            persisted={persisted}
+            saveState={saveState}
+            saveError={saveError}
+          />
         </div>
       </div>
-
-      {/* ── Footer ── */}
-      <IntakeFooter
-        onSave={handleSave}
-        onProceed={handleProceed}
-        canProceed={canProceed}
-        remainingRequiredCount={intakeValidation.failCount}
-        dirty={dirty}
-        persisted={persisted}
-        saveState={saveState}
-        saveError={saveError}
-      />
     </div>
   );
 }

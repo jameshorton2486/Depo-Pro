@@ -1,7 +1,9 @@
 import {
   Award,
   ClipboardList,
+  Download,
   Edit3,
+  FileStack,
   FolderOpen,
   Mic,
   Paperclip,
@@ -9,47 +11,60 @@ import {
 import { useCase } from "../../context/useCase";
 import { useStage, type AppStage } from "../../context/StageContext";
 
-const WORKSPACE_SHORTCUTS: Array<{
-  stage: AppStage;
-  label: string;
+export type SidebarTarget = AppStage | "cases";
+
+const WORKFLOW_SHORTCUTS: Array<{
+  stage: SidebarTarget;
   title: string;
   icon: typeof FolderOpen;
 }> = [
-  { stage: "intake", label: "Intake", title: "Case Intake", icon: ClipboardList },
-  { stage: "creation", label: "Transcript Creation", title: "Transcript Creation", icon: Mic },
-  { stage: "workspace", label: "Transcript Workspace", title: "Workspace", icon: Edit3 },
-  { stage: "certification", label: "Certification", title: "Certification", icon: Award },
-  { stage: "exhibits", label: "Exhibits", title: "Exhibits", icon: Paperclip },
+  { stage: "cases", title: "All Cases", icon: FolderOpen },
+  { stage: "intake", title: "Case Intake", icon: ClipboardList },
+  { stage: "creation", title: "Transcript Creation", icon: Mic },
+  { stage: "workspace", title: "Transcript Workspace", icon: Edit3 },
+  { stage: "exhibits", title: "Exhibits", icon: Paperclip },
+  { stage: "ufm", title: "UFM Insertions", icon: FileStack },
+  { stage: "certification", title: "Certification", icon: Award },
+  { stage: "export", title: "Export", icon: Download },
 ];
 
-export function WorkspaceSidebar() {
-  const { stage, setStage } = useStage();
-  const { showBrowser } = useCase();
-
+export function WorkflowSidebar({
+  activeTarget,
+  hasActiveCase = true,
+  onShowBrowser,
+  onSetStage,
+}: {
+  activeTarget: SidebarTarget;
+  hasActiveCase?: boolean;
+  onShowBrowser?: () => void;
+  onSetStage?: (stage: AppStage) => void;
+}) {
   return (
     <aside className="flex h-full w-12 shrink-0 flex-col border-r border-slate-800 bg-slate-950">
-      <button
-        type="button"
-        title="All Cases"
-        onClick={() => void showBrowser()}
-        className="flex h-12 w-12 items-center justify-center text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200"
-      >
-        <FolderOpen size={18} />
-      </button>
-
-      {WORKSPACE_SHORTCUTS.map(({ stage: targetStage, title, icon: Icon }) => {
-        const isActive = stage === targetStage;
+      {WORKFLOW_SHORTCUTS.map(({ stage, title, icon: Icon }) => {
+        const isActive = activeTarget === stage;
+        const isCases = stage === "cases";
+        const isDisabled = isCases ? !onShowBrowser : !hasActiveCase || !onSetStage;
+        const handleClick = isCases
+          ? onShowBrowser
+          : () => onSetStage?.(stage as AppStage);
+        const buttonTitle = isDisabled && !isCases
+          ? "Open a case to access this stage"
+          : title;
 
         return (
           <button
-            key={targetStage}
+            key={stage}
             type="button"
-            title={title}
-            onClick={() => setStage(targetStage)}
+            title={buttonTitle}
+            onClick={handleClick}
+            disabled={isDisabled}
             className={`flex h-12 w-12 items-center justify-center transition-colors ${
               isActive
                 ? "bg-slate-800 text-blue-400"
-                : "text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+                : isDisabled
+                  ? "cursor-not-allowed text-slate-700 opacity-30"
+                  : "text-slate-500 hover:bg-slate-800 hover:text-slate-200"
             }`}
           >
             <Icon size={18} />
@@ -57,5 +72,19 @@ export function WorkspaceSidebar() {
         );
       })}
     </aside>
+  );
+}
+
+export function WorkspaceSidebar() {
+  const { stage, setStage } = useStage();
+  const { showBrowser } = useCase();
+
+  return (
+    <WorkflowSidebar
+      activeTarget={stage}
+      hasActiveCase
+      onShowBrowser={() => void showBrowser()}
+      onSetStage={setStage}
+    />
   );
 }
