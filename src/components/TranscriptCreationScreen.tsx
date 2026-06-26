@@ -9,6 +9,7 @@ import { saveCase } from "../api/caseService";
 import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
 import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
+import { validateCaseAudioIntegrity } from "../lib/keyterms/caseAudioIntegrity";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   buildTranscriptVersionLabels,
@@ -54,6 +55,23 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     requestPreview.envelope.keyterms,
     requestPreview.envelope.keyterms_count,
   ]);
+  const audioIntegrity = useMemo(() => {
+    if (!audio) {
+      return null;
+    }
+
+    return validateCaseAudioIntegrity(record, audio.original_filename);
+  }, [audio, record]);
+  const audioIntegrityWarning = useMemo(() => {
+    if (!audioIntegrity || audioIntegrity.ok) {
+      return null;
+    }
+
+    const unmatched = audioIntegrity.unmatchedDistinctiveTokens.join(", ");
+    return unmatched
+      ? `Audio filename does not appear to match this case. Unmatched filename tokens: ${unmatched}. Open the correct case before starting or retranscribing.`
+      : "Audio filename does not appear to match this case. Open the correct case before starting or retranscribing.";
+  }, [audioIntegrity]);
 
   const completedJobs = useMemo(
     () => jobs.filter((job) => job.status === "complete"),
@@ -174,6 +192,10 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
       setError("Upload audio before starting transcription.");
       return;
     }
+    if (audioIntegrityWarning) {
+      setError(audioIntegrityWarning);
+      return;
+    }
 
     if (!REQUIRE_BINDING_CONFIRM) {
       void runTranscription();
@@ -196,6 +218,10 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   function handleTriggerRetranscription() {
     if (!selectedTranscriptId) {
       setError("Select a source transcript before retranscribing.");
+      return;
+    }
+    if (audioIntegrityWarning) {
+      setError(audioIntegrityWarning);
       return;
     }
 
@@ -228,6 +254,32 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
 
         <div className="grid gap-8 px-8 py-8 lg:grid-cols-[1.2fr_0.8fr]">
           <section className="space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Active Case</p>
+              <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <p>
+                  <span className="font-semibold text-slate-900">Case Name:</span>
+                  {" "}
+                  {caseIdentity.caseName ?? "—"}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Witness:</span>
+                  {" "}
+                  {caseIdentity.witnessName ?? "—"}
+                </p>
+                <p>
+                  <span className="font-semibold text-slate-900">Case ID:</span>
+                  {" "}
+                  <span className="font-mono text-xs text-slate-600">{caseIdentity.caseId}</span>
+                </p>
+              </div>
+              {audioIntegrityWarning && (
+                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {audioIntegrityWarning}
+                </div>
+              )}
+            </div>
+
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-blue-100 p-2 text-blue-700">
@@ -264,7 +316,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 <button
                   type="button"
                   onClick={handleTriggerTranscription}
-                  disabled={running || loading}
+                  disabled={running || loading || Boolean(audioIntegrityWarning)}
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
                 >
                   {running ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -314,7 +366,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 onSelectTranscript={setSelectedTranscriptId}
                 onOpenWorkspace={() => void handleOpenWorkspace()}
                 onRetranscribe={handleTriggerRetranscription}
-                disabled={running}
+                disabled={running || Boolean(audioIntegrityWarning)}
               />
             )}
           </section>
