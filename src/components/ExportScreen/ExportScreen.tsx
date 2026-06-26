@@ -7,6 +7,7 @@ import { abbreviationRegistry } from "../../lib/format/abbreviationRegistry";
 import { cfe } from "../../lib/format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "../../lib/format/geometryProfile";
 import { serializeFormattedDocument } from "../../lib/format/serialize";
+import { WorkflowStageNav } from "../WorkflowStageNav";
 
 interface GeneratedArtifact {
   name: string;
@@ -89,6 +90,8 @@ export function ExportScreen({ jobId }: { jobId: string }) {
 
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900">
+      <WorkflowStageNav jobId={jobId} />
+
       <header className="border-b border-slate-200 bg-white px-5 py-4">
         <div className="flex items-center gap-3">
           <FileArchive size={18} className="text-blue-700" />

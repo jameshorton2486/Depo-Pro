@@ -3,6 +3,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, FileCheck2 } from "lucide-reac
 import { workspaceApi } from "../../api/workspaceService";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
+import { WorkflowStageNav } from "../WorkflowStageNav";
 
 interface PersistedCertificationState {
   certificationDate: string | null;
@@ -115,6 +116,8 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
 
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900">
+      <WorkflowStageNav jobId={jobId} />
+
       <header className="border-b border-slate-200 bg-white px-5 py-4">
         <div className="flex items-center gap-3">
           <FileCheck2 size={18} className="text-blue-700" />

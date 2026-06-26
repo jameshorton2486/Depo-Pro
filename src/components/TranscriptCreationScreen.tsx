@@ -19,6 +19,7 @@ import {
 import { PreTranscriptionConfirmDialog } from "./PreTranscriptionConfirmDialog";
 import { RetranscriptionConfirmDialog } from "./TranscriptCreation/RetranscriptionConfirmDialog";
 import { TranscriptHistoryPanel } from "./TranscriptCreation/TranscriptHistoryPanel";
+import { WorkflowStageNav } from "./WorkflowStageNav";
 
 const REQUIRE_BINDING_CONFIRM = import.meta.env.VITE_REQUIRE_BINDING_CONFIRM !== "false";
 
@@ -239,8 +240,11 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 px-6 py-10">
-      <div className="mx-auto max-w-4xl rounded-[28px] border border-slate-200 bg-white shadow-xl">
+    <div className="flex min-h-screen flex-col bg-slate-100">
+      <WorkflowStageNav jobId={caseId} />
+
+      <div className="px-6 py-10">
+        <div className="mx-auto max-w-4xl rounded-[28px] border border-slate-200 bg-white shadow-xl">
         <div className="border-b border-slate-100 px-8 py-6">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
             Stage 2
@@ -252,7 +256,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
           </p>
         </div>
 
-        <div className="grid gap-8 px-8 py-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="grid gap-8 px-8 py-8 lg:grid-cols-[1.2fr_0.8fr]">
           <section className="space-y-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Active Case</p>
@@ -405,6 +409,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
               </button>
             </div>
           </aside>
+          </div>
         </div>
       </div>
       <PreTranscriptionConfirmDialog

@@ -16,13 +16,13 @@ export type AppStage =
 export type Stage = AppStage | "editor";
 
 export const STAGE_LABELS: Record<AppStage, string> = {
-  intake:        "1  Intake",
-  creation:      "2  Transcript Creation",
-  workspace:     "3  Transcript Workspace",
-  exhibits:      "4  Exhibits",
-  ufm:           "5  UFM Insertions",
-  certification: "6  Certification",
-  export:        "7  Export",
+  intake:        "Intake",
+  creation:      "Transcript Creation",
+  workspace:     "Transcript Workspace",
+  exhibits:      "Exhibits",
+  ufm:           "UFM Insertions",
+  certification: "Certification",
+  export:        "Export",
 };
 
 export const STAGE_ORDER: AppStage[] = [

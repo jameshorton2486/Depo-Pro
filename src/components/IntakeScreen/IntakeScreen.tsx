@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
-  FileText, AlertTriangle, CheckCircle2, Clock,
+  AlertTriangle, CheckCircle2, Clock,
   ChevronRight, Save, Zap, Package, Users, Search,
   X, UserPlus, Mic, Scale, Video, User2, ChevronDown, ChevronUp,
 } from "lucide-react";
@@ -16,7 +16,7 @@ import {
 import type { CaseAudioRecord, CaseFileRecord } from "../../api/fileService";
 import { useIntake } from "../../context/useIntake";
 import { useCase } from "../../context/useCase";
-import { useStage, STAGE_LABELS, STAGE_ORDER } from "../../context/StageContext";
+import { useStage } from "../../context/StageContext";
 import { useConflict, selectActiveConflicts } from "../conflict/conflictStore";
 import { ExtractedFieldsTable } from "../ExtractedFieldsTable/ExtractedFieldsTable";
 import { projectFieldRows } from "../ExtractedFieldsTable/fieldProjection";
@@ -43,6 +43,7 @@ import { resolveHydration } from "./hydration";
 import { serializeManagedKeyterms } from "../../lib/keyterms/managedKeyterms";
 import { UfmPayloadPreview } from "./UfmPayloadPreview";
 import { ParticipantsPanel } from "./ParticipantsPanel";
+import { WorkflowStageNav } from "../WorkflowStageNav";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -161,58 +162,6 @@ function attorneyBadgeLabel(representing: string | null, role: string) {
 function sortCaseAudioRecords(audioRecords: CaseAudioRecord[]): CaseAudioRecord[] {
   return [...audioRecords].sort(
     (left, right) => left.source_index - right.source_index || (left.uploaded_at ?? "").localeCompare(right.uploaded_at ?? ""),
-  );
-}
-
-// ─── Workflow stage nav ───────────────────────────────────────────────────────
-
-function WorkflowNav({ jobId }: { jobId: string }) {
-  const { stage } = useStage();
-  const { showBrowser } = useCase();
-  const currentIdx = STAGE_ORDER.indexOf(stage);
-
-  return (
-    <header className="flex h-12 shrink-0 items-center gap-0 border-b border-slate-800 bg-slate-900 px-4 text-white">
-      {/* Branding */}
-      <div className="flex items-center gap-2 border-r border-slate-700 pr-4 mr-3">
-        <FileText size={15} className="text-blue-400" />
-        <span className="text-sm font-bold tracking-wide text-white">DEPO-PRO</span>
-        <span className="font-mono text-xs text-slate-500">{jobId}</span>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => void showBrowser()}
-        className="mr-3 rounded border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-300 transition hover:bg-slate-800"
-      >
-        Cases
-      </button>
-
-      {/* Stage pills */}
-      <div className="flex items-center gap-0 overflow-x-auto">
-        {STAGE_ORDER.map((s, i) => {
-          const isActive  = s === stage;
-          const isPast    = i < currentIdx;
-          const isFuture  = i > currentIdx;
-          return (
-            <div key={s} className="flex items-center">
-              <span
-                className={`whitespace-nowrap rounded px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
-                  isActive  ? "bg-blue-700 text-blue-100" :
-                  isPast    ? "text-emerald-400" :
-                  isFuture  ? "text-slate-600" : ""
-                }`}
-              >
-                {STAGE_LABELS[s]}
-              </span>
-              {i < STAGE_ORDER.length - 1 && (
-                <ChevronRight size={11} className="mx-0.5 shrink-0 text-slate-700" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </header>
   );
 }
 
@@ -1653,7 +1602,7 @@ export function IntakeScreen({ jobId }: Props) {
   return (
     <div className="depo-editor flex h-full flex-col bg-slate-100 text-slate-900">
       {/* ── Workflow stage nav ── */}
-      <WorkflowNav jobId={jobId} />
+      <WorkflowStageNav jobId={jobId} />
 
       {/* ── Case status banner ── */}
       <CaseStatusBanner validation={intakeValidation} conflictAlternates={conflictAlternates} />
