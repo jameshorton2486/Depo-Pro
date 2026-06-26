@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { EditorDocument } from "../../api/types";
 import type { CaseRecord } from "../../types/case";
-import { buildDisplayDocument, buildWorkspaceTranscriptText } from "./workspacePresentation";
+import {
+  buildDisplayDocument,
+  buildResumptionByLine,
+  buildTranscriptParagraphs,
+  buildWorkspaceTranscriptText,
+} from "./workspacePresentation";
 
 function makeRecord(): CaseRecord {
   return {
@@ -112,6 +117,60 @@ describe("workspacePresentation", () => {
     const speakerMap = new Map(displayDocument.speakers.map((speaker) => [speaker.speaker_id, speaker.display_name]));
 
     expect(speakerMap.get("spk-3")).toBe("THE WITNESS");
+  });
+
+  it("uses a standalone BY_LINE at examination start, not an inline resumption by-line", () => {
+    const paragraphs = buildTranscriptParagraphs(makeDocument(), makeRecord());
+    const byLineIndex = paragraphs.findIndex((paragraph) => paragraph.kind === "BY_LINE" && paragraph.text === "BY MR. BENTLEY:");
+    const firstQuestionIndex = paragraphs.findIndex((paragraph) => paragraph.kind === "Q");
+
+    expect(byLineIndex).toBeGreaterThan(-1);
+    expect(firstQuestionIndex).toBeGreaterThan(byLineIndex);
+    expect(paragraphs[firstQuestionIndex]?.text.startsWith("(BY ")).toBe(false);
+  });
+
+  it("adds an inline resumption by-line after colloquy interruptions", () => {
+    const document = makeDocument();
+    document.speakers[2] = { ...document.speakers[2], display_name: "MR. BENTLEY", role: "ATTORNEY" };
+    document.speakers.push({ speaker_id: "spk-4", display_name: "MR. RAMON", deepgram_speaker: 4, role: "OTHER" });
+    document.utterances = [
+      { utterance_id: "utt-1", speaker_id: "spk-2", start_time: 0, end_time: 1, word_ids: ["w8", "w9", "w10", "w11", "w12"] },
+      { utterance_id: "utt-2", speaker_id: "spk-3", start_time: 1, end_time: 2, word_ids: ["w13", "w14"] },
+      { utterance_id: "utt-3", speaker_id: "spk-4", start_time: 2, end_time: 3, word_ids: ["w15", "w16"] },
+      { utterance_id: "utt-4", speaker_id: "spk-2", start_time: 3, end_time: 4, word_ids: ["w17", "w18", "w19"] },
+    ];
+    document.words = [
+      { word_id: "w8", text: "Please", raw_text: "Please", speaker_id: "spk-2", utterance_id: "utt-1", start_time: 0, end_time: 0.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w9", text: "state", raw_text: "state", speaker_id: "spk-2", utterance_id: "utt-1", start_time: 0.1, end_time: 0.2, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w10", text: "your", raw_text: "your", speaker_id: "spk-2", utterance_id: "utt-1", start_time: 0.2, end_time: 0.3, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w11", text: "name.", raw_text: "name.", speaker_id: "spk-2", utterance_id: "utt-1", start_time: 0.3, end_time: 0.4, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w12", text: "", raw_text: "", speaker_id: "spk-2", utterance_id: "utt-1", start_time: 0.4, end_time: 0.5, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w13", text: "I", raw_text: "I", speaker_id: "spk-3", utterance_id: "utt-2", start_time: 0.5, end_time: 0.6, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w14", text: "do.", raw_text: "do.", speaker_id: "spk-3", utterance_id: "utt-2", start_time: 0.6, end_time: 0.7, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w15", text: "Objection.", raw_text: "Objection.", speaker_id: "spk-4", utterance_id: "utt-3", start_time: 0.7, end_time: 0.8, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w16", text: "Form.", raw_text: "Form.", speaker_id: "spk-4", utterance_id: "utt-3", start_time: 0.8, end_time: 0.9, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w17", text: "So,", raw_text: "So,", speaker_id: "spk-2", utterance_id: "utt-4", start_time: 0.9, end_time: 1.0, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w18", text: "what", raw_text: "what", speaker_id: "spk-2", utterance_id: "utt-4", start_time: 1.0, end_time: 1.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w19", text: "happened?", raw_text: "happened?", speaker_id: "spk-2", utterance_id: "utt-4", start_time: 1.1, end_time: 1.2, confidence: 1, reviewed: false, edited: false },
+    ];
+
+    const text = buildWorkspaceTranscriptText(document, makeRecord());
+
+    expect(text).toContain("MR. RAMON:  Objection.  Form.");
+    expect(text).toContain("Q. (BY MR. BENTLEY) So, what happened?");
+    expect(text).not.toContain("(BY: MR.");
+  });
+
+  it("does not add a resumption by-line for consecutive Q/A without colloquy", () => {
+    const text = buildWorkspaceTranscriptText(makeDocument(), makeRecord());
+
+    expect(text).not.toContain("Q. (BY MR. BENTLEY)");
+  });
+
+  it("formats the resumption by-line without a colon after BY", () => {
+    expect(buildResumptionByLine("MR. BENTLEY")).toBe("(BY MR. BENTLEY)");
+    expect(buildResumptionByLine("MR. BENTLEY")).not.toContain("(BY: MR.");
+    expect(buildResumptionByLine("MR. BENTLEY")).not.toContain("MR.  BENTLEY");
   });
 });
 

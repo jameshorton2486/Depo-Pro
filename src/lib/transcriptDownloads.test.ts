@@ -7,6 +7,7 @@ import {
   buildWordTranscriptHtml,
   buildWorkspaceTranscriptJson,
 } from "./transcriptDownloads";
+import { stripInlineFlagSpans } from "./transcript/workspacePresentation";
 
 function makeDocument(): EditorDocument {
   return {
@@ -155,5 +156,53 @@ describe("transcriptDownloads", () => {
     expect(rawText).not.toContain("PROCEEDINGS");
     expect(structuredText).toContain("EXAMINATION");
     expect(structuredText).toContain("BY DENNIS BENTLEY:");
+  });
+
+  it("strips inline flag spans from raw TXT download output while preserving verbatim tokens", () => {
+    const document = makeDocument();
+    document.words[0] = {
+      ...document.words[0],
+      confidence: 0.2,
+      text: "trauma",
+      raw_text: "trauma",
+    };
+
+    const text = buildFormattedTranscriptText(document);
+
+    expect(text).toContain("trauma");
+    expect(text).not.toContain("[SCOPIST: FLAG");
+  });
+
+  it("strips inline flag spans from structured download output while preserving structural markers", () => {
+    const document = makeDocument();
+    document.words[0] = {
+      ...document.words[0],
+      confidence: 0.2,
+      text: "trauma",
+      raw_text: "trauma",
+    };
+
+    const text = buildFormattedTranscriptText(document, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+
+    expect(text).toContain("EXAMINATION");
+    expect(text).toContain("BY DENNIS BENTLEY:");
+    expect(text).toContain("trauma");
+    expect(text).not.toContain("[SCOPIST: FLAG");
+  });
+
+  it("builds Word-compatible HTML without inline flag spans when given clean transcript text", () => {
+    const html = buildWordTranscriptHtml("Transcript", "trauma to the disc");
+
+    expect(html).toContain("<pre>trauma to the disc</pre>");
+    expect(html).not.toContain("[SCOPIST: FLAG");
+  });
+
+  it("strips inline flag spans with and without likely clauses", () => {
+    expect(stripInlineFlagSpans('trauma [SCOPIST: FLAG 1: "trauma" — verify from audio]')).toBe("trauma");
+    expect(stripInlineFlagSpans('disc [SCOPIST: FLAG 2: "disc" — verify from audio; likely "disk"]')).toBe("disc");
+    expect(stripInlineFlagSpans("normal text without flags")).toBe("normal text without flags");
   });
 });

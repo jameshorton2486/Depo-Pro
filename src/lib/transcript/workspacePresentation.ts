@@ -22,6 +22,11 @@ export interface WorkspaceParagraphDescriptor {
   mode: WorkspaceParagraphMode;
   label: string;
   heading: string | null;
+  /**
+   * Two forms:
+   * - Standalone: "BY MR. BENTLEY:" — emitted as a separate BY_LINE paragraph.
+   * - Resumption: "(BY MR. BENTLEY)" — prepended inline to the Q. text.
+   */
   byLine: string | null;
 }
 
@@ -47,6 +52,7 @@ interface RenderState {
   currentExaminerLabel: string | null;
   hasQuestion: boolean;
   proceedingsInserted: boolean;
+  lastParagraphWasColloquy: boolean;
 }
 
 const GENERIC_SPEAKER_PATTERN = /^SPEAKER\s+\d+$/i;
@@ -87,12 +93,27 @@ function serializeLineText(line: FormattedLine): string {
     .trim();
 }
 
+function serializeLineTextClean(line: FormattedLine): string {
+  return line.words
+    .map((word) => `${word.text}${word.trailing_space}`)
+    .join("")
+    .trim();
+}
+
+export function stripInlineFlagSpans(text: string): string {
+  return text.replace(/\s*\[SCOPIST:\s*FLAG\s*\d+:[^\]]+\]/g, "");
+}
+
 function normalizeSpeakerLabel(label: string): string {
   return normalizeHonorificSpacing(label).trim().replace(/:+$/, "").replace(/\s+/g, " ").toUpperCase();
 }
 
 function buildByLine(label: string): string {
   return `BY ${normalizeSpeakerLabel(label)}:`;
+}
+
+export function buildResumptionByLine(label: string): string {
+  return `(BY ${normalizeSpeakerLabel(label)})`;
 }
 
 function looksLikeParenthetical(text: string): boolean {
@@ -397,11 +418,15 @@ function classifyLineDescriptor(line: FormattedLine, text: string, state: Render
   }
 
   if (line.role === "q") {
+    const needsResumptionByLine = state.lastParagraphWasColloquy && state.inExamination;
+
     return {
       mode: "Q",
       label: line.speaker_label,
       heading: state.inExamination ? null : "EXAMINATION",
-      byLine: state.currentExaminerLabel !== line.speaker_label ? buildByLine(line.speaker_label) : null,
+      byLine: needsResumptionByLine
+        ? buildResumptionByLine(line.speaker_label)
+        : (state.currentExaminerLabel !== line.speaker_label ? buildByLine(line.speaker_label) : null),
     };
   }
 
@@ -429,6 +454,7 @@ function advanceRenderState(descriptor: WorkspaceParagraphDescriptor, state: Ren
     inExamination: state.inExamination || descriptor.mode === "Q" || descriptor.mode === "A",
     currentExaminerLabel: descriptor.mode === "Q" ? descriptor.label : state.currentExaminerLabel,
     hasQuestion: state.hasQuestion || descriptor.mode === "Q",
+    lastParagraphWasColloquy: descriptor.mode === "COLLOQUY",
   };
 }
 
@@ -441,6 +467,7 @@ export function buildWorkspaceParagraphs(document: EditorDocument, record?: Case
     currentExaminerLabel: null,
     hasQuestion: false,
     proceedingsInserted: false,
+    lastParagraphWasColloquy: false,
   };
 
   for (const line of formatted.lines) {
@@ -485,6 +512,7 @@ export function buildTranscriptParagraphs(document: EditorDocument, record?: Cas
     currentExaminerLabel: null,
     hasQuestion: false,
     proceedingsInserted: false,
+    lastParagraphWasColloquy: false,
   };
   let pending: TranscriptParagraph | null = null;
 
@@ -515,7 +543,7 @@ export function buildTranscriptParagraphs(document: EditorDocument, record?: Cas
       });
     }
 
-    if (descriptor.byLine) {
+    if (descriptor.byLine && !descriptor.byLine.startsWith("(BY ")) {
       flushPending();
       paragraphs.push({
         kind: "BY_LINE",
@@ -526,10 +554,91 @@ export function buildTranscriptParagraphs(document: EditorDocument, record?: Cas
       });
     }
 
+    const paragraphText = descriptor.mode === "Q" && descriptor.byLine?.startsWith("(BY ")
+      ? `${descriptor.byLine} ${text}`.trim()
+      : text;
+
     const paragraph: TranscriptParagraph = {
       kind: descriptor.mode,
       label: descriptor.mode === "Q" ? "Q." : descriptor.mode === "A" ? "A." : descriptor.label,
-      text,
+      text: paragraphText,
+      sourceUtteranceIds: [line.utterance_id],
+      sourceWordIds: [...line.source_word_ids],
+    };
+
+    if (canMergeParagraphs(pending, paragraph)) {
+      pending = mergeParagraph(pending, paragraph);
+    } else {
+      flushPending();
+      pending = paragraph;
+    }
+
+    state = advanceRenderState(descriptor, state);
+  }
+
+  flushPending();
+  return applyQaFixer(paragraphs);
+}
+
+export function buildTranscriptParagraphsClean(document: EditorDocument, record?: CaseRecord | null): TranscriptParagraph[] {
+  const displayDocument = buildDisplayDocument(document, record);
+  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  const paragraphs: TranscriptParagraph[] = [];
+  let state: RenderState = {
+    inExamination: false,
+    currentExaminerLabel: null,
+    hasQuestion: false,
+    proceedingsInserted: false,
+    lastParagraphWasColloquy: false,
+  };
+  let pending: TranscriptParagraph | null = null;
+
+  function flushPending() {
+    if (!pending) {
+      return;
+    }
+    pending = {
+      ...pending,
+      text: applyParagraphDisplayImprovements(pending.text),
+    };
+    paragraphs.push(pending);
+    pending = null;
+  }
+
+  for (const line of formatted.lines) {
+    const text = serializeLineTextClean(line);
+    const descriptor = classifyLineDescriptor(line, text, state);
+
+    if (descriptor.heading) {
+      flushPending();
+      paragraphs.push({
+        kind: "SECTION_HEADER",
+        label: "",
+        text: descriptor.heading,
+        sourceUtteranceIds: [line.utterance_id],
+        sourceWordIds: [...line.source_word_ids],
+      });
+    }
+
+    if (descriptor.byLine && !descriptor.byLine.startsWith("(BY ")) {
+      flushPending();
+      paragraphs.push({
+        kind: "BY_LINE",
+        label: "",
+        text: descriptor.byLine,
+        sourceUtteranceIds: [line.utterance_id],
+        sourceWordIds: [...line.source_word_ids],
+      });
+    }
+
+    const paragraphText = descriptor.mode === "Q" && descriptor.byLine?.startsWith("(BY ")
+      ? `${descriptor.byLine} ${text}`.trim()
+      : text;
+
+    const paragraph: TranscriptParagraph = {
+      kind: descriptor.mode,
+      label: descriptor.mode === "Q" ? "Q." : descriptor.mode === "A" ? "A." : descriptor.label,
+      text: paragraphText,
       sourceUtteranceIds: [line.utterance_id],
       sourceWordIds: [...line.source_word_ids],
     };
@@ -564,9 +673,34 @@ export function renderTranscriptParagraphText(paragraph: TranscriptParagraph): s
   return `${colloquyLabel(paragraph.label)}${COLON_GAP}${paragraph.text}`.trim();
 }
 
+export function renderTranscriptParagraphTextClean(paragraph: TranscriptParagraph): string {
+  const cleanText = stripInlineFlagSpans(paragraph.text).trim();
+
+  if (paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE") {
+    return paragraph.text;
+  }
+
+  if (paragraph.kind === "Q" || paragraph.kind === "A") {
+    return `${paragraph.label} ${cleanText}`.trim();
+  }
+
+  if (paragraph.kind === "PARENTHETICAL") {
+    return cleanText;
+  }
+
+  return `${colloquyLabel(paragraph.label)}${COLON_GAP}${cleanText}`.trim();
+}
+
 export function buildWorkspaceTranscriptText(document: EditorDocument, record?: CaseRecord | null): string {
   return buildTranscriptParagraphs(document, record)
     .map((paragraph) => renderTranscriptParagraphText(paragraph))
+    .join("\n\n")
+    .trim();
+}
+
+export function buildWorkspaceTranscriptTextClean(document: EditorDocument, record?: CaseRecord | null): string {
+  return buildTranscriptParagraphsClean(document, record)
+    .map((paragraph) => renderTranscriptParagraphTextClean(paragraph))
     .join("\n\n")
     .trim();
 }

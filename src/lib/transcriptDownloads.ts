@@ -3,8 +3,8 @@ import type { CaseRecord } from "../types/case";
 import { abbreviationRegistry } from "./format/abbreviationRegistry";
 import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
-import { serializeFormattedDocument } from "./format/serialize";
-import { buildWorkspaceTranscriptText } from "./transcript/workspacePresentation";
+import { serializeFormattedDocumentClean } from "./format/serialize";
+import { buildWorkspaceTranscriptTextClean } from "./transcript/workspacePresentation";
 
 export function buildFormattedTranscriptText(
   document: EditorDocument,
@@ -14,11 +14,11 @@ export function buildFormattedTranscriptText(
   },
 ): string {
   if (options?.structureConfirmed) {
-    return buildWorkspaceTranscriptText(document, options.record);
+    return buildWorkspaceTranscriptTextClean(document, options.record);
   }
 
   const formatted = cfe(document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
-  return serializeFormattedDocument(formatted);
+  return serializeFormattedDocumentClean(formatted);
 }
 
 export function buildWorkspaceTranscriptJson(document: EditorDocument): string {
