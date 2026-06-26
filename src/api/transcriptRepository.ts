@@ -46,7 +46,7 @@ type TranscriptSpeakerRow = {
   transcript_id: string;
   speaker_id: string;
   display_name: string;
-  deepgram_speaker: number;
+  deepgram_speaker: number | null;
   role: string | null;
   job_id: string;
   speaker_index: number;

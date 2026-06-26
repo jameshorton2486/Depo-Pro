@@ -32,6 +32,10 @@ function getSpeakerSourceFileLabel(speakerId: string): string | null {
   return `File ${Number.parseInt(match[1], 10) + 1}`;
 }
 
+export function getSpeakerClusterBadgeLabel(speaker: Speaker): string {
+  return speaker.deepgram_speaker != null ? `SPK ${speaker.deepgram_speaker}` : "CUSTOM";
+}
+
 function getActiveUtteranceInfo(editor: ReturnType<typeof useEditorContext>["editor"], activeId: string | null) {
   if (!editor || !activeId) {
     return {
@@ -279,7 +283,7 @@ function SpeakerCard({
       {/* Deepgram index badge */}
       <div className="flex items-center gap-1.5 mb-2">
         <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
-          SPK {spk.deepgram_speaker}
+          {getSpeakerClusterBadgeLabel(spk)}
         </span>
         {sourceFileLabel && (
           <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">

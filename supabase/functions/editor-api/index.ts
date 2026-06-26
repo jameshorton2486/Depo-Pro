@@ -27,7 +27,7 @@ type TranscriptRow = {
 type TranscriptSpeakerRow = {
   speaker_id: string;
   display_name: string;
-  deepgram_speaker: number;
+  deepgram_speaker: number | null;
   role: string | null;
   speaker_index?: number | null;
   speaker_label?: string | null;
@@ -333,7 +333,7 @@ function mapSpeakerRow(row: TranscriptSpeakerRow): Speaker {
   return {
     speaker_id: row.speaker_id,
     display_name: row.assigned_name || row.display_name || row.speaker_label || "",
-    deepgram_speaker: row.speaker_index ?? row.deepgram_speaker,
+    deepgram_speaker: row.speaker_index ?? row.deepgram_speaker ?? null,
     role: normalizeSpeakerRole(row.speaker_role ?? row.role),
   };
 }

@@ -91,7 +91,7 @@ function buildEditorDocumentFromSnapshot(
     speakers: snapshot.speakers.map((speaker) => ({
       speaker_id: speaker.speaker_id,
       display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
-      deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker,
+      deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker ?? null,
       role: mapSpeakerRole(speaker.speaker_role || speaker.role),
     })),
     utterances: snapshot.utterances.map((utterance) => ({

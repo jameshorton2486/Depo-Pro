@@ -29,7 +29,7 @@ export interface Utterance {
 export interface Speaker {
   speaker_id: SpeakerId;
   display_name: string;      // "THE WITNESS"
-  deepgram_speaker: number;  // original diarization index
+  deepgram_speaker: number | null;  // original diarization index
   role?: "REPORTER" | "WITNESS" | "ATTORNEY" | "INTERPRETER" | "OTHER";
 }
 

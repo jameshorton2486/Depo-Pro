@@ -119,6 +119,39 @@ describe("workspacePresentation", () => {
     expect(speakerMap.get("spk-3")).toBe("THE WITNESS");
   });
 
+  it("renders SPEAKER CUSTOM for synthetic speakers with no deepgram cluster", () => {
+    const document = makeDocument();
+    document.speakers.push({
+      speaker_id: "spk-custom",
+      display_name: "Speaker 9",
+      deepgram_speaker: null,
+      role: "OTHER",
+    });
+    document.utterances.push({
+      utterance_id: "utt-custom",
+      speaker_id: "spk-custom",
+      start_time: 4,
+      end_time: 5,
+      word_ids: ["w-custom-1", "w-custom-2"],
+    });
+    document.words.push(
+      { word_id: "w-custom-1", text: "Maybe", raw_text: "Maybe", speaker_id: "spk-custom", utterance_id: "utt-custom", start_time: 1.4, end_time: 1.5, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w-custom-2", text: "later.", raw_text: "later.", speaker_id: "spk-custom", utterance_id: "utt-custom", start_time: 1.5, end_time: 1.6, confidence: 1, reviewed: false, edited: false },
+    );
+
+    const displayDocument = buildDisplayDocument(document, makeRecord());
+    const speakerMap = new Map(displayDocument.speakers.map((speaker) => [speaker.speaker_id, speaker.display_name]));
+
+    expect(speakerMap.get("spk-custom")).toBe("SPEAKER CUSTOM");
+  });
+
+  it("does not crash speaker inference when a speaker has no deepgram cluster", () => {
+    const document = makeDocument();
+    document.speakers[0] = { ...document.speakers[0], deepgram_speaker: null };
+
+    expect(() => buildDisplayDocument(document, makeRecord())).not.toThrow();
+  });
+
   it("uses a standalone BY_LINE at examination start, not an inline resumption by-line", () => {
     const paragraphs = buildTranscriptParagraphs(makeDocument(), makeRecord());
     const byLineIndex = paragraphs.findIndex((paragraph) => paragraph.kind === "BY_LINE" && paragraph.text === "BY MR. BENTLEY:");

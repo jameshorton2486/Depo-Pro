@@ -43,7 +43,7 @@ type PresentationRole = "ATTORNEY" | "WITNESS" | "REPORTER" | "VIDEOGRAPHER" | "
 
 interface SpeakerView {
   speakerId: string;
-  speakerIndex: number;
+  speakerIndex: number | null;
   label: string;
   role: PresentationRole;
 }
@@ -200,6 +200,12 @@ function isGenericSpeakerLabel(label: string): boolean {
   return !label.trim() || GENERIC_SPEAKER_PATTERN.test(label.trim());
 }
 
+function getGenericSpeakerFallbackLabel(speaker: Speaker): string {
+  return speaker.deepgram_speaker != null
+    ? `SPEAKER ${speaker.deepgram_speaker}`
+    : "SPEAKER CUSTOM";
+}
+
 function countMatches(text: string, patterns: readonly RegExp[]): number {
   return patterns.reduce((score, pattern) => (pattern.test(text) ? score + 1 : score), 0);
 }
@@ -251,7 +257,7 @@ function buildSpeakerViews(document: EditorDocument, record?: CaseRecord | null)
 
   for (const speaker of document.speakers) {
     const baseLabel = isGenericSpeakerLabel(speaker.display_name)
-      ? `SPEAKER ${speaker.deepgram_speaker}`
+      ? getGenericSpeakerFallbackLabel(speaker)
       : normalizeSpeakerLabel(speaker.display_name);
     const baseRole: PresentationRole =
       speaker.role === "ATTORNEY"
