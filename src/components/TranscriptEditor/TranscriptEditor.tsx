@@ -14,8 +14,10 @@ import { buildWordTimings, findWordAtTime } from "../../lib/wordTimings";
 import { useDocument } from "../../context/DocumentContext";
 import { useAudio } from "../../context/AudioContext";
 import { useEditorContext } from "../../context/EditorContext";
+import { useIntake } from "../../context/useIntake";
 import { createConfidencePlugin } from "../../extensions/ConfidencePlugin";
 import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
+import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
 
 interface Props {
   readOnly: boolean;
@@ -101,9 +103,10 @@ export function diffUtteranceTextSnapshots(
 }
 
 export function TranscriptEditor({ readOnly }: Props) {
-  const { state, editUtterance, setActive } = useDocument();
+  const { state, editUtterance, setActive, confirmStructure } = useDocument();
   const audio = useAudio();
   const { setEditor, showInterpreterLayer, languageMap } = useEditorContext();
+  const { record } = useIntake();
   const { playing } = audio;
 
   // Refs for RAF highlight loop
@@ -122,8 +125,12 @@ export function TranscriptEditor({ readOnly }: Props) {
   editUtteranceRef.current = editUtterance;
 
   const editorContent = useMemo(
-    () => (state.document ? buildEditorContent(state.document, languageMap) : null),
-    [state.document, languageMap]
+    () => (state.document ? buildEditorContent(state.document, {
+      languageMap,
+      structureConfirmed: state.structureConfirmed,
+      record,
+    }) : null),
+    [languageMap, record, state.document, state.structureConfirmed]
   );
 
   const wordTimings = useMemo(
@@ -310,6 +317,12 @@ export function TranscriptEditor({ readOnly }: Props) {
       className="flex-1 min-h-0 overflow-y-auto transcript-scroll bg-transcript-bg"
       data-show-interpreter={showInterpreterLayer ? "true" : "false"}
     >
+      {!state.structureConfirmed && (
+        <StructureReviewBanner
+          onConfirm={confirmStructure}
+          onDismiss={confirmStructure}
+        />
+      )}
       <div className="transcript-page-area">
         {/* Document caption */}
         <div className="transcript-header">

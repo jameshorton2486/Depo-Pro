@@ -1,10 +1,22 @@
 import type { EditorDocument } from "../api/types";
+import type { CaseRecord } from "../types/case";
 import { abbreviationRegistry } from "./format/abbreviationRegistry";
 import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { serializeFormattedDocument } from "./format/serialize";
+import { buildWorkspaceTranscriptText } from "./transcript/workspacePresentation";
 
-export function buildFormattedTranscriptText(document: EditorDocument): string {
+export function buildFormattedTranscriptText(
+  document: EditorDocument,
+  options?: {
+    structureConfirmed?: boolean;
+    record?: CaseRecord | null;
+  },
+): string {
+  if (options?.structureConfirmed) {
+    return buildWorkspaceTranscriptText(document, options.record);
+  }
+
   const formatted = cfe(document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
   return serializeFormattedDocument(formatted);
 }

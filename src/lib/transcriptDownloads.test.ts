@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EditorDocument } from "../api/types";
+import type { CaseRecord } from "../types/case";
 import {
   buildFormattedTranscriptText,
   buildWordTranscriptHtml,
@@ -107,6 +108,16 @@ function makeDocument(): EditorDocument {
   };
 }
 
+function makeRecord(): CaseRecord {
+  return {
+    reporter: { name: { value: "Nellie Bardel" } },
+    witnesses: [{ name: { value: "Mohammad Etminan" }, prefix_suffix: "Dr." }],
+    attorneys: [
+      { attorney_id: "a1", name: { value: "Dennis Bentley" }, role: { value: "EXAMINING" } },
+    ],
+  } as unknown as CaseRecord;
+}
+
 describe("transcriptDownloads", () => {
   it("builds a workspace download text without auto-inserted structure markers", () => {
     const text = buildFormattedTranscriptText(makeDocument());
@@ -132,5 +143,17 @@ describe("transcriptDownloads", () => {
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("<pre>Q. &lt;test&gt; &amp; &quot;quote&quot;</pre>");
     expect(html).toContain("<title>Transcript</title>");
+  });
+
+  it("builds inferred transcript text only after structure confirmation", () => {
+    const rawText = buildFormattedTranscriptText(makeDocument());
+    const structuredText = buildFormattedTranscriptText(makeDocument(), {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+
+    expect(rawText).not.toContain("PROCEEDINGS");
+    expect(structuredText).toContain("EXAMINATION");
+    expect(structuredText).toContain("BY DENNIS BENTLEY:");
   });
 });

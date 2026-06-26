@@ -1,10 +1,12 @@
 import type { JSONContent } from "@tiptap/core";
 import type { EditorDocument } from "../api/types";
+import type { CaseRecord } from "../types/case";
 import { buildPages } from "../editor/pagination";
 import { abbreviationRegistry } from "./format/abbreviationRegistry";
 import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { ENABLE_DISPLAY_TURN_SEGMENTATION } from "./format/grouping";
+import { buildDisplayDocument } from "./transcript/workspacePresentation";
 
 function buildLegacyEditorContent(
   doc: EditorDocument,
@@ -154,13 +156,20 @@ function buildInlineNodes(
 
 export function buildEditorContent(
   doc: EditorDocument,
-  languageMap?: Map<string, string>
+  options?: {
+    languageMap?: Map<string, string>;
+    structureConfirmed?: boolean;
+    record?: CaseRecord | null;
+  }
 ): JSONContent {
+  const languageMap = options?.languageMap;
+  const displayDoc = options?.structureConfirmed ? buildDisplayDocument(doc, options.record) : doc;
+
   if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
-    return buildLegacyEditorContent(doc, languageMap);
+    return buildLegacyEditorContent(displayDoc, languageMap);
   }
 
-  const formatted = cfe(doc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  const formatted = cfe(displayDoc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
 
   const blocks: JSONContent[] = [];
   let currentPage = 0;
@@ -178,7 +187,7 @@ export function buildEditorContent(
       currentPage = blockPage;
     }
 
-    const speaker = doc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
+    const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
     const role = speaker?.role === "INTERPRETER" ? "INTERPRETER" : null;
 
     blocks.push({
@@ -187,7 +196,6 @@ export function buildEditorContent(
         utterance_id: line.utterance_id,
         speaker_id: line.speaker_id,
         speaker_label: speaker?.display_name ?? line.speaker_label,
-        // Beta workspace must display canonical speaker labels, not inferred Q./A. prefixes.
         prefix_text: speaker?.display_name ?? line.speaker_label,
         line_number: line.line_number,
         page_line_number: line.page_line_number,

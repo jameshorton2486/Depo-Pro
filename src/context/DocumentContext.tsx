@@ -32,6 +32,7 @@ interface State {
   lastSavedAt: number | null;
   jobUpdatedAt: string | null;
   speakerMapConfirmed: boolean;
+  structureConfirmed: boolean;
   audioSegments: WorkspaceAudioSegment[];
   changeLog: ChangeLogEntry[];
   activeUtteranceId: UtteranceId | null;
@@ -61,6 +62,7 @@ type Action =
   | { type: "UPDATE_SPEAKERS"; speakers: Speaker[] }
   | { type: "SET_TRANSCRIPT_VERSION"; updatedAt: string | null }
   | { type: "SET_SPEAKER_MAP_CONFIRMED"; confirmed: boolean }
+  | { type: "CONFIRM_STRUCTURE" }
   | { type: "MARK_REVIEWED"; word_ids: string[] }
   | { type: "MARK_UNREVIEWED"; word_ids: string[] };
 
@@ -87,6 +89,7 @@ export function documentReducer(state: State, action: Action): State {
         editSeq: 0,
         jobUpdatedAt: action.updatedAt,
         speakerMapConfirmed: action.speakerMapConfirmed,
+        structureConfirmed: false,
         audioSegments: action.audioSegments,
       };
 
@@ -164,6 +167,9 @@ export function documentReducer(state: State, action: Action): State {
     case "SET_SPEAKER_MAP_CONFIRMED":
       return { ...state, speakerMapConfirmed: action.confirmed };
 
+    case "CONFIRM_STRUCTURE":
+      return { ...state, structureConfirmed: true };
+
     case "MARK_REVIEWED": {
       if (!state.document) return state;
       const ids = new Set(action.word_ids);
@@ -213,6 +219,7 @@ interface ContextValue {
   updateSpeakers: (speakers: Speaker[]) => void;
   setTranscriptVersion: (updatedAt: string | null) => void;
   setSpeakerMapConfirmed: (confirmed: boolean) => void;
+  confirmStructure: () => void;
   markReviewed: (word_ids: string[]) => void;
   markUnreviewed: (word_ids: string[]) => void;
   getUtteranceText: (utterance_id: UtteranceId) => string;
@@ -232,6 +239,7 @@ export function createInitialDocumentState(jobId: string): State {
     lastSavedAt: null,
     jobUpdatedAt: null,
     speakerMapConfirmed: false,
+    structureConfirmed: false,
     audioSegments: [],
     changeLog: [],
     activeUtteranceId: null,
@@ -374,6 +382,10 @@ export function DocumentProvider({
     dispatch({ type: "SET_SPEAKER_MAP_CONFIRMED", confirmed });
   }, []);
 
+  const confirmStructure = useCallback(() => {
+    dispatch({ type: "CONFIRM_STRUCTURE" });
+  }, []);
+
   const markReviewed = useCallback((word_ids: string[]) => {
     dispatch({ type: "MARK_REVIEWED", word_ids });
   }, []);
@@ -410,11 +422,12 @@ export function DocumentProvider({
       updateSpeakers,
       setTranscriptVersion,
       setSpeakerMapConfirmed,
+      confirmStructure,
       markReviewed,
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, confirmStructure, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

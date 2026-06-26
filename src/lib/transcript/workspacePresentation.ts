@@ -1,12 +1,7 @@
-// GATED: AI Structuring Engine (G5) — display inference not active in beta.
-// buildDisplayDocument, buildWorkspaceParagraphs, and classifyLineDescriptor
-// implement speaker-role inference and Q./A./PROCEEDINGS structural classification.
-// These are correct and ready but must not run in the workspace display path until
-// after the Miah observation session and explicit post-beta approval.
-// Activate post-beta behind ENABLE_AI_STRUCTURING flag.
-// Safe exports for the download path: buildWorkspaceTranscriptText (with
-// SECTION_HEADER/BY_LINE filtered) may be used for TXT/Word downloads only,
-// because the download filter already strips unconfirmed structural markers.
+// AI Structuring Engine (G5) — activated when user confirms inferred structure.
+// Called from buildEditorContent when structureConfirmed === true.
+// buildDisplayDocument: infers speaker roles, Q./A. classification.
+// buildWorkspaceParagraphs: inserts PROCEEDINGS/EXAMINATION/BY_LINE markers.
 import type { EditorDocument, Speaker } from "../../api/types";
 import { COLON_GAP, colloquyLabel, normalizeHonorificSpacing } from "../../editor/stageS/colloquy";
 import type { CaseRecord } from "../../types/case";

@@ -4,6 +4,7 @@ import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { useStage } from "../../context/StageContext";
 import { useCase } from "../../context/useCase";
+import { useIntake } from "../../context/useIntake";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
 import {
   buildFormattedTranscriptText,
@@ -30,13 +31,17 @@ export function Toolbar({ jobId, onSave }: Props) {
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
   const { setStage } = useStage();
   const { showBrowser } = useCase();
+  const { record } = useIntake();
 
   const reviewedCount = Object.values(state.wordMap).filter((w) => w.reviewed).length;
   const totalWords = Object.keys(state.wordMap).length;
   const reviewPct = totalWords > 0 ? Math.round((reviewedCount / totalWords) * 100) : 0;
   const transcriptText = useMemo(
-    () => (state.document ? buildFormattedTranscriptText(state.document) : ""),
-    [state.document],
+    () => (state.document ? buildFormattedTranscriptText(state.document, {
+      structureConfirmed: state.structureConfirmed,
+      record,
+    }) : ""),
+    [record, state.document, state.structureConfirmed],
   );
   const transcriptJson = useMemo(
     () => (state.document ? buildWorkspaceTranscriptJson(state.document) : ""),
