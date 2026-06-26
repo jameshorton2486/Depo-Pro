@@ -9,6 +9,12 @@ function normalizeParagraphArtifacts(text: string): string {
   return text.replace(K_PATTERN, (_match, leading: string, trailing: string) => `${leading}Okay.${trailing ? "  " : ""}`);
 }
 
+function normalizeObjectionText(text: string): string {
+  return text
+    .replace(/\bFour\b/g, "Form")
+    .replace(/\bfour\b/g, "form");
+}
+
 function cloneParagraph(
   paragraph: TranscriptParagraph,
   kind: TranscriptParagraph["kind"],
@@ -32,7 +38,7 @@ function splitEmbeddedObjections(paragraph: TranscriptParagraph): TranscriptPara
   }
 
   const before = paragraph.text.slice(0, match.index).trim();
-  const objectionText = match[0].trim();
+  const objectionText = normalizeObjectionText(match[0].trim());
   const after = paragraph.text.slice(match.index + match[0].length).trim();
   const result: TranscriptParagraph[] = [];
 

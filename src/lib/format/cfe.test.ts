@@ -301,6 +301,80 @@ describe("cfe spacing and serialization", () => {
     expect(formatted.lines[0].words[0].text).toBe("C-5722-24-L");
   });
 
+  it("normalizes Four. to Form. after Objection.", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "Objection." },
+        { word_id: "w2", text: "Four." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[1].text).toBe("Form.");
+  });
+
+  it("normalizes Mr. Ramos to Mr. Ramon with honorific context", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "Mr." },
+        { word_id: "w2", text: "Ramos" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[1].text).toBe("Ramon");
+  });
+
+  it("does not rewrite Ramos without honorific context", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "Ramos" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].text).toBe("Ramos");
+  });
+
+  it("flags implausible money amounts that look like decimal-shift ASR errors", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "$7.50", confidence: 0.99 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
+  });
+
+  it("does not flag plausible larger dollar amounts under the money heuristic", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "$750", confidence: 0.99 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].inline_flag).toBeNull();
+  });
+
+  it("normalizes Waddells. to Waddell.", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "Waddells." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].text).toBe("Waddell.");
+  });
+
   it("normalizes age expressions to figures", () => {
     const formatted = cfe(
       makeDoc([

@@ -43,7 +43,8 @@ const MEDICAL_TERMS: Record<CaseContextHint, MedicalKeyterm[]> = {
     { term: "thoracic spine", boost: 4 },
     { term: "MRI", boost: 4 },
     { term: "CT scan", boost: 4 },
-    { term: "Waddell Signs", boost: 5 },
+    { term: "Waddell Signs", boost: 7 },
+    { term: "Waddell", boost: 6 },
   ],
   personal_injury_general: [
     { term: "reasonable medical probability", boost: 5 },

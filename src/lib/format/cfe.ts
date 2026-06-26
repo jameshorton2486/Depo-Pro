@@ -87,6 +87,11 @@ const DETERMINISTIC_GARBLE_CORRECTIONS: Record<string, string> = {
   "C572224L": "C-5722-24-L",
   "foramenot": "foramen",
   "curriculum of IT": "curriculum vitae",
+  "Four.": "Form.",
+  "Waddells.": "Waddell.",
+  "Waddell's": "Waddell",
+  "metastructures": "ligamentous structures",
+  "what else signs": "Waddell Signs",
 };
 const MONTH_NAMES = [
   "",
@@ -293,6 +298,10 @@ export function classifyFlagToken(token: string): FlagTokenClass {
 }
 
 export function shouldEmitInlineFlag(word: EditorDocument["words"][number]): boolean {
+  if (looksLikeImplausibleMoney(word.raw_text)) {
+    return true;
+  }
+
   if (word.confidence >= LOW_CONFIDENCE_THRESHOLD) {
     return false;
   }
@@ -305,6 +314,16 @@ export function shouldEmitInlineFlag(word: EditorDocument["words"][number]): boo
     return word.confidence < COMMON_WORD_FLAG_THRESHOLD;
   }
   return true;
+}
+
+function looksLikeImplausibleMoney(token: string): boolean {
+  const match = token.match(/^\$(\d+)\.(\d{2})$/);
+  if (!match) {
+    return false;
+  }
+
+  const dollars = parseInt(match[1], 10);
+  return dollars < 50;
 }
 
 function usesNumberAbbreviationRule(
@@ -505,6 +524,12 @@ function normalizeDisplayToken(
 
   text = normalizeSlashDate(text);
   text = normalizeDeterministicGarble(word, text);
+  if (
+    text === "Ramos" &&
+    (previousToken === "Mr." || previousToken === "Ms." || previousToken === "Mrs.")
+  ) {
+    text = "Ramon";
+  }
   text = normalizeInterruptingDash(text, nextToken);
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);

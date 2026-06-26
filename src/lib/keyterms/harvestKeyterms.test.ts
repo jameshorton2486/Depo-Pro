@@ -235,6 +235,7 @@ describe("harvestKeyterms", () => {
       "discectomy",
       "radiculopathy",
       "pars interarticularis",
+      "Waddell Signs",
     ]));
   });
 
