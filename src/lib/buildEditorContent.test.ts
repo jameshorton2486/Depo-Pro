@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildEditorContent } from "./buildEditorContent";
 import type { EditorDocument } from "../api/types";
+import type { CaseRecord } from "../types/case";
 
 function makeDoc(overrides?: Partial<EditorDocument>): EditorDocument {
   return {
@@ -99,6 +100,16 @@ function firstUtteranceAttrs(content: ReturnType<typeof buildEditorContent>) {
   }
 
   return utterance.attrs as Record<string, unknown>;
+}
+
+function makeRecord(): CaseRecord {
+  return {
+    reporter: { name: { value: "Nellie Bardel" } },
+    witnesses: [{ name: { value: "Mohammad Etminan" }, prefix_suffix: "Dr." }],
+    attorneys: [
+      { attorney_id: "a1", name: { value: "Dennis Bentley" }, role: { value: "EXAMINING" } },
+    ],
+  } as unknown as CaseRecord;
 }
 
 describe("buildEditorContent", () => {
@@ -242,5 +253,40 @@ describe("buildEditorContent", () => {
 
     expect(attrs.tab_speaker_inches).toBe(1.5);
     expect(attrs.tab_parenthetical_inches).toBe(2.0);
+  });
+
+  it("keeps raw labels until inferred structure is confirmed", () => {
+    const doc = makeSingleUtteranceDoc([
+      makeWord("word-1", "This", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+      makeWord("word-2", "is cause number", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+      makeWord("word-3", "123.", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+    ]);
+    doc.speakers = [
+      {
+        speaker_id: "spk-1",
+        display_name: "Speaker 1",
+        deepgram_speaker: 1,
+        role: "OTHER",
+      },
+    ];
+    const rawAttrs = firstUtteranceAttrs(buildEditorContent(doc));
+    const confirmedAttrs = firstUtteranceAttrs(buildEditorContent(doc, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    }));
+
+    expect(rawAttrs.speaker_label).toBe("Speaker 1");
+    expect(rawAttrs.prefix_text).toBe("Speaker 1");
+    expect(confirmedAttrs.speaker_label).toBe("THE REPORTER");
+    expect(confirmedAttrs.prefix_text).toBe("THE REPORTER");
   });
 });

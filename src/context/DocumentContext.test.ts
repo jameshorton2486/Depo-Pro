@@ -106,4 +106,30 @@ describe("documentReducer save sequencing", () => {
     expect(state.dirty).toBe(true);
     expect(state.editSeq).toBe(2);
   });
+
+  it("resets structure confirmation on load and allows a transient confirm", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+      audioSegments: [],
+    });
+
+    expect(state.structureConfirmed).toBe(false);
+
+    state = documentReducer(state, { type: "CONFIRM_STRUCTURE" });
+    expect(state.structureConfirmed).toBe(true);
+
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:01.000Z",
+      speakerMapConfirmed: false,
+      audioSegments: [],
+    });
+
+    expect(state.structureConfirmed).toBe(false);
+  });
 });
