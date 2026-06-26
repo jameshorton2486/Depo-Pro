@@ -8,6 +8,7 @@ import type { CaseRecord } from "../../types/case";
 import { abbreviationRegistry } from "../format/abbreviationRegistry";
 import { cfe } from "../format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
+import { stripHonorificPrefix } from "../format/honorificHelper";
 import type { FormattedLine } from "../format/types";
 import { applyParagraphDisplayImprovements } from "./paragraphDisplayImprovements";
 import { applyQaFixer } from "./qaFixer";
@@ -130,9 +131,9 @@ function looksLikeParenthetical(text: string): boolean {
 }
 
 function normalizeComparableName(value: string): string {
-  return value
-    .trim()
-    .replace(/^(THE\s+)?(MR|MS|MRS|DR)\.?\s+/i, "")
+  const withoutArticle = value.trim().replace(/^THE\s+/i, "");
+
+  return stripHonorificPrefix(withoutArticle)
     .replace(/[^A-Z0-9\s]/gi, " ")
     .replace(/\s+/g, " ")
     .trim()

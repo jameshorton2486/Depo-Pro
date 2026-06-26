@@ -375,6 +375,23 @@ describe("cfe spacing and serialization", () => {
     expect(formatted.lines[0].words[0].text).toBe("Waddell.");
   });
 
+  it("corrects metastructures to ligamentous structures", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "dislocations" },
+        { word_id: "w2", text: "to" },
+        { word_id: "w3", text: "the" },
+        { word_id: "w4", text: "metastructures" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    const output = serializeFormattedDocument(formatted);
+    expect(output).toContain("ligamentous structures");
+    expect(output).not.toContain("metastructures");
+  });
+
   it("normalizes age expressions to figures", () => {
     const formatted = cfe(
       makeDoc([

@@ -1,7 +1,11 @@
+import { isRegistryHonorific } from "../../lib/format/honorificHelper";
+
 export const COLON_GAP = "  ";
 
 export function normalizeHonorificSpacing(text: string): string {
-  return text.replace(/\b(MR|MS|MRS|DR)\.\s+/gi, (_match, honorific: string) => `${honorific.toUpperCase()}. `);
+  return text.replace(/\b([A-Za-z]+)\.\s+/g, (match, honorific: string) => (
+    isRegistryHonorific(honorific) ? `${honorific.toUpperCase()}. ` : match
+  ));
 }
 
 export function colloquyLabel(speakerLabel: string): string {

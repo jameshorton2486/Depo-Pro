@@ -251,8 +251,11 @@ describe("buildEditorContent", () => {
 
     const attrs = firstUtteranceAttrs(content);
 
+    expect(attrs.tab_qa_label_inches).toBe(0.5);
+    expect(attrs.tab_qa_text_inches).toBe(1.0);
     expect(attrs.tab_speaker_inches).toBe(1.5);
     expect(attrs.tab_parenthetical_inches).toBe(2.0);
+    expect(attrs.line_spacing_points).toBe(28);
   });
 
   it("keeps raw labels until inferred structure is confirmed", () => {
