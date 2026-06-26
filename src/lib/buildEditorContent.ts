@@ -178,20 +178,17 @@ export function buildEditorContent(
       currentPage = blockPage;
     }
 
-    const role =
-      line.role === "q"
-        ? "ATTORNEY"
-        : line.role === "a"
-          ? "WITNESS"
-          : doc.speakers.find((speaker) => speaker.speaker_id === line.speaker_id)?.role ?? null;
+    const speaker = doc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
+    const role = speaker?.role === "INTERPRETER" ? "INTERPRETER" : null;
 
     blocks.push({
       type: "utterance",
       attrs: {
         utterance_id: line.utterance_id,
         speaker_id: line.speaker_id,
-        speaker_label: line.speaker_label,
-        prefix_text: line.prefix_text,
+        speaker_label: speaker?.display_name ?? line.speaker_label,
+        // Beta workspace must display canonical speaker labels, not inferred Q./A. prefixes.
+        prefix_text: speaker?.display_name ?? line.speaker_label,
         line_number: line.line_number,
         page_line_number: line.page_line_number,
         start_time: line.start_time,
