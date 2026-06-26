@@ -10,6 +10,7 @@ import { cfe } from "../format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
 import type { FormattedLine } from "../format/types";
 import { applyParagraphDisplayImprovements } from "./paragraphDisplayImprovements";
+import { applyQaFixer } from "./qaFixer";
 
 export type WorkspaceParagraphMode = "COLLOQUY" | "Q" | "A" | "PARENTHETICAL";
 export type TranscriptParagraphKind =
@@ -476,7 +477,7 @@ export function buildTranscriptParagraphs(document: EditorDocument, record?: Cas
   }
 
   flushPending();
-  return paragraphs;
+  return applyQaFixer(paragraphs);
 }
 
 export function renderTranscriptParagraphText(paragraph: TranscriptParagraph): string {

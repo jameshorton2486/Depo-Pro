@@ -263,6 +263,44 @@ describe("cfe spacing and serialization", () => {
     expect(formatted.lines[0].words[1].text).toBe("17th");
   });
 
+  it("normalizes slash dates in display text", () => {
+    const first = cfe(
+      makeDoc([{ word_id: "w1", text: "09/15/2023" }]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+    const second = cfe(
+      makeDoc([{ word_id: "w1", text: "04/24/2026" }]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+    const third = cfe(
+      makeDoc([{ word_id: "w1", text: "03/13/2026" }]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+    const fourth = cfe(
+      makeDoc([{ word_id: "w1", text: "12/31/1999" }]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(first.lines[0].words[0].text).toBe("September 15, 2023");
+    expect(second.lines[0].words[0].text).toBe("April 24, 2026");
+    expect(third.lines[0].words[0].text).toBe("March 13, 2026");
+    expect(fourth.lines[0].words[0].text).toBe("December 31, 1999");
+  });
+
+  it("applies deterministic cause number garble correction", () => {
+    const formatted = cfe(
+      makeDoc([{ word_id: "w1", text: "C572224L" }]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].text).toBe("C-5722-24-L");
+  });
+
   it("normalizes age expressions to figures", () => {
     const formatted = cfe(
       makeDoc([

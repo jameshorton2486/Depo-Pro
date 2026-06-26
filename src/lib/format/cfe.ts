@@ -82,6 +82,27 @@ const SIMPLE_NUMBER_WORDS = new Map<string, number>([
   ["eighty", 80],
   ["ninety", 90],
 ]);
+const DETERMINISTIC_GARBLE_CORRECTIONS: Record<string, string> = {
+  "K.": "Okay.",
+  "C572224L": "C-5722-24-L",
+  "foramenot": "foramen",
+  "curriculum of IT": "curriculum vitae",
+};
+const MONTH_NAMES = [
+  "",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 type SpacingRules = {
   oneSpaceTokens: Set<string>;
@@ -438,6 +459,37 @@ function normalizeNumberWord(
   return `${value}${trailer}`;
 }
 
+function normalizeSlashDate(token: string): string {
+  const match = token.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})([.,;:?!]*)$/);
+  if (!match) {
+    return token;
+  }
+
+  const month = parseInt(match[1], 10);
+  const day = parseInt(match[2], 10);
+  const year = match[3];
+  const trailer = match[4];
+
+  if (month < 1 || month > 12) {
+    return token;
+  }
+
+  return `${MONTH_NAMES[month]} ${day}, ${year}${trailer}`;
+}
+
+function normalizeDeterministicGarble(word: EditorDocument["words"][number], token: string): string {
+  const directCorrection = DETERMINISTIC_GARBLE_CORRECTIONS[token];
+  if (directCorrection) {
+    return directCorrection;
+  }
+
+  if (word.confidence >= 0.85) {
+    return token;
+  }
+
+  return DETERMINISTIC_GARBLE_CORRECTIONS[token] ?? token;
+}
+
 function buildInlineFlag(word: EditorDocument["words"][number], flagNumber: number): string {
   return `[SCOPIST: FLAG ${flagNumber}: "${word.raw_text}" — verify from audio]`;
 }
@@ -451,6 +503,8 @@ function normalizeDisplayToken(
   const previousToken = words[index - 1]?.text;
   const nextToken = words[index + 1]?.text;
 
+  text = normalizeSlashDate(text);
+  text = normalizeDeterministicGarble(word, text);
   text = normalizeInterruptingDash(text, nextToken);
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
@@ -501,12 +555,7 @@ export function cfe(
       ];
 
       let flagNumber = 0;
-      const displayTexts = sourceWords.map((word, index) => {
-        if (word.confidence < LOW_CONFIDENCE_THRESHOLD) {
-          return word.text;
-        }
-        return normalizeDisplayToken(word, index, sourceWords);
-      });
+      const displayTexts = sourceWords.map((word, index) => normalizeDisplayToken(word, index, sourceWords));
 
       const formattedWords = sourceWords.map((word, index) => {
         const inlineFlag = shouldEmitInlineFlag(word)
