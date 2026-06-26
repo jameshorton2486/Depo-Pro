@@ -2,8 +2,6 @@ import { useMemo } from "react";
 import { Save, AlertCircle, CheckCircle, FileJson, FileText, FileType, Languages } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
-import { STAGE_LABELS, STAGE_ORDER, useStage } from "../../context/StageContext";
-import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
 import {
@@ -35,8 +33,6 @@ function formatJobIdSuffix(jobId: string): string {
 export function Toolbar({ jobId, onSave }: Props) {
   const { state } = useDocument();
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
-  const { stage, setStage } = useStage();
-  const { showBrowser } = useCase();
   const { record } = useIntake();
   const shortJobId = formatJobIdSuffix(jobId);
 
@@ -62,34 +58,6 @@ export function Toolbar({ jobId, onSave }: Props) {
         <span className="text-sm font-bold tracking-wide">DEPO-PRO</span>
         <span className="text-slate-600">|</span>
         <span className="font-mono text-xs text-slate-400">{shortJobId}</span>
-      </div>
-
-      <div className="flex min-w-0 flex-1 justify-center px-2">
-        <div className="flex items-center gap-1 overflow-x-auto rounded-full bg-slate-800 px-1 py-1">
-          <button
-            onClick={() => void showBrowser()}
-            className="rounded-full px-3 py-1 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white"
-          >
-            Cases
-          </button>
-          {STAGE_ORDER.map((stageKey) => {
-            const isActive = stageKey === stage;
-
-            return (
-              <button
-                key={stageKey}
-                onClick={() => setStage(stageKey)}
-                className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                  isActive
-                    ? "bg-blue-600 font-medium text-white"
-                    : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                }`}
-              >
-                {STAGE_LABELS[stageKey]}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       <div className="flex items-center gap-3 border-l border-slate-800 pl-4">
