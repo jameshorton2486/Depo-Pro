@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import type { FieldProvenanceRow } from "../../components/conflict/types";
 import { emptyCaseRecord } from "../../types/case";
-import { harvestKeyterms } from "./harvestKeyterms";
+import {
+  generateNameVariants,
+  generateOrgVariants,
+  harvestKeyterms,
+  inferCaseContext,
+} from "./harvestKeyterms";
 import { mergeManagedKeytermSuggestions } from "./managedKeyterms";
 
 function buildRecord() {
@@ -44,6 +49,30 @@ function buildRecord() {
     },
   ];
 
+  return record;
+}
+
+function buildSpineRecord() {
+  const record = emptyCaseRecord("case_etminan", "2026-06-05T20:00:00.000Z");
+  record.caption.case_style.value = "Motor vehicle collision involving lumbar spine injury";
+  record.caption.case_number.value = "C-5722-24-L";
+  record.witnesses = [{
+    witness_id: "wit_expert",
+    name: { value: "Mohammad Etminan, M.D.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+    role: { value: "EXPERT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+    title: { value: "Orthopedic Spine Surgeon", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+    employer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    prefix_suffix: "M.D.",
+    party_affiliation: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    is_corporate_rep: false,
+    corporate_entity: null,
+    read_and_sign: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    spelling_corrections: [],
+    email: null,
+    phone: null,
+  }];
   return record;
 }
 
@@ -115,6 +144,47 @@ function buildProvenance(): FieldProvenanceRow[] {
 }
 
 describe("harvestKeyterms", () => {
+  it("generates spoken name variants", () => {
+    expect(generateNameVariants("Dennis J. Bentley")).toEqual(
+      expect.arrayContaining(["Dennis Bentley", "Bentley", "Dennis"]),
+    );
+    expect(generateNameVariants("Mohammad Etminan, M.D.")).toEqual(
+      expect.arrayContaining(["Mohammad Etminan", "Etminan"]),
+    );
+    expect(generateNameVariants("Miah Bardot")).toEqual(
+      expect.arrayContaining(["Bardot", "Miah"]),
+    );
+    expect(generateNameVariants("Etminan")).toEqual(["Etminan"]);
+  });
+
+  it("generates organization short forms", () => {
+    expect(generateOrgVariants("Standing Seam & Specialty Company, Inc.")).toEqual(
+      expect.arrayContaining(["Standing Seam & Specialty Company, Inc.", "Standing Seam"]),
+    );
+    expect(generateOrgVariants("Tijerina Legal Group, P.C.")).toEqual(
+      expect.arrayContaining(["Tijerina"]),
+    );
+    expect(generateOrgVariants("Goldman & Peterson, PLLC")).toEqual(
+      expect.arrayContaining(["Goldman & Peterson"]),
+    );
+  });
+
+  it("infers case context from style and witness role", () => {
+    const spineRecord = buildSpineRecord();
+    expect(inferCaseContext(spineRecord)).toBe("personal_injury_spine");
+
+    const malpracticeRecord = emptyCaseRecord("case_mal", "2026-06-05T20:00:00.000Z");
+    malpracticeRecord.caption.case_style.value = "Medical malpractice negligence action";
+    expect(inferCaseContext(malpracticeRecord)).toBe("medical_malpractice");
+
+    const workersCompRecord = emptyCaseRecord("case_wc", "2026-06-05T20:00:00.000Z");
+    workersCompRecord.caption.case_style.value = "Workers comp claim for back injury";
+    expect(inferCaseContext(workersCompRecord)).toBe("workers_compensation");
+
+    const generalRecord = emptyCaseRecord("case_general", "2026-06-05T20:00:00.000Z");
+    expect(inferCaseContext(generalRecord)).toBe("general");
+  });
+
   it("harvests Garza-shaped suggestions from extracted fields and provenance", () => {
     const keyterms = harvestKeyterms(buildRecord(), buildProvenance());
     const terms = keyterms.map((keyterm) => keyterm.term);
@@ -123,9 +193,13 @@ describe("harvestKeyterms", () => {
       "Maria L. Lopez De Martinez",
       "Alfredo Montes Navarro",
       "Raul Garza",
+      "Garza",
       "Derek I. Salinas",
+      "Salinas",
       "Goldman & Peterson, PLLC",
+      "Goldman & Peterson",
       "Tijerina Legal Group, P.C.",
+      "Tijerina",
       "C-1628-25-E",
       "Hidalgo County",
     ]));
@@ -153,6 +227,65 @@ describe("harvestKeyterms", () => {
 
     const terms = harvestKeyterms(record, buildProvenance()).filter((keyterm) => keyterm.term.toLowerCase() === "raul garza");
     expect(terms).toHaveLength(1);
+  });
+
+  it("injects medical terms for an Etminan-style spine case", () => {
+    const terms = harvestKeyterms(buildSpineRecord(), buildProvenance()).map((keyterm) => keyterm.term);
+    expect(terms).toEqual(expect.arrayContaining([
+      "discectomy",
+      "radiculopathy",
+      "pars interarticularis",
+    ]));
+  });
+
+  it("harvests party names and spoken variants", () => {
+    const record = buildRecord();
+    record.parties = [{
+      party_id: "party_1",
+      name: { value: "Rocio Laura Elizondo Vargas", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "plaintiff", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role_modifier: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      entity_type: { value: "individual", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      fka_or_dba: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    }];
+
+    const terms = harvestKeyterms(record, buildProvenance()).map((keyterm) => keyterm.term);
+    expect(terms).toEqual(expect.arrayContaining([
+      "Rocio Laura Elizondo Vargas",
+      "Vargas",
+    ]));
+  });
+
+  it("caps total suggestions at the configured maximum", () => {
+    const record = buildRecord();
+    record.caption.case_style.value = "Motor vehicle collision with cervical spine and lumbar spine injury";
+    record.witnesses = [{
+      witness_id: "wit_limit",
+      name: { value: "Mohammad Etminan, M.D.", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "EXPERT", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      title: { value: "Orthopedic Spine Surgeon", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      employer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      prefix_suffix: "M.D.",
+      party_affiliation: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      is_corporate_rep: false,
+      corporate_entity: null,
+      read_and_sign: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_interpreter: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      requires_videographer: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      spelling_corrections: [],
+      email: null,
+      phone: null,
+    }];
+    record.parties = Array.from({ length: 25 }, (_, index) => ({
+      party_id: `party_${index}`,
+      name: { value: `Plaintiff Person ${index} Vargas`, source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role: { value: "plaintiff", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      role_modifier: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+      entity_type: { value: "individual", source: "manual", confirmed: true, conflict: false, confidence_score: null },
+      fka_or_dba: { value: null, source: "manual", confirmed: false, conflict: false, confidence_score: null },
+    }));
+
+    expect(harvestKeyterms(record, buildProvenance()).length).toBeLessThanOrEqual(100);
   });
 
   it("preserves user-edited boost/category on re-harvest merges", () => {

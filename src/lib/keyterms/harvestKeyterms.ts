@@ -1,5 +1,6 @@
 import type { FieldProvenanceRow } from "../../components/conflict/types.ts";
 import type { CaseRecord } from "../../types/case.ts";
+import { getMedicalTerms, type CaseContextHint } from "./medicalTermLibrary.ts";
 
 export type HarvestedKeytermSource = "nod_parser" | "job_sheet" | "manual";
 
@@ -12,6 +13,11 @@ export interface HarvestedKeyterm {
 
 const MAX_KEYTERMS = 100;
 const MIN_TERM_LENGTH = 4;
+const NAME_SUFFIX_CREDENTIALS = /(?:,\s*)?(?:M\.D\.|MD|Ph\.D\.|PHD|J\.D\.|JD|Esq\.?|Jr\.?|Sr\.?|III|IV|II)$/i;
+const NAME_MIDDLE_INITIAL = /\s+[A-Z]\.(?=\s+[A-Za-z])/g;
+const ORG_LEGAL_SUFFIX = /(?:,\s*)?(?:Inc\.?|LLC|PLLC|LLP|P\.C\.|PC|Corp\.?|Ltd\.?|Co\.?)$/i;
+const ORG_TRAILING_LAW_WORDS = /\b(?:Law Firm|Legal Group|Law Group|Law Offices|Office of|Offices|Legal|Law)\b$/i;
+const ORG_CONNECTOR_SUFFIX = /\s*&\s+[A-Za-z]+(?:\s+(?:Company|Co\.?|Group|Specialty|Associates))$/i;
 
 const MULTIWORD_FIXES: Record<string, string> = {
   "subpoena deuces tecum": "subpoena duces tecum",
@@ -105,10 +111,96 @@ function isValidTerm(term: string): boolean {
   if (/^[^a-zA-Z0-9]+$/.test(normalized)) {
     return false;
   }
-  if (normalized.split(" ").length === 1 && lowered === lowered.toLowerCase() && normalized.length <= MIN_TERM_LENGTH) {
+  if (normalized.split(" ").length === 1 && lowered === lowered.toLowerCase() && normalized.length < MIN_TERM_LENGTH) {
     return false;
   }
   return true;
+}
+
+function uniqueVariants(variants: string[]): string[] {
+  return [...new Set(
+    variants
+      .map((variant) => normalizeWhitespace(variant))
+      .filter((variant) => variant.length > 0),
+  )];
+}
+
+export function generateNameVariants(fullName: string): string[] {
+  const cleaned = normalizeWhitespace(fullName.replace(NAME_SUFFIX_CREDENTIALS, ""));
+  if (!cleaned || cleaned.split(" ").length < 2) {
+    return isValidTerm(cleaned) ? [cleaned] : [];
+  }
+
+  const withoutMiddleInitial = normalizeWhitespace(cleaned.replace(NAME_MIDDLE_INITIAL, ""));
+  const parts = withoutMiddleInitial.split(" ").filter(Boolean);
+  const firstName = parts[0] ?? "";
+  const surname = parts[parts.length - 1] ?? "";
+
+  return uniqueVariants([
+    cleaned,
+    withoutMiddleInitial,
+    surname.length >= 5 ? surname : "",
+    surname.length >= 5 && firstName.length >= MIN_TERM_LENGTH ? firstName : "",
+  ]).filter((variant) => {
+    const lowered = variant.toLowerCase();
+    return isValidTerm(variant)
+      && !STOPWORDS.has(lowered)
+      && !/^\d+$/.test(variant)
+      && !/^[A-Z]\.?$/i.test(variant);
+  });
+}
+
+export function generateOrgVariants(orgName: string): string[] {
+  const cleaned = normalizeWhitespace(orgName);
+  if (!cleaned) {
+    return [];
+  }
+
+  let shortened = normalizeWhitespace(cleaned.replace(ORG_LEGAL_SUFFIX, ""));
+  shortened = normalizeWhitespace(shortened.replace(ORG_TRAILING_LAW_WORDS, ""));
+  const connectorStripped = normalizeWhitespace(shortened.replace(ORG_CONNECTOR_SUFFIX, ""));
+  if (connectorStripped.length >= MIN_TERM_LENGTH) {
+    shortened = connectorStripped;
+  }
+
+  return uniqueVariants([cleaned, shortened]).filter((variant) =>
+    variant !== cleaned ? isValidTerm(variant) && variant.length >= MIN_TERM_LENGTH : isValidTerm(variant)
+  );
+}
+
+export function inferCaseContext(record: CaseRecord): CaseContextHint {
+  const style = (record.caption.case_style.value ?? "").toLowerCase();
+  const caseNumber = (record.caption.case_number.value ?? "").toLowerCase();
+
+  const hasExpertWitness = record.witnesses.some(
+    (witness) => witness.role.value === "EXPERT",
+  );
+
+  const spineTerms = ["spine", "spinal", "disc", "lumbar", "cervical", "orthopedic", "neurosurg"];
+  const hasSpineTerms = spineTerms.some((term) =>
+    style.includes(term)
+    || record.witnesses.some((witness) => witness.name.value.toLowerCase().includes(term)),
+  );
+
+  const mvaTerms = ["motor vehicle", "automobile", "car crash", "car wreck", "vehicle crash", "collision", "rear-end", "accident"];
+  const hasMVA = mvaTerms.some((term) => style.includes(term));
+
+  const wcTerms = ["workers comp", "worker's comp", "work comp", "compensation", "dwc"];
+  const hasWC = wcTerms.some((term) => style.includes(term) || caseNumber.includes(term));
+
+  const malTerms = ["malpractice", "negligence", "medical negligence"];
+  const hasMal = malTerms.some((term) => style.includes(term));
+
+  const prodTerms = ["products liability", "product liability", "defective product"];
+  const hasProd = prodTerms.some((term) => style.includes(term));
+
+  if (hasProd) return "products_liability";
+  if (hasMal) return "medical_malpractice";
+  if (hasWC) return "workers_compensation";
+  if (hasMVA && (hasSpineTerms || hasExpertWitness)) return "personal_injury_spine";
+  if (hasMVA) return "personal_injury_general";
+  if (hasSpineTerms && hasExpertWitness) return "personal_injury_spine";
+  return "general";
 }
 
 function pushCandidate(
@@ -191,29 +283,120 @@ export function harvestKeyterms(
 ): HarvestedKeyterm[] {
   const candidates: HarvestedKeyterm[] = [];
   const seen = new Set<string>();
+  const caseContext = inferCaseContext(record);
 
-  for (const witness of record.witnesses) {
+  for (const [index, witness] of record.witnesses.entries()) {
+    const source = sourceForPath(provenance, `witnesses[${index}].name`);
     pushCandidate(candidates, seen, {
       term: witness.name.value,
       boost: 10,
       category: "Person",
-      source: sourceForPath(provenance, "witnesses[0].name"),
+      source,
     });
+    for (const variant of generateNameVariants(witness.name.value)) {
+      pushCandidate(candidates, seen, {
+        term: variant,
+        boost: 8,
+        category: "Person",
+        source,
+      });
+    }
   }
 
-  for (const attorney of record.attorneys) {
+  for (const [index, attorney] of record.attorneys.entries()) {
+    const nameSource = sourceForPath(provenance, `attorneys[${index}].name`);
     pushCandidate(candidates, seen, {
       term: attorney.name.value,
       boost: 9,
       category: "Person",
-      source: sourceForPath(provenance, "attorneys[0].name"),
+      source: nameSource,
     });
+    for (const variant of generateNameVariants(attorney.name.value)) {
+      pushCandidate(candidates, seen, {
+        term: variant,
+        boost: 7,
+        category: "Person",
+        source: nameSource,
+      });
+    }
     if (attorney.firm.value) {
+      const firmSource = sourceForPath(provenance, `attorneys[${index}].firm`);
       pushCandidate(candidates, seen, {
         term: attorney.firm.value,
         boost: 7,
         category: "Law Firm",
-        source: sourceForPath(provenance, "attorneys[0].firm"),
+        source: firmSource,
+      });
+      for (const variant of generateOrgVariants(attorney.firm.value)) {
+        pushCandidate(candidates, seen, {
+          term: variant,
+          boost: 5,
+          category: "Law Firm",
+          source: firmSource,
+        });
+      }
+    }
+  }
+
+  for (const [index, party] of record.parties.entries()) {
+    const source = sourceForPath(provenance, `parties[${index}].name`);
+    const entityType = party.entity_type.value?.toLowerCase() ?? "";
+    const isOrganization = ["corporation", "company", "organization", "entity", "llc", "inc"].some((term) =>
+      entityType.includes(term),
+    );
+
+    pushCandidate(candidates, seen, {
+      term: party.name.value,
+      boost: 7,
+      category: isOrganization ? "Organization" : "Person",
+      source,
+    });
+
+    if (isOrganization) {
+      for (const variant of generateOrgVariants(party.name.value)) {
+        pushCandidate(candidates, seen, {
+          term: variant,
+          boost: 5,
+          category: "Organization",
+          source,
+        });
+      }
+    } else {
+      for (const variant of generateNameVariants(party.name.value)) {
+        pushCandidate(candidates, seen, {
+          term: variant,
+          boost: 5,
+          category: "Person",
+          source,
+        });
+      }
+    }
+  }
+
+  for (const [index, interpreter] of record.interpreters.entries()) {
+    const source = sourceForPath(provenance, `interpreters[${index}].name`);
+    pushCandidate(candidates, seen, {
+      term: interpreter.name.value,
+      boost: 6,
+      category: "Person",
+      source,
+    });
+  }
+
+  for (const [index, videographer] of record.videographers.entries()) {
+    const source = sourceForPath(provenance, `videographers[${index}].name`);
+    pushCandidate(candidates, seen, {
+      term: videographer.name.value,
+      boost: 6,
+      category: "Person",
+      source,
+    });
+    if (videographer.firm.value) {
+      pushCandidate(candidates, seen, {
+        term: videographer.firm.value,
+        boost: 5,
+        category: "Organization",
+        source: sourceForPath(provenance, `videographers[${index}].firm`),
       });
     }
   }
@@ -253,6 +436,15 @@ export function harvestKeyterms(
       term: record.reporter.firm.value,
       boost: 6,
       category: "Organization",
+      source: "manual",
+    });
+  }
+
+  for (const medicalTerm of getMedicalTerms(caseContext)) {
+    pushCandidate(candidates, seen, {
+      term: medicalTerm.term,
+      boost: medicalTerm.boost,
+      category: "Legal Term",
       source: "manual",
     });
   }
