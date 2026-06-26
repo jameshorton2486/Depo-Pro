@@ -671,6 +671,23 @@ export const workspaceApi = {
 
     return persistSpeakers(jobId, payload, options);
   },
+  addSpeaker: async (
+    jobId: string,
+    speaker: { display_name: string; role?: Speaker["role"] },
+  ): Promise<Speaker> => {
+    if (USE_MOCK_WORKSPACE) {
+      const result = await contractApi.addSpeaker(jobId, speaker);
+      return result.speaker;
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId);
+      const result = await contractApi.addSpeaker(target.transcript_id, speaker);
+      return result.speaker;
+    }
+
+    throw new Error("addSpeaker is only available through the editor API.");
+  },
   getSuggestions: async (jobId: string) => {
     if (USE_MOCK_WORKSPACE) {
       return contractApi.getSuggestions(jobId);

@@ -145,7 +145,9 @@ Deno.serve(async (request) => {
       case "review":
         return handlePutReview(context);
       case "speakers":
-        return handlePutSpeakers(context);
+        return request.method === "POST"
+          ? handlePostSpeaker(context)
+          : handlePutSpeakers(context);
       case "suggestions":
         return handleGetSuggestions(context);
       case "resolveSuggestion":
@@ -580,6 +582,40 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
   return respondJson(200, { ok: true });
 }
 
+async function handlePostSpeaker(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateAddSpeakerPayload(body);
+  const normalizedRole = normalizeSpeakerRoleForDatabase(payload.role) ?? "other";
+  const speakerId = `spk_synthetic_${Date.now()}`;
+
+  const { data, error } = await context.supabase
+    .from("transcript_speakers")
+    .insert({
+      transcript_id: context.transcript.transcript_id,
+      speaker_id: speakerId,
+      display_name: payload.display_name,
+      role: normalizedRole,
+      deepgram_speaker: null,
+      speaker_index: null,
+      speaker_label: payload.display_name,
+      assigned_name: payload.display_name,
+      speaker_role: normalizedRole,
+    })
+    .select("speaker_id, display_name, deepgram_speaker, role, speaker_index, speaker_label, assigned_name, speaker_role")
+    .single();
+
+  if (error) {
+    console.error("[editor-api] POST speaker failed", {
+      route: "POST /:jobId/speakers",
+      jobId: context.transcript.transcript_id,
+      message: error.message,
+    });
+    throw new HttpError(500, "failed to create speaker");
+  }
+
+  return respondJson(201, { speaker: mapSpeakerRow(data as TranscriptSpeakerRow) });
+}
+
 function validateReviewPayload(value: unknown): ReviewPayload {
   if (!value || typeof value !== "object") {
     throw new HttpError(400, "bad payload");
@@ -654,6 +690,39 @@ function validateSpeakersPayload(value: unknown): SpeakersPayload {
         speaker_id: candidate.speaker_id,
       };
     }),
+  };
+}
+
+function validateAddSpeakerPayload(value: unknown): {
+  display_name: string;
+  role?: Speaker["role"];
+} {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const payload = value as Record<string, unknown>;
+  const displayName = typeof payload.display_name === "string" ? payload.display_name.trim() : "";
+  const role = payload.role;
+
+  if (!displayName) {
+    throw new HttpError(400, "display_name is required");
+  }
+
+  if (
+    role !== undefined
+    && role !== "REPORTER"
+    && role !== "WITNESS"
+    && role !== "ATTORNEY"
+    && role !== "INTERPRETER"
+    && role !== "OTHER"
+  ) {
+    throw new HttpError(400, "bad payload");
+  }
+
+  return {
+    display_name: displayName,
+    role: role as Speaker["role"] | undefined,
   };
 }
 
@@ -988,7 +1057,11 @@ function matchRoute(request: Request): RouteMatch | null {
     return { kind: "review", jobId: routeParts[0] };
   }
 
-  if (routeParts.length === 2 && request.method === "PUT" && routeParts[1] === "speakers") {
+  if (
+    routeParts.length === 2
+    && (request.method === "PUT" || request.method === "POST")
+    && routeParts[1] === "speakers"
+  ) {
     return { kind: "speakers", jobId: routeParts[0] };
   }
 

@@ -5,6 +5,7 @@ import type {
   SaveWorkingResponse,
   ReviewPayload,
   SpeakersPayload,
+  Speaker,
   AiSuggestion,
   Exhibit,
   CertifyChecklist,
@@ -102,6 +103,9 @@ export const api = {
 
   saveSpeakers: (jobId: string, payload: SpeakersPayload) =>
     request<{ ok: true }>("PUT", url(jobId, "speakers"), payload),
+
+  addSpeaker: (jobId: string, payload: { display_name: string; role?: Speaker["role"] }) =>
+    request<{ speaker: Speaker }>("POST", url(jobId, "speakers"), payload),
 
   getSuggestions: (jobId: string) =>
     request<AiSuggestion[]>("GET", url(jobId, "suggestions")),

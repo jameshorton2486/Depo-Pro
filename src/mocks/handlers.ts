@@ -14,6 +14,7 @@ import type {
   SaveWorkingPayload,
   WorkingChange,
   Word,
+  Speaker,
 } from "../api/types";
 
 // Valid PCM WAV with a tiny low-amplitude tone so WaveSurfer can fully decode
@@ -158,6 +159,13 @@ if (storedReviewedWordIds) {
   storedReviewedWordIds.forEach((id) => reviewedWordIds.add(id));
 }
 
+function appendSyntheticSpeaker(doc: EditorDocument, speaker: Speaker): EditorDocument {
+  return {
+    ...doc,
+    speakers: [...doc.speakers, speaker],
+  };
+}
+
 function applyUtteranceSpeakerAssignment(
   doc: EditorDocument,
   assignment: { utterance_id: string; speaker_id: string }
@@ -280,6 +288,28 @@ export const handlers = [
     });
     persistWorkingDocument(workingDocumentState);
     return HttpResponse.json({ ok: true });
+  }),
+
+  http.post("*/:jobId/speakers", async ({ request }) => {
+    const body = await request.json() as { display_name?: string; role?: Speaker["role"] };
+    const displayName = body.display_name?.trim() ?? "";
+    const role = body.role ?? "OTHER";
+
+    if (!displayName) {
+      return HttpResponse.json({ error: "display_name is required" }, { status: 400 });
+    }
+
+    const speaker: Speaker = {
+      speaker_id: `spk_synthetic_${Date.now()}`,
+      display_name: displayName,
+      deepgram_speaker: null,
+      role,
+    };
+
+    speakerOverrides.set(speaker.speaker_id, { display_name: speaker.display_name, role: speaker.role });
+    workingDocumentState = appendSyntheticSpeaker(workingDocumentState, speaker);
+    persistWorkingDocument(workingDocumentState);
+    return HttpResponse.json({ speaker }, { status: 201 });
   }),
 
   // GET suggestions — returns live resolved state

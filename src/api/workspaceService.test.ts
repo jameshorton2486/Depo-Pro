@@ -5,6 +5,7 @@ const clientApi = {
   saveWorking: vi.fn(),
   saveReview: vi.fn(),
   saveSpeakers: vi.fn(),
+  addSpeaker: vi.fn(),
   getSuggestions: vi.fn(),
   resolveSuggestion: vi.fn(),
   getExhibits: vi.fn(),
@@ -90,6 +91,7 @@ describe("workspaceApi real-API mutation wrappers", () => {
     clientApi.saveWorking.mockReset();
     clientApi.saveReview.mockReset();
     clientApi.saveSpeakers.mockReset();
+    clientApi.addSpeaker.mockReset();
     clientApi.getSuggestions.mockReset();
     clientApi.resolveSuggestion.mockReset();
     clientApi.getExhibits.mockReset();
@@ -163,6 +165,35 @@ describe("workspaceApi real-API mutation wrappers", () => {
     ).resolves.toEqual({
       ok: true,
       updatedAt: "T3",
+    });
+  });
+
+  it("resolves transcript ids and returns the created speaker from addSpeaker", async () => {
+    repo.getTranscriptJobByTranscriptId.mockResolvedValueOnce(buildTranscriptRow("T1"));
+    clientApi.addSpeaker.mockResolvedValue({
+      speaker: {
+        speaker_id: "spk_synthetic_1",
+        display_name: "MR. RAMON",
+        deepgram_speaker: null,
+        role: "ATTORNEY",
+      },
+    });
+
+    const { workspaceApi } = await import("./workspaceService");
+    const result = await workspaceApi.addSpeaker("tr_123", {
+      display_name: "MR. RAMON",
+      role: "ATTORNEY",
+    });
+
+    expect(clientApi.addSpeaker).toHaveBeenCalledWith("tr_123", {
+      display_name: "MR. RAMON",
+      role: "ATTORNEY",
+    });
+    expect(result).toEqual({
+      speaker_id: "spk_synthetic_1",
+      display_name: "MR. RAMON",
+      deepgram_speaker: null,
+      role: "ATTORNEY",
     });
   });
 });
