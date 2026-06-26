@@ -77,6 +77,8 @@ const WITNESS_PATTERNS = [
   /\bi'm in\b/i,
   /\bi am in\b/i,
 ] as const;
+const MIN_REPORTER_SCORE = 2;
+const MIN_VIDEOGRAPHER_SCORE = 2;
 
 function serializeLineText(line: FormattedLine): string {
   return line.words
@@ -116,8 +118,60 @@ function normalizeComparableName(value: string): string {
     .toUpperCase();
 }
 
-function normalizeAttorneyLabel(name: string): string {
-  return normalizeComparableName(name);
+function formatAttorneyDisplayLabel(name: string, gender?: string | null): string {
+  const normalized = normalizeComparableName(name);
+  const parts = normalized.split(" ").filter(Boolean);
+  const surname = parts[parts.length - 1] ?? normalized;
+  const normalizedGender = gender?.trim().toLowerCase();
+  const honorific = normalizedGender === "f" || normalizedGender === "female" ? "MS." : "MR.";
+  return `${honorific} ${surname}`.trim();
+}
+
+function getAttorneyGender(attorney: CaseRecord["attorneys"][number]): string | null {
+  const candidate = attorney as unknown as { gender?: { value?: unknown } | unknown };
+  const genderField = candidate.gender;
+  if (typeof genderField === "string") {
+    return genderField;
+  }
+  if (
+    genderField
+    && typeof genderField === "object"
+    && "value" in genderField
+    && typeof genderField.value === "string"
+  ) {
+    return genderField.value;
+  }
+  return null;
+}
+
+function extractSurname(name: string): string {
+  const normalized = normalizeComparableName(name)
+    .replace(/\b(M D|MD|PH D|PHD|J D|JD|ESQ|JR|SR|II|III|IV)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parts = normalized.split(" ").filter(Boolean);
+  return parts[parts.length - 1] ?? normalized;
+}
+
+function isPhysicianWitness(witness: CaseRecord["witnesses"][number] | undefined): boolean {
+  if (!witness) {
+    return false;
+  }
+
+  const name = witness.name.value;
+  const prefixSuffix = witness.prefix_suffix ?? "";
+  return /\b(M\.D\.|PH\.D\.)\b/i.test(name)
+    || /\b(M\.D\.|PH\.D\.|DR\.)\b/i.test(prefixSuffix)
+    || witness.role.value === "EXPERT";
+}
+
+function formatWitnessDisplayLabel(witness: CaseRecord["witnesses"][number] | undefined): string {
+  if (!isPhysicianWitness(witness)) {
+    return "THE WITNESS";
+  }
+
+  const surname = extractSurname(witness?.name.value ?? "WITNESS") || "WITNESS";
+  return `DR. ${surname}`;
 }
 
 function isGenericSpeakerLabel(label: string): boolean {
@@ -241,18 +295,32 @@ function buildSpeakerViews(document: EditorDocument, record?: CaseRecord | null)
   if (witnessId) {
     const view = explicitSpeakerViews.get(witnessId);
     if (view && view.role === "OTHER") {
-      view.label = "THE WITNESS";
+      view.label = formatWitnessDisplayLabel(record?.witnesses[0]);
       view.role = "WITNESS";
     }
   }
 
   if (record) {
+    const patternAssignedIds = new Set<string>();
+    if (reporterId && reporterScore >= MIN_REPORTER_SCORE) {
+      patternAssignedIds.add(reporterId);
+    }
+    if (
+      videographerId
+      && videographerId !== reporterId
+      && videographerScore >= MIN_VIDEOGRAPHER_SCORE
+    ) {
+      patternAssignedIds.add(videographerId);
+    }
     const assignedSpeakerIds = new Set<string>();
 
     for (const attorney of record.attorneys ?? []) {
       let bestSpeakerId: string | null = null;
       let bestScore = 0;
       for (const speaker of document.speakers) {
+        if (patternAssignedIds.has(speaker.speaker_id)) {
+          continue;
+        }
         if (assignedSpeakerIds.has(speaker.speaker_id)) {
           continue;
         }
@@ -267,7 +335,7 @@ function buildSpeakerViews(document: EditorDocument, record?: CaseRecord | null)
       if (bestSpeakerId && bestScore > 0) {
         const view = explicitSpeakerViews.get(bestSpeakerId);
         if (view) {
-          view.label = normalizeAttorneyLabel(attorney.name.value);
+          view.label = formatAttorneyDisplayLabel(attorney.name.value, getAttorneyGender(attorney));
           view.role = "ATTORNEY";
           assignedSpeakerIds.add(bestSpeakerId);
         }
@@ -276,8 +344,8 @@ function buildSpeakerViews(document: EditorDocument, record?: CaseRecord | null)
 
     if (record.witnesses?.length === 1 && witnessId) {
       const view = explicitSpeakerViews.get(witnessId);
-      if (view) {
-        view.label = "THE WITNESS";
+      if (view && !patternAssignedIds.has(witnessId)) {
+        view.label = formatWitnessDisplayLabel(record.witnesses[0]);
         view.role = "WITNESS";
       }
     }

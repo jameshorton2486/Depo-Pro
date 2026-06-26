@@ -6,7 +6,7 @@ import { buildDisplayDocument, buildWorkspaceTranscriptText } from "./workspaceP
 function makeRecord(): CaseRecord {
   return {
     reporter: { name: { value: "Nellie Bardel" } },
-    witnesses: [{ name: { value: "Mohammad Etminan" }, prefix_suffix: "Dr." }],
+    witnesses: [{ name: { value: "Mohammad Etminan, M.D." }, prefix_suffix: "Dr.", role: { value: "EXPERT" } }],
     attorneys: [
       { attorney_id: "a1", name: { value: "Dennis Bentley" }, role: { value: "EXAMINING" } },
       { attorney_id: "a2", name: { value: "Ramon Krishnan" }, role: { value: "OPPOSING" } },
@@ -57,9 +57,9 @@ describe("workspacePresentation", () => {
 
     expect(speakerMap.get("spk-0")?.display_name).toBe("THE VIDEOGRAPHER");
     expect(speakerMap.get("spk-1")?.display_name).toBe("THE REPORTER");
-    expect(speakerMap.get("spk-2")?.display_name).toBe("DENNIS BENTLEY");
+    expect(speakerMap.get("spk-2")?.display_name).toBe("MR. BENTLEY");
     expect(speakerMap.get("spk-2")?.role).toBe("ATTORNEY");
-    expect(speakerMap.get("spk-3")?.display_name).toBe("THE WITNESS");
+    expect(speakerMap.get("spk-3")?.display_name).toBe("DR. ETMINAN");
     expect(speakerMap.get("spk-3")?.role).toBe("WITNESS");
   });
 
@@ -70,9 +70,48 @@ describe("workspacePresentation", () => {
     expect(text).toContain("THE VIDEOGRAPHER:  Good afternoon.");
     expect(text).toContain("THE REPORTER:  This is cause number 123.");
     expect(text).toContain("EXAMINATION");
-    expect(text).toContain("BY DENNIS BENTLEY:");
+    expect(text).toContain("BY MR. BENTLEY:");
     expect(text).toContain("Q. Good afternoon.  Dennis Bentley for the plaintiff.");
     expect(text).toContain("A. I do.");
+  });
+
+  it("protects reporter labels from attorney-name overrides", () => {
+    const document = makeDocument();
+    document.words.find((word) => word.word_id === "w6")!.text = "This is cause number Dennis Bentley licensed in Texas district court";
+
+    const displayDocument = buildDisplayDocument(document, makeRecord());
+    const speakerMap = new Map(displayDocument.speakers.map((speaker) => [speaker.speaker_id, speaker]));
+
+    expect(speakerMap.get("spk-1")?.display_name).toBe("THE REPORTER");
+    expect(speakerMap.get("spk-1")?.role).toBe("REPORTER");
+  });
+
+  it("protects videographer labels from attorney-name overrides", () => {
+    const document = makeDocument();
+    document.words.find((word) => word.word_id === "w4")!.text = "are on the record Dennis Bentley today's date the time is now";
+
+    const displayDocument = buildDisplayDocument(document, makeRecord());
+    const speakerMap = new Map(displayDocument.speakers.map((speaker) => [speaker.speaker_id, speaker]));
+
+    expect(speakerMap.get("spk-0")?.display_name).toBe("THE VIDEOGRAPHER");
+    expect(speakerMap.get("spk-0")?.role).toBe("OTHER");
+  });
+
+  it("formats attorney labels as honorific plus surname", () => {
+    const displayDocument = buildDisplayDocument(makeDocument(), makeRecord());
+    const speakerMap = new Map(displayDocument.speakers.map((speaker) => [speaker.speaker_id, speaker.display_name]));
+
+    expect(speakerMap.get("spk-2")).toBe("MR. BENTLEY");
+  });
+
+  it("labels non-physician witnesses as the witness", () => {
+    const record = makeRecord();
+    record.witnesses = [{ name: { value: "Jane Doe" }, prefix_suffix: null, role: { value: "WITNESS" } }] as CaseRecord["witnesses"];
+
+    const displayDocument = buildDisplayDocument(makeDocument(), record);
+    const speakerMap = new Map(displayDocument.speakers.map((speaker) => [speaker.speaker_id, speaker.display_name]));
+
+    expect(speakerMap.get("spk-3")).toBe("THE WITNESS");
   });
 });
 
