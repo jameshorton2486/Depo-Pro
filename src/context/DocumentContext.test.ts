@@ -144,4 +144,21 @@ describe("documentReducer save sequencing", () => {
 
     expect(state.correctionReport?.job_id).toBe("case_test_001");
   });
+  it("sets keepRawLabels when raw labels are explicitly kept", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, { type: "KEEP_RAW_LABELS" });
+
+    expect(state.keepRawLabels).toBe(true);
+    expect(state.structureConfirmed).toBe(true);
+  });
+
+  it("clears keepRawLabels when structure is confirmed", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, { type: "KEEP_RAW_LABELS" });
+    state = documentReducer(state, { type: "CONFIRM_STRUCTURE" });
+
+    expect(state.structureConfirmed).toBe(true);
+    expect(state.keepRawLabels).toBe(false);
+  });
+
 });

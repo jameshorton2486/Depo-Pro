@@ -36,6 +36,7 @@ interface State {
   jobUpdatedAt: string | null;
   speakerMapConfirmed: boolean;
   structureConfirmed: boolean;
+  keepRawLabels: boolean;
   audioSegments: WorkspaceAudioSegment[];
   changeLog: ChangeLogEntry[];
   activeUtteranceId: UtteranceId | null;
@@ -67,6 +68,7 @@ type Action =
   | { type: "SET_TRANSCRIPT_VERSION"; updatedAt: string | null }
   | { type: "SET_SPEAKER_MAP_CONFIRMED"; confirmed: boolean }
   | { type: "CONFIRM_STRUCTURE" }
+  | { type: "KEEP_RAW_LABELS" }
   | { type: "MARK_REVIEWED"; word_ids: string[] }
   | { type: "MARK_UNREVIEWED"; word_ids: string[] };
 
@@ -94,6 +96,7 @@ export function documentReducer(state: State, action: Action): State {
         jobUpdatedAt: action.updatedAt,
         speakerMapConfirmed: action.speakerMapConfirmed,
         structureConfirmed: false,
+        keepRawLabels: false,
         audioSegments: action.audioSegments,
       };
 
@@ -175,7 +178,10 @@ export function documentReducer(state: State, action: Action): State {
       return { ...state, speakerMapConfirmed: action.confirmed };
 
     case "CONFIRM_STRUCTURE":
-      return { ...state, structureConfirmed: true };
+      return { ...state, structureConfirmed: true, keepRawLabels: false };
+
+    case "KEEP_RAW_LABELS":
+      return { ...state, structureConfirmed: true, keepRawLabels: true };
 
     case "MARK_REVIEWED": {
       if (!state.document) return state;
@@ -227,6 +233,7 @@ interface ContextValue {
   setTranscriptVersion: (updatedAt: string | null) => void;
   setSpeakerMapConfirmed: (confirmed: boolean) => void;
   confirmStructure: () => void;
+  keepRawLabels: () => void;
   markReviewed: (word_ids: string[]) => void;
   markUnreviewed: (word_ids: string[]) => void;
   getUtteranceText: (utterance_id: UtteranceId) => string;
@@ -248,6 +255,7 @@ export function createInitialDocumentState(jobId: string): State {
     jobUpdatedAt: null,
     speakerMapConfirmed: false,
     structureConfirmed: false,
+    keepRawLabels: false,
     audioSegments: [],
     changeLog: [],
     activeUtteranceId: null,
@@ -398,6 +406,10 @@ export function DocumentProvider({
     dispatch({ type: "CONFIRM_STRUCTURE" });
   }, []);
 
+  const keepRawLabels = useCallback(() => {
+    dispatch({ type: "KEEP_RAW_LABELS" });
+  }, []);
+
   const markReviewed = useCallback((word_ids: string[]) => {
     dispatch({ type: "MARK_REVIEWED", word_ids });
   }, []);
@@ -435,11 +447,12 @@ export function DocumentProvider({
       setTranscriptVersion,
       setSpeakerMapConfirmed,
       confirmStructure,
+      keepRawLabels,
       markReviewed,
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, confirmStructure, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, confirmStructure, keepRawLabels, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -450,3 +463,6 @@ export function useDocument(): ContextValue {
   if (!ctx) throw new Error("useDocument must be inside DocumentProvider");
   return ctx;
 }
+
+
+

@@ -205,4 +205,16 @@ describe("transcriptDownloads", () => {
     expect(stripInlineFlagSpans('disc [SCOPIST: FLAG 2: "disc" — verify from audio; likely "disk"]')).toBe("disc");
     expect(stripInlineFlagSpans("normal text without flags")).toBe("normal text without flags");
   });
+  it("keeps raw labels in clean downloads when keepRawLabels is selected", () => {
+    const text = buildFormattedTranscriptText(makeDocument(), {
+      structureConfirmed: true,
+      keepRawLabels: true,
+      record: makeRecord(),
+    });
+
+    expect(text).not.toContain("EXAMINATION");
+    expect(text).toContain("Q. Please state your");
+    expect(text).toContain("A. No. 12129");
+  });
+
 });

@@ -103,7 +103,7 @@ export function diffUtteranceTextSnapshots(
 }
 
 export function TranscriptEditor({ readOnly }: Props) {
-  const { state, editUtterance, setActive, confirmStructure } = useDocument();
+  const { state, editUtterance, setActive, confirmStructure, keepRawLabels } = useDocument();
   const audio = useAudio();
   const { setEditor, showInterpreterLayer, languageMap } = useEditorContext();
   const { record } = useIntake();
@@ -128,9 +128,10 @@ export function TranscriptEditor({ readOnly }: Props) {
     () => (state.document ? buildEditorContent(state.document, {
       languageMap,
       structureConfirmed: state.structureConfirmed,
+      keepRawLabels: state.keepRawLabels,
       record,
     }) : null),
-    [languageMap, record, state.document, state.structureConfirmed]
+    [languageMap, record, state.document, state.keepRawLabels, state.structureConfirmed]
   );
 
   const wordTimings = useMemo(
@@ -320,7 +321,7 @@ export function TranscriptEditor({ readOnly }: Props) {
       {!state.structureConfirmed && (
         <StructureReviewBanner
           onConfirm={confirmStructure}
-          onDismiss={confirmStructure}
+          onDismiss={keepRawLabels}
         />
       )}
       <div className="transcript-page-area">

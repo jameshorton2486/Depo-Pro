@@ -10,10 +10,11 @@ export function buildFormattedTranscriptText(
   document: EditorDocument,
   options?: {
     structureConfirmed?: boolean;
+    keepRawLabels?: boolean;
     record?: CaseRecord | null;
   },
 ): string {
-  if (options?.structureConfirmed) {
+  if (options?.structureConfirmed && !options?.keepRawLabels) {
     return buildWorkspaceTranscriptTextClean(document, options.record);
   }
 

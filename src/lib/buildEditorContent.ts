@@ -159,11 +159,13 @@ export function buildEditorContent(
   options?: {
     languageMap?: Map<string, string>;
     structureConfirmed?: boolean;
+    keepRawLabels?: boolean;
     record?: CaseRecord | null;
   }
 ): JSONContent {
   const languageMap = options?.languageMap;
-  const displayDoc = options?.structureConfirmed ? buildDisplayDocument(doc, options.record) : doc;
+  const shouldInferStructure = options?.structureConfirmed && !options?.keepRawLabels;
+  const displayDoc = shouldInferStructure ? buildDisplayDocument(doc, options.record) : doc;
 
   if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
     return buildLegacyEditorContent(displayDoc, languageMap);

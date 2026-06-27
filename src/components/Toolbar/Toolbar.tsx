@@ -42,9 +42,10 @@ export function Toolbar({ jobId, onSave }: Props) {
   const transcriptText = useMemo(
     () => (state.document ? buildFormattedTranscriptText(state.document, {
       structureConfirmed: state.structureConfirmed,
+      keepRawLabels: state.keepRawLabels,
       record,
     }) : ""),
-    [record, state.document, state.structureConfirmed],
+    [record, state.document, state.keepRawLabels, state.structureConfirmed],
   );
   const transcriptJson = useMemo(
     () => (state.document ? buildWorkspaceTranscriptJson(state.document) : ""),

@@ -292,4 +292,38 @@ describe("buildEditorContent", () => {
     expect(confirmedAttrs.speaker_label).toBe("THE REPORTER");
     expect(confirmedAttrs.prefix_text).toBe("THE REPORTER");
   });
+  it("keeps raw labels when keepRawLabels is selected after banner dismissal", () => {
+    const doc = makeSingleUtteranceDoc([
+      makeWord("word-1", "This", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+      makeWord("word-2", "is cause number", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+      makeWord("word-3", "123.", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+    ]);
+    doc.speakers = [
+      {
+        speaker_id: "spk-1",
+        display_name: "Speaker 1",
+        deepgram_speaker: 1,
+        role: "OTHER",
+      },
+    ];
+
+    const rawChosenAttrs = firstUtteranceAttrs(buildEditorContent(doc, {
+      structureConfirmed: true,
+      keepRawLabels: true,
+      record: makeRecord(),
+    }));
+
+    expect(rawChosenAttrs.speaker_label).toBe("Speaker 1");
+    expect(rawChosenAttrs.prefix_text).toBe("Speaker 1");
+  });
+
 });

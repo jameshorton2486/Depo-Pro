@@ -6,6 +6,8 @@ import {
   buildResumptionByLine,
   buildTranscriptParagraphs,
   buildWorkspaceTranscriptText,
+  buildWorkspaceTranscriptTextClean,
+  renderTranscriptParagraphText,
 } from "./workspacePresentation";
 
 function makeRecord(): CaseRecord {
@@ -205,6 +207,74 @@ describe("workspacePresentation", () => {
     expect(buildResumptionByLine("MR. BENTLEY")).not.toContain("(BY: MR.");
     expect(buildResumptionByLine("MR. BENTLEY")).not.toContain("MR.  BENTLEY");
   });
+  it("uses display mode by default when building transcript paragraphs", () => {
+    const document = makeDocument();
+    document.words[0] = {
+      ...document.words[0],
+      text: "accent",
+      raw_text: "accent",
+      confidence: 0.25,
+    };
+
+    const defaultParagraphs = buildTranscriptParagraphs(document, makeRecord());
+    const displayParagraphs = buildTranscriptParagraphs(document, makeRecord(), "display");
+
+    expect(defaultParagraphs).toEqual(displayParagraphs);
+
+    const rendered = defaultParagraphs
+      .map((paragraph) => renderTranscriptParagraphText(paragraph, "display"))
+      .join("\n\n");
+
+    expect(rendered).toContain("[SCOPIST: FLAG");
+  });
+
+  it("builds clean paragraphs without inline flag spans while preserving tokens", () => {
+    const document = makeDocument();
+    document.words[0] = {
+      ...document.words[0],
+      text: "accent",
+      raw_text: "accent",
+      confidence: 0.25,
+    };
+
+    const cleanParagraphs = buildTranscriptParagraphs(document, makeRecord(), "clean");
+    const rendered = cleanParagraphs
+      .map((paragraph) => renderTranscriptParagraphText(paragraph, "clean"))
+      .join("\n\n");
+
+    expect(rendered).toContain("accent");
+    expect(rendered).not.toContain("[SCOPIST: FLAG");
+  });
+
+  it("buildWorkspaceTranscriptText delegates to display mode", () => {
+    const document = makeDocument();
+    document.words[0] = {
+      ...document.words[0],
+      text: "accent",
+      raw_text: "accent",
+      confidence: 0.25,
+    };
+
+    const text = buildWorkspaceTranscriptText(document, makeRecord());
+
+    expect(text).toContain("[SCOPIST: FLAG");
+  });
+
+  it("buildWorkspaceTranscriptTextClean delegates to clean mode", () => {
+    const document = makeDocument();
+    document.words[0] = {
+      ...document.words[0],
+      text: "accent",
+      raw_text: "accent",
+      confidence: 0.25,
+    };
+
+    const text = buildWorkspaceTranscriptTextClean(document, makeRecord());
+
+    expect(text).toContain("accent");
+    expect(text).not.toContain("[SCOPIST: FLAG");
+  });
+
 });
 
 
