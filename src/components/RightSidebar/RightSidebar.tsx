@@ -1,53 +1,88 @@
 import type React from "react";
-import { useState } from "react";
-import { Users, Sparkles, Clock, ShieldCheck, Paperclip } from "lucide-react";
-import { SpeakerPanel } from "../SpeakerPanel/SpeakerPanel";
-import { SuggestionsPanel } from "../SuggestionsPanel/SuggestionsPanel";
+import { useEffect, useState } from "react";
+import {
+  ClipboardCheck,
+  Clock,
+  Paperclip,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { useDocument } from "../../context/DocumentContext";
 import { ChangeLogPanel } from "../ChangeLogPanel/ChangeLogPanel";
 import { ConfidencePanel } from "../ConfidencePanel/ConfidencePanel";
+import { CorrectionsPanel } from "../CorrectionsPanel/CorrectionsPanel";
 import { ExhibitsPanel } from "../ExhibitsPanel/ExhibitsPanel";
+import { SpeakerPanel } from "../SpeakerPanel/SpeakerPanel";
+import { SuggestionsPanel } from "../SuggestionsPanel/SuggestionsPanel";
 
-type Tab = "speakers" | "suggestions" | "confidence" | "exhibits" | "changelog";
+type Tab =
+  | "speakers"
+  | "corrections"
+  | "suggestions"
+  | "confidence"
+  | "exhibits"
+  | "changelog";
 
 const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
-  { id: "speakers",   icon: <Users size={14} />,       label: "Speakers"    },
-  { id: "suggestions",icon: <Sparkles size={14} />,    label: "AI Review"   },
-  { id: "confidence", icon: <ShieldCheck size={14} />, label: "Confidence"  },
-  { id: "exhibits",   icon: <Paperclip size={14} />,   label: "Exhibits"    },
-  { id: "changelog",  icon: <Clock size={14} />,       label: "Changes"     },
+  { id: "speakers", icon: <Users size={14} />, label: "Speakers" },
+  {
+    id: "corrections",
+    icon: <ClipboardCheck size={14} />,
+    label: "Corrections",
+  },
+  { id: "suggestions", icon: <Sparkles size={14} />, label: "AI Review" },
+  { id: "confidence", icon: <ShieldCheck size={14} />, label: "Confidence" },
+  { id: "exhibits", icon: <Paperclip size={14} />, label: "Exhibits" },
+  { id: "changelog", icon: <Clock size={14} />, label: "Changes" },
 ];
 
 export function RightSidebar() {
-  const [active, setActive] = useState<Tab>("suggestions");
+  const { state } = useDocument();
+  const report = state.correctionReport;
+  const [active, setActive] = useState<Tab>("corrections");
+
+  useEffect(() => {
+    if (!report) return;
+
+    const hasIssues =
+      report.summary.ambiguous_flags > 0 ||
+      report.summary.speaker_issues > 0 ||
+      report.summary.implausible_money_flags > 0 ||
+      report.summary.retranscription_candidates > 0;
+
+    if (hasIssues) {
+      setActive("corrections");
+    }
+  }, [report]);
 
   return (
-    <aside className="w-72 border-l border-slate-200 bg-slate-50 flex flex-col shrink-0 h-full">
-      {/* Tab bar — 5 tabs, smaller text to fit */}
+    <aside className="flex h-full w-72 shrink-0 flex-col border-l border-slate-200 bg-slate-50">
       <nav className="flex border-b border-slate-200 bg-white">
-        {TABS.map((t) => (
+        {TABS.map((tab) => (
           <button
-            key={t.id}
-            onClick={() => setActive(t.id)}
-            className={`flex-1 flex flex-col items-center gap-0.5 pb-1 pt-2 text-xs font-medium transition-colors ${
-              active === t.id
+            key={tab.id}
+            onClick={() => setActive(tab.id)}
+            className={`flex flex-1 flex-col items-center gap-0.5 pb-1 pt-2 text-xs font-medium transition-colors ${
+              active === tab.id
                 ? "border-b-2 border-blue-400 bg-white text-blue-400"
                 : "text-slate-400 hover:bg-slate-50 hover:text-slate-200"
             }`}
-            title={t.label}
+            title={tab.label}
           >
-            {t.icon}
-            <span className="leading-none">{t.label}</span>
+            {tab.icon}
+            <span className="leading-none">{tab.label}</span>
           </button>
         ))}
       </nav>
 
-      {/* Panel content */}
-      <div className="flex-1 min-h-0">
-        {active === "speakers"    && <SpeakerPanel />}
+      <div className="min-h-0 flex-1">
+        {active === "speakers" && <SpeakerPanel />}
+        {active === "corrections" && <CorrectionsPanel />}
         {active === "suggestions" && <SuggestionsPanel />}
-        {active === "confidence"  && <ConfidencePanel />}
-        {active === "exhibits"    && <ExhibitsPanel />}
-        {active === "changelog"   && <ChangeLogPanel />}
+        {active === "confidence" && <ConfidencePanel />}
+        {active === "exhibits" && <ExhibitsPanel />}
+        {active === "changelog" && <ChangeLogPanel />}
       </div>
     </aside>
   );
