@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EditorDocument } from "../api/types";
+import { buildCorrectionReport } from "../lib/transcript/correctionOrchestrator";
 import { createInitialDocumentState, documentReducer } from "./DocumentContext";
 
 function buildDocument(): EditorDocument {
@@ -131,5 +132,16 @@ describe("documentReducer save sequencing", () => {
     });
 
     expect(state.structureConfirmed).toBe(false);
+  });
+
+  it("stores a correction report when dispatched", () => {
+    const report = buildCorrectionReport(buildDocument());
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "SET_CORRECTION_REPORT",
+      report,
+    });
+
+    expect(state.correctionReport?.job_id).toBe("case_test_001");
   });
 });

@@ -15,6 +15,8 @@ import type {
 } from "../api/types";
 import type { ChangeLogEntry, ChangeSource } from "../types";
 import { workspaceApi, type WorkspaceAudioSegment } from "../api/workspaceService";
+import type { CorrectionReport } from "../lib/transcript/correctionOrchestrator";
+import { buildCorrectionReport } from "../lib/transcript/correctionOrchestrator";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -24,6 +26,7 @@ function nextChangeId(): string {
 interface State {
   jobId: string;
   document: EditorDocument | null;
+  correctionReport: CorrectionReport | null;
   loading: boolean;
   error: string | null;
   dirty: boolean;
@@ -44,6 +47,7 @@ interface State {
 type Action =
   | { type: "LOAD_START" }
   | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; audioSegments: WorkspaceAudioSegment[] }
+  | { type: "SET_CORRECTION_REPORT"; report: CorrectionReport }
   | { type: "LOAD_ERR"; error: string }
   | { type: "UPDATE_MEDIA_URL"; mediaUrl: string; segmentIndex: number }
   | { type: "SET_ACTIVE"; id: UtteranceId | null }
@@ -92,6 +96,9 @@ export function documentReducer(state: State, action: Action): State {
         structureConfirmed: false,
         audioSegments: action.audioSegments,
       };
+
+    case "SET_CORRECTION_REPORT":
+      return { ...state, correctionReport: action.report };
 
     case "LOAD_ERR":
       return { ...state, loading: false, error: action.error };
@@ -231,6 +238,7 @@ export function createInitialDocumentState(jobId: string): State {
   return {
     jobId,
     document: null,
+    correctionReport: null,
     loading: false,
     error: null,
     dirty: false,
@@ -271,6 +279,10 @@ export function DocumentProvider({
         updatedAt: loaded.updatedAt,
         speakerMapConfirmed: loaded.speakerMapConfirmed,
         audioSegments: loaded.audioSegments,
+      });
+      dispatch({
+        type: "SET_CORRECTION_REPORT",
+        report: buildCorrectionReport(loaded.document, null),
       });
     } catch (e) {
       dispatch({ type: "LOAD_ERR", error: String(e) });
