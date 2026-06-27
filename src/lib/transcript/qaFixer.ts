@@ -2,6 +2,8 @@ import type { TranscriptParagraph } from "./workspacePresentation";
 
 const SHORT_ANSWER_PATTERN = /^(Yes\.|No\.|Correct\.|I did\.|I do\.|I have\.|I don't\.)\s*/i;
 const OBJECTION_PATTERN = /\bObjection\.\s*(?:Form\.|Foundation\.)?/i;
+// correctionRegistry.ts owns the deterministic rule inventory; this remains
+// here because it is paragraph-structural rather than token-serial.
 const K_PATTERN = /(^|\s)K\.(\s|$)/g;
 const DEFAULT_OBJECTION_LABEL = "MR. RAMON";
 
@@ -9,6 +11,8 @@ function normalizeParagraphArtifacts(text: string): string {
   return text.replace(K_PATTERN, (_match, leading: string, trailing: string) => `${leading}Okay.${trailing ? "  " : ""}`);
 }
 
+// Note: general phrase corrections are in correctionRegistry.ts.
+// This function handles objection-specific structural normalization only.
 function normalizeObjectionText(text: string): string {
   return text
     .replace(/\bFour\b/g, "Form")

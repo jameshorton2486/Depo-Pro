@@ -392,6 +392,58 @@ describe("cfe spacing and serialization", () => {
     expect(output).not.toContain("metastructures");
   });
 
+  it('emits likely-meaning inline flags for ambiguous corrections like accent', () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "accent", confidence: 0.99 },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain(
+      'Q. accent [SCOPIST: FLAG 1: "accent" — verify from audio; likely "accident"]'
+    );
+  });
+
+  it("corrects scroiliac to sacroiliac in display output", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "scroiliac" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].words[0].text).toBe("sacroiliac");
+  });
+
+  it("corrects visible therapy to physical therapy in assembled line output", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "visible" },
+        { word_id: "w2", text: "therapy" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. physical therapy");
+  });
+
+  it("corrects extra report to expert report in assembled line output", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "extra" },
+        { word_id: "w2", text: "report" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. expert report");
+  });
+
   it("normalizes age expressions to figures", () => {
     const formatted = cfe(
       makeDoc([

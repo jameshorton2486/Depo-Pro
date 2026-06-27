@@ -1,5 +1,12 @@
 import type { EditorDocument } from "../../api/types";
 import { buildPages, getBlockRole } from "../../editor/pagination";
+import {
+  AMBIGUOUS_FLAGS,
+  DETERMINISTIC_PHRASE_CORRECTIONS,
+  DETERMINISTIC_TOKEN_CORRECTIONS,
+  looksLikeImplausibleMoney,
+  normalizeSlashDate,
+} from "../transcript/correctionRegistry";
 import type {
   AbbreviationRegistry,
   FormattedDocument,
@@ -82,32 +89,6 @@ const SIMPLE_NUMBER_WORDS = new Map<string, number>([
   ["eighty", 80],
   ["ninety", 90],
 ]);
-const DETERMINISTIC_GARBLE_CORRECTIONS: Record<string, string> = {
-  "K.": "Okay.",
-  "C572224L": "C-5722-24-L",
-  "foramenot": "foramen",
-  "curriculum of IT": "curriculum vitae",
-  "Four.": "Form.",
-  "Waddells.": "Waddell.",
-  "Waddell's": "Waddell",
-  "metastructures": "ligamentous structures",
-  "what else signs": "Waddell Signs",
-};
-const MONTH_NAMES = [
-  "",
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 type SpacingRules = {
   oneSpaceTokens: Set<string>;
@@ -298,6 +279,10 @@ export function classifyFlagToken(token: string): FlagTokenClass {
 }
 
 export function shouldEmitInlineFlag(word: EditorDocument["words"][number]): boolean {
+  if (findAmbiguousFlag(word.text, word.raw_text)) {
+    return true;
+  }
+
   if (looksLikeImplausibleMoney(word.raw_text)) {
     return true;
   }
@@ -314,16 +299,6 @@ export function shouldEmitInlineFlag(word: EditorDocument["words"][number]): boo
     return word.confidence < COMMON_WORD_FLAG_THRESHOLD;
   }
   return true;
-}
-
-function looksLikeImplausibleMoney(token: string): boolean {
-  const match = token.match(/^\$(\d+)\.(\d{2})$/);
-  if (!match) {
-    return false;
-  }
-
-  const dollars = parseInt(match[1], 10);
-  return dollars < 50;
 }
 
 function usesNumberAbbreviationRule(
@@ -478,39 +453,86 @@ function normalizeNumberWord(
   return `${value}${trailer}`;
 }
 
-function normalizeSlashDate(token: string): string {
-  const match = token.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})([.,;:?!]*)$/);
-  if (!match) {
-    return token;
-  }
-
-  const month = parseInt(match[1], 10);
-  const day = parseInt(match[2], 10);
-  const year = match[3];
-  const trailer = match[4];
-
-  if (month < 1 || month > 12) {
-    return token;
-  }
-
-  return `${MONTH_NAMES[month]} ${day}, ${year}${trailer}`;
+function buildInlineFlag(
+  word: EditorDocument["words"][number],
+  flagNumber: number,
+  likelyMeaning?: string
+): string {
+  const likelyClause = likelyMeaning
+    ? `; likely "${likelyMeaning}"`
+    : "";
+  return `[SCOPIST: FLAG ${flagNumber}: "${word.raw_text}" — verify from audio${likelyClause}]`;
 }
 
-function normalizeDeterministicGarble(word: EditorDocument["words"][number], token: string): string {
-  const directCorrection = DETERMINISTIC_GARBLE_CORRECTIONS[token];
-  if (directCorrection) {
-    return directCorrection;
-  }
-
-  if (word.confidence >= 0.85) {
-    return token;
-  }
-
-  return DETERMINISTIC_GARBLE_CORRECTIONS[token] ?? token;
+function findAmbiguousFlag(...candidates: Array<string | undefined>): (typeof AMBIGUOUS_FLAGS)[number] | undefined {
+  return AMBIGUOUS_FLAGS.find((flag) => (
+    candidates.some((candidate) => candidate?.toLowerCase() === flag.match.toLowerCase())
+  ));
 }
 
-function buildInlineFlag(word: EditorDocument["words"][number], flagNumber: number): string {
-  return `[SCOPIST: FLAG ${flagNumber}: "${word.raw_text}" — verify from audio]`;
+function applyDeterministicTokenCorrection(
+  token: string,
+  previousToken: string | undefined,
+  nextToken: string | undefined
+): string {
+  for (const correction of DETERMINISTIC_TOKEN_CORRECTIONS) {
+    if (token !== correction.match) {
+      continue;
+    }
+    if (
+      correction.requiresPrecedingPattern
+      && !correction.requiresPrecedingPattern.test(previousToken ?? "")
+    ) {
+      continue;
+    }
+    if (
+      correction.requiresFollowingPattern
+      && !correction.requiresFollowingPattern.test(nextToken ?? "")
+    ) {
+      continue;
+    }
+    return correction.replacement;
+  }
+
+  return token;
+}
+
+function applyPhraseCorrections(tokens: string[]): string[] {
+  const corrected = [...tokens];
+
+  for (const correction of DETERMINISTIC_PHRASE_CORRECTIONS) {
+    const matchTokens = correction.match.toLowerCase().split(/\s+/);
+    if (matchTokens.length === 0) {
+      continue;
+    }
+
+    for (let index = 0; index <= corrected.length - matchTokens.length; index += 1) {
+      const windowTokens = corrected
+        .slice(index, index + matchTokens.length)
+        .map((token) => token.toLowerCase());
+      const matches = windowTokens.every((token, tokenIndex) => token === matchTokens[tokenIndex]);
+      if (!matches) {
+        continue;
+      }
+
+      corrected[index] = correction.replacement;
+      for (let offset = 1; offset < matchTokens.length; offset += 1) {
+        corrected[index + offset] = "";
+      }
+      index += matchTokens.length - 1;
+    }
+  }
+
+  return corrected;
+}
+
+function getNextVisibleToken(tokens: string[], index: number): string | undefined {
+  for (let offset = index + 1; offset < tokens.length; offset += 1) {
+    if (tokens[offset]) {
+      return tokens[offset];
+    }
+  }
+  return undefined;
 }
 
 function normalizeDisplayToken(
@@ -522,17 +544,11 @@ function normalizeDisplayToken(
   const previousToken = words[index - 1]?.text;
   const nextToken = words[index + 1]?.text;
 
-  text = normalizeSlashDate(text);
-  text = normalizeDeterministicGarble(word, text);
-  if (
-    text === "Ramos" &&
-    (previousToken === "Mr." || previousToken === "Ms." || previousToken === "Mrs.")
-  ) {
-    text = "Ramon";
-  }
   text = normalizeInterruptingDash(text, nextToken);
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
+  text = normalizeSlashDate(text);
+  text = applyDeterministicTokenCorrection(text, previousToken, nextToken);
 
   return text;
 }
@@ -582,11 +598,14 @@ export function cfe(
       let flagNumber = 0;
       const displayTexts = sourceWords.map((word, index) => normalizeDisplayToken(word, index, sourceWords));
 
+      const correctedDisplayTexts = applyPhraseCorrections(displayTexts);
+
       const formattedWords = sourceWords.map((word, index) => {
+        const ambiguousFlag = findAmbiguousFlag(correctedDisplayTexts[index], word.raw_text, word.text);
         const inlineFlag = shouldEmitInlineFlag(word)
-          ? buildInlineFlag(word, ++flagNumber)
+          ? buildInlineFlag(word, ++flagNumber, ambiguousFlag?.likelyMeaning)
           : null;
-        const displayText = displayTexts[index];
+        const displayText = correctedDisplayTexts[index];
 
         return {
           word_id: word.word_id,
@@ -600,9 +619,11 @@ export function cfe(
           reviewed: word.reviewed,
           edited: word.edited,
           inline_flag: inlineFlag,
+          // Phrase-level corrections may collapse multiple source words into
+          // one display token; blank followers stay hidden but keep their IDs.
           trailing_space: buildTrailingSpace(
             displayText,
-            displayTexts[index + 1],
+            displayText ? getNextVisibleToken(correctedDisplayTexts, index) : undefined,
             spacingRules
           ),
         };
