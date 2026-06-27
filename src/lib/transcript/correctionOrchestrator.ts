@@ -71,6 +71,7 @@ export function buildCorrectionReport(
   const lowConfidence: TranscriptDefect[] = [];
   const implausibleMoney: TranscriptDefect[] = [];
   const speakerIssues: SpeakerIssue[] = [];
+  const flaggedSpeakerIds = new Set<string>();
   const retranscriptionCandidates = new Map<string, RetranscriptionCandidate>();
 
   for (let i = 0; i < document.words.length; i += 1) {
@@ -201,6 +202,10 @@ export function buildCorrectionReport(
   }
 
   for (const speaker of document.speakers) {
+    if (flaggedSpeakerIds.has(speaker.speaker_id)) {
+      continue;
+    }
+
     const utteranceCount = document.utterances.filter(
       (utterance) => utterance.speaker_id === speaker.speaker_id
     ).length;
@@ -209,27 +214,24 @@ export function buildCorrectionReport(
       continue;
     }
 
-    if (!speaker.role) {
-      speakerIssues.push({
-        speaker_id: speaker.speaker_id,
-        current_display_name: speaker.display_name,
-        description: `Speaker has no role assigned (${utteranceCount} utterances)`,
-        utterance_count: utteranceCount,
-      });
-    }
-
+    const hasNoRole = !speaker.role;
     const isGeneric =
       /^SPEAKER\s+\d+$/i.test(speaker.display_name) ||
       /^SPEAKER\s+CUSTOM$/i.test(speaker.display_name) ||
       /^spk_/i.test(speaker.display_name);
 
-    if (isGeneric) {
+    if (hasNoRole || isGeneric) {
+      const description = isGeneric
+        ? `Generic speaker label — identity not confirmed (${utteranceCount} utterances)`
+        : `Speaker has no role assigned (${utteranceCount} utterances)`;
+
       speakerIssues.push({
         speaker_id: speaker.speaker_id,
         current_display_name: speaker.display_name,
-        description: `Generic speaker label — identity not confirmed (${utteranceCount} utterances)`,
+        description,
         utterance_count: utteranceCount,
       });
+      flaggedSpeakerIds.add(speaker.speaker_id);
     }
   }
 

@@ -30,6 +30,19 @@ describe("DETERMINISTIC_TOKEN_CORRECTIONS", () => {
     const rule = DETERMINISTIC_TOKEN_CORRECTIONS.find((r) => r.match === "mibis");
     expect(rule?.replacement).toBe("Miss");
   });
+
+  it("Maloney correction requires preceding honorific", () => {
+    const rule = DETERMINISTIC_TOKEN_CORRECTIONS.find((r) => r.match === "Maloney");
+    expect(rule?.replacement).toBe("Bentley");
+    expect(rule?.requiresPrecedingPattern).toBeDefined();
+    expect(rule?.requiresPrecedingPattern?.test("Mr.")).toBe(true);
+    expect(rule?.requiresPrecedingPattern?.test("The")).toBe(false);
+  });
+
+  it("Maloney correction does not trigger without an honorific", () => {
+    const rule = DETERMINISTIC_TOKEN_CORRECTIONS.find((r) => r.match === "Maloney");
+    expect(rule?.requiresPrecedingPattern?.test("witness")).toBe(false);
+  });
 });
 
 describe("DETERMINISTIC_PHRASE_CORRECTIONS", () => {

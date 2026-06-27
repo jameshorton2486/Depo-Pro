@@ -74,6 +74,18 @@ export const DETERMINISTIC_TOKEN_CORRECTIONS: DeterministicCorrection[] = [
     requiresPrecedingPattern: /^(Mr\.|Ms\.|Mrs\.)$/,
   },
   {
+    match: "Maloney",
+    replacement: "Bentley",
+    reason: "ASR garble of attorney name Dennis Bentley — context-gated: only after honorific",
+    requiresPrecedingPattern: /^(Mr\.|Ms\.|Mrs\.|MR\.|MS\.|MRS\.)$/,
+  },
+  {
+    match: "Maloney.",
+    replacement: "Bentley.",
+    reason: "ASR garble of attorney name Dennis Bentley (trailing period form)",
+    requiresPrecedingPattern: /^(Mr\.|Ms\.|Mrs\.|MR\.|MS\.|MRS\.)$/,
+  },
+  {
     match: "mibis",
     replacement: "Miss",
     reason: "ASR garble of 'Miss' — witness address",

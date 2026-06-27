@@ -173,23 +173,37 @@ Deno.serve(async (request) => {
 
 async function requireTranscript(
   supabase: SupabaseClient<Database>,
-  jobId: string,
+  routeId: string,
 ): Promise<TranscriptRow> {
-  const { data, error } = await supabase
+  const byTranscriptId = await supabase
     .from("transcripts")
     .select("transcript_id, case_id, job_id, media_url, duration, duration_seconds")
-    .eq("transcript_id", jobId)
+    .eq("transcript_id", routeId)
     .maybeSingle();
 
-  if (error) {
+  if (byTranscriptId.error) {
     throw new HttpError(500, "failed to load transcript");
   }
 
-  if (!data) {
-    throw new HttpError(404, "unknown jobId");
+  if (byTranscriptId.data) {
+    return byTranscriptId.data as TranscriptRow;
   }
 
-  return data as TranscriptRow;
+  const byJobId = await supabase
+    .from("transcripts")
+    .select("transcript_id, case_id, job_id, media_url, duration, duration_seconds")
+    .eq("job_id", routeId)
+    .maybeSingle();
+
+  if (byJobId.error) {
+    throw new HttpError(500, "failed to load transcript");
+  }
+
+  if (!byJobId.data) {
+    throw new HttpError(404, "unknown transcript");
+  }
+
+  return byJobId.data as TranscriptRow;
 }
 
 async function handleGetDocument(context: RouteContext): Promise<Response> {

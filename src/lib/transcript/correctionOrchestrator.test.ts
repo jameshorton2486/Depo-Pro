@@ -130,6 +130,15 @@ describe("buildCorrectionReport", () => {
     expect(generic).toBeDefined();
   });
 
+  it("deduplicates speaker issues when one speaker matches multiple checks", () => {
+    const doc = makeDocument({ displayName: "spk_001", role: undefined });
+    const report = buildCorrectionReport(doc);
+    expect(report.summary.speaker_issues).toBe(1);
+    expect(report.speaker_issues).toHaveLength(1);
+    expect(new Set(report.speaker_issues.map((issue) => issue.speaker_id)).size).toBe(report.speaker_issues.length);
+    expect(report.speaker_issues[0].speaker_id).toBe("spk_001");
+  });
+
   it("produces retranscription candidates from deterministic corrections", () => {
     const doc = makeDocument({ wordText: "scroiliac", rawText: "scroiliac", confidence: 0.9 });
     const report = buildCorrectionReport(doc);
