@@ -47,6 +47,8 @@ export function formatTranscriptStatus(status: string): string {
     case "complete":
     case "completed":
       return "Complete";
+    case "needs_manual_review":
+      return "Needs Manual Review";
     case "failed":
       return "Failed";
     default:

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
+import { integrityAudit, type IntegrityAuditResult } from "../../../src/lib/transcript/integrityAudit.ts";
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
 import { advanceOrFinalizeMultifileJob } from "../../../src/lib/transcript/multifileCallbackFlow.ts";
 import {
@@ -50,7 +51,7 @@ type TranscriptInsertRow = {
   session_id: string | null;
   source_filename: string | null;
   media_kind: "audio" | "video";
-  status: "completed";
+  status: "completed" | "needs_manual_review";
   engine: string;
   transcription_source: "deepgram";
   sequence_index: number;
@@ -127,6 +128,25 @@ Deno.serve(async (request) => {
     if (!parsed.ok) {
       await failJob(serviceClient, job.id, responsePath, parsed.error);
       return respondJson(200, { ok: true, status: "failed" });
+    }
+
+    const auditResult = integrityAudit(parsed.response);
+    if (!auditResult.integrity_passed) {
+      await persistManualReviewTranscript(
+        serviceClient,
+        job,
+        orderedAudio,
+        responsePath,
+        rawChecksum,
+        parsed.response,
+        auditResult,
+      );
+      await updateJob(serviceClient, job.id, {
+        status: "failed",
+        response_path: responsePath,
+        error: buildIntegrityFailureMessage(auditResult),
+      });
+      return respondJson(200, { ok: true, status: "needs_manual_review" });
     }
 
     const outcome = await advanceOrFinalizeMultifileJob({
@@ -445,6 +465,54 @@ async function failJob(
     response_path: responsePath,
     error: errorMessage,
   });
+}
+
+async function persistManualReviewTranscript(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+  orderedAudio: CaseAudioRow[],
+  responsePath: string,
+  rawChecksum: string,
+  response: DeepgramResponse,
+  auditResult: IntegrityAuditResult,
+): Promise<void> {
+  const transcriptRow: TranscriptInsertRow = {
+    transcript_id: job.transcript_id,
+    case_id: job.case_id,
+    job_id: job.id,
+    media_url: orderedAudio[0]?.media_url ?? null,
+    duration: response.metadata.duration,
+    based_on: orderedAudio[0]?.audio_id ?? null,
+    deepgram_request_id: response.metadata.request_id ?? null,
+    session_id: null,
+    source_filename: orderedAudio[0]?.original_filename ?? null,
+    media_kind: detectMediaKind(orderedAudio[0]?.mime_type ?? "audio/mpeg"),
+    status: "needs_manual_review",
+    engine: "deepgram-nova-3",
+    transcription_source: "deepgram",
+    sequence_index: 0,
+    duration_seconds: response.metadata.duration,
+    word_count: auditResult.word_count,
+    utterance_count: auditResult.utterance_count,
+    speaker_count: auditResult.speaker_ids_found.length,
+    avg_confidence: auditResult.confidence_stats.mean.toFixed(4),
+    raw_storage_path: responsePath,
+    raw_checksum: rawChecksum,
+    last_error: buildIntegrityFailureMessage(auditResult),
+    speaker_map_confirmed: false,
+    owner_user_id: job.owner_user_id,
+  };
+
+  const { error } = await supabase
+    .from("transcripts")
+    .upsert(transcriptRow, { onConflict: "transcript_id" });
+  if (error) {
+    throw error;
+  }
+}
+
+function buildIntegrityFailureMessage(auditResult: IntegrityAuditResult): string {
+  return `NEEDS_MANUAL_REVIEW: ${auditResult.failures[0] ?? "Integrity audit failed."}`;
 }
 
 async function updateJob(

@@ -1,4 +1,5 @@
 export interface DeepgramWord {
+  id?: string;
   word: string;
   punctuated_word?: string;
   start: number;
@@ -9,6 +10,7 @@ export interface DeepgramWord {
 }
 
 export interface DeepgramUtterance {
+  id?: string;
   speaker?: number;
   start: number;
   end: number;

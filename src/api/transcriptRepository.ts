@@ -16,7 +16,7 @@ export type TranscriptJobRow = {
   session_id: string | null;
   source_filename: string | null;
   media_kind: "audio" | "video";
-  status: "queued" | "preprocessing" | "transcribing" | "assembling" | "completed" | "failed";
+  status: "queued" | "preprocessing" | "transcribing" | "assembling" | "completed" | "failed" | "needs_manual_review";
   engine: string | null;
   transcription_source: "deepgram" | "offline-fixture";
   sequence_index: number;
