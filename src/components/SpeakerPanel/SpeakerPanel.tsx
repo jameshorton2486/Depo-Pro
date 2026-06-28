@@ -32,6 +32,15 @@ function getSpeakerSourceFileLabel(speakerId: string): string | null {
   return `File ${Number.parseInt(match[1], 10) + 1}`;
 }
 
+type SpeakerView = Speaker & {
+  ai_suggested?: boolean;
+  ai_suggestion_reason?: string;
+};
+
+export function isAISuggestedSpeaker(speaker: SpeakerView): boolean {
+  return speaker.ai_suggested === true;
+}
+
 export function getSpeakerClusterBadgeLabel(speaker: Speaker): string {
   return speaker.deepgram_speaker != null ? `SPK ${speaker.deepgram_speaker}` : "CUSTOM";
 }
@@ -185,7 +194,7 @@ export function SpeakerPanel() {
   const [addingSaving, setAddingSaving] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- speakers derived inline; useMemo deferred post-beta
-  const speakers = state.document?.speakers ?? [];
+  const speakers = (state.document?.speakers ?? []) as SpeakerView[];
   const speakerMapConfirmed = state.speakerMapConfirmed;
   const pipelineState = state.pipelineState;
   const awaitingVerification = pipelineState === "AWAITING_SPEAKER_VERIFICATION" && !speakerMapConfirmed;
@@ -237,7 +246,7 @@ export function SpeakerPanel() {
       const draft = drafts[id];
       if (!draft) return;
       const updated = speakers.map((s) =>
-        s.speaker_id === id ? { ...s, ...draft } : s
+        s.speaker_id === id ? { ...s, ...draft, ai_suggested: false } : s
       );
       setSaving(true);
       setSaveError(null);
@@ -379,7 +388,7 @@ export function SpeakerPanel() {
               isEditing={isEditing}
               draft={draft}
               saving={saving}
-              showAiSuggested={awaitingVerification}
+              showAiSuggested={isAISuggestedSpeaker(spk)}
               roleColor={roleColor}
               onStartEdit={startEdit}
               onCancelEdit={cancelEdit}
@@ -412,7 +421,7 @@ export function SpeakerPanel() {
 // ─── Speaker card ─────────────────────────────────────────────────────────────
 
 interface CardProps {
-  spk: Speaker;
+  spk: SpeakerView;
   isEditing: boolean;
   draft?: { display_name: string; role?: Speaker["role"] };
   saving: boolean;
@@ -467,8 +476,11 @@ function SpeakerCard({
           </span>
         )}
         {showAiSuggested && (
-          <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">
-            ✦ AI suggested
+          <span
+            className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 text-sky-700"
+            title={spk.ai_suggestion_reason || "AI suggested speaker mapping"}
+          >
+            ✦ AI
           </span>
         )}
         {!isEditing && spk.role && (

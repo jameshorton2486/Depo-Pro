@@ -6,6 +6,7 @@ import {
   AddParticipantInlineForm,
   addParticipantToSpeakerList,
   getSpeakerClusterBadgeLabel,
+  isAISuggestedSpeaker,
 } from "./SpeakerPanel";
 
 type ElementWithChildren = ReactElement<{ children?: ReactNode } & Record<string, unknown>>;
@@ -195,5 +196,22 @@ describe("SpeakerPanel", () => {
       speakers: baseSpeakers(),
       addSpeaker,
     })).rejects.toThrow("Failed to create speaker");
+  });
+
+  it("identifies speakers with ai_suggested metadata", () => {
+    expect(isAISuggestedSpeaker({
+      speaker_id: "spk_001",
+      display_name: "MR. BENTLEY",
+      deepgram_speaker: 1,
+      role: "ATTORNEY",
+      ai_suggested: true,
+    })).toBe(true);
+
+    expect(isAISuggestedSpeaker({
+      speaker_id: "spk_002",
+      display_name: "THE WITNESS",
+      deepgram_speaker: 2,
+      role: "WITNESS",
+    })).toBe(false);
   });
 });

@@ -61,6 +61,19 @@ type TranscriptSpeakerRow = {
 
 type TranscriptSpeakerInsert = Omit<TranscriptSpeakerRow, "id"> & { id?: string };
 
+type SpeakerResolutionRow = {
+  id: string;
+  transcript_id: string;
+  speaker_id: string;
+  proposed_display_name: string;
+  proposed_role: string | null;
+  confidence: string | number;
+  evidence: string;
+  authority: string;
+  ai_suggested: boolean;
+  verified: boolean;
+};
+
 type TranscriptUtteranceRow = {
   id: string;
   transcript_id: string;
@@ -152,6 +165,12 @@ type TranscriptDatabase = Omit<Database, "public"> & {
         Insert: TranscriptSpeakerInsert;
         Update: Partial<TranscriptSpeakerInsert>;
         Relationships: Database["public"]["Tables"]["transcript_speakers"]["Relationships"];
+      };
+      speaker_resolution_current: {
+        Row: SpeakerResolutionRow;
+        Insert: Partial<SpeakerResolutionRow>;
+        Update: Partial<SpeakerResolutionRow>;
+        Relationships: [];
       };
       transcript_utterances: {
         Row: TranscriptUtteranceRow;
@@ -287,6 +306,7 @@ export async function getLatestCompletedTranscriptJob(caseId: string): Promise<T
 export async function loadTranscriptSnapshot(jobId: string): Promise<{
   job: TranscriptJobRow;
   speakers: TranscriptSpeakerRow[];
+  speakerResolutions: SpeakerResolutionRow[];
   utterances: TranscriptUtteranceRow[];
   words: TranscriptWordRow[];
 } | null> {
@@ -297,12 +317,16 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
 
   const client = await getSupabaseClient("loadTranscriptSnapshot");
   const transcriptClient = getTranscriptClient(client);
-  const [speakersResult, utterancesResult, wordsResult] = await Promise.all([
+  const [speakersResult, speakerResolutionsResult, utterancesResult, wordsResult] = await Promise.all([
     transcriptClient
       .from("transcript_speakers")
       .select("*")
       .eq("job_id", jobId)
       .order("speaker_index", { ascending: true }),
+    transcriptClient
+      .from("speaker_resolution_current")
+      .select("*")
+      .eq("transcript_id", job.transcript_id),
     transcriptClient
       .from("transcript_utterances")
       .select("*")
@@ -321,6 +345,9 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
   if (utterancesResult.error) {
     throw utterancesResult.error;
   }
+  if (speakerResolutionsResult.error) {
+    throw speakerResolutionsResult.error;
+  }
   if (wordsResult.error) {
     throw wordsResult.error;
   }
@@ -328,6 +355,7 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
   return {
     job,
     speakers: (speakersResult.data ?? []) as unknown as TranscriptSpeakerRow[],
+    speakerResolutions: (speakerResolutionsResult.data ?? []) as unknown as SpeakerResolutionRow[],
     utterances: (utterancesResult.data ?? []) as unknown as TranscriptUtteranceRow[],
     words: (wordsResult.data ?? []) as unknown as TranscriptWordRow[],
   };
