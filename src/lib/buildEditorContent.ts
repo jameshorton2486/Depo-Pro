@@ -6,7 +6,13 @@ import { abbreviationRegistry } from "./format/abbreviationRegistry";
 import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { ENABLE_DISPLAY_TURN_SEGMENTATION } from "./format/grouping";
-import { buildDisplayDocument } from "./transcript/workspacePresentation";
+import { buildDisplayDocument, resolveWordDisplay } from "./transcript/workspacePresentation";
+
+type OverlayWord = EditorDocument["words"][number] & {
+  working_text?: string | null;
+  ai_suggestion?: string | null;
+  ai_suggestion_status?: string | null;
+};
 
 function buildLegacyEditorContent(
   doc: EditorDocument,
@@ -49,13 +55,19 @@ function buildLegacyEditorContent(
 
     const inlineNodes: JSONContent[] = [];
     utt.word_ids.forEach((wid, i) => {
-      const word = wordById.get(wid);
+      const word = wordById.get(wid) as OverlayWord | undefined;
       if (!word) return;
-      if (!word.text || word.text.length === 0) return;
+      const resolvedWord = resolveWordDisplay({
+        raw_text: word.raw_text,
+        working_text: word.text,
+        ai_suggestion: word.ai_suggestion,
+        ai_suggestion_status: word.ai_suggestion_status,
+      });
+      if (!resolvedWord.displayText || resolvedWord.displayText.length === 0) return;
 
       inlineNodes.push({
         type: "text",
-        text: word.text,
+        text: resolvedWord.displayText,
         marks: [
           {
             type: "wordMark",
@@ -67,6 +79,8 @@ function buildLegacyEditorContent(
               end_time: word.end_time,
               confidence: word.confidence,
               reviewed: word.reviewed,
+              ai_layer: resolvedWord.layer,
+              ai_pending: resolvedWord.isPending,
             },
           },
         ],
@@ -112,6 +126,8 @@ function buildInlineNodes(
     text: string;
     inline_flag: string | null;
     trailing_space: string;
+    ai_layer?: "ai_suggestion" | "working_text" | "raw_text";
+    ai_pending?: boolean;
   }>
 ): JSONContent[] {
   const inlineNodes: JSONContent[] = [];
@@ -133,6 +149,8 @@ function buildInlineNodes(
             end_time: word.end_time,
             confidence: word.confidence,
             reviewed: word.reviewed,
+            ai_layer: word.ai_layer ?? "raw_text",
+            ai_pending: Boolean(word.ai_pending),
           },
         },
       ],
@@ -198,6 +216,27 @@ export function buildEditorContent(
 
     const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
     const role = speaker?.role === "INTERPRETER" ? "INTERPRETER" : null;
+    const overlayWords = line.words.map((word) => {
+      const sourceWord = displayDoc.words.find((candidate) => candidate.word_id === word.word_id) as OverlayWord | undefined;
+      const resolvedWord = resolveWordDisplay(sourceWord
+        ? {
+            raw_text: word.text,
+            working_text: word.text,
+            ai_suggestion: sourceWord.ai_suggestion,
+            ai_suggestion_status: sourceWord.ai_suggestion_status,
+          }
+        : {
+            raw_text: word.text,
+            working_text: word.text,
+          });
+
+      return {
+        ...word,
+        text: resolvedWord.displayText,
+        ai_layer: resolvedWord.layer,
+        ai_pending: resolvedWord.isPending,
+      };
+    });
 
     blocks.push({
       type: "utterance",
@@ -226,7 +265,7 @@ export function buildEditorContent(
         tab_center_inches: line.geometry.tabs.centerInches,
         tab_continuation_inches: line.geometry.tabs.continuationInches,
       },
-      content: buildInlineNodes(line.words),
+      content: buildInlineNodes(overlayWords),
     });
   });
 

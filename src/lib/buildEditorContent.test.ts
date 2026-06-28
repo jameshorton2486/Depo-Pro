@@ -326,4 +326,23 @@ describe("buildEditorContent", () => {
     expect(rawChosenAttrs.prefix_text).toBe("Speaker 1");
   });
 
+  it("renders pending ai suggestions with the overlay text and pending class", () => {
+    const doc = makeSingleUtteranceDoc([
+      {
+        ...makeWord("word-1", "raiding"),
+        working_text: null,
+        ai_suggestion: "radiating",
+        ai_suggestion_status: "pending",
+      } as EditorDocument["words"][number],
+    ]);
+
+    const content = buildEditorContent(doc);
+    const utterance = content.content?.find((node) => node.type === "utterance");
+    const mark = utterance?.content?.[0]?.marks?.[0];
+
+    expect(utterance?.content?.[0]?.text).toBe("radiating");
+    expect(mark?.attrs?.ai_layer).toBe("ai_suggestion");
+    expect(mark?.attrs?.ai_pending).toBe(true);
+  });
+
 });

@@ -40,6 +40,14 @@ export const WordMark = Mark.create({
         default: false,
         parseHTML: (el) => el.getAttribute("data-reviewed") === "true",
       },
+      ai_layer: {
+        default: "raw_text",
+        parseHTML: (el) => el.getAttribute("data-ai-layer") ?? "raw_text",
+      },
+      ai_pending: {
+        default: false,
+        parseHTML: (el) => el.getAttribute("data-ai-pending") === "true",
+      },
     };
   },
 
@@ -56,6 +64,8 @@ export const WordMark = Mark.create({
       end_time,
       confidence,
       reviewed,
+      ai_layer,
+      ai_pending,
     } = HTMLAttributes as {
       word_id: string;
       utterance_id: string;
@@ -64,6 +74,8 @@ export const WordMark = Mark.create({
       end_time: number;
       confidence: number;
       reviewed: boolean;
+      ai_layer: string;
+      ai_pending: boolean;
     };
 
     const conf = typeof confidence === "number" ? confidence : 1;
@@ -84,7 +96,10 @@ export const WordMark = Mark.create({
         "data-end": end_time,
         "data-conf": confidence,
         "data-reviewed": String(reviewed),
+        "data-ai-layer": ai_layer,
+        "data-ai-pending": String(ai_pending),
         class: ["word-token", confClass, reviewed ? "word-reviewed" : ""]
+          .concat(ai_pending ? ["ai-suggestion-pending"] : [])
           .filter(Boolean)
           .join(" "),
       }),
