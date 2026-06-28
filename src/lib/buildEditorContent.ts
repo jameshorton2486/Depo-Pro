@@ -163,9 +163,16 @@ export function buildEditorContent(
     record?: CaseRecord | null;
   }
 ): JSONContent {
+  const visibleDoc = {
+    ...doc,
+    utterances: doc.utterances.filter((utterance) => {
+      const candidate = utterance as typeof utterance & { excluded_from_output?: boolean };
+      return candidate.excluded_from_output !== true;
+    }),
+  };
   const languageMap = options?.languageMap;
   const shouldInferStructure = options?.structureConfirmed && !options?.keepRawLabels;
-  const displayDoc = shouldInferStructure ? buildDisplayDocument(doc, options.record) : doc;
+  const displayDoc = shouldInferStructure ? buildDisplayDocument(visibleDoc, options.record) : visibleDoc;
 
   if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
     return buildLegacyEditorContent(displayDoc, languageMap);

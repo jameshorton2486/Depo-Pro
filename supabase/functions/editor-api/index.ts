@@ -42,6 +42,10 @@ type TranscriptUtteranceRow = {
   end_time: number;
   ordinal: number;
   utterance_index?: number | null;
+  excluded_from_output?: boolean | null;
+  exclusion_reason?: string | null;
+  is_synthetic?: boolean | null;
+  text?: string | null;
 };
 
 type TranscriptWordRow = {
@@ -258,7 +262,7 @@ async function loadUtterances(
 ): Promise<TranscriptUtteranceRow[]> {
   const { data, error } = await supabase
     .from("transcript_utterances")
-    .select("utterance_id, speaker_id, start_time, end_time, ordinal, utterance_index")
+    .select("utterance_id, speaker_id, start_time, end_time, ordinal, utterance_index, excluded_from_output, exclusion_reason, is_synthetic, text")
     .eq("transcript_id", transcriptId)
     .order("utterance_index", { ascending: true })
     .order("ordinal", { ascending: true });

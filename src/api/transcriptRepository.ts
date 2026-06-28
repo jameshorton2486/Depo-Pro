@@ -72,6 +72,9 @@ type TranscriptUtteranceRow = {
   speaker_label: string;
   text: string;
   avg_confidence: string | null;
+  excluded_from_output?: boolean | null;
+  exclusion_reason?: string | null;
+  is_synthetic?: boolean | null;
 };
 
 type TranscriptUtteranceInsert = Omit<TranscriptUtteranceRow, "id"> & { id?: string };

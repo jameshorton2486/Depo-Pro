@@ -77,8 +77,13 @@ function buildEditorDocumentFromSnapshot(
   snapshot: NonNullable<Awaited<ReturnType<typeof loadTranscriptSnapshot>>>,
   mediaUrl: string,
 ): EditorDocument {
+  const visibleUtterances = snapshot.utterances.filter((utterance) => !utterance.excluded_from_output);
+  const visibleUtteranceIds = new Set(visibleUtterances.map((utterance) => utterance.utterance_id));
   const wordIdsByUtterance = new Map<string, string[]>();
   for (const word of snapshot.words) {
+    if (!visibleUtteranceIds.has(word.utterance_id)) {
+      continue;
+    }
     const ids = wordIdsByUtterance.get(word.utterance_id) ?? [];
     ids.push(word.word_id);
     wordIdsByUtterance.set(word.utterance_id, ids);
@@ -94,7 +99,7 @@ function buildEditorDocumentFromSnapshot(
       deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker ?? null,
       role: mapSpeakerRole(speaker.speaker_role || speaker.role),
     })),
-    utterances: snapshot.utterances.map((utterance) => ({
+    utterances: visibleUtterances.map((utterance) => ({
       utterance_id: utterance.utterance_id,
       speaker_id: utterance.speaker_id,
       start_time: utterance.start_time,
@@ -102,7 +107,7 @@ function buildEditorDocumentFromSnapshot(
       word_ids: wordIdsByUtterance.get(utterance.utterance_id) ?? [],
     })),
     words: snapshot.words
-      .filter((word) => !word.removed)
+      .filter((word) => !word.removed && visibleUtteranceIds.has(word.utterance_id))
       .map((word) => ({
         word_id: word.word_id,
         text: word.working_text ?? word.raw_text,
