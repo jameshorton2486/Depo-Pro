@@ -18,6 +18,7 @@ import { useIntake } from "../../context/useIntake";
 import { createConfidencePlugin } from "../../extensions/ConfidencePlugin";
 import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
 import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
+import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
 
 interface Props {
   readOnly: boolean;
@@ -138,6 +139,29 @@ export function TranscriptEditor({ readOnly }: Props) {
     () => buildWordTimings(state.document),
     [state.document]
   );
+  const aiReviewBannerState = useMemo(() => {
+    const words = (state.document?.words ?? []) as Array<{
+      ai_suggestion?: string | null;
+      ai_suggestion_status?: string | null;
+      text: string;
+      raw_text: string;
+    }>;
+
+    return words.reduce(
+      (totals, word) => {
+        if (!word.ai_suggestion) {
+          return totals;
+        }
+        if (word.ai_suggestion_status === "pending") {
+          totals.pendingCount += 1;
+        } else if (word.ai_suggestion_status === "accepted" && word.text !== word.raw_text) {
+          totals.autoAppliedCount += 1;
+        }
+        return totals;
+      },
+      { pendingCount: 0, autoAppliedCount: 0 },
+    );
+  }, [state.document]);
 
   const editor = useEditor({
     extensions: EXTENSIONS,
@@ -324,6 +348,10 @@ export function TranscriptEditor({ readOnly }: Props) {
           onDismiss={keepRawLabels}
         />
       )}
+      <AIReviewBanner
+        pendingCount={aiReviewBannerState.pendingCount}
+        autoAppliedCount={aiReviewBannerState.autoAppliedCount}
+      />
       <div className="transcript-page-area">
         {/* Document caption */}
         <div className="transcript-header">
