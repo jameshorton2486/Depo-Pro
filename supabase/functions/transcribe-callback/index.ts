@@ -196,6 +196,7 @@ Deno.serve(async (request) => {
           response_path: finalArtifact.path,
           error: null,
         });
+        triggerAiReview(job.transcript_id);
         return finalArtifact.path;
       },
       cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
@@ -732,4 +733,23 @@ function respondJson(status: number, body: unknown): Response {
 
 function respondError(status: number, error: string): Response {
   return respondJson(status, { error });
+}
+
+function triggerAiReview(transcriptId: string): void {
+  const url = `${supabaseUrl}/functions/v1/ai-review`;
+  const headers = {
+    Authorization: `Bearer ${supabaseServiceRoleKey}`,
+    "Content-Type": "application/json",
+  };
+
+  void fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ transcript_id: transcriptId }),
+  }).catch((error) => {
+    console.error("[transcribe-callback] ai-review trigger failed", {
+      transcriptId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
 }
