@@ -187,6 +187,7 @@ describe("TranscriptEditor save regression helpers", () => {
       doc,
       updatedAt: "2026-06-22T12:00:00.000Z",
       speakerMapConfirmed: false,
+      pipelineState: null,
       audioSegments: [],
     });
     state = documentReducer(state, {

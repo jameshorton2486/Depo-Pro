@@ -20,7 +20,7 @@ describe("integrityAudit", () => {
 
   it("fails when an utterance speaker key is missing", () => {
     const response = cloneFixture();
-    delete (response.results.utterances?.[0] as Record<string, unknown>).speaker;
+    delete ((response.results.utterances?.[0] as unknown) as Record<string, unknown>).speaker;
 
     const result = integrityAudit(response);
     expect(result.integrity_passed).toBe(false);
@@ -65,8 +65,8 @@ describe("integrityAudit", () => {
   it("fails on duplicate word IDs", () => {
     const response = cloneFixture();
     const utterances = response.results.utterances ?? [];
-    const firstWord = utterances[0]?.words[0] as Record<string, unknown> | undefined;
-    const secondWord = utterances[1]?.words[0] as Record<string, unknown> | undefined;
+    const firstWord = (utterances[0]?.words[0] as unknown) as Record<string, unknown> | undefined;
+    const secondWord = (utterances[1]?.words[0] as unknown) as Record<string, unknown> | undefined;
     if (firstWord && secondWord) {
       firstWord.id = "dup_word";
       secondWord.id = "dup_word";

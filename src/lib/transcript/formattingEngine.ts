@@ -37,7 +37,6 @@ export interface FormattingResult {
 }
 
 const ABBREVIATION_PATTERN = /\b(?:Mr|Ms|Mrs|Dr|No|CSR|a\.m|p\.m|St|Ave|Blvd|Rd|Inc|LLC|PLLC|Corp)\.$/i;
-const BASIS_PATTERN = /\b(Form|Hearsay|Speculation|Foundation|Leading|Nonresponsive|Compound|Relevance|Privilege|Scope|Argumentative|Vague)\./;
 
 function applyPunctuationRules(text: string): { text: string; changes: number } {
   let next = text;
@@ -58,7 +57,7 @@ function applyPunctuationRules(text: string): { text: string; changes: number } 
   }
   body = okayNormalized;
 
-  body = body.replace(/([.?!])\s([A-Z])/g, (match, terminal: string, capital: string, offset: number, source: string) => {
+  body = body.replace(/([.?!])\s([A-Z])/g, (_match, terminal: string, capital: string, offset: number, source: string) => {
     const prefix = source.slice(0, offset + 1);
     const lastToken = prefix.split(/\s+/).filter(Boolean).pop() ?? "";
     if (/Okay\.$/i.test(lastToken)) {

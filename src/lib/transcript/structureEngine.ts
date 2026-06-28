@@ -392,29 +392,39 @@ export async function verifyColloquy(
     });
   }
 
-  return spBlocks.flatMap((block) => {
+  const reclassifications: Array<{
+    utterance_index: number;
+    current_type: "SP";
+    correct_type: "Q" | "A";
+    reason: string;
+    confidence: number;
+  }> = [];
+
+  for (const block of spBlocks) {
     const role = getRole(block.speaker_id, confirmedSpeakerMap);
     const text = normalizeWhitespace(block.text);
     if (role === "WITNESS" && isStandaloneAnswer(text)) {
-      return [{
+      reclassifications.push({
         utterance_index: block.utterance_index,
         current_type: "SP" as const,
         correct_type: "A" as const,
         reason: "Witness testimony answer token should be classified as A.",
         confidence: 0.98,
-      }];
+      });
+      continue;
     }
     if (role === "ATTORNEY" && (/\?$/.test(text) || /^let me ask/i.test(text))) {
-      return [{
+      reclassifications.push({
         utterance_index: block.utterance_index,
         current_type: "SP" as const,
         correct_type: "Q" as const,
         reason: "Attorney substantive question should be classified as Q.",
         confidence: 0.93,
-      }];
+      });
     }
-    return [];
-  });
+  }
+
+  return reclassifications;
 }
 
 export async function validateConversationFlow(

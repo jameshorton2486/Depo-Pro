@@ -258,7 +258,7 @@ export async function generateAISuggestions(
 
 export function buildSuggestionCaseRecord(record: CaseRecord | null | undefined): AISuggestionInput["caseRecord"] {
   return {
-    causeNumber: record?.caption?.cause_number?.value ?? "",
+    causeNumber: record?.caption?.case_number?.value ?? "",
     caseStyle: record?.caption?.case_style?.value ?? "",
     witnessName: record?.witnesses?.[0]?.name.value ?? "",
     examiningAttorney: record?.attorneys?.[0]?.name.value ?? "",
