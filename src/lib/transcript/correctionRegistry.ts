@@ -25,6 +25,13 @@ export interface PhraseDeterministicCorrection {
   reason: string;
 }
 
+export interface MultiwordDeterministicCorrection {
+  pattern: RegExp;
+  replacement: string;
+  reason: string;
+  rule_id: string;
+}
+
 export const DETERMINISTIC_TOKEN_CORRECTIONS: DeterministicCorrection[] = [
   {
     match: "K.",
@@ -139,6 +146,99 @@ export const DETERMINISTIC_PHRASE_CORRECTIONS: PhraseDeterministicCorrection[] =
     reason: "ASR garble of Waddell Signs",
   },
 ];
+
+export const METADATA_MULTIWORD_CORRECTIONS: MultiwordDeterministicCorrection[] = [
+  {
+    pattern: /\bMia\s+Bardo\b/gi,
+    replacement: "Miah Bardot",
+    reason: "Reporter name garble",
+    rule_id: "REPORTER_NAME_GARBLE",
+  },
+  {
+    pattern: /\bpenalty\s+of\s+curtory\b/gi,
+    replacement: "penalty of perjury",
+    reason: "Oath phrase garble",
+    rule_id: "OATH_GARBLE",
+  },
+  {
+    pattern: /\bBear\s+County\b/gi,
+    replacement: "Bexar County",
+    reason: "Texas county garble",
+    rule_id: "COURT_LABEL_GARBLE",
+  },
+  {
+    pattern: /\bBurr\s+County\b/gi,
+    replacement: "Bexar County",
+    reason: "Texas county garble",
+    rule_id: "COURT_LABEL_GARBLE",
+  },
+  {
+    pattern: /\bremote\s+storing\b/gi,
+    replacement: "remote swearing",
+    reason: "Procedural phrase garble",
+    rule_id: "PROCEDURAL_GARBLE",
+  },
+  {
+    pattern: /\bnotice\s+and\s+attorney\b/gi,
+    replacement: "noticing attorney",
+    reason: "Procedural phrase garble",
+    rule_id: "PROCEDURAL_GARBLE",
+  },
+  {
+    pattern: /\bpast\s+witness\b/gi,
+    replacement: "Pass the witness.",
+    reason: "Procedural phrase garble",
+    rule_id: "PASS_WITNESS_GARBLE",
+  },
+  {
+    pattern: /\bpastor\s+witness\b/gi,
+    replacement: "Pass the witness.",
+    reason: "Procedural phrase garble",
+    rule_id: "PASS_WITNESS_GARBLE",
+  },
+];
+
+export const LEGAL_OBJECTION_GARBLE_MAP: Record<string, string> = {
+  "Injection form": "Objection.  Form.",
+  "Infection form": "Objection.  Form.",
+  "Direction form": "Objection.  Form.",
+  "Objection. Ford.": "Objection.  Form.",
+  "Objection. Four.": "Objection.  Form.",
+  "Exit form": "Objection.  Form.",
+  "Action form": "Objection.  Form.",
+  "Action point": "Objection.  Form.",
+  Injection: "Objection.",
+  Infection: "Objection.",
+  Protection: "Objection.",
+  Perfection: "Objection.",
+  Detection: "Objection.",
+  Dissection: "Objection.",
+  Eviction: "Objection.",
+  Addiction: "Objection.",
+  Deflection: "Objection.",
+  Definition: "Objection.",
+  Perception: "Objection.",
+  "Objection. Form.": "Objection.  Form.",
+  "Objection. Nonresponsive.": "Objection.  Nonresponsive.",
+  "Objection. Hearsay.": "Objection.  Hearsay.",
+  "Objection. Speculation.": "Objection.  Speculation.",
+  "Objection. Foundation.": "Objection.  Foundation.",
+  "Objection. Leading.": "Objection.  Leading.",
+};
+
+export const MEDICAL_GARBLE_MAP: Record<string, string> = {
+  polyhydraminose: "polyhydramnios",
+  polyhydramine: "polyhydramnios",
+  polyhydraminosis: "polyhydramnios",
+  "curriculum of IT": "curriculum vitae",
+  "curriculum of a tea": "curriculum vitae",
+  "thick hole sack": "thecal sac",
+  "theca sac": "thecal sac",
+  "neuro foraminal": "neuroforaminal",
+  "new row foraminal": "neuroforaminal",
+  "radiculop athy": "radiculopathy",
+  "inter vertebral disc": "intervertebral disc",
+};
 
 export const MONTH_NAMES_ARRAY = [
   "",
