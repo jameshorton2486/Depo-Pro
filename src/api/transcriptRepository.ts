@@ -77,6 +77,9 @@ type TranscriptUtteranceRow = {
   excluded_from_output?: boolean | null;
   exclusion_reason?: string | null;
   is_synthetic?: boolean | null;
+  line_type?: string | null;
+  ai_suggested_line_type?: string | null;
+  manually_reassigned?: boolean | null;
 };
 
 type TranscriptUtteranceInsert = Omit<TranscriptUtteranceRow, "id"> & { id?: string };
