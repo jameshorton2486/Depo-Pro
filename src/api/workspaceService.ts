@@ -727,6 +727,22 @@ export const workspaceApi = {
 
     return { ok: true as const };
   },
+  resolveAISuggestion: async (
+    jobId: string,
+    wordId: string,
+    body: Parameters<typeof contractApi.resolveAISuggestion>[2],
+  ) => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.resolveAISuggestion(jobId, wordId, body);
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.resolveAISuggestion(target.transcript_id, wordId, body);
+    }
+
+    return contractApi.resolveAISuggestion(jobId, wordId, body);
+  },
   getExhibits: async (jobId: string): Promise<Exhibit[]> => {
     if (USE_MOCK_WORKSPACE) {
       return contractApi.getExhibits(jobId);

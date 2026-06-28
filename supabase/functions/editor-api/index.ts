@@ -62,6 +62,10 @@ type TranscriptWordRow = {
   ordinal: number;
   word_index?: number | null;
   working_text?: string | null;
+  ai_suggestion?: string | null;
+  ai_suggestion_reason?: string | null;
+  ai_confidence?: number | null;
+  ai_suggestion_status?: string | null;
   removed?: boolean | null;
 };
 
@@ -84,13 +88,14 @@ type RouteMatch =
   | { kind: "speakers"; jobId: string }
   | { kind: "suggestions"; jobId: string }
   | { kind: "resolveSuggestion"; jobId: string; suggestionId: string }
+  | { kind: "aiSuggestionAction"; jobId: string; wordId: string }
   | { kind: "exhibits"; jobId: string }
   | { kind: "certifyStatus"; jobId: string };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version",
-  "Access-Control-Allow-Methods": "GET, PUT, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, PUT, POST, PATCH, OPTIONS",
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -156,6 +161,8 @@ Deno.serve(async (request) => {
         return handleGetSuggestions(context);
       case "resolveSuggestion":
         return handleResolveSuggestion(context);
+      case "aiSuggestionAction":
+        return handlePatchAiSuggestion(context, match.wordId);
       case "exhibits":
         return handleGetExhibits(context);
       case "certifyStatus":
@@ -285,7 +292,7 @@ async function loadWords(
     const to = from + WORD_PAGE_SIZE - 1;
     const { data, error } = await supabase
       .from("transcript_words")
-      .select("word_id, utterance_id, speaker_id, start_time, end_time, confidence, reviewed, edited, text, raw_text, ordinal, word_index, working_text, removed")
+      .select("word_id, utterance_id, speaker_id, start_time, end_time, confidence, reviewed, edited, text, raw_text, ordinal, word_index, working_text, ai_suggestion, ai_suggestion_reason, ai_confidence, ai_suggestion_status, removed")
       .eq("transcript_id", transcriptId)
       .order("word_index", { ascending: true })
       .order("ordinal", { ascending: true })
@@ -384,6 +391,8 @@ function mapWordRow(row: TranscriptWordRow): Word {
     confidence: row.confidence,
     reviewed: row.reviewed,
     edited: text !== row.raw_text,
+    ai_suggestion: row.ai_suggestion ?? null,
+    ai_suggestion_status: row.ai_suggestion_status ?? null,
   };
 }
 
@@ -791,12 +800,104 @@ type AuditInsertRow = {
   utterance_id: string | null;
   word_id: string | null;
   source: string;
-  action: "assign_speaker";
+  action: "assign_speaker" | "ai_suggestion_accepted" | "ai_suggestion_rejected";
   old_text: string | null;
   new_text: string | null;
   before_text: string | null;
   after_text: string | null;
 };
+
+async function handlePatchAiSuggestion(
+  context: RouteContext,
+  wordId: string,
+): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateAiSuggestionActionPayload(body);
+  const transcriptId = context.transcript.transcript_id;
+
+  const { data, error } = await context.supabase
+    .from("transcript_words")
+    .select("word_id, raw_text, text, working_text, ai_suggestion, ai_suggestion_status, utterance_id")
+    .eq("transcript_id", transcriptId)
+    .eq("word_id", wordId)
+    .maybeSingle();
+
+  if (error) {
+    throw new HttpError(500, "failed to load ai suggestion");
+  }
+
+  if (!data) {
+    throw new HttpError(404, "unknown ai suggestion");
+  }
+
+  const row = data as {
+    word_id: string;
+    raw_text: string;
+    text: string;
+    working_text?: string | null;
+    ai_suggestion?: string | null;
+    ai_suggestion_status?: string | null;
+    utterance_id: string;
+  };
+
+  if (!row.ai_suggestion) {
+    throw new HttpError(404, "unknown ai suggestion");
+  }
+
+  if (payload.action === "accept") {
+    const nextText = row.ai_suggestion;
+    const updateResult = await context.supabase
+      .from("transcript_words")
+      .update({
+        working_text: nextText === row.raw_text ? null : nextText,
+        text: nextText,
+        edited: nextText !== row.raw_text,
+        ai_suggestion_status: "accepted",
+      })
+      .eq("transcript_id", transcriptId)
+      .eq("word_id", wordId);
+
+    if (updateResult.error) {
+      throw new HttpError(500, "failed to accept ai suggestion");
+    }
+
+    await appendAuditRows(context, [{
+      utterance_id: row.utterance_id,
+      word_id: row.word_id,
+      source: "ai_review",
+      action: "ai_suggestion_accepted",
+      old_text: row.working_text ?? row.raw_text,
+      new_text: nextText,
+      before_text: row.working_text ?? row.raw_text,
+      after_text: nextText,
+    }]);
+
+    return respondJson(200, { ok: true });
+  }
+
+  const rejectResult = await context.supabase
+    .from("transcript_words")
+    .update({ ai_suggestion_status: "rejected" })
+    .eq("transcript_id", transcriptId)
+    .eq("word_id", wordId);
+
+  if (rejectResult.error) {
+    throw new HttpError(500, "failed to reject ai suggestion");
+  }
+
+  await appendAuditRows(context, [{
+    utterance_id: row.utterance_id,
+    word_id: row.word_id,
+    source: "ai_review",
+    action: "ai_suggestion_rejected",
+    old_text: row.working_text ?? row.raw_text,
+    new_text: row.ai_suggestion,
+    before_text: row.working_text ?? row.raw_text,
+    after_text: row.ai_suggestion,
+  }]);
+
+  return respondJson(200, { ok: true });
+}
 
 async function appendAuditRows(
   context: RouteContext,
@@ -954,6 +1055,23 @@ function validateSuggestionResolutionPayload(value: unknown): {
   };
 }
 
+function validateAiSuggestionActionPayload(value: unknown): {
+  action: "accept" | "reject";
+} {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  const payload = value as Record<string, unknown>;
+  if (payload.action !== "accept" && payload.action !== "reject") {
+    throw new HttpError(400, "bad payload");
+  }
+
+  return {
+    action: payload.action,
+  };
+}
+
 function normalizeSuggestionStatus(value: string): AiSuggestion["status"] {
   switch (value) {
     case "accepted":
@@ -1097,6 +1215,18 @@ function matchRoute(request: Request): RouteMatch | null {
       kind: "resolveSuggestion",
       jobId: routeParts[0],
       suggestionId: routeParts[2],
+    };
+  }
+
+  if (
+    routeParts.length === 3
+    && request.method === "PATCH"
+    && routeParts[1] === "ai-suggestions"
+  ) {
+    return {
+      kind: "aiSuggestionAction",
+      jobId: routeParts[0],
+      wordId: routeParts[2],
     };
   }
 

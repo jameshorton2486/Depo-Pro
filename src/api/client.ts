@@ -117,6 +117,13 @@ export const api = {
   ) =>
     request<{ ok: true }>("POST", url(jobId, `suggestions/${id}/resolve`), body),
 
+  resolveAISuggestion: (
+    jobId: string,
+    wordId: string,
+    body: { action: "accept" | "reject" }
+  ) =>
+    request<{ ok: true }>("PATCH", url(jobId, `ai-suggestions/${wordId}`), body),
+
   getExhibits: (jobId: string) =>
     request<Exhibit[]>("GET", url(jobId, "exhibits")),
 
