@@ -187,6 +187,8 @@ export function SpeakerPanel() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- speakers derived inline; useMemo deferred post-beta
   const speakers = state.document?.speakers ?? [];
   const speakerMapConfirmed = state.speakerMapConfirmed;
+  const pipelineState = state.pipelineState;
+  const awaitingVerification = pipelineState === "AWAITING_SPEAKER_VERIFICATION" && !speakerMapConfirmed;
 
   const startEdit = useCallback((spk: Speaker) => {
     setEditing(spk.speaker_id);
@@ -253,7 +255,7 @@ export function SpeakerPanel() {
         // Optimistic: update context + relabel editor nodes simultaneously
         updateSpeakers(updated);
         setTranscriptVersion(result.updatedAt);
-        setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false);
+        setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false, result.pipelineState ?? null);
         relabelInEditor(id, draft.display_name, draft.role);
         setEditing(null);
         setDrafts((d) => {
@@ -325,6 +327,11 @@ export function SpeakerPanel() {
           {speakers.length} speaker{speakers.length !== 1 ? "s" : ""}
         </span>
       </div>
+      {awaitingVerification && (
+        <div className="mx-3 mt-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          Please verify the speaker map before processing continues.
+        </div>
+      )}
 
       <AddParticipantInlineForm
         addingParticipant={addingParticipant}
@@ -372,6 +379,7 @@ export function SpeakerPanel() {
               isEditing={isEditing}
               draft={draft}
               saving={saving}
+              showAiSuggested={awaitingVerification}
               roleColor={roleColor}
               onStartEdit={startEdit}
               onCancelEdit={cancelEdit}
@@ -408,6 +416,7 @@ interface CardProps {
   isEditing: boolean;
   draft?: { display_name: string; role?: Speaker["role"] };
   saving: boolean;
+  showAiSuggested: boolean;
   roleColor: string;
   onStartEdit: (spk: Speaker) => void;
   onCancelEdit: (id: string) => void;
@@ -420,6 +429,7 @@ function SpeakerCard({
   isEditing,
   draft,
   saving,
+  showAiSuggested,
   roleColor,
   onStartEdit,
   onCancelEdit,
@@ -454,6 +464,11 @@ function SpeakerCard({
         {sourceFileLabel && (
           <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
             {sourceFileLabel}
+          </span>
+        )}
+        {showAiSuggested && (
+          <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">
+            ✦ AI suggested
           </span>
         )}
         {!isEditing && spk.role && (
@@ -549,7 +564,7 @@ function UtteranceReassignment({
   speakers: Speaker[];
   jobUpdatedAt: string | null;
   setTranscriptVersion: (updatedAt: string | null) => void;
-  setSpeakerMapConfirmed: (confirmed: boolean) => void;
+  setSpeakerMapConfirmed: (confirmed: boolean, pipelineState?: string | null) => void;
 }) {
   const { state } = useDocument();
   const { editor } = useEditorContext();
@@ -609,7 +624,7 @@ function UtteranceReassignment({
           lastKnownUpdatedAt: jobUpdatedAt,
         });
         setTranscriptVersion(result.updatedAt);
-        setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false);
+        setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false, result.pipelineState ?? null);
       } catch (error) {
         console.error("[DEPO-PRO] saveSpeakers failed", error);
       } finally {

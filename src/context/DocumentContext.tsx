@@ -35,6 +35,7 @@ interface State {
   lastSavedAt: number | null;
   jobUpdatedAt: string | null;
   speakerMapConfirmed: boolean;
+  pipelineState: string | null;
   structureConfirmed: boolean;
   keepRawLabels: boolean;
   audioSegments: WorkspaceAudioSegment[];
@@ -47,7 +48,7 @@ interface State {
 
 type Action =
   | { type: "LOAD_START" }
-  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; audioSegments: WorkspaceAudioSegment[] }
+  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; pipelineState: string | null; audioSegments: WorkspaceAudioSegment[] }
   | { type: "SET_CORRECTION_REPORT"; report: CorrectionReport }
   | { type: "LOAD_ERR"; error: string }
   | { type: "UPDATE_MEDIA_URL"; mediaUrl: string; segmentIndex: number }
@@ -66,7 +67,7 @@ type Action =
   | { type: "SAVE_ERR"; error: string }
   | { type: "UPDATE_SPEAKERS"; speakers: Speaker[] }
   | { type: "SET_TRANSCRIPT_VERSION"; updatedAt: string | null }
-  | { type: "SET_SPEAKER_MAP_CONFIRMED"; confirmed: boolean }
+  | { type: "SET_SPEAKER_MAP_CONFIRMED"; confirmed: boolean; pipelineState?: string | null }
   | { type: "CONFIRM_STRUCTURE" }
   | { type: "KEEP_RAW_LABELS" }
   | { type: "MARK_REVIEWED"; word_ids: string[] }
@@ -95,6 +96,7 @@ export function documentReducer(state: State, action: Action): State {
         editSeq: 0,
         jobUpdatedAt: action.updatedAt,
         speakerMapConfirmed: action.speakerMapConfirmed,
+        pipelineState: action.pipelineState,
         structureConfirmed: false,
         keepRawLabels: false,
         audioSegments: action.audioSegments,
@@ -175,7 +177,11 @@ export function documentReducer(state: State, action: Action): State {
       return { ...state, jobUpdatedAt: action.updatedAt };
 
     case "SET_SPEAKER_MAP_CONFIRMED":
-      return { ...state, speakerMapConfirmed: action.confirmed };
+      return {
+        ...state,
+        speakerMapConfirmed: action.confirmed,
+        pipelineState: action.pipelineState ?? state.pipelineState,
+      };
 
     case "CONFIRM_STRUCTURE":
       return { ...state, structureConfirmed: true, keepRawLabels: false };
@@ -231,7 +237,7 @@ interface ContextValue {
   saveNow: () => Promise<void>;
   updateSpeakers: (speakers: Speaker[]) => void;
   setTranscriptVersion: (updatedAt: string | null) => void;
-  setSpeakerMapConfirmed: (confirmed: boolean) => void;
+  setSpeakerMapConfirmed: (confirmed: boolean, pipelineState?: string | null) => void;
   confirmStructure: () => void;
   keepRawLabels: () => void;
   markReviewed: (word_ids: string[]) => void;
@@ -254,6 +260,7 @@ export function createInitialDocumentState(jobId: string): State {
     lastSavedAt: null,
     jobUpdatedAt: null,
     speakerMapConfirmed: false,
+    pipelineState: null,
     structureConfirmed: false,
     keepRawLabels: false,
     audioSegments: [],
@@ -286,6 +293,7 @@ export function DocumentProvider({
         doc: loaded.document,
         updatedAt: loaded.updatedAt,
         speakerMapConfirmed: loaded.speakerMapConfirmed,
+        pipelineState: loaded.pipelineState,
         audioSegments: loaded.audioSegments,
       });
       dispatch({
@@ -398,8 +406,8 @@ export function DocumentProvider({
     dispatch({ type: "SET_TRANSCRIPT_VERSION", updatedAt });
   }, []);
 
-  const setSpeakerMapConfirmed = useCallback((confirmed: boolean) => {
-    dispatch({ type: "SET_SPEAKER_MAP_CONFIRMED", confirmed });
+  const setSpeakerMapConfirmed = useCallback((confirmed: boolean, pipelineState?: string | null) => {
+    dispatch({ type: "SET_SPEAKER_MAP_CONFIRMED", confirmed, pipelineState });
   }, []);
 
   const confirmStructure = useCallback(() => {

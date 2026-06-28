@@ -28,6 +28,7 @@ export interface WorkspaceLoadResult {
   document: EditorDocument;
   updatedAt: string | null;
   speakerMapConfirmed: boolean;
+  pipelineState: string | null;
   audioSegments: WorkspaceAudioSegment[];
 }
 
@@ -51,6 +52,7 @@ export interface WorkspaceMutationResult {
   ok: true;
   updatedAt: string | null;
   speakerMapConfirmed?: boolean;
+  pipelineState?: string | null;
 }
 
 function mapSpeakerRole(role: string | null | undefined): Speaker["role"] | undefined {
@@ -156,6 +158,7 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
     document: buildEditorDocumentFromSnapshot(snapshot, mediaUrl),
     updatedAt: snapshot.job.updated_at,
     speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
+    pipelineState: snapshot.job.pipeline_state ?? null,
     audioSegments: await loadAudioSegments(snapshot.job, mediaUrl),
   };
 }
@@ -557,6 +560,7 @@ async function persistSpeakers(
       ok: true,
       updatedAt: updatedJob.updated_at,
       speakerMapConfirmed: updatedJob.speaker_map_confirmed,
+      pipelineState: updatedJob.pipeline_state ?? null,
     };
   });
 }
@@ -606,6 +610,7 @@ export const workspaceApi = {
         document: await contractApi.getDocument(caseId),
         updatedAt: null,
         speakerMapConfirmed: false,
+        pipelineState: null,
         audioSegments: [],
       };
     }
@@ -621,6 +626,7 @@ export const workspaceApi = {
         document,
         updatedAt: target.updated_at,
         speakerMapConfirmed: target.speaker_map_confirmed,
+        pipelineState: target.pipeline_state ?? null,
         audioSegments: await loadAudioSegments(target, document.media_url),
       };
     }
@@ -670,7 +676,8 @@ export const workspaceApi = {
       return {
         ok: true,
         updatedAt: refreshed?.updated_at ?? target.updated_at,
-        speakerMapConfirmed: isSpeakerMapConfirmed(payload.speakers),
+        speakerMapConfirmed: refreshed?.speaker_map_confirmed ?? isSpeakerMapConfirmed(payload.speakers),
+        pipelineState: refreshed?.pipeline_state ?? null,
       };
     }
 

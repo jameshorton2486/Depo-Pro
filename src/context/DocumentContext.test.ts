@@ -50,6 +50,7 @@ describe("documentReducer save sequencing", () => {
       doc: buildDocument(),
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
+      pipelineState: null,
       audioSegments: [],
     });
     state = documentReducer(state, {
@@ -78,6 +79,7 @@ describe("documentReducer save sequencing", () => {
       doc: buildDocument(),
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
+      pipelineState: null,
       audioSegments: [],
     });
     state = documentReducer(state, {
@@ -115,6 +117,7 @@ describe("documentReducer save sequencing", () => {
       doc: buildDocument(),
       updatedAt: "2026-06-05T00:00:00.000Z",
       speakerMapConfirmed: false,
+      pipelineState: null,
       audioSegments: [],
     });
 
@@ -128,6 +131,7 @@ describe("documentReducer save sequencing", () => {
       doc: buildDocument(),
       updatedAt: "2026-06-05T00:00:01.000Z",
       speakerMapConfirmed: false,
+      pipelineState: null,
       audioSegments: [],
     });
 
@@ -144,6 +148,7 @@ describe("documentReducer save sequencing", () => {
 
     expect(state.correctionReport?.job_id).toBe("case_test_001");
   });
+
   it("sets keepRawLabels when raw labels are explicitly kept", () => {
     let state = createInitialDocumentState("case_test_001");
     state = documentReducer(state, { type: "KEEP_RAW_LABELS" });
@@ -161,4 +166,26 @@ describe("documentReducer save sequencing", () => {
     expect(state.keepRawLabels).toBe(false);
   });
 
+  it("tracks pipeline state through speaker verification updates", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+      pipelineState: "AWAITING_SPEAKER_VERIFICATION",
+      audioSegments: [],
+    });
+
+    expect(state.pipelineState).toBe("AWAITING_SPEAKER_VERIFICATION");
+
+    state = documentReducer(state, {
+      type: "SET_SPEAKER_MAP_CONFIRMED",
+      confirmed: true,
+      pipelineState: "SPEAKER_VERIFIED",
+    });
+
+    expect(state.speakerMapConfirmed).toBe(true);
+    expect(state.pipelineState).toBe("SPEAKER_VERIFIED");
+  });
 });

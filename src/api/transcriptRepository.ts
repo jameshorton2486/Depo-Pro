@@ -29,6 +29,8 @@ export type TranscriptJobRow = {
   raw_checksum: string | null;
   last_error: string | null;
   speaker_map_confirmed: boolean;
+  pipeline_state?: string | null;
+  speaker_map_verified?: boolean;
   created_at: string;
   updated_at: string;
 };
