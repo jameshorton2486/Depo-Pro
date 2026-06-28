@@ -8,7 +8,7 @@ import type {
   Speaker,
   SpeakersPayload,
 } from "./types";
-import { api as contractApi } from "./client";
+import { api as contractApi, type PendingAISuggestion } from "./client";
 import { getSignedUrl } from "./fileService";
 import { isRealApiMode } from "../lib/runtime/mode";
 import {
@@ -79,6 +79,9 @@ function buildEditorDocumentFromSnapshot(
   snapshot: NonNullable<Awaited<ReturnType<typeof loadTranscriptSnapshot>>>,
   mediaUrl: string,
 ): EditorDocument {
+  const speakerResolutionById = new Map(
+    snapshot.speakerResolutions.map((resolution) => [resolution.speaker_id, resolution]),
+  );
   const visibleUtterances = snapshot.utterances.filter((utterance) => !utterance.excluded_from_output);
   const visibleUtteranceIds = new Set(visibleUtterances.map((utterance) => utterance.utterance_id));
   const wordIdsByUtterance = new Map<string, string[]>();
@@ -100,7 +103,9 @@ function buildEditorDocumentFromSnapshot(
       display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
       deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker ?? null,
       role: mapSpeakerRole(speaker.speaker_role || speaker.role),
-    })),
+      ai_suggested: speakerResolutionById.get(speaker.speaker_id)?.ai_suggested ?? false,
+      ai_suggestion_reason: speakerResolutionById.get(speaker.speaker_id)?.evidence ?? "",
+    })) as EditorDocument["speakers"],
     utterances: visibleUtterances.map((utterance) => ({
       utterance_id: utterance.utterance_id,
       speaker_id: utterance.speaker_id,
@@ -502,6 +507,12 @@ async function persistSpeakers(
         throw error;
       }
 
+      await client
+        .from("speaker_resolution_current")
+        .update({ ai_suggested: false, verified: true })
+        .eq("transcript_id", job.transcript_id)
+        .eq("speaker_id", speaker.speaker_id);
+
       auditEntries.push({
         transcript_id: job.transcript_id,
         case_id: job.case_id,
@@ -742,6 +753,30 @@ export const workspaceApi = {
     }
 
     return contractApi.resolveAISuggestion(jobId, wordId, body);
+  },
+  getAISuggestions: async (jobId: string): Promise<PendingAISuggestion[]> => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.getAISuggestions(jobId);
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.getAISuggestions(target.transcript_id);
+    }
+
+    return contractApi.getAISuggestions(jobId);
+  },
+  acceptAllAISuggestions: async (jobId: string): Promise<{ accepted_count: number }> => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.acceptAllAISuggestions(jobId);
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.acceptAllAISuggestions(target.transcript_id);
+    }
+
+    return contractApi.acceptAllAISuggestions(jobId);
   },
   getExhibits: async (jobId: string): Promise<Exhibit[]> => {
     if (USE_MOCK_WORKSPACE) {

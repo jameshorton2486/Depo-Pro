@@ -6,6 +6,9 @@ const clientApi = {
   saveReview: vi.fn(),
   saveSpeakers: vi.fn(),
   addSpeaker: vi.fn(),
+  getAISuggestions: vi.fn(),
+  acceptAllAISuggestions: vi.fn(),
+  resolveAISuggestion: vi.fn(),
   getSuggestions: vi.fn(),
   resolveSuggestion: vi.fn(),
   getExhibits: vi.fn(),
@@ -92,6 +95,9 @@ describe("workspaceApi real-API mutation wrappers", () => {
     clientApi.saveReview.mockReset();
     clientApi.saveSpeakers.mockReset();
     clientApi.addSpeaker.mockReset();
+    clientApi.getAISuggestions.mockReset();
+    clientApi.acceptAllAISuggestions.mockReset();
+    clientApi.resolveAISuggestion.mockReset();
     clientApi.getSuggestions.mockReset();
     clientApi.resolveSuggestion.mockReset();
     clientApi.getExhibits.mockReset();
@@ -195,5 +201,15 @@ describe("workspaceApi real-API mutation wrappers", () => {
       deepgram_speaker: null,
       role: "ATTORNEY",
     });
+  });
+
+  it("routes ai suggestion actions through the transcript id in real API mode", async () => {
+    repo.getTranscriptJobByTranscriptId.mockResolvedValueOnce(buildTranscriptRow("T1"));
+    clientApi.resolveAISuggestion.mockResolvedValue({ ok: true });
+
+    const { workspaceApi } = await import("./workspaceService");
+    await workspaceApi.resolveAISuggestion("tr_123", "word_1", { action: "accept" });
+
+    expect(clientApi.resolveAISuggestion).toHaveBeenCalledWith("tr_123", "word_1", { action: "accept" });
   });
 });

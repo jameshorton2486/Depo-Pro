@@ -16,6 +16,16 @@ import { AuthRequiredError, getSupabaseAccessToken } from "../lib/supabase";
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
 
+export interface PendingAISuggestion {
+  word_id: string;
+  utterance_id: string;
+  raw_text: string;
+  ai_suggestion: string;
+  ai_suggestion_reason: string;
+  ai_confidence: number;
+  utterance_raw_text: string;
+}
+
 let _baseUrl = "";
 
 export function configureClient(apiBaseUrl: string) {
@@ -123,6 +133,12 @@ export const api = {
     body: { action: "accept" | "reject" }
   ) =>
     request<{ ok: true }>("PATCH", url(jobId, `ai-suggestions/${wordId}`), body),
+
+  getAISuggestions: (jobId: string) =>
+    request<PendingAISuggestion[]>("GET", url(jobId, "ai-suggestions")),
+
+  acceptAllAISuggestions: (jobId: string) =>
+    request<{ accepted_count: number }>("POST", url(jobId, "ai-suggestions/accept-all")),
 
   getExhibits: (jobId: string) =>
     request<Exhibit[]>("GET", url(jobId, "exhibits")),
