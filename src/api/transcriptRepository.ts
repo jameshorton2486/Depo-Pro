@@ -31,6 +31,7 @@ export type TranscriptJobRow = {
   speaker_map_confirmed: boolean;
   pipeline_state?: string | null;
   speaker_map_verified?: boolean;
+  ai_review_meta?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -101,6 +102,10 @@ type TranscriptWordRow = {
   job_id: string;
   word_index: number;
   working_text: string | null;
+  ai_suggestion?: string | null;
+  ai_suggestion_reason?: string | null;
+  ai_confidence?: number | null;
+  ai_suggestion_status?: string | null;
   speaker_index: number;
   is_filler: boolean;
   removed: boolean;
