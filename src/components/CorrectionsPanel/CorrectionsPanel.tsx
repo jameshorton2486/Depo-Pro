@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
+import { AISuggestionsSection } from "./AISuggestionsSection";
 import type {
   CorrectionReport,
   RetranscriptionCandidate,
@@ -31,7 +32,7 @@ export async function copyRetranscriptionKeyterms(
   );
 }
 
-function scrollToWord(wordId: string): void {
+export function scrollToWord(wordId: string): void {
   const el = document.querySelector<HTMLElement>(`[data-word-id="${wordId}"]`);
   if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -42,6 +43,7 @@ function scrollToWord(wordId: string): void {
 export function CorrectionsPanel() {
   const { state } = useDocument();
   const report = state.correctionReport;
+  const transcriptId = state.document?.job_id ?? state.jobId;
 
   if (!report) {
     return (
@@ -79,6 +81,11 @@ export function CorrectionsPanel() {
 
       <div className="flex-1 space-y-3 p-3">
         <SummaryCard report={report} isClean={isClean} />
+
+        <AISuggestionsSection
+          transcriptId={transcriptId}
+          onScrollToWord={scrollToWord}
+        />
 
         {report.retranscription_candidates.length > 0 && (
           <RetranscriptionSection candidates={report.retranscription_candidates} />
