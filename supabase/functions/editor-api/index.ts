@@ -88,7 +88,9 @@ type RouteMatch =
   | { kind: "speakers"; jobId: string }
   | { kind: "suggestions"; jobId: string }
   | { kind: "resolveSuggestion"; jobId: string; suggestionId: string }
+  | { kind: "aiSuggestions"; jobId: string }
   | { kind: "aiSuggestionAction"; jobId: string; wordId: string }
+  | { kind: "aiSuggestionAcceptAll"; jobId: string }
   | { kind: "exhibits"; jobId: string }
   | { kind: "certifyStatus"; jobId: string };
 
@@ -161,8 +163,12 @@ Deno.serve(async (request) => {
         return handleGetSuggestions(context);
       case "resolveSuggestion":
         return handleResolveSuggestion(context);
+      case "aiSuggestions":
+        return handleGetAiSuggestions(context);
       case "aiSuggestionAction":
         return handlePatchAiSuggestion(context, match.wordId);
+      case "aiSuggestionAcceptAll":
+        return handleAcceptAllAiSuggestions(context);
       case "exhibits":
         return handleGetExhibits(context);
       case "certifyStatus":
@@ -554,6 +560,12 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
     if (updateResult.error) {
       throw new HttpError(500, "failed to save speakers");
     }
+
+    await context.supabase
+      .from("speaker_resolution_current")
+      .update({ ai_suggested: false, verified: true })
+      .eq("transcript_id", transcriptId)
+      .eq("speaker_id", speaker.speaker_id);
   }
 
   if (payload.utterance_speaker_map) {
@@ -899,6 +911,109 @@ async function handlePatchAiSuggestion(
   return respondJson(200, { ok: true });
 }
 
+type PendingAISuggestionRow = {
+  word_id: string;
+  utterance_id: string;
+  raw_text: string;
+  ai_suggestion: string | null;
+  ai_suggestion_reason: string | null;
+  ai_confidence: number | null;
+};
+
+async function handleGetAiSuggestions(context: RouteContext): Promise<Response> {
+  const transcriptId = context.transcript.transcript_id;
+  const [wordsResult, utterancesResult] = await Promise.all([
+    context.supabase
+      .from("transcript_words")
+      .select("word_id, utterance_id, raw_text, ai_suggestion, ai_suggestion_reason, ai_confidence")
+      .eq("transcript_id", transcriptId)
+      .eq("ai_suggestion_status", "pending")
+      .order("ai_confidence", { ascending: false }),
+    context.supabase
+      .from("transcript_utterances")
+      .select("utterance_id, text")
+      .eq("transcript_id", transcriptId),
+  ]);
+
+  if (wordsResult.error || utterancesResult.error) {
+    throw new HttpError(500, "failed to load ai suggestions");
+  }
+
+  const utteranceTextById = new Map(
+    ((utterancesResult.data ?? []) as Array<{ utterance_id: string; text?: string | null }>).map((row) => [
+      row.utterance_id,
+      row.text ?? "",
+    ]),
+  );
+
+  const suggestions = ((wordsResult.data ?? []) as PendingAISuggestionRow[]).map((row) => ({
+    word_id: row.word_id,
+    utterance_id: row.utterance_id,
+    raw_text: row.raw_text,
+    ai_suggestion: row.ai_suggestion ?? "",
+    ai_suggestion_reason: row.ai_suggestion_reason ?? "",
+    ai_confidence: row.ai_confidence ?? 0,
+    utterance_raw_text: utteranceTextById.get(row.utterance_id) ?? "",
+  }));
+
+  return respondJson(200, suggestions);
+}
+
+async function handleAcceptAllAiSuggestions(context: RouteContext): Promise<Response> {
+  const transcriptId = context.transcript.transcript_id;
+  const { data, error } = await context.supabase
+    .from("transcript_words")
+    .select("word_id, utterance_id, raw_text, ai_suggestion")
+    .eq("transcript_id", transcriptId)
+    .eq("ai_suggestion_status", "pending");
+
+  if (error) {
+    throw new HttpError(500, "failed to load ai suggestions");
+  }
+
+  const rows = (data ?? []) as Array<{
+    word_id: string;
+    utterance_id: string;
+    raw_text: string;
+    ai_suggestion: string | null;
+  }>;
+
+  if (rows.length === 0) {
+    return respondJson(200, { accepted_count: 0 });
+  }
+
+  for (const row of rows) {
+    const nextText = row.ai_suggestion ?? row.raw_text;
+    const updateResult = await context.supabase
+      .from("transcript_words")
+      .update({
+        working_text: nextText === row.raw_text ? null : nextText,
+        text: nextText,
+        edited: nextText !== row.raw_text,
+        ai_suggestion_status: "accepted",
+      })
+      .eq("transcript_id", transcriptId)
+      .eq("word_id", row.word_id);
+
+    if (updateResult.error) {
+      throw new HttpError(500, "failed to accept all ai suggestions");
+    }
+  }
+
+  await appendAuditRows(context, [{
+    utterance_id: null,
+    word_id: null,
+    source: "ai_review",
+    action: "ai_suggestion_accepted",
+    old_text: `${rows.length} pending ai suggestion(s)`,
+    new_text: "accepted",
+    before_text: `${rows.length} pending ai suggestion(s)`,
+    after_text: "accepted",
+  }]);
+
+  return respondJson(200, { accepted_count: rows.length });
+}
+
 async function appendAuditRows(
   context: RouteContext,
   rows: AuditInsertRow[],
@@ -1219,6 +1334,14 @@ function matchRoute(request: Request): RouteMatch | null {
   }
 
   if (
+    routeParts.length === 2
+    && request.method === "GET"
+    && routeParts[1] === "ai-suggestions"
+  ) {
+    return { kind: "aiSuggestions", jobId: routeParts[0] };
+  }
+
+  if (
     routeParts.length === 3
     && request.method === "PATCH"
     && routeParts[1] === "ai-suggestions"
@@ -1227,6 +1350,18 @@ function matchRoute(request: Request): RouteMatch | null {
       kind: "aiSuggestionAction",
       jobId: routeParts[0],
       wordId: routeParts[2],
+    };
+  }
+
+  if (
+    routeParts.length === 3
+    && request.method === "POST"
+    && routeParts[1] === "ai-suggestions"
+    && routeParts[2] === "accept-all"
+  ) {
+    return {
+      kind: "aiSuggestionAcceptAll",
+      jobId: routeParts[0],
     };
   }
 

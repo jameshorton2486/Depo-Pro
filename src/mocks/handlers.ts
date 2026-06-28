@@ -90,6 +90,38 @@ const suggestionState = new Map<string, AiSuggestion>(
   FIXTURE_SUGGESTIONS.map((s) => [s.suggestion_id, { ...s }])
 );
 
+const pendingAiSuggestionState = new Map<
+  string,
+  {
+    word_id: string;
+    utterance_id: string;
+    raw_text: string;
+    ai_suggestion: string;
+    ai_suggestion_reason: string;
+    ai_confidence: number;
+    utterance_raw_text: string;
+  }
+>([
+  ["w_ai_1", {
+    word_id: "w_ai_1",
+    utterance_id: "utt_1",
+    raw_text: "raiding",
+    ai_suggestion: "radiating",
+    ai_suggestion_reason: "Medical context indicates the symptom is radiating pain.",
+    ai_confidence: 0.93,
+    utterance_raw_text: "The pain was raiding down the leg.",
+  }],
+  ["w_ai_2", {
+    word_id: "w_ai_2",
+    utterance_id: "utt_2",
+    raw_text: "accent",
+    ai_suggestion: "accident",
+    ai_suggestion_reason: "Context suggests accident rather than accent.",
+    ai_confidence: 0.88,
+    utterance_raw_text: "He described the accent in detail after the collision.",
+  }],
+]);
+
 function cloneDocument(doc: EditorDocument): EditorDocument {
   return {
     ...doc,
@@ -336,6 +368,25 @@ export const handlers = [
       });
     }
     return HttpResponse.json({ ok: true });
+  }),
+
+  http.get("*/:jobId/ai-suggestions", () =>
+    HttpResponse.json(Array.from(pendingAiSuggestionState.values())),
+  ),
+
+  http.patch("*/:jobId/ai-suggestions/:wordId", async ({ params, request }) => {
+    const wordId = params.wordId as string;
+    const body = await request.json() as { action?: "accept" | "reject" };
+    if (body.action === "accept" || body.action === "reject") {
+      pendingAiSuggestionState.delete(wordId);
+    }
+    return HttpResponse.json({ ok: true });
+  }),
+
+  http.post("*/:jobId/ai-suggestions/accept-all", () => {
+    const accepted_count = pendingAiSuggestionState.size;
+    pendingAiSuggestionState.clear();
+    return HttpResponse.json({ accepted_count });
   }),
 
   // GET exhibits
