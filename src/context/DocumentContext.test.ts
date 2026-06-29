@@ -188,4 +188,51 @@ describe("documentReducer save sequencing", () => {
     expect(state.speakerMapConfirmed).toBe(true);
     expect(state.pipelineState).toBe("SPEAKER_VERIFIED");
   });
+
+  it("increments speakersVersion on UPDATE_SPEAKERS", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+      pipelineState: null,
+      audioSegments: [],
+    });
+
+    expect(state.speakersVersion).toBe(0);
+
+    state = documentReducer(state, {
+      type: "UPDATE_SPEAKERS",
+      speakers: [{
+        speaker_id: "spk_001",
+        display_name: "MR. BENTLEY",
+        deepgram_speaker: 0,
+        role: "ATTORNEY",
+      }],
+    });
+    expect(state.speakersVersion).toBe(1);
+
+    state = documentReducer(state, {
+      type: "UPDATE_SPEAKERS",
+      speakers: [{
+        speaker_id: "spk_001",
+        display_name: "MR. BENTLEY",
+        deepgram_speaker: 0,
+        role: "ATTORNEY",
+      }],
+    });
+    expect(state.speakersVersion).toBe(2);
+  });
+
+  it("does not change speakersVersion on SAVE_OK", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "SAVE_OK",
+      savedSeq: 0,
+      updatedAt: "2026-06-05T00:00:01.000Z",
+    });
+
+    expect(state.speakersVersion).toBe(0);
+  });
 });

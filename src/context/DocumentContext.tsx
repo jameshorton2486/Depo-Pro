@@ -44,6 +44,7 @@ interface State {
   workingTexts: Record<UtteranceId, string>;
   wordMap: Record<string, Word>;
   editSeq: number;
+  speakersVersion: number;
 }
 
 type Action =
@@ -94,6 +95,7 @@ export function documentReducer(state: State, action: Action): State {
         dirty: false,
         changeLog: [],
         editSeq: 0,
+        speakersVersion: 0,
         jobUpdatedAt: action.updatedAt,
         speakerMapConfirmed: action.speakerMapConfirmed,
         pipelineState: action.pipelineState,
@@ -170,6 +172,7 @@ export function documentReducer(state: State, action: Action): State {
       return {
         ...state,
         document: { ...state.document, speakers: action.speakers },
+        speakersVersion: state.speakersVersion + 1,
       };
     }
 
@@ -269,6 +272,7 @@ export function createInitialDocumentState(jobId: string): State {
     workingTexts: {},
     wordMap: {},
     editSeq: 0,
+    speakersVersion: 0,
   };
 }
 
@@ -397,6 +401,17 @@ export function DocumentProvider({
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [state.dirty, state.saving]);
+
+  useEffect(() => {
+    if (!state.document || state.speakersVersion === 0) {
+      return;
+    }
+
+    dispatch({
+      type: "SET_CORRECTION_REPORT",
+      report: buildCorrectionReport(state.document, null),
+    });
+  }, [state.document, state.speakersVersion]);
 
   const updateSpeakers = useCallback((speakers: Speaker[]) => {
     dispatch({ type: "UPDATE_SPEAKERS", speakers });

@@ -41,6 +41,13 @@ export function isAISuggestedSpeaker(speaker: SpeakerView): boolean {
   return speaker.ai_suggested === true;
 }
 
+export function shouldRelabelInEditor(
+  previousRole: Speaker["role"] | undefined,
+  nextRole: Speaker["role"] | undefined,
+): boolean {
+  return previousRole === nextRole;
+}
+
 export function getSpeakerClusterBadgeLabel(speaker: Speaker): string {
   return speaker.deepgram_speaker != null ? `SPK ${speaker.deepgram_speaker}` : "CUSTOM";
 }
@@ -265,7 +272,10 @@ export function SpeakerPanel() {
         updateSpeakers(updated);
         setTranscriptVersion(result.updatedAt);
         setSpeakerMapConfirmed(result.speakerMapConfirmed ?? false, result.pipelineState ?? null);
-        relabelInEditor(id, draft.display_name, draft.role);
+        const previousRole = speakers.find((speaker) => speaker.speaker_id === id)?.role;
+        if (shouldRelabelInEditor(previousRole, draft.role)) {
+          relabelInEditor(id, draft.display_name, draft.role);
+        }
         setEditing(null);
         setDrafts((d) => {
           const next = { ...d };

@@ -7,6 +7,7 @@ import {
   addParticipantToSpeakerList,
   getSpeakerClusterBadgeLabel,
   isAISuggestedSpeaker,
+  shouldRelabelInEditor,
 } from "./SpeakerPanel";
 
 type ElementWithChildren = ReactElement<{ children?: ReactNode } & Record<string, unknown>>;
@@ -213,5 +214,14 @@ describe("SpeakerPanel", () => {
       deepgram_speaker: 2,
       role: "WITNESS",
     })).toBe(false);
+  });
+
+  it("skips in-place relabeling when the role changes", () => {
+    expect(shouldRelabelInEditor("OTHER", "ATTORNEY")).toBe(false);
+  });
+
+  it("keeps in-place relabeling for name-only changes", () => {
+    expect(shouldRelabelInEditor("ATTORNEY", "ATTORNEY")).toBe(true);
+    expect(shouldRelabelInEditor(undefined, undefined)).toBe(true);
   });
 });
