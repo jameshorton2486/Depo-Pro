@@ -2,7 +2,7 @@ import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { WordMark } from "../../extensions/WordMark";
 import { UtteranceNode } from "../../extensions/UtteranceNode";
 import { PageBreakNode } from "../../extensions/PageBreakNode";
@@ -19,6 +19,7 @@ import { createConfidencePlugin } from "../../extensions/ConfidencePlugin";
 import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
 import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
 import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
+import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
 
 interface Props {
   readOnly: boolean;
@@ -116,6 +117,12 @@ export function TranscriptEditor({ readOnly }: Props) {
   const lastScrollAtRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    utteranceId: string;
+    speakerId: string;
+  } | null>(null);
 
   // Snapshot of utterance texts at the last content-push.
   // Used to diff TipTap updates → only call editUtterance on changed utterances.
@@ -234,6 +241,33 @@ export function TranscriptEditor({ readOnly }: Props) {
     editorDom.addEventListener("click", handleClick);
     return () => editorDom.removeEventListener("click", handleClick);
   }, [editor, audio]);
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    const editorDom = editor.view.dom;
+
+    function handleContextMenu(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      const utteranceEl = target?.closest<HTMLElement>("[data-utterance-id]");
+      if (!utteranceEl?.dataset.utteranceId || !utteranceEl.dataset.speakerId) {
+        return;
+      }
+
+      event.preventDefault();
+      setActiveRef.current(utteranceEl.dataset.utteranceId);
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        utteranceId: utteranceEl.dataset.utteranceId,
+        speakerId: utteranceEl.dataset.speakerId,
+      });
+    }
+
+    editorDom.addEventListener("contextmenu", handleContextMenu);
+    return () => editorDom.removeEventListener("contextmenu", handleContextMenu);
+  }, [editor]);
 
   const clearHighlightedWord = useCallback(() => {
     lastElsRef.current.forEach((el) => el.classList.remove("word-playing"));
@@ -371,6 +405,15 @@ export function TranscriptEditor({ readOnly }: Props) {
 
         <EditorContent editor={editor} className="tiptap-transcript" />
       </div>
+      {contextMenu && (
+        <UtteranceContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          utteranceId={contextMenu.utteranceId}
+          currentSpeakerId={contextMenu.speakerId}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
