@@ -4,6 +4,19 @@ import { integrityAudit, type IntegrityAuditResult } from "../../../src/lib/tran
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
 import { advanceOrFinalizeMultifileJob } from "../../../src/lib/transcript/multifileCallbackFlow.ts";
 import {
+  applyOffRecordSections,
+  applyPostRecordCutoff,
+  applyPreRecordCutoff,
+  detectFormalOpening,
+  detectOffRecordSections,
+  detectPostRecordContent,
+  generateSyntheticParentheticals,
+  type BoundaryAiClient,
+  type BoundaryJobConfig,
+  type BoundaryUtteranceView,
+  type OffRecordSection,
+} from "../../../src/lib/transcript/boundaryEngine.ts";
+import {
   getPrimaryMediaUrl,
   getPrimaryMimeType,
   getPrimarySourceAudioId,
@@ -75,9 +88,11 @@ const corsHeaders = {
 
 const CASE_FILES_BUCKET = "case-files";
 const WORD_CHUNK_SIZE = 500;
+const SYNTHETIC_BOUNDARY_SPEAKER_ID = "spk_synthetic_boundary";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const deepgramApiKey = Deno.env.get("DEEPGRAM_API_KEY") ?? "";
+const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
@@ -196,6 +211,7 @@ Deno.serve(async (request) => {
           response_path: finalArtifact.path,
           error: null,
         });
+        await runBoundaryEngine(serviceClient, job);
         triggerAiReview(job.transcript_id);
         return finalArtifact.path;
       },
@@ -403,6 +419,339 @@ async function ingestTranscript(
     .insert(auditRow);
   if (auditError) {
     throw auditError;
+  }
+}
+
+type BoundaryTranscriptUtteranceRow = {
+  transcript_id: string;
+  utterance_id: string;
+  speaker_id: string;
+  start_time: number;
+  end_time: number;
+  ordinal: number;
+  job_id: string | null;
+  utterance_index: number | null;
+  speaker_index: number | null;
+  speaker_label: string | null;
+  text: string | null;
+  avg_confidence: string | null;
+  excluded_from_output?: boolean | null;
+  exclusion_reason?: "PRE_RECORD" | "OFF_RECORD" | "POST_RECORD" | null;
+  is_synthetic?: boolean | null;
+  owner_user_id: string | null;
+};
+
+type BoundaryTranscriptWordRow = {
+  word_index: number | null;
+};
+
+function createBoundaryAiClient(apiKey: string): BoundaryAiClient {
+  return {
+    async completeJson<T>(input): Promise<T> {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: input.maxTokens,
+          temperature: 0,
+          system: input.system,
+          messages: [{ role: "user", content: input.user }],
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Boundary engine request failed: ${response.status} ${text}`);
+      }
+
+      const payload = await response.json() as {
+        content?: Array<{ type?: string; text?: string }>;
+      };
+      const text = payload.content?.find((item) => item.type === "text")?.text;
+      if (!text) {
+        throw new Error("Boundary engine returned no text payload.");
+      }
+
+      return JSON.parse(text) as T;
+    },
+  };
+}
+
+function buildBoundarySyntheticInsert(
+  section: OffRecordSection,
+  template: BoundaryUtteranceView,
+  position: number,
+  job: TranscriptionJobRecord,
+  rows: BoundaryTranscriptUtteranceRow[],
+  nextWordIndex: number,
+): {
+  utterance: BoundaryTranscriptUtteranceRow;
+  word: {
+    transcript_id: string;
+    utterance_id: string;
+    word_id: string;
+    speaker_id: string;
+    ordinal: number;
+    text: string;
+    raw_text: string;
+    start_time: number;
+    end_time: number;
+    confidence: number;
+    reviewed: boolean;
+    edited: boolean;
+    job_id: string;
+    word_index: number;
+    working_text: string | null;
+    speaker_index: number | null;
+    is_filler: boolean | null;
+    removed: boolean;
+    owner_user_id: string;
+  };
+} {
+  const offAnchor = rows[Math.min(Math.max(section.off_utterance_index, 0), Math.max(rows.length - 1, 0))];
+  const onAnchor = rows[Math.min(Math.max(section.on_utterance_index, 0), Math.max(rows.length - 1, 0))];
+  const anchor = template.utterance_id.endsWith("_on")
+    ? onAnchor ?? offAnchor
+    : offAnchor ?? onAnchor;
+  const timestamp = anchor?.start_time ?? 0;
+  const utteranceId = `${job.transcript_id}_${template.utterance_id}`;
+  const wordId = `${utteranceId}_w1`;
+
+  return {
+    utterance: {
+      transcript_id: job.transcript_id,
+      utterance_id: utteranceId,
+      speaker_id: SYNTHETIC_BOUNDARY_SPEAKER_ID,
+      start_time: timestamp,
+      end_time: timestamp,
+      ordinal: position,
+      job_id: job.id,
+      utterance_index: position,
+      speaker_index: null,
+      speaker_label: "",
+      text: template.text,
+      avg_confidence: null,
+      excluded_from_output: false,
+      exclusion_reason: null,
+      is_synthetic: true,
+      owner_user_id: job.owner_user_id,
+    },
+    word: {
+      transcript_id: job.transcript_id,
+      utterance_id: utteranceId,
+      word_id: wordId,
+      speaker_id: SYNTHETIC_BOUNDARY_SPEAKER_ID,
+      ordinal: nextWordIndex,
+      text: template.text,
+      raw_text: template.text,
+      start_time: timestamp,
+      end_time: timestamp,
+      confidence: 1,
+      reviewed: true,
+      edited: false,
+      job_id: job.id,
+      word_index: nextWordIndex,
+      working_text: null,
+      speaker_index: null,
+      is_filler: false,
+      removed: false,
+      owner_user_id: job.owner_user_id,
+    },
+  };
+}
+
+async function runBoundaryEngine(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+): Promise<void> {
+  if (!anthropicApiKey) {
+    console.warn("[transcribe-callback] boundary engine skipped: missing ANTHROPIC_API_KEY", {
+      transcriptId: job.transcript_id,
+    });
+    return;
+  }
+
+  const [utterancesResult, caseResult, wordIndexResult] = await Promise.all([
+    supabase
+      .from("transcript_utterances")
+      .select("transcript_id, utterance_id, speaker_id, start_time, end_time, ordinal, job_id, utterance_index, speaker_index, speaker_label, text, avg_confidence, excluded_from_output, exclusion_reason, is_synthetic, owner_user_id")
+      .eq("transcript_id", job.transcript_id)
+      .order("utterance_index", { ascending: true }),
+    supabase
+      .from("cases")
+      .select("payload")
+      .eq("case_id", job.case_id)
+      .maybeSingle(),
+    supabase
+      .from("transcript_words")
+      .select("word_index")
+      .eq("transcript_id", job.transcript_id)
+      .order("word_index", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (utterancesResult.error) {
+    throw utterancesResult.error;
+  }
+  if (caseResult.error) {
+    throw caseResult.error;
+  }
+  if (wordIndexResult.error) {
+    throw wordIndexResult.error;
+  }
+
+  const rows = ((utterancesResult.data ?? []) as BoundaryTranscriptUtteranceRow[])
+    .filter((row) => row.is_synthetic !== true);
+  if (rows.length === 0) {
+    return;
+  }
+
+  const casePayload = (caseResult.data?.payload ?? null) as Record<string, unknown> | null;
+  const scheduling = casePayload && typeof casePayload === "object" && "scheduling" in casePayload
+    ? casePayload.scheduling as Record<string, unknown> | null
+    : null;
+  const jobConfig: BoundaryJobConfig = {
+    proceedingType: typeof scheduling?.proceeding_type === "string" ? scheduling.proceeding_type : null,
+  };
+  const client = createBoundaryAiClient(anthropicApiKey);
+  const boundaryUtterances: BoundaryUtteranceView[] = rows.map((row) => ({
+    utterance_id: row.utterance_id,
+    speaker_id: row.speaker_id,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    text: row.text ?? "",
+    excluded_from_output: row.excluded_from_output ?? false,
+    exclusion_reason: row.exclusion_reason ?? null,
+  }));
+
+  try {
+    const formalOpening = await detectFormalOpening(boundaryUtterances, jobConfig, client);
+    const preRecordApplied = applyPreRecordCutoff(boundaryUtterances, formalOpening);
+    const offRecord = await detectOffRecordSections(preRecordApplied, {}, jobConfig, client);
+    const offRecordApplied = applyOffRecordSections(preRecordApplied, offRecord);
+    const postRecord = await detectPostRecordContent(offRecordApplied, jobConfig, client);
+    const finalUtterances = applyPostRecordCutoff(offRecordApplied, postRecord);
+    const finalById = new Map(finalUtterances.map((utterance) => [utterance.utterance_id, utterance]));
+
+    const syntheticBeforeIndex = new Map<number, BoundaryUtteranceView[]>();
+    const pushSynthetic = (index: number, utterance: BoundaryUtteranceView) => {
+      const bucket = syntheticBeforeIndex.get(index) ?? [];
+      bucket.push(utterance);
+      syntheticBeforeIndex.set(index, bucket);
+    };
+
+    for (const section of offRecord.off_record_sections) {
+      const generated = generateSyntheticParentheticals([section]);
+      if (generated.length === 1) {
+        const insertionIndex = generated[0]?.utterance_id.endsWith("_conclusion")
+          ? section.on_utterance_index
+          : section.off_utterance_index;
+        pushSynthetic(insertionIndex, generated[0]);
+        continue;
+      }
+      if (generated[0]) {
+        pushSynthetic(section.off_utterance_index, generated[0]);
+      }
+      if (generated[1]) {
+        pushSynthetic(section.on_utterance_index, generated[1]);
+      }
+    }
+
+    const existingUtterances: BoundaryTranscriptUtteranceRow[] = [];
+    const syntheticUtterances: BoundaryTranscriptUtteranceRow[] = [];
+    const syntheticWords: Array<ReturnType<typeof buildBoundarySyntheticInsert>["word"]> = [];
+    let nextWordIndex = (wordIndexResult.data as BoundaryTranscriptWordRow | null)?.word_index ?? rows.length;
+    let position = 0;
+
+    for (let index = 0; index <= rows.length; index += 1) {
+      const pendingSynthetic = syntheticBeforeIndex.get(index) ?? [];
+      for (const synthetic of pendingSynthetic) {
+        const sourceSection = offRecord.off_record_sections.find((section) => {
+          if (synthetic.utterance_id.endsWith("_off")) {
+            return section.off_utterance_index === index;
+          }
+          if (synthetic.utterance_id.endsWith("_on") || synthetic.utterance_id.endsWith("_conclusion")) {
+            return section.on_utterance_index === index;
+          }
+          return section.off_utterance_index === index;
+        });
+        if (!sourceSection) {
+          continue;
+        }
+        nextWordIndex += 1;
+        const insert = buildBoundarySyntheticInsert(sourceSection, synthetic, position, job, rows, nextWordIndex);
+        syntheticUtterances.push(insert.utterance);
+        syntheticWords.push(insert.word);
+        position += 1;
+      }
+
+      const row = rows[index];
+      if (!row) {
+        continue;
+      }
+      const updatedBoundary = finalById.get(row.utterance_id);
+      existingUtterances.push({
+        ...row,
+        ordinal: position,
+        utterance_index: position,
+        excluded_from_output: updatedBoundary?.excluded_from_output ?? false,
+        exclusion_reason: updatedBoundary?.exclusion_reason ?? null,
+        is_synthetic: false,
+      });
+      position += 1;
+    }
+
+    const { error: deleteSyntheticWordsError } = await supabase
+      .from("transcript_words")
+      .delete()
+      .eq("transcript_id", job.transcript_id)
+      .eq("speaker_id", SYNTHETIC_BOUNDARY_SPEAKER_ID);
+    if (deleteSyntheticWordsError) {
+      throw deleteSyntheticWordsError;
+    }
+
+    const { error: deleteSyntheticUtterancesError } = await supabase
+      .from("transcript_utterances")
+      .delete()
+      .eq("transcript_id", job.transcript_id)
+      .eq("speaker_id", SYNTHETIC_BOUNDARY_SPEAKER_ID);
+    if (deleteSyntheticUtterancesError) {
+      throw deleteSyntheticUtterancesError;
+    }
+
+    const { error: upsertUtterancesError } = await supabase
+      .from("transcript_utterances")
+      .upsert(existingUtterances, { onConflict: "transcript_id,utterance_id" });
+    if (upsertUtterancesError) {
+      throw upsertUtterancesError;
+    }
+
+    if (syntheticUtterances.length > 0) {
+      const { error: insertSyntheticUtterancesError } = await supabase
+        .from("transcript_utterances")
+        .insert(syntheticUtterances);
+      if (insertSyntheticUtterancesError) {
+        throw insertSyntheticUtterancesError;
+      }
+
+      const { error: insertSyntheticWordsError } = await supabase
+        .from("transcript_words")
+        .insert(syntheticWords);
+      if (insertSyntheticWordsError) {
+        throw insertSyntheticWordsError;
+      }
+    }
+  } catch (error) {
+    console.error("[transcribe-callback] boundary engine failed", {
+      transcriptId: job.transcript_id,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
