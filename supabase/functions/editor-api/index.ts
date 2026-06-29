@@ -91,6 +91,7 @@ type RouteMatch =
   | { kind: "aiSuggestions"; jobId: string }
   | { kind: "aiSuggestionAction"; jobId: string; wordId: string }
   | { kind: "aiSuggestionAcceptAll"; jobId: string }
+  | { kind: "aiReview"; jobId: string }
   | { kind: "exhibits"; jobId: string }
   | { kind: "certifyStatus"; jobId: string };
 
@@ -102,6 +103,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CASE_FILES_BUCKET = "case-files";
 const SIGNED_URL_TTL_SECONDS = 6 * 60 * 60; // 6h supports long review sessions without mid-session expiry.
 const WORD_PAGE_SIZE = 1000;
@@ -169,6 +171,8 @@ Deno.serve(async (request) => {
         return handlePatchAiSuggestion(context, match.wordId);
       case "aiSuggestionAcceptAll":
         return handleAcceptAllAiSuggestions(context);
+      case "aiReview":
+        return handleForceAiReview(context);
       case "exhibits":
         return handleGetExhibits(context);
       case "certifyStatus":
@@ -1014,6 +1018,58 @@ async function handleAcceptAllAiSuggestions(context: RouteContext): Promise<Resp
   return respondJson(200, { accepted_count: rows.length });
 }
 
+async function handleForceAiReview(context: RouteContext): Promise<Response> {
+  const transcriptId = context.transcript.transcript_id;
+
+  const { error: clearSuggestionsError } = await context.supabase
+    .from("transcript_words")
+    .update({
+      ai_suggestion: null,
+      ai_suggestion_reason: null,
+      ai_confidence: null,
+      ai_suggestion_status: null,
+    })
+    .eq("transcript_id", transcriptId)
+    .eq("ai_suggestion_status", "pending");
+
+  if (clearSuggestionsError) {
+    throw new HttpError(500, "failed to clear pending ai suggestions");
+  }
+
+  const { error: resetMetaError } = await context.supabase
+    .from("transcripts")
+    .update({ ai_review_meta: null })
+    .eq("transcript_id", transcriptId);
+
+  if (resetMetaError) {
+    throw new HttpError(500, "failed to reset ai review meta");
+  }
+
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    throw new HttpError(500, "server misconfigured");
+  }
+
+  const aiReviewUrl = `${supabaseUrl}/functions/v1/ai-review`;
+  void fetch(aiReviewUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${supabaseServiceRoleKey}`,
+    },
+    body: JSON.stringify({
+      transcript_id: transcriptId,
+      force_rerun: true,
+    }),
+  }).catch((error) => {
+    console.error("[editor-api] force ai-review trigger failed", {
+      transcriptId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  });
+
+  return respondJson(202, { status: "re-review triggered" });
+}
+
 async function appendAuditRows(
   context: RouteContext,
   rows: AuditInsertRow[],
@@ -1361,6 +1417,17 @@ function matchRoute(request: Request): RouteMatch | null {
   ) {
     return {
       kind: "aiSuggestionAcceptAll",
+      jobId: routeParts[0],
+    };
+  }
+
+  if (
+    routeParts.length === 2
+    && request.method === "POST"
+    && routeParts[1] === "ai-review"
+  ) {
+    return {
+      kind: "aiReview",
       jobId: routeParts[0],
     };
   }

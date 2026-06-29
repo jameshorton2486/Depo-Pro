@@ -9,6 +9,7 @@ const clientApi = {
   getAISuggestions: vi.fn(),
   acceptAllAISuggestions: vi.fn(),
   resolveAISuggestion: vi.fn(),
+  triggerAIReview: vi.fn(),
   getSuggestions: vi.fn(),
   resolveSuggestion: vi.fn(),
   getExhibits: vi.fn(),
@@ -98,6 +99,7 @@ describe("workspaceApi real-API mutation wrappers", () => {
     clientApi.getAISuggestions.mockReset();
     clientApi.acceptAllAISuggestions.mockReset();
     clientApi.resolveAISuggestion.mockReset();
+    clientApi.triggerAIReview.mockReset();
     clientApi.getSuggestions.mockReset();
     clientApi.resolveSuggestion.mockReset();
     clientApi.getExhibits.mockReset();
@@ -211,5 +213,15 @@ describe("workspaceApi real-API mutation wrappers", () => {
     await workspaceApi.resolveAISuggestion("tr_123", "word_1", { action: "accept" });
 
     expect(clientApi.resolveAISuggestion).toHaveBeenCalledWith("tr_123", "word_1", { action: "accept" });
+  });
+
+  it("triggers ai review through the transcript id with force=true in real API mode", async () => {
+    repo.getTranscriptJobByTranscriptId.mockResolvedValueOnce(buildTranscriptRow("T1"));
+    clientApi.triggerAIReview.mockResolvedValue({ status: "re-review triggered" });
+
+    const { workspaceApi } = await import("./workspaceService");
+    await workspaceApi.triggerAIReview("tr_123");
+
+    expect(clientApi.triggerAIReview).toHaveBeenCalledWith("tr_123", { force: true });
   });
 });

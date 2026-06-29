@@ -140,6 +140,9 @@ export const api = {
   acceptAllAISuggestions: (jobId: string) =>
     request<{ accepted_count: number }>("POST", url(jobId, "ai-suggestions/accept-all")),
 
+  triggerAIReview: (jobId: string, body: { force: boolean }) =>
+    request<{ status: string }>("POST", url(jobId, "ai-review"), body),
+
   getExhibits: (jobId: string) =>
     request<Exhibit[]>("GET", url(jobId, "exhibits")),
 

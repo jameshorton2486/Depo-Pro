@@ -778,6 +778,18 @@ export const workspaceApi = {
 
     return contractApi.acceptAllAISuggestions(jobId);
   },
+  triggerAIReview: async (jobId: string): Promise<{ status: string }> => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.triggerAIReview(jobId, { force: true });
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.triggerAIReview(target.transcript_id, { force: true });
+    }
+
+    return contractApi.triggerAIReview(jobId, { force: true });
+  },
   getExhibits: async (jobId: string): Promise<Exhibit[]> => {
     if (USE_MOCK_WORKSPACE) {
       return contractApi.getExhibits(jobId);

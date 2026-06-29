@@ -383,6 +383,7 @@ export function TranscriptEditor({ readOnly }: Props) {
         />
       )}
       <AIReviewBanner
+        jobId={state.document?.job_id ?? state.jobId}
         pendingCount={aiReviewBannerState.pendingCount}
         autoAppliedCount={aiReviewBannerState.autoAppliedCount}
       />
