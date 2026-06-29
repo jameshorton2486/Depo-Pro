@@ -1,4 +1,4 @@
-import { buildSuggestionCaseRecord, type AISuggestionInput, type AISuggestionResult } from "./aiSuggestionEngine";
+import { buildSuggestionCaseRecord, type AISuggestionInput, type AISuggestionResult } from "./aiSuggestionEngine.ts";
 import type { CaseRecord } from "../../types/case";
 
 export const AI_REVIEW_PROMPT_VERSION = "wave22-p5-v1";
