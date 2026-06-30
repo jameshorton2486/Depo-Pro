@@ -3,10 +3,7 @@ import { ChevronLeft, Clipboard, Download, FileArchive, FileText } from "lucide-
 import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
-import { abbreviationRegistry } from "../../lib/format/abbreviationRegistry";
-import { cfe } from "../../lib/format/cfe";
-import { DEFAULT_GEOMETRY_PROFILE } from "../../lib/format/geometryProfile";
-import { serializeFormattedDocument } from "../../lib/format/serialize";
+import { buildFormattedTranscriptText } from "../../lib/transcriptDownloads";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
@@ -55,10 +52,12 @@ export function ExportScreen({ jobId }: { jobId: string }) {
 
   const transcriptText = useMemo(() => {
     if (!docState.document) return "";
-    return serializeFormattedDocument(
-      cfe(docState.document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry)
-    );
-  }, [docState.document]);
+    return buildFormattedTranscriptText(docState.document, {
+      structureConfirmed: docState.structureConfirmed,
+      keepRawLabels: docState.keepRawLabels,
+      record,
+    });
+  }, [docState.document, docState.keepRawLabels, docState.structureConfirmed, record]);
 
   const packageJson = useMemo(
     () =>

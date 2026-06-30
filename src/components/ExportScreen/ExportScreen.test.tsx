@@ -7,6 +7,7 @@ import { ExportScreen } from "./ExportScreen";
 const useDocumentMock = vi.fn();
 const useIntakeMock = vi.fn();
 const useStageMock = vi.fn();
+const buildFormattedTranscriptTextMock = vi.fn();
 
 vi.mock("../../context/DocumentContext", () => ({
   useDocument: () => useDocumentMock(),
@@ -18,6 +19,10 @@ vi.mock("../../context/useIntake", () => ({
 
 vi.mock("../../context/StageContext", () => ({
   useStage: () => useStageMock(),
+}));
+
+vi.mock("../../lib/transcriptDownloads", () => ({
+  buildFormattedTranscriptText: (...args: unknown[]) => buildFormattedTranscriptTextMock(...args),
 }));
 
 vi.mock("../WorkflowStageNav", () => ({
@@ -63,11 +68,15 @@ describe("ExportScreen", () => {
           utterances: [],
           words: [],
         },
+        structureConfirmed: false,
+        keepRawLabels: false,
       },
     });
     useStageMock.mockReturnValue({
       setStage: vi.fn(),
     });
+    buildFormattedTranscriptTextMock.mockReset();
+    buildFormattedTranscriptTextMock.mockReturnValue("clean transcript");
   });
 
   afterEach(() => {
@@ -103,6 +112,48 @@ describe("ExportScreen", () => {
     const exportTxtButton = buttons.find((button) => button.textContent?.includes("Export TXT"));
     expect(exportTxtButton).toBeDefined();
     expect(exportTxtButton?.hasAttribute("disabled")).toBe(true);
+    cleanup();
+  });
+
+  it("uses the clean transcript export helper for copy/export text", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: {
+          case_name: { value: "Example Case" },
+          case_number: { value: "123" },
+        },
+        certification: {
+          certification_date: "2026-06-30",
+          certification_statement: "Ready",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
+        },
+      },
+    });
+
+    const { container, cleanup } = renderExportScreen();
+    const copyButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("Copy Transcript")
+    );
+
+    await act(async () => {
+      copyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(buildFormattedTranscriptTextMock).toHaveBeenCalled();
+    expect(writeText).toHaveBeenCalledWith("clean transcript");
     cleanup();
   });
 });
