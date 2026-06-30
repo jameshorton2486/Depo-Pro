@@ -302,9 +302,9 @@ describe("buildEditorContent", () => {
     }));
 
     expect(rawAttrs.speaker_label).toBe("Speaker 1");
-    expect(rawAttrs.prefix_text).toBe("Speaker 1");
+    expect(rawAttrs.prefix_text).toBe("SPEAKER 1:");
     expect(confirmedAttrs.speaker_label).toBe("THE REPORTER");
-    expect(confirmedAttrs.prefix_text).toBe("THE REPORTER");
+    expect(confirmedAttrs.prefix_text).toBe("THE REPORTER:");
   });
   it("keeps raw labels when keepRawLabels is selected after banner dismissal", () => {
     const doc = makeSingleUtteranceDoc([
@@ -337,7 +337,7 @@ describe("buildEditorContent", () => {
     }));
 
     expect(rawChosenAttrs.speaker_label).toBe("Speaker 1");
-    expect(rawChosenAttrs.prefix_text).toBe("Speaker 1");
+    expect(rawChosenAttrs.prefix_text).toBe("SPEAKER 1:");
   });
 
   it("writes ATTORNEY role into structured utterance attrs for q lines", () => {
@@ -363,6 +363,7 @@ describe("buildEditorContent", () => {
     });
 
     expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("ATTORNEY");
+    expect(utteranceAttrsBySpeaker(content, "spk-1").prefix_text).toBe("Q.");
   });
 
   it("writes WITNESS role into structured utterance attrs for a lines", () => {
@@ -387,6 +388,7 @@ describe("buildEditorContent", () => {
     });
 
     expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("WITNESS");
+    expect(utteranceAttrsBySpeaker(content, "spk-1").prefix_text).toBe("A.");
   });
 
   it("preserves raw speaker role attrs when structure is not confirmed", () => {
@@ -406,6 +408,7 @@ describe("buildEditorContent", () => {
     });
 
     expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("ATTORNEY");
+    expect(utteranceAttrsBySpeaker(content, "spk-1").prefix_text).toBe("Q.");
   });
 
   it("renders pending ai suggestions with the overlay text and pending class", () => {
