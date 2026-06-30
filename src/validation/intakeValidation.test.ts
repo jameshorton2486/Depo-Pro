@@ -105,6 +105,7 @@ describe("evaluateIntake file-state validation", () => {
     expect(itemSatisfied(result, "info.supporting_documents")).toBe(false);
     expect(itemSatisfied(result, "info.scheduling_notes")).toBe(false);
     expect(result.canProceed).toBe(true);
+    expect(result.ufmMissingLabels).toContain("State");
   });
 
   it("passes the full matrix when all durable file categories exist", () => {
@@ -114,12 +115,17 @@ describe("evaluateIntake file-state validation", () => {
       hasSupporting: true,
       hasAudio: true,
     };
+    record.session.location_state.value = "TX";
+    record.reporter.name.value = "Karen Doe";
+    record.reporter.cert_number.value = "CSR-12345";
+    record.proceeding.ordering_contact = "Defense Counsel";
 
     const result = evaluateIntake(record, fileState);
     expect(itemSatisfied(result, "fail.audio_uploaded")).toBe(true);
     expect(itemSatisfied(result, "info.supporting_documents")).toBe(true);
     expect(itemSatisfied(result, "info.scheduling_notes")).toBe(true);
     expect(result.canProceed).toBe(true);
+    expect(result.ufmMissingLabels).toEqual([]);
   });
 
   it("treats malformed collections as empty instead of throwing", () => {

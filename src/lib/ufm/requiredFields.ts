@@ -19,6 +19,12 @@ export interface UfmRequiredFieldStatus extends UfmRequiredField {
   missing: boolean;
 }
 
+export interface UfmReadinessSummary {
+  ready: boolean;
+  missingFields: UfmRequiredFieldStatus[];
+  missingLabels: string[];
+}
+
 // TODO(prompt 5C follow-up): migrate readiness/banner required-field semantics to this module.
 export const REQUIRED_UFM_FIELDS = [
   {
@@ -122,4 +128,13 @@ export function getMissingRequiredUfmFields(record: CaseRecord): UfmRequiredFiel
 
 export function isCaseUfmReady(record: CaseRecord): boolean {
   return getMissingRequiredUfmFields(record).length === 0;
+}
+
+export function getUfmReadinessSummary(record: CaseRecord): UfmReadinessSummary {
+  const missingFields = getMissingRequiredUfmFields(record);
+  return {
+    ready: missingFields.length === 0,
+    missingFields,
+    missingLabels: missingFields.map((field) => field.humanName),
+  };
 }

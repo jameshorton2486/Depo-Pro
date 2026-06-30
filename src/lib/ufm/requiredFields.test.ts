@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { emptyCaseRecord } from "../../types/case";
-import { getMissingRequiredUfmFields, getRequiredUfmFieldStatuses, isCaseUfmReady } from "./requiredFields";
+import {
+  getMissingRequiredUfmFields,
+  getRequiredUfmFieldStatuses,
+  getUfmReadinessSummary,
+  isCaseUfmReady,
+} from "./requiredFields";
 
 function buildReadyCase() {
   const record = emptyCaseRecord("case_ufm_ready", "2026-06-30T12:00:00.000Z");
@@ -43,5 +48,20 @@ describe("requiredFields UFM readiness helpers", () => {
     const causeNumber = statuses.find((field) => field.metadataKey === "cause_number");
 
     expect(causeNumber?.missing).toBe(true);
+  });
+
+  it("builds a readiness summary with human-readable missing labels", () => {
+    const record = buildReadyCase();
+    record.caption.case_number.value = "";
+    record.caption.court_name.value = "";
+
+    expect(getUfmReadinessSummary(record)).toEqual({
+      ready: false,
+      missingFields: expect.arrayContaining([
+        expect.objectContaining({ metadataKey: "cause_number", humanName: "Cause Number", missing: true }),
+        expect.objectContaining({ metadataKey: "court", humanName: "Court", missing: true }),
+      ]),
+      missingLabels: ["Cause Number", "Court"],
+    });
   });
 });

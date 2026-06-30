@@ -1,4 +1,5 @@
 import type { Attorney, CaseRecord, Interpreter, Participant, Videographer, Witness } from "../types/case";
+import { getUfmReadinessSummary } from "../lib/ufm/requiredFields";
 
 export interface ValidationItem {
   id: string;
@@ -15,6 +16,7 @@ export interface IntakeValidationResult {
   warningCount: number;
   readinessScore: number;
   missingLabels: string[];
+  ufmMissingLabels: string[];
   canProceed: boolean;
 }
 
@@ -49,6 +51,7 @@ function countMissing<T>(items: T[], predicate: (item: T) => boolean): number {
 
 export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): IntakeValidationResult {
   const items: ValidationItem[] = [];
+  const ufmReadiness = getUfmReadinessSummary(record);
   const partial = record as Partial<CaseRecord>;
   const witnesses = safeArray<Witness>(partial.witnesses);
   const attorneys = safeArray<Attorney>(partial.attorneys);
@@ -326,6 +329,7 @@ export function evaluateIntake(record: CaseRecord, fileState: IntakeFileState): 
     warningCount,
     readinessScore,
     missingLabels,
+    ufmMissingLabels: ufmReadiness.missingLabels,
     canProceed: failCount === 0,
   };
 }

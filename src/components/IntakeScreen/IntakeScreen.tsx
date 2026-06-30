@@ -199,7 +199,7 @@ function CaseStatusBanner({
       {/* Status chips */}
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-          Case Readiness: {validation.readinessScore}%{validation.missingLabels.length > 0 ? ` - Missing: ${validation.missingLabels.slice(0, 3).join(", ")}${validation.missingLabels.length > 3 ? ` and ${validation.missingLabels.length - 3} more` : ""}` : ""}
+          Case Readiness: {validation.readinessScore}%{validation.ufmMissingLabels.length > 0 ? ` - Missing: ${validation.ufmMissingLabels.slice(0, 3).join(", ")}${validation.ufmMissingLabels.length > 3 ? ` and ${validation.ufmMissingLabels.length - 3} more` : ""}` : ""}
         </span>
         {conflictCount > 0 && (
           <span className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
