@@ -102,6 +102,20 @@ function firstUtteranceAttrs(content: ReturnType<typeof buildEditorContent>) {
   return utterance.attrs as Record<string, unknown>;
 }
 
+function utteranceAttrsBySpeaker(
+  content: ReturnType<typeof buildEditorContent>,
+  speakerId: string,
+) {
+  const utterance = content.content?.find(
+    (node) => node.type === "utterance" && node.attrs?.speaker_id === speakerId,
+  );
+  if (!utterance?.attrs) {
+    throw new Error(`Expected utterance attrs for speaker "${speakerId}".`);
+  }
+
+  return utterance.attrs as Record<string, unknown>;
+}
+
 function makeRecord(): CaseRecord {
   return {
     reporter: { name: { value: "Nellie Bardel" } },
@@ -324,6 +338,74 @@ describe("buildEditorContent", () => {
 
     expect(rawChosenAttrs.speaker_label).toBe("Speaker 1");
     expect(rawChosenAttrs.prefix_text).toBe("Speaker 1");
+  });
+
+  it("writes ATTORNEY role into structured utterance attrs for q lines", () => {
+    const doc = makeDoc({
+      speakers: [
+        {
+          speaker_id: "spk-1",
+          display_name: "MR. BENTLEY",
+          deepgram_speaker: 0,
+          role: "ATTORNEY",
+        },
+      ],
+      words: [
+        makeWord("word-1", "State", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+        makeWord("word-2", "your", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+        makeWord("word-3", "name.", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+      ],
+    });
+
+    const content = buildEditorContent(doc, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+
+    expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("ATTORNEY");
+  });
+
+  it("writes WITNESS role into structured utterance attrs for a lines", () => {
+    const doc = makeDoc({
+      speakers: [
+        {
+          speaker_id: "spk-1",
+          display_name: "THE WITNESS",
+          deepgram_speaker: 0,
+          role: "WITNESS",
+        },
+      ],
+      words: [
+        makeWord("word-1", "Mohammad", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+        makeWord("word-2", "Etminan.", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+      ],
+    });
+
+    const content = buildEditorContent(doc, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+
+    expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("WITNESS");
+  });
+
+  it("preserves raw speaker role attrs when structure is not confirmed", () => {
+    const doc = makeDoc({
+      speakers: [
+        {
+          speaker_id: "spk-1",
+          display_name: "MR. BENTLEY",
+          deepgram_speaker: 0,
+          role: "ATTORNEY",
+        },
+      ],
+    });
+
+    const content = buildEditorContent(doc, {
+      structureConfirmed: false,
+    });
+
+    expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("ATTORNEY");
   });
 
   it("renders pending ai suggestions with the overlay text and pending class", () => {

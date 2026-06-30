@@ -7,6 +7,7 @@ import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { ENABLE_DISPLAY_TURN_SEGMENTATION } from "./format/grouping";
 import { buildDisplayDocument, resolveWordDisplay } from "./transcript/workspacePresentation";
+import type { FormattedLineRole } from "./format/types";
 
 type OverlayWord = EditorDocument["words"][number] & {
   working_text?: string | null;
@@ -172,6 +173,22 @@ function buildInlineNodes(
   return inlineNodes;
 }
 
+function formattedLineRoleToSpeakerRole(
+  lineRole: FormattedLineRole,
+  speakerRole: EditorDocument["speakers"][number]["role"] | null | undefined,
+): EditorDocument["speakers"][number]["role"] | null {
+  if (lineRole === "q" || lineRole === "by_line") {
+    return "ATTORNEY";
+  }
+  if (lineRole === "a") {
+    return "WITNESS";
+  }
+  if (lineRole === "speaker_label" || lineRole === "parenthetical" || lineRole === "section_header" || lineRole === "continuation") {
+    return speakerRole ?? "OTHER";
+  }
+  return speakerRole ?? null;
+}
+
 export function buildEditorContent(
   doc: EditorDocument,
   options?: {
@@ -215,7 +232,7 @@ export function buildEditorContent(
     }
 
     const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
-    const role = speaker?.role === "INTERPRETER" ? "INTERPRETER" : null;
+    const role = formattedLineRoleToSpeakerRole(line.role, speaker?.role ?? null);
     const overlayWords = line.words.map((word) => {
       const sourceWord = displayDoc.words.find((candidate) => candidate.word_id === word.word_id) as OverlayWord | undefined;
       const resolvedWord = resolveWordDisplay(sourceWord
