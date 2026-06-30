@@ -32,6 +32,14 @@ export interface MultiwordDeterministicCorrection {
   rule_id: string;
 }
 
+export interface StutterRule {
+  word: string;
+  confidence: number;
+  category: "single_letter" | "pronoun" | "article" | "demonstrative";
+}
+
+export const INTERRUPTION_DASH = " -- ";
+
 export const DETERMINISTIC_TOKEN_CORRECTIONS: DeterministicCorrection[] = [
   {
     match: "K.",
@@ -261,6 +269,48 @@ export const MONTH_NAMES_ARRAY = [
   "November",
   "December",
 ];
+
+/**
+ * Phase 1 of the Verbatim Interruption Engine — deterministic tier only.
+ * Detects immediate word-for-word repetition of short function words
+ * (pronouns, articles, demonstratives, single letters) and inserts a
+ * double-hyphen interruption marker between the repeated tokens.
+ *
+ * Per CANONICAL_EDITORIAL_POLICY §3: this never deletes or rewrites
+ * spoken content. Both repeated tokens are preserved verbatim; only a
+ * formatting dash is inserted between them.
+ *
+ * Deliberately NOT included (deferred to future phases):
+ * - content-word repetition (accident accident, doctor doctor) — requires
+ *   context, not deterministic
+ * - 3+ word repeated phrases — requires context
+ * - self-corrections, speaker interruptions, trailing thoughts — separate
+ *   engine phases, not repeated-word detection
+ */
+export const DETERMINISTIC_STUTTER_WORDS: StutterRule[] = [
+  { word: "I", confidence: 1.0, category: "single_letter" },
+  { word: "A", confidence: 1.0, category: "single_letter" },
+  { word: "we", confidence: 0.99, category: "pronoun" },
+  { word: "he", confidence: 0.99, category: "pronoun" },
+  { word: "she", confidence: 0.99, category: "pronoun" },
+  { word: "it", confidence: 0.99, category: "pronoun" },
+  { word: "you", confidence: 0.99, category: "pronoun" },
+  { word: "they", confidence: 0.99, category: "pronoun" },
+  { word: "the", confidence: 0.99, category: "article" },
+  { word: "a", confidence: 0.99, category: "article" },
+  { word: "an", confidence: 0.99, category: "article" },
+  { word: "that", confidence: 0.98, category: "demonstrative" },
+  { word: "this", confidence: 0.98, category: "demonstrative" },
+  { word: "these", confidence: 0.98, category: "demonstrative" },
+  { word: "those", confidence: 0.98, category: "demonstrative" },
+];
+
+export function isStutterCandidateWord(word: string): boolean {
+  const normalized = word.toLowerCase().replace(/[^a-z]/g, "");
+  return DETERMINISTIC_STUTTER_WORDS.some(
+    (rule) => rule.word.toLowerCase() === normalized
+  );
+}
 
 export function normalizeSlashDate(token: string): string {
   const match = token.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})([.,;:?!]*)$/);

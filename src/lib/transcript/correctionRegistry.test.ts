@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   AMBIGUOUS_FLAGS,
   DETERMINISTIC_PHRASE_CORRECTIONS,
+  DETERMINISTIC_STUTTER_WORDS,
   DETERMINISTIC_TOKEN_CORRECTIONS,
+  INTERRUPTION_DASH,
+  isStutterCandidateWord,
   looksLikeImplausibleMoney,
   normalizeSlashDate,
 } from "./correctionRegistry";
@@ -104,6 +107,29 @@ describe("AMBIGUOUS_FLAGS", () => {
   it("flags granted as ambiguous", () => {
     const flag = AMBIGUOUS_FLAGS.find((f) => f.match === "granted");
     expect(flag?.likelyMeaning).toBe("rear-ended");
+  });
+});
+
+describe("DETERMINISTIC_STUTTER_WORDS", () => {
+  it("recognizes all Phase 1 words case-insensitively", () => {
+    expect(isStutterCandidateWord("I")).toBe(true);
+    expect(isStutterCandidateWord("i")).toBe(true);
+    expect(isStutterCandidateWord("the")).toBe(true);
+    expect(isStutterCandidateWord("The")).toBe(true);
+    expect(isStutterCandidateWord("that")).toBe(true);
+    expect(isStutterCandidateWord("we")).toBe(true);
+    expect(isStutterCandidateWord("you")).toBe(true);
+    expect(isStutterCandidateWord("those")).toBe(true);
+  });
+
+  it("excludes deferred content words", () => {
+    expect(isStutterCandidateWord("accident")).toBe(false);
+    expect(isStutterCandidateWord("doctor")).toBe(false);
+  });
+
+  it("uses the established double-hyphen interruption glyph", () => {
+    expect(INTERRUPTION_DASH).toBe(" -- " );
+    expect(DETERMINISTIC_STUTTER_WORDS.map((rule) => rule.word)).toContain("I");
   });
 });
 

@@ -609,6 +609,162 @@ describe("cfe spacing and serialization", () => {
     expect(formatted.lines[0].geometry.tabs.parentheticalInches).toBe(2.0);
   });
 
+  it("inserts interruption dashes for repeated single-letter stutters", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "I" },
+        { word_id: "w2", text: "I" },
+        { word_id: "w3", text: "don't" },
+        { word_id: "w4", text: "know" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. I -- I don't know");
+  });
+
+  it("inserts interruption dashes for repeated demonstratives", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "by" },
+        { word_id: "w2", text: "the" },
+        { word_id: "w3", text: "fact" },
+        { word_id: "w4", text: "that" },
+        { word_id: "w5", text: "that" },
+        { word_id: "w6", text: "can" },
+        { word_id: "w7", text: "you" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. by the fact that -- that can you");
+  });
+
+  it("inserts interruption dashes for repeated articles", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "the" },
+        { word_id: "w2", text: "the" },
+        { word_id: "w3", text: "accident" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. the -- the accident");
+  });
+
+  it("does not auto-correct repeated content words", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "accident" },
+        { word_id: "w2", text: "accident" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. accident accident");
+    expect(serializeFormattedDocument(formatted)).not.toContain("accident -- accident");
+  });
+
+  it("matches stutter candidates case-insensitively while preserving token casing", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "The" },
+        { word_id: "w2", text: "The" },
+        { word_id: "w3", text: "question" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. The -- The question");
+  });
+
+  it("leaves non-repeated adjacent words unaffected", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "I" },
+        { word_id: "w2", text: "think" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. I think");
+    expect(serializeFormattedDocument(formatted)).not.toContain("I -- think");
+  });
+
+  it("does not apply deterministic stutter dashes to multiword repeats", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "can" },
+        { word_id: "w2", text: "you" },
+        { word_id: "w3", text: "can" },
+        { word_id: "w4", text: "you" },
+        { word_id: "w5", text: "explain" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. can you can you explain");
+    expect(serializeFormattedDocument(formatted)).not.toContain("you -- you");
+  });
+
+  it("leaves certified No. No. No. repetitions unaffected", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "No." },
+        { word_id: "w2", text: "No." },
+        { word_id: "w3", text: "No." },
+        { word_id: "w4", text: "I'm" },
+        { word_id: "w5", text: "sorry." },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. No.  No.  No. I'm sorry.");
+    expect(serializeFormattedDocument(formatted)).not.toContain("No. -- No.");
+  });
+
+  it("preserves audio-sync provenance when inserting stutter dashes", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "I" },
+        { word_id: "w2", text: "I" },
+        { word_id: "w3", text: "know" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(formatted.lines[0].source_word_ids).toEqual(["w1", "w2", "w3"]);
+    expect(formatted.lines[0].words.map((word) => word.word_id)).toEqual(["w1", "w2", "w3"]);
+    expect(formatted.lines[0].words.find((word) => word.word_id === "w1")?.text).toBe("I --");
+    expect(formatted.lines[0].words.find((word) => word.word_id === "w2")?.text).toBe("I");
+    expect(formatted.lines[0].source_word_ids).not.toContain("synthetic-dash");
+  });
+
+  it("does not auto-apply within three-word identical runs", () => {
+    const formatted = cfe(
+      makeDoc([
+        { word_id: "w1", text: "the" },
+        { word_id: "w2", text: "the" },
+        { word_id: "w3", text: "the" },
+      ]),
+      DEFAULT_GEOMETRY_PROFILE,
+      abbreviationRegistry
+    );
+
+    expect(serializeFormattedDocument(formatted)).toContain("Q. the the the");
+    expect(serializeFormattedDocument(formatted)).not.toContain("the -- the");
+  });
+
   it("preserves the no-colon by-line format when serializing by-lines", () => {
     const line: FormattedLine = {
       ...cfe(makeDoc([{ word_id: "w1", text: "Hello." }]), DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry).lines[0],

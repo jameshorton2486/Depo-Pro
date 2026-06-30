@@ -4,6 +4,8 @@ import {
   AMBIGUOUS_FLAGS,
   DETERMINISTIC_PHRASE_CORRECTIONS,
   DETERMINISTIC_TOKEN_CORRECTIONS,
+  INTERRUPTION_DASH,
+  isStutterCandidateWord,
   looksLikeImplausibleMoney,
   normalizeSlashDate,
 } from "../transcript/correctionRegistry";
@@ -497,6 +499,47 @@ function applyDeterministicTokenCorrection(
   return token;
 }
 
+function normalizeForStutterComparison(token: string): string {
+  return token.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function applyDeterministicStutterDashes(tokens: string[]): string[] {
+  const corrected = [...tokens];
+
+  for (let index = 0; index < corrected.length - 1; index += 1) {
+    const current = corrected[index];
+    const next = corrected[index + 1];
+    if (!current || !next) {
+      continue;
+    }
+
+    const currentNormalized = normalizeForStutterComparison(current);
+    const nextNormalized = normalizeForStutterComparison(next);
+    if (!currentNormalized || currentNormalized !== nextNormalized) {
+      continue;
+    }
+
+    const previousNormalized = index > 0
+      ? normalizeForStutterComparison(corrected[index - 1])
+      : "";
+    const followingNormalized = index + 2 < corrected.length
+      ? normalizeForStutterComparison(corrected[index + 2])
+      : "";
+
+    if (previousNormalized === currentNormalized || followingNormalized === currentNormalized) {
+      continue;
+    }
+
+    if (!isStutterCandidateWord(current)) {
+      continue;
+    }
+
+    corrected[index] = current + INTERRUPTION_DASH.trimEnd();
+  }
+
+  return corrected;
+}
+
 function applyPhraseCorrections(tokens: string[]): string[] {
   const corrected = [...tokens];
 
@@ -598,7 +641,8 @@ export function cfe(
       let flagNumber = 0;
       const displayTexts = sourceWords.map((word, index) => normalizeDisplayToken(word, index, sourceWords));
 
-      const correctedDisplayTexts = applyPhraseCorrections(displayTexts);
+      const stutterAdjustedDisplayTexts = applyDeterministicStutterDashes(displayTexts);
+      const correctedDisplayTexts = applyPhraseCorrections(stutterAdjustedDisplayTexts);
 
       const formattedWords = sourceWords.map((word, index) => {
         const ambiguousFlag = findAmbiguousFlag(correctedDisplayTexts[index], word.raw_text, word.text);
