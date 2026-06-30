@@ -5,6 +5,7 @@ import { workspaceApi } from "../../api/workspaceService";
 import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
+import { isCaseUfmReady } from "../../lib/ufm/requiredFields";
 import type { CaseCertification } from "../../types/case";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
@@ -35,6 +36,11 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
   const [saving, setSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const certification = record.certification ?? buildDefaultCertification();
+  const derivedExhibitsComplete = useMemo(
+    () => record.exhibits.every((exhibit) => exhibit.label.trim().length > 0 && Boolean(exhibit.file_url || exhibit.filename)),
+    [record.exhibits],
+  );
+  const derivedUfmComplete = useMemo(() => isCaseUfmReady(record), [record]);
 
   const persistCertification = useCallback(async () => {
     setSaving(true);
@@ -125,6 +131,35 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
     [],
   );
 
+  useEffect(() => {
+    if (!record.certification) {
+      return;
+    }
+
+    if (
+      certification.checklist.exhibits_complete === derivedExhibitsComplete
+      && certification.checklist.ufm_complete === derivedUfmComplete
+    ) {
+      return;
+    }
+
+    updateCertification({
+      ...certification,
+      checklist: {
+        ...certification.checklist,
+        exhibits_complete: derivedExhibitsComplete,
+        ufm_complete: derivedUfmComplete,
+      },
+      certification_date: null,
+    });
+  }, [
+    certification,
+    derivedExhibitsComplete,
+    derivedUfmComplete,
+    record.certification,
+    updateCertification,
+  ]);
+
   const allComplete = checklistEntries.every(
     ([key]) => certification.checklist[key] && certification.certification_statement.trim().length > 0,
   );
@@ -191,6 +226,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                         <input
                           type="checkbox"
                           checked={certification.checklist[key]}
+                          disabled={key === "exhibits_complete" || key === "ufm_complete"}
                           onChange={(e) =>
                             updateCertification({
                               ...certification,
@@ -203,6 +239,11 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                           }
                         />
                         <span>{label}</span>
+                        {(key === "exhibits_complete" || key === "ufm_complete") && (
+                          <span className="ml-auto text-xs text-slate-400">
+                            Derived
+                          </span>
+                        )}
                       </label>
                     ))}
                   </div>

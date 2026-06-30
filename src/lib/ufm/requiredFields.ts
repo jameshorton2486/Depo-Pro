@@ -1,3 +1,5 @@
+import type { CaseRecord } from "../../types/case";
+
 export interface UfmRequiredField {
   metadataKey:
     | "cause_number"
@@ -11,6 +13,10 @@ export interface UfmRequiredField {
   fieldPath: string;
   humanName: string;
   ufmSection: string;
+}
+
+export interface UfmRequiredFieldStatus extends UfmRequiredField {
+  missing: boolean;
 }
 
 // TODO(prompt 5C follow-up): migrate readiness/banner required-field semantics to this module.
@@ -64,3 +70,56 @@ export const REQUIRED_UFM_FIELDS = [
     ufmSection: "§3.4",
   },
 ] as const satisfies ReadonlyArray<UfmRequiredField>;
+
+function fieldPathSegments(path: string): string[] {
+  return path
+    .split(".")
+    .flatMap((segment) => {
+      const match = segment.match(/^([^[]+)\[(\d+)\]$/);
+      return match ? [match[1], match[2]] : [segment];
+    });
+}
+
+function readFieldValue(record: CaseRecord, path: string): unknown {
+  let current: unknown = record;
+  for (const segment of fieldPathSegments(path)) {
+    if (current == null || typeof current !== "object") {
+      return null;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  if (!current || typeof current !== "object" || !("value" in current)) {
+    return current;
+  }
+
+  return (current as { value?: unknown }).value ?? null;
+}
+
+function isMissingValue(value: unknown): boolean {
+  if (value == null) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return value.trim().length === 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+  return false;
+}
+
+export function getRequiredUfmFieldStatuses(record: CaseRecord): UfmRequiredFieldStatus[] {
+  return REQUIRED_UFM_FIELDS.map((field) => ({
+    ...field,
+    missing: isMissingValue(readFieldValue(record, field.fieldPath)),
+  }));
+}
+
+export function getMissingRequiredUfmFields(record: CaseRecord): UfmRequiredFieldStatus[] {
+  return getRequiredUfmFieldStatuses(record).filter((field) => field.missing);
+}
+
+export function isCaseUfmReady(record: CaseRecord): boolean {
+  return getMissingRequiredUfmFields(record).length === 0;
+}
