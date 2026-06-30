@@ -30,9 +30,7 @@ html, body, #root {
 /* ─── Document header ────────────────────────────────────────────────────── */
 .transcript-header {
   background: white;
-  border: 1px solid #d1d5db;
-  border-bottom: none;
-  padding: 24px 48px 16px;
+  padding: 24px 0 16px;
   text-align: center;
 }
 
@@ -56,106 +54,127 @@ html, body, #root {
 /* ─── TipTap editor surface ─────────────────────────────────────────────── */
 .tiptap-transcript {
   background: white;
-  border: 1px solid #d1d5db;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  padding: 24px 48px 48px 20px;
+  padding: 24px 0 48px;
   outline: none;
   min-height: 400px;
 }
 
 .tiptap-transcript .ProseMirror {
   outline: none;
+  padding-left: 1.25in;
+  padding-right: 0.75in;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12pt;
+  line-height: 28pt;
+  color: #111827;
 }
 
-/* ─── Utterance block — 3-column grid ───────────────────────────────────── */
+/* ─── Transcript body visual geometry ───────────────────────────────────── */
 .utterance-block {
-  display: grid;
-  grid-template-columns: 2.25rem 3.75rem 1fr;
-  column-gap: 0;
-  align-items: baseline;
-  padding: 3px 0;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12pt;
+  line-height: 28pt;
+  color: #111827;
+  padding: 0 0 0 2.75rem;
   position: relative;
+  white-space: normal;
 }
 
 /* Blank line spacing between utterances */
 .utterance-block + .utterance-block {
-  margin-top: 6px;
+  margin-top: 0.1in;
 }
 
 /* ─── Line number gutter ─────────────────────────────────────────────────── */
 .utt-line-num {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.1rem;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 11pt;
   color: #94a3b8;
   text-align: right;
-  padding-right: 8px;
-  padding-top: 1px;
+  padding-right: 0.4rem;
   user-select: none;
   cursor: default;
   white-space: nowrap;
-  /* Title tooltip shows timestamp — see UtteranceNodeView */
 }
 
-/* ─── Q. / A. prefix ────────────────────────────────────────────────────── */
+/* Prefix text is now rendered visually through utt-content::before so
+   first-line-only indentation can use normal text flow instead of a fixed
+   prefix column. */
 .utt-prefix {
-  font-family: 'Libre Baskerville', serif;
-  font-size: 13px;
-  line-height: 1.65;
-  padding-right: 6px;
-  user-select: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.utt-prefix--qa {
-  font-weight: 700;
-  color: #1e3a5f;
-  font-size: 13px;
-}
-
-.utt-prefix--colloquy {
-  font-weight: 600;
-  font-size: 11px;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding-top: 2px;
+  display: none;
 }
 
 /* ─── Editable content area ──────────────────────────────────────────────── */
 .utt-content {
-  font-family: 'Libre Baskerville', serif;
-  font-size: 13px;
-  color: #1e293b;
-  line-height: 1.65;
-  min-height: 1.65em;
-  word-break: break-word;
+  display: block;
+  min-height: 28pt;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  color: inherit;
 }
 
-/* Remove ProseMirror default paragraph margin inside utterance content */
-.utt-content > p {
-  margin: 0;
+.utt-content::before {
+  content: "";
+}
+
+.utterance-block--q .utt-content,
+.utterance-block--a .utt-content {
+  text-indent: 0.5in;
+}
+
+.utterance-block--q .utt-content::before,
+.utterance-block--a .utt-content::before {
+  content: attr(data-prefix-text) "  ";
+  font-weight: 700;
+  color: #111827;
+}
+
+.utterance-block--colloquy .utt-content,
+.utterance-block--speaker-label .utt-content,
+.utterance-block--by-line .utt-content {
+  text-indent: 1.5in;
+}
+
+.utterance-block--colloquy .utt-content::before,
+.utterance-block--speaker-label .utt-content::before,
+.utterance-block--by-line .utt-content::before {
+  content: attr(data-prefix-text) "  ";
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #111827;
+}
+
+.utterance-block--parenthetical {
+  margin-left: 2in;
+  color: #1E3A5F;
+}
+
+.utterance-block--parenthetical .utt-content {
+  text-indent: 0;
+}
+
+.utterance-block--parenthetical .utt-content::before {
+  content: "";
 }
 
 /* ─── Block-role visual differentiation ─────────────────────────────────── */
 .utterance-block--q .utt-content {
-  color: #1e293b;
+  color: #111827;
 }
 
 .utterance-block--a .utt-content {
-  color: #1e3a5f;
+  color: #111827;
 }
 
 .utterance-block--colloquy {
-  grid-template-columns: 2.25rem 11rem 1fr;
-  margin-top: 10px;
-  margin-bottom: 2px;
-}
-
-.utterance-block--colloquy .utt-content {
-  color: #374151;
-  font-style: italic;
+  margin-top: 0.12in;
+  margin-bottom: 0;
 }
 
 /* ─── Word tokens ────────────────────────────────────────────────────────── */
@@ -410,17 +429,12 @@ html, body, #root {
 .utterance-block--interpreter {
   background-color: #f0fdfa;
   border-left: 2px solid #14b8a6;
-  padding-left: 4px;
+  padding-left: calc(2.75rem + 4px);
   margin-left: -6px;
   position: relative;
 }
 
 .utterance-block--interpreter .utt-content {
-  color: #0f766e;
-  font-style: italic;
-}
-
-.utterance-block--interpreter .utt-prefix {
   color: #0f766e;
 }
 
@@ -430,14 +444,14 @@ html, body, #root {
 
 /* Language badge in the interpreter channel stub */
 .utt-interp-channel {
-  grid-column: 1 / -1;
+  display: block;
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   font-weight: 600;
   color: #14b8a6;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0 0 1px 2.25rem;
+  padding: 0 0 1px 0;
   user-select: none;
   cursor: default;
   opacity: 0.7;

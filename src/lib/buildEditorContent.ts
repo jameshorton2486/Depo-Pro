@@ -258,6 +258,7 @@ export function buildEditorContent(
     blocks.push({
       type: "utterance",
       attrs: {
+        formatted_line_role: line.role,
         utterance_id: line.utterance_id,
         speaker_id: line.speaker_id,
         speaker_label: speaker?.display_name ?? line.speaker_label,

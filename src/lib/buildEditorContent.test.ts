@@ -269,6 +269,8 @@ describe("buildEditorContent", () => {
     expect(attrs.tab_qa_text_inches).toBe(1.0);
     expect(attrs.tab_speaker_inches).toBe(1.5);
     expect(attrs.tab_parenthetical_inches).toBe(2.0);
+    expect(attrs.left_margin_inches).toBe(1.25);
+    expect(attrs.right_margin_inches).toBe(0.75);
     expect(attrs.line_spacing_points).toBe(28);
   });
 
@@ -364,6 +366,7 @@ describe("buildEditorContent", () => {
 
     expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("ATTORNEY");
     expect(utteranceAttrsBySpeaker(content, "spk-1").prefix_text).toBe("Q.");
+    expect(utteranceAttrsBySpeaker(content, "spk-1").formatted_line_role).toBe("q");
   });
 
   it("writes WITNESS role into structured utterance attrs for a lines", () => {
@@ -389,6 +392,7 @@ describe("buildEditorContent", () => {
 
     expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("WITNESS");
     expect(utteranceAttrsBySpeaker(content, "spk-1").prefix_text).toBe("A.");
+    expect(utteranceAttrsBySpeaker(content, "spk-1").formatted_line_role).toBe("a");
   });
 
   it("preserves raw speaker role attrs when structure is not confirmed", () => {

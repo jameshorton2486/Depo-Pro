@@ -11,6 +11,7 @@ export const UtteranceNode = Node.create({
 
   addAttributes() {
     return {
+      formatted_line_role: { default: null },
       utterance_id: { default: null },
       speaker_id: { default: null },
       speaker_label: { default: "" },
@@ -41,6 +42,7 @@ export const UtteranceNode = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     const {
+      formatted_line_role,
       utterance_id,
       speaker_id,
       speaker_label,
@@ -76,9 +78,14 @@ export const UtteranceNode = Node.create({
     const displayLine = numericPageLineNumber > 0 ? numericPageLineNumber : numericLineNumber;
     const explicitPrefix = typeof prefix_text === "string" ? prefix_text : "";
     const prefix = explicitPrefix || getUtterancePrefix(roleValue, speakerLabelText);
+    const lineRole =
+      typeof formatted_line_role === "string" && formatted_line_role.length > 0
+        ? formatted_line_role.replace(/_/g, "-")
+        : null;
     const className = [
       "utterance-block",
       `utterance-block--${blockRole.toLowerCase()}`,
+      lineRole ? `utterance-block--${lineRole}` : "",
       isInterpreter ? "utterance-block--interpreter" : "",
     ]
       .filter(Boolean)
@@ -88,9 +95,11 @@ export const UtteranceNode = Node.create({
       "div",
       mergeAttributes({
         class: className,
+        "data-line-role": formatted_line_role,
         "data-utterance-id": utterance_id,
         "data-speaker-id": speaker_id,
         "data-speaker-label": speaker_label,
+        "data-prefix-text": prefix,
         "data-line": line_number,
         "data-page-line": page_line_number,
         "data-start": start_time,
@@ -126,7 +135,7 @@ export const UtteranceNode = Node.create({
         },
         prefix,
       ],
-      ["span", { class: "utt-content" }, 0],
+      ["span", { class: "utt-content", "data-prefix-text": prefix }, 0],
     ];
 
     if (isInterpreter) {
