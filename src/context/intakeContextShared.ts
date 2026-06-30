@@ -2,6 +2,7 @@ import { createContext } from "react";
 
 import type {
   CaseRecord,
+  CaseCertification,
   Attorney,
   Witness,
   Interpreter,
@@ -35,6 +36,7 @@ export interface IntakeContextValue {
   setNotes: (notes: string) => void;
   setAudio: (audio: CaseAudio | null) => void;
   setKeyterms: (keyterms: CaseRecord["deepgram"]["keyterms"]) => void;
+  setCertification: (certification: CaseCertification | null) => void;
   updateField: (
     path: string,
     value: unknown,

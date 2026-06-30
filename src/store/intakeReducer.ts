@@ -4,6 +4,7 @@
 
 import type {
   CaseRecord,
+  CaseCertification,
   Attorney,
   CaseParty,
   Witness,
@@ -78,6 +79,7 @@ export type SetStageCompleteAction = { type: "SET_STAGE_COMPLETE"; payload: { st
 export type SetNotesAction       = { type: "SET_NOTES"; payload: { notes: string } };
 export type SetAudioAction       = { type: "SET_AUDIO"; payload: { audio: CaseAudio | null } };
 export type SetKeytermsAction    = { type: "SET_KEYTERMS"; payload: { keyterms: CaseRecord["deepgram"]["keyterms"] } };
+export type SetCertificationAction = { type: "SET_CERTIFICATION"; payload: { certification: CaseCertification | null } };
 
 // ── Field update (generic path into CaseRecord) ───────────────────────────────
 // Targets a dot-path within the record's ExtractedField leaves.
@@ -221,6 +223,7 @@ export type IntakeAction =
   | SetNotesAction
   | SetAudioAction
   | SetKeytermsAction
+  | SetCertificationAction
   | UpdateFieldAction
   | ApplyExtractionAction
   | ResolveConflictAction
@@ -433,6 +436,18 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
             ...state.record.deepgram,
             keyterms: action.payload.keyterms,
           },
+        },
+      };
+    }
+
+    case "SET_CERTIFICATION": {
+      return {
+        ...state,
+        dirty: true,
+        editSeq: state.editSeq + 1,
+        record: {
+          ...state.record,
+          certification: action.payload.certification,
         },
       };
     }

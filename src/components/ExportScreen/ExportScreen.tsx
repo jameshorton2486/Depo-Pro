@@ -16,10 +16,6 @@ interface GeneratedArtifact {
   size: number;
 }
 
-function certificationKey(jobId: string) {
-  return `depo-pro.certification.${jobId}.v1`;
-}
-
 function downloadBlob(filename: string, type: string, content: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -39,19 +35,11 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   const certificationReady = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(certificationKey(jobId));
-      if (!raw) return false;
-      const parsed = JSON.parse(raw) as {
-        certificationStatement?: string;
-        checklist?: Record<string, boolean>;
-      };
-      return !!parsed.certificationStatement?.trim() &&
-        Object.values(parsed.checklist ?? {}).every(Boolean);
-    } catch {
-      return false;
-    }
-  }, [jobId]);
+    const certification = record.certification;
+    if (!certification) return false;
+    return certification.certification_statement.trim().length > 0
+      && Object.values(certification.checklist).every(Boolean);
+  }, [record.certification]);
 
   async function handleCopyTranscript() {
     if (!transcriptText) return;

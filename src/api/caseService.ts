@@ -12,6 +12,14 @@ type CaseRow = {
 
 type CaseCertificationRow = {
   case_id: string;
+  certification_date?: string | null;
+  certification_statement?: string;
+  checklist?: CaseRecord["certification"] extends infer T
+    ? T extends { checklist: infer Checklist }
+      ? Checklist
+      : never
+    : never;
+  signature_hash?: string | null;
 };
 
 type CaseIndicatorSummary = {
@@ -80,6 +88,29 @@ export async function saveCase(record: CaseRecord): Promise<CaseRecord> {
     .upsert(toCaseRow(nextRecord), { onConflict: "case_id" });
 
   if (error) throw error;
+
+  if (nextRecord.certification) {
+    const { error: certificationError } = await client
+      .from("case_certifications")
+      .upsert({
+        case_id: nextRecord.case_id,
+        certification_date: nextRecord.certification.certification_date,
+        certification_statement: nextRecord.certification.certification_statement,
+        checklist: nextRecord.certification.checklist,
+        signature_hash: nextRecord.certification.signature_hash,
+        updated_at: now,
+      }, { onConflict: "case_id" });
+
+    if (certificationError) throw certificationError;
+  } else {
+    const { error: certificationDeleteError } = await client
+      .from("case_certifications")
+      .delete()
+      .eq("case_id", nextRecord.case_id);
+
+    if (certificationDeleteError) throw certificationDeleteError;
+  }
+
   return nextRecord;
 }
 

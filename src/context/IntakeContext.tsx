@@ -88,6 +88,10 @@ export function IntakeProvider({
     dispatch({ type: "SET_KEYTERMS", payload: { keyterms } });
   }, []);
 
+  const setCertification = useCallback((certification: CaseRecord["certification"]) => {
+    dispatch({ type: "SET_CERTIFICATION", payload: { certification } });
+  }, []);
+
   // ── Field mutation ─────────────────────────────────────────────────────────
 
   const updateField = useCallback(
@@ -261,6 +265,7 @@ export function IntakeProvider({
     setNotes,
     setAudio,
     setKeyterms,
+    setCertification,
     updateField,
     applyExtraction,
     resolveConflict,

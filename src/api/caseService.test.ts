@@ -1,18 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateCaseId, listRecentCases } from "./caseService";
+import { generateCaseId, listRecentCases, saveCase } from "./caseService";
 import { emptyCaseRecord } from "../types/case";
 
 const casesSelect = vi.fn();
+const casesUpsert = vi.fn();
 const caseAudioSelect = vi.fn();
 const transcriptsSelect = vi.fn();
 const exhibitsSelect = vi.fn();
 const certificationsSelect = vi.fn();
+const certificationsUpsert = vi.fn();
+const certificationsDeleteEq = vi.fn();
+const certificationsDelete = vi.fn();
 
 vi.mock("../lib/supabase", () => ({
   getSupabaseClient: vi.fn(async () => ({
     from(table: string) {
       if (table === "cases") {
-        return { select: casesSelect };
+        return { select: casesSelect, upsert: casesUpsert };
       }
       if (table === "case_audio") {
         return { select: caseAudioSelect };
@@ -24,7 +28,11 @@ vi.mock("../lib/supabase", () => ({
         return { select: exhibitsSelect };
       }
       if (table === "case_certifications") {
-        return { select: certificationsSelect };
+        return {
+          select: certificationsSelect,
+          upsert: certificationsUpsert,
+          delete: certificationsDelete,
+        };
       }
       throw new Error(`unexpected table ${table}`);
     },
@@ -75,10 +83,18 @@ describe("emptyCaseRecord", () => {
 describe("listRecentCases", () => {
   beforeEach(() => {
     casesSelect.mockReset();
+    casesUpsert.mockReset();
     caseAudioSelect.mockReset();
     transcriptsSelect.mockReset();
     exhibitsSelect.mockReset();
     certificationsSelect.mockReset();
+    certificationsUpsert.mockReset();
+    certificationsDeleteEq.mockReset();
+    certificationsDelete.mockReset();
+    certificationsDelete.mockReturnValue({ eq: certificationsDeleteEq });
+    certificationsDeleteEq.mockResolvedValue({ error: null });
+    casesUpsert.mockResolvedValue({ error: null });
+    certificationsUpsert.mockResolvedValue({ error: null });
   });
 
   it("assembles recent cases with grouped indicator queries and excludes archived rows", async () => {
@@ -207,5 +223,60 @@ describe("listRecentCases", () => {
         certified: false,
       },
     ]);
+  });
+});
+
+describe("saveCase", () => {
+  beforeEach(() => {
+    casesUpsert.mockReset();
+    certificationsUpsert.mockReset();
+    certificationsDeleteEq.mockReset();
+    certificationsDelete.mockReset();
+    certificationsDelete.mockReturnValue({ eq: certificationsDeleteEq });
+    certificationsDeleteEq.mockResolvedValue({ error: null });
+    casesUpsert.mockResolvedValue({ error: null });
+    certificationsUpsert.mockResolvedValue({ error: null });
+  });
+
+  it("persists certification payloads into case_certifications alongside the case row", async () => {
+    const record = emptyCaseRecord("case_certified", "2026-06-05T12:00:00.000Z");
+    record.certification = {
+      certification_date: "2026-06-30",
+      certification_statement: "Ready for release.",
+      checklist: {
+        review_complete: true,
+        speaker_mapping_complete: true,
+        confidence_review_complete: true,
+        exhibits_complete: false,
+        ufm_complete: false,
+      },
+      signature_hash: null,
+    };
+
+    await saveCase(record);
+
+    expect(casesUpsert).toHaveBeenCalledTimes(1);
+    expect(certificationsUpsert).toHaveBeenCalledTimes(1);
+    expect(certificationsUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        case_id: "case_certified",
+        certification_date: "2026-06-30",
+        certification_statement: "Ready for release.",
+        checklist: record.certification.checklist,
+        signature_hash: null,
+      }),
+      { onConflict: "case_id" },
+    );
+    expect(certificationsDelete).not.toHaveBeenCalled();
+  });
+
+  it("removes persisted certification rows when certification is cleared", async () => {
+    const record = emptyCaseRecord("case_uncertified", "2026-06-05T12:00:00.000Z");
+
+    await saveCase(record);
+
+    expect(certificationsDelete).toHaveBeenCalledTimes(1);
+    expect(certificationsDeleteEq).toHaveBeenCalledWith("case_id", "case_uncertified");
+    expect(certificationsUpsert).not.toHaveBeenCalled();
   });
 });
