@@ -24,24 +24,108 @@ function cloneParagraph(
   kind: TranscriptParagraph["kind"],
   label: string,
   text: string,
+  overrides?: Partial<Pick<TranscriptParagraph, "leadingText" | "words">>,
 ): TranscriptParagraph {
+  const words = overrides?.words ?? [...(paragraph.words ?? [])];
+  const leadingText = overrides?.leadingText ?? paragraph.leadingText ?? "";
   return {
     ...paragraph,
     kind,
     label,
     text: normalizeParagraphArtifacts(text.trim()),
-    sourceUtteranceIds: [...paragraph.sourceUtteranceIds],
-    sourceWordIds: [...paragraph.sourceWordIds],
+    leadingText,
+    words,
+    sourceLines: [...(paragraph.sourceLines ?? [])],
+    mode: paragraph.mode ?? "display",
+    speakerId: paragraph.speakerId ?? null,
+    sourceUtteranceIds: words.length > 0
+      ? Array.from(new Set(words.map((word) => word.utterance_id)))
+      : [...paragraph.sourceUtteranceIds],
+    sourceWordIds: words.length > 0
+      ? words.map((word) => word.word_id)
+      : [...paragraph.sourceWordIds],
   };
 }
 
 function mergeParagraph(left: TranscriptParagraph, right: TranscriptParagraph): TranscriptParagraph {
+  const leftWords = [...(left.words ?? [])];
+  if (leftWords.length > 0) {
+    const lastWord = leftWords[leftWords.length - 1];
+    leftWords[leftWords.length - 1] = {
+      ...lastWord,
+      trailing_space: lastWord.trailing_space.length > 0 ? lastWord.trailing_space : " ",
+    };
+  }
+
   return {
     ...left,
     text: `${left.text} ${right.text}`.trim(),
-    sourceUtteranceIds: [...left.sourceUtteranceIds, ...right.sourceUtteranceIds],
+    words: [...leftWords, ...(right.words ?? [])],
+    sourceLines: [...(left.sourceLines ?? []), ...(right.sourceLines ?? [])],
+    sourceUtteranceIds: Array.from(new Set([
+      ...left.sourceUtteranceIds,
+      ...right.sourceUtteranceIds,
+    ])),
     sourceWordIds: [...left.sourceWordIds, ...right.sourceWordIds],
   };
+}
+
+function serializeParagraphWords(paragraph: TranscriptParagraph): string {
+  return (paragraph.words ?? [])
+    .map((word) => {
+      const flag = paragraph.mode === "display" && word.inline_flag
+        ? ` ${word.inline_flag}`
+        : "";
+      return `${word.text}${flag}${word.trailing_space}`;
+    })
+    .join("");
+}
+
+function sliceParagraphWords(
+  paragraph: TranscriptParagraph,
+  startIndex: number,
+  endIndex: number,
+): TranscriptParagraph["words"] {
+  const prefixLength = paragraph.leadingText.length;
+  const serializedWords = serializeParagraphWords(paragraph);
+  const wordStart = Math.max(0, startIndex - prefixLength);
+  const wordEnd = Math.max(0, endIndex - prefixLength);
+
+  if (wordEnd <= 0 || wordStart >= serializedWords.length) {
+    return [];
+  }
+
+  const selected: TranscriptParagraph["words"] = [];
+  let offset = 0;
+
+  for (const word of paragraph.words ?? []) {
+    const flag = paragraph.mode === "display" && word.inline_flag
+      ? ` ${word.inline_flag}`
+      : "";
+    const chunk = `${word.text}${flag}${word.trailing_space}`;
+    const nextOffset = offset + chunk.length;
+    if (nextOffset > wordStart && offset < wordEnd) {
+      selected.push(word);
+    }
+    offset = nextOffset;
+  }
+
+  return selected;
+}
+
+function sliceParagraph(
+  paragraph: TranscriptParagraph,
+  kind: TranscriptParagraph["kind"],
+  label: string,
+  startIndex: number,
+  endIndex: number,
+  leadingText = "",
+): TranscriptParagraph {
+  const text = paragraph.text.slice(startIndex, endIndex).trim();
+  return cloneParagraph(paragraph, kind, label, text, {
+    leadingText,
+    words: sliceParagraphWords(paragraph, startIndex, endIndex),
+  });
 }
 
 function canMergeParagraphs(current: TranscriptParagraph | null, next: TranscriptParagraph): current is TranscriptParagraph {
@@ -83,13 +167,28 @@ function splitEmbeddedObjections(paragraph: TranscriptParagraph): TranscriptPara
   const result: TranscriptParagraph[] = [];
 
   if (before) {
-    result.push(cloneParagraph(paragraph, "Q", "Q.", before));
+    result.push(sliceParagraph(paragraph, "Q", "Q.", 0, match.index, paragraph.leadingText));
   }
 
-  result.push(cloneParagraph(paragraph, "COLLOQUY", DEFAULT_OBJECTION_LABEL, objectionText));
+  result.push(sliceParagraph(
+    paragraph,
+    "COLLOQUY",
+    DEFAULT_OBJECTION_LABEL,
+    match.index,
+    match.index + match[0].length,
+  ));
+  result[result.length - 1].text = objectionText;
 
   if (after) {
-    result.push(...splitEmbeddedObjections(cloneParagraph(paragraph, "Q", "Q.", after)));
+    const afterParagraph = sliceParagraph(
+      paragraph,
+      "Q",
+      "Q.",
+      match.index + match[0].length,
+      paragraph.text.length,
+    );
+    afterParagraph.text = after;
+    result.push(...splitEmbeddedObjections(afterParagraph));
   }
 
   return result;
@@ -102,7 +201,9 @@ function splitShortAnswerParagraph(paragraph: TranscriptParagraph): TranscriptPa
   }
 
   const questionText = paragraph.text.slice(0, questionMarkIndex + 1).trim();
-  const remainder = paragraph.text.slice(questionMarkIndex + 1).trimStart();
+  const rawRemainder = paragraph.text.slice(questionMarkIndex + 1);
+  const remainderTrimStart = rawRemainder.length - rawRemainder.trimStart().length;
+  const remainder = rawRemainder.trimStart();
   const answerMatch = remainder.match(SHORT_ANSWER_PATTERN);
 
   if (!answerMatch) {
@@ -111,13 +212,27 @@ function splitShortAnswerParagraph(paragraph: TranscriptParagraph): TranscriptPa
 
   const answerText = answerMatch[1].trim();
   const trailingQuestionText = remainder.slice(answerMatch[0].length).trim();
+  const answerStartIndex = questionMarkIndex + 1 + remainderTrimStart;
+  const answerEndIndex = answerStartIndex + answerMatch[1].length;
+  const trailingStartIndex = answerStartIndex + answerMatch[0].length;
   const result: TranscriptParagraph[] = [
-    cloneParagraph(paragraph, "Q", "Q.", questionText),
-    cloneParagraph(paragraph, "A", "A.", answerText),
+    sliceParagraph(paragraph, "Q", "Q.", 0, questionMarkIndex + 1, paragraph.leadingText),
+    sliceParagraph(paragraph, "A", "A.", answerStartIndex, answerEndIndex),
   ];
 
+  result[0].text = questionText;
+  result[1].text = answerText;
+
   if (trailingQuestionText) {
-    result.push(...splitQParagraph(cloneParagraph(paragraph, "Q", "Q.", trailingQuestionText)));
+    const trailingParagraph = sliceParagraph(
+      paragraph,
+      "Q",
+      "Q.",
+      trailingStartIndex,
+      paragraph.text.length,
+    );
+    trailingParagraph.text = trailingQuestionText;
+    result.push(...splitQParagraph(trailingParagraph));
   }
 
   return result;

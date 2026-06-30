@@ -6,7 +6,7 @@ import { abbreviationRegistry } from "./format/abbreviationRegistry";
 import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { ENABLE_DISPLAY_TURN_SEGMENTATION } from "./format/grouping";
-import { buildDisplayDocument, resolveWordDisplay } from "./transcript/workspacePresentation";
+import { buildDisplayDocument, buildTranscriptParagraphs, resolveWordDisplay } from "./transcript/workspacePresentation";
 import type { FormattedLineRole } from "./format/types";
 
 type OverlayWord = EditorDocument["words"][number] & {
@@ -129,9 +129,14 @@ function buildInlineNodes(
     trailing_space: string;
     ai_layer?: "ai_suggestion" | "working_text" | "raw_text";
     ai_pending?: boolean;
-  }>
+  }>,
+  leadingText = "",
 ): JSONContent[] {
   const inlineNodes: JSONContent[] = [];
+
+  if (leadingText.length > 0) {
+    inlineNodes.push({ type: "text", text: leadingText });
+  }
 
   words.forEach((word) => {
     if (!word.text || word.text.length === 0) return;
@@ -189,6 +194,18 @@ function formattedLineRoleToSpeakerRole(
   return speakerRole ?? null;
 }
 
+function paragraphKindToFormattedLineRole(
+  kind: "Q" | "A" | "COLLOQUY" | "PARENTHETICAL" | "BY_LINE" | "SECTION_HEADER",
+  sourceRole: FormattedLineRole | undefined,
+): FormattedLineRole {
+  if (kind === "Q") return "q";
+  if (kind === "A") return "a";
+  if (kind === "BY_LINE") return "by_line";
+  if (kind === "SECTION_HEADER") return "section_header";
+  if (kind === "PARENTHETICAL") return "parenthetical";
+  return sourceRole ?? "speaker_label";
+}
+
 export function buildEditorContent(
   doc: EditorDocument,
   options?: {
@@ -213,13 +230,95 @@ export function buildEditorContent(
     return buildLegacyEditorContent(displayDoc, languageMap);
   }
 
-  const formatted = cfe(displayDoc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  if (!shouldInferStructure) {
+    const formatted = cfe(displayDoc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+    const blocks: JSONContent[] = [];
+    let currentPage = 0;
+
+    formatted.lines.forEach((line) => {
+      const blockPage = line.page_number;
+
+      if (blockPage > currentPage) {
+        if (currentPage > 0) {
+          blocks.push({
+            type: "pageBreak",
+            attrs: { pageNumber: blockPage },
+          });
+        }
+        currentPage = blockPage;
+      }
+
+      const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
+      const role = formattedLineRoleToSpeakerRole(line.role, speaker?.role ?? null);
+      const overlayWords = line.words.map((word) => {
+        const sourceWord = displayDoc.words.find((candidate) => candidate.word_id === word.word_id) as OverlayWord | undefined;
+        const resolvedWord = resolveWordDisplay(sourceWord
+          ? {
+              raw_text: word.text,
+              working_text: word.text,
+              ai_suggestion: sourceWord.ai_suggestion,
+              ai_suggestion_status: sourceWord.ai_suggestion_status,
+            }
+          : {
+              raw_text: word.text,
+              working_text: word.text,
+            });
+
+        return {
+          ...word,
+          text: resolvedWord.displayText,
+          ai_layer: resolvedWord.layer,
+          ai_pending: resolvedWord.isPending,
+        };
+      });
+
+      blocks.push({
+        type: "utterance",
+        attrs: {
+          formatted_line_role: line.role,
+          utterance_id: line.utterance_id,
+          speaker_id: line.speaker_id,
+          speaker_label: speaker?.display_name ?? line.speaker_label,
+          prefix_text: line.prefix_text,
+          line_number: line.line_number,
+          page_line_number: line.page_line_number,
+          start_time: line.start_time,
+          role,
+          language: languageMap?.get(line.utterance_id) ?? null,
+          segment_index: line.segment_index,
+          segment_count: line.segment_count,
+          indent_intent: line.indent_intent,
+          continuation_mode: line.continuation_mode,
+          format_box_width_inches: line.geometry.formatBoxWidthInches,
+          left_margin_inches: line.geometry.leftMarginInches,
+          right_margin_inches: line.geometry.rightMarginInches,
+          line_spacing_points: line.geometry.lineSpacingPoints,
+          tab_qa_label_inches: line.geometry.tabs.qaLabelInches,
+          tab_qa_text_inches: line.geometry.tabs.qaTextInches,
+          tab_speaker_inches: line.geometry.tabs.speakerInches,
+          tab_parenthetical_inches: line.geometry.tabs.parentheticalInches,
+          tab_center_inches: line.geometry.tabs.centerInches,
+          tab_continuation_inches: line.geometry.tabs.continuationInches,
+        },
+        content: buildInlineNodes(overlayWords),
+      });
+    });
+
+    return { type: "doc", content: blocks };
+  }
 
   const blocks: JSONContent[] = [];
   let currentPage = 0;
+  const displayWordById = new Map(displayDoc.words.map((word) => [word.word_id, word as OverlayWord]));
+  const paragraphs = buildTranscriptParagraphs(visibleDoc, options?.record, "display");
 
-  formatted.lines.forEach((line) => {
-    const blockPage = line.page_number;
+  paragraphs.forEach((paragraph, paragraphIndex) => {
+    if (paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE") {
+      return;
+    }
+
+    const sourceLine = paragraph.sourceLines[0];
+    const blockPage = sourceLine?.page_number ?? (currentPage || 1);
 
     if (blockPage > currentPage) {
       if (currentPage > 0) {
@@ -231,10 +330,11 @@ export function buildEditorContent(
       currentPage = blockPage;
     }
 
-    const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
-    const role = formattedLineRoleToSpeakerRole(line.role, speaker?.role ?? null);
-    const overlayWords = line.words.map((word) => {
-      const sourceWord = displayDoc.words.find((candidate) => candidate.word_id === word.word_id) as OverlayWord | undefined;
+    const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === paragraph.speakerId);
+    const formattedLineRole = paragraphKindToFormattedLineRole(paragraph.kind, sourceLine?.role);
+    const role = formattedLineRoleToSpeakerRole(formattedLineRole, speaker?.role ?? null);
+    const overlayWords = paragraph.words.map((word) => {
+      const sourceWord = displayWordById.get(word.word_id);
       const resolvedWord = resolveWordDisplay(sourceWord
         ? {
             raw_text: word.text,
@@ -258,32 +358,38 @@ export function buildEditorContent(
     blocks.push({
       type: "utterance",
       attrs: {
-        formatted_line_role: line.role,
-        utterance_id: line.utterance_id,
-        speaker_id: line.speaker_id,
-        speaker_label: speaker?.display_name ?? line.speaker_label,
-        prefix_text: line.prefix_text,
-        line_number: line.line_number,
-        page_line_number: line.page_line_number,
-        start_time: line.start_time,
+        formatted_line_role: formattedLineRole,
+        utterance_id: paragraph.sourceUtteranceIds[0] ?? `paragraph-${paragraphIndex + 1}`,
+        speaker_id: paragraph.speakerId,
+        speaker_label: sourceLine?.speaker_label ?? speaker?.display_name ?? paragraph.label,
+        prefix_text: paragraph.kind === "Q"
+          ? "Q."
+          : paragraph.kind === "A"
+            ? "A."
+            : paragraph.kind === "PARENTHETICAL"
+              ? ""
+              : `${paragraph.label}:`,
+        line_number: sourceLine?.line_number ?? paragraphIndex + 1,
+        page_line_number: sourceLine?.page_line_number ?? paragraphIndex + 1,
+        start_time: sourceLine?.start_time ?? 0,
         role,
-        language: languageMap?.get(line.utterance_id) ?? null,
-        segment_index: line.segment_index,
-        segment_count: line.segment_count,
-        indent_intent: line.indent_intent,
-        continuation_mode: line.continuation_mode,
-        format_box_width_inches: line.geometry.formatBoxWidthInches,
-        left_margin_inches: line.geometry.leftMarginInches,
-        right_margin_inches: line.geometry.rightMarginInches,
-        line_spacing_points: line.geometry.lineSpacingPoints,
-        tab_qa_label_inches: line.geometry.tabs.qaLabelInches,
-        tab_qa_text_inches: line.geometry.tabs.qaTextInches,
-        tab_speaker_inches: line.geometry.tabs.speakerInches,
-        tab_parenthetical_inches: line.geometry.tabs.parentheticalInches,
-        tab_center_inches: line.geometry.tabs.centerInches,
-        tab_continuation_inches: line.geometry.tabs.continuationInches,
+        language: languageMap?.get(paragraph.sourceUtteranceIds[0] ?? "") ?? sourceLine?.language ?? null,
+        segment_index: sourceLine?.segment_index ?? 0,
+        segment_count: sourceLine?.segment_count ?? 1,
+        indent_intent: sourceLine?.indent_intent ?? "continuation",
+        continuation_mode: sourceLine?.continuation_mode ?? "return_to_margin",
+        format_box_width_inches: sourceLine?.geometry.formatBoxWidthInches ?? DEFAULT_GEOMETRY_PROFILE.formatBoxWidthInches,
+        left_margin_inches: sourceLine?.geometry.leftMarginInches ?? DEFAULT_GEOMETRY_PROFILE.leftMarginInches,
+        right_margin_inches: sourceLine?.geometry.rightMarginInches ?? DEFAULT_GEOMETRY_PROFILE.rightMarginInches,
+        line_spacing_points: sourceLine?.geometry.lineSpacingPoints ?? DEFAULT_GEOMETRY_PROFILE.lineSpacingPoints,
+        tab_qa_label_inches: sourceLine?.geometry.tabs.qaLabelInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.qaLabelInches,
+        tab_qa_text_inches: sourceLine?.geometry.tabs.qaTextInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.qaTextInches,
+        tab_speaker_inches: sourceLine?.geometry.tabs.speakerInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.speakerInches,
+        tab_parenthetical_inches: sourceLine?.geometry.tabs.parentheticalInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.parentheticalInches,
+        tab_center_inches: sourceLine?.geometry.tabs.centerInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.centerInches,
+        tab_continuation_inches: sourceLine?.geometry.tabs.continuationInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.continuationInches,
       },
-      content: buildInlineNodes(overlayWords),
+      content: buildInlineNodes(overlayWords, paragraph.leadingText),
     });
   });
 

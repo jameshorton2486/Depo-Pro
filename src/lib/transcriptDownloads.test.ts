@@ -217,4 +217,33 @@ describe("transcriptDownloads", () => {
     expect(text).toContain("A. No. 12129");
   });
 
+  it("uses the structured paragraph pipeline for clean downloads", () => {
+    const document = makeDocument();
+    document.speakers = [
+      {
+        speaker_id: "spk-1",
+        display_name: "DENNIS BENTLEY",
+        deepgram_speaker: 0,
+        role: "ATTORNEY",
+      },
+    ];
+    document.utterances = [
+      { utterance_id: "utt-1", speaker_id: "spk-1", start_time: 0, end_time: 1, word_ids: ["w1", "w2"] },
+      { utterance_id: "utt-2", speaker_id: "spk-1", start_time: 1, end_time: 2, word_ids: ["w3", "w4"] },
+    ];
+    document.words = [
+      { word_id: "w1", text: "And and", raw_text: "And and", speaker_id: "spk-1", utterance_id: "utt-1", start_time: 0, end_time: 0.25, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w2", text: "many physicians, many tree treating physicians as part of the examination", raw_text: "many physicians, many tree treating physicians as part of the examination", speaker_id: "spk-1", utterance_id: "utt-1", start_time: 0.25, end_time: 0.5, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w3", text: "look for things,", raw_text: "look for things,", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.5, end_time: 0.75, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w4", text: "to not only coordinate the pain symptoms", raw_text: "to not only coordinate the pain symptoms", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.75, end_time: 1, confidence: 1, reviewed: false, edited: false },
+    ];
+
+    const text = buildFormattedTranscriptText(document, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+
+    expect(text).toContain("Q. And and many physicians, many tree treating physicians as part of the examination look for things, to not only coordinate the pain symptoms");
+  });
+
 });

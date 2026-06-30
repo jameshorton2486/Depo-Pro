@@ -9,7 +9,7 @@ import { abbreviationRegistry } from "../format/abbreviationRegistry";
 import { cfe } from "../format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
 import { stripHonorificPrefix } from "../format/honorificHelper";
-import type { FormattedLine } from "../format/types";
+import type { FormattedLine, FormattedWord } from "../format/types";
 import { applyParagraphDisplayImprovements } from "./paragraphDisplayImprovements";
 import { applyQaFixer } from "./qaFixer";
 
@@ -52,6 +52,11 @@ export interface TranscriptParagraph {
   kind: TranscriptParagraphKind;
   label: string;
   text: string;
+  speakerId: string | null;
+  leadingText: string;
+  mode: TextMode;
+  words: FormattedWord[];
+  sourceLines: FormattedLine[];
   sourceUtteranceIds: string[];
   sourceWordIds: string[];
 }
@@ -114,6 +119,84 @@ function serializeLineText(line: FormattedLine, mode: TextMode): string {
     })
     .join("")
     .trim();
+}
+
+function serializeParagraphWords(words: FormattedWord[], mode: TextMode): string {
+  return words
+    .map((word) => {
+      const flag = mode === "display" && word.inline_flag
+        ? ` ${word.inline_flag}`
+        : "";
+      return `${word.text}${flag}${word.trailing_space}`;
+    })
+    .join("");
+}
+
+function collectSourceUtteranceIds(words: FormattedWord[], sourceLines: FormattedLine[]): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const line of sourceLines) {
+    if (!seen.has(line.utterance_id)) {
+      seen.add(line.utterance_id);
+      ids.push(line.utterance_id);
+    }
+  }
+
+  for (const word of words) {
+    if (!seen.has(word.utterance_id)) {
+      seen.add(word.utterance_id);
+      ids.push(word.utterance_id);
+    }
+  }
+
+  return ids;
+}
+
+function collectSourceWordIds(words: FormattedWord[], sourceLines: FormattedLine[]): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const line of sourceLines) {
+    for (const wordId of line.source_word_ids) {
+      if (!seen.has(wordId)) {
+        seen.add(wordId);
+        ids.push(wordId);
+      }
+    }
+  }
+
+  for (const word of words) {
+    if (!seen.has(word.word_id)) {
+      seen.add(word.word_id);
+      ids.push(word.word_id);
+    }
+  }
+
+  return ids;
+}
+
+function buildParagraphFromParts(
+  kind: TranscriptParagraphKind,
+  label: string,
+  speakerId: string | null,
+  mode: TextMode,
+  words: FormattedWord[],
+  sourceLines: FormattedLine[],
+  leadingText = "",
+): TranscriptParagraph {
+  return {
+    kind,
+    label,
+    text: `${leadingText}${serializeParagraphWords(words, mode)}`.trim(),
+    speakerId,
+    leadingText,
+    mode,
+    words,
+    sourceLines,
+    sourceUtteranceIds: collectSourceUtteranceIds(words, sourceLines),
+    sourceWordIds: collectSourceWordIds(words, sourceLines),
+  };
 }
 
 export function resolveWordDisplay(word: WordDisplayResolvable): ResolvedWordDisplay {
@@ -530,12 +613,24 @@ export function buildWorkspaceParagraphs(document: EditorDocument, record?: Case
 }
 
 function mergeParagraph(left: TranscriptParagraph, right: TranscriptParagraph): TranscriptParagraph {
-  return {
-    ...left,
-    text: `${left.text} ${right.text}`.trim(),
-    sourceUtteranceIds: [...left.sourceUtteranceIds, ...right.sourceUtteranceIds],
-    sourceWordIds: [...left.sourceWordIds, ...right.sourceWordIds],
-  };
+  const leftWords = [...left.words];
+  if (leftWords.length > 0) {
+    const lastWord = leftWords[leftWords.length - 1];
+    leftWords[leftWords.length - 1] = {
+      ...lastWord,
+      trailing_space: lastWord.trailing_space.length > 0 ? lastWord.trailing_space : " ",
+    };
+  }
+
+  return buildParagraphFromParts(
+    left.kind,
+    left.label,
+    left.speakerId,
+    left.mode,
+    [...leftWords, ...right.words],
+    [...left.sourceLines, ...right.sourceLines],
+    left.leadingText,
+  );
 }
 
 function canMergeParagraphs(current: TranscriptParagraph | null, next: TranscriptParagraph): current is TranscriptParagraph {
@@ -588,6 +683,11 @@ export function buildTranscriptParagraphs(
         kind: "SECTION_HEADER",
         label: "",
         text: descriptor.heading,
+        speakerId: line.speaker_id,
+        leadingText: descriptor.heading,
+        mode,
+        words: [],
+        sourceLines: [line],
         sourceUtteranceIds: [line.utterance_id],
         sourceWordIds: [...line.source_word_ids],
       });
@@ -599,22 +699,29 @@ export function buildTranscriptParagraphs(
         kind: "BY_LINE",
         label: "",
         text: descriptor.byLine,
+        speakerId: line.speaker_id,
+        leadingText: descriptor.byLine,
+        mode,
+        words: [],
+        sourceLines: [line],
         sourceUtteranceIds: [line.utterance_id],
         sourceWordIds: [...line.source_word_ids],
       });
     }
 
-    const paragraphText = descriptor.mode === "Q" && descriptor.byLine?.startsWith("(BY ")
-      ? `${descriptor.byLine} ${text}`.trim()
-      : text;
+    const leadingText = descriptor.mode === "Q" && descriptor.byLine?.startsWith("(BY ")
+      ? `${descriptor.byLine} `
+      : "";
 
-    const paragraph: TranscriptParagraph = {
-      kind: descriptor.mode,
-      label: descriptor.mode === "Q" ? "Q." : descriptor.mode === "A" ? "A." : descriptor.label,
-      text: paragraphText,
-      sourceUtteranceIds: [line.utterance_id],
-      sourceWordIds: [...line.source_word_ids],
-    };
+    const paragraph = buildParagraphFromParts(
+      descriptor.mode,
+      descriptor.mode === "Q" ? "Q." : descriptor.mode === "A" ? "A." : descriptor.label,
+      line.speaker_id,
+      mode,
+      [...line.words],
+      [line],
+      leadingText,
+    );
 
     if (canMergeParagraphs(pending, paragraph)) {
       pending = mergeParagraph(pending, paragraph);

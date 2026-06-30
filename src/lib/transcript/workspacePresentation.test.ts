@@ -276,6 +276,74 @@ describe("workspacePresentation", () => {
     expect(text).not.toContain("[SCOPIST: FLAG");
   });
 
+  it("merges long same-speaker answer chains into one paragraph", () => {
+    const document = makeDocument();
+    document.speakers = [
+      { speaker_id: "spk-a", display_name: "THE WITNESS", deepgram_speaker: 0, role: "WITNESS" },
+    ];
+    document.utterances = Array.from({ length: 11 }, (_, index) => ({
+      utterance_id: `utt-a-${index + 1}`,
+      speaker_id: "spk-a",
+      start_time: index,
+      end_time: index + 0.5,
+      word_ids: [`w-a-${index + 1}`],
+    }));
+    const fragments = [
+      "Sure.",
+      "So",
+      "in my experience treating patients for the past twenty four, twenty 5 years,",
+      "it is seldom",
+      "when a person is involved in a single event",
+      "such as a car accident where essentially they're seated, seat belted, what have you,",
+      "um, where they don't sustain any other injuries",
+      "and they sustain isolated",
+      "disc pathology,",
+      "it becomes even more unusual to sustain both neck pathology",
+      "and lower back pathology as a function of a single event such as a car accident.",
+    ];
+    document.words = fragments.map((text, index) => ({
+      word_id: `w-a-${index + 1}`,
+      text,
+      raw_text: text,
+      speaker_id: "spk-a",
+      utterance_id: `utt-a-${index + 1}`,
+      start_time: index,
+      end_time: index + 0.5,
+      confidence: 1,
+      reviewed: false,
+      edited: false,
+    }));
+
+    const paragraphs = buildTranscriptParagraphs(document, makeRecord());
+
+    expect(paragraphs.filter((paragraph) => paragraph.kind === "A")).toHaveLength(1);
+    expect(renderTranscriptParagraphText(paragraphs[paragraphs.length - 1]!, "display")).toContain(
+      "A. Sure. So in my experience treating patients for the past twenty four, twenty 5 years, it is seldom",
+    );
+  });
+
+  it("classifies standalone No. answers as A paragraphs in transcript text", () => {
+    const document = makeDocument();
+    document.speakers = [
+      { speaker_id: "spk-q", display_name: "MR. BENTLEY", deepgram_speaker: 0, role: "ATTORNEY" },
+      { speaker_id: "spk-a", display_name: "THE WITNESS", deepgram_speaker: 1, role: "WITNESS" },
+    ];
+    document.utterances = [
+      { utterance_id: "utt-q", speaker_id: "spk-q", start_time: 0, end_time: 1, word_ids: ["wq1"] },
+      { utterance_id: "utt-a", speaker_id: "spk-a", start_time: 1, end_time: 2, word_ids: ["wa1"] },
+    ];
+    document.words = [
+      { word_id: "wq1", text: "Do you do shoulder surgeries?", raw_text: "Do you do shoulder surgeries?", speaker_id: "spk-q", utterance_id: "utt-q", start_time: 0, end_time: 1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "wa1", text: "No.", raw_text: "No.", speaker_id: "spk-a", utterance_id: "utt-a", start_time: 1, end_time: 2, confidence: 1, reviewed: false, edited: false },
+    ];
+
+    const text = buildWorkspaceTranscriptText(document, makeRecord());
+
+    expect(text).toContain("Q. Do you do shoulder surgeries?");
+    expect(text).toContain("A. No.");
+    expect(text).not.toContain("Q. No.");
+  });
+
   it("prefers pending ai_suggestion over working_text and raw_text", () => {
     expect(resolveWordDisplay({
       raw_text: "raiding",

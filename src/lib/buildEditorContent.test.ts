@@ -434,4 +434,78 @@ describe("buildEditorContent", () => {
     expect(mark?.attrs?.ai_pending).toBe(true);
   });
 
+  it("merges fragmented structured answers into one editor block while preserving first-line attrs", () => {
+    const doc = makeDoc({
+      speakers: [
+        {
+          speaker_id: "spk-1",
+          display_name: "THE WITNESS",
+          deepgram_speaker: 0,
+          role: "WITNESS",
+        },
+      ],
+      utterances: [
+        { utterance_id: "utt-1", speaker_id: "spk-1", start_time: 0, end_time: 1, word_ids: ["word-1"] },
+        { utterance_id: "utt-2", speaker_id: "spk-1", start_time: 1, end_time: 2, word_ids: ["word-2"] },
+        { utterance_id: "utt-3", speaker_id: "spk-1", start_time: 2, end_time: 3, word_ids: ["word-3"] },
+      ],
+      words: [
+        makeWord("word-1", "Sure.", { utterance_id: "utt-1" }),
+        makeWord("word-2", "So", { utterance_id: "utt-2", start_time: 1, end_time: 2 }),
+        makeWord("word-3", "in my experience treating patients.", { utterance_id: "utt-3", start_time: 2, end_time: 3 }),
+      ],
+    });
+
+    const content = buildEditorContent(doc, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+    const utterances = content.content?.filter((node) => node.type === "utterance") ?? [];
+    const attrs = firstUtteranceAttrs(content);
+
+    expect(utterances).toHaveLength(1);
+    expect(readUtteranceContentText(content)).toContain("Sure. So in my experience treating patients.");
+    expect(attrs.page_line_number).toBe(1);
+    expect(attrs.line_number).toBe(1);
+    expect(attrs.prefix_text).toBe("A.");
+    expect(attrs.formatted_line_role).toBe("a");
+    expect(attrs.continuation_mode).toBe("return_to_margin");
+  });
+
+  it("renders standalone No. witness answers as A blocks in the editor", () => {
+    const doc = makeDoc({
+      speakers: [
+        {
+          speaker_id: "spk-q",
+          display_name: "MR. BENTLEY",
+          deepgram_speaker: 0,
+          role: "ATTORNEY",
+        },
+        {
+          speaker_id: "spk-a",
+          display_name: "THE WITNESS",
+          deepgram_speaker: 1,
+          role: "WITNESS",
+        },
+      ],
+      utterances: [
+        { utterance_id: "utt-q", speaker_id: "spk-q", start_time: 0, end_time: 1, word_ids: ["word-q"] },
+        { utterance_id: "utt-a", speaker_id: "spk-a", start_time: 1, end_time: 2, word_ids: ["word-a"] },
+      ],
+      words: [
+        makeWord("word-q", "Do you do shoulder surgeries?", { speaker_id: "spk-q", utterance_id: "utt-q" }),
+        makeWord("word-a", "No.", { speaker_id: "spk-a", utterance_id: "utt-a", start_time: 1, end_time: 2 }),
+      ],
+    });
+
+    const content = buildEditorContent(doc, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+    const answerAttrs = utteranceAttrsBySpeaker(content, "spk-a");
+
+    expect(answerAttrs.prefix_text).toBe("A.");
+    expect(answerAttrs.formatted_line_role).toBe("a");
+  });
+
 });
