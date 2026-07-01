@@ -8,6 +8,35 @@ function cloneFixture(): DeepgramResponse {
   return structuredClone(createOfflineDeepgramFixture("case_integrity"));
 }
 
+function applyOverlap(response: DeepgramResponse, overlapSeconds: number) {
+  const previousEnd = response.results.utterances?.[0]?.end ?? 0;
+  const current = response.results.utterances?.[1];
+  if (!current) {
+    return;
+  }
+
+  current.start = Number((previousEnd - overlapSeconds).toFixed(4));
+}
+
+function applyGap(response: DeepgramResponse, gapSeconds: number) {
+  const previousEnd = response.results.utterances?.[0]?.end ?? 0;
+  const current = response.results.utterances?.[1];
+  if (!current) {
+    return;
+  }
+
+  const originalStart = current.start ?? previousEnd;
+  const duration = (current.end ?? originalStart) - originalStart;
+  current.start = Number((previousEnd + gapSeconds).toFixed(4));
+  current.end = Number((current.start + Math.max(duration, 0)).toFixed(4));
+  current.words.forEach((word) => {
+    const wordDuration = word.end - word.start;
+    const relativeStart = word.start - originalStart;
+    word.start = Number((current.start + relativeStart).toFixed(4));
+    word.end = Number((word.start + wordDuration).toFixed(4));
+  });
+}
+
 describe("integrityAudit", () => {
   it("fails when the top-level results key is missing", () => {
     const response = cloneFixture() as unknown as Record<string, unknown>;
@@ -38,11 +67,49 @@ describe("integrityAudit", () => {
     expect(result.failures.some((failure) => failure.includes("ordering violation"))).toBe(true);
   });
 
-  it("fails on overlap greater than 0.1 seconds", () => {
+  it("ignores overlap at exactly 0.1 seconds", () => {
     const response = cloneFixture();
-    if (response.results.utterances?.[1]) {
-      response.results.utterances[1].start = 2.8;
-    }
+    applyOverlap(response, 0.1);
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.failures.some((failure) => failure.includes("Impossible overlap"))).toBe(false);
+    expect(result.warnings.some((warning) => warning.includes("overlap"))).toBe(false);
+  });
+
+  it("warns on a minor overlap such as 0.78 seconds", () => {
+    const response = cloneFixture();
+    applyOverlap(response, 0.78);
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.failures.some((failure) => failure.includes("Impossible overlap"))).toBe(false);
+    expect(result.warnings.some((warning) => warning.includes("Minor overlap"))).toBe(true);
+  });
+
+  it("warns on overlap at 1.5 seconds", () => {
+    const response = cloneFixture();
+    applyOverlap(response, 1.5);
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.failures.some((failure) => failure.includes("Impossible overlap"))).toBe(false);
+    expect(result.warnings.some((warning) => warning.includes("Minor overlap"))).toBe(true);
+  });
+
+  it("emits an elevated warning on overlap above 1.5 seconds but at or below 3.0 seconds", () => {
+    const response = cloneFixture();
+    applyOverlap(response, 2.2);
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.failures.some((failure) => failure.includes("Impossible overlap"))).toBe(false);
+    expect(result.warnings.some((warning) => warning.includes("Elevated overlap"))).toBe(true);
+  });
+
+  it("fails on overlap greater than 3.0 seconds", () => {
+    const response = cloneFixture();
+    applyOverlap(response, 3.1);
 
     const result = integrityAudit(response);
     expect(result.integrity_passed).toBe(false);
@@ -119,6 +186,70 @@ describe("integrityAudit", () => {
     const result = integrityAudit(response);
     expect(result.integrity_passed).toBe(true);
     expect(result.gaps).toEqual([{ position: 1, duration_seconds: 35, severity: "warning" }]);
+  });
+
+  it("fails on critical gaps without off-record evidence", () => {
+    const response = cloneFixture();
+    applyGap(response, 278.8);
+    if (response.results.utterances?.[0]) {
+      response.results.utterances[0].transcript = "Q. State your name for the record.";
+      response.results.utterances[0].confidence = 0.95;
+    }
+    if (response.results.utterances?.[1]) {
+      response.results.utterances[1].transcript = "A. My name is Jennifer Baier.";
+      response.results.utterances[1].confidence = 0.95;
+    }
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.failures.some((failure) => failure.includes("Critical gap of 278.8s"))).toBe(false);
+    expect(result.warnings.some((warning) => warning.includes("long silent recess inferred"))).toBe(true);
+  });
+
+  it("downgrades a very large gap when nearby off-record evidence exists", () => {
+    const response = cloneFixture();
+    const inserted = {
+      id: "dg_utt_001b",
+      speaker: 0,
+      start: 284.2,
+      end: 284.9,
+      transcript: "We are going off the record for a short recess.",
+      confidence: 0.98,
+      words: [
+        { id: "dg_w_010b_1", word: "we", start: 284.2, end: 284.3, confidence: 0.98, speaker: 0 },
+        { id: "dg_w_010b_2", word: "are", start: 284.3, end: 284.4, confidence: 0.98, speaker: 0 },
+        { id: "dg_w_010b_3", word: "going", start: 284.4, end: 284.52, confidence: 0.98, speaker: 0 },
+        { id: "dg_w_010b_4", word: "off", start: 284.52, end: 284.6, confidence: 0.98, speaker: 0 },
+        { id: "dg_w_010b_5", word: "the", start: 284.6, end: 284.68, confidence: 0.98, speaker: 0 },
+        { id: "dg_w_010b_6", word: "record", start: 284.68, end: 284.78, confidence: 0.98, speaker: 0 },
+        { id: "dg_w_010b_7", word: "recess", start: 284.78, end: 284.9, confidence: 0.98, speaker: 0 },
+      ],
+    };
+    response.results.utterances?.push(inserted);
+    applyGap(response, 278.8);
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(true);
+    expect(result.failures.some((failure) => failure.includes("Critical gap"))).toBe(false);
+    expect(
+      result.warnings.some((warning) =>
+        warning.includes("off-record language detected") || warning.includes("long silent recess inferred")
+      ),
+    ).toBe(true);
+  });
+
+  it("still fails a critical gap when one boundary utterance is effectively empty", () => {
+    const response = cloneFixture();
+    applyGap(response, 278.8);
+    if (response.results.utterances?.[0]) {
+      response.results.utterances[0].transcript = "";
+      response.results.utterances[0].confidence = 0.2;
+      response.results.utterances[0].words = [];
+    }
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("Critical gap of 278.8s"))).toBe(true);
   });
 
   it("passes a clean transcript and reports counts", () => {

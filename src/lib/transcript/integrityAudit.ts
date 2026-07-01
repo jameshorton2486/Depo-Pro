@@ -5,11 +5,15 @@ const REQUIRED_UTTERANCE_KEYS = ["id", "start", "end", "confidence", "speaker", 
 const REQUIRED_WORD_KEYS = ["word", "start", "end", "confidence", "speaker"] as const;
 const GAP_WARNING_SECONDS = 30;
 const GAP_CRITICAL_SECONDS = 120;
-const OVERLAP_TOLERANCE_SECONDS = 0.1;
+const GAP_VERY_LARGE_SECONDS = 240;
+const OVERLAP_IGNORE_SECONDS = 0.1;
+const OVERLAP_WARNING_SECONDS = 1.5;
+const OVERLAP_ELEVATED_WARNING_SECONDS = 3.0;
 const LOW_CONFIDENCE_THRESHOLD = 0.7;
 const LOW_CONFIDENCE_RATE_WARNING = 0.4;
 const DIARIZATION_COLLAPSE_PCT = 85;
 const OFF_RECORD_PATTERN = /\b(off the record|off record|back on the record|on the record|recess|break)\b/i;
+const REMOTE_INTERRUPTION_PATTERN = /\b(zoom|technical (?:issue|difficulty|problem)|connection|disconnected|reconnect|muted|unmuted|can you hear me|audio cut out)\b/i;
 
 type AuditSeverity = "warning" | "critical";
 
@@ -71,6 +75,66 @@ function extractUtterances(response: DeepgramResponse): AuditUtterance[] {
 function hasOffRecordContext(previous: AuditUtterance | undefined, current: AuditUtterance | undefined): boolean {
   const context = `${previous?.transcript ?? ""} ${current?.transcript ?? ""}`;
   return OFF_RECORD_PATTERN.test(context);
+}
+
+function hasNearbyOffRecordEvidence(utterances: AuditUtterance[], index: number, windowRadius = 2): boolean {
+  const start = Math.max(0, index - windowRadius);
+  const end = Math.min(utterances.length - 1, index + windowRadius);
+
+  for (let cursor = start; cursor <= end; cursor += 1) {
+    const transcript = utterances[cursor]?.transcript ?? "";
+    if (OFF_RECORD_PATTERN.test(transcript) || REMOTE_INTERRUPTION_PATTERN.test(transcript)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function countAudibleWords(utterance: AuditUtterance | undefined): number {
+  return (utterance?.words ?? []).filter((word) => {
+    const text = (word.word ?? "").trim();
+    return text.length > 0;
+  }).length;
+}
+
+function looksStructurallyHealthy(utterance: AuditUtterance | undefined): boolean {
+  if (!utterance) {
+    return false;
+  }
+
+  const start = utterance.start ?? 0;
+  const end = utterance.end ?? 0;
+  const duration = Math.max(0, end - start);
+  const transcript = (utterance.transcript ?? "").trim();
+  const confidence = typeof utterance.confidence === "number" ? utterance.confidence : 0;
+  const audibleWordCount = countAudibleWords(utterance);
+
+  return transcript.length > 0
+    && audibleWordCount >= 2
+    && duration >= 0.5
+    && confidence >= 0.5;
+}
+
+function hasSilentRecessShape(previous: AuditUtterance | undefined, current: AuditUtterance | undefined, gapSeconds: number): boolean {
+  return gapSeconds >= GAP_CRITICAL_SECONDS
+    && gapSeconds < 600
+    && looksStructurallyHealthy(previous)
+    && looksStructurallyHealthy(current);
+}
+
+function classifyOverlap(overlapSeconds: number): "ignore" | "warning" | "elevated_warning" | "failure" {
+  const normalizedOverlap = roundMetric(overlapSeconds);
+  if (normalizedOverlap <= OVERLAP_IGNORE_SECONDS) {
+    return "ignore";
+  }
+  if (normalizedOverlap <= OVERLAP_WARNING_SECONDS) {
+    return "warning";
+  }
+  if (normalizedOverlap <= OVERLAP_ELEVATED_WARNING_SECONDS) {
+    return "elevated_warning";
+  }
+  return "failure";
 }
 
 export function integrityAudit(rawDeepgramJson: DeepgramResponse): IntegrityAuditResult {
@@ -178,14 +242,27 @@ export function integrityAudit(rawDeepgramJson: DeepgramResponse): IntegrityAudi
     }
 
     const overlap = prevEnd - currStart;
-    if (overlap > OVERLAP_TOLERANCE_SECONDS) {
+    const overlapSeverity = classifyOverlap(overlap);
+    if (overlapSeverity === "warning") {
+      warnings.push(`Minor overlap of ${overlap.toFixed(2)}s between utterances ${index - 1} and ${index}.`);
+    } else if (overlapSeverity === "elevated_warning") {
+      warnings.push(`Elevated overlap of ${overlap.toFixed(2)}s between utterances ${index - 1} and ${index}. Review timing around this boundary.`);
+    } else if (overlapSeverity === "failure") {
       failures.push(`Impossible overlap of ${overlap.toFixed(2)}s between utterances ${index - 1} and ${index}.`);
     }
 
     const gap = currStart - prevEnd;
     if (gap >= GAP_CRITICAL_SECONDS) {
-      if (hasOffRecordContext(previous, current)) {
-        warnings.push(`Gap of ${gap.toFixed(1)}s at utterance ${index}; off-record language detected.`);
+      if (
+        hasOffRecordContext(previous, current)
+        || (gap >= GAP_VERY_LARGE_SECONDS && hasNearbyOffRecordEvidence(utterances, index))
+        || hasSilentRecessShape(previous, current, gap)
+      ) {
+        warnings.push(
+          hasSilentRecessShape(previous, current, gap)
+            ? `Gap of ${gap.toFixed(1)}s at utterance ${index}; long silent recess inferred from clean speech on both sides of the boundary.`
+            : `Gap of ${gap.toFixed(1)}s at utterance ${index}; off-record language detected.`,
+        );
         gaps.push({ position: index, duration_seconds: roundMetric(gap), severity: "warning" });
       } else {
         failures.push(`Critical gap of ${gap.toFixed(1)}s between utterances ${index - 1} and ${index}.`);
