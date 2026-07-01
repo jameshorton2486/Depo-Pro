@@ -55,6 +55,11 @@ export interface WorkspaceMutationResult {
   pipelineState?: string | null;
 }
 
+type CaseAudioLookupRow = {
+  storage_path: string | null;
+  media_url: string | null;
+};
+
 function mapSpeakerRole(role: string | null | undefined): Speaker["role"] | undefined {
   switch (role) {
     case "court_reporter":
@@ -160,7 +165,7 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
 
   const mediaUrl = snapshot.job.media_url
     ? await getSignedUrl(snapshot.job.media_url)
-    : "";
+    : await resolveSourceAudioFallbackMediaUrl(snapshot.job);
 
   return {
     document: buildEditorDocumentFromSnapshot(snapshot, mediaUrl),
@@ -213,6 +218,31 @@ async function loadAudioSegments(
     durationSeconds: target.duration_seconds ?? target.duration ?? 0,
     mediaUrl: fallbackMediaUrl,
   }];
+}
+
+async function resolveSourceAudioFallbackMediaUrl(target: TranscriptJobRow): Promise<string> {
+  if (!target.based_on) {
+    return "";
+  }
+
+  const client = await getSupabaseClient("resolveSourceAudioFallbackMediaUrl");
+  const { data, error } = await client
+    .from("case_audio")
+    .select("storage_path, media_url")
+    .eq("case_id", target.case_id)
+    .eq("audio_id", target.based_on)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const audio = (data as CaseAudioLookupRow | null) ?? null;
+  if (audio?.storage_path) {
+    return getSignedUrl(audio.storage_path);
+  }
+
+  return audio?.media_url ?? "";
 }
 
 function isTransientWorkspaceError(error: unknown): boolean {
@@ -636,12 +666,16 @@ export const workspaceApi = {
       }
 
       const document = await contractApi.getDocument(target.transcript_id);
+      const mediaUrl = document.media_url || await resolveSourceAudioFallbackMediaUrl(target);
       return {
-        document,
+        document: {
+          ...document,
+          media_url: mediaUrl,
+        },
         updatedAt: target.updated_at,
         speakerMapConfirmed: target.speaker_map_confirmed,
         pipelineState: target.pipeline_state ?? null,
-        audioSegments: await loadAudioSegments(target, document.media_url),
+        audioSegments: await loadAudioSegments(target, mediaUrl),
       };
     }
 
