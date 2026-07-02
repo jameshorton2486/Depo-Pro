@@ -63,20 +63,22 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
   const audioSegments = state.audioSegments;
 
   return (
-    <div className="depo-editor h-full flex flex-col bg-white text-slate-900">
-      <Toolbar jobId={config.jobId ?? ""} onSave={saveNow} />
+    <ExhibitsPanelProvider>
+      <div className="depo-editor h-full flex flex-col bg-white text-slate-900">
+        <Toolbar jobId={config.jobId ?? ""} onSave={saveNow} />
 
-      <div className="flex-1 min-h-0 flex overflow-hidden">
-        <WorkspaceSidebar />
-        <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          <TranscriptEditor readOnly={config.readOnly ?? false} />
-          {mediaUrl && (
-            <AudioPlayer mediaUrl={mediaUrl} duration={duration} audioSegments={audioSegments} />
-          )}
-        </main>
-        <RightSidebar />
+        <div className="flex-1 min-h-0 flex overflow-hidden">
+          <WorkspaceSidebar />
+          <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+            <TranscriptEditor readOnly={config.readOnly ?? false} />
+            {mediaUrl && (
+              <AudioPlayer mediaUrl={mediaUrl} duration={duration} audioSegments={audioSegments} />
+            )}
+          </main>
+          <RightSidebar />
+        </div>
       </div>
-    </div>
+    </ExhibitsPanelProvider>
   );
 }
 
@@ -107,15 +109,13 @@ function StageRouter({
     <AudioProvider>
       <DocumentProvider jobId={activeCaseId}>
         <EditorProvider>
-          <ExhibitsPanelProvider>
-            {stage === "certification" ? (
-              <CertificationScreen jobId={activeCaseId} />
-            ) : stage === "export" ? (
-              <ExportScreen jobId={activeCaseId} />
-            ) : (
-              <EditorInner config={{ ...config, jobId: activeCaseId }} />
-            )}
-          </ExhibitsPanelProvider>
+          {stage === "certification" ? (
+            <CertificationScreen jobId={activeCaseId} />
+          ) : stage === "export" ? (
+            <ExportScreen jobId={activeCaseId} />
+          ) : (
+            <EditorInner config={{ ...config, jobId: activeCaseId }} />
+          )}
         </EditorProvider>
       </DocumentProvider>
     </AudioProvider>
@@ -227,9 +227,7 @@ function WorkspaceStage({
     <AudioProvider>
       <DocumentProvider key={resolvedTargetId} jobId={resolvedTargetId}>
         <EditorProvider>
-          <ExhibitsPanelProvider>
-            <EditorInner config={{ ...config, jobId: resolvedTargetId }} />
-          </ExhibitsPanelProvider>
+          <EditorInner config={{ ...config, jobId: resolvedTargetId }} />
         </EditorProvider>
       </DocumentProvider>
     </AudioProvider>
