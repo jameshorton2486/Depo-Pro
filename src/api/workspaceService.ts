@@ -21,6 +21,7 @@ import {
   type TranscriptJobRow,
 } from "./transcriptRepository";
 import { getSupabaseClient } from "../lib/supabase";
+import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
 
@@ -59,6 +60,8 @@ type CaseAudioLookupRow = {
   storage_path: string | null;
   media_url: string | null;
 };
+
+type TranscriptionJobLookupRow = Pick<TranscriptionJobRecord, "source_audio_id">;
 
 function mapSpeakerRole(role: string | null | undefined): Speaker["role"] | undefined {
   switch (role) {
@@ -221,7 +224,8 @@ async function loadAudioSegments(
 }
 
 async function resolveSourceAudioFallbackMediaUrl(target: TranscriptJobRow): Promise<string> {
-  if (!target.based_on) {
+  const sourceAudioId = await resolveSourceAudioId(target);
+  if (!sourceAudioId) {
     return "";
   }
 
@@ -230,7 +234,7 @@ async function resolveSourceAudioFallbackMediaUrl(target: TranscriptJobRow): Pro
     .from("case_audio")
     .select("storage_path, media_url")
     .eq("case_id", target.case_id)
-    .eq("audio_id", target.based_on)
+    .eq("audio_id", sourceAudioId)
     .maybeSingle();
 
   if (error) {
@@ -243,6 +247,25 @@ async function resolveSourceAudioFallbackMediaUrl(target: TranscriptJobRow): Pro
   }
 
   return audio?.media_url ?? "";
+}
+
+async function resolveSourceAudioId(target: TranscriptJobRow): Promise<string | null> {
+  if (target.based_on) {
+    return target.based_on;
+  }
+
+  const client = await getSupabaseClient("resolveSourceAudioId");
+  const { data, error } = await client
+    .from("transcription_jobs")
+    .select("source_audio_id")
+    .eq("id", target.job_id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data as TranscriptionJobLookupRow | null) ?? null)?.source_audio_id ?? null;
 }
 
 function isTransientWorkspaceError(error: unknown): boolean {

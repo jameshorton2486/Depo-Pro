@@ -28,6 +28,33 @@ const repo = {
 const getSignedUrl = vi.fn();
 const getSupabaseClient = vi.fn();
 
+function createSupabaseClientMock({
+  caseAudio,
+  transcriptionJob,
+}: {
+  caseAudio: { storage_path: string | null; media_url: string | null } | null;
+  transcriptionJob?: { source_audio_id: string | null } | null;
+}) {
+  return {
+    from: (table: string) => ({
+      select: () => ({
+        eq: (_field: string, _value: string) => ({
+          eq: (_innerField: string, _innerValue: string) => ({
+            maybeSingle: async () => ({
+              data: table === "case_audio" ? caseAudio : null,
+              error: null,
+            }),
+          }),
+          maybeSingle: async () => ({
+            data: table === "transcription_jobs" ? (transcriptionJob ?? null) : null,
+            error: null,
+          }),
+        }),
+      }),
+    }),
+  };
+}
+
 vi.mock("./client", () => ({
   api: clientApi,
 }));
@@ -110,23 +137,12 @@ describe("workspaceService audio fallback", () => {
     });
 
     getSignedUrl.mockResolvedValue("https://signed.example/audio.m4a");
-    getSupabaseClient.mockResolvedValue({
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            eq: () => ({
-              maybeSingle: async () => ({
-                data: {
-                  storage_path: "76c5dbc9-a65c-4e2f-9813-06bd3b066e49/case_20260701_hnetcd/audio/f_1782932451723_7bmw_audio1728584021_4.m4a",
-                  media_url: null,
-                },
-                error: null,
-              }),
-            }),
-          }),
-        }),
-      }),
-    });
+    getSupabaseClient.mockResolvedValue(createSupabaseClientMock({
+      caseAudio: {
+        storage_path: "76c5dbc9-a65c-4e2f-9813-06bd3b066e49/case_20260701_hnetcd/audio/f_1782932451723_7bmw_audio1728584021_4.m4a",
+        media_url: null,
+      },
+    }));
 
     const { workspaceApi } = await import("./workspaceService");
     const result = await workspaceApi.getDocument("tr_123");
@@ -154,23 +170,51 @@ describe("workspaceService audio fallback", () => {
     });
 
     getSignedUrl.mockResolvedValue("https://signed.example/audio.m4a");
-    getSupabaseClient.mockResolvedValue({
-      from: () => ({
-        select: () => ({
-          eq: () => ({
-            eq: () => ({
-              maybeSingle: async () => ({
-                data: {
-                  storage_path: "76c5dbc9-a65c-4e2f-9813-06bd3b066e49/case_20260701_hnetcd/audio/f_1782932451723_7bmw_audio1728584021_4.m4a",
-                  media_url: null,
-                },
-                error: null,
-              }),
-            }),
-          }),
-        }),
-      }),
+    getSupabaseClient.mockResolvedValue(createSupabaseClientMock({
+      caseAudio: {
+        storage_path: "76c5dbc9-a65c-4e2f-9813-06bd3b066e49/case_20260701_hnetcd/audio/f_1782932451723_7bmw_audio1728584021_4.m4a",
+        media_url: null,
+      },
+    }));
+
+    const { workspaceApi } = await import("./workspaceService");
+    const result = await workspaceApi.getDocument("tr_123");
+
+    expect(getSignedUrl).toHaveBeenCalledWith(
+      "76c5dbc9-a65c-4e2f-9813-06bd3b066e49/case_20260701_hnetcd/audio/f_1782932451723_7bmw_audio1728584021_4.m4a",
+    );
+    expect(result.document.media_url).toBe("https://signed.example/audio.m4a");
+    expect(result.audioSegments[0]?.mediaUrl).toBe("https://signed.example/audio.m4a");
+  });
+
+  it("falls back to transcription_jobs.source_audio_id when transcript based_on is missing", async () => {
+    vi.doMock("../lib/runtime/mode", () => ({
+      isRealApiMode: () => false,
+    }));
+
+    const transcript = {
+      ...buildTranscriptRow(),
+      based_on: null,
+    };
+    repo.getTranscriptJobByTranscriptId.mockResolvedValue(transcript);
+    repo.loadTranscriptSnapshot.mockResolvedValue({
+      job: transcript,
+      speakers: [],
+      speakerResolutions: [],
+      utterances: [],
+      words: [],
     });
+
+    getSignedUrl.mockResolvedValue("https://signed.example/audio.m4a");
+    getSupabaseClient.mockResolvedValue(createSupabaseClientMock({
+      transcriptionJob: {
+        source_audio_id: "f_1782932451723_7bmw",
+      },
+      caseAudio: {
+        storage_path: "76c5dbc9-a65c-4e2f-9813-06bd3b066e49/case_20260701_hnetcd/audio/f_1782932451723_7bmw_audio1728584021_4.m4a",
+        media_url: null,
+      },
+    }));
 
     const { workspaceApi } = await import("./workspaceService");
     const result = await workspaceApi.getDocument("tr_123");
