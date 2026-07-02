@@ -71,7 +71,7 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
           <WorkspaceSidebar />
           <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
             <TranscriptEditor readOnly={config.readOnly ?? false} />
-            {mediaUrl && (
+            {(mediaUrl || audioSegments.length > 0) && (
               <AudioPlayer mediaUrl={mediaUrl} duration={duration} audioSegments={audioSegments} />
             )}
           </main>
