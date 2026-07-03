@@ -184,6 +184,37 @@ export function ExportScreen({ jobId }: { jobId: string }) {
             </div>
           </section>
 
+          <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <FileText size={16} className="text-amber-700" />
+              <h2 className="text-sm font-semibold text-slate-900">DOCX / PDF Export</h2>
+            </div>
+            <p className="mt-2 text-sm text-slate-700">
+              Word and PDF transcript export remain gated for this beta. Use TXT or Transcript Package for local validation until the tracked export path is promoted.
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Tracking note: NUMBERING_REGISTRY.md entry `WAVE-22` reserved for post-beta export delivery.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-400"
+              >
+                <Download size={13} />
+                DOCX Coming After Beta
+              </button>
+              <button
+                type="button"
+                disabled
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-400"
+              >
+                <Download size={13} />
+                PDF Coming After Beta
+              </button>
+            </div>
+          </section>
+
           {lastArtifact && (
             <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
               <h2 className="mb-1 text-sm font-semibold text-emerald-800">Last Generated Output</h2>

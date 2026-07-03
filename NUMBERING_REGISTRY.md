@@ -29,6 +29,7 @@ Rules:
 | `DP-012` | Quotation Punctuation, Date Reconciliation & Inline Garble Flags | `APPROVED` | Standards owner | Punctuation, formatting normalization, garble flagging, paragraph refinements, direct-address capitalization |
 | `ADR-###` | No registered ADR documents in repository at time of cleanup | `RESERVED` | Architecture owner | Architecture-decision namespace |
 | `WAVE-21` | Canonical Export Architecture | `HISTORICAL` | Architecture owner | Architecture-program record |
+| `WAVE-22` | Post-Beta DOCX/PDF Export Delivery | `RESERVED` | Architecture owner | Export implementation tracking |
 
 ## Reserved / Unregistered IDs
 

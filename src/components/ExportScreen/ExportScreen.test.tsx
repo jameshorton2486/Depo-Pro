@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -154,6 +155,29 @@ describe("ExportScreen", () => {
 
     expect(buildFormattedTranscriptTextMock).toHaveBeenCalled();
     expect(writeText).toHaveBeenCalledWith("clean transcript");
+    cleanup();
+  });
+
+  it("shows DOCX and PDF as explicitly gated beta controls", () => {
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: {
+          case_name: { value: "Example Case" },
+          case_number: { value: "123" },
+        },
+        certification: null,
+      },
+    });
+
+    const { container, cleanup } = renderExportScreen();
+    const buttons = Array.from(container.querySelectorAll("button"));
+    const docxButton = buttons.find((button) => button.textContent?.includes("DOCX Coming After Beta"));
+    const pdfButton = buttons.find((button) => button.textContent?.includes("PDF Coming After Beta"));
+
+    expect(container.textContent).toContain("DOCX / PDF Export");
+    expect(container.textContent).toContain("WAVE-22");
+    expect(docxButton?.hasAttribute("disabled")).toBe(true);
+    expect(pdfButton?.hasAttribute("disabled")).toBe(true);
     cleanup();
   });
 });
