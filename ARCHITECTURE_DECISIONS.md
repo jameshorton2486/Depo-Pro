@@ -53,3 +53,25 @@ Root causes:
 - Pending manual validation:
   - Chrome Performance trace on a large real job
   - Edit/cursor QA on the native utterance node
+
+## ADR-002: AI word suggestions are pending by default; auto-apply is explicit opt-in
+
+- Date: 2026-07-03
+- Status: Accepted
+- Area: Stage 3 AI review pipeline
+
+### Context
+
+The Stage 3 edge function previously auto-applied high-confidence AI word suggestions directly into `working_text` without writing a matching `transcript_audit_log` row. That violated the append-only audit requirement and the architecture rule that AI suggestions remain reviewable by the court reporter.
+
+### Decision
+
+1. Default `AI_REVIEW_AUTO_APPLY` to off. When unset, AI word suggestions remain `pending` even if the model marks them `auto_apply`.
+2. If `AI_REVIEW_AUTO_APPLY=true`, each auto-applied word suggestion must also append a `transcript_audit_log` row with `source = "ai_review"` and `action = "ai_suggestion_auto_applied"`.
+3. If the auto-apply audit insert fails, the edge function records the failure in `transcripts.ai_review_meta` and returns an error instead of silently succeeding.
+
+### Consequences
+
+- Human review remains the default posture for legal-record edits.
+- Auto-apply can still be enabled for controlled environments, but only with audit coverage.
+- `transcript_audit_log` action constraints must include the AI review action names used by both manual and automatic suggestion handling.

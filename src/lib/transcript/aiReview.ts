@@ -52,6 +52,33 @@ export interface AIReviewSpeakerRow {
   ai_suggested?: boolean | null;
 }
 
+export interface AIReviewWordSuggestion {
+  word_id: string;
+  utterance_id: string;
+  suggestion: string;
+  reason: string;
+  confidence: number;
+  auto_apply: boolean;
+}
+
+export interface AIReviewPersistedWordRow {
+  word_id: string;
+  utterance_id: string;
+  raw_text: string;
+  working_text: string | null;
+}
+
+export interface AIReviewAuditRow {
+  utterance_id: string;
+  word_id: string;
+  source: "ai_review";
+  action: "ai_suggestion_auto_applied";
+  old_text: string;
+  new_text: string;
+  before_text: string;
+  after_text: string;
+}
+
 export function shouldSkipAIReview(
   transcript: AIReviewTranscriptRow,
   forceRerun = false,
@@ -153,6 +180,59 @@ export function buildAISuggestionInput(input: {
         })),
     },
     caseRecord: buildSuggestionCaseRecord(input.caseRecord),
+  };
+}
+
+export function isAIReviewAutoApplyEnabled(value: string | null | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
+export function buildAutoApplyPlan(input: {
+  suggestion: AIReviewWordSuggestion;
+  word: AIReviewPersistedWordRow;
+  autoApplyEnabled: boolean;
+}): {
+  autoApplied: boolean;
+  update: {
+    ai_suggestion: string;
+    ai_suggestion_reason: string;
+    ai_confidence: number;
+    ai_suggestion_status: "accepted" | "pending";
+    working_text?: string | null;
+  };
+  auditRow: AIReviewAuditRow | null;
+} {
+  const { suggestion, word, autoApplyEnabled } = input;
+  const autoApplied = autoApplyEnabled && suggestion.auto_apply;
+  const nextText = suggestion.suggestion;
+  const previousText = word.working_text ?? word.raw_text;
+
+  return {
+    autoApplied,
+    update: {
+      ai_suggestion: nextText,
+      ai_suggestion_reason: suggestion.reason,
+      ai_confidence: suggestion.confidence,
+      ai_suggestion_status: autoApplied ? "accepted" : "pending",
+      ...(autoApplied ? { working_text: nextText === word.raw_text ? null : nextText } : {}),
+    },
+    auditRow: autoApplied
+      ? {
+        utterance_id: word.utterance_id,
+        word_id: word.word_id,
+        source: "ai_review",
+        action: "ai_suggestion_auto_applied",
+        old_text: previousText,
+        new_text: nextText,
+        before_text: previousText,
+        after_text: nextText,
+      }
+      : null,
   };
 }
 

@@ -4,7 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { generateAISuggestions } from "../../../src/lib/transcript/aiSuggestionEngine.ts";
 import {
   AI_REVIEW_PROMPT_VERSION,
+  buildAutoApplyPlan,
   buildAISuggestionInput,
+  isAIReviewAutoApplyEnabled,
   shouldSkipAIReview,
   summarizeSuggestions,
 } from "../../../src/lib/transcript/aiReview.ts";
@@ -40,9 +42,10 @@ serve(async (request) => {
   }
 
   const supabase = createClient<Database>(supabaseUrl, serviceRoleKey);
+  const autoApplyEnabled = isAIReviewAutoApplyEnabled(Deno.env.get("AI_REVIEW_AUTO_APPLY"));
   const transcriptRes = await supabase
     .from("transcripts")
-    .select("transcript_id, case_id, updated_at, ai_review_meta")
+    .select("transcript_id, case_id, job_id, updated_at, ai_review_meta")
     .eq("transcript_id", transcriptId)
     .single();
 
@@ -53,6 +56,7 @@ serve(async (request) => {
   const transcript = transcriptRes.data as {
     transcript_id: string;
     case_id: string;
+    job_id: string;
     updated_at: string;
     ai_review_meta?: Record<string, unknown> | null;
   };
@@ -84,6 +88,12 @@ serve(async (request) => {
   }
 
   const caseRecord = (caseRes.data?.payload ?? null) as Record<string, unknown> | null;
+  const wordsById = new Map(
+    ((wordsRes.data ?? []) as Array<Record<string, unknown>>).map((row) => {
+      const wordId = String(row.word_id ?? row.id ?? "");
+      return [wordId, row] as const;
+    }),
+  );
   const transcriptSpeakers = new Map(
     ((transcriptSpeakersRes.data ?? []) as Array<Record<string, unknown>>).map((row) => {
       const speakerId = String(row.speaker_id ?? "");
@@ -154,19 +164,76 @@ serve(async (request) => {
   }
 
   const suggestions = await generateAISuggestions(input, anthropicKey);
+  let autoAppliedCount = 0;
 
   for (const suggestion of suggestions.wordSuggestions) {
-    const update: Record<string, unknown> = {
-      ai_suggestion: suggestion.suggestion,
-      ai_suggestion_reason: suggestion.reason,
-      ai_confidence: suggestion.confidence,
-      ai_suggestion_status: suggestion.auto_apply ? "accepted" : "pending",
-    };
-    if (suggestion.auto_apply) {
-      update.working_text = suggestion.suggestion;
+    const existingRow = wordsById.get(suggestion.word_id);
+    if (!existingRow) {
+      await recordAiReviewFailure(supabase, transcript, {
+        error: "missing_word_for_ai_suggestion",
+        word_id: suggestion.word_id,
+      });
+      return respondJson(500, { error: "Failed to persist AI review suggestions" });
     }
 
-    await supabase.from("transcript_words").update(update).eq("word_id", suggestion.word_id).eq("transcript_id", transcriptId);
+    const plan = buildAutoApplyPlan({
+      suggestion,
+      word: {
+        word_id: suggestion.word_id,
+        utterance_id: String(existingRow.utterance_id ?? suggestion.utterance_id ?? ""),
+        raw_text: String(existingRow.raw_text ?? ""),
+        working_text: existingRow.working_text == null ? null : String(existingRow.working_text),
+      },
+      autoApplyEnabled,
+    });
+
+    const updateResult = await supabase
+      .from("transcript_words")
+      .update(plan.update)
+      .eq("word_id", suggestion.word_id)
+      .eq("transcript_id", transcriptId);
+
+    if (updateResult.error) {
+      await recordAiReviewFailure(supabase, transcript, {
+        error: "word_update_failed",
+        word_id: suggestion.word_id,
+        message: updateResult.error.message,
+      });
+      return respondJson(500, { error: "Failed to persist AI review suggestions" });
+    }
+
+    if (plan.auditRow) {
+      const auditResult = await supabase
+        .from("transcript_audit_log")
+        .insert({
+          transcript_id: transcriptId,
+          change_id: `chg_${transcript.transcript_id}_${suggestion.word_id}_${Date.now()}`,
+          utterance_id: plan.auditRow.utterance_id,
+          word_id: plan.auditRow.word_id,
+          old_text: plan.auditRow.old_text,
+          new_text: plan.auditRow.new_text,
+          source: plan.auditRow.source,
+          suggestion_id: null,
+          reviewer_user_id: null,
+          case_id: transcript.case_id,
+          job_id: transcript.job_id,
+          actor: null,
+          action: plan.auditRow.action,
+          before_text: plan.auditRow.before_text,
+          after_text: plan.auditRow.after_text,
+        });
+
+      if (auditResult.error) {
+        await recordAiReviewFailure(supabase, transcript, {
+          error: "auto_apply_audit_insert_failed",
+          word_id: suggestion.word_id,
+          message: auditResult.error.message,
+        });
+        return respondJson(500, { error: "Failed to persist AI review suggestions" });
+      }
+
+      autoAppliedCount += 1;
+    }
   }
 
   for (const suggestion of suggestions.speakerSuggestions) {
@@ -203,7 +270,8 @@ serve(async (request) => {
         transcript_revision: transcript.updated_at,
         completed_at: new Date().toISOString(),
         suggestions_count: summary.totalSuggestions,
-        auto_applied_count: summary.autoAppliedCount,
+        auto_applied_count: autoAppliedCount,
+        auto_apply_enabled: autoApplyEnabled,
       },
     })
     .eq("transcript_id", transcriptId);
@@ -211,8 +279,8 @@ serve(async (request) => {
   return respondJson(200, {
     completed: true,
     suggestions_count: summary.totalSuggestions,
-    auto_applied_count: summary.autoAppliedCount,
-    pending_review_count: summary.pendingReviewCount,
+    auto_applied_count: autoAppliedCount,
+    pending_review_count: summary.totalSuggestions - autoAppliedCount,
   });
 });
 
@@ -224,4 +292,26 @@ function respondJson(status: number, body: unknown): Response {
       "Content-Type": "application/json",
     },
   });
+}
+
+async function recordAiReviewFailure(
+  supabase: ReturnType<typeof createClient<Database>>,
+  transcript: {
+    transcript_id: string;
+    updated_at: string;
+  },
+  detail: Record<string, unknown>,
+): Promise<void> {
+  await supabase
+    .from("transcripts")
+    .update({
+      ai_review_meta: {
+        completed: false,
+        prompt_version: AI_REVIEW_PROMPT_VERSION,
+        transcript_revision: transcript.updated_at,
+        failed_at: new Date().toISOString(),
+        ...detail,
+      },
+    })
+    .eq("transcript_id", transcript.transcript_id);
 }

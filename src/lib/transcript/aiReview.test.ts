@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   AI_REVIEW_PROMPT_VERSION,
+  buildAutoApplyPlan,
   buildAISuggestionInput,
   buildAmbiguousFlags,
+  isAIReviewAutoApplyEnabled,
   shouldSkipAIReview,
   summarizeSuggestions,
 } from "./aiReview";
@@ -104,5 +106,57 @@ describe("aiReview helpers", () => {
     });
 
     expect(input.correctionReport.speakerIssues).toEqual([]);
+  });
+
+  it("builds an audit-backed auto-apply plan only when explicitly enabled", () => {
+    const suggestion = {
+      word_id: "w_1",
+      utterance_id: "utt_1",
+      suggestion: "radiating",
+      reason: "Medical context",
+      confidence: 0.93,
+      auto_apply: true,
+    };
+    const word = {
+      word_id: "w_1",
+      utterance_id: "utt_1",
+      raw_text: "raiding",
+      working_text: null,
+    };
+
+    const disabled = buildAutoApplyPlan({
+      suggestion,
+      word,
+      autoApplyEnabled: false,
+    });
+    expect(disabled.autoApplied).toBe(false);
+    expect(disabled.update.ai_suggestion_status).toBe("pending");
+    expect(disabled.update.working_text).toBeUndefined();
+    expect(disabled.auditRow).toBeNull();
+
+    const enabled = buildAutoApplyPlan({
+      suggestion,
+      word,
+      autoApplyEnabled: true,
+    });
+    expect(enabled.autoApplied).toBe(true);
+    expect(enabled.update.ai_suggestion_status).toBe("accepted");
+    expect(enabled.update.working_text).toBe("radiating");
+    expect(enabled.auditRow).toEqual({
+      utterance_id: "utt_1",
+      word_id: "w_1",
+      source: "ai_review",
+      action: "ai_suggestion_auto_applied",
+      old_text: "raiding",
+      new_text: "radiating",
+      before_text: "raiding",
+      after_text: "radiating",
+    });
+  });
+
+  it("treats AI review auto-apply as opt-in", () => {
+    expect(isAIReviewAutoApplyEnabled(undefined)).toBe(false);
+    expect(isAIReviewAutoApplyEnabled("false")).toBe(false);
+    expect(isAIReviewAutoApplyEnabled("true")).toBe(true);
   });
 });
