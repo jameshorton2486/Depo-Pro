@@ -139,11 +139,11 @@ describe("transcriptDownloads", () => {
   });
 
   it("builds a Word-compatible HTML document and escapes transcript content", () => {
-    const html = buildWordTranscriptHtml("Transcript", "Q. <test> & \"quote\"");
+    const html = buildWordTranscriptHtml("Transcript \"draft\" & notes", "Q. <test> & \"quote\" 'apostrophe'");
 
     expect(html).toContain("<!DOCTYPE html>");
-    expect(html).toContain("<pre>Q. &lt;test&gt; &amp; &quot;quote&quot;</pre>");
-    expect(html).toContain("<title>Transcript</title>");
+    expect(html).toContain("<pre>Q. &lt;test&gt; &amp; &quot;quote&quot; &#39;apostrophe&#39;</pre>");
+    expect(html).toContain("<title>Transcript &quot;draft&quot; &amp; notes</title>");
   });
 
   it("builds inferred transcript text only after structure confirmation", () => {
