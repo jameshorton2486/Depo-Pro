@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { PRIMARY_MODEL } from "../_shared/models.ts";
 
 import { integrityAudit, type IntegrityAuditResult } from "../../../src/lib/transcript/integrityAudit.ts";
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
@@ -481,7 +482,7 @@ function createBoundaryAiClient(apiKey: string): BoundaryAiClient {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: PRIMARY_MODEL,
           max_tokens: input.maxTokens,
           temperature: 0,
           system: input.system,

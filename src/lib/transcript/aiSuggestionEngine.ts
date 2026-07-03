@@ -1,4 +1,5 @@
 import type { CaseRecord } from "../../types/case";
+import { PRIMARY_MODEL } from "../aiModels";
 
 export interface AISuggestionInput {
   transcriptId: string;
@@ -78,7 +79,7 @@ export interface AISuggestionResult {
 
 export const AUTO_APPLY_THRESHOLD = 0.92;
 export const PROMPT_VERSION = "wave22-p5-v1";
-export const AI_SUGGESTION_MODEL = "claude-sonnet-4-6";
+export const AI_SUGGESTION_MODEL = PRIMARY_MODEL;
 
 export const SYSTEM_PROMPT = `You are a legal transcript correction assistant for a Texas civil deposition.
 You will receive flagged tokens from a Deepgram speech-to-text transcript that the deterministic

@@ -75,3 +75,19 @@ The Stage 3 edge function previously auto-applied high-confidence AI word sugges
 - Human review remains the default posture for legal-record edits.
 - Auto-apply can still be enabled for controlled environments, but only with audit coverage.
 - `transcript_audit_log` action constraints must include the AI review action names used by both manual and automatic suggestion handling.
+
+## ADR-003: Anthropic model IDs are centralized; extraction remains the cheaper path
+
+- Date: 2026-07-03
+- Status: Accepted pending live API verification
+- Area: Supabase edge functions and shared AI libraries
+
+### Decision
+
+1. `PRIMARY_MODEL`, `EXTRACTION_MODEL`, and `HEALTHCHECK_MODEL` are defined once in `src/lib/aiModels.ts` and re-exported for edge functions from `supabase/functions/_shared/models.ts`.
+2. The healthcheck now targets `PRIMARY_MODEL`, so it exercises the same model path production uses.
+3. `EXTRACTION_MODEL` remains separate on purpose for `extract-nod` cost control instead of forcing every AI call onto the higher-cost primary model.
+
+### Remaining validation
+
+- Live Anthropic verification is still required before this ADR is fully closed. This session did not have `ANTHROPIC_API_KEY`, so transport-level confirmation of the current model IDs remains pending.

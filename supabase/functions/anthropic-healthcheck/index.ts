@@ -1,3 +1,5 @@
+import { HEALTHCHECK_MODEL } from "../_shared/models.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -30,7 +32,7 @@ Deno.serve(async (request) => {
     }, 500);
   }
 
-  const model = "claude-sonnet-4-20250514";
+  const model = HEALTHCHECK_MODEL;
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { PRIMARY_MODEL } from "../_shared/models.ts";
 import { generateAISuggestions } from "../../../src/lib/transcript/aiSuggestionEngine.ts";
 import {
   AI_REVIEW_PROMPT_VERSION,
@@ -151,7 +152,7 @@ serve(async (request) => {
         ai_review_meta: {
           completed: true,
           prompt_version: AI_REVIEW_PROMPT_VERSION,
-          model: "claude-sonnet-4-6",
+          model: PRIMARY_MODEL,
           transcript_revision: transcript.updated_at,
           completed_at: new Date().toISOString(),
           suggestions_count: 0,

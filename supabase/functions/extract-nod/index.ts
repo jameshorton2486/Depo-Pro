@@ -1,4 +1,5 @@
 import { normalizeFields } from "./normalization.js";
+import { EXTRACTION_MODEL } from "../_shared/models.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const MODEL = "claude-haiku-4-5";
+const MODEL = EXTRACTION_MODEL;
 const MAX_TEXT_CHARS = 50_000;
 const MAX_OUTPUT_TOKENS = 8192;
 const ANTHROPIC_VERSION = "2023-06-01";
