@@ -433,7 +433,7 @@ Normalization preserves utterances, words, speakers, confidence, and timing:
 
 ### Missing
 
-- No paragraph/format overlay table exists today. The only live overlay-style tables I found are `speaker_resolution_current` and `speaker_resolution_history`.
+- No paragraph/format overlay table exists today. The only live overlay-style table I found is `speaker_resolution_current`. `speaker_resolution_history` is referenced in older design notes but is not implemented in shipped migrations.
 
 ```sql
 SELECT table_name
@@ -447,7 +447,6 @@ Result:
 
 ```text
 speaker_resolution_current
-speaker_resolution_history
 ```
 
 ```sql
@@ -463,17 +462,19 @@ Result:
 ```text
 id|uuid
 transcript_id|text
-raw_speaker_id|text
-raw_speaker_index|integer
-participant_id|text
-resolved_role|text
-resolved_label|text
-resolved_by|uuid
-resolved_at|timestamp with time zone
-owner_user_id|uuid
+speaker_id|text
+proposed_display_name|text
+proposed_role|text
+confidence|numeric
+evidence|text
+authority|text
+ai_suggested|boolean
+verified|boolean
 created_at|timestamp with time zone
 updated_at|timestamp with time zone
 ```
+
+`speaker_resolution_history` remains a design-note concept only. It is not present in the live schema and should be treated as not implemented unless a future numbered migration adds it.
 
 There is no equivalent paragraph-boundary overlay for future AI structuring proposals. That would be a **net-new schema decision**, not something already available.
 

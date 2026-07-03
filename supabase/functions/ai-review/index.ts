@@ -65,18 +65,31 @@ serve(async (request) => {
     return respondJson(200, { skipped: true, reason: "already_reviewed" });
   }
 
-  const [utterancesRes, wordsRes, speakersRes, caseRes] = await Promise.all([
+  const [utterancesRes, wordsRes, speakerResolutionRes, transcriptSpeakersRes, caseRes] = await Promise.all([
     supabase.from("transcript_utterances").select("id, utterance_id, speaker_id, speaker_label, speaker_role, text, line_type").eq("transcript_id", transcriptId).order("utterance_index", { ascending: true }),
     supabase.from("transcript_words").select("id, word_id, utterance_id, raw_text, working_text, confidence, ai_suggestion, ai_suggestion_status").eq("transcript_id", transcriptId).order("word_index", { ascending: true }),
-    supabase.from("speaker_resolution_current").select("*").eq("transcript_id", transcriptId),
+    supabase
+      .from("speaker_resolution_current")
+      .select("speaker_id, proposed_display_name, proposed_role, confidence, evidence, authority, ai_suggested, verified, created_at, updated_at")
+      .eq("transcript_id", transcriptId),
+    supabase
+      .from("transcript_speakers")
+      .select("speaker_id, display_name, assigned_name, role, speaker_role")
+      .eq("transcript_id", transcriptId),
     supabase.from("cases").select("payload").eq("case_id", transcript.case_id).maybeSingle(),
   ]);
 
-  if (utterancesRes.error || wordsRes.error || speakersRes.error) {
+  if (utterancesRes.error || wordsRes.error || speakerResolutionRes.error || transcriptSpeakersRes.error) {
     return respondJson(500, { error: "Failed to load transcript data" });
   }
 
   const caseRecord = (caseRes.data?.payload ?? null) as Record<string, unknown> | null;
+  const transcriptSpeakers = new Map(
+    ((transcriptSpeakersRes.data ?? []) as Array<Record<string, unknown>>).map((row) => {
+      const speakerId = String(row.speaker_id ?? "");
+      return [speakerId, row] as const;
+    }),
+  );
   const input = buildAISuggestionInput({
     transcriptId,
     utterances: ((utterancesRes.data ?? []) as Array<Record<string, unknown>>).map((row) => ({
@@ -99,14 +112,21 @@ serve(async (request) => {
       ai_suggestion: row.ai_suggestion == null ? null : String(row.ai_suggestion),
       ai_suggestion_status: row.ai_suggestion_status == null ? null : String(row.ai_suggestion_status),
     })),
-    speakers: ((speakersRes.data ?? []) as Array<Record<string, unknown>>).map((row) => ({
-      speaker_id: String(row.speaker_id ?? ""),
-      proposed_display_name: row.proposed_display_name == null ? null : String(row.proposed_display_name),
-      proposed_role: row.proposed_role == null ? null : String(row.proposed_role),
-      display_name: row.display_name == null ? null : String(row.display_name),
-      verified_role: row.verified_role == null ? null : String(row.verified_role),
-      ai_suggested: Boolean(row.ai_suggested),
-    })),
+    speakers: ((speakerResolutionRes.data ?? []) as Array<Record<string, unknown>>).map((row) => {
+      const speakerId = String(row.speaker_id ?? "");
+      const verifiedSpeaker = transcriptSpeakers.get(speakerId);
+      const displayName = verifiedSpeaker?.assigned_name ?? verifiedSpeaker?.display_name;
+      const verifiedRole = verifiedSpeaker?.speaker_role ?? verifiedSpeaker?.role;
+
+      return {
+        speaker_id: speakerId,
+        proposed_display_name: row.proposed_display_name == null ? null : String(row.proposed_display_name),
+        proposed_role: row.proposed_role == null ? null : String(row.proposed_role),
+        display_name: displayName == null ? null : String(displayName),
+        verified_role: verifiedRole == null ? null : String(verifiedRole),
+        ai_suggested: Boolean(row.ai_suggested),
+      };
+    }),
     caseRecord: caseRecord as never,
   });
 
@@ -145,6 +165,7 @@ serve(async (request) => {
     if (suggestion.auto_apply) {
       update.working_text = suggestion.suggestion;
     }
+
     await supabase.from("transcript_words").update(update).eq("word_id", suggestion.word_id).eq("transcript_id", transcriptId);
   }
 

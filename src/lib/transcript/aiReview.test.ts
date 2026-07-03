@@ -86,4 +86,23 @@ describe("aiReview helpers", () => {
     expect(summary.autoAppliedCount).toBe(1);
     expect(summary.totalSuggestions).toBe(1);
   });
+
+  it("prefers verified speaker identity over proposed speaker resolution fields", () => {
+    const input = buildAISuggestionInput({
+      transcriptId: "tr_1",
+      utterances: [],
+      words: [],
+      speakers: [{
+        speaker_id: "spk_1",
+        proposed_display_name: "SPEAKER 1",
+        proposed_role: "OTHER",
+        display_name: "Dennis Bentley",
+        verified_role: "ATTORNEY",
+        ai_suggested: true,
+      }],
+      caseRecord: null,
+    });
+
+    expect(input.correctionReport.speakerIssues).toEqual([]);
+  });
 });
