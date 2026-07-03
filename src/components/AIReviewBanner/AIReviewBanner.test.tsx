@@ -1,10 +1,13 @@
+// @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AIReviewBanner } from "./AIReviewBanner";
 
-const triggerAIReviewMock = vi.fn();
+const { triggerAIReviewMock } = vi.hoisted(() => ({
+  triggerAIReviewMock: vi.fn(),
+}));
 
 vi.mock("../../api/workspaceService", () => ({
   workspaceApi: {

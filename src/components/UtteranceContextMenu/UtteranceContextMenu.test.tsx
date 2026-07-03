@@ -1,13 +1,21 @@
+// @vitest-environment jsdom
 import { act, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UtteranceContextMenu } from "./UtteranceContextMenu";
 
-const saveSpeakersMock = vi.fn();
-const updateSpeakersMock = vi.fn();
-const setTranscriptVersionMock = vi.fn();
-const setSpeakerMapConfirmedMock = vi.fn();
+const {
+  saveSpeakersMock,
+  updateSpeakersMock,
+  setTranscriptVersionMock,
+  setSpeakerMapConfirmedMock,
+} = vi.hoisted(() => ({
+  saveSpeakersMock: vi.fn(),
+  updateSpeakersMock: vi.fn(),
+  setTranscriptVersionMock: vi.fn(),
+  setSpeakerMapConfirmedMock: vi.fn(),
+}));
 
 const documentState = {
   document: {

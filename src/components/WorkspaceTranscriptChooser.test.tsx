@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { WorkspaceTranscriptChooser } from "./WorkspaceTranscriptChooser";
