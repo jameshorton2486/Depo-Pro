@@ -1,10 +1,11 @@
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
+import type { Session } from "@supabase/supabase-js";
 import "./index.css";
 import { DepoEditor } from "./components/DepoEditor";
 import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
 import { isMockMode, isRealApiMode } from "./lib/runtime/mode";
-import { initializeSupabaseSession } from "./lib/supabase";
+import { initializeSupabaseSession, supabase } from "./lib/supabase";
 
 declare global {
   interface Window {
@@ -33,35 +34,110 @@ async function startMocks() {
   }
 }
 
+let editorRoot: Root | null = null;
+let mountedElement: HTMLElement | null = null;
+let currentConfig: DepoEditorConfig | null = null;
+let currentApiBaseUrl: string | null = null;
+let authStateUnsubscribe: (() => void) | null = null;
+
+function buildMountedConfig(config: DepoEditorConfig, session: Session | null): DepoEditorConfig {
+  if (!session) {
+    return config;
+  }
+
+  return {
+    ...config,
+    supabaseAccessToken: session.access_token,
+    supabaseRefreshToken: session.refresh_token,
+  };
+}
+
+function redirectToLogin() {
+  const loginUrl = new URL("/login", window.location.origin);
+  loginUrl.searchParams.set("redirectTo", window.location.href);
+  window.location.assign(loginUrl.toString());
+}
+
+function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session) {
+  const mountedConfig = buildMountedConfig(config, session);
+  const el = document.querySelector(mountedConfig.mountSelector);
+  if (!el) {
+    console.error(`[DEPO-PRO] Mount selector "${mountedConfig.mountSelector}" not found.`);
+    return;
+  }
+
+  if (mountedElement !== el) {
+    editorRoot = createRoot(el as HTMLElement);
+    mountedElement = el as HTMLElement;
+  }
+
+  console.info("[DEPO-PRO] Mounting editor with config:", {
+    ...mountedConfig,
+    apiBaseUrl: resolvedApiBaseUrl,
+    supabaseAccessToken: mountedConfig.supabaseAccessToken ? "[redacted]" : undefined,
+    supabaseRefreshToken: mountedConfig.supabaseRefreshToken ? "[redacted]" : undefined,
+  });
+  editorRoot?.render(<DepoEditor config={mountedConfig} />);
+}
+
+function subscribeToAuthChanges() {
+  authStateUnsubscribe?.();
+  authStateUnsubscribe = null;
+
+  if (!supabase || isMockMode()) {
+    return;
+  }
+
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (!currentConfig || !currentApiBaseUrl) {
+      return;
+    }
+
+    if (!session) {
+      console.warn("[DEPO-PRO] Supabase session cleared after mount; redirecting to login.");
+      redirectToLogin();
+      return;
+    }
+
+    renderEditor(currentConfig, currentApiBaseUrl, session);
+  });
+
+  authStateUnsubscribe = () => {
+    data.subscription.unsubscribe();
+  };
+}
+
 export async function mountEditor(config: DepoEditorConfig) {
   const resolvedApiBaseUrl =
     isRealApiMode() && import.meta.env.VITE_EDITOR_API_BASE_URL
       ? String(import.meta.env.VITE_EDITOR_API_BASE_URL)
       : config.apiBaseUrl;
 
+  currentConfig = config;
+  currentApiBaseUrl = resolvedApiBaseUrl;
   configureClient(resolvedApiBaseUrl);
+  let session: Session | null = null;
   try {
-    await initializeSupabaseSession({
+    session = await initializeSupabaseSession({
       accessToken: config.supabaseAccessToken,
       refreshToken: config.supabaseRefreshToken,
     });
   } catch (error) {
-    console.warn("[DEPO-PRO] Supabase session bootstrap failed; continuing to auth gate.", error);
+    console.warn("[DEPO-PRO] Supabase session bootstrap failed before mount.", error);
   }
 
-  const el = document.querySelector(config.mountSelector);
-  if (!el) {
-    console.error(`[DEPO-PRO] Mount selector "${config.mountSelector}" not found.`);
+  if (!isMockMode() && !session) {
+    console.warn("[DEPO-PRO] No Supabase session resolved before mount; redirecting to login.");
+    redirectToLogin();
     return;
   }
 
-  console.info("[DEPO-PRO] Mounting editor with config:", {
-    ...config,
-    apiBaseUrl: resolvedApiBaseUrl,
-    supabaseAccessToken: config.supabaseAccessToken ? "[redacted]" : undefined,
-    supabaseRefreshToken: config.supabaseRefreshToken ? "[redacted]" : undefined,
-  });
-  createRoot(el as HTMLElement).render(<DepoEditor config={config} />);
+  if (!session) {
+    return;
+  }
+
+  renderEditor(config, resolvedApiBaseUrl, session);
+  subscribeToAuthChanges();
 }
 
 // Public API exposed on window — host page calls this after injecting the script.

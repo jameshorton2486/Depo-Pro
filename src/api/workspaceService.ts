@@ -170,12 +170,14 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
     ? await getSignedUrl(snapshot.job.media_url)
     : await resolveSourceAudioFallbackMediaUrl(snapshot.job);
 
+  const audioSegments = await loadAudioSegments(snapshot.job, mediaUrl);
+
   return {
     document: buildEditorDocumentFromSnapshot(snapshot, mediaUrl),
     updatedAt: snapshot.job.updated_at,
     speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
     pipelineState: snapshot.job.pipeline_state ?? null,
-    audioSegments: await loadAudioSegments(snapshot.job, mediaUrl),
+    audioSegments,
   };
 }
 
