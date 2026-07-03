@@ -164,22 +164,26 @@ Deno.serve(async (request) => {
   }
 
   if (request.method !== "POST") {
-    return respond({ error: "Method not allowed." }, 200);
+    return respond({ error: "Method not allowed." }, 405);
   }
 
   try {
     const body = await request.json() as { text?: unknown; docType?: unknown; debug?: unknown };
     const text = typeof body.text === "string" ? body.text : "";
-    const docType = isDocType(body.docType) ? body.docType : "nod";
+    const docType = body.docType;
     const debug = body.debug === true;
 
     if (!text.trim()) {
-      return respond({ error: "No document text was provided." }, 200);
+      return respond({ error: "No document text was provided." }, 400);
+    }
+
+    if (!isDocType(docType)) {
+      return respond({ error: "docType must be one of nod, order, or jobsheet." }, 400);
     }
 
     const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!anthropicApiKey) {
-      return respond({ error: "ANTHROPIC_API_KEY is not set in Supabase secrets." }, 200);
+      return respond({ error: "ANTHROPIC_API_KEY is not set in Supabase secrets." }, 500);
     }
 
     const truncatedText = text.length > MAX_TEXT_CHARS
@@ -188,7 +192,7 @@ Deno.serve(async (request) => {
 
     const result = await requestStructuredExtraction(anthropicApiKey, docType, truncatedText);
     if (!result.ok) {
-      return respond({ error: "Anthropic returned JSON that did not match the extraction schema." }, 200);
+      return respond({ error: "Anthropic returned JSON that did not match the extraction schema." }, 502);
     }
 
     const fields = normalizeFields(result.parsed, truncatedText);
@@ -206,9 +210,13 @@ Deno.serve(async (request) => {
         : undefined,
     }, 200);
   } catch (error) {
+    if (error instanceof HttpError) {
+      return respond({ error: error.message }, error.status);
+    }
+
     return respond({
       error: error instanceof Error ? error.message : "Extraction failed.",
-    }, 200);
+    }, 500);
   }
 });
 
@@ -235,7 +243,7 @@ async function requestStructuredExtraction(
 
     const payload = await anthropicResponse.json() as AnthropicResponse;
     if (!anthropicResponse.ok) {
-      throw new Error(payload.error?.message ?? "Anthropic extraction request failed.");
+      throw new HttpError(502, payload.error?.message ?? "Anthropic extraction request failed.");
     }
 
     lastPayload = payload;
@@ -429,4 +437,13 @@ function respond(body: unknown, status: number) {
       "content-type": "application/json",
     },
   });
+}
+
+class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
 }

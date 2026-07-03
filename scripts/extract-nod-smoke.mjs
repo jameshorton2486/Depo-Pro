@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const envPath = path.join(root, ".env");
-const fixturePath = path.join(root, "scripts", "fixtures", "garza-home-depot.txt");
+const fixturePath = path.join(root, "scripts", "fixtures", "novak-buildright.txt");
 
 const env = parseEnv(await readFile(envPath, "utf8"));
 const supabaseUrl = env.VITE_SUPABASE_URL;
@@ -29,7 +29,7 @@ const response = await fetch(`${supabaseUrl}/functions/v1/extract-nod`, {
 
 const body = await response.json();
 
-if (!response.ok || body.error) {
+if (!response.ok) {
   console.log(JSON.stringify({
     status: response.status,
     ok: response.ok,
@@ -43,24 +43,24 @@ if (!response.ok || body.error) {
 
   const checks = [
     {
-      label: "Witness is Heath Thomas",
-      pass: fields.witness?.name?.value === "Heath Thomas",
+      label: "Witness is Jordan Pike",
+      pass: fields.witness?.name?.value === "Jordan Pike",
       actual: fields.witness?.name?.value ?? null,
-      expected: "Heath Thomas",
+      expected: "Jordan Pike",
     },
     {
       label: "Cause number preserves -OLG suffix",
-      pass: fields.cause_number?.value === "25-cv-00598-OLG",
+      pass: fields.cause_number?.value === "26-cv-00421-OLG",
       actual: fields.cause_number?.value ?? null,
-      expected: "25-cv-00598-OLG",
+      expected: "26-cv-00421-OLG",
     },
     {
-      label: "Case style contains Delia Garza and Home Depot",
+      label: "Case style contains Ariana Flores and BuildRight",
       pass: typeof fields.case_style?.value === "string"
-        && fields.case_style.value.includes("Delia Garza")
-        && fields.case_style.value.includes("Home Depot"),
+        && fields.case_style.value.includes("Ariana Flores")
+        && fields.case_style.value.includes("BuildRight"),
       actual: fields.case_style?.value ?? null,
-      expected: "contains Delia Garza and Home Depot",
+      expected: "contains Ariana Flores and BuildRight",
     },
     {
       label: "Court/district/division are clean and non-duplicated",
@@ -97,27 +97,27 @@ if (!response.ok || body.error) {
     {
       label: "All four attorneys found",
       pass: [
-        "Karen M. Alvarado",
-        "Jacob D. Cukjati",
-        "Curtis L. Cukjati",
-        "Steven A. Nunez",
+        "Paula Owens",
+        "Taylor Mercer",
+        "Dana Kline",
+        "Marisol Vega",
       ].every((name) => attorneyByName.has(name)),
       actual: [...attorneyByName.keys()],
       expected: [
-        "Karen M. Alvarado",
-        "Jacob D. Cukjati",
-        "Curtis L. Cukjati",
-        "Steven A. Nunez",
+        "Paula Owens",
+        "Taylor Mercer",
+        "Dana Kline",
+        "Marisol Vega",
       ],
     },
     {
       label: "Defendants fallback populated from case style",
       pass: JSON.stringify(fields.defendants?.value ?? null) === JSON.stringify([
-        "Home Depot U.S.A., Inc. A/K/A The Home Depot",
-        "Shawn Herber",
+        "BuildRight Retail U.S.A., Inc. A/K/A BuildRight",
+        "Mason Drake",
       ]),
       actual: fields.defendants?.value ?? null,
-      expected: ["Home Depot U.S.A., Inc. A/K/A The Home Depot", "Shawn Herber"],
+      expected: ["BuildRight Retail U.S.A., Inc. A/K/A BuildRight", "Mason Drake"],
     },
     {
       label: "County normalized to Bexar County",
@@ -126,9 +126,9 @@ if (!response.ok || body.error) {
       expected: "Bexar County",
     },
     {
-      label: "Karen side is defense only when inferred with <=0.5 confidence, otherwise null",
+      label: "Paula side is defense only when inferred with <=0.5 confidence, otherwise null",
       pass: (() => {
-        const side = attorneyByName.get("Karen M. Alvarado")?.side ?? null;
+        const side = attorneyByName.get("Paula Owens")?.side ?? null;
         if (!side || side.value == null) {
           return true;
         }
@@ -137,7 +137,7 @@ if (!response.ok || body.error) {
           && typeof side.confidence === "number"
           && side.confidence <= 0.5;
       })(),
-      actual: attorneyByName.get("Karen M. Alvarado")?.side ?? null,
+      actual: attorneyByName.get("Paula Owens")?.side ?? null,
       expected: {
         value: "defense",
         confidence_lte: 0.5,
