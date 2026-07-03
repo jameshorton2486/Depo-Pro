@@ -4,6 +4,7 @@ import {
   Pin, PinOff, Trash2, Plus, Search,
   AlertTriangle, ChevronDown, ChevronUp, Zap, LayoutList,
 } from "lucide-react";
+import { getLatestAutoSeedAudit } from "../../api/transcriptionService";
 import { useKeyterms } from "./keytermStore";
 import { DeepgramPayloadPreview } from "./DeepgramPayloadPreview";
 import type { ManagedKeyterm, KeytermSource, KeytermView, AddKeytermForm } from "./types";
@@ -43,6 +44,7 @@ const CATEGORY_COLOR: Record<KeytermCategory, string> = {
 };
 
 const SOURCE_COLOR: Record<KeytermSource, string> = {
+  "Case Record":       "bg-emerald-100 text-emerald-800",
   "UFM Metadata":     "bg-blue-100 text-blue-800",
   "Notice":           "bg-sky-100 text-sky-800",
   "Scheduling Notes": "bg-cyan-100 text-cyan-800",
@@ -511,6 +513,52 @@ function EmptyState({ view }: { view: KeytermView }) {
   );
 }
 
+function AutoSeedAuditPanel({
+  audit,
+}: {
+  audit: NonNullable<Awaited<ReturnType<typeof getLatestAutoSeedAudit>>>;
+}) {
+  if (
+    audit.added_terms.length === 0
+    && audit.already_present_terms.length === 0
+    && audit.dropped_for_cap_terms.length === 0
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold uppercase tracking-[0.18em] text-emerald-700">Last Auto-Seed Audit</span>
+        <span className="rounded-full bg-white px-2 py-0.5 font-medium text-emerald-700">
+          {audit.final_auto_seeded_terms.length} added to request
+        </span>
+      </div>
+      {audit.added_terms.length > 0 && (
+        <p className="mt-2">
+          <span className="font-semibold">Added:</span>
+          {" "}
+          {audit.added_terms.join(", ")}
+        </p>
+      )}
+      {audit.already_present_terms.length > 0 && (
+        <p className="mt-1">
+          <span className="font-semibold">Already present:</span>
+          {" "}
+          {audit.already_present_terms.join(", ")}
+        </p>
+      )}
+      {audit.dropped_for_cap_terms.length > 0 && (
+        <p className="mt-1 text-amber-800">
+          <span className="font-semibold">Dropped for cap:</span>
+          {" "}
+          {audit.dropped_for_cap_terms.join(", ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Column header row ────────────────────────────────────────────────────────
 
 function ColumnHeaders() {
@@ -542,6 +590,7 @@ export function DeepgramKeytermManager() {
     dropped: number;
     estimatedTokens: number;
   } | null>(null);
+  const [latestAutoSeedAudit, setLatestAutoSeedAudit] = useState<Awaited<ReturnType<typeof getLatestAutoSeedAudit>>>(null);
 
   function applyDerivedKeyterms() {
     const result = deriveKeytermsWithBudget(record);
@@ -566,6 +615,27 @@ export function DeepgramKeytermManager() {
     markAutoSeeded(record.case_id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record.case_id, record.deepgram.keyterms, record.witnesses, record.attorneys]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const audit = await getLatestAutoSeedAudit(record.case_id);
+        if (!cancelled) {
+          setLatestAutoSeedAudit(audit);
+        }
+      } catch {
+        if (!cancelled) {
+          setLatestAutoSeedAudit(null);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [record.case_id]);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -652,6 +722,8 @@ export function DeepgramKeytermManager() {
           {" "}Estimated token usage: {lastDerivedSummary.estimatedTokens}/{DEEPGRAM_MAX_TOKENS}.
         </div>
       )}
+
+      {latestAutoSeedAudit && <AutoSeedAuditPanel audit={latestAutoSeedAudit} />}
 
       {/* ── Limit warning ── */}
       <LimitWarning />

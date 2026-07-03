@@ -6,7 +6,7 @@ import { isMockMode } from "../lib/runtime/mode";
 import type { Database } from "../types/database";
 import type { DeepgramKeyterm } from "../types/case";
 import type { DeepgramResponse } from "../lib/transcript/types";
-import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
+import type { TranscriptionJobAutoSeedAudit, TranscriptionJobRecord } from "../lib/transcriptionJobs";
 
 type TranscriptionJobInsert = Omit<TranscriptionJobRecord, "id" | "created_at" | "updated_at"> & {
   id?: string;
@@ -65,6 +65,7 @@ function createMockJob(caseId: string): TranscriptionJobRecord {
     request_path: null,
     response_path: null,
     error: null,
+    auto_seed_audit: null,
     created_at: now,
     updated_at: now,
   };
@@ -188,6 +189,29 @@ export async function getJob(caseId: string): Promise<TranscriptionJobRecord | n
   return (data as TranscriptionJobRecord | null) ?? null;
 }
 
+export async function getLatestAutoSeedAudit(caseId: string): Promise<TranscriptionJobAutoSeedAudit | null> {
+  if (isMockMode()) {
+    return mockJobs.get(caseId)?.job.auto_seed_audit ?? null;
+  }
+
+  const client = await getSupabaseClient("getLatestAutoSeedAudit");
+  const transcriptionClient = getTranscriptionClient(client);
+  const { data, error } = await transcriptionClient
+    .from("transcription_jobs")
+    .select("auto_seed_audit")
+    .eq("case_id", caseId)
+    .not("auto_seed_audit", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as { auto_seed_audit: TranscriptionJobAutoSeedAudit | null } | null)?.auto_seed_audit ?? null;
+}
+
 export async function listTranscriptionJobs(caseId: string): Promise<TranscriptionJobRecord[]> {
   if (isMockMode()) {
     const job = mockJobs.get(caseId)?.job ?? null;
@@ -243,6 +267,9 @@ function readJobFromFunctionPayload(value: unknown): TranscriptionJobRecord | nu
     request_path: typeof job.request_path === "string" ? job.request_path : null,
     response_path: typeof job.response_path === "string" ? job.response_path : null,
     error: typeof job.error === "string" ? job.error : null,
+    auto_seed_audit: job.auto_seed_audit && typeof job.auto_seed_audit === "object"
+      ? job.auto_seed_audit
+      : null,
     created_at: typeof job.created_at === "string" ? job.created_at : new Date().toISOString(),
     updated_at: typeof job.updated_at === "string" ? job.updated_at : new Date().toISOString(),
   };
