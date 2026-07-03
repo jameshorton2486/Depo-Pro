@@ -28,3 +28,5 @@ bolt_export/
 .aider*
 **/__pycache__/
 *.pyc
+*_response.json
+scripts/fixtures/*-real.*

@@ -75,7 +75,7 @@ type DeepgramUtteranceFixture = {
 };
 
 function buildEtminanFixtureDoc(): EditorDocument {
-  const payload = JSON.parse(readFileSync(path.resolve(process.cwd(), "etminan_response.json"), "utf8")) as {
+  const payload = JSON.parse(readFileSync(path.resolve(process.cwd(), "src/lib/format/__fixtures__/synthetic_deepgram_response.json"), "utf8")) as {
     metadata?: { request_id?: string; duration?: number };
     results?: {
       utterances?: DeepgramUtteranceFixture[];
@@ -137,7 +137,7 @@ function buildEtminanFixtureDoc(): EditorDocument {
   });
 
   return {
-    job_id: payload?.metadata?.request_id ?? "etminan",
+    job_id: payload?.metadata?.request_id ?? "synthetic-regression",
     media_url: "",
     duration: payload?.metadata?.duration ?? 0,
     speakers,
@@ -568,7 +568,7 @@ describe("cfe spacing and serialization", () => {
     expect(flagged.lines[0].words[0].inline_flag).toContain("SCOPIST: FLAG 1");
   });
 
-  it("reduces inline flag noise on the Etminan regression fixture while preserving real flags", () => {
+  it("reduces inline flag noise on the synthetic regression fixture while preserving real flags", () => {
     const doc = buildEtminanFixtureDoc();
     const formatted = cfe(doc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
     const flaggedWords = formatted.lines.flatMap((line) => line.words.filter((word) => word.inline_flag));

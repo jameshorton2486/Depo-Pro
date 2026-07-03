@@ -69,3 +69,9 @@ This run did **not**:
 - rebase
 - rewrite history
 - change remotes
+
+## Required PII Purge Before Any External Sharing
+
+- `etminan_response.json` and `scripts/fixtures/garza-home-depot.txt` contained real deposition data and must be purged from git history before this repository is shared outside the current controlled environment.
+- Working-tree deletion is not sufficient. Use `git filter-repo` or BFG Repo-Cleaner to remove those paths from all reachable history, then force-push the rewritten branch set only after explicit sign-off.
+- Replacement fixtures must remain synthetic only.

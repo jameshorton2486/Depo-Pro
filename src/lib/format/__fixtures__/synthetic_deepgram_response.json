@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "request_id": "synthetic-regression",
+    "duration": 12.5
+  },
+  "results": {
+    "utterances": [
+      {
+        "speaker": 1,
+        "start": 0,
+        "end": 4,
+        "words": [
+          { "word": "the", "punctuated_word": "the", "speaker": 1, "start": 0, "end": 0.2, "confidence": 0.98 },
+          { "word": "Rico", "punctuated_word": "Rico", "speaker": 1, "start": 0.2, "end": 0.5, "confidence": 0.51 },
+          { "word": "and", "punctuated_word": "and", "speaker": 1, "start": 0.5, "end": 0.7, "confidence": 0.99 },
+          { "word": "PLLC,", "punctuated_word": "PLLC,", "speaker": 1, "start": 0.7, "end": 1.0, "confidence": 0.5 }
+        ]
+      },
+      {
+        "speaker": 2,
+        "start": 4,
+        "end": 8,
+        "words": [
+          { "word": "disc", "punctuated_word": "disc", "speaker": 2, "start": 4.0, "end": 4.4, "confidence": 0.5 },
+          { "word": "pain", "punctuated_word": "pain", "speaker": 2, "start": 4.4, "end": 4.9, "confidence": 0.97 }
+        ]
+      }
+    ],
+    "channels": [
+      {
+        "alternatives": [
+          {
+            "words": [
+              { "word": "the", "punctuated_word": "the", "speaker": 1, "start": 0, "end": 0.2, "confidence": 0.98 },
+              { "word": "Rico", "punctuated_word": "Rico", "speaker": 1, "start": 0.2, "end": 0.5, "confidence": 0.51 },
+              { "word": "and", "punctuated_word": "and", "speaker": 1, "start": 0.5, "end": 0.7, "confidence": 0.99 },
+              { "word": "PLLC,", "punctuated_word": "PLLC,", "speaker": 1, "start": 0.7, "end": 1.0, "confidence": 0.5 },
+              { "word": "disc", "punctuated_word": "disc", "speaker": 2, "start": 4.0, "end": 4.4, "confidence": 0.5 },
+              { "word": "pain", "punctuated_word": "pain", "speaker": 2, "start": 4.4, "end": 4.9, "confidence": 0.97 }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

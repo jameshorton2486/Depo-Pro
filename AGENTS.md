@@ -37,6 +37,7 @@ Violations must be reverted before a prompt is considered complete.
 - **`raw_text` is immutable.** Never write to `Word.raw_text`. Edits change `text` only.
 - **Word IDs are stable.** Edits, merges, and splits must preserve or deterministically
   derive IDs. Never regenerate the entire document's IDs.
+- **Synthetic fixtures only.** Never commit real client transcript data, notices, or deposition artifacts to this repo. Test fixtures must use fabricated names, emails, case numbers, and transcript content.
 - **No client-side persistence.** Do not use `localStorage` or `sessionStorage` for
   transcript data. The server is the source of truth; component state holds the working copy.
 - **Pointer-only exception.** UI pointers and preferences may use `localStorage`
