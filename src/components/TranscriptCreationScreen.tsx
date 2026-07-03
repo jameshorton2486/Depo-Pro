@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Mic, RefreshCw, Sparkles } from "lucide-react";
 
 import type { CaseAudioRecord } from "../api/fileService";
+import { buildAudioPreAnalysisReport, type AudioPreAnalysisReport } from "../lib/audio/audioPreAnalysis";
 import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
 import { listCaseAudio } from "../api/fileService";
 import { listTranscriptionJobs, startTranscription } from "../api/transcriptionService";
@@ -10,12 +11,14 @@ import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
 import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
 import { validateCaseAudioIntegrity } from "../lib/keyterms/caseAudioIntegrity";
+import { deriveAutoSeedKeytermsFromCaseRecord } from "../lib/keyterms/autoSeedKeyterms";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   buildTranscriptVersionLabels,
   formatTranscriptStatus,
   sortTranscriptsByCreatedAt,
 } from "../lib/transcriptVersionLabels";
+import { AudioPreAnalysisGate } from "./AudioPreAnalysisGate/AudioPreAnalysisGate";
 import { PreTranscriptionConfirmDialog } from "./PreTranscriptionConfirmDialog";
 import { RetranscriptionConfirmDialog } from "./TranscriptCreation/RetranscriptionConfirmDialog";
 import { TranscriptHistoryPanel } from "./TranscriptCreation/TranscriptHistoryPanel";
@@ -35,6 +38,9 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [retranscribeConfirmOpen, setRetranscribeConfirmOpen] = useState(false);
   const [selectedTranscriptId, setSelectedTranscriptId] = useState<string | null>(null);
+  const [preAnalysisReport, setPreAnalysisReport] = useState<AudioPreAnalysisReport | null>(null);
+  const [preAnalysisCountdown, setPreAnalysisCountdown] = useState<number | null>(null);
+  const [preAnalysisConfirmChecked, setPreAnalysisConfirmChecked] = useState(false);
 
   const requestPreview = useMemo(() => buildDeepgramRequestFromStoredKeyterms({
     caseId,
@@ -162,7 +168,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     await saveCase({ ...record, stage: "workspace" });
   }, [record]);
 
-  async function runTranscription(sourceTranscriptId?: string | null) {
+  const runTranscription = useCallback(async (sourceTranscriptId?: string | null) => {
     if (!audio) {
       setError("Upload audio before starting transcription.");
       return;
@@ -180,7 +186,11 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     } finally {
       setRunning(false);
     }
-  }
+  }, [audio, caseId]);
+
+  // Guard against the countdown effect firing after the user has already
+  // proceeded manually, cancelled, or switched to a new pre-analysis report.
+  const preAnalysisHandledRef = useRef(false);
   const failedJob = jobs.find((job) => job.status === "failed") ?? null;
 
   useEffect(() => {
@@ -188,6 +198,48 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
       setError(failedJob.error);
     }
   }, [failedJob]);
+
+  useEffect(() => {
+    if (!preAnalysisReport || preAnalysisReport.gate_action !== "proceed") {
+      preAnalysisHandledRef.current = false;
+      setPreAnalysisCountdown(null);
+      return;
+    }
+
+    // Reset the guard whenever the report changes so a new "proceed" report
+    // gets its own countdown even after a prior manual proceed.
+    preAnalysisHandledRef.current = false;
+    setPreAnalysisCountdown(2);
+    const tick = window.setInterval(() => {
+      setPreAnalysisCountdown((current) => {
+        if (current == null || preAnalysisHandledRef.current) {
+          return current;
+        }
+        if (current <= 1) {
+          window.clearInterval(tick);
+          preAnalysisHandledRef.current = true;
+          if (REQUIRE_BINDING_CONFIRM) {
+            setConfirmOpen(true);
+          } else {
+            resetPreAnalysisGate();
+            void runTranscription();
+          }
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(tick);
+    };
+  }, [preAnalysisReport, runTranscription]);
+
+  function resetPreAnalysisGate() {
+    setPreAnalysisReport(null);
+    setPreAnalysisCountdown(null);
+    setPreAnalysisConfirmChecked(false);
+  }
 
   function handleTriggerTranscription() {
     if (!audio) {
@@ -199,12 +251,30 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
       return;
     }
 
-    if (!REQUIRE_BINDING_CONFIRM) {
-      void runTranscription();
+    const report = buildAudioPreAnalysisReport({
+      audio_id: audio.audio_id,
+      original_filename: audio.original_filename,
+      file_size_bytes: audio.file_size_bytes,
+      mime_type: audio.mime_type,
+      duration_seconds: audio.duration_seconds,
+      recommended_keyterms: deriveAutoSeedKeytermsFromCaseRecord(record),
+      keyterms_source: "case_record",
+    });
+    setError(null);
+    setPreAnalysisConfirmChecked(false);
+    setPreAnalysisReport(report);
+
+    if (report.gate_action === "block") {
       return;
     }
 
-    setConfirmOpen(true);
+    if (report.gate_action !== "proceed") {
+      return;
+    }
+
+    if (!REQUIRE_BINDING_CONFIRM) {
+      return;
+    }
   }
 
   async function handleOpenWorkspace() {
@@ -237,7 +307,32 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
 
   function handleConfirmTranscription() {
     setConfirmOpen(false);
+    resetPreAnalysisGate();
     void runTranscription();
+  }
+
+  function handleProceedFromPreAnalysis() {
+    if (!preAnalysisReport || preAnalysisReport.gate_action === "block") {
+      return;
+    }
+    // Prevent the countdown effect from firing again after a manual proceed.
+    if (preAnalysisHandledRef.current) {
+      return;
+    }
+    preAnalysisHandledRef.current = true;
+    setPreAnalysisCountdown(null);
+
+    if (REQUIRE_BINDING_CONFIRM) {
+      setConfirmOpen(true);
+      return;
+    }
+
+    resetPreAnalysisGate();
+    void runTranscription();
+  }
+
+  function handleCancelPreAnalysis() {
+    resetPreAnalysisGate();
   }
 
   return (
@@ -336,6 +431,17 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {error}
                 </div>
+              )}
+
+              {preAnalysisReport && (
+                <AudioPreAnalysisGate
+                  report={preAnalysisReport}
+                  countdownSeconds={preAnalysisReport.gate_action === "proceed" ? preAnalysisCountdown : null}
+                  confirmChecked={preAnalysisConfirmChecked}
+                  onConfirmCheckedChange={setPreAnalysisConfirmChecked}
+                  onProceed={handleProceedFromPreAnalysis}
+                  onCancel={handleCancelPreAnalysis}
+                />
               )}
 
               <div className="mt-4 space-y-3">
