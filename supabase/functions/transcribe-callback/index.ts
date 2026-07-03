@@ -4,6 +4,13 @@ import { integrityAudit, type IntegrityAuditResult } from "../../../src/lib/tran
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
 import { advanceOrFinalizeMultifileJob } from "../../../src/lib/transcript/multifileCallbackFlow.ts";
 import {
+  audioRowsToSequentialSources,
+  manifestToSequentialSources,
+  type AutoChunkRequestMetadata,
+  type SequentialTranscriptSource,
+  type VirtualChunkManifest,
+} from "../../../src/lib/transcript/autoChunking.ts";
+import {
   applyOffRecordSections,
   applyPostRecordCutoff,
   applyPreRecordCutoff,
@@ -51,6 +58,13 @@ type DeepgramRequestArtifact = {
   callback_url: string;
   preview?: unknown;
   total_sources?: number;
+  source_audio_id?: string;
+  source_index?: number;
+  source_filename?: string;
+  storage_path?: string | null;
+  start_seconds?: number;
+  end_seconds?: number;
+  auto_chunk?: AutoChunkRequestMetadata;
 };
 
 type TranscriptInsertRow = {
@@ -115,6 +129,13 @@ Deno.serve(async (request) => {
     return respondError(401, "unauthorized");
   }
 
+  // SECURITY INVARIANT: serviceClient carries service-role privileges. It is
+  // created here because we must fetch the job row to read its stored token
+  // hash before we can validate the caller. Nothing between this line and the
+  // tokenHash check below may perform any mutation or expose data to the
+  // caller. Only the single job read via requireJob is permitted. If you add
+  // work here, either move it below the token check or refactor to fetch the
+  // token hash via an anon-scoped RPC.
   const serviceClient = createClient<Database>(supabaseUrl, supabaseServiceRoleKey);
 
   try {
@@ -130,12 +151,16 @@ Deno.serve(async (request) => {
 
     const payload = await request.json();
     const orderedAudio = await loadOrderedAudio(serviceClient, job.case_id);
-    const currentAudio = resolveCurrentAudio(job, orderedAudio);
-    const totalSources = orderedAudio.length;
+    const requestArtifact = await requireRequestArtifact(serviceClient, job.request_path);
+    const orderedSources = requestArtifact.auto_chunk
+      ? await loadOrderedChunkSources(serviceClient, requestArtifact.auto_chunk.manifest_path)
+      : audioRowsToSequentialSources(orderedAudio);
+    const currentSource = resolveCurrentSource(job, orderedSources);
+    const totalSources = orderedSources.length;
     const responsePath = buildTranscriptionArtifactPath(
       job.owner_user_id,
       job.case_id,
-      buildDeepgramResponseFileName(job.id, currentAudio.source_index ?? 0, totalSources),
+      buildDeepgramResponseFileName(job.id, currentSource.source_index, totalSources),
     );
     const rawChecksum = await uploadJsonArtifact(serviceClient, responsePath, payload);
 
@@ -166,17 +191,17 @@ Deno.serve(async (request) => {
 
     const outcome = await advanceOrFinalizeMultifileJob({
       job,
-      orderedAudio,
-      currentAudio,
+      orderedSources,
+      currentSource,
       totalSources,
       responsePath,
     }, {
       requireRequestArtifact: (requestPath) => requireRequestArtifact(serviceClient, requestPath),
-      submitNextDeepgramJob: (jobRecord, audioRecord, sourceCount, requestArtifact) =>
-        submitNextDeepgramJob(serviceClient, jobRecord, audioRecord, sourceCount, requestArtifact),
+      submitNextDeepgramJob: (jobRecord, sourceRecord, sourceCount, nextRequestArtifact) =>
+        submitNextDeepgramJob(serviceClient, jobRecord, sourceRecord, sourceCount, nextRequestArtifact),
       updateJob: (jobId, patch) => updateJob(serviceClient, jobId, patch),
       finalize: async () => {
-        const sourceSegments = await loadSourceTranscriptSegments(serviceClient, job, orderedAudio);
+        const sourceSegments = await loadSourceTranscriptSegments(serviceClient, job, orderedSources);
         const merged = mergeSourceTranscriptSegments(sourceSegments);
         const deepgramRequestId = totalSources === 1
           ? sourceSegments[0]?.response.metadata.request_id ?? null
@@ -880,22 +905,24 @@ async function updateJob(
   }
 }
 
-function resolveCurrentAudio(job: TranscriptionJobRecord, orderedAudio: CaseAudioRow[]): CaseAudioRow {
+function resolveCurrentSource(job: TranscriptionJobRecord, orderedSources: SequentialTranscriptSource[]): SequentialTranscriptSource {
   if (job.source_audio_id) {
-    const boundAudio = orderedAudio.find((audio) => audio.audio_id === job.source_audio_id);
-    if (boundAudio) {
-      return boundAudio;
+    const boundSource = orderedSources.find((source) =>
+      source.source_audio_id === job.source_audio_id && source.source_index === job.source_index
+    );
+    if (boundSource) {
+      return boundSource;
     }
   }
 
   if (typeof job.source_index === "number") {
-    const indexedAudio = orderedAudio.find((audio) => (audio.source_index ?? 0) === job.source_index);
-    if (indexedAudio) {
-      return indexedAudio;
+    const indexedSource = orderedSources.find((source) => source.source_index === job.source_index);
+    if (indexedSource) {
+      return indexedSource;
     }
   }
 
-  throw new Error(`Could not resolve the active source audio for job ${job.id}.`);
+  throw new Error(`Could not resolve the active sequential source for job ${job.id}.`);
 }
 
 async function requireRequestArtifact(
@@ -946,38 +973,74 @@ async function signAudioUrl(supabase: SupabaseClient<Database>, storagePath: str
   return signed.data.signedUrl;
 }
 
+async function loadOrderedChunkSources(
+  supabase: SupabaseClient<Database>,
+  manifestPath: string,
+): Promise<SequentialTranscriptSource[]> {
+  const manifestPayload = await downloadJsonArtifact(supabase, manifestPath);
+  if (
+    typeof manifestPayload !== "object"
+    || manifestPayload === null
+    || (manifestPayload as Partial<VirtualChunkManifest>).kind !== "auto_chunk_v1"
+    || !Array.isArray((manifestPayload as Partial<VirtualChunkManifest>).chunks)
+  ) {
+    throw new Error("Auto-chunk manifest is invalid.");
+  }
+
+  return manifestToSequentialSources(manifestPayload as VirtualChunkManifest);
+}
+
 async function submitNextDeepgramJob(
   supabase: SupabaseClient<Database>,
   job: TranscriptionJobRecord,
-  audio: CaseAudioRow,
+  source: SequentialTranscriptSource,
   totalSources: number,
   requestArtifact: DeepgramRequestArtifact,
 ): Promise<string> {
-  if (!audio.storage_path) {
-    throw new Error(`Source file ${audio.original_filename} is missing a storage path.`);
+  if (!source.storage_path) {
+    throw new Error(`Source file ${source.source_filename} is missing a storage path.`);
   }
 
-  const signedAudioUrl = await signAudioUrl(supabase, audio.storage_path);
-  const sourceIndex = audio.source_index ?? 0;
+  const signedAudioUrl = await signAudioUrl(supabase, source.storage_path);
+  const sourceIndex = source.source_index;
   const requestPath = buildTranscriptionArtifactPath(
     job.owner_user_id,
     job.case_id,
     buildDeepgramRequestFileName(job.id, sourceIndex, totalSources),
   );
-  const nextArtifact = {
+  const nextUrl = new URL(requestArtifact.url);
+  if (source.kind === "virtual_chunk") {
+    nextUrl.searchParams.set("start", String(source.start_seconds ?? 0));
+    nextUrl.searchParams.set("end", String(source.end_seconds ?? 0));
+  } else {
+    nextUrl.searchParams.delete("start");
+    nextUrl.searchParams.delete("end");
+  }
+  const nextArtifact: DeepgramRequestArtifact = {
     ...requestArtifact,
+    url: nextUrl.toString(),
     body: {
       url: signedAudioUrl,
     },
-    source_audio_id: audio.audio_id,
+    source_audio_id: source.source_audio_id,
     source_index: sourceIndex,
     total_sources: totalSources,
-    source_filename: audio.original_filename,
-    storage_path: audio.storage_path,
+    source_filename: source.source_filename,
+    storage_path: source.storage_path,
   };
+  if (source.kind === "virtual_chunk") {
+    nextArtifact.start_seconds = source.start_seconds;
+    nextArtifact.end_seconds = source.end_seconds;
+    nextArtifact.auto_chunk = requestArtifact.auto_chunk
+      ? {
+          ...requestArtifact.auto_chunk,
+          current_chunk_index: source.chunk_index ?? sourceIndex,
+        }
+      : undefined;
+  }
   await uploadJsonArtifact(supabase, requestPath, nextArtifact);
 
-  const deepgramResponse = await fetch(requestArtifact.url, {
+  const deepgramResponse = await fetch(nextArtifact.url, {
     method: "POST",
     headers: {
       Authorization: `Token ${deepgramApiKey}`,
@@ -999,13 +1062,13 @@ async function submitNextDeepgramJob(
 async function loadSourceTranscriptSegments(
   supabase: SupabaseClient<Database>,
   job: TranscriptionJobRecord,
-  orderedAudio: CaseAudioRow[],
+  orderedSources: SequentialTranscriptSource[],
 ) {
-  const totalSources = orderedAudio.length;
+  const totalSources = orderedSources.length;
 
   return Promise.all(
-    orderedAudio.map(async (audio, fallbackIndex) => {
-      const sourceIndex = audio.source_index ?? fallbackIndex;
+    orderedSources.map(async (source, fallbackIndex) => {
+      const sourceIndex = source.source_index ?? fallbackIndex;
       const responsePath = buildTranscriptionArtifactPath(
         job.owner_user_id,
         job.case_id,
@@ -1014,19 +1077,30 @@ async function loadSourceTranscriptSegments(
       const payload = await downloadJsonArtifact(supabase, responsePath);
       const parsed = parseDeepgramResponse(payload);
       if (!parsed.ok) {
-        throw new Error(`Stored Deepgram response for ${audio.original_filename} was invalid: ${parsed.error}`);
+        throw new Error(`Stored Deepgram response for ${source.source_filename} was invalid: ${parsed.error}`);
       }
 
       return {
-        source_audio_id: audio.audio_id,
+        source_audio_id: source.source_audio_id,
         source_index: sourceIndex,
-        source_filename: audio.original_filename,
-        mime_type: audio.mime_type,
-        storage_path: audio.storage_path,
-        media_url: audio.media_url,
+        source_filename: source.source_filename,
+        mime_type: source.mime_type,
+        storage_path: source.storage_path,
+        media_url: source.media_url,
         response: parsed.response,
         normalized: normalizeTranscriptResponse(parsed.response),
-        fallback_duration_seconds: audio.duration_seconds,
+        fallback_duration_seconds: source.kind === "virtual_chunk"
+          ? (source.end_seconds ?? 0) - (source.start_seconds ?? 0)
+          : null,
+        virtual_chunk: source.kind === "virtual_chunk"
+          ? {
+              chunk_index: source.chunk_index ?? sourceIndex,
+              start_seconds: source.start_seconds ?? 0,
+              end_seconds: source.end_seconds ?? 0,
+              nominal_offset_seconds: source.nominal_offset_seconds ?? 0,
+              overlap_with_next_seconds: source.overlap_with_next_seconds ?? 0,
+            }
+          : undefined,
       };
     }),
   );

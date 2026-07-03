@@ -2,6 +2,10 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 import { buildDeepgramRequestFromStoredKeyterms } from "../../../src/lib/deepgram/buildDeepgramRequest.ts";
 import { fitStoredKeytermsToRequestBudget } from "../../../src/lib/deepgram/requestBudget.ts";
+import {
+  DEEPGRAM_KEYTERM_SOFT_TERM_CAP,
+  DEEPGRAM_KEYTERM_SOFT_TOKEN_CAP,
+} from "../../../src/lib/keytermDerivation.ts";
 import { assertCaseAudioIntegrity } from "../../../src/lib/keyterms/caseAudioIntegrity.ts";
 import { buildAutoSeedKeytermPlan } from "../../../src/lib/keyterms/autoSeedKeyterms.ts";
 import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
@@ -572,10 +576,10 @@ function fitAutoSeededKeytermsWithinRemainingBudget(
   droppedForBudgetTerms: string[];
 } {
   const selectedManualTerms = manualKeyterms.filter((keyterm) => readStoredSelectedMeta(keyterm.notes ?? "").selected !== false);
-  const remainingTermSlots = Math.max(0, 90 - selectedManualTerms.length);
+  const remainingTermSlots = Math.max(0, DEEPGRAM_KEYTERM_SOFT_TERM_CAP - selectedManualTerms.length);
   const remainingTokenBudget = Math.max(
     0,
-    400 - selectedManualTerms.reduce((sum, keyterm) => sum + estimateTermTokens(keyterm.term), 0),
+    DEEPGRAM_KEYTERM_SOFT_TOKEN_CAP - selectedManualTerms.reduce((sum, keyterm) => sum + estimateTermTokens(keyterm.term), 0),
   );
 
   const included: typeof autoKeyterms = [];
