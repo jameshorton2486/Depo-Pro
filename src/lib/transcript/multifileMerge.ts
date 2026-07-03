@@ -16,6 +16,13 @@ export interface SourceTranscriptSegment {
   response: DeepgramResponse;
   normalized: NormalizedTranscriptData;
   fallback_duration_seconds: number | null;
+  virtual_chunk?: {
+    chunk_index: number;
+    start_seconds: number;
+    end_seconds: number;
+    nominal_offset_seconds: number;
+    overlap_with_next_seconds: number;
+  };
 }
 
 export interface MergedSourceSegment {
@@ -48,6 +55,15 @@ function namespacedSpeakerId(sourceIndex: number, speakerIndex: number): string 
 
 function namespacedSpeakerLabel(sourceIndex: number, speakerIndex: number): string {
   return `File ${sourceIndex + 1} Speaker ${speakerIndex}`;
+}
+
+function stableChunkSpeakerId(sourceAudioId: string, speakerIndex: number): string {
+  const sanitizedAudioId = sourceAudioId.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+  return `spk_${sanitizedAudioId}_s${String(speakerIndex).padStart(3, "0")}`;
+}
+
+function stableChunkSpeakerLabel(speakerIndex: number): string {
+  return `Speaker ${speakerIndex}`;
 }
 
 function roundConfidence(value: number | null): number | null {
@@ -94,6 +110,197 @@ function mergeSingleTranscript(segment: SourceTranscriptSegment): MergedTranscri
   };
 }
 
+function isVirtualChunkMerge(segments: SourceTranscriptSegment[]): boolean {
+  return segments.length > 1 && segments.every((segment) => segment.virtual_chunk);
+}
+
+function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]): MergedTranscriptResult {
+  const mergedSegments: MergedSourceSegment[] = [];
+  const mergedSpeakers = new Map<string, CanonicalSpeakerRow>();
+  const speakerSourceKeys = new Map<string, string>();
+  const candidateWords: Array<CanonicalWordRow & {
+    sourceUtteranceKey: string;
+    sourceUtteranceOrder: number;
+    speakerLabel: string;
+  }> = [];
+  let utteranceOrder = 0;
+
+  for (const segment of segments) {
+    if (!segment.virtual_chunk) {
+      throw new Error("Virtual chunk merge requires chunk metadata on every segment.");
+    }
+
+    const rebasedOffsetSeconds = segment.virtual_chunk.nominal_offset_seconds - segment.virtual_chunk.start_seconds;
+    const durationSeconds = segment.virtual_chunk.end_seconds - segment.virtual_chunk.start_seconds;
+    mergedSegments.push({
+      source_audio_id: segment.source_audio_id,
+      source_index: segment.source_index,
+      source_filename: segment.source_filename,
+      mime_type: segment.mime_type,
+      storage_path: segment.storage_path,
+      media_url: segment.media_url,
+      start_offset_seconds: segment.virtual_chunk.nominal_offset_seconds,
+      duration_seconds: durationSeconds,
+    });
+
+    for (const speaker of segment.normalized.speakers) {
+      const speakerId = stableChunkSpeakerId(segment.source_audio_id, speaker.speaker_index);
+      if (!mergedSpeakers.has(speakerId)) {
+        mergedSpeakers.set(speakerId, {
+          speaker_id: speakerId,
+          speaker_index: speaker.speaker_index,
+          speaker_label: stableChunkSpeakerLabel(speaker.speaker_index),
+          assigned_name: null,
+          speaker_role: null,
+          word_count: 0,
+        });
+      }
+      speakerSourceKeys.set(`${segment.source_index}:${speaker.speaker_id}`, speakerId);
+    }
+
+    for (const utterance of segment.normalized.utterances) {
+      utteranceOrder += 1;
+      for (const word of segment.normalized.words.filter((candidate) => candidate.utterance_id === utterance.utterance_id)) {
+        const speakerId = speakerSourceKeys.get(`${segment.source_index}:${word.speaker_id}`)
+          ?? stableChunkSpeakerId(segment.source_audio_id, word.speaker_index);
+        candidateWords.push({
+          ...word,
+          word_id: "",
+          utterance_id: utterance.utterance_id,
+          speaker_id: speakerId,
+          start_time: word.start_time + rebasedOffsetSeconds,
+          end_time: word.end_time + rebasedOffsetSeconds,
+          sourceUtteranceKey: `${segment.source_index}:${utterance.utterance_id}`,
+          sourceUtteranceOrder: utteranceOrder,
+          speakerLabel: stableChunkSpeakerLabel(word.speaker_index),
+        });
+      }
+    }
+  }
+
+  const dedupedWords: typeof candidateWords = [];
+  const matchToleranceSeconds = 0.35;
+
+  for (const candidate of candidateWords.sort((left, right) => {
+    if (left.start_time !== right.start_time) {
+      return left.start_time - right.start_time;
+    }
+    if (left.end_time !== right.end_time) {
+      return left.end_time - right.end_time;
+    }
+    return left.sourceUtteranceOrder - right.sourceUtteranceOrder;
+  })) {
+    const duplicateIndex = dedupedWords.findIndex((existing) =>
+      existing.raw_text.toLowerCase() === candidate.raw_text.toLowerCase()
+      && Math.abs(existing.start_time - candidate.start_time) <= matchToleranceSeconds
+      && Math.abs(existing.end_time - candidate.end_time) <= matchToleranceSeconds
+      && existing.speaker_index === candidate.speaker_index
+    );
+
+    if (duplicateIndex >= 0) {
+      if (candidate.confidence > dedupedWords[duplicateIndex].confidence) {
+        dedupedWords[duplicateIndex] = candidate;
+      }
+      continue;
+    }
+
+    dedupedWords.push(candidate);
+  }
+
+  dedupedWords.sort((left, right) => {
+    if (left.start_time !== right.start_time) {
+      return left.start_time - right.start_time;
+    }
+    if (left.end_time !== right.end_time) {
+      return left.end_time - right.end_time;
+    }
+    return left.sourceUtteranceOrder - right.sourceUtteranceOrder;
+  });
+
+  const mergedWords: CanonicalWordRow[] = dedupedWords.map((word, index) => ({
+    word_id: wordIdForIndex(index),
+    utterance_id: "",
+    word_index: index,
+    raw_text: word.raw_text,
+    working_text: word.working_text,
+    speaker_id: word.speaker_id,
+    speaker_index: word.speaker_index,
+    start_time: word.start_time,
+    end_time: word.end_time,
+    confidence: word.confidence,
+    is_filler: word.is_filler,
+    reviewed: word.reviewed,
+    edited: word.edited,
+  }));
+
+  const utteranceBuckets = new Map<string, { order: number; words: Array<typeof dedupedWords[number]> }>();
+  for (const word of dedupedWords) {
+    const bucket = utteranceBuckets.get(word.sourceUtteranceKey) ?? { order: word.sourceUtteranceOrder, words: [] };
+    bucket.words.push(word);
+    utteranceBuckets.set(word.sourceUtteranceKey, bucket);
+  }
+
+  const mergedUtterances: CanonicalUtteranceRow[] = [];
+  // Map by object identity, not by (start_time, end_time, raw_text, speaker_id) —
+  // identical-timestamp filler words with matching text can otherwise collide and
+  // leave one mergedWord without an utterance_id assignment.
+  const mergedIndexByWord = new Map<typeof dedupedWords[number], number>();
+  for (const [index, word] of dedupedWords.entries()) {
+    mergedIndexByWord.set(word, index);
+  }
+
+  const utteranceEntries = [...utteranceBuckets.entries()]
+    .sort((left, right) => left[1].order - right[1].order)
+    .map(([, bucket]) => bucket.words.sort((left, right) => left.start_time - right.start_time))
+    .filter((words) => words.length > 0);
+
+  utteranceEntries.forEach((words, utteranceIndex) => {
+    const utteranceId = utteranceIdForIndex(utteranceIndex);
+    const firstWord = words[0];
+    const lastWord = words[words.length - 1];
+    mergedUtterances.push({
+      utterance_id: utteranceId,
+      utterance_index: utteranceIndex,
+      speaker_id: firstWord.speaker_id,
+      speaker_index: firstWord.speaker_index,
+      speaker_label: firstWord.speakerLabel,
+      start_time: firstWord.start_time,
+      end_time: lastWord.end_time,
+      text: words.map((word) => word.raw_text).join(" "),
+      avg_confidence: roundConfidence(words.reduce((sum, word) => sum + word.confidence, 0) / words.length) ?? 0,
+    });
+
+    for (const word of words) {
+      const mergedWordIndex = mergedIndexByWord.get(word);
+      if (mergedWordIndex != null) {
+        mergedWords[mergedWordIndex].utterance_id = utteranceId;
+      }
+    }
+  });
+
+  for (const speaker of mergedSpeakers.values()) {
+    speaker.word_count = mergedWords.filter((word) => word.speaker_id === speaker.speaker_id).length;
+  }
+
+  const durationSeconds = mergedWords.length > 0
+    ? mergedWords[mergedWords.length - 1].end_time
+    : segments[segments.length - 1]?.virtual_chunk?.end_seconds ?? 0;
+  const avgConfidence = mergedWords.length > 0
+    ? roundConfidence(mergedWords.reduce((sum, word) => sum + word.confidence, 0) / mergedWords.length)
+    : null;
+
+  return {
+    normalized: {
+      durationSeconds,
+      avgConfidence,
+      speakers: [...mergedSpeakers.values()].sort((left, right) => left.speaker_index - right.speaker_index),
+      utterances: mergedUtterances,
+      words: mergedWords,
+    },
+    segments: mergedSegments,
+  };
+}
+
 export function mergeSourceTranscriptSegments(segments: SourceTranscriptSegment[]): MergedTranscriptResult {
   if (segments.length === 0) {
     return {
@@ -110,6 +317,10 @@ export function mergeSourceTranscriptSegments(segments: SourceTranscriptSegment[
 
   if (segments.length === 1) {
     return mergeSingleTranscript(segments[0]);
+  }
+
+  if (isVirtualChunkMerge(segments)) {
+    return mergeVirtualChunkTranscriptSegments(segments);
   }
 
   const mergedSpeakers: CanonicalSpeakerRow[] = [];
