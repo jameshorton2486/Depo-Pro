@@ -16,6 +16,7 @@ function buildJob(): TranscriptionJobRecord {
     request_path: "artifacts/job_001_file_000_deepgram_request.json",
     response_path: null,
     error: null,
+    auto_seed_audit: null,
     created_at: "2026-06-10T12:00:00.000Z",
     updated_at: "2026-06-10T12:00:00.000Z",
   };
@@ -24,9 +25,25 @@ function buildJob(): TranscriptionJobRecord {
 describe("advanceOrFinalizeMultifileJob", () => {
   it("fails the parent job, persists zero canonical rows, and preserves completed source artifacts when the next file cannot start", async () => {
     const job = buildJob();
-    const orderedAudio = [
-      { audio_id: "audio_0", source_index: 0 },
-      { audio_id: "audio_1", source_index: 1 },
+    const orderedSources = [
+      {
+        source_audio_id: "audio_0",
+        source_index: 0,
+        source_filename: "source_1.mp3",
+        mime_type: "audio/mpeg",
+        storage_path: "cases/demo/audio_0.mp3",
+        media_url: null,
+        kind: "physical_audio" as const,
+      },
+      {
+        source_audio_id: "audio_1",
+        source_index: 1,
+        source_filename: "source_2.mp3",
+        mime_type: "audio/mpeg",
+        storage_path: "cases/demo/audio_1.mp3",
+        media_url: null,
+        kind: "physical_audio" as const,
+      },
     ];
     const responsePath = "artifacts/job_001_file_000_deepgram_response.json";
     const preservedArtifacts = new Set<string>([responsePath]);
@@ -56,9 +73,9 @@ describe("advanceOrFinalizeMultifileJob", () => {
 
     await expect(advanceOrFinalizeMultifileJob({
       job,
-      orderedAudio,
-      currentAudio: orderedAudio[0],
-      totalSources: orderedAudio.length,
+      orderedSources,
+      currentSource: orderedSources[0],
+      totalSources: orderedSources.length,
       responsePath,
     }, {
       requireRequestArtifact,

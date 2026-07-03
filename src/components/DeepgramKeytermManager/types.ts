@@ -7,6 +7,7 @@ import type { KeytermCategory } from "../../types/case.ts";
 // ─── Source ───────────────────────────────────────────────────────────────────
 
 export type KeytermSource =
+  | "Case Record"       // auto-seeded directly from case metadata before transcription
   | "UFM Metadata"       // auto-extracted from case caption, witness, attorney names
   | "Notice"             // parsed from the Notice of Deposition document
   | "Scheduling Notes"   // parsed from scheduling/job-sheet notes

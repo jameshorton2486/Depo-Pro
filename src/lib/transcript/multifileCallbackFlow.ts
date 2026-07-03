@@ -1,9 +1,5 @@
 import type { TranscriptionJobRecord } from "../transcriptionJobs";
-
-export interface CallbackAudioSource {
-  audio_id: string;
-  source_index: number | null;
-}
+import type { SequentialTranscriptSource } from "./autoChunking";
 
 export interface NextRequestArtifact {
   url: string;
@@ -12,8 +8,8 @@ export interface NextRequestArtifact {
 
 export interface AdvanceOrFinalizeArgs {
   job: TranscriptionJobRecord;
-  orderedAudio: CallbackAudioSource[];
-  currentAudio: CallbackAudioSource;
+  orderedSources: SequentialTranscriptSource[];
+  currentSource: SequentialTranscriptSource;
   totalSources: number;
   responsePath: string;
 }
@@ -22,7 +18,7 @@ export interface AdvanceOrFinalizeDeps {
   requireRequestArtifact: (requestPath: string | null) => Promise<NextRequestArtifact>;
   submitNextDeepgramJob: (
     job: TranscriptionJobRecord,
-    audio: CallbackAudioSource,
+    source: SequentialTranscriptSource,
     totalSources: number,
     requestArtifact: NextRequestArtifact,
   ) => Promise<string>;
@@ -39,22 +35,24 @@ export async function advanceOrFinalizeMultifileJob(
   args: AdvanceOrFinalizeArgs,
   deps: AdvanceOrFinalizeDeps,
 ): Promise<{ status: "processing" | "complete"; responsePath: string }> {
-  const { job, orderedAudio, currentAudio, totalSources, responsePath } = args;
+  const { job, orderedSources, currentSource, totalSources, responsePath } = args;
 
   try {
-    const currentPosition = orderedAudio.findIndex((audio) => audio.audio_id === currentAudio.audio_id);
+    const currentPosition = orderedSources.findIndex((source) =>
+      source.source_audio_id === currentSource.source_audio_id && source.source_index === currentSource.source_index
+    );
     if (currentPosition < 0) {
-      throw new Error(`Unknown source audio ${currentAudio.audio_id} for transcription job ${job.id}.`);
+      throw new Error(`Unknown sequential source ${currentSource.source_audio_id}:${currentSource.source_index} for transcription job ${job.id}.`);
     }
 
-    if (currentPosition < orderedAudio.length - 1) {
+    if (currentPosition < orderedSources.length - 1) {
       const requestArtifact = await deps.requireRequestArtifact(job.request_path);
-      const nextAudio = orderedAudio[currentPosition + 1];
-      const nextRequestPath = await deps.submitNextDeepgramJob(job, nextAudio, totalSources, requestArtifact);
+      const nextSource = orderedSources[currentPosition + 1];
+      const nextRequestPath = await deps.submitNextDeepgramJob(job, nextSource, totalSources, requestArtifact);
       await deps.updateJob(job.id, {
         status: "processing",
-        source_audio_id: nextAudio.audio_id,
-        source_index: nextAudio.source_index ?? currentPosition + 1,
+        source_audio_id: nextSource.source_audio_id,
+        source_index: nextSource.source_index ?? currentPosition + 1,
         request_path: nextRequestPath,
         response_path: responsePath,
         error: null,

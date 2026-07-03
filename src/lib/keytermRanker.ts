@@ -16,6 +16,7 @@ const CATEGORY_WEIGHT: Record<KeytermCategory, number> = {
 };
 
 const SOURCE_WEIGHT: Record<KeytermSource, number> = {
+  "Case Record":       10,
   "UFM Metadata":      10,
   "Notice":            9,
   "Scheduling Notes":  7,

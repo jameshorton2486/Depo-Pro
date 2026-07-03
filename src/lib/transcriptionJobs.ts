@@ -1,5 +1,13 @@
 export type TranscriptionJobStatus = "queued" | "processing" | "complete" | "failed";
 
+export interface TranscriptionJobAutoSeedAudit {
+  source: "case_record";
+  added_terms: string[];
+  already_present_terms: string[];
+  dropped_for_cap_terms: string[];
+  final_auto_seeded_terms: string[];
+}
+
 export interface TranscriptionJobRecord {
   id: string;
   case_id: string;
@@ -12,6 +20,7 @@ export interface TranscriptionJobRecord {
   request_path: string | null;
   response_path: string | null;
   error: string | null;
+  auto_seed_audit: TranscriptionJobAutoSeedAudit | null;
   created_at: string;
   updated_at: string;
 }
