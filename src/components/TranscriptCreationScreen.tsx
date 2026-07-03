@@ -263,18 +263,10 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     setError(null);
     setPreAnalysisConfirmChecked(false);
     setPreAnalysisReport(report);
-
-    if (report.gate_action === "block") {
-      return;
-    }
-
-    if (report.gate_action !== "proceed") {
-      return;
-    }
-
-    if (!REQUIRE_BINDING_CONFIRM) {
-      return;
-    }
+    // From here the AudioPreAnalysisGate + countdown effect drive the flow:
+    // "block" / "warn_proceed" / "confirm_required" render the gate and wait
+    // for the user; "proceed" starts a 2s countdown that either opens the
+    // confirm dialog or runs transcription depending on REQUIRE_BINDING_CONFIRM.
   }
 
   async function handleOpenWorkspace() {

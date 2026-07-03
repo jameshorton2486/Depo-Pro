@@ -184,14 +184,6 @@ export function ExportScreen({ jobId }: { jobId: string }) {
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-2 text-sm font-semibold text-slate-900">Other Formats</h2>
-            <ul className="space-y-2 text-sm text-slate-600">
-              <li>DOCX: not implemented in this local remediation pass</li>
-              <li>PDF: not implemented in this local remediation pass</li>
-            </ul>
-          </section>
-
           {lastArtifact && (
             <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
               <h2 className="mb-1 text-sm font-semibold text-emerald-800">Last Generated Output</h2>
