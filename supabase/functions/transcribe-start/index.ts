@@ -3,7 +3,14 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { buildDeepgramRequestFromStoredKeyterms } from "../../../src/lib/deepgram/buildDeepgramRequest.ts";
 import { fitStoredKeytermsToRequestBudget } from "../../../src/lib/deepgram/requestBudget.ts";
 import { assertCaseAudioIntegrity } from "../../../src/lib/keyterms/caseAudioIntegrity.ts";
+import { buildAutoSeedKeytermPlan } from "../../../src/lib/keyterms/autoSeedKeyterms.ts";
 import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
+import {
+  AUTO_CHUNK_THRESHOLD_SECONDS,
+  buildAutoChunkManifest,
+  type AutoChunkRequestMetadata,
+  type SequentialTranscriptSource,
+} from "../../../src/lib/transcript/autoChunking.ts";
 import {
   buildDeepgramRequestFileName,
   buildRetranscriptionAuditFileName,
@@ -13,6 +20,7 @@ import {
   sha256Hex,
   TRANSCRIPTION_SIGNED_URL_TTL_SECONDS,
   type TranscriptionJobRecord,
+  type TranscriptionJobAutoSeedAudit,
 } from "../../../src/lib/transcriptionJobs.ts";
 import { buildRetranscriptionAuditArtifact } from "../../../src/lib/retranscription.ts";
 
@@ -35,16 +43,57 @@ type CaseAudioRow = {
   uploaded_at: string | null;
 };
 
+type SelectedKeytermMeta = {
+  selected?: boolean;
+};
+
 type TranscriptRow = {
   transcript_id: string;
   case_id: string;
 };
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+type DeepgramRequestArtifact = {
+  method: "POST";
+  url: string;
+  headers: {
+    Authorization: string;
+    "Content-Type": string;
+  };
+  body: {
+    url: string;
+  };
+  preview: ReturnType<typeof buildDeepgramRequestFromStoredKeyterms>["envelope"];
+  callback_url: string;
+  source_audio_id: string;
+  source_index: number;
+  total_sources: number;
+  source_filename: string;
+  storage_path: string | null;
+  retranscription: ReturnType<typeof buildRetranscriptionAuditArtifact> | null;
+  start_seconds?: number;
+  end_seconds?: number;
+  auto_chunk?: AutoChunkRequestMetadata;
 };
+
+const allowedOrigins = (Deno.env.get("TRANSCRIBE_ALLOWED_ORIGINS") ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+function buildCorsHeaders(request: Request): Record<string, string> {
+  const requestOrigin = request.headers.get("Origin") ?? "";
+  // If no allowlist is configured, fall back to permissive * for dev/mock only.
+  // In production, set TRANSCRIBE_ALLOWED_ORIGINS to lock down origins.
+  const allowOrigin = allowedOrigins.length === 0
+    ? "*"
+    : allowedOrigins.includes(requestOrigin) ? requestOrigin : "null";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, apikey, x-client-info, x-supabase-api-version",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
 
 const CASE_FILES_BUCKET = "case-files";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -52,22 +101,24 @@ const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const deepgramApiKey = Deno.env.get("DEEPGRAM_API_KEY") ?? "";
 
 Deno.serve(async (request) => {
+  const corsHeaders = buildCorsHeaders(request);
+
   if (request.method === "OPTIONS") {
-    return respondJson(200, { ok: true });
+    return respondJson(200, { ok: true }, corsHeaders);
   }
 
   if (request.method !== "POST") {
-    return respondError(405, "method not allowed");
+    return respondError(405, "method not allowed", corsHeaders);
   }
 
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
-    return respondError(401, "unauthorized");
+    return respondError(401, "unauthorized", corsHeaders);
   }
 
   if (!supabaseUrl || !supabaseAnonKey || !deepgramApiKey) {
     console.error("[transcribe-start] missing function env");
-    return respondError(500, "server misconfigured");
+    return respondError(500, "server misconfigured", corsHeaders);
   }
 
   try {
@@ -80,7 +131,7 @@ Deno.serve(async (request) => {
       ? body.source_transcript_id.trim()
       : null;
     if (!caseId) {
-      return respondError(400, "bad payload");
+      return respondError(400, "bad payload", corsHeaders);
     }
 
     const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -94,14 +145,24 @@ Deno.serve(async (request) => {
     const ownerUserId = await requireUserId(supabase);
     const activeJob = await findActiveJob(supabase, caseId);
     if (activeJob) {
-      return respondError(409, "active transcription job already exists for this case");
+      return respondError(409, "active transcription job already exists for this case", corsHeaders);
     }
 
     const caseRow = await requireCase(supabase, caseId);
     const audioRows = await requireOrderedAudio(supabase, caseId);
     const firstAudio = audioRows[0];
     if (!firstAudio?.storage_path) {
-      return respondError(400, "case audio must be storage-backed before transcription");
+      return respondError(400, "case audio must be storage-backed before transcription", corsHeaders);
+    }
+    // Reject when duration is unknown — long files often lack duration metadata,
+    // and silently falling back to single-file submission was masking auto-chunking
+    // failures on 2h+ audio. Client must reprobe before starting.
+    if (firstAudio.duration_seconds == null) {
+      return respondError(
+        400,
+        "audio duration is unavailable — reprobe audio metadata before starting transcription",
+        corsHeaders,
+      );
     }
 
     const record = normalizeCaseRecord(caseRow.payload);
@@ -109,7 +170,26 @@ Deno.serve(async (request) => {
     const sourceTranscript = sourceTranscriptId
       ? await requireTranscriptForCase(supabase, caseId, sourceTranscriptId)
       : null;
-    const budgetedKeyterms = fitStoredKeytermsToRequestBudget(record.deepgram.keyterms);
+    const autoSeedPlan = buildAutoSeedKeytermPlan(record, record.deepgram.keyterms);
+    const budgetedManualKeyterms = fitStoredKeytermsToRequestBudget(record.deepgram.keyterms);
+    const budgetedAutoSeededKeyterms = fitAutoSeededKeytermsWithinRemainingBudget(
+      budgetedManualKeyterms.keyterms,
+      autoSeedPlan.autoSeededKeyterms,
+    );
+    const budgetedKeyterms = {
+      keyterms: [...budgetedManualKeyterms.keyterms, ...budgetedAutoSeededKeyterms.keyterms],
+      estimatedTokens: budgetedManualKeyterms.estimatedTokens
+        + budgetedAutoSeededKeyterms.keyterms.reduce((sum, keyterm) => sum + estimateTermTokens(keyterm.term), 0),
+      droppedCount: budgetedManualKeyterms.droppedCount + budgetedAutoSeededKeyterms.droppedForBudgetTerms.length,
+    };
+    const autoSeedAudit: TranscriptionJobAutoSeedAudit = {
+      ...autoSeedPlan.audit,
+      dropped_for_cap_terms: [
+        ...autoSeedPlan.audit.dropped_for_cap_terms,
+        ...budgetedAutoSeededKeyterms.droppedForBudgetTerms,
+      ],
+      final_auto_seeded_terms: budgetedAutoSeededKeyterms.keyterms.map((keyterm) => keyterm.term),
+    };
     if (budgetedKeyterms.droppedCount > 0) {
       console.warn("[transcribe-start] trimmed keyterms to request budget", {
         caseId,
@@ -133,20 +213,42 @@ Deno.serve(async (request) => {
       callback_token_hash: callbackTokenHash,
       source_audio_id: firstAudio.audio_id,
       source_index: firstAudio.source_index ?? 0,
+      auto_seed_audit: autoSeedAudit,
     });
 
     const callbackUrl = buildCallbackUrl(createdJob.id, callbackToken);
-    const requestPath = await submitDeepgramJob({
-      supabase,
-      job: createdJob,
-      ownerUserId,
-      caseId,
-      audio: firstAudio,
-      totalSources: audioRows.length,
-      callbackUrl,
-      requestPreview,
-      sourceTranscriptId: sourceTranscript?.transcript_id ?? null,
-    });
+
+    const requestPath = firstAudio.duration_seconds > AUTO_CHUNK_THRESHOLD_SECONDS
+      ? await submitAutoChunkedJob({
+          supabase,
+          job: createdJob,
+          ownerUserId,
+          caseId,
+          audio: firstAudio,
+          callbackUrl,
+          requestPreview,
+          sourceTranscriptId: sourceTranscript?.transcript_id ?? null,
+          durationSeconds: firstAudio.duration_seconds,
+        })
+      : await submitDeepgramJob({
+          supabase,
+          job: createdJob,
+          ownerUserId,
+          caseId,
+          source: {
+            source_audio_id: firstAudio.audio_id,
+            source_index: firstAudio.source_index ?? 0,
+            source_filename: firstAudio.original_filename,
+            mime_type: firstAudio.mime_type,
+            storage_path: firstAudio.storage_path,
+            media_url: firstAudio.media_url,
+            kind: "physical_audio",
+          },
+          totalSources: audioRows.length,
+          callbackUrl,
+          requestPreview,
+          sourceTranscriptId: sourceTranscript?.transcript_id ?? null,
+        });
 
     return respondJson(200, {
       job: {
@@ -160,12 +262,12 @@ Deno.serve(async (request) => {
         response_path: null,
         error: null,
       },
-    });
+    }, corsHeaders);
   } catch (error) {
     console.error("[transcribe-start] unexpected error", {
       message: error instanceof Error ? error.message : String(error),
     });
-    return respondError(500, "unexpected server error");
+    return respondError(500, "unexpected server error", corsHeaders);
   }
 });
 
@@ -266,7 +368,7 @@ async function findActiveJob(
 
 async function createQueuedJob(
   supabase: SupabaseClient<Database>,
-  insert: Pick<TranscriptionJobRecord, "case_id" | "transcript_id" | "owner_user_id" | "callback_token_hash" | "source_audio_id" | "source_index">,
+  insert: Pick<TranscriptionJobRecord, "case_id" | "transcript_id" | "owner_user_id" | "callback_token_hash" | "source_audio_id" | "source_index" | "auto_seed_audit">,
 ): Promise<TranscriptionJobRecord> {
   const { data, error } = await supabase
     .from("transcription_jobs")
@@ -277,6 +379,7 @@ async function createQueuedJob(
       callback_token_hash: insert.callback_token_hash,
       source_audio_id: insert.source_audio_id,
       source_index: insert.source_index,
+      auto_seed_audit: insert.auto_seed_audit,
       status: "queued",
     })
     .select("*")
@@ -312,33 +415,39 @@ async function submitDeepgramJob(params: {
   job: TranscriptionJobRecord;
   ownerUserId: string;
   caseId: string;
-  audio: CaseAudioRow;
+  source: SequentialTranscriptSource;
   totalSources: number;
   callbackUrl: string;
   requestPreview: ReturnType<typeof buildDeepgramRequestFromStoredKeyterms>;
   sourceTranscriptId: string | null;
+  autoChunk?: AutoChunkRequestMetadata;
 }): Promise<string> {
   const {
     supabase,
     job,
     ownerUserId,
     caseId,
-    audio,
+    source,
     totalSources,
     callbackUrl,
     requestPreview,
     sourceTranscriptId,
+    autoChunk,
   } = params;
 
-  if (!audio.storage_path) {
+  if (!source.storage_path) {
     throw new Error("case audio must be storage-backed before transcription");
   }
 
-  const signedAudioUrl = await signAudioUrl(supabase, audio.storage_path);
+  const signedAudioUrl = await signAudioUrl(supabase, source.storage_path);
   const wireUrl = new URL(requestPreview.wireUrl);
   wireUrl.searchParams.set("callback", callbackUrl);
+  if (source.kind === "virtual_chunk") {
+    wireUrl.searchParams.set("start", String(source.start_seconds ?? 0));
+    wireUrl.searchParams.set("end", String(source.end_seconds ?? 0));
+  }
 
-  const requestArtifact = {
+  const requestArtifact: DeepgramRequestArtifact = {
     method: "POST",
     url: wireUrl.toString(),
     headers: {
@@ -350,25 +459,36 @@ async function submitDeepgramJob(params: {
     },
     preview: requestPreview.envelope,
     callback_url: callbackUrl,
-    source_audio_id: audio.audio_id,
-    source_index: audio.source_index ?? 0,
+    source_audio_id: source.source_audio_id,
+    source_index: source.source_index,
     total_sources: totalSources,
-    source_filename: audio.original_filename,
-    storage_path: audio.storage_path,
+    source_filename: source.source_filename,
+    storage_path: source.storage_path,
     retranscription: sourceTranscriptId
       ? buildRetranscriptionAuditArtifact({
         caseId,
-        sourceAudioId: audio.audio_id,
+        sourceAudioId: source.source_audio_id,
         sourceTranscriptId,
         newTranscriptId: job.transcript_id,
       })
       : null,
   };
+  if (source.kind === "virtual_chunk") {
+    requestArtifact.start_seconds = source.start_seconds;
+    requestArtifact.end_seconds = source.end_seconds;
+  }
+  // Attach auto_chunk metadata BEFORE the first upload so the artifact never
+  // exists in a partial state. Prior implementation uploaded then re-uploaded,
+  // creating a window where a failure would leave the callback misinterpreting
+  // the job as a physical multi-file transcription.
+  if (autoChunk) {
+    requestArtifact.auto_chunk = autoChunk;
+  }
 
   const requestPath = buildTranscriptionArtifactPath(
     ownerUserId,
     caseId,
-    buildDeepgramRequestFileName(job.id, audio.source_index ?? 0, totalSources),
+    buildDeepgramRequestFileName(job.id, source.source_index, totalSources),
   );
   await uploadJsonArtifact(supabase, requestPath, requestArtifact);
   if (sourceTranscriptId) {
@@ -382,7 +502,7 @@ async function submitDeepgramJob(params: {
       auditPath,
       buildRetranscriptionAuditArtifact({
         caseId,
-        sourceAudioId: audio.audio_id,
+        sourceAudioId: source.source_audio_id,
         sourceTranscriptId,
         newTranscriptId: job.transcript_id,
       }),
@@ -390,8 +510,8 @@ async function submitDeepgramJob(params: {
   }
   await updateJob(supabase, job.id, {
     status: "queued",
-    source_audio_id: audio.audio_id,
-    source_index: audio.source_index ?? 0,
+    source_audio_id: source.source_audio_id,
+    source_index: source.source_index,
     request_path: requestPath,
     error: null,
   });
@@ -409,8 +529,8 @@ async function submitDeepgramJob(params: {
     const errorText = await deepgramResponse.text();
     await updateJob(supabase, job.id, {
       status: "failed",
-      source_audio_id: audio.audio_id,
-      source_index: audio.source_index ?? 0,
+      source_audio_id: source.source_audio_id,
+      source_index: source.source_index,
       error: `Deepgram start failed: ${deepgramResponse.status} ${deepgramResponse.statusText}${errorText ? ` — ${errorText}` : ""}`,
     });
     throw new Error("failed to start deepgram job");
@@ -418,13 +538,138 @@ async function submitDeepgramJob(params: {
 
   await updateJob(supabase, job.id, {
     status: "processing",
-    source_audio_id: audio.audio_id,
-    source_index: audio.source_index ?? 0,
+    source_audio_id: source.source_audio_id,
+    source_index: source.source_index,
     request_path: requestPath,
     error: null,
   });
 
   return requestPath;
+}
+
+function readStoredSelectedMeta(notes: string): SelectedKeytermMeta {
+  const prefix = "__depo_keyterm_meta__:";
+  if (!notes.startsWith(prefix)) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(notes.slice(prefix.length)) as SelectedKeytermMeta;
+  } catch {
+    return {};
+  }
+}
+
+function estimateTermTokens(term: string): number {
+  return term.trim().split(/\s+/).filter(Boolean).length + 1;
+}
+
+function fitAutoSeededKeytermsWithinRemainingBudget(
+  manualKeyterms: ReturnType<typeof fitStoredKeytermsToRequestBudget>["keyterms"],
+  autoKeyterms: ReturnType<typeof buildAutoSeedKeytermPlan>["autoSeededKeyterms"],
+): {
+  keyterms: typeof autoKeyterms;
+  droppedForBudgetTerms: string[];
+} {
+  const selectedManualTerms = manualKeyterms.filter((keyterm) => readStoredSelectedMeta(keyterm.notes ?? "").selected !== false);
+  const remainingTermSlots = Math.max(0, 90 - selectedManualTerms.length);
+  const remainingTokenBudget = Math.max(
+    0,
+    400 - selectedManualTerms.reduce((sum, keyterm) => sum + estimateTermTokens(keyterm.term), 0),
+  );
+
+  const included: typeof autoKeyterms = [];
+  const droppedForBudgetTerms: string[] = [];
+  let usedTokens = 0;
+
+  for (const keyterm of autoKeyterms) {
+    const termTokens = estimateTermTokens(keyterm.term);
+    if (included.length + 1 > remainingTermSlots || usedTokens + termTokens > remainingTokenBudget) {
+      droppedForBudgetTerms.push(keyterm.term);
+      continue;
+    }
+
+    included.push(keyterm);
+    usedTokens += termTokens;
+  }
+
+  return {
+    keyterms: included,
+    droppedForBudgetTerms,
+  };
+}
+
+async function submitAutoChunkedJob(params: {
+  supabase: SupabaseClient<Database>;
+  job: TranscriptionJobRecord;
+  ownerUserId: string;
+  caseId: string;
+  audio: CaseAudioRow;
+  callbackUrl: string;
+  requestPreview: ReturnType<typeof buildDeepgramRequestFromStoredKeyterms>;
+  sourceTranscriptId: string | null;
+  durationSeconds: number;
+}): Promise<string> {
+  const {
+    supabase,
+    job,
+    ownerUserId,
+    caseId,
+    audio,
+    callbackUrl,
+    requestPreview,
+    sourceTranscriptId,
+    durationSeconds,
+  } = params;
+
+  const manifest = buildAutoChunkManifest({
+    audio_id: audio.audio_id,
+    original_filename: audio.original_filename,
+    mime_type: audio.mime_type,
+    storage_path: audio.storage_path,
+    media_url: audio.media_url,
+  }, durationSeconds);
+  const manifestPath = buildTranscriptionArtifactPath(
+    ownerUserId,
+    caseId,
+    `${job.id}_auto_chunk_manifest.json`,
+  );
+  await uploadJsonArtifact(supabase, manifestPath, manifest);
+  const firstChunk = manifest.chunks[0];
+  if (!firstChunk) {
+    throw new Error("Auto-chunk manifest produced no chunks.");
+  }
+
+  return submitDeepgramJob({
+    supabase,
+    job,
+    ownerUserId,
+    caseId,
+    source: {
+      source_audio_id: firstChunk.source_audio_id,
+      source_index: firstChunk.source_index,
+      source_filename: firstChunk.source_filename,
+      mime_type: firstChunk.mime_type,
+      storage_path: firstChunk.storage_path,
+      media_url: firstChunk.media_url,
+      kind: "virtual_chunk",
+      chunk_index: firstChunk.chunk_index,
+      start_seconds: firstChunk.start_seconds,
+      end_seconds: firstChunk.end_seconds,
+      nominal_offset_seconds: firstChunk.nominal_offset_seconds,
+      overlap_with_next_seconds: firstChunk.overlap_with_next_seconds,
+    },
+    totalSources: manifest.chunk_count,
+    callbackUrl,
+    requestPreview,
+    sourceTranscriptId,
+    autoChunk: {
+      enabled: true,
+      manifest_path: manifestPath,
+      chunk_count: manifest.chunk_count,
+      current_chunk_index: firstChunk.chunk_index,
+    },
+  });
 }
 
 async function signAudioUrl(supabase: SupabaseClient<Database>, storagePath: string): Promise<string> {
@@ -464,7 +709,7 @@ async function uploadJsonArtifact(
   }
 }
 
-function respondJson(status: number, body: unknown): Response {
+function respondJson(status: number, body: unknown, corsHeaders: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -474,6 +719,6 @@ function respondJson(status: number, body: unknown): Response {
   });
 }
 
-function respondError(status: number, error: string): Response {
-  return respondJson(status, { error });
+function respondError(status: number, error: string, corsHeaders: Record<string, string>): Response {
+  return respondJson(status, { error }, corsHeaders);
 }
