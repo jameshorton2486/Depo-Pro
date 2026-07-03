@@ -190,11 +190,15 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
     }
     return left.sourceUtteranceOrder - right.sourceUtteranceOrder;
   })) {
+    // Do NOT include speaker_index in the dedup key. Deepgram assigns
+    // speaker indices independently per chunk, so the same conversational
+    // speaker often gets different indices in adjacent chunks of the same
+    // physical audio. Matching on text+timing alone catches the overlap
+    // duplicates the virtual-chunk merge is designed to remove.
     const duplicateIndex = dedupedWords.findIndex((existing) =>
       existing.raw_text.toLowerCase() === candidate.raw_text.toLowerCase()
       && Math.abs(existing.start_time - candidate.start_time) <= matchToleranceSeconds
       && Math.abs(existing.end_time - candidate.end_time) <= matchToleranceSeconds
-      && existing.speaker_index === candidate.speaker_index
     );
 
     if (duplicateIndex >= 0) {
