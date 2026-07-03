@@ -1,14 +1,15 @@
+// @vitest-environment jsdom
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Speaker } from "../../api/types";
+import { AddParticipantInlineForm } from "./AddParticipantInlineForm";
 import {
-  AddParticipantInlineForm,
   addParticipantToSpeakerList,
   getSpeakerClusterBadgeLabel,
   isAISuggestedSpeaker,
   shouldRelabelInEditor,
-} from "./SpeakerPanel";
+} from "./SpeakerPanel.helpers";
 
 type ElementWithChildren = ReactElement<{ children?: ReactNode } & Record<string, unknown>>;
 

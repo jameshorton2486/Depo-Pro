@@ -2,10 +2,12 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
-  buildRetranscriptionClipboardText,
-  copyRetranscriptionKeyterms,
   CorrectionsPanel,
 } from "./CorrectionsPanel";
+import {
+  buildRetranscriptionClipboardText,
+  copyRetranscriptionKeyterms,
+} from "./CorrectionsPanel.helpers";
 import type { CorrectionReport } from "../../lib/transcript/correctionOrchestrator";
 
 const mockUseDocument = vi.fn();

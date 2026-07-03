@@ -91,3 +91,19 @@ The Stage 3 edge function previously auto-applied high-confidence AI word sugges
 ### Remaining validation
 
 - Live Anthropic verification is still required before this ADR is fully closed. This session did not have `ANTHROPIC_API_KEY`, so transport-level confirmation of the current model IDs remains pending.
+
+## ADR-004: Preserve current manual chunking; raise the warning threshold modestly
+
+- Date: 2026-07-03
+- Status: Accepted
+- Area: Frontend build output
+
+### Context
+
+The current Vite build already splits `pdfjs-dist`, TipTap/ProseMirror, Supabase, WaveSurfer, Lucide, Mammoth, React, and remaining vendor code into separate chunks. After those splits, the remaining app shell chunk still lands slightly above the default warning threshold at roughly `506.7 kB`.
+
+### Decision
+
+1. Keep the current manual chunking strategy in place.
+2. Raise `build.chunkSizeWarningLimit` from the Vite default to `550` so the build reflects the current accepted baseline instead of emitting a misleading warning for a narrow overage.
+3. Defer any further chunk surgery until it can be paired with runtime QA, because additional splitting in the transcript workspace risks regressing mount timing, editor hydration, or export flows.

@@ -25,7 +25,6 @@ export interface UfmReadinessSummary {
   missingLabels: string[];
 }
 
-// TODO(prompt 5C follow-up): migrate readiness/banner required-field semantics to this module.
 export const REQUIRED_UFM_FIELDS = [
   {
     metadataKey: "cause_number",
@@ -115,6 +114,14 @@ function isMissingValue(value: unknown): boolean {
   return false;
 }
 
+export function getMissingRequiredUfmFieldNames(
+  values: Partial<Record<UfmRequiredField["metadataKey"], unknown>>,
+): string[] {
+  return REQUIRED_UFM_FIELDS
+    .filter((field) => isMissingValue(values[field.metadataKey]))
+    .map((field) => field.humanName);
+}
+
 export function getRequiredUfmFieldStatuses(record: CaseRecord): UfmRequiredFieldStatus[] {
   return REQUIRED_UFM_FIELDS.map((field) => ({
     ...field,
@@ -135,6 +142,10 @@ export function getUfmReadinessSummary(record: CaseRecord): UfmReadinessSummary 
   return {
     ready: missingFields.length === 0,
     missingFields,
-    missingLabels: missingFields.map((field) => field.humanName),
+    missingLabels: getMissingRequiredUfmFieldNames(
+      Object.fromEntries(
+        REQUIRED_UFM_FIELDS.map((field) => [field.metadataKey, readFieldValue(record, field.fieldPath)]),
+      ) as Partial<Record<UfmRequiredField["metadataKey"], unknown>>,
+    ),
   };
 }

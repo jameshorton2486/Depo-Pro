@@ -1,19 +1,21 @@
 import type React from "react";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { Speaker } from "../../types";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { workspaceApi } from "../../api/workspaceService";
 import { getActiveUtteranceInfoFromDoc } from "../../lib/format/editorFragments";
-import { Check, X, Edit2, Users, UserPlus } from "lucide-react";
-
-const ROLES: Speaker["role"][] = [
-  "REPORTER",
-  "WITNESS",
-  "ATTORNEY",
-  "INTERPRETER",
-  "OTHER",
-];
+import { Check, X, Edit2, Users } from "lucide-react";
+import { AddParticipantInlineForm } from "./AddParticipantInlineForm";
+import {
+  addParticipantToSpeakerList,
+  getSpeakerClusterBadgeLabel,
+  getSpeakerSourceFileLabel,
+  isAISuggestedSpeaker,
+  SPEAKER_ROLES,
+  shouldRelabelInEditor,
+  type SpeakerView,
+} from "./SpeakerPanel.helpers";
 
 const ROLE_COLORS: Record<NonNullable<Speaker["role"]>, string> = {
   REPORTER:    "bg-slate-100 text-slate-600",
@@ -22,151 +24,6 @@ const ROLE_COLORS: Record<NonNullable<Speaker["role"]>, string> = {
   INTERPRETER: "bg-amber-100 text-amber-700",
   OTHER:       "bg-gray-100 text-gray-600",
 };
-
-function getSpeakerSourceFileLabel(speakerId: string): string | null {
-  const match = speakerId.match(/^spk_f(\d{3})_s\d{3}$/);
-  if (!match) {
-    return null;
-  }
-
-  return `File ${Number.parseInt(match[1], 10) + 1}`;
-}
-
-type SpeakerView = Speaker & {
-  ai_suggested?: boolean;
-  ai_suggestion_reason?: string;
-};
-
-export function isAISuggestedSpeaker(speaker: SpeakerView): boolean {
-  return speaker.ai_suggested === true;
-}
-
-export function shouldRelabelInEditor(
-  previousRole: Speaker["role"] | undefined,
-  nextRole: Speaker["role"] | undefined,
-): boolean {
-  return previousRole === nextRole;
-}
-
-export function getSpeakerClusterBadgeLabel(speaker: Speaker): string {
-  return speaker.deepgram_speaker != null ? `SPK ${speaker.deepgram_speaker}` : "CUSTOM";
-}
-
-export async function addParticipantToSpeakerList(params: {
-  jobId: string;
-  displayName: string;
-  role?: Speaker["role"];
-  speakers: Speaker[];
-  addSpeaker: typeof workspaceApi.addSpeaker;
-}): Promise<Speaker[]> {
-  const name = params.displayName.trim();
-  if (!name) {
-    throw new Error("Name is required.");
-  }
-
-  const newSpeaker = await params.addSpeaker(params.jobId, {
-    display_name: name,
-    role: params.role,
-  });
-
-  return [...params.speakers, newSpeaker];
-}
-
-type AddParticipantInlineFormProps = {
-  addingParticipant: boolean;
-  newParticipantName: string;
-  newParticipantRole: Speaker["role"] | undefined;
-  addingError: string | null;
-  addingSaving: boolean;
-  onStart: () => void;
-  onNameChange: (value: string) => void;
-  onRoleChange: (value: Speaker["role"] | undefined) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
-};
-
-export function AddParticipantInlineForm({
-  addingParticipant,
-  newParticipantName,
-  newParticipantRole,
-  addingError,
-  addingSaving,
-  onStart,
-  onNameChange,
-  onRoleChange,
-  onSubmit,
-  onCancel,
-}: AddParticipantInlineFormProps) {
-  return (
-    <>
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-          Participants
-        </p>
-        <button
-          onClick={onStart}
-          className="flex items-center gap-1 text-[10px] text-blue-500 hover:text-blue-700 transition-colors"
-          title="Add participant"
-          data-testid="speaker-panel-add-trigger"
-        >
-          <UserPlus size={11} />
-          Add
-        </button>
-      </div>
-
-      {addingParticipant && (
-        <div
-          className="mx-3 mb-2 rounded border border-blue-200 bg-blue-50 p-2 space-y-2"
-          data-testid="speaker-panel-add-form"
-        >
-          <input
-            type="text"
-            value={newParticipantName}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder="Display name"
-            className="w-full text-xs px-2 py-1 rounded border border-slate-200 bg-white focus:outline-none focus:border-blue-400"
-            autoFocus
-            data-testid="speaker-panel-add-name"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onSubmit();
-              if (e.key === "Escape") onCancel();
-            }}
-          />
-          <select
-            value={newParticipantRole ?? "OTHER"}
-            onChange={(e) => onRoleChange(e.target.value as Speaker["role"])}
-            className="w-full text-xs px-2 py-1 rounded border border-slate-200 bg-white focus:outline-none focus:border-blue-400"
-            data-testid="speaker-panel-add-role"
-          >
-            {ROLES.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-          {addingError && (
-            <p className="text-[10px] text-red-600" data-testid="speaker-panel-add-error">{addingError}</p>
-          )}
-          <div className="flex gap-2">
-            <button
-              onClick={onSubmit}
-              disabled={addingSaving || !newParticipantName.trim()}
-              className="flex-1 text-xs bg-blue-600 text-white rounded px-2 py-1 hover:bg-blue-500 disabled:opacity-50 transition-colors"
-              data-testid="speaker-panel-add-submit"
-            >
-              {addingSaving ? "Adding..." : "Add"}
-            </button>
-            <button
-              onClick={onCancel}
-              className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1"
-              data-testid="speaker-panel-add-cancel"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
 
 function getActiveUtteranceInfo(editor: ReturnType<typeof useEditorContext>["editor"], activeId: string | null) {
   if (!editor || !activeId) {
@@ -200,8 +57,10 @@ export function SpeakerPanel() {
   const [addingError, setAddingError] = useState<string | null>(null);
   const [addingSaving, setAddingSaving] = useState(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- speakers derived inline; useMemo deferred post-beta
-  const speakers = (state.document?.speakers ?? []) as SpeakerView[];
+  const speakers = useMemo(
+    () => (state.document?.speakers ?? []) as SpeakerView[],
+    [state.document?.speakers],
+  );
   const speakerMapConfirmed = state.speakerMapConfirmed;
   const pipelineState = state.pipelineState;
   const awaitingVerification = pipelineState === "AWAITING_SPEAKER_VERIFICATION" && !speakerMapConfirmed;
@@ -532,7 +391,7 @@ function SpeakerCard({
             className="w-full text-xs border border-slate-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700"
           >
             <option value="">— No role —</option>
-            {ROLES.map((r) => (
+            {SPEAKER_ROLES.map((r) => (
               <option key={r} value={r}>
                 {r}
               </option>

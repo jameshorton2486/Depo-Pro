@@ -48,6 +48,10 @@ export default defineConfig({
     exclude: ['reference/**'],
   },
   build: {
+    // The app shell currently lands just over Vite's default 500 kB warning
+    // threshold after existing manual chunking. Keep the warning floor aligned
+    // to observed output until a larger runtime-validated split is scheduled.
+    chunkSizeWarningLimit: 550,
     rollupOptions: {
       output: {
         manualChunks,

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { TranscriptHistoryPanel } from "./TranscriptHistoryPanel";
@@ -69,6 +70,7 @@ describe("TranscriptHistoryPanel", () => {
       request_path: null,
       response_path: null,
       error: null,
+      auto_seed_audit: null,
       created_at: "2026-06-23T10:00:00.000Z",
       updated_at: "2026-06-23T10:05:00.000Z",
     },
@@ -84,6 +86,7 @@ describe("TranscriptHistoryPanel", () => {
       request_path: null,
       response_path: null,
       error: null,
+      auto_seed_audit: null,
       created_at: "2026-06-22T10:00:00.000Z",
       updated_at: "2026-06-22T10:05:00.000Z",
     },

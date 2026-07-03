@@ -28,7 +28,10 @@ export function UtteranceContextMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
 
-  const speakers = (state.document?.speakers ?? []) as Speaker[];
+  const speakers = useMemo(
+    () => (state.document?.speakers ?? []) as Speaker[],
+    [state.document?.speakers],
+  );
   const otherSpeakers = useMemo(
     () => speakers.filter((speaker) => speaker.speaker_id !== currentSpeakerId),
     [currentSpeakerId, speakers],

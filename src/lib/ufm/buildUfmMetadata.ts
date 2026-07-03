@@ -3,7 +3,7 @@ import type { CaseRecord, ExtractedField } from "../../types/case";
 import type { Contact, ContactType } from "../../types/contact";
 import type { Firm } from "../../types/firm";
 import type { ReporterProfile } from "../../types/reporterProfile";
-import { REQUIRED_UFM_FIELDS } from "./requiredFields";
+import { getMissingRequiredUfmFieldNames } from "./requiredFields";
 
 type UfmFieldKey =
   | "cause_number"
@@ -613,15 +613,7 @@ export function buildUfmMetadata(args: {
     ufmRequestingParty: requestingPartyField?.confirmed ?? false,
   };
 
-  const missing_required_fields = REQUIRED_UFM_FIELDS
-    .filter((field) => {
-      const value = ufm_metadata[field.metadataKey];
-      if (Array.isArray(value)) {
-        return value.length === 0;
-      }
-      return value == null || value === "";
-    })
-    .map((field) => field.humanName);
+  const missing_required_fields = getMissingRequiredUfmFieldNames(ufm_metadata);
 
   void FIELD_PATHS;
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { emptyCaseRecord } from "../../types/case";
 import {
+  getMissingRequiredUfmFieldNames,
   getMissingRequiredUfmFields,
   getRequiredUfmFieldStatuses,
   getUfmReadinessSummary,
@@ -63,5 +64,18 @@ describe("requiredFields UFM readiness helpers", () => {
       ]),
       missingLabels: ["Cause Number", "Court"],
     });
+  });
+
+  it("derives missing field labels from metadata-keyed values using the canonical required set", () => {
+    expect(getMissingRequiredUfmFieldNames({
+      cause_number: "",
+      court: "United States District Court",
+      county: "Bexar County",
+      state: "TX",
+      deposition_date: "2026-04-30",
+      csr_name: "Karen Reporter",
+      csr_license: "",
+      custodial_attorney: null,
+    })).toEqual(["Cause Number", "CSR License Number", "Custodial Attorney Name"]);
   });
 });
