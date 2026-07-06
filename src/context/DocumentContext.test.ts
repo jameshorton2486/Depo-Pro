@@ -110,7 +110,7 @@ describe("documentReducer save sequencing", () => {
     expect(state.editSeq).toBe(2);
   });
 
-  it("resets structure confirmation on load and allows a transient confirm", () => {
+  it("keeps raw structure off on load when no pre-workspace structure exists and allows a transient confirm", () => {
     let state = createInitialDocumentState("case_test_001");
     state = documentReducer(state, {
       type: "LOAD_OK",
@@ -136,6 +136,21 @@ describe("documentReducer save sequencing", () => {
     });
 
     expect(state.structureConfirmed).toBe(false);
+  });
+
+  it("applies structured view on load when the transcript is already pre-structured", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+      pipelineState: "AWAITING_SPEAKER_VERIFICATION",
+      audioSegments: [],
+    });
+
+    expect(state.structureConfirmed).toBe(true);
+    expect(state.keepRawLabels).toBe(false);
   });
 
   it("stores a correction report when dispatched", () => {

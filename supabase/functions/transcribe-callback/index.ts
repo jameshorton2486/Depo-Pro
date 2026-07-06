@@ -4,7 +4,9 @@ import { PRIMARY_MODEL } from "../_shared/models.ts";
 import { integrityAudit, type IntegrityAuditResult } from "../../../src/lib/transcript/integrityAudit.ts";
 import { auditCanonicalTranscript, type CanonicalIntegrityResult } from "../../../src/lib/transcript/canonicalIntegrity.ts";
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
+import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
 import { advanceOrFinalizeMultifileJob } from "../../../src/lib/transcript/multifileCallbackFlow.ts";
+import { buildPreWorkspaceStructure } from "../../../src/lib/transcript/preWorkspaceStructure.ts";
 import {
   audioRowsToSequentialSources,
   AUTO_CHUNK_THRESHOLD_SECONDS,
@@ -42,6 +44,7 @@ import {
   sha256Hex,
   type TranscriptionJobRecord,
 } from "../../../src/lib/transcriptionJobs.ts";
+import type { EditorDocument } from "../../../src/api/types.ts";
 
 type Database = Record<string, never>;
 
@@ -265,6 +268,7 @@ Deno.serve(async (request) => {
 
         try {
           await runBoundaryEngine(serviceClient, job);
+          await runPreWorkspaceStructure(serviceClient, job);
         } catch (error) {
           await cleanupTranscript(serviceClient, job.transcript_id);
           await persistCanonicalManualReviewTranscript(
@@ -532,6 +536,36 @@ type BoundaryTranscriptUtteranceRow = {
 
 type BoundaryTranscriptWordRow = {
   word_index: number | null;
+};
+
+type PreWorkspaceTranscriptSpeakerRow = {
+  speaker_id: string;
+  display_name: string | null;
+  speaker_label: string | null;
+  speaker_index: number | null;
+  deepgram_speaker: number | null;
+  role: string | null;
+  speaker_role: string | null;
+};
+
+type PreWorkspaceTranscriptUtteranceRow = {
+  utterance_id: string;
+  speaker_id: string;
+  start_time: number;
+  end_time: number;
+  utterance_index: number;
+};
+
+type PreWorkspaceTranscriptWordRow = {
+  word_id: string;
+  utterance_id: string;
+  speaker_id: string;
+  raw_text: string;
+  working_text: string | null;
+  start_time: number;
+  end_time: number;
+  confidence: number;
+  reviewed: boolean;
 };
 
 function createBoundaryAiClient(apiKey: string): BoundaryAiClient {
@@ -842,6 +876,177 @@ async function runBoundaryEngine(
       message: error instanceof Error ? error.message : String(error),
     });
     throw error;
+  }
+}
+
+async function runPreWorkspaceStructure(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+): Promise<void> {
+  const [speakersResult, utterancesResult, wordsResult, caseResult] = await Promise.all([
+    supabase
+      .from("transcript_speakers")
+      .select("speaker_id, display_name, speaker_label, speaker_index, deepgram_speaker, role, speaker_role")
+      .eq("transcript_id", job.transcript_id)
+      .order("speaker_index", { ascending: true }),
+    supabase
+      .from("transcript_utterances")
+      .select("utterance_id, speaker_id, start_time, end_time, utterance_index")
+      .eq("transcript_id", job.transcript_id)
+      .order("utterance_index", { ascending: true }),
+    supabase
+      .from("transcript_words")
+      .select("word_id, utterance_id, speaker_id, raw_text, working_text, start_time, end_time, confidence, reviewed")
+      .eq("transcript_id", job.transcript_id)
+      .eq("removed", false)
+      .order("word_index", { ascending: true }),
+    supabase
+      .from("cases")
+      .select("payload")
+      .eq("case_id", job.case_id)
+      .maybeSingle(),
+  ]);
+
+  if (speakersResult.error) {
+    throw speakersResult.error;
+  }
+  if (utterancesResult.error) {
+    throw utterancesResult.error;
+  }
+  if (wordsResult.error) {
+    throw wordsResult.error;
+  }
+  if (caseResult.error) {
+    throw caseResult.error;
+  }
+
+  if (!caseResult.data?.payload) {
+    return;
+  }
+
+  const record = normalizeCaseRecord(caseResult.data.payload);
+  const words = (wordsResult.data ?? []) as PreWorkspaceTranscriptWordRow[];
+  const wordIdsByUtterance = new Map<string, string[]>();
+  for (const word of words) {
+    const bucket = wordIdsByUtterance.get(word.utterance_id) ?? [];
+    bucket.push(word.word_id);
+    wordIdsByUtterance.set(word.utterance_id, bucket);
+  }
+
+  const document: EditorDocument = {
+    job_id: job.transcript_id,
+    media_url: "",
+    duration: job.duration_seconds ?? 0,
+    speakers: ((speakersResult.data ?? []) as PreWorkspaceTranscriptSpeakerRow[]).map((speaker) => ({
+      speaker_id: speaker.speaker_id,
+      display_name: speaker.display_name ?? speaker.speaker_label ?? speaker.speaker_id,
+      deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker ?? null,
+      role:
+        speaker.speaker_role === "reporter" || speaker.role === "reporter"
+          ? "REPORTER"
+          : speaker.speaker_role === "witness" || speaker.role === "witness"
+            ? "WITNESS"
+            : speaker.speaker_role === "attorney" || speaker.role === "attorney"
+              ? "ATTORNEY"
+              : "OTHER",
+    })),
+    utterances: ((utterancesResult.data ?? []) as PreWorkspaceTranscriptUtteranceRow[]).map((utterance) => ({
+      utterance_id: utterance.utterance_id,
+      speaker_id: utterance.speaker_id,
+      start_time: utterance.start_time,
+      end_time: utterance.end_time,
+      word_ids: wordIdsByUtterance.get(utterance.utterance_id) ?? [],
+    })),
+    words: words.map((word) => ({
+      word_id: word.word_id,
+      text: word.working_text ?? word.raw_text,
+      raw_text: word.raw_text,
+      speaker_id: word.speaker_id,
+      utterance_id: word.utterance_id,
+      start_time: word.start_time,
+      end_time: word.end_time,
+      confidence: word.confidence,
+      reviewed: word.reviewed,
+      edited: Boolean(word.working_text && word.working_text !== word.raw_text),
+    })),
+  };
+
+  const structured = await buildPreWorkspaceStructure(document, record);
+
+  for (const speaker of structured.speakers) {
+    const speakerUpdate = await supabase
+      .from("transcript_speakers")
+      .update({
+        display_name: speaker.display_name,
+        assigned_name: speaker.display_name,
+        speaker_label: speaker.display_name,
+        role: speaker.speaker_role,
+        speaker_role: speaker.speaker_role,
+      })
+      .eq("transcript_id", job.transcript_id)
+      .eq("speaker_id", speaker.speaker_id);
+
+    if (speakerUpdate.error) {
+      throw speakerUpdate.error;
+    }
+  }
+
+  const clearResolutions = await supabase
+    .from("speaker_resolution_current")
+    .delete()
+    .eq("transcript_id", job.transcript_id);
+  if (clearResolutions.error) {
+    throw clearResolutions.error;
+  }
+
+  if (structured.speakers.length > 0) {
+    const insertResolutions = await supabase
+      .from("speaker_resolution_current")
+      .insert(structured.speakers.map((speaker) => ({
+        transcript_id: job.transcript_id,
+        speaker_id: speaker.speaker_id,
+        proposed_display_name: speaker.display_name,
+        proposed_role: speaker.speaker_role,
+        confidence: 0.9,
+        evidence: "deterministic_case_metadata_and_opening_patterns",
+        authority: "PRE_WORKSPACE_W22_2",
+        ai_suggested: false,
+        verified: false,
+      })));
+    if (insertResolutions.error) {
+      throw insertResolutions.error;
+    }
+  }
+
+  for (const utterance of structured.utterances) {
+    const utteranceUpdate = await supabase
+      .from("transcript_utterances")
+      .update({
+        speaker_id: utterance.speaker_id,
+        speaker_label: utterance.speaker_label,
+        line_type: utterance.line_type,
+      })
+      .eq("transcript_id", job.transcript_id)
+      .eq("utterance_id", utterance.utterance_id);
+
+    if (utteranceUpdate.error) {
+      throw utteranceUpdate.error;
+    }
+  }
+
+  const transcriptUpdate = await supabase
+    .from("transcripts")
+    .update({
+      pipeline_state: "AWAITING_SPEAKER_VERIFICATION",
+      speaker_map_confirmed: false,
+      ai_review_meta: {
+        inclusion_pages: structured.inclusionPages.ufm_metadata,
+      },
+    })
+    .eq("transcript_id", job.transcript_id);
+
+  if (transcriptUpdate.error) {
+    throw transcriptUpdate.error;
   }
 }
 

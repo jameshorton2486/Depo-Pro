@@ -80,6 +80,13 @@ function buildWordMap(doc: EditorDocument): Record<string, Word> {
   return m;
 }
 
+function shouldApplyStructuredView(
+  speakerMapConfirmed: boolean,
+  pipelineState: string | null,
+): boolean {
+  return speakerMapConfirmed || pipelineState === "AWAITING_SPEAKER_VERIFICATION" || pipelineState === "SPEAKER_VERIFIED";
+}
+
 export function documentReducer(state: State, action: Action): State {
   switch (action.type) {
     case "LOAD_START":
@@ -99,7 +106,7 @@ export function documentReducer(state: State, action: Action): State {
         jobUpdatedAt: action.updatedAt,
         speakerMapConfirmed: action.speakerMapConfirmed,
         pipelineState: action.pipelineState,
-        structureConfirmed: false,
+        structureConfirmed: shouldApplyStructuredView(action.speakerMapConfirmed, action.pipelineState),
         keepRawLabels: false,
         audioSegments: action.audioSegments,
       };
