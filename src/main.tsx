@@ -39,6 +39,15 @@ let mountedElement: HTMLElement | null = null;
 let currentConfig: DepoEditorConfig | null = null;
 let currentApiBaseUrl: string | null = null;
 let authStateUnsubscribe: (() => void) | null = null;
+let lastRenderedSessionKey: string | null = null;
+
+export function buildSessionRenderKey(session: Session | null): string {
+  if (!session) {
+    return "anonymous";
+  }
+
+  return `${session.user.id}:${session.refresh_token ?? ""}`;
+}
 
 function buildMountedConfig(config: DepoEditorConfig, session: Session | null): DepoEditorConfig {
   if (!session) {
@@ -71,6 +80,7 @@ function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, sess
     mountedElement = el as HTMLElement;
   }
 
+  lastRenderedSessionKey = buildSessionRenderKey(session);
   console.info("[DEPO-PRO] Mounting editor with config:", {
     ...mountedConfig,
     apiBaseUrl: resolvedApiBaseUrl,
@@ -96,6 +106,10 @@ function subscribeToAuthChanges() {
     if (!session) {
       console.warn("[DEPO-PRO] Supabase session cleared after mount; redirecting to login.");
       redirectToLogin();
+      return;
+    }
+
+    if (buildSessionRenderKey(session) === lastRenderedSessionKey) {
       return;
     }
 
