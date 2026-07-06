@@ -230,7 +230,7 @@ export function normalizeTranscriptResponse(response: DeepgramResponse): Normali
       speaker_label: `Speaker ${speakerIndex}`,
       start_time: utterance.start,
       end_time: utterance.end,
-      text: utterance.transcript?.trim() || utteranceWords.map((word) => word.raw_text).join(" "),
+      text: utteranceWords.map((word) => word.raw_text).join(" "),
       avg_confidence: avgConfidence,
     });
   });

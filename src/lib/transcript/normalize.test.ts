@@ -11,6 +11,16 @@ function makeResponse(overrides: Partial<DeepgramResponse>): DeepgramResponse {
   };
 }
 
+function joinedUtteranceWords(
+  normalized: ReturnType<typeof normalizeTranscriptResponse>,
+  utteranceId: string,
+): string {
+  return normalized.words
+    .filter((word) => word.utterance_id === utteranceId)
+    .map((word) => word.raw_text)
+    .join(" ");
+}
+
 describe("normalizeTranscriptResponse", () => {
   it("preserves speaker-homogeneous utterances when provided", () => {
     const normalized = normalizeTranscriptResponse(createOfflineDeepgramFixture("case_a"));
@@ -109,5 +119,164 @@ describe("normalizeTranscriptResponse", () => {
     const normalized = normalizeTranscriptResponse(response);
     expect(normalized.words[0]?.speaker_index).toBe(3);
     expect(normalized.words[0]?.confidence).toBe(0.9877);
+  });
+
+  it("persists utterance text from canonical words when the transcript string is oversized", () => {
+    const response = createOfflineDeepgramFixture("case_mixed");
+    const sourceWords = response.results.channels[0].alternatives[0].words;
+    response.results.utterances = [
+      {
+        speaker: 0,
+        start: 0,
+        end: 5.58,
+        transcript: "Good morning. Um, please state your name for the record. My name is Maria Lopez. Extra duplicate text.",
+        confidence: 0.95,
+        words: sourceWords,
+      },
+    ];
+
+    const normalized = normalizeTranscriptResponse(response);
+
+    expect(normalized.utterances[0]?.text).toBe("Good morning. Um, please state your name for the record.");
+    expect(normalized.utterances[0]?.text).toBe(
+      joinedUtteranceWords(normalized, normalized.utterances[0]?.utterance_id ?? ""),
+    );
+    expect(normalized.utterances[0]?.text).not.toContain("Extra duplicate text.");
+  });
+
+  it("does not let a longer Deepgram utterance string override a short opening word span", () => {
+    const response = createOfflineDeepgramFixture("case_opening");
+    response.results.utterances = [
+      {
+        speaker: 0,
+        start: 0,
+        end: 0.96,
+        transcript: "Good afternoon. We are on the record. Today's date is April 24, 2026.",
+        confidence: 0.95,
+        words: [
+          {
+            word: "Good",
+            punctuated_word: "Good",
+            start: 0,
+            end: 0.32,
+            confidence: 0.99,
+            speaker: 0,
+          },
+          {
+            word: "afternoon",
+            punctuated_word: "afternoon.",
+            start: 0.32,
+            end: 0.96,
+            confidence: 0.99,
+            speaker: 0,
+          },
+        ],
+      },
+    ];
+    response.results.channels[0].alternatives[0].words = [...response.results.utterances[0].words];
+
+    const normalized = normalizeTranscriptResponse(response);
+
+    expect(normalized.utterances[0]?.text).toBe("Good afternoon.");
+    expect(normalized.utterances[0]?.text).toBe(
+      joinedUtteranceWords(normalized, normalized.utterances[0]?.utterance_id ?? ""),
+    );
+  });
+
+  it("keeps every normalized utterance text equal to its ordered canonical raw_text tokens", () => {
+    const response = createOfflineDeepgramFixture("case_integrity_text");
+    response.results.utterances = [
+      {
+        speaker: 0,
+        start: 0,
+        end: 0.96,
+        transcript: "Good afternoon. We are on the record.",
+        confidence: 0.95,
+        words: [
+          {
+            word: "Good",
+            punctuated_word: "Good",
+            start: 0,
+            end: 0.32,
+            confidence: 0.99,
+            speaker: 0,
+          },
+          {
+            word: "afternoon",
+            punctuated_word: "afternoon.",
+            start: 0.32,
+            end: 0.96,
+            confidence: 0.99,
+            speaker: 0,
+          },
+        ],
+      },
+      {
+        speaker: 1,
+        start: 1.2,
+        end: 2.4,
+        transcript: "Yes. This is cause number C572224.",
+        confidence: 0.95,
+        words: [
+          {
+            word: "Yes",
+            punctuated_word: "Yes.",
+            start: 1.2,
+            end: 1.5,
+            confidence: 0.99,
+            speaker: 1,
+          },
+          {
+            word: "This",
+            punctuated_word: "This",
+            start: 1.5,
+            end: 1.7,
+            confidence: 0.99,
+            speaker: 1,
+          },
+          {
+            word: "is",
+            punctuated_word: "is",
+            start: 1.7,
+            end: 1.85,
+            confidence: 0.99,
+            speaker: 1,
+          },
+          {
+            word: "cause",
+            punctuated_word: "cause",
+            start: 1.85,
+            end: 2,
+            confidence: 0.99,
+            speaker: 1,
+          },
+          {
+            word: "number",
+            punctuated_word: "number",
+            start: 2,
+            end: 2.15,
+            confidence: 0.99,
+            speaker: 1,
+          },
+          {
+            word: "C572224",
+            punctuated_word: "C572224.",
+            start: 2.15,
+            end: 2.4,
+            confidence: 0.99,
+            speaker: 1,
+          },
+        ],
+      },
+    ];
+    response.results.channels[0].alternatives[0].words = response.results.utterances.flatMap(
+      (utterance) => utterance.words,
+    );
+
+    const normalized = normalizeTranscriptResponse(response);
+
+    for (const utterance of normalized.utterances) {
+      expect(utterance.text).toBe(joinedUtteranceWords(normalized, utterance.utterance_id));
+    }
   });
 });
