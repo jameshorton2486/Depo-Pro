@@ -61,13 +61,7 @@ function buildMountedConfig(config: DepoEditorConfig, session: Session | null): 
   };
 }
 
-function redirectToLogin() {
-  const loginUrl = new URL("/login", window.location.origin);
-  loginUrl.searchParams.set("redirectTo", window.location.href);
-  window.location.assign(loginUrl.toString());
-}
-
-function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session) {
+function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session | null) {
   const mountedConfig = buildMountedConfig(config, session);
   const el = document.querySelector(mountedConfig.mountSelector);
   if (!el) {
@@ -103,12 +97,6 @@ function subscribeToAuthChanges() {
       return;
     }
 
-    if (!session) {
-      console.warn("[DEPO-PRO] Supabase session cleared after mount; redirecting to login.");
-      redirectToLogin();
-      return;
-    }
-
     if (buildSessionRenderKey(session) === lastRenderedSessionKey) {
       return;
     }
@@ -138,16 +126,6 @@ export async function mountEditor(config: DepoEditorConfig) {
     });
   } catch (error) {
     console.warn("[DEPO-PRO] Supabase session bootstrap failed before mount.", error);
-  }
-
-  if (!isMockMode() && !session) {
-    console.warn("[DEPO-PRO] No Supabase session resolved before mount; redirecting to login.");
-    redirectToLogin();
-    return;
-  }
-
-  if (!session) {
-    return;
   }
 
   renderEditor(config, resolvedApiBaseUrl, session);
