@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Pin, PinOff, Trash2, Plus, Search,
   AlertTriangle, ChevronDown, ChevronUp, Zap, LayoutList,
@@ -52,38 +52,6 @@ const SOURCE_COLOR: Record<KeytermSource, string> = {
   "Manual":           "bg-slate-100 text-slate-700",
   "Learned":          "bg-orange-100 text-orange-800",
 };
-
-const AUTO_SEED_STORAGE_KEY = "depo:auto-seeded-keyterms";
-
-function readAutoSeededCaseIds(): Set<string> {
-  if (typeof window === "undefined") {
-    return new Set<string>();
-  }
-
-  try {
-    const raw = window.localStorage.getItem(AUTO_SEED_STORAGE_KEY);
-    if (!raw) {
-      return new Set<string>();
-    }
-
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? new Set(parsed.filter((value): value is string => typeof value === "string"))
-      : new Set<string>();
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function markAutoSeeded(caseId: string) {
-  if (typeof window === "undefined" || !caseId) {
-    return;
-  }
-
-  const next = readAutoSeededCaseIds();
-  next.add(caseId);
-  window.localStorage.setItem(AUTO_SEED_STORAGE_KEY, JSON.stringify([...next]));
-}
 
 // ─── Limit gauge ──────────────────────────────────────────────────────────────
 
@@ -585,6 +553,7 @@ export function DeepgramKeytermManager() {
   const { record } = useIntake();
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const autoSeededCaseIdsRef = useRef(new Set<string>());
   const [lastDerivedSummary, setLastDerivedSummary] = useState<{
     included: number;
     dropped: number;
@@ -606,13 +575,13 @@ export function DeepgramKeytermManager() {
   }
 
   useEffect(() => {
-    const alreadyAttempted = readAutoSeededCaseIds().has(record.case_id);
+    const alreadyAttempted = autoSeededCaseIdsRef.current.has(record.case_id);
     if (!shouldAutoSeedDerivedKeyterms(record, alreadyAttempted)) {
       return;
     }
 
     applyDerivedKeyterms();
-    markAutoSeeded(record.case_id);
+    autoSeededCaseIdsRef.current.add(record.case_id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record.case_id, record.deepgram.keyterms, record.witnesses, record.attorneys]);
 
