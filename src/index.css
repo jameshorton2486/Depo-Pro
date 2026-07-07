@@ -57,9 +57,14 @@ html, body, #root {
   padding: 24px 0 48px;
   outline: none;
   min-height: 400px;
+  position: relative;
 }
 
-.tiptap-transcript .ProseMirror {
+.transcript-editor-surface {
+  position: relative;
+}
+
+.transcript-editor-surface .ProseMirror {
   outline: none;
   padding-left: 1.25in;
   padding-right: 0.75in;
@@ -67,6 +72,39 @@ html, body, #root {
   font-size: 12pt;
   line-height: 28pt;
   color: #111827;
+}
+
+.transcript-tab-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.transcript-tab-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed rgba(37, 99, 235, 0.28);
+}
+
+.transcript-tab-guide-label {
+  position: sticky;
+  top: 8px;
+  left: 8px;
+  display: inline-block;
+  transform: translate(-50%, 0);
+  padding: 2px 6px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.92);
+  color: #1d4ed8;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 /* ─── Transcript body visual geometry ───────────────────────────────────── */

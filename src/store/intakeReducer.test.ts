@@ -165,6 +165,56 @@ describe("intakeReducer edit sequencing", () => {
     ]);
   });
 
+  it("increments editSeq for exhibit collection mutations", () => {
+    const now = "2026-06-05T00:00:00.000Z";
+    const baseState = {
+      ...initialIntakeState(),
+      record: emptyCaseRecord("case_test_exhibits", now),
+    };
+
+    const added = intakeReducer(baseState, {
+      type: "ADD_EXHIBIT",
+      payload: {
+        exhibit: {
+          label: "Exhibit 1",
+          description: "Contract",
+          filename: "contract.pdf",
+          file_url: null,
+          marked_by: null,
+          admitted: false,
+          page_reference: null,
+          line_reference: null,
+        },
+      },
+    });
+
+    expect(added.editSeq).toBe(1);
+    expect(added.record.exhibits).toHaveLength(1);
+
+    const updated = intakeReducer(added, {
+      type: "UPDATE_EXHIBIT",
+      payload: {
+        exhibit_id: added.record.exhibits[0].exhibit_id,
+        patch: {
+          description: "Signed contract",
+        },
+      },
+    });
+
+    expect(updated.editSeq).toBe(2);
+    expect(updated.record.exhibits[0].description).toBe("Signed contract");
+
+    const removed = intakeReducer(updated, {
+      type: "REMOVE_EXHIBIT",
+      payload: {
+        exhibit_id: updated.record.exhibits[0].exhibit_id,
+      },
+    });
+
+    expect(removed.editSeq).toBe(3);
+    expect(removed.record.exhibits).toHaveLength(0);
+  });
+
   it("preserves array shapes when updating indexed witness and attorney fields", () => {
     const now = "2026-06-05T00:00:00.000Z";
     const baseRecord = emptyCaseRecord("case_test_array_fields", now);

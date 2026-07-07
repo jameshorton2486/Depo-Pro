@@ -1,5 +1,6 @@
 import type { CaseRecord } from "../../types/case";
 import { PRIMARY_MODEL } from "../aiModels";
+import { externalJsonRequest } from "../../api/client";
 
 export interface AISuggestionInput {
   transcriptId: string;
@@ -121,8 +122,9 @@ export interface AISuggestionTransport {
 
 export const anthropicFetchTransport: AISuggestionTransport = {
   async createMessage(input) {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+    const payload = await externalJsonRequest<{
+      content?: Array<{ type: string; text?: string }>;
+    }>("POST", "https://api.anthropic.com/v1/messages", {
       headers: {
         "Content-Type": "application/json",
         "x-api-key": input.apiKey,
@@ -136,15 +138,6 @@ export const anthropicFetchTransport: AISuggestionTransport = {
         messages: [{ role: "user", content: input.user }],
       }),
     });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Anthropic request failed: ${response.status} ${text}`);
-    }
-
-    const payload = await response.json() as {
-      content?: Array<{ type: string; text?: string }>;
-    };
     const text = payload.content?.find((item) => item.type === "text")?.text;
     if (!text) {
       throw new Error("Unexpected response type from AI");

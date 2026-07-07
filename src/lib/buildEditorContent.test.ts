@@ -508,4 +508,55 @@ describe("buildEditorContent", () => {
     expect(answerAttrs.formatted_line_role).toBe("a");
   });
 
+  it("builds editor content for large synthetic transcripts without dropping utterance blocks", () => {
+    const utterances: EditorDocument["utterances"] = [];
+    const words: EditorDocument["words"] = [];
+
+    for (let index = 0; index < 300; index += 1) {
+      const utteranceId = `utt-${index + 1}`;
+      const firstWordId = `w-${index + 1}-1`;
+      const secondWordId = `w-${index + 1}-2`;
+      utterances.push({
+        utterance_id: utteranceId,
+        speaker_id: "spk-1",
+        start_time: index,
+        end_time: index + 1,
+        word_ids: [firstWordId, secondWordId],
+      });
+      words.push(
+        {
+          word_id: firstWordId,
+          text: "Question",
+          raw_text: "Question",
+          speaker_id: "spk-1",
+          utterance_id: utteranceId,
+          start_time: index,
+          end_time: index + 0.4,
+          confidence: 1,
+          reviewed: false,
+          edited: false,
+        },
+        {
+          word_id: secondWordId,
+          text: String(index + 1),
+          raw_text: String(index + 1),
+          speaker_id: "spk-1",
+          utterance_id: utteranceId,
+          start_time: index + 0.4,
+          end_time: index + 0.8,
+          confidence: 1,
+          reviewed: false,
+          edited: false,
+        },
+      );
+    }
+
+    const content = buildEditorContent(makeDoc({ utterances, words }));
+    const contentUtterances = content.content?.filter((node) => node.type === "utterance") ?? [];
+
+    expect(contentUtterances).toHaveLength(300);
+    expect(contentUtterances[0]?.attrs?.utterance_id).toBe("utt-1");
+    expect(contentUtterances[299]?.attrs?.utterance_id).toBe("utt-300");
+  });
+
 });

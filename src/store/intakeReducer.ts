@@ -884,6 +884,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           exhibits: [...state.record.exhibits, exhibit],
@@ -895,6 +896,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           exhibits: state.record.exhibits.filter(
@@ -909,6 +911,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           exhibits: state.record.exhibits.map((e) =>

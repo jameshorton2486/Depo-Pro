@@ -5,7 +5,12 @@ import type { EditorDocument } from "../api/types";
 import { buildEditorContent } from "../lib/buildEditorContent";
 import { extractUtteranceTextsFromDoc } from "../lib/format/editorFragments";
 import { createInitialDocumentState, documentReducer } from "../context/DocumentContext";
-import { diffUtteranceTextSnapshots } from "./TranscriptEditor/TranscriptEditor";
+import {
+  computeVirtualizedUtteranceOverscan,
+  diffUtteranceTextSnapshots,
+  shouldEnableUtteranceWindowing,
+  UTTERANCE_WINDOWING_THRESHOLD,
+} from "./TranscriptEditor/TranscriptEditor";
 
 function makeDocument(): EditorDocument {
   return {
@@ -189,6 +194,7 @@ describe("TranscriptEditor save regression helpers", () => {
       speakerMapConfirmed: false,
       pipelineState: null,
       audioSegments: [],
+      inclusionPages: null,
     });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",
@@ -209,5 +215,13 @@ describe("TranscriptEditor save regression helpers", () => {
     expect(texts.get("utt-1")).toBe("Mr. Nunez Hello. There");
     expect(texts.get("utt-1")).not.toContain("Hello.  There");
     expect(texts.get("utt-1")).not.toContain("Q.");
+  });
+
+  it("enables utterance windowing only for large non-playing transcripts", () => {
+    expect(shouldEnableUtteranceWindowing(UTTERANCE_WINDOWING_THRESHOLD, false)).toBe(false);
+    expect(shouldEnableUtteranceWindowing(UTTERANCE_WINDOWING_THRESHOLD + 1, true)).toBe(false);
+    expect(shouldEnableUtteranceWindowing(UTTERANCE_WINDOWING_THRESHOLD + 1, false)).toBe(true);
+    expect(computeVirtualizedUtteranceOverscan(500, false)).toBe(20);
+    expect(computeVirtualizedUtteranceOverscan(500, true)).toBe(500);
   });
 });

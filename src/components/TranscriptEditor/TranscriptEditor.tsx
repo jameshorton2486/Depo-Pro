@@ -1,6 +1,7 @@
 import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { WordMark } from "../../extensions/WordMark";
@@ -10,6 +11,7 @@ import { ExhibitRefNode } from "../../extensions/ExhibitRefNode";
 import { ExhibitRefNodeView } from "./ExhibitRefNodeView";
 import { buildEditorContent } from "../../lib/buildEditorContent";
 import { extractUtteranceTextsFromDoc } from "../../lib/format/editorFragments";
+import { buildInclusionPagesText } from "../../lib/transcript/inclusionPages";
 import { buildWordTimings, findWordAtTime } from "../../lib/wordTimings";
 import { useDocument } from "../../context/DocumentContext";
 import { useAudio } from "../../context/AudioContext";
@@ -20,6 +22,7 @@ import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
 import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
 import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
 import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
+import type { JSONContent } from "@tiptap/core";
 
 interface Props {
   readOnly: boolean;
@@ -104,10 +107,80 @@ export function diffUtteranceTextSnapshots(
   return changes;
 }
 
+export const UTTERANCE_WINDOWING_THRESHOLD = 200;
+
+export function shouldEnableUtteranceWindowing(
+  utteranceCount: number,
+  isAudioPlaying: boolean,
+): boolean {
+  return utteranceCount > UTTERANCE_WINDOWING_THRESHOLD && !isAudioPlaying;
+}
+
+export function computeVirtualizedUtteranceOverscan(
+  utteranceCount: number,
+  isAudioPlaying: boolean,
+): number {
+  return isAudioPlaying ? utteranceCount : 20;
+}
+
+type TabStopGuide = {
+  key: "qa-label" | "qa-text" | "speaker" | "parenthetical" | "center" | "continuation";
+  label: string;
+  inches: number;
+};
+
+function readTabStopValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function extractTranscriptTabStops(content: JSONContent | null | undefined): TabStopGuide[] {
+  const utteranceNode = content?.content?.find((node) => node.type === "utterance");
+  const attrs = utteranceNode?.attrs;
+
+  if (!attrs) {
+    return [];
+  }
+
+  const guides: Array<TabStopGuide | null> = [
+    {
+      key: "qa-label",
+      label: "Q/A label",
+      inches: readTabStopValue(attrs.tab_qa_label_inches) ?? NaN,
+    },
+    {
+      key: "qa-text",
+      label: "Q/A text",
+      inches: readTabStopValue(attrs.tab_qa_text_inches) ?? NaN,
+    },
+    {
+      key: "speaker",
+      label: "Speaker",
+      inches: readTabStopValue(attrs.tab_speaker_inches) ?? NaN,
+    },
+    {
+      key: "parenthetical",
+      label: "Paren",
+      inches: readTabStopValue(attrs.tab_parenthetical_inches) ?? NaN,
+    },
+    {
+      key: "center",
+      label: "Center",
+      inches: readTabStopValue(attrs.tab_center_inches) ?? NaN,
+    },
+    {
+      key: "continuation",
+      label: "Cont.",
+      inches: readTabStopValue(attrs.tab_continuation_inches) ?? NaN,
+    },
+  ];
+
+  return guides.filter((guide): guide is TabStopGuide => Number.isFinite(guide?.inches));
+}
+
 export function TranscriptEditor({ readOnly }: Props) {
   const { state, editUtterance, setActive, confirmStructure, keepRawLabels } = useDocument();
   const audio = useAudio();
-  const { setEditor, showInterpreterLayer, languageMap } = useEditorContext();
+  const { setEditor, showInterpreterLayer, showTabStops, languageMap } = useEditorContext();
   const { record } = useIntake();
   const { playing } = audio;
 
@@ -146,6 +219,20 @@ export function TranscriptEditor({ readOnly }: Props) {
     () => buildWordTimings(state.document),
     [state.document]
   );
+  const utteranceBlockIds = useMemo(() => {
+    const content = editorContent?.content ?? [];
+    return content
+      .filter((node) => node.type === "utterance")
+      .map((node, index) => String(node.attrs?.utterance_id ?? `utterance-${index}`));
+  }, [editorContent]);
+  const tabStopGuides = useMemo(
+    () => extractTranscriptTabStops(editorContent),
+    [editorContent],
+  );
+  const inclusionPagesText = useMemo(
+    () => buildInclusionPagesText(state.inclusionPages),
+    [state.inclusionPages],
+  );
   const aiReviewBannerState = useMemo(() => {
     const words = (state.document?.words ?? []) as Array<{
       ai_suggestion?: string | null;
@@ -174,6 +261,13 @@ export function TranscriptEditor({ readOnly }: Props) {
     extensions: EXTENSIONS,
     editable: !readOnly,
     immediatelyRender: false,
+  });
+  const virtualizer = useVirtualizer({
+    count: utteranceBlockIds.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 44,
+    overscan: computeVirtualizedUtteranceOverscan(utteranceBlockIds.length, playing),
+    enabled: shouldEnableUtteranceWindowing(utteranceBlockIds.length, playing),
   });
 
   // Register editor instance in shared context so the ConfidencePanel can dispatch plugin transactions.
@@ -344,6 +438,43 @@ export function TranscriptEditor({ readOnly }: Props) {
     };
   }, [clearHighlightedWord, highlightLoop, playing]);
 
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const utteranceEls = Array.from(
+      editor.view.dom.querySelectorAll<HTMLElement>("[data-utterance-id]"),
+    );
+
+    if (utteranceEls.length === 0) {
+      return;
+    }
+
+    if (!shouldEnableUtteranceWindowing(utteranceBlockIds.length, playing)) {
+      utteranceEls.forEach((element) => {
+        element.style.removeProperty("content-visibility");
+        element.style.removeProperty("contain-intrinsic-size");
+        element.removeAttribute("data-virtual-hidden");
+      });
+      return;
+    }
+
+    const visibleIndexes = new Set(virtualizer.getVirtualItems().map((item) => item.index));
+    utteranceEls.forEach((element, index) => {
+      if (visibleIndexes.has(index)) {
+        element.style.removeProperty("content-visibility");
+        element.style.removeProperty("contain-intrinsic-size");
+        element.removeAttribute("data-virtual-hidden");
+        return;
+      }
+
+      element.style.setProperty("content-visibility", "hidden");
+      element.style.setProperty("contain-intrinsic-size", "48px auto");
+      element.setAttribute("data-virtual-hidden", "true");
+    });
+  }, [editor, playing, utteranceBlockIds.length, virtualizer, state.editSeq, state.structureConfirmed, state.keepRawLabels]);
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (state.loading) {
@@ -404,7 +535,34 @@ export function TranscriptEditor({ readOnly }: Props) {
           )}
         </div>
 
-        <EditorContent editor={editor} className="tiptap-transcript" />
+        {inclusionPagesText && (
+          <div className="mx-auto mb-6 w-full max-w-[8.5in] rounded-2xl border border-slate-200 bg-white px-8 py-6 shadow-sm">
+            <pre className="whitespace-pre-wrap font-['Courier_New',monospace] text-[12px] leading-6 text-slate-800">
+              {inclusionPagesText}
+            </pre>
+          </div>
+        )}
+
+        <div
+          className="tiptap-transcript"
+          data-show-tab-stops={showTabStops ? "true" : "false"}
+        >
+          {showTabStops && tabStopGuides.length > 0 && (
+            <div className="transcript-tab-guides" aria-hidden="true">
+              {tabStopGuides.map((guide) => (
+                <div
+                  key={guide.key}
+                  className="transcript-tab-guide"
+                  data-tab-kind={guide.key}
+                  style={{ left: `calc(1.25in + 2.75rem + ${guide.inches}in)` }}
+                >
+                  <span className="transcript-tab-guide-label">{guide.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <EditorContent editor={editor} className="transcript-editor-surface" />
+        </div>
       </div>
       {contextMenu && (
         <UtteranceContextMenu

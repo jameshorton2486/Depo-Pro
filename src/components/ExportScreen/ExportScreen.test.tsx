@@ -9,6 +9,9 @@ const useDocumentMock = vi.fn();
 const useIntakeMock = vi.fn();
 const useStageMock = vi.fn();
 const buildFormattedTranscriptTextMock = vi.fn();
+const downloadBlobMock = vi.fn();
+const downloadWordTranscriptMock = vi.fn();
+const openPrintPreviewMock = vi.fn();
 
 vi.mock("../../context/DocumentContext", () => ({
   useDocument: () => useDocumentMock(),
@@ -24,6 +27,9 @@ vi.mock("../../context/StageContext", () => ({
 
 vi.mock("../../lib/transcriptDownloads", () => ({
   buildFormattedTranscriptText: (...args: unknown[]) => buildFormattedTranscriptTextMock(...args),
+  downloadBlob: (...args: unknown[]) => downloadBlobMock(...args),
+  downloadWordTranscript: (...args: unknown[]) => downloadWordTranscriptMock(...args),
+  openPrintPreview: (...args: unknown[]) => openPrintPreviewMock(...args),
 }));
 
 vi.mock("../WorkflowStageNav", () => ({
@@ -71,6 +77,7 @@ describe("ExportScreen", () => {
         },
         structureConfirmed: false,
         keepRawLabels: false,
+        inclusionPages: null,
       },
     });
     useStageMock.mockReturnValue({
@@ -78,6 +85,12 @@ describe("ExportScreen", () => {
     });
     buildFormattedTranscriptTextMock.mockReset();
     buildFormattedTranscriptTextMock.mockReturnValue("clean transcript");
+    downloadBlobMock.mockReset();
+    downloadWordTranscriptMock.mockReset();
+    openPrintPreviewMock.mockReset();
+    downloadBlobMock.mockReturnValue({ name: "artifact.txt", type: "text/plain", size: 10 });
+    downloadWordTranscriptMock.mockReturnValue({ name: "artifact.doc", type: "application/msword", size: 100 });
+    openPrintPreviewMock.mockReturnValue({ name: "artifact.pdf", type: "application/pdf (browser print)", size: 200 });
   });
 
   afterEach(() => {
@@ -158,26 +171,98 @@ describe("ExportScreen", () => {
     cleanup();
   });
 
-  it("shows DOCX and PDF as explicitly gated beta controls", () => {
+  it("runs the Word and PDF export helpers once certification is complete", async () => {
     useIntakeMock.mockReturnValue({
       record: {
         caption: {
           case_name: { value: "Example Case" },
           case_number: { value: "123" },
         },
-        certification: null,
+        certification: {
+          certification_date: "2026-06-30",
+          certification_statement: "Ready",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
+        },
       },
     });
 
     const { container, cleanup } = renderExportScreen();
     const buttons = Array.from(container.querySelectorAll("button"));
-    const docxButton = buttons.find((button) => button.textContent?.includes("DOCX Coming After Beta"));
-    const pdfButton = buttons.find((button) => button.textContent?.includes("PDF Coming After Beta"));
+    const wordButton = buttons.find((button) => button.textContent?.includes("Export Word"));
+    const pdfButton = buttons.find((button) => button.textContent?.includes("Print / Save PDF"));
 
-    expect(container.textContent).toContain("DOCX / PDF Export");
-    expect(container.textContent).toContain("WAVE-22");
-    expect(docxButton?.hasAttribute("disabled")).toBe(true);
-    expect(pdfButton?.hasAttribute("disabled")).toBe(true);
+    await act(async () => {
+      wordButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      pdfButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("Word / PDF Export");
+    expect(downloadWordTranscriptMock).toHaveBeenCalledWith(
+      "job_123-transcript.doc",
+      "Example Case",
+      "clean transcript",
+    );
+    expect(openPrintPreviewMock).toHaveBeenCalledWith("Example Case", "clean transcript");
+    cleanup();
+  });
+
+  it("passes persisted inclusion pages into transcript export formatting", () => {
+    useDocumentMock.mockReturnValue({
+      state: {
+        document: {
+          job_id: "job_123",
+          media_url: "",
+          duration: 0,
+          speakers: [],
+          utterances: [],
+          words: [],
+        },
+        structureConfirmed: true,
+        keepRawLabels: false,
+        inclusionPages: {
+          caption: "Example Case",
+          appearances: [],
+        },
+      },
+    });
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: {
+          case_name: { value: "Example Case" },
+          case_number: { value: "123" },
+        },
+        certification: {
+          certification_date: "2026-06-30",
+          certification_statement: "Ready",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
+        },
+      },
+    });
+
+    const { cleanup } = renderExportScreen();
+    expect(buildFormattedTranscriptTextMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        inclusionPages: {
+          caption: "Example Case",
+          appearances: [],
+        },
+      }),
+    );
     cleanup();
   });
 });

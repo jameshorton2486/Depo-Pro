@@ -16,6 +16,8 @@ import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
 import { TranscriptCreationScreen } from "./TranscriptCreationScreen";
 import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
 import { ExportScreen } from "./ExportScreen/ExportScreen";
+import { ExhibitsScreen } from "./ExhibitsScreen/ExhibitsScreen";
+import { UfmInsertionsScreen } from "./UfmInsertionsScreen/UfmInsertionsScreen";
 import { CaseBrowserScreen } from "./CaseBrowserScreen";
 import { CaseScopedErrorBoundary } from "./CaseScopedErrorBoundary";
 import { CaseProvider } from "../context/CaseContext";
@@ -103,6 +105,14 @@ function StageRouter({
 
   if (stage === "workspace") {
     return <WorkspaceStage config={config} activeCaseId={activeCaseId} />;
+  }
+
+  if (stage === "exhibits") {
+    return <ExhibitsScreen jobId={activeCaseId} />;
+  }
+
+  if (stage === "ufm") {
+    return <UfmInsertionsScreen jobId={activeCaseId} />;
   }
 
   return (

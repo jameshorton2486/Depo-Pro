@@ -3,7 +3,12 @@ import { ChevronLeft, Clipboard, Download, FileArchive, FileText } from "lucide-
 import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
-import { buildFormattedTranscriptText } from "../../lib/transcriptDownloads";
+import {
+  buildFormattedTranscriptText,
+  downloadBlob,
+  downloadWordTranscript,
+  openPrintPreview,
+} from "../../lib/transcriptDownloads";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
@@ -13,23 +18,13 @@ interface GeneratedArtifact {
   size: number;
 }
 
-function downloadBlob(filename: string, type: string, content: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-  return { name: filename, type, size: blob.size };
-}
-
 export function ExportScreen({ jobId }: { jobId: string }) {
   const { state: docState } = useDocument();
   const { record } = useIntake();
   const { setStage } = useStage();
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [printError, setPrintError] = useState<string | null>(null);
 
   const certificationReady = useMemo(() => {
     const certification = record.certification;
@@ -56,8 +51,9 @@ export function ExportScreen({ jobId }: { jobId: string }) {
       structureConfirmed: docState.structureConfirmed,
       keepRawLabels: docState.keepRawLabels,
       record,
+      inclusionPages: docState.inclusionPages,
     });
-  }, [docState.document, docState.keepRawLabels, docState.structureConfirmed, record]);
+  }, [docState.document, docState.inclusionPages, docState.keepRawLabels, docState.structureConfirmed, record]);
 
   const packageJson = useMemo(
     () =>
@@ -75,6 +71,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
       ),
     [docState.document, jobId, record.caption.case_name.value, record.caption.case_number.value, transcriptText]
   );
+  const exportTitle = record.caption.case_name.value || jobId;
 
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900">
@@ -184,35 +181,52 @@ export function ExportScreen({ jobId }: { jobId: string }) {
             </div>
           </section>
 
-          <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2">
-              <FileText size={16} className="text-amber-700" />
-              <h2 className="text-sm font-semibold text-slate-900">DOCX / PDF Export</h2>
+              <FileText size={16} className="text-slate-600" />
+              <h2 className="text-sm font-semibold text-slate-900">Word / PDF Export</h2>
             </div>
             <p className="mt-2 text-sm text-slate-700">
-              Word and PDF transcript export remain gated for this beta. Use TXT or Transcript Package for local validation until the tracked export path is promoted.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Tracking note: NUMBERING_REGISTRY.md entry `WAVE-22` reserved for post-beta export delivery.
+              Generate a Word-compatible transcript file or open a print-ready view for Save as PDF.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
                 type="button"
-                disabled
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-400"
+                disabled={!certificationReady || !docState.document}
+                onClick={() =>
+                  setLastArtifact(
+                    downloadWordTranscript(
+                      `${jobId}-transcript.doc`,
+                      exportTitle,
+                      transcriptText,
+                    )
+                  )
+                }
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />
-                DOCX Coming After Beta
+                Export Word
               </button>
               <button
                 type="button"
-                disabled
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-400"
+                disabled={!certificationReady || !docState.document}
+                onClick={() => {
+                  try {
+                    setPrintError(null);
+                    setLastArtifact(openPrintPreview(exportTitle, transcriptText));
+                  } catch (error) {
+                    setPrintError(error instanceof Error ? error.message : String(error));
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />
-                PDF Coming After Beta
+                Print / Save PDF
               </button>
             </div>
+            {printError && (
+              <p className="mt-3 text-xs text-red-600">{printError}</p>
+            )}
           </section>
 
           {lastArtifact && (
