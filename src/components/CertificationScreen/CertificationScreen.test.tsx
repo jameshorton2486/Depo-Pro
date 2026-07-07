@@ -64,6 +64,8 @@ function buildReadyRecord() {
     page_reference: null,
     line_reference: null,
   }];
+  record.stage_completion.exhibits = true;
+  record.stage_completion.ufm = true;
   record.certification = {
     certification_date: null,
     certification_statement: "Ready for release.",
@@ -142,6 +144,28 @@ describe("CertificationScreen", () => {
     cleanup();
   });
 
+  it("keeps derived exhibit and ufm completion false until Stage 4 and Stage 5 are explicitly complete", () => {
+    const record = buildReadyRecord();
+    record.stage_completion.exhibits = false;
+    record.stage_completion.ufm = false;
+    const setCertification = vi.fn();
+    useIntakeMock.mockReturnValue({
+      record,
+      setCertification,
+      dirty: false,
+    });
+
+    const { container, cleanup } = renderScreen();
+
+    const inputs = Array.from(container.querySelectorAll("input[type='checkbox']")) as HTMLInputElement[];
+    expect(inputs[3]?.checked).toBe(false);
+    expect(inputs[3]?.disabled).toBe(true);
+    expect(inputs[4]?.checked).toBe(false);
+    expect(inputs[4]?.disabled).toBe(true);
+    expect(setCertification).not.toHaveBeenCalled();
+    cleanup();
+  });
+
   it("renders derived exhibit and ufm checklist rows as disabled when already aligned", () => {
     const record = buildReadyRecord();
     record.certification = {
@@ -167,6 +191,55 @@ describe("CertificationScreen", () => {
     expect(inputs[4]?.checked).toBe(true);
     expect(inputs[4]?.disabled).toBe(true);
     expect(container.textContent).toContain("Derived");
+    cleanup();
+  });
+
+  it("treats a zero-exhibit case as complete only after Stage 4 is explicitly affirmed", () => {
+    const record = buildReadyRecord();
+    record.exhibits = [];
+    record.stage_completion.exhibits = true;
+    const setCertification = vi.fn();
+    useIntakeMock.mockReturnValue({
+      record,
+      setCertification,
+      dirty: false,
+    });
+
+    const { cleanup } = renderScreen();
+
+    expect(setCertification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checklist: expect.objectContaining({
+          exhibits_complete: true,
+        }),
+      }),
+    );
+    cleanup();
+  });
+
+  it("keeps a zero-exhibit case incomplete until Stage 4 is explicitly affirmed", () => {
+    const record = buildReadyRecord();
+    record.exhibits = [];
+    record.stage_completion.exhibits = false;
+    const setCertification = vi.fn();
+    useIntakeMock.mockReturnValue({
+      record,
+      setCertification,
+      dirty: false,
+    });
+
+    const { container, cleanup } = renderScreen();
+
+    const inputs = Array.from(container.querySelectorAll("input[type='checkbox']")) as HTMLInputElement[];
+    expect(inputs[3]?.checked).toBe(false);
+    expect(inputs[3]?.disabled).toBe(true);
+    expect(setCertification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        checklist: expect.objectContaining({
+          exhibits_complete: false,
+        }),
+      }),
+    );
     cleanup();
   });
 });

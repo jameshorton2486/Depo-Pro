@@ -36,11 +36,24 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
   const [saving, setSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const certification = record.certification ?? buildDefaultCertification();
-  const derivedExhibitsComplete = useMemo(
-    () => record.exhibits.every((exhibit) => exhibit.label.trim().length > 0 && Boolean(exhibit.file_url || exhibit.filename)),
-    [record.exhibits],
+  const zeroExhibitsAffirmed = useMemo(
+    () => record.exhibits.length === 0 && record.stage_completion.exhibits,
+    [record.exhibits.length, record.stage_completion.exhibits],
   );
-  const derivedUfmComplete = useMemo(() => isCaseUfmReady(record), [record]);
+  const exhibitsHaveRequiredData = useMemo(
+    () => zeroExhibitsAffirmed
+      || (record.exhibits.length > 0 && record.exhibits.every((exhibit) => exhibit.label.trim().length > 0 && Boolean(exhibit.file_url || exhibit.filename))),
+    [record.exhibits, zeroExhibitsAffirmed],
+  );
+  const ufmHasRequiredData = useMemo(() => isCaseUfmReady(record), [record]);
+  const derivedExhibitsComplete = useMemo(
+    () => record.stage_completion.exhibits && exhibitsHaveRequiredData,
+    [exhibitsHaveRequiredData, record.stage_completion.exhibits],
+  );
+  const derivedUfmComplete = useMemo(
+    () => record.stage_completion.ufm && ufmHasRequiredData,
+    [record.stage_completion.ufm, ufmHasRequiredData],
+  );
 
   const persistCertification = useCallback(async () => {
     setSaving(true);
