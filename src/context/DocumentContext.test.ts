@@ -52,6 +52,7 @@ describe("documentReducer save sequencing", () => {
       speakerMapConfirmed: false,
       pipelineState: null,
       audioSegments: [],
+      inclusionPages: null,
     });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",
@@ -81,6 +82,7 @@ describe("documentReducer save sequencing", () => {
       speakerMapConfirmed: false,
       pipelineState: null,
       audioSegments: [],
+      inclusionPages: null,
     });
     state = documentReducer(state, {
       type: "EDIT_UTTERANCE",
@@ -119,6 +121,7 @@ describe("documentReducer save sequencing", () => {
       speakerMapConfirmed: false,
       pipelineState: null,
       audioSegments: [],
+      inclusionPages: null,
     });
 
     expect(state.structureConfirmed).toBe(false);
@@ -133,6 +136,7 @@ describe("documentReducer save sequencing", () => {
       speakerMapConfirmed: false,
       pipelineState: null,
       audioSegments: [],
+      inclusionPages: null,
     });
 
     expect(state.structureConfirmed).toBe(false);
@@ -147,6 +151,7 @@ describe("documentReducer save sequencing", () => {
       speakerMapConfirmed: false,
       pipelineState: "AWAITING_SPEAKER_VERIFICATION",
       audioSegments: [],
+      inclusionPages: null,
     });
 
     expect(state.structureConfirmed).toBe(true);
@@ -190,6 +195,7 @@ describe("documentReducer save sequencing", () => {
       speakerMapConfirmed: false,
       pipelineState: "AWAITING_SPEAKER_VERIFICATION",
       audioSegments: [],
+      inclusionPages: null,
     });
 
     expect(state.pipelineState).toBe("AWAITING_SPEAKER_VERIFICATION");
@@ -213,6 +219,7 @@ describe("documentReducer save sequencing", () => {
       speakerMapConfirmed: false,
       pipelineState: null,
       audioSegments: [],
+      inclusionPages: null,
     });
 
     expect(state.speakersVersion).toBe(0);

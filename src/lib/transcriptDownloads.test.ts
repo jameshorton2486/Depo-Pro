@@ -4,6 +4,7 @@ import type { EditorDocument } from "../api/types";
 import type { CaseRecord } from "../types/case";
 import {
   buildFormattedTranscriptText,
+  buildPrintableTranscriptHtml,
   buildWordTranscriptHtml,
   buildWorkspaceTranscriptJson,
 } from "./transcriptDownloads";
@@ -146,6 +147,14 @@ describe("transcriptDownloads", () => {
     expect(html).toContain("<title>Transcript &quot;draft&quot; &amp; notes</title>");
   });
 
+  it("builds printable HTML for browser PDF export and escapes transcript content", () => {
+    const html = buildPrintableTranscriptHtml("Transcript", "Q. <test> & more");
+
+    expect(html).toContain("<!DOCTYPE html>");
+    expect(html).toContain("@page { margin: 0.75in; size: letter; }");
+    expect(html).toContain("<main>Q. &lt;test&gt; &amp; more</main>");
+  });
+
   it("builds inferred transcript text only after structure confirmation", () => {
     const rawText = buildFormattedTranscriptText(makeDocument());
     const structuredText = buildFormattedTranscriptText(makeDocument(), {
@@ -156,6 +165,35 @@ describe("transcriptDownloads", () => {
     expect(rawText).not.toContain("PROCEEDINGS");
     expect(structuredText).toContain("EXAMINATION");
     expect(structuredText).toContain("BY DENNIS BENTLEY:");
+  });
+
+  it("prepends persisted inclusion pages to transcript downloads", () => {
+    const text = buildFormattedTranscriptText(makeDocument(), {
+      structureConfirmed: true,
+      record: makeRecord(),
+      inclusionPages: {
+        caption: "Jordan Alvarez v. Acme Logistics, Inc.",
+        cause_number: "2026-CV-1042",
+        court: "250th Judicial District Court",
+        county: "Travis County",
+        state: "Texas",
+        deponent: "Mohammad Etminan",
+        deposition_date: "2026-04-24",
+        appearances: [
+          {
+            name: "Dennis Bentley",
+            role: "EXAMINING",
+            firm: "Bentley Trial Group",
+            representing: "Plaintiff",
+          },
+        ],
+      },
+    });
+
+    expect(text).toContain("Jordan Alvarez v. Acme Logistics, Inc.");
+    expect(text).toContain("APPEARANCES");
+    expect(text).toContain("Dennis Bentley");
+    expect(text).toContain("EXAMINATION");
   });
 
   it("strips inline flag spans from raw TXT download output while preserving verbatim tokens", () => {

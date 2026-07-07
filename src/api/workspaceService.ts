@@ -35,6 +35,7 @@ export interface WorkspaceLoadResult {
   speakerMapConfirmed: boolean;
   pipelineState: string | null;
   audioSegments: WorkspaceAudioSegment[];
+  inclusionPages: Record<string, unknown> | null;
 }
 
 export interface WorkspaceAudioSegment {
@@ -182,6 +183,7 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
     speakerMapConfirmed: snapshot.job.speaker_map_confirmed,
     pipelineState: snapshot.job.pipeline_state ?? null,
     audioSegments,
+    inclusionPages: (snapshot.job.ai_review_meta?.inclusion_pages as Record<string, unknown> | null | undefined) ?? null,
   };
 }
 
@@ -690,6 +692,7 @@ export const workspaceApi = {
         speakerMapConfirmed: false,
         pipelineState: null,
         audioSegments: [],
+        inclusionPages: null,
       };
     }
 
@@ -710,6 +713,7 @@ export const workspaceApi = {
         speakerMapConfirmed: target.speaker_map_confirmed,
         pipelineState: target.pipeline_state ?? null,
         audioSegments: await loadAudioSegments(target, mediaUrl),
+        inclusionPages: (target.ai_review_meta?.inclusion_pages as Record<string, unknown> | null | undefined) ?? null,
       };
     }
 

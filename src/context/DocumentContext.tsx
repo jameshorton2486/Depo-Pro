@@ -26,6 +26,7 @@ function nextChangeId(): string {
 interface State {
   jobId: string;
   document: EditorDocument | null;
+  inclusionPages: Record<string, unknown> | null;
   correctionReport: CorrectionReport | null;
   loading: boolean;
   error: string | null;
@@ -49,7 +50,7 @@ interface State {
 
 type Action =
   | { type: "LOAD_START" }
-  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; pipelineState: string | null; audioSegments: WorkspaceAudioSegment[] }
+  | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; pipelineState: string | null; audioSegments: WorkspaceAudioSegment[]; inclusionPages: Record<string, unknown> | null }
   | { type: "SET_CORRECTION_REPORT"; report: CorrectionReport }
   | { type: "LOAD_ERR"; error: string }
   | { type: "UPDATE_MEDIA_URL"; mediaUrl: string; segmentIndex: number }
@@ -104,6 +105,7 @@ export function documentReducer(state: State, action: Action): State {
         editSeq: 0,
         speakersVersion: 0,
         jobUpdatedAt: action.updatedAt,
+        inclusionPages: action.inclusionPages,
         speakerMapConfirmed: action.speakerMapConfirmed,
         pipelineState: action.pipelineState,
         structureConfirmed: shouldApplyStructuredView(action.speakerMapConfirmed, action.pipelineState),
@@ -261,6 +263,7 @@ export function createInitialDocumentState(jobId: string): State {
   return {
     jobId,
     document: null,
+    inclusionPages: null,
     correctionReport: null,
     loading: false,
     error: null,
@@ -306,6 +309,7 @@ export function DocumentProvider({
         speakerMapConfirmed: loaded.speakerMapConfirmed,
         pipelineState: loaded.pipelineState,
         audioSegments: loaded.audioSegments,
+        inclusionPages: loaded.inclusionPages,
       });
       dispatch({
         type: "SET_CORRECTION_REPORT",
