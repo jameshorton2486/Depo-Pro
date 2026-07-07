@@ -22,6 +22,10 @@ import {
 } from "./transcriptRepository";
 import { getSupabaseClient } from "../lib/supabase";
 import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
+import {
+  planWorkingTextPersistence,
+  WorkingTextOverflowError,
+} from "../lib/transcript/workingTextPersistence";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
 
@@ -384,17 +388,22 @@ async function naivePersistWorking(
         continue;
       }
 
-      const tokens = change.working_text.trim().length > 0
-        ? change.working_text.trim().split(/\s+/)
-        : [""];
+      let plan;
+      try {
+        plan = planWorkingTextPersistence(change.utterance_id, utteranceWords, change.working_text);
+      } catch (error) {
+        if (error instanceof WorkingTextOverflowError) {
+          throw new Error(error.message);
+        }
+        throw error;
+      }
 
       for (let index = 0; index < utteranceWords.length; index += 1) {
         const word = utteranceWords[index];
-        const beforeText = word.working_text ?? word.raw_text;
-        const nextText = index < utteranceWords.length - 1
-          ? (tokens[index] ?? "")
-          : tokens.slice(index).join(" ");
-        const workingText = nextText === word.raw_text ? null : nextText;
+        const update = plan.updates[index];
+        const beforeText = update.beforeText;
+        const nextText = update.nextText;
+        const workingText = update.workingText;
 
         if (beforeText === nextText) {
           continue;
@@ -428,7 +437,7 @@ async function naivePersistWorking(
 
       const { error: utteranceError } = await client
         .from("transcript_utterances")
-        .update({ text: change.working_text })
+        .update({ text: plan.utteranceText })
         .eq("job_id", job.job_id)
         .eq("utterance_id", change.utterance_id);
 

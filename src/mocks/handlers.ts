@@ -16,6 +16,10 @@ import type {
   Word,
   Speaker,
 } from "../api/types";
+import {
+  planWorkingTextPersistence,
+  WorkingTextOverflowError,
+} from "../lib/transcript/workingTextPersistence";
 
 // Valid PCM WAV with a tiny low-amplitude tone so WaveSurfer can fully decode
 // and report readiness in the local mock runtime.
@@ -234,9 +238,17 @@ function applyWorkingTextChange(doc: EditorDocument, change: WorkingChange): Edi
   const wordIds = utterance.word_ids;
   if (wordIds.length === 0) return doc;
 
-  const tokens = change.working_text.trim().length > 0
-    ? change.working_text.trim().split(/\s+/)
-    : [""];
+  const plan = planWorkingTextPersistence(
+    change.utterance_id,
+    wordIds.map((wordId) => {
+      const word = doc.words.find((candidate) => candidate.word_id === wordId);
+      return {
+        word_id: wordId,
+        raw_text: word?.raw_text ?? "",
+      };
+    }),
+    change.working_text,
+  );
 
   const nextWords: Word[] = doc.words.map((word) => ({ ...word }));
   const wordIndexById = new Map(nextWords.map((w, i) => [w.word_id, i]));
@@ -246,10 +258,7 @@ function applyWorkingTextChange(doc: EditorDocument, change: WorkingChange): Edi
     const idx = wordIndexById.get(wordId);
     if (idx === undefined) continue;
 
-    const nextText =
-      i < wordIds.length - 1
-        ? (tokens[i] ?? "")
-        : tokens.slice(i).join(" ");
+    const nextText = plan.updates[i]?.nextText ?? "";
 
     nextWords[idx] = {
       ...nextWords[idx],
@@ -293,8 +302,15 @@ export const handlers = [
   http.put("*/:jobId/working", async ({ request }) => {
     const body = await request.json() as SaveWorkingPayload;
     const changes = body.changes ?? [];
-    for (const change of changes) {
-      workingDocumentState = applyWorkingTextChange(workingDocumentState, change);
+    try {
+      for (const change of changes) {
+        workingDocumentState = applyWorkingTextChange(workingDocumentState, change);
+      }
+    } catch (error) {
+      if (error instanceof WorkingTextOverflowError) {
+        return HttpResponse.json({ error: error.message }, { status: 409 });
+      }
+      throw error;
     }
     persistWorkingDocument(workingDocumentState);
     return HttpResponse.json({ saved: changes.length });

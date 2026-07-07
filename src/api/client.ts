@@ -52,7 +52,14 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
-    throw new Error(`API ${method} ${url} → ${res.status} ${res.statusText}`);
+    let detail = "";
+    try {
+      const payload = await res.json() as { error?: string };
+      detail = payload.error ? ` — ${payload.error}` : "";
+    } catch {
+      detail = "";
+    }
+    throw new Error(`API ${method} ${url} → ${res.status} ${res.statusText}${detail}`);
   }
   return res.json() as Promise<T>;
 }

@@ -12,6 +12,10 @@ import type {
   Utterance,
   Word,
 } from "../../../src/api/types.ts";
+import {
+  planWorkingTextPersistence,
+  WorkingTextOverflowError,
+} from "../../../src/lib/transcript/workingTextPersistence.ts";
 
 type Database = Record<string, never>;
 
@@ -67,6 +71,16 @@ type TranscriptWordRow = {
   ai_confidence?: number | null;
   ai_suggestion_status?: string | null;
   removed?: boolean | null;
+};
+
+type WorkingValidationWordRow = {
+  utterance_id: string;
+  word_id: string;
+  raw_text: string;
+  working_text: string | null;
+  removed?: boolean | null;
+  word_index?: number | null;
+  ordinal: number;
 };
 
 type CaseAudioRow = {
@@ -429,6 +443,7 @@ function normalizeSpeakerRole(value: string | null | undefined): Speaker["role"]
 async function handlePutWorking(context: RouteContext): Promise<Response> {
   const body = await parseJsonBody(context.request);
   const payload = validateSaveWorkingPayload(body);
+  await validateWorkingChanges(context, payload);
 
   const { data, error } = await context.supabase.rpc("editor_apply_working_changes", {
     p_transcript_id: context.transcript.transcript_id,
@@ -451,6 +466,54 @@ async function handlePutWorking(context: RouteContext): Promise<Response> {
   };
 
   return respondJson(200, response);
+}
+
+async function validateWorkingChanges(
+  context: RouteContext,
+  payload: SaveWorkingPayload,
+): Promise<void> {
+  const utteranceIds = [...new Set(payload.changes.map((change) => change.utterance_id))];
+  if (utteranceIds.length === 0) {
+    return;
+  }
+
+  const { data, error } = await context.supabase
+    .from("transcript_words")
+    .select("utterance_id, word_id, raw_text, working_text, removed, word_index, ordinal")
+    .eq("transcript_id", context.transcript.transcript_id)
+    .in("utterance_id", utteranceIds)
+    .order("word_index", { ascending: true, nullsFirst: false })
+    .order("ordinal", { ascending: true });
+
+  if (error) {
+    throw new HttpError(500, "failed to validate working transcript");
+  }
+
+  const rows = (data ?? []) as WorkingValidationWordRow[];
+  const wordsByUtterance = new Map<string, WorkingValidationWordRow[]>();
+  for (const row of rows) {
+    if (row.removed) {
+      continue;
+    }
+    const bucket = wordsByUtterance.get(row.utterance_id) ?? [];
+    bucket.push(row);
+    wordsByUtterance.set(row.utterance_id, bucket);
+  }
+
+  for (const change of payload.changes) {
+    const words = wordsByUtterance.get(change.utterance_id) ?? [];
+    if (words.length === 0) {
+      continue;
+    }
+    try {
+      planWorkingTextPersistence(change.utterance_id, words, change.working_text);
+    } catch (error) {
+      if (error instanceof WorkingTextOverflowError) {
+        throw new HttpError(409, error.message);
+      }
+      throw error;
+    }
+  }
 }
 
 async function parseJsonBody(request: Request): Promise<unknown> {
