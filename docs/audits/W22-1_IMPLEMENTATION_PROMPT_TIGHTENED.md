@@ -19,9 +19,9 @@ The Phase 0 audit in [W22-1_INTAKE_AUDIT_2026-07-06.md](C:\Users\james\projects\
 Therefore W22-1 must build only:
 
 1. a canonical transcript integrity checker on merged normalized output
-2. finalize-order gating around that checker
-3. completion gating on successful boundary processing
-4. overlap-risk diagnostics sufficient to surface integrity risk
+2. completion gating on successful boundary processing
+3. overlap-risk diagnostics sufficient to surface integrity risk
+4. finalize-order gating around that checker as a separate commit slice
 
 Do NOT build:
 
@@ -61,6 +61,10 @@ Reorder callback finalize so:
 7. only then mark job `complete`
 8. trigger AI review last
 
+This finalize reorder is the riskiest W22-1 change. Implement it as its own scoped
+commit, separate from the integrity-gate module and failure-routing changes, so it has
+an independent revert path.
+
 ### 3. Failure Routing
 
 If canonical integrity fails:
@@ -72,7 +76,8 @@ If canonical integrity fails:
 
 If boundary processing fails after ingest:
 
-- clean up canonical rows from the failed ingest attempt
+- clean up only the canonical rows ingested for that specific failing `job_id`
+- never delete or touch canonical rows belonging to any other job
 - persist the review-visible transcript summary
 - mark job with explicit `NEEDS_MANUAL_REVIEW` reason
 - do not mark job `complete`
@@ -101,8 +106,9 @@ Required tests:
 - no punctuation work
 - no auto-chunk redesign
 
-## Commit
+## Commits
 
-One scoped commit:
+Use two scoped commits:
 
-`fix: harden canonical transcript intake integrity gate`
+1. `fix: harden canonical transcript intake integrity gate`
+2. `fix: reorder transcript finalize after canonical and boundary gates`

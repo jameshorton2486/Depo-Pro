@@ -1,0 +1,86 @@
+DEPO-PRO — WAVE 22 EXECUTION RUNBOOK
+Date: 2026-07-07
+Branch: feature/stage3-workspace-core
+
+Purpose
+- Sequence the executable Wave 22 work in the correct order.
+- Keep beta-critical shipping ahead of speculative downstream engines.
+- Force a real-user checkpoint after W22-2 before continuing to W22-3 and beyond.
+
+Real stack
+- Vite + React + TypeScript
+- Supabase Edge Functions (Deno) + PostgreSQL
+- No Next.js / Prisma / Vercel API routes
+
+Execution order
+1. Step 0 — Full worktree triage
+   - Run Task 1b/1c classification and LAND/SHELVE proposal.
+   - Do not commit until the full-tree scope plan is approved.
+
+2. Step 0 — Split, commit, and shelve
+   - LAND only approved beta-relevant scopes.
+   - SHELVE deferred feature scopes to `wip/pre-w22-features`.
+   - Gate to advance: `git status` clean.
+
+3. W22-1 — Canonical Intake Pipeline
+   - Run only on the clean worktree.
+   - Separate commits:
+     - integrity gate / failure routing
+     - finalize reorder
+   - Gate to advance:
+     - Etminan duplicate-opening fixture caught by the integrity gate
+     - `npx tsc --noEmit -p tsconfig.app.json`
+     - `npm run test`
+     - `npm run build`
+     - completed job finalizes without duplicated opening
+
+4. W22-2 — Metadata, speaker resolution, structural reconstruction, inclusion pages
+   - Prioritize persisted structure and speaker ownership over render-time inference.
+   - Keep index rendering and final presentation boundaries disciplined.
+   - Gate to advance:
+     - Q/A structure materially restored on the Etminan fixture
+     - speaker labels materially corrected
+     - inclusion pages persisted and consumed
+     - `npx tsc --noEmit -p tsconfig.app.json`
+     - `npm run test`
+     - `npm run build`
+
+5. BETA CHECKPOINT — MIAH REVIEW REQUIRED
+   - STOP after W22-2.
+   - Put one real deposition in front of Miah.
+   - Do not continue to W22-3/4/5/6 until you have actual operator signal on:
+     - Q/A structure quality
+     - speaker label accuracy
+     - inclusion-page usefulness
+     - remaining highest-friction review pain
+   - Required question:
+     - does the current W22-1 + W22-2 output make the transcript meaningfully more reviewable in real work?
+   - If the answer is no, re-scope W22-3 onward from Miah’s feedback before implementing.
+   - If the answer is yes, continue in order below.
+
+6. W22-3 — Deterministic Correction Engine
+   - Run only after the checkpoint above.
+   - Extend existing registry/engine path; do not build a parallel engine.
+   - Hard guard:
+     - no case-specific proper noun, party name, attorney name, reporter name, or company name may be hardcoded into the global deterministic registry
+     - those must route through case-metadata / confirmed-spelling paths
+   - Add diagnostic first if legal-vocabulary false flags are coming from a layer other than deterministic spelling flags.
+
+7. W22-4 — Canonical Punctuation Engine
+   - Audit first, then implement.
+   - Own punctuation and spacing only.
+
+8. W22-5 — AI Context Engine + Validation
+   - Audit first, then implement.
+   - AI only for ambiguity not owned by deterministic engines.
+
+9. W22-6 — Workspace / Stage S / Export Alignment
+   - Audit first, then implement.
+   - Rendering consumes upstream decisions; it does not invent them.
+
+10. Post-beta recovery
+   - Use the dedicated recovery prompt to inventory and selectively restore shelved scopes from `wip/pre-w22-features`.
+
+Operating rule
+- If a step leaves the worktree dirty, do not start the next step.
+- If a prompt’s assumptions diverge from the code on disk, stop and re-audit.
