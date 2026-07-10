@@ -4,6 +4,7 @@ import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 import { buildFormattedTranscriptText } from "../../lib/transcriptDownloads";
+import { isCertificationLocked, isCertificationReady } from "../../lib/certification";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
@@ -31,12 +32,10 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
-  const certificationReady = useMemo(() => {
-    const certification = record.certification;
-    if (!certification) return false;
-    return certification.certification_statement.trim().length > 0
-      && Object.values(certification.checklist).every(Boolean);
-  }, [record.certification]);
+  const certificationReady = useMemo(
+    () => isCertificationReady(record.certification) && isCertificationLocked(record.certification),
+    [record.certification],
+  );
 
   async function handleCopyTranscript() {
     if (!transcriptText) return;

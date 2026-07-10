@@ -224,7 +224,7 @@ function summarizeIndicators(
   }
 
   for (const row of certificationRows) {
-    ensure(row.case_id).certified = true;
+    ensure(row.case_id).certified = Boolean(row.certification_date);
   }
 
   return indicators;
@@ -260,7 +260,7 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
       client.from("case_audio").select("case_id").in("case_id", caseIds),
       client.from("transcripts").select("case_id").in("case_id", caseIds),
       client.from("case_exhibits").select("case_id").in("case_id", caseIds),
-      client.from("case_certifications").select("case_id").in("case_id", caseIds),
+      client.from("case_certifications").select("case_id, certification_date").in("case_id", caseIds),
     ]);
 
   if (audioResult.error) throw audioResult.error;

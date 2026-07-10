@@ -158,6 +158,33 @@ describe("ExportScreen", () => {
     cleanup();
   });
 
+  it("keeps export gated until a ready transcript is explicitly certified", () => {
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: {
+          certification_date: null,
+          certification_statement: "Ready",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
+        },
+      },
+    });
+
+    const { container, cleanup } = renderExportScreen();
+    const exportTxtButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export TXT"));
+
+    expect(exportTxtButton?.hasAttribute("disabled")).toBe(true);
+    cleanup();
+  });
+
   it("shows DOCX and PDF as explicitly gated beta controls", () => {
     useIntakeMock.mockReturnValue({
       record: {

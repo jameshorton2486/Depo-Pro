@@ -156,7 +156,10 @@ describe("listRecentCases", () => {
       in: async () => ({ data: [{ case_id: "case_live" }, { case_id: "case_live" }], error: null }),
     });
     certificationsSelect.mockReturnValue({
-      in: async () => ({ data: [{ case_id: "case_live" }], error: null }),
+      in: async () => ({
+        data: [{ case_id: "case_live", certification_date: "2026-06-05" }],
+        error: null,
+      }),
     });
 
     await expect(listRecentCases()).resolves.toEqual([

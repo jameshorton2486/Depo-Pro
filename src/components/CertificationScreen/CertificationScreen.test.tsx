@@ -169,4 +169,50 @@ describe("CertificationScreen", () => {
     expect(container.textContent).toContain("Derived");
     cleanup();
   });
+
+  it("requires an explicit certification action after all checks are ready", () => {
+    const record = buildReadyRecord();
+    record.certification = {
+      ...record.certification!,
+      checklist: {
+        ...record.certification!.checklist,
+        exhibits_complete: true,
+        ufm_complete: true,
+      },
+    };
+    const setCertification = vi.fn();
+    useIntakeMock.mockReturnValue({ record, setCertification, dirty: false });
+
+    const { container, cleanup } = renderScreen();
+    expect(setCertification).not.toHaveBeenCalled();
+
+    const certifyButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Certify Transcript"));
+    act(() => certifyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+
+    expect(setCertification).toHaveBeenCalledWith(expect.objectContaining({
+      certification_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    }));
+    cleanup();
+  });
+
+  it("disables certification controls after the transcript is locked", () => {
+    const record = buildReadyRecord();
+    record.certification = {
+      ...record.certification!,
+      certification_date: "2026-07-10",
+      checklist: {
+        ...record.certification!.checklist,
+        exhibits_complete: true,
+        ufm_complete: true,
+      },
+    };
+    useIntakeMock.mockReturnValue({ record, setCertification: vi.fn(), dirty: false });
+
+    const { container, cleanup } = renderScreen();
+    const inputs = Array.from(container.querySelectorAll("input, textarea")) as Array<HTMLInputElement | HTMLTextAreaElement>;
+    expect(inputs.every((input) => input.disabled)).toBe(true);
+    expect(container.textContent).toContain("Transcript certified and locked");
+    cleanup();
+  });
 });
