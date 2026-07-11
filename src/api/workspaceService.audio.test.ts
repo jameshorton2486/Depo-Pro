@@ -225,4 +225,66 @@ describe("workspaceService audio fallback", () => {
     expect(result.document.media_url).toBe("https://signed.example/audio.m4a");
     expect(result.audioSegments[0]?.mediaUrl).toBe("https://signed.example/audio.m4a");
   });
+
+  it("does not leave removed words referenced by visible utterances", async () => {
+    vi.doMock("../lib/runtime/mode", () => ({
+      isRealApiMode: () => false,
+    }));
+
+    const transcript = {
+      ...buildTranscriptRow(),
+      media_url: "case_123/audio/source.m4a",
+    };
+    repo.getTranscriptJobByTranscriptId.mockResolvedValue(transcript);
+    repo.loadTranscriptSnapshot.mockResolvedValue({
+      job: transcript,
+      speakers: [],
+      speakerResolutions: [],
+      utterances: [{
+        utterance_id: "utt_1",
+        speaker_id: "spk_1",
+        start_time: 0,
+        end_time: 2,
+        excluded_from_output: false,
+      }],
+      words: [
+        {
+          word_id: "word_kept",
+          raw_text: "kept",
+          working_text: null,
+          ai_suggestion: null,
+          ai_suggestion_status: null,
+          speaker_id: "spk_1",
+          utterance_id: "utt_1",
+          start_time: 0,
+          end_time: 1,
+          confidence: 0.99,
+          reviewed: false,
+          removed: false,
+        },
+        {
+          word_id: "word_removed",
+          raw_text: "removed",
+          working_text: null,
+          ai_suggestion: null,
+          ai_suggestion_status: null,
+          speaker_id: "spk_1",
+          utterance_id: "utt_1",
+          start_time: 1,
+          end_time: 2,
+          confidence: 0.99,
+          reviewed: false,
+          removed: true,
+        },
+      ],
+    });
+    getSignedUrl.mockResolvedValue("https://signed.example/source.m4a");
+
+    const { workspaceApi } = await import("./workspaceService");
+    const result = await workspaceApi.getDocument("tr_123");
+
+    expect(result.document.utterances[0]?.word_ids).toEqual(["word_kept"]);
+    expect(result.document.words.map((word) => word.word_id)).toEqual(["word_kept"]);
+  });
+
 });

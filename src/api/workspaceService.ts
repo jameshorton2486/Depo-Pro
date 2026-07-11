@@ -99,7 +99,7 @@ function buildEditorDocumentFromSnapshot(
   const visibleUtteranceIds = new Set(visibleUtterances.map((utterance) => utterance.utterance_id));
   const wordIdsByUtterance = new Map<string, string[]>();
   for (const word of snapshot.words) {
-    if (!visibleUtteranceIds.has(word.utterance_id)) {
+    if (word.removed || !visibleUtteranceIds.has(word.utterance_id)) {
       continue;
     }
     const ids = wordIdsByUtterance.get(word.utterance_id) ?? [];
