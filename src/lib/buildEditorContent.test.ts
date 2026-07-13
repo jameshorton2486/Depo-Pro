@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildEditorContent } from "./buildEditorContent";
 import type { EditorDocument } from "../api/types";
 import type { CaseRecord } from "../types/case";
+import type { StructuredUtterance } from "./transcript/structuredTranscript";
 
 function makeDoc(overrides?: Partial<EditorDocument>): EditorDocument {
   return {
@@ -307,6 +308,7 @@ describe("buildEditorContent", () => {
     expect(rawAttrs.prefix_text).toBe("SPEAKER 1:");
     expect(confirmedAttrs.speaker_label).toBe("THE REPORTER");
     expect(confirmedAttrs.prefix_text).toBe("THE REPORTER:");
+    expect(confirmedAttrs.role).toBe("REPORTER");
   });
   it("keeps raw labels when keepRawLabels is selected after banner dismissal", () => {
     const doc = makeSingleUtteranceDoc([
@@ -506,6 +508,151 @@ describe("buildEditorContent", () => {
 
     expect(answerAttrs.prefix_text).toBe("A.");
     expect(answerAttrs.formatted_line_role).toBe("a");
+  });
+
+  it("prefers persisted line_type and speaker_label over render-time inference when structured data exists", () => {
+    const doc = makeDoc({
+      speakers: [
+        {
+          speaker_id: "spk-1",
+          display_name: "Speaker 1",
+          deepgram_speaker: 0,
+          role: "OTHER",
+        },
+      ],
+      utterances: [
+        {
+          utterance_id: "utt-1",
+          speaker_id: "spk-1",
+          start_time: 0,
+          end_time: 1,
+          word_ids: ["word-1", "word-2"],
+          line_type: "Q",
+          speaker_label: "MR. BENTLEY",
+        } as StructuredUtterance,
+      ],
+      words: [
+        makeWord("word-1", "Please", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+        makeWord("word-2", "proceed.", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+      ],
+    });
+
+    const attrs = firstUtteranceAttrs(buildEditorContent(doc, {
+      structureConfirmed: true,
+    }));
+
+    expect(attrs.prefix_text).toBe("Q.");
+    expect(attrs.formatted_line_role).toBe("q");
+    expect(attrs.speaker_label).toBe("MR. BENTLEY");
+  });
+
+  it("reads structured speaker role from the contract instead of inferring it in the workspace", () => {
+    const doc = makeSingleUtteranceDoc([
+      makeWord("word-1", "This", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+      makeWord("word-2", "is cause number", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+      makeWord("word-3", "123.", {
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+      }),
+    ]);
+    doc.speakers = [
+      {
+        speaker_id: "spk-1",
+        display_name: "Speaker 1",
+        deepgram_speaker: 1,
+        role: "OTHER",
+      },
+    ];
+
+    const attrs = firstUtteranceAttrs(buildEditorContent(doc, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    }));
+
+    expect(attrs.speaker_label).toBe("THE REPORTER");
+    expect(attrs.role).toBe("REPORTER");
+    expect(attrs.prefix_text).toBe("THE REPORTER:");
+  });
+
+  it("falls back to legacy render-time inference when persisted line_type is absent", () => {
+    const doc = makeSingleUtteranceDoc([
+      makeWord("word-1", "This", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+      makeWord("word-2", "is cause number", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+      makeWord("word-3", "123.", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+    ]);
+    doc.speakers = [
+      {
+        speaker_id: "spk-1",
+        display_name: "Speaker 1",
+        deepgram_speaker: 1,
+        role: "OTHER",
+      },
+    ];
+
+    const attrs = firstUtteranceAttrs(buildEditorContent(doc, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    }));
+
+    expect(attrs.speaker_label).toBe("THE REPORTER");
+    expect(attrs.prefix_text).toBe("THE REPORTER:");
+  });
+
+  it("builds editor content for large synthetic transcripts without dropping utterance blocks", () => {
+    const utterances: EditorDocument["utterances"] = [];
+    const words: EditorDocument["words"] = [];
+
+    for (let index = 0; index < 300; index += 1) {
+      const utteranceId = `utt-${index + 1}`;
+      const firstWordId = `w-${index + 1}-1`;
+      const secondWordId = `w-${index + 1}-2`;
+      utterances.push({
+        utterance_id: utteranceId,
+        speaker_id: "spk-1",
+        start_time: index,
+        end_time: index + 1,
+        word_ids: [firstWordId, secondWordId],
+      });
+      words.push(
+        {
+          word_id: firstWordId,
+          text: "Question",
+          raw_text: "Question",
+          speaker_id: "spk-1",
+          utterance_id: utteranceId,
+          start_time: index,
+          end_time: index + 0.4,
+          confidence: 1,
+          reviewed: false,
+          edited: false,
+        },
+        {
+          word_id: secondWordId,
+          text: String(index + 1),
+          raw_text: String(index + 1),
+          speaker_id: "spk-1",
+          utterance_id: utteranceId,
+          start_time: index + 0.4,
+          end_time: index + 0.8,
+          confidence: 1,
+          reviewed: false,
+          edited: false,
+        },
+      );
+    }
+
+    const content = buildEditorContent(makeDoc({ utterances, words }));
+    const contentUtterances = content.content?.filter((node) => node.type === "utterance") ?? [];
+
+    expect(contentUtterances).toHaveLength(300);
+    expect(contentUtterances[0]?.attrs?.utterance_id).toBe("utt-1");
+    expect(contentUtterances[299]?.attrs?.utterance_id).toBe("utt-300");
   });
 
 });

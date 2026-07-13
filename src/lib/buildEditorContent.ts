@@ -6,8 +6,9 @@ import { abbreviationRegistry } from "./format/abbreviationRegistry";
 import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { ENABLE_DISPLAY_TURN_SEGMENTATION } from "./format/grouping";
-import { buildDisplayDocument, buildTranscriptParagraphs, resolveWordDisplay } from "./transcript/workspacePresentation";
 import type { FormattedLineRole } from "./format/types";
+import { buildStructuredTranscriptPackage } from "./transcript/structuredTranscriptPackage";
+import { resolveWordDisplay } from "./transcript/wordDisplay";
 
 type OverlayWord = EditorDocument["words"][number] & {
   working_text?: string | null;
@@ -195,7 +196,7 @@ function formattedLineRoleToSpeakerRole(
 }
 
 function paragraphKindToFormattedLineRole(
-  kind: "Q" | "A" | "COLLOQUY" | "PARENTHETICAL" | "BY_LINE" | "SECTION_HEADER",
+  kind: "Q" | "A" | "COLLOQUY" | "PARENTHETICAL" | "BY_LINE" | "SECTION_HEADER" | "DOCUMENT_BLOCK",
   sourceRole: FormattedLineRole | undefined,
 ): FormattedLineRole {
   if (kind === "Q") return "q";
@@ -203,6 +204,7 @@ function paragraphKindToFormattedLineRole(
   if (kind === "BY_LINE") return "by_line";
   if (kind === "SECTION_HEADER") return "section_header";
   if (kind === "PARENTHETICAL") return "parenthetical";
+  if (kind === "DOCUMENT_BLOCK") return "continuation";
   return sourceRole ?? "speaker_label";
 }
 
@@ -224,7 +226,11 @@ export function buildEditorContent(
   };
   const languageMap = options?.languageMap;
   const shouldInferStructure = options?.structureConfirmed && !options?.keepRawLabels;
-  const displayDoc = shouldInferStructure ? buildDisplayDocument(visibleDoc, options.record) : visibleDoc;
+  const structuredTranscript = shouldInferStructure
+    ? buildStructuredTranscriptPackage(visibleDoc, { record: options?.record, mode: "display" })
+    : null;
+  const speakerById = new Map((structuredTranscript?.speakers ?? []).map((speaker) => [speaker.speakerId, speaker]));
+  const displayDoc = visibleDoc;
 
   if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
     return buildLegacyEditorContent(displayDoc, languageMap);
@@ -310,7 +316,7 @@ export function buildEditorContent(
   const blocks: JSONContent[] = [];
   let currentPage = 0;
   const displayWordById = new Map(displayDoc.words.map((word) => [word.word_id, word as OverlayWord]));
-  const paragraphs = buildTranscriptParagraphs(visibleDoc, options?.record, "display");
+  const paragraphs = structuredTranscript?.paragraphs ?? [];
 
   paragraphs.forEach((paragraph, paragraphIndex) => {
     if (paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE") {
@@ -330,9 +336,8 @@ export function buildEditorContent(
       currentPage = blockPage;
     }
 
-    const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === paragraph.speakerId);
     const formattedLineRole = paragraphKindToFormattedLineRole(paragraph.kind, sourceLine?.role);
-    const role = formattedLineRoleToSpeakerRole(formattedLineRole, speaker?.role ?? null);
+    const role = paragraph.speakerRole ?? speakerById.get(paragraph.speakerId ?? "")?.role ?? null;
     const overlayWords = paragraph.words.map((word) => {
       const sourceWord = displayWordById.get(word.word_id);
       const resolvedWord = resolveWordDisplay(sourceWord
@@ -359,15 +364,17 @@ export function buildEditorContent(
       type: "utterance",
       attrs: {
         formatted_line_role: formattedLineRole,
-        utterance_id: paragraph.sourceUtteranceIds[0] ?? `paragraph-${paragraphIndex + 1}`,
+        utterance_id: paragraph.id,
         speaker_id: paragraph.speakerId,
-        speaker_label: sourceLine?.speaker_label ?? speaker?.display_name ?? paragraph.label,
+        speaker_label: paragraph.speakerLabel,
         prefix_text: paragraph.kind === "Q"
           ? "Q."
           : paragraph.kind === "A"
             ? "A."
             : paragraph.kind === "PARENTHETICAL"
               ? ""
+              : paragraph.kind === "DOCUMENT_BLOCK"
+                ? ""
               : `${paragraph.label}:`,
         line_number: sourceLine?.line_number ?? paragraphIndex + 1,
         page_line_number: sourceLine?.page_line_number ?? paragraphIndex + 1,
