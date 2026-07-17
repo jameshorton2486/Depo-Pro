@@ -32,6 +32,9 @@ export type TranscriptJobRow = {
   pipeline_state?: string | null;
   speaker_map_verified?: boolean;
   ai_review_meta?: Record<string, unknown> | null;
+  original_storage_path?: string | null;
+  original_checksum?: string | null;
+  original_captured_at?: string | null;
   created_at: string;
   updated_at: string;
 };

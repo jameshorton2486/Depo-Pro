@@ -1,4 +1,4 @@
-import type { DeepgramKeyterm } from "../../types/case.ts";
+import type { DeepgramConfig, DeepgramKeyterm } from "../../types/case.ts";
 import { DEEPGRAM_KEYTERM_HARD_TOKEN_CAP, estimateSelectedStoredKeytermTokens } from "../keytermDerivation.ts";
 import { readStoredKeytermMeta } from "../keyterms/managedKeyterms.ts";
 
@@ -25,6 +25,7 @@ export interface DeepgramRequestPreviewEnvelope {
     language: string;
     mip_opt_out: string;
   };
+  effective_config: { audio_profile: DeepgramConfig["audio_profile"]; expected_speaker_count: number | null };
   keyterms: Array<{
     term: string;
     boost: number;
@@ -47,12 +48,47 @@ export interface DeepgramRequestBuildResult {
 const DEEPGRAM_ENDPOINT = "https://api.deepgram.com/v1/listen";
 const MAX_KEYTERMS = 100;
 
+// System-default utterance split. Used to detect whether a stored config still
+// carries the factory value (in which case the audio profile chooses a better
+// endpointing window) versus a value the reporter deliberately tuned.
+const FACTORY_UTT_SPLIT_SECONDS = 0.8;
+
+// Utterance endpointing per acoustic profile. Remote/telephone audio carries
+// network latency and longer inter-speaker gaps, so a slightly wider split
+// reduces spurious mid-turn utterance breaks; in-room profiles keep the tighter
+// default. This is the one Deepgram batch lever the profile can meaningfully
+// drive today — previously audio_profile only appeared in the preview envelope
+// and never reached the wire.
+export const AUDIO_PROFILE_UTT_SPLIT_SECONDS: Record<DeepgramConfig["audio_profile"], number> = {
+  clean: 0.8,
+  courtroom: 0.8,
+  remote: 1.0,
+  telephone: 1.0,
+};
+
+function resolveUttSplitSeconds(config: DeepgramConfig | undefined): number {
+  const audioProfile = config?.audio_profile ?? "clean";
+  const profileSplit = AUDIO_PROFILE_UTT_SPLIT_SECONDS[audioProfile] ?? FACTORY_UTT_SPLIT_SECONDS;
+  // Respect an explicitly tuned value; otherwise let the profile decide. A stored
+  // value equal to the factory default is treated as "unset" so a chosen profile
+  // still takes effect.
+  if (typeof config?.utterance_split_seconds === "number" && config.utterance_split_seconds !== FACTORY_UTT_SPLIT_SECONDS) {
+    return config.utterance_split_seconds;
+  }
+  return profileSplit;
+}
+
+// Wire defaults used only when a stored DeepgramConfig does not override a field.
+// numerals is intentionally "false" to match defaultDeepgramConfig(): with
+// smart_format enabled Deepgram still formats numbers in context (dates, times,
+// money, cause numbers), while spelled-out counts are left for the reporter's
+// number-style pass. Keep this in sync with defaultDeepgramConfig().numerals.
 export const DEEPGRAM_REQUEST_PARAMS = {
   model: "nova-3",
   punctuate: "true",
   diarize_model: "latest",
   filler_words: "true",
-  numerals: "true",
+  numerals: "false",
   utterances: "true",
   utt_split: "0.8",
   smart_format: "true",
@@ -108,13 +144,30 @@ function normalizeSelectedKeyterms(keyterms: DeepgramRequestKeyterm[]) {
 export function buildDeepgramRequest(input: {
   caseId: string;
   keyterms: DeepgramRequestKeyterm[];
+  config?: DeepgramConfig;
   computedAt?: string;
 }): DeepgramRequestBuildResult {
   const computedAt = input.computedAt ?? new Date().toISOString();
   const normalized = normalizeSelectedKeyterms(input.keyterms);
   const wireKeyterms = normalized.slice(0, MAX_KEYTERMS).map((keyterm) => keyterm.term);
   const cutCount = normalized.length - wireKeyterms.length;
-  const params = new URLSearchParams(DEEPGRAM_REQUEST_PARAMS);
+  const config = input.config;
+  const requestParams: Record<string, string> = {
+    ...DEEPGRAM_REQUEST_PARAMS,
+    model: config?.model || DEEPGRAM_REQUEST_PARAMS.model,
+    punctuate: String(config?.punctuate ?? true),
+    numerals: String(config?.numerals ?? false),
+    utterances: String(config?.utterances ?? true),
+    utt_split: String(resolveUttSplitSeconds(config)),
+    smart_format: String(config?.smart_format ?? true),
+    language: config?.language || DEEPGRAM_REQUEST_PARAMS.language,
+  };
+  if (config?.diarize === false) {
+    delete requestParams.diarize_model;
+  } else {
+    requestParams.diarize_model = config?.diarize_version || DEEPGRAM_REQUEST_PARAMS.diarize_model;
+  }
+  const params = new URLSearchParams(requestParams);
 
   for (const keyterm of wireKeyterms) {
     params.append("keyterm", keyterm);
@@ -126,7 +179,11 @@ export function buildDeepgramRequest(input: {
     envelope: {
       case_id: input.caseId,
       computed_at: computedAt,
-      deepgram_request: { ...DEEPGRAM_REQUEST_PARAMS },
+      deepgram_request: requestParams as DeepgramRequestPreviewEnvelope["deepgram_request"],
+      effective_config: {
+        audio_profile: config?.audio_profile ?? "clean",
+        expected_speaker_count: config?.speaker_count ?? null,
+      },
       keyterms: normalized.map((keyterm) => ({
         term: keyterm.term,
         boost: toDisplayBoost(keyterm.boost),
@@ -150,11 +207,13 @@ export function buildDeepgramRequest(input: {
 export function buildDeepgramRequestFromStoredKeyterms(input: {
   caseId: string;
   keyterms: DeepgramKeyterm[];
+  config?: DeepgramConfig;
   computedAt?: string;
 }): DeepgramRequestBuildResult {
   const request = buildDeepgramRequest({
     caseId: input.caseId,
     computedAt: input.computedAt,
+    config: input.config,
     keyterms: input.keyterms.map((keyterm) => {
       const meta = readStoredKeytermMeta(keyterm.notes ?? "");
       return {

@@ -23,6 +23,10 @@ export interface TranscriptionJobRecord {
   auto_seed_audit: TranscriptionJobAutoSeedAudit | null;
   created_at: string;
   updated_at: string;
+  // Not a stored column today: the callback reads it defensively (?? 0). Optional
+  // so it can be populated later without a type break, and so edge-function
+  // type-checking does not treat the access as an error.
+  duration_seconds?: number | null;
 }
 
 export const TRANSCRIPTION_ARTIFACT_CATEGORY = "transcription";

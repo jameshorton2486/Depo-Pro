@@ -151,6 +151,120 @@ describe("mergeSourceTranscriptSegments", () => {
     expect(merged.normalized.words.every((word) => word.confidence === 0.95)).toBe(true);
   });
 
+  it("stitches the same speaker across chunks even when Deepgram swaps the indices", () => {
+    // Both chunks are slices of one physical recording. Deepgram diarizes each
+    // independently, so speaker A is index 0 in chunk 0 but index 1 in chunk 1
+    // (and B is the mirror). Both speakers talk in the shared 8-10s overlap, so
+    // the merge should collapse them to exactly two canonical speakers.
+    const response = createOfflineDeepgramFixture("case_reid");
+    const audioId = "audio_physical";
+
+    const makeWord = (
+      wordIndex: number,
+      text: string,
+      start: number,
+      end: number,
+      speakerIndex: number,
+    ) => ({
+      word_id: `w_${String(wordIndex).padStart(8, "0")}`,
+      utterance_id: `utt_${String(speakerIndex).padStart(6, "0")}_${Math.floor(start)}`,
+      word_index: wordIndex,
+      raw_text: text,
+      working_text: null,
+      speaker_id: `spk_${String(speakerIndex).padStart(3, "0")}`,
+      speaker_index: speakerIndex,
+      start_time: start,
+      end_time: end,
+      confidence: 0.9,
+      is_filler: false,
+      reviewed: false,
+      edited: false,
+    });
+
+    const buildChunkSegment = (
+      sourceIndex: number,
+      startSeconds: number,
+      endSeconds: number,
+      words: ReturnType<typeof makeWord>[],
+    ) => {
+      const speakerIndexes = [...new Set(words.map((word) => word.speaker_index))].sort((a, b) => a - b);
+      const utteranceIds = [...new Set(words.map((word) => word.utterance_id))];
+      return {
+        source_audio_id: audioId,
+        source_index: sourceIndex,
+        source_filename: `chunk_${sourceIndex}.mp3`,
+        mime_type: "audio/mpeg",
+        storage_path: `cases/reid/${audioId}.mp3`,
+        media_url: null,
+        response,
+        normalized: {
+          durationSeconds: endSeconds - startSeconds,
+          avgConfidence: 0.9,
+          speakers: speakerIndexes.map((speakerIndex) => ({
+            speaker_id: `spk_${String(speakerIndex).padStart(3, "0")}`,
+            speaker_index: speakerIndex,
+            speaker_label: `Speaker ${speakerIndex}`,
+            assigned_name: null,
+            speaker_role: null,
+            word_count: words.filter((word) => word.speaker_index === speakerIndex).length,
+          })),
+          utterances: utteranceIds.map((utteranceId, index) => {
+            const utteranceWords = words.filter((word) => word.utterance_id === utteranceId);
+            return {
+              utterance_id: utteranceId,
+              utterance_index: index,
+              speaker_id: utteranceWords[0].speaker_id,
+              speaker_index: utteranceWords[0].speaker_index,
+              speaker_label: `Speaker ${utteranceWords[0].speaker_index}`,
+              start_time: utteranceWords[0].start_time,
+              end_time: utteranceWords[utteranceWords.length - 1].end_time,
+              text: utteranceWords.map((word) => word.raw_text).join(" "),
+              avg_confidence: 0.9,
+            };
+          }),
+          words,
+        },
+        fallback_duration_seconds: endSeconds - startSeconds,
+        virtual_chunk: {
+          chunk_index: sourceIndex,
+          start_seconds: startSeconds,
+          end_seconds: endSeconds,
+          nominal_offset_seconds: startSeconds,
+          overlap_with_next_seconds: sourceIndex === 0 ? 2 : 0,
+        },
+      };
+    };
+
+    // Chunk 0: A=index0, B=index1. Overlap (8-10) has A@8-9 then B@9-10.
+    const chunk0 = buildChunkSegment(0, 0, 10, [
+      makeWord(0, "alpha", 0, 2, 0),
+      makeWord(1, "beta", 4, 6, 1),
+      makeWord(2, "shared-a", 8, 9, 0),
+      makeWord(3, "shared-b", 9, 10, 1),
+    ]);
+    // Chunk 1: indices swapped — A=index1, B=index0. Same overlap words.
+    const chunk1 = buildChunkSegment(1, 8, 18, [
+      makeWord(0, "shared-a", 8, 9, 1),
+      makeWord(1, "shared-b", 9, 10, 0),
+      makeWord(2, "gamma", 12, 14, 0),
+      makeWord(3, "delta", 16, 18, 1),
+    ]);
+
+    const merged = mergeSourceTranscriptSegments([chunk0, chunk1]);
+
+    expect(merged.normalized.speakers).toHaveLength(2);
+
+    const speakerIdByText = new Map(
+      merged.normalized.words.map((word) => [word.raw_text, word.speaker_id]),
+    );
+    // Speaker A words share one identity across both chunks; B shares the other.
+    expect(speakerIdByText.get("alpha")).toBe(speakerIdByText.get("shared-a"));
+    expect(speakerIdByText.get("shared-a")).toBe(speakerIdByText.get("delta"));
+    expect(speakerIdByText.get("beta")).toBe(speakerIdByText.get("shared-b"));
+    expect(speakerIdByText.get("shared-b")).toBe(speakerIdByText.get("gamma"));
+    expect(speakerIdByText.get("alpha")).not.toBe(speakerIdByText.get("beta"));
+  });
+
   it("assigns an utterance_id to every merged word (no orphaned words from identity collisions)", () => {
     const first = buildSegment("case_orphan_check", 0, {
       sourceAudioId: "audio_shared",

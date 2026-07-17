@@ -114,15 +114,53 @@ function isVirtualChunkMerge(segments: SourceTranscriptSegment[]): boolean {
   return segments.length > 1 && segments.every((segment) => segment.virtual_chunk);
 }
 
+// Minimal union-find over "sourceIndex:chunkSpeakerIndex" nodes. Deepgram numbers
+// speakers independently per chunk, so the same person can be Speaker 0 in one
+// chunk and Speaker 1 in the next. We recover a single identity by unioning the
+// two chunk-speaker nodes whenever a word is transcribed in the shared overlap
+// window by both chunks (i.e. detected as a duplicate below).
+class SpeakerUnionFind {
+  private readonly parent = new Map<string, string>();
+
+  find(node: string): string {
+    const current = this.parent.get(node);
+    if (current === undefined) {
+      this.parent.set(node, node);
+      return node;
+    }
+    if (current === node) {
+      return node;
+    }
+    const root = this.find(current);
+    this.parent.set(node, root);
+    return root;
+  }
+
+  union(a: string, b: string): void {
+    const rootA = this.find(a);
+    const rootB = this.find(b);
+    if (rootA !== rootB) {
+      this.parent.set(rootA, rootB);
+    }
+  }
+}
+
+function chunkSpeakerNode(sourceIndex: number, speakerIndex: number): string {
+  return `${sourceIndex}:${speakerIndex}`;
+}
+
 function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]): MergedTranscriptResult {
   const mergedSegments: MergedSourceSegment[] = [];
-  const mergedSpeakers = new Map<string, CanonicalSpeakerRow>();
-  const speakerSourceKeys = new Map<string, string>();
   const candidateWords: Array<CanonicalWordRow & {
     sourceUtteranceKey: string;
     sourceUtteranceOrder: number;
-    speakerLabel: string;
+    sourceIndex: number;
+    chunkSpeakerIndex: number;
   }> = [];
+  const speakerIdentities = new SpeakerUnionFind();
+  // All virtual chunks are slices of one physical recording, so they share a
+  // single source_audio_id; canonical speaker ids stay namespaced under it.
+  const physicalAudioId = segments[0]?.source_audio_id ?? "";
   let utteranceOrder = 0;
 
   for (const segment of segments) {
@@ -143,36 +181,25 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
       duration_seconds: durationSeconds,
     });
 
+    // Register every chunk speaker as its own identity up front. Overlap
+    // duplicates then union the ones that are really the same person.
     for (const speaker of segment.normalized.speakers) {
-      const speakerId = stableChunkSpeakerId(segment.source_audio_id, speaker.speaker_index);
-      if (!mergedSpeakers.has(speakerId)) {
-        mergedSpeakers.set(speakerId, {
-          speaker_id: speakerId,
-          speaker_index: speaker.speaker_index,
-          speaker_label: stableChunkSpeakerLabel(speaker.speaker_index),
-          assigned_name: null,
-          speaker_role: null,
-          word_count: 0,
-        });
-      }
-      speakerSourceKeys.set(`${segment.source_index}:${speaker.speaker_id}`, speakerId);
+      speakerIdentities.find(chunkSpeakerNode(segment.source_index, speaker.speaker_index));
     }
 
     for (const utterance of segment.normalized.utterances) {
       utteranceOrder += 1;
       for (const word of segment.normalized.words.filter((candidate) => candidate.utterance_id === utterance.utterance_id)) {
-        const speakerId = speakerSourceKeys.get(`${segment.source_index}:${word.speaker_id}`)
-          ?? stableChunkSpeakerId(segment.source_audio_id, word.speaker_index);
         candidateWords.push({
           ...word,
           word_id: "",
           utterance_id: utterance.utterance_id,
-          speaker_id: speakerId,
           start_time: word.start_time + rebasedOffsetSeconds,
           end_time: word.end_time + rebasedOffsetSeconds,
           sourceUtteranceKey: `${segment.source_index}:${utterance.utterance_id}`,
           sourceUtteranceOrder: utteranceOrder,
-          speakerLabel: stableChunkSpeakerLabel(word.speaker_index),
+          sourceIndex: segment.source_index,
+          chunkSpeakerIndex: word.speaker_index,
         });
       }
     }
@@ -202,7 +229,14 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
     );
 
     if (duplicateIndex >= 0) {
-      if (candidate.confidence > dedupedWords[duplicateIndex].confidence) {
+      // Same spoken word heard by two chunks: their per-chunk speaker indices
+      // denote one person, so stitch the identities together.
+      const existing = dedupedWords[duplicateIndex];
+      speakerIdentities.union(
+        chunkSpeakerNode(existing.sourceIndex, existing.chunkSpeakerIndex),
+        chunkSpeakerNode(candidate.sourceIndex, candidate.chunkSpeakerIndex),
+      );
+      if (candidate.confidence > existing.confidence) {
         dedupedWords[duplicateIndex] = candidate;
       }
       continue;
@@ -221,21 +255,52 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
     return left.sourceUtteranceOrder - right.sourceUtteranceOrder;
   });
 
-  const mergedWords: CanonicalWordRow[] = dedupedWords.map((word, index) => ({
-    word_id: wordIdForIndex(index),
-    utterance_id: "",
-    word_index: index,
-    raw_text: word.raw_text,
-    working_text: word.working_text,
-    speaker_id: word.speaker_id,
-    speaker_index: word.speaker_index,
-    start_time: word.start_time,
-    end_time: word.end_time,
-    confidence: word.confidence,
-    is_filler: word.is_filler,
-    reviewed: word.reviewed,
-    edited: word.edited,
-  }));
+  // Collapse the stitched chunk-speaker identities into canonical speakers,
+  // numbered by first appearance in the merged, time-ordered word stream so the
+  // output matches single-file diarization (0-based, stable ordering).
+  const canonicalIndexByRoot = new Map<string, number>();
+  const mergedSpeakers = new Map<string, CanonicalSpeakerRow>();
+  const canonicalForWord = (word: typeof dedupedWords[number]): { id: string; index: number } => {
+    const root = speakerIdentities.find(chunkSpeakerNode(word.sourceIndex, word.chunkSpeakerIndex));
+    let index = canonicalIndexByRoot.get(root);
+    if (index === undefined) {
+      index = canonicalIndexByRoot.size;
+      canonicalIndexByRoot.set(root, index);
+    }
+    return { id: stableChunkSpeakerId(physicalAudioId, index), index };
+  };
+
+  const mergedWords: CanonicalWordRow[] = dedupedWords.map((word, index) => {
+    const canonical = canonicalForWord(word);
+    const existingSpeaker = mergedSpeakers.get(canonical.id);
+    if (existingSpeaker) {
+      existingSpeaker.word_count += 1;
+    } else {
+      mergedSpeakers.set(canonical.id, {
+        speaker_id: canonical.id,
+        speaker_index: canonical.index,
+        speaker_label: stableChunkSpeakerLabel(canonical.index),
+        assigned_name: null,
+        speaker_role: null,
+        word_count: 1,
+      });
+    }
+    return {
+      word_id: wordIdForIndex(index),
+      utterance_id: "",
+      word_index: index,
+      raw_text: word.raw_text,
+      working_text: word.working_text,
+      speaker_id: canonical.id,
+      speaker_index: canonical.index,
+      start_time: word.start_time,
+      end_time: word.end_time,
+      confidence: word.confidence,
+      is_filler: word.is_filler,
+      reviewed: word.reviewed,
+      edited: word.edited,
+    };
+  });
 
   const utteranceBuckets = new Map<string, { order: number; words: Array<typeof dedupedWords[number]> }>();
   for (const word of dedupedWords) {
@@ -262,12 +327,13 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
     const utteranceId = utteranceIdForIndex(utteranceIndex);
     const firstWord = words[0];
     const lastWord = words[words.length - 1];
+    const canonical = canonicalForWord(firstWord);
     mergedUtterances.push({
       utterance_id: utteranceId,
       utterance_index: utteranceIndex,
-      speaker_id: firstWord.speaker_id,
-      speaker_index: firstWord.speaker_index,
-      speaker_label: firstWord.speakerLabel,
+      speaker_id: canonical.id,
+      speaker_index: canonical.index,
+      speaker_label: stableChunkSpeakerLabel(canonical.index),
       start_time: firstWord.start_time,
       end_time: lastWord.end_time,
       text: words.map((word) => word.raw_text).join(" "),
@@ -281,10 +347,6 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
       }
     }
   });
-
-  for (const speaker of mergedSpeakers.values()) {
-    speaker.word_count = mergedWords.filter((word) => word.speaker_id === speaker.speaker_id).length;
-  }
 
   const durationSeconds = mergedWords.length > 0
     ? mergedWords[mergedWords.length - 1].end_time

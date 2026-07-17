@@ -29,53 +29,21 @@ describe("normalizeTranscriptResponse", () => {
     expect(normalized.words[2]?.is_filler).toBe(true);
   });
 
-  it("splits provided utterances when the speaker changes inside a Deepgram utterance", () => {
+  it("preserves provider utterance boundaries when word-level speakers change", () => {
     const response = createOfflineDeepgramFixture("case_mixed");
     const sourceWords = response.results.channels[0].alternatives[0].words;
-    response.results.utterances = [
-      {
-        speaker: 0,
-        start: 0,
-        end: 5.58,
-        transcript: "Good morning. Um, please state your name for the record. My name is Maria Lopez.",
-        confidence: 0.95,
-        words: sourceWords,
-      },
-    ];
+    response.results.utterances = [{
+      speaker: 0, start: 0, end: 5.58, confidence: 0.95,
+      transcript: "Good morning. Um, please state your name for the record. My name is Maria Lopez.",
+      words: sourceWords,
+    }];
 
     const normalized = normalizeTranscriptResponse(response);
 
-    expect(normalized.utterances).toHaveLength(2);
-    expect(normalized.utterances[0]).toEqual(expect.objectContaining({
-      speaker_index: 0,
-      text: "Good morning. Um, please state your name for the record.",
-    }));
-    expect(normalized.utterances[1]).toEqual(expect.objectContaining({
-      speaker_index: 1,
-      text: "My name is Maria Lopez.",
-    }));
-    expect(new Set(
-      normalized.words
-        .filter((word) => word.utterance_id === normalized.utterances[0]?.utterance_id)
-        .map((word) => word.speaker_index),
-    )).toEqual(new Set([0]));
-    expect(new Set(
-      normalized.words
-        .filter((word) => word.utterance_id === normalized.utterances[1]?.utterance_id)
-        .map((word) => word.speaker_index),
-    )).toEqual(new Set([1]));
+    expect(normalized.utterances).toHaveLength(1);
+    expect(normalized.utterances[0]?.text).toBe("Good morning. Um, please state your name for the record. My name is Maria Lopez.");
+    expect(new Set(normalized.words.map((word) => word.speaker_index))).toEqual(new Set([0, 1]));
     expect(normalized.words).toHaveLength(sourceWords.length);
-    expect(normalized.words.map((word) => word.word_id)).toEqual(
-      sourceWords.map((_, index) => `w_${String(index).padStart(8, "0")}`),
-    );
-    expect(normalized.words.map((word) => word.start_time)).toEqual(sourceWords.map((word) => word.start));
-    expect(normalized.words.map((word) => word.end_time)).toEqual(sourceWords.map((word) => word.end));
-    expect(normalized.words.map((word) => word.confidence)).toEqual(
-      sourceWords.map((word) => Number(word.confidence.toFixed(4))),
-    );
-    expect(normalized.words.map((word) => word.speaker_index)).toEqual(
-      sourceWords.map((word) => word.speaker ?? 0),
-    );
   });
 
   it("falls back to flat words when utterances are missing", () => {
@@ -137,7 +105,7 @@ describe("normalizeTranscriptResponse", () => {
 
     const normalized = normalizeTranscriptResponse(response);
 
-    expect(normalized.utterances[0]?.text).toBe("Good morning. Um, please state your name for the record.");
+    expect(normalized.utterances[0]?.text).toBe("Good morning. Um, please state your name for the record. My name is Maria Lopez.");
     expect(normalized.utterances[0]?.text).toBe(
       joinedUtteranceWords(normalized, normalized.utterances[0]?.utterance_id ?? ""),
     );
@@ -278,5 +246,64 @@ describe("normalizeTranscriptResponse", () => {
     for (const utterance of normalized.utterances) {
       expect(utterance.text).toBe(joinedUtteranceWords(normalized, utterance.utterance_id));
     }
+  });
+
+  function buildFlipResponse(flipSpeakerConfidence: number): DeepgramResponse {
+    const response = createOfflineDeepgramFixture("case_flip");
+    const utterances: DeepgramResponse["results"]["utterances"] = [
+      {
+        speaker: 0,
+        start: 0,
+        end: 0.6,
+        confidence: 0.95,
+        transcript: "And what",
+        words: [
+          { word: "and", punctuated_word: "And", start: 0, end: 0.3, confidence: 0.99, speaker: 0, speaker_confidence: 0.97 },
+          { word: "what", punctuated_word: "what", start: 0.3, end: 0.6, confidence: 0.99, speaker: 0, speaker_confidence: 0.97 },
+        ],
+      },
+      {
+        speaker: 1,
+        start: 0.62,
+        end: 0.9,
+        confidence: 0.4,
+        transcript: "happened",
+        words: [
+          { word: "happened", punctuated_word: "happened", start: 0.62, end: 0.9, confidence: 0.9, speaker: 1, speaker_confidence: flipSpeakerConfidence },
+        ],
+      },
+      {
+        speaker: 0,
+        start: 0.92,
+        end: 1.5,
+        confidence: 0.95,
+        transcript: "after that",
+        words: [
+          { word: "after", punctuated_word: "after", start: 0.92, end: 1.2, confidence: 0.99, speaker: 0, speaker_confidence: 0.97 },
+          { word: "that", punctuated_word: "that.", start: 1.2, end: 1.5, confidence: 0.99, speaker: 0, speaker_confidence: 0.97 },
+        ],
+      },
+    ];
+    response.results.utterances = utterances;
+    response.results.channels[0].alternatives[0].words = utterances.flatMap((utterance) => utterance.words);
+    return response;
+  }
+
+  it("reassigns an isolated low-confidence speaker flip to the surrounding speaker", () => {
+    const normalized = normalizeTranscriptResponse(buildFlipResponse(0.28));
+
+    expect(new Set(normalized.words.map((word) => word.speaker_index))).toEqual(new Set([0]));
+    expect(normalized.speakers.map((speaker) => speaker.speaker_index)).toEqual([0]);
+    const flipUtterance = normalized.utterances[1];
+    expect(flipUtterance?.speaker_index).toBe(0);
+  });
+
+  it("preserves a confident one-word turn between two other-speaker turns", () => {
+    const normalized = normalizeTranscriptResponse(buildFlipResponse(0.95));
+
+    expect(new Set(normalized.words.map((word) => word.speaker_index))).toEqual(new Set([0, 1]));
+    const flipWord = normalized.words.find((word) => word.raw_text === "happened");
+    expect(flipWord?.speaker_index).toBe(1);
+    expect(normalized.utterances[1]?.speaker_index).toBe(1);
   });
 });

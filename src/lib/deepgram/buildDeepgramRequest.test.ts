@@ -35,13 +35,14 @@ describe("buildDeepgramRequest", () => {
         punctuate: "true",
         diarize_model: "latest",
         filler_words: "true",
-        numerals: "true",
+        numerals: "false",
         utterances: "true",
         utt_split: "0.8",
         smart_format: "true",
         language: "en",
         mip_opt_out: "true",
       },
+      effective_config: { audio_profile: "clean", expected_speaker_count: null },
       keyterms: [
         { term: "Raul Garza", boost: 9, category: "Person", source: "nod_parser" },
         { term: "Goldman & Peterson", boost: 7, category: "Law Firm", source: "nod_parser" },
@@ -75,7 +76,7 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("source");
     expect(request.wireQueryString).toContain("diarize_model=latest");
     expect(request.wireQueryString).not.toContain("diarize=true");
-    expect(request.wireQueryString).toContain("numerals=true");
+    expect(request.wireQueryString).toContain("numerals=false");
     expect(request.wireQueryString).toContain("utt_split=0.8");
     expect(request.wireQueryString).toContain("language=en");
     expect(request.wireQueryString).toContain("mip_opt_out=true");
@@ -122,5 +123,58 @@ describe("buildDeepgramRequest", () => {
         smart_format: "true",
       }),
     );
+  });
+
+  it("applies saved case transcription settings to the wire request", () => {
+    const request = buildDeepgramRequest({
+      caseId: "case_config",
+      keyterms: [],
+      config: {
+        model: "nova-3", language: "en-US", punctuate: true, utterances: true, diarize: false,
+        diarize_version: "latest", speaker_count: 4, smart_format: true, numerals: false,
+        audio_profile: "remote", utterance_split_seconds: 1, keyterms: [],
+      },
+    });
+
+    expect(request.envelope.effective_config).toEqual({ audio_profile: "remote", expected_speaker_count: 4 });
+    expect(request.wireUrl).toContain("utt_split=1");
+    expect(request.wireUrl).toContain("language=en-US");
+    expect(request.wireUrl).not.toContain("diarize_model");
+  });
+
+  it("derives utt_split from the audio profile when the reporter left the factory value", () => {
+    const baseConfig = {
+      model: "nova-3", language: "en-US", punctuate: true, utterances: true, diarize: true,
+      diarize_version: "latest", speaker_count: null, smart_format: true, numerals: false,
+      utterance_split_seconds: 0.8, keyterms: [],
+    };
+
+    const remote = buildDeepgramRequest({
+      caseId: "case_remote",
+      keyterms: [],
+      config: { ...baseConfig, audio_profile: "remote" },
+    });
+    expect(remote.wireQueryString).toContain("utt_split=1");
+
+    const clean = buildDeepgramRequest({
+      caseId: "case_clean",
+      keyterms: [],
+      config: { ...baseConfig, audio_profile: "clean" },
+    });
+    expect(clean.wireQueryString).toContain("utt_split=0.8");
+  });
+
+  it("respects an explicitly tuned utt_split over the audio profile default", () => {
+    const request = buildDeepgramRequest({
+      caseId: "case_explicit_split",
+      keyterms: [],
+      config: {
+        model: "nova-3", language: "en-US", punctuate: true, utterances: true, diarize: true,
+        diarize_version: "latest", speaker_count: null, smart_format: true, numerals: false,
+        audio_profile: "telephone", utterance_split_seconds: 1.5, keyterms: [],
+      },
+    });
+
+    expect(request.wireQueryString).toContain("utt_split=1.5");
   });
 });
