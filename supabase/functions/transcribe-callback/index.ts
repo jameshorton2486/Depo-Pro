@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { PRIMARY_MODEL } from "../_shared/models.ts";
+import { fetchWithRetry } from "../_shared/deepgramFetch.ts";
+import type { Database } from "../_shared/database.ts";
 
 import { integrityAudit, type IntegrityAuditResult } from "../../../src/lib/transcript/integrityAudit.ts";
 import { auditCanonicalTranscript, type CanonicalIntegrityResult } from "../../../src/lib/transcript/canonicalIntegrity.ts";
@@ -46,8 +48,6 @@ import {
 } from "../../../src/lib/transcriptionJobs.ts";
 import type { EditorDocument } from "../../../src/api/types.ts";
 
-type Database = Record<string, never>;
-
 type CaseAudioRow = {
   audio_id: string;
   original_filename: string;
@@ -62,7 +62,8 @@ type CaseAudioRow = {
 type DeepgramRequestArtifact = {
   url: string;
   callback_url: string;
-  preview?: unknown;
+  body?: { url: string };
+  preview?: { effective_config?: { expected_speaker_count?: number | null } | null };
   total_sources?: number;
   source_audio_id?: string;
   source_index?: number;
@@ -107,12 +108,15 @@ const corsHeaders = {
 };
 
 const CASE_FILES_BUCKET = "case-files";
-const WORD_CHUNK_SIZE = 500;
 const SYNTHETIC_BOUNDARY_SPEAKER_ID = "spk_synthetic_boundary";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const deepgramApiKey = Deno.env.get("DEEPGRAM_API_KEY") ?? "";
 const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+// Replace-on-retranscribe deletes superseded transcripts. It is destructive, so it
+// is opt-in: set TRANSCRIPT_PRUNE_SUPERSEDED=true to enable. While disabled, older
+// transcripts are left in place (the workspace still opens the newest).
+const pruneSupersededEnabled = Deno.env.get("TRANSCRIPT_PRUNE_SUPERSEDED") === "true";
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
@@ -176,7 +180,9 @@ Deno.serve(async (request) => {
       return respondJson(200, { ok: true, status: "failed" });
     }
 
-    const auditResult = integrityAudit(parsed.response);
+    const auditResult = integrityAudit(parsed.response, {
+      expectedSpeakerCount: requestArtifact.preview?.effective_config?.expected_speaker_count ?? null,
+    });
     if (!auditResult.integrity_passed) {
       await persistManualReviewTranscript(
         serviceClient,
@@ -270,7 +276,10 @@ Deno.serve(async (request) => {
           await runBoundaryEngine(serviceClient, job);
           await runPreWorkspaceStructure(serviceClient, job);
         } catch (error) {
-          await cleanupTranscript(serviceClient, job.transcript_id);
+          await cleanupTranscript(serviceClient, {
+            jobId: job.id,
+            transcriptId: job.transcript_id,
+          });
           await persistCanonicalManualReviewTranscript(
             serviceClient,
             job,
@@ -297,28 +306,67 @@ Deno.serve(async (request) => {
           };
         }
 
+        // Capture the immutable Original snapshot (the structured transcript as
+        // first produced) before any user edits. Non-fatal: a snapshot failure
+        // must not block completion of an otherwise-good transcript.
+        try {
+          await captureOriginalSnapshot(serviceClient, job);
+        } catch (error) {
+          console.error("[transcribe-callback] original snapshot capture failed", {
+            transcriptId: job.transcript_id,
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+
         await updateJob(serviceClient, job.id, {
           status: "complete",
           response_path: finalArtifact.path,
           error: null,
         });
+
+        // Replace-on-retranscribe: collapse the case to exactly one transcript
+        // (this Original + Working). Opt-in and non-fatal, so a prune failure never
+        // breaks a successful transcription.
+        if (pruneSupersededEnabled) {
+          try {
+            await pruneSupersededTranscripts(serviceClient, job);
+          } catch (error) {
+            console.error("[transcribe-callback] superseded-transcript prune failed", {
+              transcriptId: job.transcript_id,
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+
         triggerAiReview(job.transcript_id);
         return {
           status: "complete" as const,
           responsePath: finalArtifact.path,
         };
       },
-      cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
+      cleanupTranscript: (currentJob) => cleanupTranscript(serviceClient, {
+        jobId: currentJob.id,
+        transcriptId: currentJob.transcript_id,
+      }),
       failJob: (jobId, failedResponsePath, errorMessage) =>
         failJob(serviceClient, jobId, failedResponsePath, errorMessage),
     });
 
     return respondJson(200, { ok: true, status: outcome.status });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error("[transcribe-callback] unexpected error", {
       jobId,
-      message: error instanceof Error ? error.message : String(error),
+      message,
     });
+    try {
+      await updateJob(serviceClient, jobId, { error: `RETRYABLE_CALLBACK_ERROR: ${message}` });
+    } catch (updateError) {
+      console.error("[transcribe-callback] failed to persist callback error", {
+        jobId,
+        message: updateError instanceof Error ? updateError.message : String(updateError),
+      });
+    }
     return respondError(500, "unexpected server error");
   }
 });
@@ -341,7 +389,7 @@ async function requireJob(
     throw new Error("Unknown transcription job.");
   }
 
-  return data as TranscriptionJobRecord;
+  return data as unknown as TranscriptionJobRecord;
 }
 
 function parseDeepgramResponse(value: unknown): { ok: true; response: DeepgramResponse } | { ok: false; error: string } {
@@ -406,12 +454,6 @@ async function ingestTranscript(
     owner_user_id: job.owner_user_id,
   };
 
-  const { error: transcriptError } = await supabase
-    .from("transcripts")
-    .insert(transcriptRow);
-  if (transcriptError) {
-    throw transcriptError;
-  }
 
   const speakers = normalized.speakers.map((speaker) => ({
     transcript_id: job.transcript_id,
@@ -428,12 +470,6 @@ async function ingestTranscript(
     owner_user_id: job.owner_user_id,
   }));
 
-  if (speakers.length > 0) {
-    const { error } = await supabase.from("transcript_speakers").insert(speakers);
-    if (error) {
-      throw error;
-    }
-  }
 
   const utterances = normalized.utterances.map((utterance) => ({
     transcript_id: job.transcript_id,
@@ -451,12 +487,6 @@ async function ingestTranscript(
     owner_user_id: job.owner_user_id,
   }));
 
-  if (utterances.length > 0) {
-    const { error } = await supabase.from("transcript_utterances").insert(utterances);
-    if (error) {
-      throw error;
-    }
-  }
 
   const words = normalized.words.map((word) => ({
     transcript_id: job.transcript_id,
@@ -480,13 +510,6 @@ async function ingestTranscript(
     owner_user_id: job.owner_user_id,
   }));
 
-  for (let index = 0; index < words.length; index += WORD_CHUNK_SIZE) {
-    const chunk = words.slice(index, index + WORD_CHUNK_SIZE);
-    const { error } = await supabase.from("transcript_words").insert(chunk);
-    if (error) {
-      throw error;
-    }
-  }
 
   const auditRow = {
     transcript_id: job.transcript_id,
@@ -507,11 +530,18 @@ async function ingestTranscript(
     owner_user_id: job.owner_user_id,
   };
 
-  const { error: auditError } = await supabase
-    .from("transcript_audit_log")
-    .insert(auditRow);
-  if (auditError) {
-    throw auditError;
+  const atomicClient = supabase as unknown as {
+    rpc: (name: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+  };
+  const { error } = await atomicClient.rpc("atomic_ingest_transcript", {
+    p_transcript: transcriptRow,
+    p_speakers: speakers,
+    p_utterances: utterances,
+    p_words: words,
+    p_audit: auditRow,
+  });
+  if (error) {
+    throw new Error(`Atomic transcript ingest failed: ${error.message}`);
   }
 }
 
@@ -570,7 +600,7 @@ type PreWorkspaceTranscriptWordRow = {
 
 function createBoundaryAiClient(apiKey: string): BoundaryAiClient {
   return {
-    async completeJson<T>(input): Promise<T> {
+    async completeJson<T>(input: { system: string; user: string; maxTokens: number }): Promise<T> {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -1138,7 +1168,16 @@ async function uploadJsonArtifact(
     );
 
   if (error) {
-    throw error;
+    const existing = await supabase.storage.from(CASE_FILES_BUCKET).download(storagePath);
+    if (existing.error) {
+      throw error;
+    }
+    const existingBytes = new Uint8Array(await existing.data.arrayBuffer());
+    const existingDigest = await crypto.subtle.digest("SHA-256", existingBytes);
+    const existingChecksum = Array.from(new Uint8Array(existingDigest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    if (existingChecksum !== checksum) {
+      throw new Error(`Immutable artifact collision at ${storagePath}.`);
+    }
   }
 
   return checksum;
@@ -1359,7 +1398,7 @@ async function submitNextDeepgramJob(
   }
   await uploadJsonArtifact(supabase, requestPath, nextArtifact);
 
-  const deepgramResponse = await fetch(nextArtifact.url, {
+  const deepgramResponse = await fetchWithRetry(nextArtifact.url, {
     method: "POST",
     headers: {
       Authorization: `Token ${deepgramApiKey}`,
@@ -1448,15 +1487,141 @@ function buildMergeManifest(
   };
 }
 
+// Serialize the structured transcript exactly as first produced (before any user
+// edits) into a single immutable Original snapshot artifact. The row shapes match
+// what the workspace already assembles, so the client can render the Original view
+// read-only without re-deriving anything.
+async function captureOriginalSnapshot(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+): Promise<void> {
+  const [speakersResult, resolutionsResult, utterancesResult, wordsResult] = await Promise.all([
+    supabase
+      .from("transcript_speakers")
+      .select("*")
+      .eq("transcript_id", job.transcript_id)
+      .order("speaker_index", { ascending: true }),
+    supabase
+      .from("speaker_resolution_current")
+      .select("*")
+      .eq("transcript_id", job.transcript_id),
+    supabase
+      .from("transcript_utterances")
+      .select("*")
+      .eq("transcript_id", job.transcript_id)
+      .order("utterance_index", { ascending: true }),
+    supabase
+      .from("transcript_words")
+      .select("*")
+      .eq("transcript_id", job.transcript_id)
+      .order("word_index", { ascending: true }),
+  ]);
+
+  for (const result of [speakersResult, resolutionsResult, utterancesResult, wordsResult]) {
+    if (result.error) {
+      throw result.error;
+    }
+  }
+
+  const snapshot = {
+    kind: "transcript_original_v1",
+    transcript_id: job.transcript_id,
+    case_id: job.case_id,
+    job_id: job.id,
+    speakers: speakersResult.data ?? [],
+    speakerResolutions: resolutionsResult.data ?? [],
+    utterances: utterancesResult.data ?? [],
+    words: wordsResult.data ?? [],
+  };
+
+  const path = buildTranscriptionArtifactPath(
+    job.owner_user_id,
+    job.case_id,
+    `${job.id}_original.json`,
+  );
+  const checksum = await uploadJsonArtifact(supabase, path, snapshot);
+
+  const { error } = await supabase
+    .from("transcripts")
+    .update({
+      original_storage_path: path,
+      original_checksum: checksum,
+      original_captured_at: new Date().toISOString(),
+    })
+    .eq("transcript_id", job.transcript_id);
+  if (error) {
+    throw error;
+  }
+}
+
+// Replace-on-retranscribe: remove every other transcript for this case (rows +
+// referenced storage artifacts) so a deposition holds exactly one Original +
+// Working. Only runs after a new transcription successfully completes.
+async function pruneSupersededTranscripts(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("transcripts")
+    .select("transcript_id, raw_storage_path, original_storage_path")
+    .eq("case_id", job.case_id)
+    .neq("transcript_id", job.transcript_id);
+  if (error) {
+    throw error;
+  }
+
+  const superseded = (data ?? []) as Array<{
+    transcript_id: string;
+    raw_storage_path: string | null;
+    original_storage_path: string | null;
+  }>;
+
+  for (const old of superseded) {
+    await supabase.from("transcript_words").delete().eq("transcript_id", old.transcript_id);
+    await supabase.from("transcript_utterances").delete().eq("transcript_id", old.transcript_id);
+    await supabase.from("transcript_speakers").delete().eq("transcript_id", old.transcript_id);
+    await supabase.from("speaker_resolution_current").delete().eq("transcript_id", old.transcript_id);
+    await supabase.from("transcript_audit_log").delete().eq("transcript_id", old.transcript_id);
+
+    const storagePaths = [old.raw_storage_path, old.original_storage_path]
+      .filter((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0);
+    if (storagePaths.length > 0) {
+      await supabase.storage.from(CASE_FILES_BUCKET).remove(storagePaths);
+    }
+
+    await supabase.from("transcripts").delete().eq("transcript_id", old.transcript_id);
+  }
+}
+
 async function cleanupTranscript(
   supabase: SupabaseClient<Database>,
-  transcriptId: string,
+  scope: {
+    jobId: string;
+    transcriptId: string;
+  },
 ): Promise<void> {
-  await supabase.from("transcript_words").delete().eq("transcript_id", transcriptId);
-  await supabase.from("transcript_utterances").delete().eq("transcript_id", transcriptId);
-  await supabase.from("transcript_speakers").delete().eq("transcript_id", transcriptId);
-  await supabase.from("transcript_audit_log").delete().eq("transcript_id", transcriptId);
-  await supabase.from("transcripts").delete().eq("transcript_id", transcriptId);
+  const { jobId, transcriptId } = scope;
+
+  await supabase
+    .from("transcript_words")
+    .delete()
+    .eq("job_id", jobId)
+    .eq("transcript_id", transcriptId);
+  await supabase
+    .from("transcript_utterances")
+    .delete()
+    .eq("job_id", jobId)
+    .eq("transcript_id", transcriptId);
+  await supabase
+    .from("transcript_speakers")
+    .delete()
+    .eq("job_id", jobId)
+    .eq("transcript_id", transcriptId);
+  await supabase
+    .from("transcripts")
+    .delete()
+    .eq("job_id", jobId)
+    .eq("transcript_id", transcriptId);
 }
 
 function detectMediaKind(mimeType: string): "audio" | "video" {
