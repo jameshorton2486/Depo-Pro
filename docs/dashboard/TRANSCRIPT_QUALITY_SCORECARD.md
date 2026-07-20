@@ -23,3 +23,13 @@ Do not place real client names, deposition text, notices, audio, or other client
 ## Update rule
 
 After every implementation PR, add one row with before/after evidence, the responsible architectural owner, fixture results, and remaining reporter repair burden. A failed or inconclusive result is recorded as such; it is never converted to a pass by narrative.
+
+## Version 0.7 — PR #7 Wave 23B
+
+| Category | Before | After | Evidence |
+|---|---|---|---|
+| Recognition | No change | No change | No recognition code changed. |
+| Semantic Integrity | Partial | Improved | Canonical failure regression tests and pre-ingest quarantine. |
+| Production | No change | No change | Proceedings, examination, and dialogue deferred. |
+| Formatting | No change | No change | No formatting code changed. |
+| Reporter Repair Burden | High for malformed state | Reduced | Orphan, duplicate, and timing failures are quarantined. |
