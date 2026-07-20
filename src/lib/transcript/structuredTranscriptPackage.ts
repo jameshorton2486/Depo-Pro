@@ -28,10 +28,23 @@ export interface StructuredTranscriptPackageInput {
 }
 
 function packageParagraphId(paragraph: TranscriptParagraph, index: number): string {
-  const source = paragraph.sourceUtteranceIds.join(",") || "generated";
+  const source = paragraph.sourceUtteranceIds?.join(",") || "generated";
   return `paragraph:${index}:${source}`;
 }
 
+function cloneParagraph(paragraph: TranscriptParagraph): TranscriptParagraph {
+  return {
+    ...paragraph,
+    words: [...paragraph.words],
+    sourceLines: [...paragraph.sourceLines],
+    sourceUtteranceIds: [...paragraph.sourceUtteranceIds],
+    sourceWordIds: [...paragraph.sourceWordIds],
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 export function buildStructuredTranscriptPackage(
   input: StructuredTranscriptPackageInput,
 ): StructuredTranscriptPackage {
@@ -43,7 +56,7 @@ export function buildStructuredTranscriptPackage(
     createdAt,
     paragraphs: input.paragraphs.map((paragraph, index) => ({
       id: packageParagraphId(paragraph, index),
-      paragraph,
+      paragraph: cloneParagraph(paragraph),
       sourceUtteranceIds: [...paragraph.sourceUtteranceIds],
       sourceWordIds: [...paragraph.sourceWordIds],
     })),
@@ -54,44 +67,32 @@ export function buildStructuredTranscriptPackage(
   };
 }
 
-export function validateStructuredTranscriptPackage(
-  transcriptPackage: StructuredTranscriptPackage,
-): string[] {
+export function validateStructuredTranscriptPackage(transcriptPackage: unknown): string[] {
   const errors: string[] = [];
-  if (transcriptPackage.schema !== STRUCTURED_TRANSCRIPT_PACKAGE_SCHEMA) {
-    errors.push("package schema is invalid");
-  }
-  if (transcriptPackage.version !== STRUCTURED_TRANSCRIPT_PACKAGE_VERSION) {
-    errors.push("package version is invalid");
-  }
-  if (!transcriptPackage.transcriptId.trim()) {
-    errors.push("transcriptId is required");
-  }
-  if (Number.isNaN(Date.parse(transcriptPackage.createdAt))) {
-    errors.push("createdAt must be an ISO timestamp");
-  }
+  if (!isRecord(transcriptPackage)) return ["package must be an object"];
+  if (transcriptPackage.schema !== STRUCTURED_TRANSCRIPT_PACKAGE_SCHEMA) errors.push("package schema is invalid");
+  if (transcriptPackage.version !== STRUCTURED_TRANSCRIPT_PACKAGE_VERSION) errors.push("package version is invalid");
+  if (typeof transcriptPackage.transcriptId !== "string" || !transcriptPackage.transcriptId.trim()) errors.push("transcriptId is required");
+  if (typeof transcriptPackage.createdAt !== "string" || Number.isNaN(Date.parse(transcriptPackage.createdAt))) errors.push("createdAt must be an ISO timestamp");
 
   const paragraphIds = new Set<string>();
-  for (const entry of transcriptPackage.paragraphs) {
-    if (paragraphIds.has(entry.id)) {
-      errors.push(`duplicate paragraph package ID: ${entry.id}`);
-    }
-    paragraphIds.add(entry.id);
-    if (entry.sourceUtteranceIds.length === 0) {
-      errors.push(`paragraph ${entry.id} is missing source utterance provenance`);
-    }
+  if (!Array.isArray(transcriptPackage.paragraphs)) errors.push("paragraphs must be an array");
+  else for (const entry of transcriptPackage.paragraphs) {
+    if (!isRecord(entry)) { errors.push("paragraph entry must be an object"); continue; }
+    const id = typeof entry.id === "string" ? entry.id : "unknown";
+    if (paragraphIds.has(id)) errors.push(`duplicate paragraph package ID: ${id}`);
+    paragraphIds.add(id);
+    if (!Array.isArray(entry.sourceUtteranceIds) || entry.sourceUtteranceIds.length === 0) errors.push(`paragraph ${id} is missing source utterance provenance`);
   }
 
   const dialogueIds = new Set<string>();
-  for (const block of transcriptPackage.dialogue) {
-    if (dialogueIds.has(block.dialogue_block_id)) {
-      errors.push(`duplicate dialogue block ID: ${block.dialogue_block_id}`);
-    }
-    dialogueIds.add(block.dialogue_block_id);
-    if (block.source_utterance_ids.length === 0) {
-      errors.push(`dialogue block ${block.dialogue_block_id} is missing source provenance`);
-    }
+  if (!Array.isArray(transcriptPackage.dialogue)) errors.push("dialogue must be an array");
+  else for (const block of transcriptPackage.dialogue) {
+    if (!isRecord(block)) { errors.push("dialogue block must be an object"); continue; }
+    const id = typeof block.dialogue_block_id === "string" ? block.dialogue_block_id : "unknown";
+    if (dialogueIds.has(id)) errors.push(`duplicate dialogue block ID: ${id}`);
+    dialogueIds.add(id);
+    if (!Array.isArray(block.source_utterance_ids) || block.source_utterance_ids.length === 0) errors.push(`dialogue block ${id} is missing source provenance`);
   }
-
   return errors;
 }

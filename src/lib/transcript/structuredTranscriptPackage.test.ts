@@ -42,6 +42,8 @@ describe("structuredTranscriptPackage", () => {
 
     expect(result.paragraphs[0]?.id).toBe("paragraph:0:utterance_1");
     expect(result.dialogue[0]?.dialogue_block_id).toBe("dialogue:utterance_1");
+    paragraph.sourceUtteranceIds.push("mutated");
+    expect(result.paragraphs[0]?.paragraph.sourceUtteranceIds).toEqual(["utterance_1"]);
     expect(validateStructuredTranscriptPackage(result)).toEqual([]);
   });
 
@@ -59,4 +61,13 @@ describe("structuredTranscriptPackage", () => {
       "duplicate dialogue block ID: dialogue:utterance_1",
     ]));
   });
-});
+
+  it("returns errors instead of throwing for malformed payloads", () => {
+    expect(validateStructuredTranscriptPackage({
+      schema: "invalid", version: 1, transcriptId: null, createdAt: null,
+      paragraphs: null, dialogue: [{ dialogue_block_id: null, source_utterance_ids: null }],
+    })).toEqual(expect.arrayContaining([
+      "package schema is invalid", "transcriptId is required", "createdAt must be an ISO timestamp",
+      "paragraphs must be an array", "dialogue block unknown is missing source provenance",
+    ]));
+  });});
