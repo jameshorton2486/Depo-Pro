@@ -86,6 +86,79 @@ describe("transcriptParagraphs", () => {
     expect(paragraphs).toEqual([]);
   });
 
+  it("keeps generated headers and by-lines free of question word identities", () => {
+    const source = makeLine({
+      line: {
+        ...makeLine().line,
+        words: [{ word_id: "w1", utterance_id: "u1", speaker_id: "speaker-1", text: "What", raw_text: "What", start_time: 0, end_time: 0.1, confidence: 1, reviewed: false, edited: false, inline_flag: null, trailing_space: "" }],
+      },
+    });
+    const paragraphs = buildTranscriptParagraphs([source]);
+
+    for (const paragraph of paragraphs.filter((paragraph) => paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE")) {
+      expect(paragraph.words).toEqual([]);
+      expect(paragraph.sourceWordIds).toEqual([]);
+      expect(paragraph.speakerId).toBeNull();
+    }
+  });
+
+  it("uses a standalone by-line after colloquy when no examiner exists", () => {
+    const paragraphs = buildTranscriptParagraphs([
+      makeLine({ persistedLineType: "SP", text: "Please proceed.", line: { ...makeLine().line, role: "speaker_label" } }),
+      makeLine({ line: { ...makeLine().line, utterance_id: "u2" } }),
+    ]);
+
+    expect(paragraphs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "BY_LINE", text: "BY MR. BENTLEY:" }),
+    ]));
+    expect(paragraphs.some((paragraph) => paragraph.text.startsWith("(BY "))).toBe(false);
+  });
+
+  it("uses a standalone by-line when a new examiner follows colloquy", () => {
+    const paragraphs = buildTranscriptParagraphs([
+      makeLine(),
+      makeLine({ persistedLineType: "SP", text: "Objection. Form.", line: { ...makeLine().line, utterance_id: "u2", role: "speaker_label" } }),
+      makeLine({ line: { ...makeLine().line, utterance_id: "u3", speaker_id: "speaker-2", speaker_label: "MS. HART" }, speakerLabel: "MS. HART" }),
+    ]);
+
+    expect(paragraphs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "SECTION_HEADER", text: "CROSS-EXAMINATION" }),
+      expect.objectContaining({ kind: "BY_LINE", text: "BY MS. HART:" }),
+    ]));
+  });
+
+  it("advances examiner returns through cross, redirect, and recross", () => {
+    const paragraphs = buildTranscriptParagraphs([
+      makeLine(),
+      makeLine({ line: { ...makeLine().line, utterance_id: "u2", speaker_id: "speaker-2", speaker_label: "MS. HART" }, speakerLabel: "MS. HART" }),
+      makeLine({ line: { ...makeLine().line, utterance_id: "u3" } }),
+      makeLine({ line: { ...makeLine().line, utterance_id: "u4", speaker_id: "speaker-2", speaker_label: "MS. HART" }, speakerLabel: "MS. HART" }),
+    ]);
+
+    expect(paragraphs.filter((paragraph) => paragraph.kind === "SECTION_HEADER").map((paragraph) => paragraph.text)).toEqual([
+      "EXAMINATION",
+      "CROSS-EXAMINATION",
+      "REDIRECT",
+      "RECROSS",
+    ]);
+  });
+
+  it("distinguishes examiners with matching display labels by speaker ID", () => {
+    const paragraphs = buildTranscriptParagraphs([
+      makeLine({ speakerLabel: "MR. SMITH", line: { ...makeLine().line, speaker_label: "MR. SMITH" } }),
+      makeLine({ speakerLabel: "MR. SMITH", line: { ...makeLine().line, utterance_id: "u2", speaker_id: "speaker-2", speaker_label: "MR. SMITH" } }),
+    ]);
+
+    expect(paragraphs).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "SECTION_HEADER", text: "CROSS-EXAMINATION" }),
+      expect.objectContaining({ kind: "BY_LINE", text: "BY MR. SMITH:" }),
+    ]));
+  });
+
+  it("returns no paragraphs for missing input", () => {
+    expect(buildTranscriptParagraphs(null)).toEqual([]);
+    expect(buildTranscriptParagraphs(undefined)).toEqual([]);
+  });
   it("formats a resumption by-line without a colon after BY", () => {
     expect(buildResumptionByLine("MR. BENTLEY")).toBe("(BY MR. BENTLEY)");
   });
