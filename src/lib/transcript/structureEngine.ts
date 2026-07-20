@@ -44,6 +44,12 @@ export interface ClassifiedBlock {
   synthetic_flag?: string;
 }
 
+export interface DialogueBlock extends ClassifiedBlock {
+  dialogue_block_id: string;
+  source_utterance_ids: string[];
+  text: string;
+}
+
 export interface SplitBlockPart {
   block_type: "Q" | "A";
   speaker_id: string;
@@ -125,21 +131,6 @@ function getDisplayName(
   speakerMap: Record<string, StructureSpeakerMapEntry>,
 ): string {
   return speakerMap[speakerId]?.display_name ?? speakerId;
-}
-
-function extractSurname(displayName: string): string {
-  const normalized = displayName
-    .replace(/^THE\s+/i, "")
-    .replace(/[^A-Za-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-  const parts = normalized.split(" ").filter(Boolean);
-  return parts[parts.length - 1] ?? normalized;
-}
-
-function buildByLine(displayName: string): string {
-  return `(BY MR.  ${extractSurname(displayName)})  `;
 }
 
 function normalizeWhitespace(text: string): string {
@@ -283,6 +274,35 @@ export async function classifyBlocks(
   return onRecordUtterances.map((utterance) => classifyDeterministically(utterance, confirmedSpeakerMap));
 }
 
+function toDialogueBlock(
+  utterance: StructureUtterance,
+  speakerMap: Record<string, StructureSpeakerMapEntry>,
+): DialogueBlock {
+  const classified = classifyDeterministically(utterance, speakerMap);
+  return {
+    ...classified,
+    dialogue_block_id: `dialogue:${utterance.utterance_id}`,
+    source_utterance_ids: [utterance.utterance_id],
+    text: normalizeWhitespace(utterance.text),
+  };
+}
+
+/**
+ * Produces deterministic dialogue blocks from confirmed speaker assignments.
+ * BY-lines remain the responsibility of paragraph production.
+ */
+export function produceDialogueBlocks(
+  utterances: StructureUtterance[] | null | undefined,
+  confirmedSpeakerMap: Record<string, StructureSpeakerMapEntry>,
+): DialogueBlock[] {
+  if (!utterances) {
+    return [];
+  }
+
+  return utterances
+    .filter((utterance) => utterance.excluded_from_output !== true)
+    .map((utterance) => toDialogueBlock(utterance, confirmedSpeakerMap));
+}
 export async function splitMergedBlocks(
   needsSplitBlocks: Array<ClassifiedBlock & { text: string }>,
   examinerSpeakerId: string,
@@ -542,28 +562,4 @@ export function mergeConsecutiveFragments(
   }
 
   return merged;
-}
-
-export function applyByLineToNextQuestion(
-  blocks: Array<ClassifiedBlock & { text: string }>,
-  examinerDisplayName: string,
-): Array<ClassifiedBlock & { text: string }> {
-  let shouldApply = false;
-
-  return blocks.map((block) => {
-    if (block.block_type === "SP" && /\bObjection\./i.test(block.text)) {
-      shouldApply = true;
-      return block;
-    }
-
-    if (shouldApply && block.block_type === "Q") {
-      shouldApply = false;
-      return {
-        ...block,
-        text: `${buildByLine(examinerDisplayName)}${normalizeWhitespace(block.text)}`,
-      };
-    }
-
-    return block;
-  });
 }
