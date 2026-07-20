@@ -94,7 +94,7 @@ export function auditCanonicalTranscript(input: {
       if (word.start_time < previousWord.start_time) {
         failures.push(`Word timing order regressed between ${previousWord.word_id} and ${word.word_id}.`);
       }
-      if (word.end_time < previousWord.end_time && word.start_time < previousWord.end_time) {
+      if (word.start_time < previousWord.end_time) {
         warnings.push(`Overlapping canonical word timings between ${previousWord.word_id} and ${word.word_id}.`);
       }
     }
@@ -139,8 +139,14 @@ export function auditCanonicalTranscript(input: {
       warnings.push(`Utterance ${utterance.utterance_id} contains provider word-level speaker changes.`);
     }
 
-    const earliestWordStart = Math.min(...utteranceWords.map((word) => word.start_time));
-    const latestWordEnd = Math.max(...utteranceWords.map((word) => word.end_time));
+    const earliestWordStart = utteranceWords.reduce(
+      (minimum, word) => Math.min(minimum, word.start_time),
+      Number.POSITIVE_INFINITY,
+    );
+    const latestWordEnd = utteranceWords.reduce(
+      (maximum, word) => Math.max(maximum, word.end_time),
+      Number.NEGATIVE_INFINITY,
+    );
     if (
       Number.isFinite(earliestWordStart)
       && Number.isFinite(latestWordEnd)

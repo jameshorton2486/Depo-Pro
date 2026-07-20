@@ -166,6 +166,14 @@ describe("auditCanonicalTranscript", () => {
     expect(result.failures.some((failure) => failure.includes("Duplicate canonical word_id"))).toBe(true);
   });
 
+  it("warns on a partially overlapping canonical word span", () => {
+    const normalized = buildNormalized();
+    normalized.words[1] = { ...normalized.words[1], start_time: 0.05, end_time: 0.5 };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.warnings.some((warning) => warning.includes("Overlapping canonical word timings"))).toBe(true);
+  });
   it("fails when a canonical word ends before it starts", () => {
     const normalized = buildNormalized();
     normalized.words[0] = { ...normalized.words[0], start_time: 2, end_time: 1 };
