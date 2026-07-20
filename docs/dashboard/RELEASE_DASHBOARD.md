@@ -6,9 +6,10 @@
 |---|---|---|
 | Repository stabilization | 🟢 | Governance PR merged; remaining local work is drained through focused PRs. |
 | CI | 🟢 | Required checks are green on the authoritative branch and each active PR. |
-| Wave 23B — Canonical Integrity | ⚪ | Canonical integrity exit criteria pass. |
-| Wave 23C — Proceedings | ⚪ | Proceedings exit criteria pass. |
-| Wave 23D — Examination State Machine | ⚪ | Examination ownership/transition exit criteria pass. |
+| Wave 23B — Canonical Integrity | 🟢 | Merged in PR #7. |
+| Wave 23C — Proceedings | 🟢 | Merged in PR #8. |
+| Structured Transcript Core | 🟡 | Core types, regions, and Q/A utility are merged before paragraph production. |
+| Wave 23D — Examination State Machine | ⚪ | Examination ownership/transition exit criteria pass after core and paragraph production. |
 | Wave 23E — Dialogue Production | ⚪ | Dialogue production exit criteria pass. |
 | Validation | ⚪ | Synthetic and secure validation evidence recorded for implemented PRs. |
 | Release candidate | ⚪ | Clean, reviewed, green candidate branch with release notes and rollback reference. |
