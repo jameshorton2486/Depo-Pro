@@ -38,8 +38,6 @@ const CERTIFICATION_START_PATTERNS = [
   /^WITNESS NAME:/i,
   /^PAGE\s+LINE\s+CHANGE/i,
   /^I,\s+.+have read the foregoing deposition/i,
-  /^THE STATE OF\b/i,
-  /^COUNTY OF\b/i,
   /^Before me,/i,
   /^Given under my hand and seal of office/i,
   /^NOTARY PUBLIC IN AND FOR/i,
@@ -84,7 +82,7 @@ export function classifyDepositionRegions(
       continue;
     }
 
-    if (currentRegion !== "CERTIFICATION" && isCertificationStart(text)) {
+    if (currentRegion !== "CAPTION" && currentRegion !== "CERTIFICATION" && isCertificationStart(text)) {
       currentRegion = "CERTIFICATION";
     } else if (currentRegion === "CAPTION" && isProceedingsStart(text)) {
       currentRegion = "PROCEEDINGS";

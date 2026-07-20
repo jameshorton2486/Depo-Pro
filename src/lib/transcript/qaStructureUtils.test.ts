@@ -60,6 +60,23 @@ describe("qaStructureUtils", () => {
 
     expect(result[1]).toMatchObject({ kind: "COLLOQUY", label: "MS. HART", text: "Objection. Form." });
   });
+  it("preserves objection word provenance after a leading question", () => {
+    const result = applyQaFixer([
+      makeParagraph({
+        text: "Did you review it? Objection. Form.",
+        words: [
+          { word_id: "w1", utterance_id: "utt-1", speaker_id: "spk-1", text: "Did", raw_text: "Did", start_time: 0, end_time: 0.1, confidence: 1, reviewed: false, edited: false, inline_flag: null, trailing_space: " " },
+          { word_id: "w2", utterance_id: "utt-1", speaker_id: "spk-1", text: "you", raw_text: "you", start_time: 0.1, end_time: 0.2, confidence: 1, reviewed: false, edited: false, inline_flag: null, trailing_space: " " },
+          { word_id: "w3", utterance_id: "utt-1", speaker_id: "spk-1", text: "review", raw_text: "review", start_time: 0.2, end_time: 0.3, confidence: 1, reviewed: false, edited: false, inline_flag: null, trailing_space: " " },
+          { word_id: "w4", utterance_id: "utt-1", speaker_id: "spk-1", text: "it?", raw_text: "it?", start_time: 0.3, end_time: 0.4, confidence: 1, reviewed: false, edited: false, inline_flag: null, trailing_space: " " },
+          { word_id: "w5", utterance_id: "utt-1", speaker_id: "spk-1", text: "Objection.", raw_text: "Objection.", start_time: 0.4, end_time: 0.5, confidence: 1, reviewed: false, edited: false, inline_flag: null, trailing_space: " " },
+          { word_id: "w6", utterance_id: "utt-1", speaker_id: "spk-1", text: "Form.", raw_text: "Form.", start_time: 0.5, end_time: 0.6, confidence: 1, reviewed: false, edited: false, inline_flag: null, trailing_space: "" },
+        ],
+      }),
+    ]);
+
+    expect(result[1]?.sourceWordIds).toEqual(["w5", "w6"]);
+  });
   it("normalizes standalone K. artifacts to Okay.", () => {
     const result = applyQaFixer([
       makeParagraph({ kind: "COLLOQUY", label: "MR. RAMON", text: " K. And in this case" }),

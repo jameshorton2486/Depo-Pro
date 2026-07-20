@@ -6,7 +6,9 @@ describe("depositionRegionEngine", () => {
   it("classifies caption, proceedings, testimony, and certification regions in sequence", () => {
     const regions = classifyDepositionRegions([
       { utteranceId: "u1", text: "CAUSE NO. 2026-CV-1042" },
-      { utteranceId: "u2", text: "JORDAN ALVAREZ," },
+      { utteranceId: "u2", text: "THE STATE OF TEXAS" },
+      { utteranceId: "u2b", text: "COUNTY OF BEXAR" },
+      { utteranceId: "u2c", text: "JORDAN ALVAREZ," },
       { utteranceId: "u3", text: "PROCEEDINGS" },
       { utteranceId: "u4", text: "We are on the record." },
       { utteranceId: "u5", text: "(Whereupon, the deposition commenced at 1:27 p.m.)" },
@@ -19,6 +21,8 @@ describe("depositionRegionEngine", () => {
 
     expect(regions.get("u1")).toBe("CAPTION");
     expect(regions.get("u2")).toBe("CAPTION");
+    expect(regions.get("u2b")).toBe("CAPTION");
+    expect(regions.get("u2c")).toBe("CAPTION");
     expect(regions.get("u3")).toBe("PROCEEDINGS");
     expect(regions.get("u4")).toBe("PROCEEDINGS");
     expect(regions.get("u5")).toBe("TESTIMONY");
