@@ -292,16 +292,18 @@ function toDialogueBlock(
  * BY-lines remain the responsibility of paragraph production.
  */
 export function produceDialogueBlocks(
-  utterances: StructureUtterance[] | null | undefined,
-  confirmedSpeakerMap: Record<string, StructureSpeakerMapEntry>,
+  utterances: Array<StructureUtterance | null | undefined> | null | undefined,
+  confirmedSpeakerMap?: Record<string, StructureSpeakerMapEntry> | null,
 ): DialogueBlock[] {
   if (!utterances) {
     return [];
   }
 
+  const speakerMap = confirmedSpeakerMap ?? {};
+
   return utterances
-    .filter((utterance) => utterance.excluded_from_output !== true)
-    .map((utterance) => toDialogueBlock(utterance, confirmedSpeakerMap));
+    .filter((utterance): utterance is StructureUtterance => utterance != null && utterance.excluded_from_output !== true)
+    .map((utterance) => toDialogueBlock(utterance, speakerMap));
 }
 export async function splitMergedBlocks(
   needsSplitBlocks: Array<ClassifiedBlock & { text: string }>,

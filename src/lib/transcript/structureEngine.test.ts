@@ -85,12 +85,13 @@ describe("structureEngine", () => {
     expect(result.some((block) => /\bBY\s+(MR|MS)\./i.test(block.text))).toBe(false);
   });
 
-  it("omits excluded utterances and accepts absent dialogue input", () => {
+  it("omits excluded or absent utterances and accepts an absent speaker map", () => {
     expect(produceDialogueBlocks(null, speakerMap)).toEqual([]);
     expect(produceDialogueBlocks([
       utterance({ utterance_id: "utt_visible" }),
       utterance({ utterance_id: "utt_excluded", excluded_from_output: true }),
-    ], speakerMap).map((block) => block.utterance_id)).toEqual(["utt_visible"]);
+      null,
+    ], null).map((block) => block.utterance_id)).toEqual(["utt_visible"]);
   });
   it("merges consecutive same-speaker incomplete fragments", () => {
     const result = mergeConsecutiveFragments([
