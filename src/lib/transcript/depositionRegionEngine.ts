@@ -22,17 +22,6 @@ const PROCEEDINGS_START_PATTERNS = [
   /\bsolemnly affirm\b/i,
 ] as const;
 
-const CAPTION_LINE_PATTERNS = [
-  /^CAUSE NO\./i,
-  /^IN THE DISTRICT COURT$/i,
-  /^\)+$/,
-  /^VS\.?$/i,
-  /\bPlaintiff,?$/i,
-  /\bDefendants?\.?$/i,
-  /\bJUDICIAL DISTRICT$/i,
-  /^[A-Z0-9 ,.'&;-]+,$/,
-] as const;
-
 const TESTIMONY_START_PATTERNS = [
   /^\(Whereupon,\s+the deposition commenced/i,
   /^EXAMINATION$/i,
@@ -64,9 +53,6 @@ function isProceedingsStart(text: string): boolean {
   return matchesAny(text, PROCEEDINGS_START_PATTERNS);
 }
 
-function isCaptionLine(text: string): boolean {
-  return matchesAny(text, CAPTION_LINE_PATTERNS);
-}
 
 function isTestimonyStart(
   text: string,
@@ -100,8 +86,6 @@ export function classifyDepositionRegions(
 
     if (currentRegion !== "CERTIFICATION" && isCertificationStart(text)) {
       currentRegion = "CERTIFICATION";
-    } else if (currentRegion === "CAPTION" && isCaptionLine(text)) {
-      currentRegion = "CAPTION";
     } else if (currentRegion === "CAPTION" && isProceedingsStart(text)) {
       currentRegion = "PROCEEDINGS";
     } else if ((currentRegion === "CAPTION" || currentRegion === "PROCEEDINGS") && isTestimonyStart(text, line.persistedLineType, line.role)) {

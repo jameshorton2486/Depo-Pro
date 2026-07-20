@@ -3,7 +3,6 @@ import type { TranscriptParagraph } from "./transcriptParagraphTypes";
 const SHORT_ANSWER_PATTERN = /^(Yes\.|No\.|Correct\.|I did\.|I do\.|I have\.|I don't\.)\s*/i;
 const OBJECTION_PATTERN = /\bObjection\.\s*(?:Form\.|Foundation\.)?/i;
 const K_PATTERN = /(^|\s)K\.(\s|$)/g;
-const DEFAULT_OBJECTION_LABEL = "MR. RAMON";
 
 function normalizeParagraphArtifacts(text: string): string {
   return text.replace(K_PATTERN, (_match, leading: string, trailing: string) => `${leading}Okay.${trailing ? "  " : ""}`);
@@ -171,7 +170,7 @@ function splitEmbeddedObjections(paragraph: TranscriptParagraph): TranscriptPara
   result.push(sliceParagraph(
     paragraph,
     "COLLOQUY",
-    DEFAULT_OBJECTION_LABEL,
+    paragraph.speakerLabel,
     match.index,
     match.index + match[0].length,
   ));

@@ -53,6 +53,13 @@ describe("qaStructureUtils", () => {
     ]);
   });
 
+  it("uses the parent speaker label for an embedded objection", () => {
+    const result = applyQaFixer([
+      makeParagraph({ speakerLabel: "MS. HART", text: "Did you review it? Objection. Form." }),
+    ]);
+
+    expect(result[1]).toMatchObject({ kind: "COLLOQUY", label: "MS. HART", text: "Objection. Form." });
+  });
   it("normalizes standalone K. artifacts to Okay.", () => {
     const result = applyQaFixer([
       makeParagraph({ kind: "COLLOQUY", label: "MR. RAMON", text: " K. And in this case" }),
