@@ -171,7 +171,11 @@ describe("boundaryEngine", () => {
     ]);
 
     expect(synthetic).toHaveLength(2);
-    expect(synthetic.map((event) => event.text)).toEqual([
+    expect(synthetic.map((event) => event.utterance_id)).toEqual([
+      "synthetic_boundary_1_off",
+      "synthetic_boundary_2_on",
+    ]);
+        expect(synthetic.map((event) => event.text)).toEqual([
       "(Whereupon, a recess was taken at 10:00 a.m.)",
       "(Whereupon, the proceedings resumed at 10:15 a.m.)",
     ]);
@@ -191,7 +195,11 @@ describe("boundaryEngine", () => {
     const synthetic = generateSyntheticParentheticals([section, section]);
 
     expect(synthetic).toHaveLength(2);
-    expect(synthetic.map((event) => event.text)).toEqual([
+    expect(synthetic.map((event) => event.utterance_id)).toEqual([
+      "synthetic_boundary_1_off",
+      "synthetic_boundary_2_on",
+    ]);
+        expect(synthetic.map((event) => event.text)).toEqual([
       "(Whereupon, a recess was taken at 10:00 a.m.)",
       "(Whereupon, the proceedings resumed at 10:15 a.m.)",
     ]);

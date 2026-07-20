@@ -203,11 +203,15 @@ export function generateSyntheticParentheticals(
   const emitted = new Set<string>();
   let syntheticIndex = 0;
 
-  const append = (event: Omit<BoundaryUtteranceView, "utterance_id">, dedupeKey: string) => {
+  const append = (
+    event: Omit<BoundaryUtteranceView, "utterance_id">,
+    dedupeKey: string,
+    suffix: "off" | "on" | "conclusion",
+  ) => {
     if (emitted.has(dedupeKey)) return;
     emitted.add(dedupeKey);
     syntheticIndex += 1;
-    parentheticals.push({ ...event, utterance_id: `synthetic_boundary_${syntheticIndex}` });
+    parentheticals.push({ ...event, utterance_id: `synthetic_boundary_${syntheticIndex}_${suffix}` });
   };
 
   for (const section of sections) {
@@ -219,7 +223,7 @@ export function generateSyntheticParentheticals(
         end_time: section.on_utterance_index,
         text: `(Whereupon, the deposition was concluded at ${formattedTime})`,
         is_synthetic: true,
-      }, `CONCLUSION:${section.off_utterance_index}:${section.on_utterance_index}:${formattedTime}`);
+      }, `CONCLUSION:${section.off_utterance_index}:${section.on_utterance_index}:${formattedTime}`, "conclusion");
       continue;
     }
 
@@ -230,7 +234,7 @@ export function generateSyntheticParentheticals(
         end_time: section.off_utterance_index,
         text: "(Whereupon, a brief interruption in the remote proceedings occurred.)",
         is_synthetic: true,
-      }, `ZOOM_GAP:${section.off_utterance_index}:${section.on_utterance_index}`);
+      }, `ZOOM_GAP:${section.off_utterance_index}:${section.on_utterance_index}`, "off");
       continue;
     }
 
@@ -241,7 +245,7 @@ export function generateSyntheticParentheticals(
       end_time: section.off_utterance_index,
       text: `(Whereupon, a recess was taken at ${formattedOffTime})`,
       is_synthetic: true,
-    }, `RECESS:${section.off_utterance_index}:${formattedOffTime}`);
+    }, `RECESS:${section.off_utterance_index}:${formattedOffTime}`, "off");
 
     const formattedOnTime = formatEventTime(section.on_time);
     append({
@@ -250,7 +254,7 @@ export function generateSyntheticParentheticals(
       end_time: section.on_utterance_index,
       text: `(Whereupon, the proceedings resumed at ${formattedOnTime})`,
       is_synthetic: true,
-    }, `RESUME:${section.on_utterance_index}:${formattedOnTime}`);
+    }, `RESUME:${section.on_utterance_index}:${formattedOnTime}`, "on");
   }
 
   return parentheticals;
