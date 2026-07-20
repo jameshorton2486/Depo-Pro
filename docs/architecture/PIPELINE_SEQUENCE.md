@@ -1,6 +1,8 @@
 # Actual Pipeline Sequence
 
-**Evidence:** `supabase/functions/transcribe-callback/index.ts` and its imported production modules, audited 2026-07-20.
+**Evidence:** `supabase/functions/transcribe-callback/index.ts` and its imported production modules in the dirty worktree audited 2026-07-20.
+
+> **Snapshot boundary:** This is a pre-stabilization pipeline record. Modules scheduled for focused implementation PRs are not represented as merged until their PR is merged.
 
 ```text
 Intake / transcribe-start

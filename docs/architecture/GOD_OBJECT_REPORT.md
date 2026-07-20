@@ -9,12 +9,19 @@
 | `cfe.ts` | line construction, punctuation, deterministic correction application, flags, grouping, geometry interaction | Broad formatting compiler | Establish CFE as current formatting owner; extract only after tests establish a stable intermediate representation. |
 
 This report is not a refactoring directive. It identifies high-change modules whose owner boundaries must be protected before new behavior is added.
-## Quantified scope
+## Scope evidence
 
-At the pinned audit commit:
+The audit identifies responsibility breadth, not a line-count threshold. Source files
+change during normal implementation, so this report intentionally does not preserve
+stale line counts. Reproduce the current measurements with the commands in
+[Audit Method and Evidence](AUDIT_METHOD_AND_EVIDENCE.md) before using size as a
+refactoring signal.
 
-- `transcriptParagraphs.ts`: **1,083 lines**. It combines at least eight concerns: speaker-label use, paragraph typing, Q/A production, proceedings metadata text, examination transitions, structural parentheticals, source/provenance collection, and display serialization.
-- `speakerResolutionEngine.ts`: **599 lines**. Its scope remains cohesive to speaker identity, role, and evidence.
-- `transcribe-callback/index.ts`: **1,512 lines**. It is large, but its responsibilities are orchestration, persistence, and error routing rather than competing semantic inference.
+`transcriptParagraphs.ts` combines at least eight concerns: speaker-label use,
+paragraph typing, Q/A production, proceedings metadata text, examination transitions,
+structural parentheticals, source/provenance collection, and display serialization.
+`speakerResolutionEngine.ts` remains cohesive to speaker identity, role, and evidence.
+`transcribe-callback/index.ts` is an orchestration boundary for persistence and error
+routing rather than a competing semantic-inference owner.
 
 The clearest later-stage-work smell is `transcriptParagraphs.ts` generating proceedings metadata text from `CaseRecord` during paragraph construction. This is active behavior, not an assertion that it is wrong; it should be the first boundary examined if proceedings production is extracted.

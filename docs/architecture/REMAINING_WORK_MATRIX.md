@@ -2,6 +2,8 @@
 
 **Audit date:** 2026-07-20. This supersedes the July 13 matrix where repository evidence differs.
 
+> **Snapshot boundary:** “Current implementation” describes the audited dirty worktree. Focused PRs remain the authoritative record of what has reached the development branch.
+
 | Planned subsystem | Current implementation | Status | Remaining work |
 |---|---|---|---|
 | Raw Deepgram integrity | `integrityAudit.ts`, enforced in callback | Already complete | Maintain tests; no second audit layer |

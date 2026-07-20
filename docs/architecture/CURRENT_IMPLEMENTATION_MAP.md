@@ -1,7 +1,10 @@
 # Current Implementation Map
 
 **Audit date:** 2026-07-20
-**Scope:** active Deepgram-to-workspace, review, and export pipeline.
+**Scope:** active Deepgram-to-workspace, review, and export pipeline in the audited dirty worktree snapshot.
+
+> **Snapshot boundary:** This map records the pre-stabilization worktree, including changes scheduled for later focused PRs. It is not a claim that every listed module is already present on the authoritative branch; use the Commit Assembly Plan for delivery status.
+
 **Status:** `Implemented`, `Partial`, `Obsolete`, `Unused`, `Deprecated`, or `Planned`.
 
 | Module | Purpose | Producer / invocation | Consumer | Status | Current owner / audit finding |

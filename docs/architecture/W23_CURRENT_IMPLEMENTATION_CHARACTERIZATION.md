@@ -1,16 +1,18 @@
-# Wave 23 — Current Implementation Characterization
+# Wave 23 — Historical Implementation Characterization
 
-**Governs:** Wave 23 (Deposition Production) — implementation reality
+**Records:** A Wave 23 worktree snapshot; it does not govern implementation.
 **Type:** Checkpoint (Wave 23.1), not a sprint. Read-only characterization.
 **Generated:** 2026-07-13
 
-> **What this is.** A map of what the pre-workspace pipeline **actually is in
-> code today** — not what the architecture says, not what the implementation plan
-> assumed. Architecture answers "what should exist?"; this answers "what exists?"
-> The two should converge. This checkpoint exists because the code moved ahead of
-> the plan: the plan's extraction targets (`workspacePresentation.ts`,
-> `qaFixer.ts`) are already deleted, and several proposed "new" modules already
-> exist under other names.
+> **Snapshot boundary.** This document records the active, dirty development
+> worktree that was audited on 2026-07-13. It may describe modules scheduled for
+> later focused PRs and must not be read as evidence that those modules exist on the
+> authoritative branch. Use the Commit Assembly Plan for delivery status and measure
+> current source files using [Audit Method and Evidence](AUDIT_METHOD_AND_EVIDENCE.md).
+>
+> **What this is.** A map of what the pre-workspace pipeline contained at the time
+> of the snapshot — not what the architecture says or what a clean branch necessarily
+> contains. Architecture answers "what should exist?"; this records what was observed.
 
 ---
 
@@ -35,25 +37,25 @@ The plan's Phase A/B ("explicit callback ordering, pre-workspace orchestrator,
 
 ## Module characterization
 
-| Module (lines) | Owns (actual) | Consumed by | Depends on | Status |
+| Module | Owns (observed in snapshot) | Consumed by | Depends on | Status |
 |---|---|---|---|---|
-| `integrityAudit.ts` (329) | Raw Deepgram payload integrity audit | transcribe-callback | types | 🟢 Active |
-| `normalize.ts` (260) | Deepgram → canonical speaker/utterance/word rows | callback, transcriptRepository | types | 🟢 Active |
-| `multifileMerge.ts` (452) | Merge ordered source segments → canonical merged transcript | callback | types, normalize | 🟢 Active |
-| `canonicalIntegrity.ts` (138) | Post-normalize/merge integrity gate — **currently only timing + duplicate checks** | callback | multifileMerge, normalize | 🟡 Active but thin |
-| `boundaryEngine.ts` (258) | Pre/off/post-record cutoff, formal opening, synthetic parentheticals | callback | — | 🟢 Active |
-| `preWorkspaceStructure.ts` (119) | **Pre-workspace orchestration** — speakers + utterance line-types (Q/A/SP/PN/HEADER) + inclusion pages | callback | speakerResolutionEngine, transcriptParagraphs, structuredTranscript | 🟢 Active |
-| `speakerResolutionEngine.ts` (677) | **Speaker semantics** — roles, speaker map, mid-depo verification, attribution overrides, exam transitions | workspaceService, preWorkspaceStructure, structuredTranscriptPackage, transcriptParagraphs | — | 🟢 Active |
-| `structureEngine.ts` (569) | **Structure** — block classification, Q/A vs colloquy, objection extraction, split, flow validation | (assembly) | — | 🟢 Active |
-| `depositionRegionEngine.ts` (115) | **Region model** — CAPTION/PROCEEDINGS/TESTIMONY/CERTIFICATION | structuredTranscriptPackage, transcriptParagraphs | structuredTranscript | 🟢 Active |
-| `transcriptParagraphs.ts` (1229) | **Paragraph production** — semantic assignments, by-lines, workspace paragraphs, render text | package, preWorkspaceStructure | speakerResolutionEngine, depositionRegionEngine, qaStructureUtils, paragraphDisplayImprovements | 🟢 Active |
-| `structuredTranscriptPackage.ts` (435) | **Contract assembly** — versioned workspace-ready package (speaker/paragraph/boundary producers) | buildEditorContent, transcriptDownloads | depositionRegionEngine, speakerResolutionEngine, transcriptParagraphs | 🟢 Active |
-| `correctionRegistry.ts` (363) | **Central deterministic registry** — token/phrase/multiword corrections, garble maps, stutter rules (DP-012) | correctionEngines, correctionOrchestrator, cfe | — | 🟢 Active |
-| `correctionEngines.ts` (387) | Deterministic correction application (metadata, confirmed spellings) | correctionValidator | correctionRegistry | 🟢 Active |
-| `correctionValidator.ts` (267) | Correction-log validation (verbatim, consistency, evidence, speaker) | formattingEngine | correctionEngines | 🟢 Active |
-| `correctionOrchestrator.ts` (317) | Correction report / defect layers | **CorrectionsPanel, DocumentContext (render-time)** | correctionRegistry | 🟠 Active but render-consumed (drift) |
-| `formattingEngine.ts` (223) | Geometry checks + block formatting | (render) | correctionValidator | 🟢 Active |
-| `aiReview.ts` (254) | AI residual review (prompt version, review rows, skip logic) | (AI trigger) | — | 🟢 Active |
+| `integrityAudit.ts` | Raw Deepgram payload integrity audit | transcribe-callback | types | 🟢 Active |
+| `normalize.ts` | Deepgram → canonical speaker/utterance/word rows | callback, transcriptRepository | types | 🟢 Active |
+| `multifileMerge.ts` | Merge ordered source segments → canonical merged transcript | callback | types, normalize | 🟢 Active |
+| `canonicalIntegrity.ts` | Post-normalize/merge integrity gate — **then only timing + duplicate checks** | callback | multifileMerge, normalize | 🟡 Active but thin |
+| `boundaryEngine.ts` | Pre/off/post-record cutoff, formal opening, synthetic parentheticals | callback | — | 🟢 Active |
+| `preWorkspaceStructure.ts` | **Pre-workspace orchestration** — speakers + utterance line-types (Q/A/SP/PN/HEADER) + inclusion pages | callback | speakerResolutionEngine, transcriptParagraphs, structuredTranscript | 🟢 Active |
+| `speakerResolutionEngine.ts` | **Speaker semantics** — roles, speaker map, mid-depo verification, attribution overrides, exam transitions | workspaceService, preWorkspaceStructure, structuredTranscriptPackage, transcriptParagraphs | — | 🟢 Active |
+| `structureEngine.ts` | **Structure** — block classification, Q/A vs colloquy, objection extraction, split, flow validation | (assembly) | — | 🟢 Active |
+| `depositionRegionEngine.ts` | **Region model** — CAPTION/PROCEEDINGS/TESTIMONY/CERTIFICATION | structuredTranscriptPackage, transcriptParagraphs | structuredTranscript | 🟢 Active |
+| `transcriptParagraphs.ts` | **Paragraph production** — semantic assignments, by-lines, workspace paragraphs, render text | package, preWorkspaceStructure | speakerResolutionEngine, depositionRegionEngine, qaStructureUtils, paragraphDisplayImprovements | 🟢 Active |
+| `structuredTranscriptPackage.ts` | **Contract assembly** — versioned workspace-ready package (speaker/paragraph/boundary producers) | buildEditorContent, transcriptDownloads | depositionRegionEngine, speakerResolutionEngine, transcriptParagraphs | 🟢 Active |
+| `correctionRegistry.ts` | **Central deterministic registry** — token/phrase/multiword corrections, garble maps, stutter rules (DP-012) | correctionEngines, correctionOrchestrator, cfe | — | 🟢 Active |
+| `correctionEngines.ts` | Deterministic correction application (metadata, confirmed spellings) | correctionValidator | correctionRegistry | 🟢 Active |
+| `correctionValidator.ts` | Correction-log validation (verbatim, consistency, evidence, speaker) | formattingEngine | correctionEngines | 🟢 Active |
+| `correctionOrchestrator.ts` | Correction report / defect layers | **CorrectionsPanel, DocumentContext (render-time)** | correctionRegistry | 🟠 Active but render-consumed (drift) |
+| `formattingEngine.ts` | Geometry checks + block formatting | (render) | correctionValidator | 🟢 Active |
+| `aiReview.ts` | AI residual review (prompt version, review rows, skip logic) | (AI trigger) | — | 🟢 Active |
 
 ---
 

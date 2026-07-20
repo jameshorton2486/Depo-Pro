@@ -1,6 +1,6 @@
 # Recommended Next Implementation
 
-This roadmap is derived from current repository evidence, not historical Wave plans.
+This roadmap is derived from the audited pre-stabilization worktree evidence, not historical Wave plans. Delivery status is governed by the Commit Assembly Plan and merged focused PRs.
 
 1. **Freeze a persisted residual-review queue contract.**
    - Choose one owner, preferably an upstream/persisted form of `correctionOrchestrator.ts` or a deliberately named queue module.
