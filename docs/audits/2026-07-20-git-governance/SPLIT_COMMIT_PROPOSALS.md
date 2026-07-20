@@ -23,7 +23,7 @@
 |---|---|---|---|
 | A — Original viewer wiring | Feature | `workspaceService.ts`, `Toolbar.tsx`, `DocumentContext.tsx` | UI/data wiring for original transcript access. |
 | B — server request/retry wiring | Infrastructure | `transcribe-start/index.ts`, `buildDeepgramRequest.ts`, `managedKeyterms.ts`, `preWorkspaceStructure.ts`, `buildUfmMetadata.ts` | Edge request construction and pipeline input. |
-| C — shared formatting/editor imports | Refactor | `pagination.ts`, `stageS/colloquy.ts`, `abbreviationRegistry.ts`, `cfe.ts`, `honorificHelper.ts`, `legalText.ts`, `speakerResolutionEngine.ts`, `transcriptParagraphs.ts` | Deployment-driven module-resolution and shared formatting changes require independent verification. |
+| C — shared formatting/editor imports | Refactor | `src/editor/pagination.ts`, `src/editor/stageS/colloquy.ts`, `abbreviationRegistry.ts`, `cfe.ts`, `honorificHelper.ts`, `legalText.ts`, `speakerResolutionEngine.ts`, `transcriptParagraphs.ts` | Deployment-driven module-resolution and shared formatting changes require independent verification. |
 
 ## Decision required before Phase 3
 

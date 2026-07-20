@@ -8,7 +8,7 @@ Each path belongs to the first matching group below; therefore no path can belon
 
 | Order | Group | Exact membership rule |
 |---:|---|---|
-| 1 | Repository Governance | `.gitignore`, `package.json`, `scripts/**`, and `docs/audits/2026-07-20-git-governance/**`. |
+| 1 | Repository Governance | `.gitignore`, `package.json`, `scripts/**`, and `docs/audits/2026-07-20-git-governance/**`, and `docs/architecture/PROJECT_OPERATING_STANDARD.md`. |
 | 2 | Generated Artifacts | `vite.config.ts.timestamp-*.mjs` and generated dashboard JSON under `docs/dashboard/**`. |
 | 3 | Documentation | All remaining `*.md`, `docs/**`, `Canonical Standards Folder/**`, and root sprint/report files. |
 | 4 | Migrations | `supabase/migrations/**`. |
