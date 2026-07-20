@@ -187,6 +187,47 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
   };
 }
 
+// Load the immutable Original snapshot (structured transcript as first produced)
+// as a read-only EditorDocument. Returns null when the transcript predates the
+// two-copy model (no snapshot was captured) so callers can hide the Original view.
+async function loadOriginalDocument(caseId: string): Promise<EditorDocument | null> {
+  const target = await resolveWorkspaceTarget(caseId);
+  if (!target?.original_storage_path) {
+    return null;
+  }
+
+  const client = await getSupabaseClient("loadOriginalDocument");
+  const { data, error } = await client.storage
+    .from("case-files")
+    .download(target.original_storage_path);
+  if (error || !data) {
+    return null;
+  }
+
+  let parsed: {
+    speakers?: unknown;
+    speakerResolutions?: unknown;
+    utterances?: unknown;
+    words?: unknown;
+  };
+  try {
+    parsed = JSON.parse(await data.text());
+  } catch {
+    return null;
+  }
+
+  const mediaUrl = target.media_url ? await getSignedUrl(target.media_url) : "";
+  const snapshot = {
+    job: target,
+    speakers: parsed.speakers ?? [],
+    speakerResolutions: parsed.speakerResolutions ?? [],
+    utterances: parsed.utterances ?? [],
+    words: parsed.words ?? [],
+  } as NonNullable<Awaited<ReturnType<typeof loadTranscriptSnapshot>>>;
+
+  return buildEditorDocumentFromSnapshot(snapshot, mediaUrl);
+}
+
 async function loadAudioSegments(
   target: TranscriptJobRow,
   fallbackMediaUrl: string,
@@ -718,6 +759,12 @@ export const workspaceApi = {
     }
 
     return loadWorkspaceDocument(caseId);
+  },
+  getOriginalDocument: async (caseId: string): Promise<EditorDocument | null> => {
+    if (USE_MOCK_WORKSPACE) {
+      return null;
+    }
+    return loadOriginalDocument(caseId);
   },
   saveWorking: async (jobId: string, payload: SaveWorkingPayload, options?: WorkspaceMutationOptions) => {
     if (USE_MOCK_WORKSPACE) {

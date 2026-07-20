@@ -1,4 +1,4 @@
-import type { Speaker } from "../../api/types";
+import type { EditorDocument, Speaker } from "../../api/types";
 import type { CaseRecord } from "../../types/case";
 
 export interface SpeakerResolutionUtterance {
@@ -86,8 +86,58 @@ export interface SpeakerResolutionStore {
   }): Promise<void>;
 }
 
+export type PresentationRole = "ATTORNEY" | "WITNESS" | "REPORTER" | "VIDEOGRAPHER" | "OTHER";
+
+export interface SpeakerView {
+  speakerId: string;
+  speakerIndex: number | null;
+  label: string;
+  role: PresentationRole;
+}
+
+export interface StoredSpeakerSemanticInput {
+  speaker_id: string;
+  display_name?: string | null;
+  assigned_name?: string | null;
+  speaker_label?: string | null;
+  deepgram_speaker?: number | null;
+  speaker_index?: number | null;
+  role?: string | null;
+  speaker_role?: string | null;
+}
+
 const MODEL = "claude-sonnet-4-6";
 const TEMPERATURE = 0;
+const GENERIC_SPEAKER_PATTERN = /^SPEAKER\s+\d+$/i;
+const REPORTER_PATTERNS = [
+  /cause number/i,
+  /licensed in texas/i,
+  /raise your right hand/i,
+  /do you solemnly swear/i,
+  /district court/i,
+  /remote deposition/i,
+  /off the record/i,
+  /you may proceed with the examination/i,
+] as const;
+const VIDEOGRAPHER_PATTERNS = [
+  /we are on the record/i,
+  /today'?s date/i,
+  /the time is now/i,
+  /beginning of the deposition/i,
+  /will the court reporter please/i,
+  /this is the beginning/i,
+] as const;
+const WITNESS_PATTERNS = [
+  /^\s*i do\.?\s*$/i,
+  /^\s*my name is\b/i,
+  /\bi was hired to\b/i,
+  /\bboard certified\b/i,
+  /\bi have \d+ offices\b/i,
+  /\bi'm in\b/i,
+  /\bi am in\b/i,
+] as const;
+const MIN_REPORTER_SCORE = 2;
+const MIN_VIDEOGRAPHER_SCORE = 2;
 
 function assertInvariant(): void {
   if (MODEL !== "claude-sonnet-4-6" || TEMPERATURE !== 0) {
@@ -99,6 +149,10 @@ function comparable(value: string): string {
   return value.replace(/[^A-Za-z0-9 ]/g, " ").replace(/\s+/g, " ").trim().toUpperCase();
 }
 
+function countMatches(text: string, patterns: readonly RegExp[]): number {
+  return patterns.reduce((score, pattern) => (pattern.test(text) ? score + 1 : score), 0);
+}
+
 function surname(value: string): string {
   const parts = comparable(value).split(" ").filter(Boolean);
   return parts[parts.length - 1] ?? "";
@@ -107,6 +161,110 @@ function surname(value: string): string {
 function firstName(value: string): string {
   const parts = comparable(value).split(" ").filter(Boolean);
   return parts[0] ?? "";
+}
+
+function normalizeSpeakerLabel(label: string): string {
+  return label.trim().replace(/:+$/, "").replace(/\s+/g, " ").toUpperCase();
+}
+
+function isGenericSpeakerLabel(label: string): boolean {
+  return !label.trim() || GENERIC_SPEAKER_PATTERN.test(label.trim());
+}
+
+function getGenericSpeakerFallbackLabel(speaker: Speaker): string {
+  return speaker.deepgram_speaker != null
+    ? `SPEAKER ${speaker.deepgram_speaker}`
+    : "SPEAKER CUSTOM";
+}
+
+function normalizeStoredSpeakerRole(role: string | null | undefined): PresentationRole {
+  switch (role?.trim().toLowerCase()) {
+    case "court_reporter":
+    case "reporter":
+      return "REPORTER";
+    case "witness":
+      return "WITNESS";
+    case "attorney":
+    case "examining_attorney":
+    case "defending_attorney":
+      return "ATTORNEY";
+    case "videographer":
+      return "VIDEOGRAPHER";
+    default:
+      return "OTHER";
+  }
+}
+
+function presentationRoleToSpeakerRole(role: PresentationRole): Speaker["role"] {
+  return role === "ATTORNEY"
+    ? "ATTORNEY"
+    : role === "WITNESS"
+      ? "WITNESS"
+      : role === "REPORTER"
+        ? "REPORTER"
+        : "OTHER";
+}
+
+export function resolveStoredSpeakerSemantic(input: StoredSpeakerSemanticInput): Speaker {
+  const role = normalizeStoredSpeakerRole(input.speaker_role ?? input.role);
+  const deepgramSpeaker = input.speaker_index ?? input.deepgram_speaker ?? null;
+  const candidateLabel = input.assigned_name ?? input.speaker_label ?? input.display_name ?? "";
+  const displayName = isGenericSpeakerLabel(candidateLabel)
+    ? getGenericSpeakerFallbackLabel({
+        speaker_id: input.speaker_id,
+        display_name: candidateLabel,
+        deepgram_speaker: deepgramSpeaker,
+        role: presentationRoleToSpeakerRole(role),
+      })
+    : normalizeSpeakerLabel(candidateLabel);
+
+  return {
+    speaker_id: input.speaker_id,
+    display_name: displayName,
+    deepgram_speaker: deepgramSpeaker,
+    role: presentationRoleToSpeakerRole(role),
+  };
+}
+
+function findSpeakerAggregateTexts(document: EditorDocument): Map<string, string> {
+  const wordById = new Map(document.words.map((word) => [word.word_id, word]));
+  const texts = new Map<string, string>();
+
+  for (const utterance of document.utterances) {
+    const text = utterance.word_ids
+      .map((wordId) => wordById.get(wordId)?.text ?? "")
+      .join(" ")
+      .trim();
+    const current = texts.get(utterance.speaker_id) ?? "";
+    texts.set(utterance.speaker_id, `${current} ${text}`.trim());
+  }
+
+  return texts;
+}
+
+function attorneyNameScore(text: string, name: string): number {
+  const normalizedText = comparable(text);
+  const normalizedName = comparable(name);
+  if (!normalizedName) {
+    return 0;
+  }
+
+  let score = 0;
+  if (normalizedText.includes(normalizedName)) {
+    score += 4;
+  }
+
+  const parts = normalizedName.split(" ").filter(Boolean);
+  const lawyerSurname = parts[parts.length - 1] ?? "";
+  if (lawyerSurname && normalizedText.includes(lawyerSurname)) {
+    score += 2;
+  }
+
+  if (/for the plaintiff|for the defendant|represent the plaintiff|represent the defendant/i.test(text)) {
+    score += 1;
+  }
+
+  return score;
 }
 
 function attorneyCandidates(record: CaseRecord | null | undefined): Array<{ name: string; gender: string | null }> {
@@ -128,6 +286,29 @@ function attorneyDisplayName(name: string, gender: string | null): string {
   return `${honorificForGender(gender)}  ${surname(name)}`.trim();
 }
 
+function attorneyPresentationLabel(name: string, gender: string | null): string {
+  return `${honorificForGender(gender)} ${surname(name)}`.trim();
+}
+
+function presentationSurname(name: string): string {
+  const normalized = comparable(name)
+    .replace(/\b(M D|MD|PH D|PHD|J D|JD|ESQ|JR|SR|II|III|IV)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parts = normalized.split(" ").filter(Boolean);
+  return parts[parts.length - 1] ?? normalized;
+}
+
+function witnessDisplayName(name: string | null | undefined, prefixSuffix: string | null | undefined, roleValue: string | null): string {
+  const combined = `${name ?? ""} ${prefixSuffix ?? ""}`;
+  const physician = /\b(M\.D\.|PH\.D\.)\b/i.test(combined) || roleValue === "EXPERT";
+  if (!physician) {
+    return "THE WITNESS";
+  }
+
+  return `DR. ${presentationSurname(name ?? "WITNESS") || "WITNESS"}`;
+}
+
 function findWitnessSelfIdentification(
   utterances: SpeakerResolutionUtterance[],
   speakerId: string,
@@ -135,6 +316,171 @@ function findWitnessSelfIdentification(
   return utterances.find((utterance) => {
     return utterance.speaker_id === speakerId && /^\s*my name is\b/i.test(utterance.text);
   }) ?? null;
+}
+
+export function buildSpeakerViews(document: EditorDocument, record?: CaseRecord | null): Map<string, SpeakerView> {
+  const aggregateTexts = findSpeakerAggregateTexts(document);
+  const explicitSpeakerViews = new Map<string, SpeakerView>();
+
+  for (const speaker of document.speakers) {
+    const baseLabel = isGenericSpeakerLabel(speaker.display_name)
+      ? getGenericSpeakerFallbackLabel(speaker)
+      : normalizeSpeakerLabel(speaker.display_name);
+    const baseRole: PresentationRole =
+      speaker.role === "ATTORNEY"
+        ? "ATTORNEY"
+        : speaker.role === "WITNESS"
+          ? "WITNESS"
+          : speaker.role === "REPORTER"
+            ? "REPORTER"
+            : "OTHER";
+
+    explicitSpeakerViews.set(speaker.speaker_id, {
+      speakerId: speaker.speaker_id,
+      speakerIndex: speaker.deepgram_speaker,
+      label: baseLabel,
+      role: baseRole,
+    });
+  }
+
+  let reporterId: string | null = null;
+  let reporterScore = 0;
+  let videographerId: string | null = null;
+  let videographerScore = 0;
+  let witnessId: string | null = null;
+  let witnessScore = 0;
+
+  for (const speaker of document.speakers) {
+    const text = aggregateTexts.get(speaker.speaker_id) ?? "";
+    const currentReporterScore = countMatches(text, REPORTER_PATTERNS);
+    if (currentReporterScore > reporterScore) {
+      reporterScore = currentReporterScore;
+      reporterId = speaker.speaker_id;
+    }
+
+    const currentVideographerScore = countMatches(text, VIDEOGRAPHER_PATTERNS);
+    if (currentVideographerScore > videographerScore) {
+      videographerScore = currentVideographerScore;
+      videographerId = speaker.speaker_id;
+    }
+
+    const currentWitnessScore = countMatches(text, WITNESS_PATTERNS);
+    if (currentWitnessScore > witnessScore) {
+      witnessScore = currentWitnessScore;
+      witnessId = speaker.speaker_id;
+    }
+  }
+
+  if (reporterId) {
+    const view = explicitSpeakerViews.get(reporterId);
+    if (view) {
+      view.label = "THE REPORTER";
+      view.role = "REPORTER";
+    }
+  }
+
+  if (videographerId && videographerId !== reporterId) {
+    const view = explicitSpeakerViews.get(videographerId);
+    if (view) {
+      view.label = "THE VIDEOGRAPHER";
+      view.role = "VIDEOGRAPHER";
+    }
+  }
+
+  if (witnessId) {
+    const view = explicitSpeakerViews.get(witnessId);
+    if (view && view.role === "OTHER") {
+      const witness = record?.witnesses[0];
+      const witnessRole = typeof witness?.role?.value === "string" ? witness.role.value : null;
+      view.label = witnessDisplayName(witness?.name.value, witness?.prefix_suffix, witnessRole);
+      view.role = "WITNESS";
+    }
+  }
+
+  if (record) {
+    const patternAssignedIds = new Set<string>();
+    if (reporterId && reporterScore >= MIN_REPORTER_SCORE) {
+      patternAssignedIds.add(reporterId);
+    }
+    if (videographerId && videographerId !== reporterId && videographerScore >= MIN_VIDEOGRAPHER_SCORE) {
+      patternAssignedIds.add(videographerId);
+    }
+    const assignedSpeakerIds = new Set<string>();
+
+    for (const attorney of record.attorneys ?? []) {
+      let bestSpeakerId: string | null = null;
+      let bestScore = 0;
+      for (const speaker of document.speakers) {
+        if (patternAssignedIds.has(speaker.speaker_id) || assignedSpeakerIds.has(speaker.speaker_id)) {
+          continue;
+        }
+        const text = aggregateTexts.get(speaker.speaker_id) ?? "";
+        const score = attorneyNameScore(text, attorney.name.value);
+        if (score > bestScore) {
+          bestScore = score;
+          bestSpeakerId = speaker.speaker_id;
+        }
+      }
+
+      if (bestSpeakerId && bestScore > 0) {
+        const view = explicitSpeakerViews.get(bestSpeakerId);
+        if (view) {
+          view.label = attorneyPresentationLabel(attorney.name.value, attorneyCandidates(record).find((candidate) => candidate.name === attorney.name.value)?.gender ?? null);
+          view.role = "ATTORNEY";
+          assignedSpeakerIds.add(bestSpeakerId);
+        }
+      }
+    }
+
+    if (record.witnesses?.length === 1) {
+      const witnessCandidateId = witnessId
+        && !patternAssignedIds.has(witnessId)
+        && !assignedSpeakerIds.has(witnessId)
+        && explicitSpeakerViews.get(witnessId)?.role === "OTHER"
+        ? witnessId
+        : document.speakers.find((speaker) => {
+          const view = explicitSpeakerViews.get(speaker.speaker_id);
+          return (
+            speaker.deepgram_speaker != null
+            && !patternAssignedIds.has(speaker.speaker_id)
+            && !assignedSpeakerIds.has(speaker.speaker_id)
+            && view?.role === "OTHER"
+          );
+        })?.speaker_id;
+      const view = witnessCandidateId ? explicitSpeakerViews.get(witnessCandidateId) : null;
+      const witness = record.witnesses[0];
+      const witnessRole = typeof witness?.role?.value === "string" ? witness.role.value : null;
+      if (view) {
+        view.label = witnessDisplayName(witness?.name.value, witness?.prefix_suffix, witnessRole);
+        view.role = "WITNESS";
+      }
+    }
+  }
+
+  return explicitSpeakerViews;
+}
+
+export function buildDisplayDocument(document: EditorDocument, record?: CaseRecord | null): EditorDocument {
+  const speakerViews = buildSpeakerViews(document, record);
+
+  return {
+    ...document,
+    speakers: document.speakers.map((speaker) => {
+      const view = speakerViews.get(speaker.speaker_id);
+      return {
+        ...speaker,
+        display_name: view?.label ?? speaker.display_name,
+        role:
+          view?.role === "ATTORNEY"
+            ? "ATTORNEY"
+            : view?.role === "WITNESS"
+              ? "WITNESS"
+              : view?.role === "REPORTER"
+                ? "REPORTER"
+                : speaker.role ?? "OTHER",
+      } satisfies Speaker;
+    }),
+  };
 }
 
 function detectCollapsedCluster(

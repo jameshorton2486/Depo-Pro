@@ -1,5 +1,5 @@
-import type { EditorDocument } from "../../api/types";
-import { buildPages, getBlockRole } from "../../editor/pagination";
+import type { EditorDocument } from "../../api/types.ts";
+import { buildPages, getBlockRole } from "../../editor/pagination.ts";
 import {
   AMBIGUOUS_FLAGS,
   DETERMINISTIC_PHRASE_CORRECTIONS,
@@ -8,13 +8,13 @@ import {
   isStutterCandidateWord,
   looksLikeImplausibleMoney,
   normalizeSlashDate,
-} from "../transcript/correctionRegistry";
+} from "../transcript/correctionRegistry.ts";
 import type {
   AbbreviationRegistry,
   FormattedDocument,
   FormattedLine,
   GeometryProfile,
-} from "./types";
+} from "./types.ts";
 
 type DisplaySegment = {
   utterance_id: string;

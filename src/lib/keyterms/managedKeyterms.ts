@@ -2,6 +2,7 @@ import type { ManagedKeyterm, KeytermSource } from "../../components/DeepgramKey
 import type { FieldProvenanceRow } from "../../components/conflict/types.ts";
 import type { CaseRecord, DeepgramKeyterm, KeytermCategory } from "../../types/case.ts";
 import { countTokens } from "../keytermRanker.ts";
+import { formatDeepgramKeyterm } from "../format/legalText.ts";
 import { harvestKeyterms, type HarvestedKeyterm, type HarvestedKeytermSource } from "./harvestKeyterms.ts";
 
 const KEYTERM_META_PREFIX = "__depo_keyterm_meta__:";
@@ -56,7 +57,7 @@ function mapHarvestSource(source: HarvestedKeytermSource): KeytermSource {
 }
 
 function normalizeTerm(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
+  return formatDeepgramKeyterm(value);
 }
 
 function managedId(term: string): string {

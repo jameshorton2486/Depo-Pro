@@ -1,4 +1,4 @@
-import { abbreviationRegistry } from "./abbreviationRegistry";
+import { abbreviationRegistry } from "./abbreviationRegistry.ts";
 
 function getRegistryHonorifics(): Set<string> {
   const honorifics = new Set<string>();

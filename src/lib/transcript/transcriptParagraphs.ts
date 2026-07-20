@@ -1,16 +1,16 @@
-import type { EditorDocument } from "../../api/types";
-import { COLON_GAP, colloquyLabel, normalizeHonorificSpacing } from "../../editor/stageS/colloquy";
-import type { CaseRecord } from "../../types/case";
-import { abbreviationRegistry } from "../format/abbreviationRegistry";
-import { cfe } from "../format/cfe";
-import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
-import type { FormattedLine, FormattedWord } from "../format/types";
-import { applyParagraphDisplayImprovements } from "./paragraphDisplayImprovements";
-import { buildDisplayDocument } from "./speakerResolutionEngine";
-import { applyQaFixer } from "./qaStructureUtils";
-import { classifyDepositionRegions, type DepositionRegion } from "./depositionRegionEngine";
-import { asStructuredUtterance, normalizePersistedLineType, type PersistedLineType } from "./structuredTranscript";
-import type { TextMode, TranscriptParagraph, TranscriptParagraphKind, WorkspaceParagraphDescriptor } from "./transcriptParagraphTypes";
+import type { EditorDocument } from "../../api/types.ts";
+import { COLON_GAP, colloquyLabel, normalizeHonorificSpacing } from "../../editor/stageS/colloquy.ts";
+import type { CaseRecord } from "../../types/case.ts";
+import { abbreviationRegistry } from "../format/abbreviationRegistry.ts";
+import { cfe } from "../format/cfe.ts";
+import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile.ts";
+import type { FormattedLine, FormattedWord } from "../format/types.ts";
+import { applyParagraphDisplayImprovements } from "./paragraphDisplayImprovements.ts";
+import { buildDisplayDocument } from "./speakerResolutionEngine.ts";
+import { applyQaFixer } from "./qaStructureUtils.ts";
+import { classifyDepositionRegions, type DepositionRegion } from "./depositionRegionEngine.ts";
+import { asStructuredUtterance, normalizePersistedLineType, type PersistedLineType } from "./structuredTranscript.ts";
+import type { TextMode, TranscriptParagraph, TranscriptParagraphKind, WorkspaceParagraphDescriptor } from "./transcriptParagraphTypes.ts";
 
 export type ParagraphSemanticLineType = "Q" | "A" | "SP" | "PN" | "HEADER" | null;
 
@@ -32,6 +32,12 @@ interface RenderState {
 
 interface StructuralEventDescriptor {
   text: string;
+}
+
+interface ProceedingsMetadataDescriptor {
+  heading: string;
+  videographerOpening: string;
+  reporterOpening: string;
 }
 
 const QUESTION_LEAD_PATTERN = /^(can you|would you|will you|please|tell me|state|describe|explain|identify|have you|did you|do you|are you|what|when|where|why|how)\b/i;
@@ -180,6 +186,51 @@ function detectStructuralEvent(text: string): StructuralEventDescriptor | null {
   return null;
 }
 
+function formatProceedingsDate(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return value.trim();
+  }
+
+  const [, year, month, day] = match;
+  const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (Number.isNaN(parsed.getTime())) {
+    return value.trim();
+  }
+
+  return parsed.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatProceedingsTime(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return value.trim();
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) {
+    return value.trim();
+  }
+
+  const meridiem = hour >= 12 ? "p.m." : "a.m.";
+  const normalizedHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${normalizedHour}:${String(minute).padStart(2, "0")} ${meridiem}`;
+}
+
 function buildWitnessPrefaceParagraphs(
   line: FormattedLine,
   mode: TextMode,
@@ -220,6 +271,28 @@ function buildWitnessPrefaceParagraphs(
       sourceWordIds: [...line.source_word_ids],
     },
   ];
+}
+
+function buildSyntheticColloquyParagraph(
+  line: FormattedLine,
+  mode: TextMode,
+  label: string,
+  text: string,
+): TranscriptParagraph {
+  return {
+    kind: "COLLOQUY",
+    region: "PROCEEDINGS",
+    label,
+    speakerLabel: label,
+    text,
+    speakerId: line.speaker_id,
+    leadingText: "",
+    mode,
+    words: [],
+    sourceLines: [line],
+    sourceUtteranceIds: [line.utterance_id],
+    sourceWordIds: [...line.source_word_ids],
+  };
 }
 
 function attorneyCandidates(record: CaseRecord | null | undefined): Array<{ label: string; variants: string[] }> {
@@ -487,6 +560,122 @@ function buildCaptionProductionParagraphs(
   }
 
   return paragraphs;
+}
+
+function hasProceedingsMetadata(record?: CaseRecord | null): boolean {
+  return Boolean(
+    readExtractedValue(record?.session?.deposition_date)
+    && readExtractedValue(record?.session?.start_time)
+    && readExtractedValue(record?.caption?.case_number)
+    && (readExtractedValue(record?.caption?.case_style) ?? readExtractedValue(record?.caption?.case_name))
+    && readExtractedValue(record?.caption?.court_name)
+    && readExtractedValue(record?.reporter?.name),
+  );
+}
+
+function buildProceedingsMetadataDescriptor(record?: CaseRecord | null): ProceedingsMetadataDescriptor | null {
+  if (!hasProceedingsMetadata(record)) {
+    return null;
+  }
+
+  const depositionDate = formatProceedingsDate(readExtractedValue(record?.session?.deposition_date));
+  const startTime = formatProceedingsTime(readExtractedValue(record?.session?.start_time));
+  const caseNumber = readExtractedValue(record?.caption?.case_number);
+  const caseStyle = readExtractedValue(record?.caption?.case_style) ?? readExtractedValue(record?.caption?.case_name);
+  const courtName = readExtractedValue(record?.caption?.court_name);
+  const county = readExtractedValue(record?.caption?.county);
+  const state = readExtractedValue(record?.caption?.state) ?? readExtractedValue(record?.session?.location_state) ?? "Texas";
+  const reporterName = readExtractedValue(record?.reporter?.name);
+  const reporterLicense = readExtractedValue(record?.reporter?.cert_number);
+  const reporterState = readExtractedValue(record?.reporter?.cert_state) ?? "Texas";
+  const remotePlatform = readExtractedValue(record?.scheduling?.remote_platform) ?? readExtractedValue(record?.session?.remote_platform);
+  const witnessName = readExtractedValue(record?.witnesses?.[0]?.name);
+
+  const videographerOpeningParts = [
+    "And good afternoon.",
+    "We are on the record.",
+    depositionDate ? `Today's date is ${depositionDate},` : null,
+    startTime ? `and the time is now ${startTime}.` : null,
+    witnessName ? `This is the beginning of the deposition of ${witnessName}.` : null,
+    "Will the court reporter please swear in the witness?",
+  ].filter((value): value is string => Boolean(value));
+
+  const reporterOpeningParts = [
+    caseNumber && caseStyle ? `Yes. This is Cause Number ${caseNumber}, ${caseStyle}.` : null,
+    courtName ? `In the District Court, ${courtName}.` : null,
+    county || state ? `${[county, state].filter((value): value is string => Boolean(value)).join(", ")}.` : null,
+    remotePlatform ? `This deposition is taking place via ${remotePlatform} in accordance with the Texas Rules of Civil Procedure.` : null,
+    reporterName
+      ? `I'm ${reporterName}, court reporter${reporterLicense ? `, licensed in ${reporterState}, No. ${reporterLicense}` : ""}.`
+      : null,
+    remotePlatform
+      ? "Counsel, will you please state your agreement for this remote deposition and the remote swearing of the witness by stating your name, who you're representing, and the name of the city you are currently in, beginning with the noticing attorney?"
+      : null,
+  ].filter((value): value is string => Boolean(value));
+
+  if (videographerOpeningParts.length === 0 && reporterOpeningParts.length === 0) {
+    return null;
+  }
+
+  return {
+    heading: "PROCEEDINGS",
+    videographerOpening: videographerOpeningParts.join(" "),
+    reporterOpening: reporterOpeningParts.join(" "),
+  };
+}
+
+function buildProceedingsMetadataParagraphs(
+  line: FormattedLine,
+  mode: TextMode,
+  record?: CaseRecord | null,
+): TranscriptParagraph[] {
+  const descriptor = buildProceedingsMetadataDescriptor(record);
+  if (!descriptor) {
+    return [];
+  }
+
+  const paragraphs: TranscriptParagraph[] = [
+    {
+      kind: "SECTION_HEADER",
+      region: "PROCEEDINGS",
+      label: "",
+      speakerLabel: "",
+      text: descriptor.heading,
+      speakerId: line.speaker_id,
+      leadingText: descriptor.heading,
+      mode,
+      words: [],
+      sourceLines: [line],
+      sourceUtteranceIds: [line.utterance_id],
+      sourceWordIds: [...line.source_word_ids],
+    },
+    buildSyntheticColloquyParagraph(line, mode, "THE VIDEOGRAPHER", descriptor.videographerOpening),
+    buildSyntheticColloquyParagraph(line, mode, "THE REPORTER", descriptor.reporterOpening),
+  ];
+
+  return paragraphs.filter((paragraph) => paragraph.text.trim().length > 0);
+}
+
+function isProceedingsMetadataText(text: string): boolean {
+  const normalized = text.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return (
+    /^PROCEEDINGS$/i.test(normalized)
+    || /\bwe are on the record\b/i.test(normalized)
+    || /\btoday'?s date is\b/i.test(normalized)
+    || /\bthe time is now\b/i.test(normalized)
+    || /\bbeginning of the deposition\b/i.test(normalized)
+    || /\bwill the court reporter please swear in the witness\b/i.test(normalized)
+    || /\bthis is cause number\b/i.test(normalized)
+    || /\bin the district court\b/i.test(normalized)
+    || /\btexas rules of civil procedure\b/i.test(normalized)
+    || /\blicensed in texas\b/i.test(normalized)
+    || /\bstate your agreement\b/i.test(normalized)
+    || /\bbeginning with the noticing attorney\b/i.test(normalized)
+  );
 }
 
 function classifyLineDescriptor(
@@ -768,6 +957,7 @@ export function buildTranscriptParagraphs(
   let pending: TranscriptParagraph | null = null;
   let captionProduced = false;
   let captionGeneratedFromRecord = false;
+  let proceedingsMetadataProduced = false;
 
   function flushPending() {
     if (!pending) {
@@ -814,6 +1004,21 @@ export function buildTranscriptParagraphs(
       flushPending();
       paragraphs.push(buildDocumentBlockParagraph(line, text, mode, region));
       state = { ...state, lastParagraphWasColloquy: false };
+      continue;
+    }
+
+    if (region === "PROCEEDINGS" && !proceedingsMetadataProduced) {
+      const producedProceedingsParagraphs = buildProceedingsMetadataParagraphs(line, mode, record);
+      if (producedProceedingsParagraphs.length > 0) {
+        flushPending();
+        paragraphs.push(...producedProceedingsParagraphs);
+        proceedingsMetadataProduced = true;
+        state = { ...state, proceedingsInserted: true, lastParagraphWasColloquy: false };
+        if (isProceedingsMetadataText(text)) {
+          continue;
+        }
+      }
+    } else if (region === "PROCEEDINGS" && proceedingsMetadataProduced && isProceedingsMetadataText(text)) {
       continue;
     }
 

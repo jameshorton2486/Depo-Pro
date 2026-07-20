@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
+import { fetchWithRetry } from "../_shared/deepgramFetch.ts";
+import type { Database } from "../_shared/database.ts";
 import { buildDeepgramRequestFromStoredKeyterms } from "../../../src/lib/deepgram/buildDeepgramRequest.ts";
 import { fitStoredKeytermsToRequestBudget } from "../../../src/lib/deepgram/requestBudget.ts";
 import {
@@ -27,8 +29,6 @@ import {
   type TranscriptionJobAutoSeedAudit,
 } from "../../../src/lib/transcriptionJobs.ts";
 import { buildRetranscriptionAuditArtifact } from "../../../src/lib/retranscription.ts";
-
-type Database = Record<string, never>;
 
 type CaseRow = {
   case_id: string;
@@ -396,7 +396,7 @@ async function createQueuedJob(
     throw error;
   }
 
-  return data as TranscriptionJobRecord;
+  return data as unknown as TranscriptionJobRecord;
 }
 
 async function updateJob(
@@ -520,7 +520,7 @@ async function submitDeepgramJob(params: {
     error: null,
   });
 
-  const deepgramResponse = await fetch(wireUrl.toString(), {
+  const deepgramResponse = await fetchWithRetry(wireUrl.toString(), {
     method: "POST",
     headers: {
       Authorization: `Token ${deepgramApiKey}`,

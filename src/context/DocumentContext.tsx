@@ -413,6 +413,35 @@ export function DocumentProvider({
     };
   }, [state.dirty, state.saving]);
 
+  // Session-end flush. Edits already autosave in place; this guarantees the
+  // working copy is persisted once when the user leaves — the tab is hidden
+  // (switch away / close) or the workspace unmounts (navigating elsewhere) —
+  // even if they stop mid-review before certification. It never creates a copy;
+  // saveWorking updates the same rows.
+  const saveNowRef = useRef(saveNow);
+  const dirtyRef = useRef(state.dirty);
+  useEffect(() => {
+    saveNowRef.current = saveNow;
+    dirtyRef.current = state.dirty;
+  }, [saveNow, state.dirty]);
+  useEffect(() => {
+    function flushIfDirty() {
+      if (dirtyRef.current) {
+        void saveNowRef.current();
+      }
+    }
+    function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        flushIfDirty();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      flushIfDirty();
+    };
+  }, []);
+
   useEffect(() => {
     if (!state.document || state.speakersVersion === 0) {
       return;

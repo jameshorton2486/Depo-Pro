@@ -1,9 +1,10 @@
-import type { FieldProvenanceRow } from "../../components/conflict/types";
-import type { CaseRecord, ExtractedField } from "../../types/case";
-import type { Contact, ContactType } from "../../types/contact";
-import type { Firm } from "../../types/firm";
-import type { ReporterProfile } from "../../types/reporterProfile";
-import { getMissingRequiredUfmFieldNames } from "./requiredFields";
+import type { FieldProvenanceRow } from "../../components/conflict/types.ts";
+import type { CaseRecord, ExtractedField } from "../../types/case.ts";
+import type { Contact, ContactType } from "../../types/contact.ts";
+import type { Firm } from "../../types/firm.ts";
+import type { ReporterProfile } from "../../types/reporterProfile.ts";
+import { getMissingRequiredUfmFieldNames } from "./requiredFields.ts";
+import { titleCaseLegalText } from "../format/legalText.ts";
 
 type UfmFieldKey =
   | "cause_number"
@@ -75,6 +76,13 @@ export interface UfmMetadataEnvelope {
   field_sources: Partial<Record<FieldMapKey, FieldSourceValue>>;
   field_confirmations: Partial<Record<FieldMapKey, boolean>>;
   missing_required_fields: string[];
+  review_warnings: UfmReviewWarning[];
+}
+
+export interface UfmReviewWarning {
+  code: "unconfirmed_fields" | "missing_end_time" | "missing_firm_registration" | "missing_attorney_bar_number";
+  message: string;
+  field_path: string;
 }
 
 interface UfmAppearance {
@@ -164,6 +172,28 @@ function normalizeValue(value: string | null | undefined): string | null {
   return normalized || null;
 }
 
+function formatUfmText(value: string | null | undefined): string | null {
+  const normalized = normalizeValue(value);
+  return normalized ? titleCaseLegalText(normalized) : null;
+}
+
+function formatUfmCauseNumber(value: string | null | undefined): string | null {
+  const normalized = normalizeValue(value);
+  return normalized ? normalized.toUpperCase() : null;
+}
+
+function formatUfmState(value: string | null | undefined): string | null {
+  const normalized = normalizeValue(value);
+  if (!normalized) {
+    return null;
+  }
+  return normalized.toUpperCase() === "TEXAS" ? "TX" : normalized.toUpperCase();
+}
+
+function formatUfmEmail(value: string | null | undefined): string | null {
+  const normalized = normalizeValue(value);
+  return normalized ? normalized.toLowerCase() : null;
+}
 function normalizeIdentity(value: string | null | undefined): string | null {
   const normalized = normalizeValue(value);
   if (!normalized) {
@@ -208,20 +238,20 @@ function findCustodialAttorneyField(record: CaseRecord) {
 
 function joinLocation(record: CaseRecord): string | null {
   const parts = [
-    normalizeValue(record.session.location_address.value),
-    normalizeValue(record.session.location_city.value),
-    normalizeValue(record.session.location_state.value),
+    formatUfmText(record.session.location_address.value),
+    formatUfmText(record.session.location_city.value),
+    formatUfmState(record.session.location_state.value),
     normalizeValue(record.session.location_zip.value),
-  ].filter(Boolean);
+  ].filter((part): part is string => part !== null);
 
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function deponentName(record: CaseRecord): string | null {
   if (record.witnesses.length > 0) {
-    return record.witnesses.map((witness) => normalizeValue(witness.name.value)).filter(Boolean).join("; ") || null;
+    return record.witnesses.map((witness) => formatUfmText(witness.name.value)).filter((name): name is string => name !== null).join("; ") || null;
   }
-  return normalizeValue(record.caption.case_name.value) ?? normalizeValue(record.caption.case_style.value);
+  return formatUfmText(record.caption.case_name.value) ?? formatUfmText(record.caption.case_style.value);
 }
 
 function findDirectoryContact(
@@ -271,16 +301,16 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
 
     return {
       category: "attorney",
-      name: normalizeValue(attorney.name.value),
-      firm: normalizeValue(attorney.firm.value),
+      name: formatUfmText(attorney.name.value),
+      firm: formatUfmText(attorney.firm.value),
       role: normalizeValue(attorney.role.value),
       representing: normalizeValue(attorney.representing.value),
       bar_number: normalizeValue(attorney.bar_number.value) ?? details?.bar_number ?? null,
       phone: normalizeValue(attorney.phone) ?? normalizeValue(details?.direct_phone) ?? normalizeValue(contact?.phone),
-      email: normalizeValue(attorney.email) ?? normalizeValue(contact?.email),
-      address: normalizeValue(attorney.address),
-      city: normalizeValue(attorney.city),
-      state: normalizeValue(attorney.state),
+      email: formatUfmEmail(attorney.email) ?? formatUfmEmail(contact?.email),
+      address: formatUfmText(attorney.address),
+      city: formatUfmText(attorney.city),
+      state: formatUfmState(attorney.state),
       zip: normalizeValue(attorney.zip),
       function: normalizeAttorneyFunctionValue(attorney.function?.value ?? attorney.role.value),
       time_used: normalizeValue(attorney.time_used),
@@ -351,24 +381,24 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
 
 function buildParties(record: CaseRecord) {
   return record.parties.map((party) => ({
-    name: normalizeValue(party.name.value),
+    name: formatUfmText(party.name.value),
     role: normalizeValue(party.role.value),
     role_modifier: normalizeValue(party.role_modifier.value),
     entity_type: normalizeValue(party.entity_type.value),
-    fka_or_dba: normalizeValue(party.fka_or_dba.value),
+    fka_or_dba: formatUfmText(party.fka_or_dba.value),
   }));
 }
 
 function buildLawFirms(record: CaseRecord, directoryFirms: Firm[]): UfmLawFirm[] {
   const explicitLawFirms = record.law_firms.map((lawFirm) => ({
-    name: normalizeValue(lawFirm.name.value),
-    address: normalizeValue(lawFirm.address.value),
-    city: normalizeValue(lawFirm.city.value),
-    state: normalizeValue(lawFirm.state.value),
+    name: formatUfmText(lawFirm.name.value),
+    address: formatUfmText(lawFirm.address.value),
+    city: formatUfmText(lawFirm.city.value),
+    state: formatUfmState(lawFirm.state.value),
     zip: normalizeValue(lawFirm.zip.value),
     phone: normalizeValue(lawFirm.phone.value),
     fax: normalizeValue(lawFirm.fax.value),
-    email: normalizeValue(lawFirm.email.value),
+    email: formatUfmEmail(lawFirm.email.value),
     represented_party: normalizeValue(lawFirm.represented_party.value),
   }));
 
@@ -381,10 +411,10 @@ function buildLawFirms(record: CaseRecord, directoryFirms: Firm[]): UfmLawFirm[]
 
     const directoryFirm = findDirectoryFirm(directoryFirms, firmName);
     derivedAttorneyFirms.push({
-      name: firmName,
-      address: normalizeValue(directoryFirm?.address) ?? normalizeValue(attorney.address),
-      city: normalizeValue(directoryFirm?.city) ?? normalizeValue(attorney.city),
-      state: normalizeValue(directoryFirm?.state) ?? normalizeValue(attorney.state),
+      name: formatUfmText(firmName),
+      address: formatUfmText(directoryFirm?.address) ?? formatUfmText(attorney.address),
+      city: formatUfmText(directoryFirm?.city) ?? formatUfmText(attorney.city),
+      state: formatUfmState(directoryFirm?.state) ?? formatUfmState(attorney.state),
       zip: normalizeValue(directoryFirm?.zip) ?? normalizeValue(attorney.zip),
       phone: normalizeValue(directoryFirm?.main_phone),
       fax: normalizeValue(directoryFirm?.fax),
@@ -402,7 +432,7 @@ function buildLawFirms(record: CaseRecord, directoryFirms: Firm[]): UfmLawFirm[]
 
     const directoryFirm = findDirectoryFirm(directoryFirms, firmName);
     derivedVideographerFirms.push({
-      name: firmName,
+      name: formatUfmText(firmName),
       address: normalizeValue(directoryFirm?.address),
       city: normalizeValue(directoryFirm?.city),
       state: normalizeValue(directoryFirm?.state),
@@ -492,6 +522,45 @@ export function summarizeUfmEnvelope(envelope: UfmMetadataEnvelope) {
   };
 }
 
+function buildReviewWarnings(
+  metadata: UfmMetadataEnvelope["ufm_metadata"],
+  confirmations: UfmMetadataEnvelope["field_confirmations"],
+): UfmReviewWarning[] {
+  const warnings: UfmReviewWarning[] = [];
+  const awaitingConfirmation = Object.values(confirmations).filter((confirmed) => confirmed === false).length;
+  if (awaitingConfirmation > 0) {
+    warnings.push({
+      code: "unconfirmed_fields",
+      message: `${awaitingConfirmation} UFM field${awaitingConfirmation === 1 ? " is" : "s are"} awaiting reporter confirmation.`,
+      field_path: "ufm_metadata",
+    });
+  }
+  if (metadata.end_time == null) {
+    warnings.push({
+      code: "missing_end_time",
+      message: "Deposition end time is not set; confirm that it is intentionally blank.",
+      field_path: "session.end_time",
+    });
+  }
+  if (metadata.firm_registration == null) {
+    warnings.push({
+      code: "missing_firm_registration",
+      message: "Reporter firm registration is not set; verify whether it is required for this job.",
+      field_path: "reporter.firm_registration_number",
+    });
+  }
+  const appearances = metadata.appearances as UfmAppearance[];
+  for (const appearance of appearances) {
+    if (appearance.category === "attorney" && appearance.name && !appearance.bar_number) {
+      warnings.push({
+        code: "missing_attorney_bar_number",
+        message: `${appearance.name} has no bar number; verify the appearance details.`,
+        field_path: "attorneys",
+      });
+    }
+  }
+  return warnings;
+}
 export function buildUfmMetadata(args: {
   record: CaseRecord;
   provenance: FieldProvenanceRow[];
@@ -512,28 +581,28 @@ export function buildUfmMetadata(args: {
   const custodialAttorneyField = findCustodialAttorneyField(record);
 
   const ufm_metadata: UfmMetadataEnvelope["ufm_metadata"] = {
-    cause_number: normalizeValue(record.caption.case_number.value),
-    caption,
-    court: normalizeValue(record.caption.court_name.value),
-    judicial_district: normalizeValue(record.caption.judicial_district.value),
-    division: normalizeValue(record.caption.division.value),
-    county: normalizeValue(record.caption.county.value),
-    state: normalizeValue(record.caption.state.value) ?? normalizeValue(record.session.location_state.value) ?? "Texas",
+    cause_number: formatUfmCauseNumber(record.caption.case_number.value),
+    caption: formatUfmText(caption),
+    court: formatUfmText(record.caption.court_name.value),
+    judicial_district: formatUfmText(record.caption.judicial_district.value),
+    division: formatUfmText(record.caption.division.value),
+    county: formatUfmText(record.caption.county.value),
+    state: formatUfmState(record.caption.state.value) ?? formatUfmState(record.session.location_state.value) ?? "TX",
     jurisdiction_type: normalizeValue(record.caption.jurisdiction_type.value),
     deponent,
     deposition_date: depositionDate,
     start_time: normalizeValue(record.session.start_time.value),
     end_time: normalizeValue(record.session.end_time.value),
     address,
-    location_type: normalizeValue(record.session.location_type.value),
-    remote_platform: normalizeValue(record.scheduling.remote_platform.value) ?? normalizeValue(record.session.remote_platform.value),
-    noticing_party: normalizeValue(record.scheduling.noticing_party.value),
+    location_type: formatUfmText(record.session.location_type.value),
+    remote_platform: formatUfmText(record.scheduling.remote_platform.value) ?? formatUfmText(record.session.remote_platform.value),
+    noticing_party: formatUfmText(record.scheduling.noticing_party.value),
     service_type: normalizeValue(record.scheduling.service_type.value),
     parties: buildParties(record),
     law_firms: buildLawFirms(record, directoryFirms),
     service_date: normalizeValue(record.service.service_date.value),
-    served_parties: record.service.served_parties.value,
-    service_emails: record.service.service_emails.value,
+    served_parties: record.service.served_parties.value.map((party) => formatUfmText(party)).filter((party): party is string => party !== null),
+    service_emails: record.service.service_emails.value.map((email) => formatUfmEmail(email)).filter((email): email is string => email !== null),
     reporter_requests: {
       certified_reporter_required: record.reporter_requests.certified_reporter_required.value,
       stenographic_recording: record.reporter_requests.stenographic_recording.value,
@@ -544,14 +613,14 @@ export function buildUfmMetadata(args: {
       daily_copy: record.reporter_requests.daily_copy.value,
       rough_draft: record.reporter_requests.rough_draft.value,
     },
-    csr_name: normalizeValue(effectiveReporterProfile?.display_name) ?? normalizeValue(record.reporter.name.value),
+    csr_name: formatUfmText(effectiveReporterProfile?.display_name) ?? formatUfmText(record.reporter.name.value),
     csr_license: normalizeValue(effectiveReporterProfile?.csr_number) ?? normalizeValue(record.reporter.cert_number.value),
     firm_registration:
       normalizeValue(effectiveReporterProfile?.firm_registration_number) ?? normalizeValue(record.reporter.firm_registration_number.value),
     csr_cert_expiration:
       normalizeValue(effectiveReporterProfile?.csr_cert_expiration) ?? normalizeValue(record.reporter.license_expiration.value),
-    custodial_attorney: normalizeValue(custodialAttorneyField?.value),
-    requesting_party: normalizeValue(requestingPartyField?.value),
+    custodial_attorney: formatUfmText(custodialAttorneyField?.value),
+    requesting_party: formatUfmText(requestingPartyField?.value),
     appearances: buildAppearances(record, directoryContacts),
     volume: "1",
     proceedings_month: dateParts.proceedings_month,
@@ -614,6 +683,7 @@ export function buildUfmMetadata(args: {
   };
 
   const missing_required_fields = getMissingRequiredUfmFieldNames(ufm_metadata);
+  const review_warnings = buildReviewWarnings(ufm_metadata, field_confirmations);
 
   void FIELD_PATHS;
 
@@ -624,5 +694,6 @@ export function buildUfmMetadata(args: {
     field_sources,
     field_confirmations,
     missing_required_fields,
+    review_warnings,
   };
 }

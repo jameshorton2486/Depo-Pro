@@ -1,9 +1,10 @@
-import { useMemo } from "react";
-import { Save, AlertCircle, CheckCircle, FileJson, FileText, FileType, Languages } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Save, AlertCircle, CheckCircle, FileJson, FileText, FileType, History, Languages } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { useEditorContext } from "../../context/EditorContext";
 import { useIntake } from "../../context/useIntake";
 import { AuthStatusChip } from "../AuthGate/AuthGate";
+import { OriginalTranscriptDialog } from "../OriginalTranscriptDialog";
 import {
   buildFormattedTranscriptText,
   buildWordTranscriptHtml,
@@ -34,6 +35,7 @@ export function Toolbar({ jobId, onSave }: Props) {
   const { state } = useDocument();
   const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
   const { record } = useIntake();
+  const [showOriginal, setShowOriginal] = useState(false);
   const shortJobId = formatJobIdSuffix(jobId);
 
   const reviewedCount = Object.values(state.wordMap).filter((w) => w.reviewed).length;
@@ -53,6 +55,7 @@ export function Toolbar({ jobId, onSave }: Props) {
   );
 
   return (
+    <>
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-900 px-4 text-white">
       <div className="flex min-w-0 items-center gap-2">
         <FileText size={16} className="text-blue-400" />
@@ -73,6 +76,16 @@ export function Toolbar({ jobId, onSave }: Props) {
         >
           <Languages size={14} />
           <span className="hidden xl:inline">Interpreter</span>
+        </button>
+
+        <button
+          onClick={() => setShowOriginal(true)}
+          className="flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
+          title="View the immutable original transcript (read-only)"
+          data-testid="toolbar-view-original"
+        >
+          <History size={14} />
+          <span className="hidden xl:inline">Original</span>
         </button>
 
         <button
@@ -186,5 +199,9 @@ export function Toolbar({ jobId, onSave }: Props) {
         </div>
       </div>
     </header>
+    {showOriginal && (
+      <OriginalTranscriptDialog caseId={jobId} onClose={() => setShowOriginal(false)} />
+    )}
+    </>
   );
 }

@@ -1,17 +1,9 @@
-import type { EditorDocument } from "../../api/types";
-import type { CaseRecord } from "../../types/case";
-import { buildUfmMetadata, type UfmMetadataEnvelope } from "../ufm/buildUfmMetadata";
-import { buildDisplayDocument } from "./deterministicSpeakerMap";
-import {
-  classifyBlocks,
-  extractEmbeddedObjections,
-  mergeConsecutiveFragments,
-  splitMergedBlocks,
-  verifyColloquy,
-  type ClassifiedBlock,
-  type StructureSpeakerMapEntry,
-  type StructureUtterance,
-} from "./structureEngine";
+import type { EditorDocument } from "../../api/types.ts";
+import type { CaseRecord } from "../../types/case.ts";
+import { buildUfmMetadata, type UfmMetadataEnvelope } from "../ufm/buildUfmMetadata.ts";
+import { buildDisplayDocument } from "./speakerResolutionEngine.ts";
+import { buildParagraphSemanticAssignments } from "./transcriptParagraphs.ts";
+import type { StructuredUtterance } from "./structuredTranscript.ts";
 
 export interface StructuredSpeakerAssignment {
   speaker_id: string;
@@ -33,6 +25,49 @@ export interface PreWorkspaceStructureResult {
   inclusionPages: UfmMetadataEnvelope;
 }
 
+export function applyPreWorkspaceStructure(
+  document: EditorDocument,
+  structure: Pick<PreWorkspaceStructureResult, "speakers" | "utterances">,
+): EditorDocument {
+  const speakerById = new Map(structure.speakers.map((speaker) => [speaker.speaker_id, speaker]));
+  const utteranceById = new Map(structure.utterances.map((utterance) => [utterance.utterance_id, utterance]));
+
+  return {
+    ...document,
+    speakers: document.speakers.map((speaker) => {
+      const structuredSpeaker = speakerById.get(speaker.speaker_id);
+      if (!structuredSpeaker) {
+        return speaker;
+      }
+
+      return {
+        ...speaker,
+        display_name: structuredSpeaker.display_name,
+        role:
+          structuredSpeaker.speaker_role === "attorney"
+            ? "ATTORNEY"
+            : structuredSpeaker.speaker_role === "witness"
+              ? "WITNESS"
+              : structuredSpeaker.speaker_role === "reporter"
+                ? "REPORTER"
+                : "OTHER",
+      };
+    }),
+    utterances: document.utterances.map((utterance) => {
+      const structuredUtterance = utteranceById.get(utterance.utterance_id);
+      if (!structuredUtterance) {
+        return utterance;
+      }
+
+      return {
+        ...utterance,
+        line_type: structuredUtterance.line_type,
+        speaker_label: structuredUtterance.speaker_label,
+      } satisfies StructuredUtterance;
+    }),
+  };
+}
+
 function mapRole(value: EditorDocument["speakers"][number]["role"] | undefined): "reporter" | "witness" | "attorney" | "other" {
   switch (value) {
     case "REPORTER":
@@ -46,123 +81,26 @@ function mapRole(value: EditorDocument["speakers"][number]["role"] | undefined):
   }
 }
 
-function mapStructureRole(value: EditorDocument["speakers"][number]["role"] | undefined): StructureSpeakerMapEntry["role"] {
-  switch (value) {
-    case "REPORTER":
-      return "REPORTER";
-    case "WITNESS":
-      return "WITNESS";
-    case "ATTORNEY":
-      return "ATTORNEY";
-    case "INTERPRETER":
-      return "INTERPRETER";
-    case "OTHER":
-      return "OTHER";
-    default:
-      return "UNKNOWN";
-  }
-}
-
-function buildUtteranceTexts(document: EditorDocument): Map<string, string> {
-  const wordById = new Map(document.words.map((word) => [word.word_id, word]));
-  return new Map(
-    document.utterances.map((utterance) => [
-      utterance.utterance_id,
-      utterance.word_ids.map((wordId) => wordById.get(wordId)?.text ?? "").join(" ").trim(),
-    ]),
-  );
-}
-
-function pickExaminerAndWitness(
-  document: EditorDocument,
-): { examinerSpeakerId: string | null; witnessSpeakerId: string | null } {
-  let examinerSpeakerId: string | null = null;
-  let witnessSpeakerId: string | null = null;
-
-  for (const speaker of document.speakers) {
-    if (!examinerSpeakerId && speaker.role === "ATTORNEY") {
-      examinerSpeakerId = speaker.speaker_id;
-    }
-    if (!witnessSpeakerId && speaker.role === "WITNESS") {
-      witnessSpeakerId = speaker.speaker_id;
-    }
-  }
-
-  return { examinerSpeakerId, witnessSpeakerId };
-}
-
-function resolveBlockType(
-  block: ClassifiedBlock,
-  extractedByUtterance: Map<string, ReturnType<typeof extractEmbeddedObjections> extends Promise<(infer T)[]> ? T : never>,
-  splitUtteranceIds: Set<string>,
-): "Q" | "A" | "SP" | "PN" | "HEADER" | null {
-  if (block.block_type === "NEEDS_EXTRACT") {
-    return extractedByUtterance.has(block.utterance_id) ? "A" : "SP";
-  }
-  if (block.block_type === "NEEDS_SPLIT") {
-    return splitUtteranceIds.has(block.utterance_id) ? "Q" : "SP";
-  }
-  return block.block_type;
-}
-
 export async function buildPreWorkspaceStructure(
   document: EditorDocument,
   record: CaseRecord,
 ): Promise<PreWorkspaceStructureResult> {
   const displayDocument = buildDisplayDocument(document, record);
-  const utteranceTexts = buildUtteranceTexts(displayDocument);
-  const speakerMap = Object.fromEntries(
-    displayDocument.speakers.map((speaker) => [
-      speaker.speaker_id,
-      {
-        display_name: speaker.display_name,
-        role: mapStructureRole(speaker.role),
-      } satisfies StructureSpeakerMapEntry,
-    ]),
+  const speakerById = new Map(displayDocument.speakers.map((speaker) => [speaker.speaker_id, speaker]));
+  const semanticAssignments = new Map(
+    buildParagraphSemanticAssignments(document, record).map((assignment) => [assignment.utteranceId, assignment]),
   );
-  const utterances: StructureUtterance[] = displayDocument.utterances.map((utterance, index) => ({
-    utterance_index: index,
-    utterance_id: utterance.utterance_id,
-    speaker_id: utterance.speaker_id,
-    text: utteranceTexts.get(utterance.utterance_id) ?? "",
-  }));
-
-  const initialBlocks = (await classifyBlocks(utterances, speakerMap)).map((block) => ({
-    ...block,
-    text: utteranceTexts.get(block.utterance_id) ?? "",
-  }));
-  const { examinerSpeakerId, witnessSpeakerId } = pickExaminerAndWitness(displayDocument);
-  const splitCandidates = initialBlocks.filter((block) => block.block_type === "NEEDS_SPLIT" && block.text);
-  const splitResults = examinerSpeakerId && witnessSpeakerId
-    ? await splitMergedBlocks(splitCandidates, examinerSpeakerId, witnessSpeakerId, speakerMap)
-    : [];
-  const extracted = await extractEmbeddedObjections(
-    initialBlocks.filter((block) => block.block_type === "NEEDS_EXTRACT" && block.text),
-    speakerMap,
-  );
-  const verifiedColloquy = await verifyColloquy(
-    initialBlocks.filter((block) => block.block_type === "SP" && block.text),
-    speakerMap,
-  );
-  const colloquyByUtterance = new Map(verifiedColloquy.map((item) => [utterances[item.utterance_index]?.utterance_id ?? "", item.correct_type]));
-  const extractedByUtterance = new Map(extracted.map((item) => [item.utterance_id, item]));
-  const splitUtteranceIds = new Set(splitResults.map((item) => item.utterance_id));
-  const mergedBlocks = mergeConsecutiveFragments(initialBlocks);
-  const mergedByUtterance = new Map(mergedBlocks.map((block) => [block.utterance_id, block]));
 
   const structuredUtterances: StructuredUtteranceAssignment[] = displayDocument.utterances.map((utterance) => {
-    const speaker = displayDocument.speakers.find((candidate) => candidate.speaker_id === utterance.speaker_id);
-    const block = mergedByUtterance.get(utterance.utterance_id);
-    const reclassified = colloquyByUtterance.get(utterance.utterance_id);
-    const lineType = reclassified
-      ?? (block ? resolveBlockType(block, extractedByUtterance, splitUtteranceIds) : null);
+    const speaker = speakerById.get(utterance.speaker_id);
+    const assignment = semanticAssignments.get(utterance.utterance_id);
 
     return {
       utterance_id: utterance.utterance_id,
       speaker_id: utterance.speaker_id,
-      speaker_label: speaker?.display_name ?? utterance.speaker_id,
+      speaker_label: assignment?.speakerLabel ?? speaker?.display_name ?? utterance.speaker_id,
       speaker_role: mapRole(speaker?.role),
-      line_type: lineType,
+      line_type: assignment?.lineType ?? null,
     };
   });
 

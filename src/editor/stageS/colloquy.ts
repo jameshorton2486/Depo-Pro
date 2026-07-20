@@ -1,4 +1,4 @@
-import { isRegistryHonorific } from "../../lib/format/honorificHelper";
+import { isRegistryHonorific } from "../../lib/format/honorificHelper.ts";
 
 export const COLON_GAP = "  ";
 

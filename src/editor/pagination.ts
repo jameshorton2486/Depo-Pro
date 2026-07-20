@@ -9,13 +9,20 @@
 // The page number and per-page line number from this module are written into
 // each UtteranceNode's attrs so they survive TipTap serialisation.
 
-import type { Speaker } from "../api/types";
-import { DEFAULT_GEOMETRY_PROFILE } from "../lib/format/geometryProfile";
-import type { GeometryProfile } from "../lib/format/types";
+import type { Speaker } from "../api/types.ts";
+import { DEFAULT_GEOMETRY_PROFILE } from "../lib/format/geometryProfile.ts";
+import type { GeometryProfile } from "../lib/format/types.ts";
+import { normalizePersistedLineType } from "../lib/transcript/structuredTranscript.ts";
 
 export type BlockRole = "Q" | "A" | "COLLOQUY";
 
-export function getBlockRole(role: Speaker["role"] | null | undefined): BlockRole {
+export function getBlockRole(
+  role: Speaker["role"] | null | undefined,
+  lineType?: string | null,
+): BlockRole {
+  const persistedLineType = normalizePersistedLineType(lineType);
+  if (persistedLineType === "Q") return "Q";
+  if (persistedLineType === "A") return "A";
   if (role === "WITNESS") return "A";
   if (role === "ATTORNEY") return "Q";
   return "COLLOQUY";
@@ -59,6 +66,7 @@ export function buildPages(
     utterance_id: string;
     speaker_id: string;
     wordCount: number;
+    lineType?: string | null;
   }>,
   speakerRoles: Map<string, Speaker["role"] | undefined>,
   geometry: GeometryProfile = DEFAULT_GEOMETRY_PROFILE
@@ -70,7 +78,7 @@ export function buildPages(
 
   for (const utt of utterances) {
     const rawRole = speakerRoles.get(utt.speaker_id);
-    const role = getBlockRole(rawRole);
+    const role = getBlockRole(rawRole, utt.lineType);
     const lines = estimateLineCount(utt.wordCount, role, geometry);
 
     // Start a new page if this utterance won't fit (and there's already content)

@@ -1,6 +1,7 @@
 import type { DeepgramConfig, DeepgramKeyterm } from "../../types/case.ts";
 import { DEEPGRAM_KEYTERM_HARD_TOKEN_CAP, estimateSelectedStoredKeytermTokens } from "../keytermDerivation.ts";
 import { readStoredKeytermMeta } from "../keyterms/managedKeyterms.ts";
+import { formatDeepgramKeyterm } from "../format/legalText.ts";
 
 export interface DeepgramRequestKeyterm {
   term: string;
@@ -113,7 +114,7 @@ function normalizeSelectedKeyterms(keyterms: DeepgramRequestKeyterm[]) {
     .filter((keyterm) => keyterm.selected)
     .map((keyterm, index) => ({
       index,
-      term: normalizeWhitespace(keyterm.term),
+      term: formatDeepgramKeyterm(normalizeWhitespace(keyterm.term)),
       boost: keyterm.boost,
       category: keyterm.category,
       source: keyterm.source,
