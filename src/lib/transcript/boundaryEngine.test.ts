@@ -155,6 +155,27 @@ describe("boundaryEngine", () => {
     expect(synthetic[1]?.text).toBe("(Whereupon, the proceedings resumed at 10:15 a.m.)");
   });
 
+  it("normalizes duplicate periods and equivalent event times before deduplication", () => {
+    const base = {
+      off_utterance_index: 4,
+      on_utterance_index: 6,
+      is_conclusion: false,
+      section_type: "RECESS" as const,
+      confidence: 0.97,
+      evidence: ["recess language"],
+    };
+
+    const synthetic = generateSyntheticParentheticals([
+      { ...base, off_time: "10:00 a.m..", on_time: "10:15 a.m. " },
+      { ...base, off_time: "10:00 a.m.", on_time: "10:15 a.m." },
+    ]);
+
+    expect(synthetic).toHaveLength(2);
+    expect(synthetic.map((event) => event.text)).toEqual([
+      "(Whereupon, a recess was taken at 10:00 a.m.)",
+      "(Whereupon, the proceedings resumed at 10:15 a.m.)",
+    ]);
+  });
   it("deduplicates repeated boundary events", () => {
     const section = {
       off_utterance_index: 4,

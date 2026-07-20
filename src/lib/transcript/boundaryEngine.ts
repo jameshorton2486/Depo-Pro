@@ -192,7 +192,7 @@ export function applyOffRecordSections(
 }
 
 function formatEventTime(value: string): string {
-  const normalized = value.trim();
+  const normalized = value.trim().replace(/\.+$/, ".");
   return /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
 }
 
@@ -212,13 +212,14 @@ export function generateSyntheticParentheticals(
 
   for (const section of sections) {
     if (section.section_type === "CONCLUSION" || section.is_conclusion) {
+      const formattedTime = formatEventTime(section.off_time);
       append({
         speaker_id: "spk_synthetic_boundary",
         start_time: section.on_utterance_index,
         end_time: section.on_utterance_index,
-        text: `(Whereupon, the deposition was concluded at ${formatEventTime(section.off_time)})`,
+        text: `(Whereupon, the deposition was concluded at ${formattedTime})`,
         is_synthetic: true,
-      }, `CONCLUSION:${section.off_utterance_index}:${section.on_utterance_index}:${section.off_time}`);
+      }, `CONCLUSION:${section.off_utterance_index}:${section.on_utterance_index}:${formattedTime}`);
       continue;
     }
 
@@ -233,20 +234,23 @@ export function generateSyntheticParentheticals(
       continue;
     }
 
+    const formattedOffTime = formatEventTime(section.off_time);
     append({
       speaker_id: "spk_synthetic_boundary",
       start_time: section.off_utterance_index,
       end_time: section.off_utterance_index,
-      text: `(Whereupon, a recess was taken at ${formatEventTime(section.off_time)})`,
+      text: `(Whereupon, a recess was taken at ${formattedOffTime})`,
       is_synthetic: true,
-    }, `RECESS:${section.off_utterance_index}:${section.off_time}`);
+    }, `RECESS:${section.off_utterance_index}:${formattedOffTime}`);
+
+    const formattedOnTime = formatEventTime(section.on_time);
     append({
       speaker_id: "spk_synthetic_boundary",
       start_time: section.on_utterance_index,
       end_time: section.on_utterance_index,
-      text: `(Whereupon, the proceedings resumed at ${formatEventTime(section.on_time)})`,
+      text: `(Whereupon, the proceedings resumed at ${formattedOnTime})`,
       is_synthetic: true,
-    }, `RESUME:${section.on_utterance_index}:${section.on_time}`);
+    }, `RESUME:${section.on_utterance_index}:${formattedOnTime}`);
   }
 
   return parentheticals;
