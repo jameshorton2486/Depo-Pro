@@ -91,7 +91,7 @@ export function validateQaContinuity(model: UnifiedRenderModel): RepairFinding[]
   const findings: RepairFinding[] = [];
   let seenQuestion = false;
   model.lines.forEach((line, index) => {
-    if (line.kind === "SECTION_HEADER" && isExaminationHeader(line.content)) {
+    if (line.kind === "SECTION_HEADER") {
       seenQuestion = false;
       return;
     }

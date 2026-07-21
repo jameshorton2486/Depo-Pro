@@ -100,6 +100,16 @@ describe("stageS validators", () => {
       severity: "CRITICAL",
       paragraphId: "p:4",
     });
+
+    const afterProceedings = validateQaContinuity(model([
+      line("SECTION_HEADER", "EXAMINATION", 0),
+      line("Q", "Q. Ready?", 1),
+      line("A", "A. Yes.", 2),
+      line("SECTION_HEADER", "PROCEEDINGS", 3),
+      line("A", "A. No.", 4),
+    ]));
+    expect(afterProceedings).toHaveLength(1);
+    expect(afterProceedings[0]).toMatchObject({ category: "QA_CONTINUITY", severity: "CRITICAL" });
   });
 
   it("requires an EXAMINATION header before Q/A", () => {
