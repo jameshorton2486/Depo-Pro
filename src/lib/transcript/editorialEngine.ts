@@ -29,7 +29,10 @@ const objectionBases = [
   "form", "hearsay", "speculation", "foundation", "leading", "nonresponsive", "compound",
   "relevance", "privilege", "scope", "argumentative", "vague",
 ] as const;
-const objectionPattern = new RegExp(`\\bObjection(?:[,:;.]?)\\s+(${objectionBases.join("|")})(?:[.?!]?)\\b`, "gi");
+const objectionPattern = new RegExp(
+  `^((?:(?:THE WITNESS|THE REPORTER|THE VIDEOGRAPHER|[A-Z][A-Z .'-]+):\\s*)?)Objection[,:;.]?\\s+(${objectionBases.join("|")})[.?!]?$`,
+  "i",
+);
 const roleLabelPattern = /^(the\s+(?:witness|reporter|videographer))\s*:/i;
 
 export function applyEditorialRules(text: string): EditorialResult {
@@ -94,8 +97,8 @@ function applyPunctuationRules(text: string): { text: string; changes: number } 
 
 function applyObjectionRules(text: string): { text: string; changes: number } {
   let changes = 0;
-  const normalized = text.replace(objectionPattern, (match, basis: string) => {
-    const replacement = `Objection.  ${capitalize(basis)}.`;
+  const normalized = text.replace(objectionPattern, (match, prefix: string, basis: string) => {
+    const replacement = `${prefix}Objection.  ${capitalize(basis)}.`;
     if (match !== replacement) changes += 1;
     return replacement;
   });

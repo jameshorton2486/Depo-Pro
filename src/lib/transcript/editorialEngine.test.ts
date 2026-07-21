@@ -37,6 +37,10 @@ describe("editorialEngine", () => {
     expect(result.text).toBe("MR. RAMON:  Objection.  Form.");
     expect(result.objectionFormattingCorrections).toBe(1);
   });
+  it("preserves narrative objection references and canonical objection punctuation", () => {
+    expect(applyEditorialRules("Was the objection form or substance?").text).toBe("Was the objection form or substance?");
+    expect(applyEditorialRules("Objection.  Form.").text).toBe("Objection.  Form.");
+  });
   it("capitalizes only known role labels and does not infer speakers", () => {
     expect(applyEditorialRules("the reporter:  We are on the record.").text).toBe("THE REPORTER:  We are on the record.");
     expect(applyEditorialRules("speaker 2:  We are on the record.").text).toBe("speaker 2:  We are on the record.");

@@ -67,4 +67,8 @@ describe("formattingEngine", () => {
     expect(result.formatted_text).toContain("$350");
     expect(result.formatted_text).toContain("8 percent");
   });
+  it("counts capitalization and objection corrections as automatic fixes", () => {
+    const result = formatTranscriptBlocks([block({ block_type: "SP", text: "the witness: Objection, form" })]);
+    expect(result.metrics.geometry_violations.auto_fixed).toBe(2);
+  });
 });
