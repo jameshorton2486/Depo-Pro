@@ -51,3 +51,23 @@ The Cloud Tasks worker claims the `(transcriptId, idempotencyKey)` pair before f
 The render model is input-only. The worker passes its completed line content to `formatter_core` and does not alter content, calculate geometry, or apply editorial rules.
 
 A malformed task records `FAILED` without retry eligibility. Operational formatter failures record `FAILED` and return a retryable worker failure so Cloud Tasks can retry the same idempotent job. Internal retry metadata is stored with the job record; public responses remain the unchanged `ExportJob` contract.
+
+## Production infrastructure gate
+
+The authenticated production gate passed on 2026-07-21 against Cloud Run revision `depo-pro-formatter-00003-r4g` and image `17b-20260721-3`.
+
+| Check | Verified value |
+| --- | --- |
+| Cloud Tasks target | `POST https://depo-pro-formatter-skgci45tcq-uc.a.run.app/tasks/format` |
+| OIDC audience | `https://depo-pro-formatter-skgci45tcq-uc.a.run.app` |
+| OIDC identity | `depo-pro-formatter@depo-pro-website.iam.gserviceaccount.com` |
+| FastAPI route | `POST /tasks/format` |
+| Synthetic job | `pr17b-synthetic-final-20260721-03` |
+| Final job status | `COMPLETED` |
+| Retry eligibility | `false` |
+| DOCX object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-03/transcript.docx` |
+| DOCX MD5 | `BemD8e5ZgYeNdhOTFt4iZw==` |
+| PDF object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-03/transcript.pdf` |
+| PDF MD5 | `Ad2st37T/CPv1mDUUYV99Q==` |
+
+The task reached the private IAM-protected Cloud Run service, executed the registered FastAPI route, invoked `formatter_core`, uploaded both requested artifacts, generated signed URLs through IAM `signBlob`, persisted the completed job in Cloud Storage, and returned success to Cloud Tasks. The completed task was removed from the queue automatically.
