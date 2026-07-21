@@ -76,4 +76,3 @@ The authenticated production gate passed on 2026-07-21 against Cloud Run revisio
 The task reached the private IAM-protected Cloud Run service, executed the registered FastAPI route, invoked `formatter_core`, uploaded both requested artifacts, generated signed URLs through IAM `signBlob`, persisted the completed job in Cloud Storage, and returned success to Cloud Tasks. The completed task was removed from the queue automatically.
 
 An authenticated duplicate dispatch using the identical job and idempotency key also returned success without rewriting state. The job object retained generation `1784673201119863`, the DOCX retained generation `1784673200597111`, and the PDF retained generation `1784673200958653`; Cloud Tasks removed the duplicate task after acknowledgement.
-
