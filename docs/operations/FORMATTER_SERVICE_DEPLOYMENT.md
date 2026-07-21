@@ -54,7 +54,7 @@ A malformed task records `FAILED` without retry eligibility. Operational formatt
 
 ## Production infrastructure gate
 
-The authenticated production gate passed on 2026-07-21 against Cloud Run revision `depo-pro-formatter-00003-r4g` and image `17b-20260721-3`.
+The authenticated production gate passed on 2026-07-21 against Cloud Run revision `depo-pro-formatter-00005-kxw` and image `17b-20260721-4`.
 
 | Check | Verified value |
 | --- | --- |
@@ -62,12 +62,13 @@ The authenticated production gate passed on 2026-07-21 against Cloud Run revisio
 | OIDC audience | `https://depo-pro-formatter-skgci45tcq-uc.a.run.app` |
 | OIDC identity | `depo-pro-formatter@depo-pro-website.iam.gserviceaccount.com` |
 | FastAPI route | `POST /tasks/format` |
-| Synthetic job | `pr17b-synthetic-final-20260721-03` |
+| Synthetic job | `pr17b-synthetic-final-20260721-04` |
 | Final job status | `COMPLETED` |
 | Retry eligibility | `false` |
-| DOCX object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-03/transcript.docx` |
-| DOCX MD5 | `BemD8e5ZgYeNdhOTFt4iZw==` |
-| PDF object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-03/transcript.pdf` |
-| PDF MD5 | `Ad2st37T/CPv1mDUUYV99Q==` |
+| DOCX object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-04/transcript.docx` |
+| DOCX MD5 | `iTod57sNgw4tEo2ftcOsSA==` |
+| PDF object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-04/transcript.pdf` |
+| PDF MD5 | `sVvYh8k8m5IRpM65ckVmFA==` |
+| Processing lease | Released after completion |
 
 The task reached the private IAM-protected Cloud Run service, executed the registered FastAPI route, invoked `formatter_core`, uploaded both requested artifacts, generated signed URLs through IAM `signBlob`, persisted the completed job in Cloud Storage, and returned success to Cloud Tasks. The completed task was removed from the queue automatically.
