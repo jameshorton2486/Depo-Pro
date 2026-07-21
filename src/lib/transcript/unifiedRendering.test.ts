@@ -118,4 +118,12 @@ describe("unifiedRendering", () => {
       `geometry is missing for paragraph ${transcriptPackage.paragraphs[0]?.id}`,
     ]));
   });
+
+  it("handles an absent rendering input without crashing", () => {
+    expect(buildUnifiedRenderModel(null)).toMatchObject({
+      transcriptId: "",
+      lines: [],
+      entityRegistryEntryCount: 0,
+    });
+  });
 });

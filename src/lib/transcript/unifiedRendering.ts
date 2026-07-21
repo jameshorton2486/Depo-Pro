@@ -35,31 +35,38 @@ export interface TxtRender {
   lineContents: string[];
 }
 
-export function buildUnifiedRenderModel(input: UnifiedRenderModelInput): UnifiedRenderModel {
+export function buildUnifiedRenderModel(input: UnifiedRenderModelInput | null | undefined): UnifiedRenderModel {
+  const transcriptPackage = input?.transcriptPackage;
+  const geometry = input?.geometry;
   const geometryByParagraphId = new Map(
-    input.geometry.lines
-      .filter((line): line is GeometryLayoutLine & { paragraph_id: string } => line.paragraph_id !== null)
+    (geometry?.lines ?? [])
+      .filter((line): line is GeometryLayoutLine & { paragraph_id: string } => line?.paragraph_id !== null)
       .map((line) => [line.paragraph_id, line]),
   );
 
   return {
-    transcriptId: input.transcriptPackage.transcriptId,
+    transcriptId: transcriptPackage?.transcriptId ?? "",
     geometry: {
-      format_box_width_inches: input.geometry.format_box_width_inches,
-      left_margin_inches: input.geometry.left_margin_inches,
-      right_margin_inches: input.geometry.right_margin_inches,
-      line_spacing_points: input.geometry.line_spacing_points,
-      lines_per_page: input.geometry.lines_per_page,
+      format_box_width_inches: geometry?.format_box_width_inches ?? 0,
+      left_margin_inches: geometry?.left_margin_inches ?? 0,
+      right_margin_inches: geometry?.right_margin_inches ?? 0,
+      line_spacing_points: geometry?.line_spacing_points ?? 0,
+      lines_per_page: geometry?.lines_per_page ?? 0,
     },
-    lines: input.transcriptPackage.paragraphs.map((entry) => ({
-      paragraphId: entry.id,
-      kind: entry.paragraph.kind,
-      content: renderParagraphContent(entry.paragraph),
-      sourceUtteranceIds: [...entry.sourceUtteranceIds],
-      sourceWordIds: [...entry.sourceWordIds],
-      geometry: geometryByParagraphId.get(entry.id) ?? fallbackGeometry(entry.id),
-    })),
-    entityRegistryEntryCount: input.entityRegistry?.entries.length ?? 0,
+    lines: (transcriptPackage?.paragraphs ?? []).map((entry) => {
+      const paragraph = entry?.paragraph;
+      const paragraphId = entry?.id ?? "";
+
+      return {
+        paragraphId,
+        kind: paragraph?.kind ?? "COLLOQUY",
+        content: renderParagraphContent(paragraph),
+        sourceUtteranceIds: [...(entry?.sourceUtteranceIds ?? [])],
+        sourceWordIds: [...(entry?.sourceWordIds ?? [])],
+        geometry: geometryByParagraphId.get(paragraphId) ?? fallbackGeometry(paragraphId),
+      };
+    }),
+    entityRegistryEntryCount: input?.entityRegistry?.entries?.length ?? 0,
   };
 }
 
@@ -93,7 +100,8 @@ export function validateRenderParity(model: UnifiedRenderModel): string[] {
   }
 
   workspace.lines.forEach((line, index) => {
-    if (line.content !== txt.lineContents[index]) {
+    const txtContent = txt.lineContents[index];
+    if (txtContent !== undefined && line.content !== txtContent) {
       errors.push(`workspace and TXT content differ for paragraph ${line.paragraphId}`);
     }
     if (line.geometry.paragraph_index < 0) {
@@ -104,7 +112,11 @@ export function validateRenderParity(model: UnifiedRenderModel): string[] {
   return errors;
 }
 
-function renderParagraphContent(paragraph: TranscriptParagraph): string {
+function renderParagraphContent(paragraph: TranscriptParagraph | null | undefined): string {
+  if (!paragraph) {
+    return "";
+  }
+
   if (paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE" || paragraph.kind === "PARENTHETICAL") {
     return paragraph.text;
   }
