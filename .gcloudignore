@@ -1,0 +1,11 @@
+.gcloudignore
+.git
+.gitignore
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.zip
+*.pdf
+*.docx
