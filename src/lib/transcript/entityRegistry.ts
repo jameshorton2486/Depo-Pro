@@ -179,25 +179,28 @@ export function buildEntityRegistry(record: CaseRecord | null | undefined): Enti
 }
 
 export function findEntityMatch(
-  registry: EntityRegistry,
+  registry: EntityRegistry | null | undefined,
   value: string | null | undefined,
 ): EntityRegistryEntry | null {
-  if (!value) {
+  if (!registry || !value) {
     return null;
   }
   const normalized = normalizeEntityValue(value);
   if (!normalized) {
     return null;
   }
-  return registry.aliasMap.get(normalized) ?? registry.canonicalMap.get(normalized) ?? null;
+  return registry.canonicalMap.get(normalized) ?? registry.aliasMap.get(normalized) ?? null;
 }
 
 export function listRegistryTerms(
-  registry: EntityRegistry,
+  registry: EntityRegistry | null | undefined,
   categories?: EntityRegistryEntry["category"][],
 ): string[] {
   const allowed = categories ? new Set(categories) : null;
   const terms = new Set<string>();
+  if (!registry) {
+    return [];
+  }
 
   for (const entry of registry.entries) {
     if (allowed && !allowed.has(entry.category)) {
@@ -205,7 +208,7 @@ export function listRegistryTerms(
     }
     terms.add(entry.canonical);
     for (const alias of entry.aliases) {
-      if (alias.length > 2) {
+      if (alias.length > 2 && alias !== entry.normalized) {
         terms.add(toTitleCase(alias));
       }
     }
@@ -213,3 +216,4 @@ export function listRegistryTerms(
 
   return [...terms];
 }
+

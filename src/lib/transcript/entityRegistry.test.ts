@@ -64,4 +64,15 @@ describe("entityRegistry", () => {
     expect(terms).toContain("Payam Etminan");
     expect(terms).toContain("Bentley Law");
   });
-});
+
+  it("prefers canonical identity over a colliding alias and accepts an absent registry", () => {
+    const registry = buildEntityRegistry(buildRecord());
+    registry.aliasMap.set("dennis bentley", {
+      canonical: "Unrelated Entity", normalized: "unrelated entity",
+      aliases: ["dennis bentley"], category: "party",
+    });
+
+    expect(findEntityMatch(registry, "Dennis Bentley")?.canonical).toBe("Dennis Bentley");
+    expect(findEntityMatch(null, "Dennis Bentley")).toBeNull();
+    expect(listRegistryTerms(null)).toEqual([]);
+  });});
