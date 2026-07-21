@@ -401,7 +401,7 @@ def export_render_model_to_docx(render_model: Mapping[str, object], output_path:
     for page_index in range(0, len(physical_lines), lines_per_page):
         page_lines = physical_lines[page_index : page_index + lines_per_page]
         for line_index, line in enumerate(page_lines):
-            _add_render_line(doc, line, line_index + 1)
+            _add_render_line(doc, line, line_index + 1, float(geometry["line_spacing_points"]))
         if page_index + lines_per_page < len(physical_lines):
             from docx.enum.text import WD_BREAK
 
@@ -481,13 +481,13 @@ def _wrap_content(content: str, first_width: int, continuation_width: int) -> li
     return lines
 
 
-def _add_render_line(doc: Document, line: _PhysicalRenderLine, line_number: int) -> None:
+def _add_render_line(doc: Document, line: _PhysicalRenderLine, line_number: int, line_spacing_points: float) -> None:
     paragraph = doc.add_paragraph()
     paragraph_format = paragraph.paragraph_format
     paragraph_format.space_before = Pt(0)
     paragraph_format.space_after = Pt(0)
     paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
-    paragraph_format.line_spacing = _LINE_SP
+    paragraph_format.line_spacing = Pt(line_spacing_points)
 
     stops = [
         stop
@@ -518,3 +518,5 @@ def _add_render_line(doc: Document, line: _PhysicalRenderLine, line_number: int)
 
     content_run = paragraph.add_run(line.content)
     _apply_run_style(content_run, bold=line.role == "speaker", color=_NAVY if line.role == "parenthetical" else None)
+
+

@@ -78,3 +78,27 @@ def test_paginates_wrapped_physical_lines(tmp_path: Path) -> None:
     assert len(transcript_paragraphs) > 1
     assert transcript_paragraphs[0].text.lstrip().startswith("1 \tA.\t")
     assert transcript_paragraphs[1].text.lstrip().startswith("2 \t")
+
+def test_consumes_all_geometry_without_inferring_role_from_text(tmp_path: Path) -> None:
+    model = render_model([
+        line("Q. " + "synthetic " * 80, "speaker", 1.75, None, 0.25),
+    ])
+    geometry = model["geometry"]
+    assert isinstance(geometry, dict)
+    geometry["line_spacing_points"] = 30
+    geometry["left_margin_inches"] = 1.4
+    geometry["right_margin_inches"] = 0.6
+    geometry["lines_per_page"] = 20
+
+    path = format_render_model(model, ["DOCX"], tmp_path)["DOCX"]
+    document = Document(path)
+    first, continuation = document.paragraphs[0:2]
+
+    assert round(document.sections[0].left_margin.inches, 2) == 1.4
+    assert round(document.sections[0].right_margin.inches, 2) == 0.6
+    assert first.paragraph_format.line_spacing.pt == 30
+    assert "w:pos=\"2520\"" in first._p.xml
+    assert "w:pos=\"720\"" not in first._p.xml
+    assert "w:pos=\"1440\"" not in first._p.xml
+    assert "w:pos=\"360\"" in continuation._p.xml
+    assert first.text.lstrip().startswith("1 \tQ.")
