@@ -86,6 +86,22 @@ describe("stageS validators", () => {
     expect(findings.some((f) => f.message.includes('missing its "Q." label'))).toBe(true);
   });
 
+  it("resets Q/A continuity for each examination", () => {
+    const findings = validateQaContinuity(model([
+      line("SECTION_HEADER", "EXAMINATION", 0),
+      line("Q", "Q. Ready?", 1),
+      line("A", "A. Yes.", 2),
+      line("SECTION_HEADER", "CROSS-EXAMINATION", 3),
+      line("A", "A. No.", 4),
+    ]));
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      category: "QA_CONTINUITY",
+      severity: "CRITICAL",
+      paragraphId: "p:4",
+    });
+  });
+
   it("requires an EXAMINATION header before Q/A", () => {
     const withoutHeader = validateExaminationBoundary(model([line("Q", "Q. Ready?", 0)]));
     expect(withoutHeader).toHaveLength(1);
@@ -96,6 +112,12 @@ describe("stageS validators", () => {
       line("Q", "Q. Ready?", 1),
     ]));
     expect(withHeader).toHaveLength(0);
+
+    const misleadingHeader = validateExaminationBoundary(model([
+      line("SECTION_HEADER", "NON-EXAMINATION", 0),
+      line("Q", "Q. Ready?", 1),
+    ]));
+    expect(misleadingHeader).toHaveLength(1);
   });
 
   it("flags colloquy without a speaker label and lowercase labels", () => {

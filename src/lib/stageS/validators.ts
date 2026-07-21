@@ -39,8 +39,17 @@ function makeFinding(seed: FindingSeed): RepairFinding {
 }
 
 /** Section headers that open an examination (Direct/Cross/Redirect/Recross). */
+const EXAMINATION_HEADERS = new Set([
+  "EXAMINATION",
+  "CROSS-EXAMINATION",
+  "REDIRECT",
+  "REDIRECT EXAMINATION",
+  "RECROSS",
+  "RECROSS-EXAMINATION",
+]);
+
 export function isExaminationHeader(content: string): boolean {
-  return /EXAMINATION/i.test(content);
+  return EXAMINATION_HEADERS.has(content.trim().toUpperCase());
 }
 
 /** The spoken portion of a rendered line, with any Q./A./speaker label removed. */
@@ -82,6 +91,10 @@ export function validateQaContinuity(model: UnifiedRenderModel): RepairFinding[]
   const findings: RepairFinding[] = [];
   let seenQuestion = false;
   model.lines.forEach((line, index) => {
+    if (line.kind === "SECTION_HEADER" && isExaminationHeader(line.content)) {
+      seenQuestion = false;
+      return;
+    }
     if (line.kind === "Q") {
       seenQuestion = true;
       if (!/^Q\.\s/.test(line.content) && line.content.trim() !== "Q.") {
