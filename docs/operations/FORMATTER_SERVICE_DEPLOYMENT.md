@@ -54,7 +54,7 @@ A malformed task records `FAILED` without retry eligibility. Operational formatt
 
 ## Production infrastructure gate
 
-The authenticated production gate passed on 2026-07-21 against Cloud Run revision `depo-pro-formatter-00005-kxw` and image `17b-20260721-4`.
+The authenticated production gate passed on 2026-07-21 against Cloud Run revision `depo-pro-formatter-00006-rm6` and image `17b-20260721-5`.
 
 | Check | Verified value |
 | --- | --- |
@@ -62,15 +62,18 @@ The authenticated production gate passed on 2026-07-21 against Cloud Run revisio
 | OIDC audience | `https://depo-pro-formatter-skgci45tcq-uc.a.run.app` |
 | OIDC identity | `depo-pro-formatter@depo-pro-website.iam.gserviceaccount.com` |
 | FastAPI route | `POST /tasks/format` |
-| Synthetic job | `pr17b-synthetic-final-20260721-04` |
+| Synthetic job | `pr17b-synthetic-final-20260721-05` |
 | Final job status | `COMPLETED` |
 | Retry eligibility | `false` |
-| DOCX object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-04/transcript.docx` |
-| DOCX MD5 | `iTod57sNgw4tEo2ftcOsSA==` |
-| PDF object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-04/transcript.pdf` |
-| PDF MD5 | `sVvYh8k8m5IRpM65ckVmFA==` |
+| DOCX object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-05/transcript.docx` |
+| DOCX MD5 | `nWs25WNMdjyjQuqLP2oO5w==` |
+| PDF object | `gs://depo-pro-exports/exports/artifacts/pr17b-synthetic-final-20260721-05/transcript.pdf` |
+| PDF MD5 | `YDjtnQ9CaAtpN9BfAiLLNQ==` |
 | Processing lease | Released after completion |
+| DOCX physical lines | 19 numbered lines; no artificial blank lines |
+| DOCX geometry | Q/A tabs at 0.5\"/1.0\"; parenthetical tab at 2.0\" |
 
 The task reached the private IAM-protected Cloud Run service, executed the registered FastAPI route, invoked `formatter_core`, uploaded both requested artifacts, generated signed URLs through IAM `signBlob`, persisted the completed job in Cloud Storage, and returned success to Cloud Tasks. The completed task was removed from the queue automatically.
 
 An authenticated duplicate dispatch using the identical job and idempotency key also returned success without rewriting state. The job object retained generation `1784673201119863`, the DOCX retained generation `1784673200597111`, and the PDF retained generation `1784673200958653`; Cloud Tasks removed the duplicate task after acknowledgement.
+
