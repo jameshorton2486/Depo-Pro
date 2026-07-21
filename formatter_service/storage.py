@@ -12,9 +12,14 @@ from .models import FormatterTask
 
 class CloudStorageExportStore:
     def __init__(self, bucket_name: str) -> None:
+        import google.auth
         from google.cloud import storage
 
-        self._bucket = storage.Client().bucket(bucket_name)
+        credentials, project = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+        self._credentials = credentials
+        self._bucket = storage.Client(project=project, credentials=credentials).bucket(bucket_name)
 
     def claim_idempotency(self, transcript_id: str, idempotency_key: str, job_id: str) -> str:
         from google.api_core.exceptions import PreconditionFailed
@@ -54,7 +59,20 @@ class CloudStorageExportStore:
         return object_name
 
     def signed_download_url(self, object_name: str, expires_at: datetime) -> str:
-        return self._bucket.blob(object_name).generate_signed_url(expiration=expires_at, version="v4", method="GET")
+        from google.auth.transport.requests import Request
+
+        if not self._credentials.valid:
+            self._credentials.refresh(Request())
+        service_account_email = getattr(self._credentials, "service_account_email", None)
+        if not service_account_email or not self._credentials.token:
+            raise RuntimeError("formatter credentials cannot sign artifact URLs")
+        return self._bucket.blob(object_name).generate_signed_url(
+            expiration=expires_at,
+            version="v4",
+            method="GET",
+            service_account_email=service_account_email,
+            access_token=self._credentials.token,
+        )
 
 
 def _job_object_name(job_id: str) -> str:
