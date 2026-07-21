@@ -42,9 +42,9 @@ describe("formattingEngine", () => {
     expect(result.docx_paragraphs[0]?.text.startsWith("\t\t\t\t")).toBe(true);
   });
 
-  it("flags THE COURT REPORTER geometry errors", () => {
-    const issues = checkGeometry([{ kind: "SP", text: "\t\t\tTHE COURT REPORTER:  Test" }]);
-    expect(issues.some((issue) => issue.type === "COURT_REPORTER_LABEL")).toBe(true);
+  it("flags speaker paragraphs that are not aligned to the speaker tab", () => {
+    const issues = checkGeometry([{ kind: "SP", text: "THE REPORTER:  Test" }]);
+    expect(issues.some((issue) => issue.type === "SPEAKER_INDENT")).toBe(true);
   });
 
   it("converts Okay, to Okay.", () => {
