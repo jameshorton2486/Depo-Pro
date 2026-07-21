@@ -134,6 +134,7 @@ def test_missing_idempotent_job_is_retryable_processing(tmp_path: Path) -> None:
         process_formatter_task(task_payload("job-duplicate"), store, tmp_path, 900, datetime(2026, 7, 21, tzinfo=UTC))
 
     assert raised.value.result.job["status"] == "PROCESSING"
+    assert raised.value.result.job["jobId"] == "job-original"
     assert raised.value.result.job["error"] is None
     assert raised.value.result.retry_eligible is True
 
