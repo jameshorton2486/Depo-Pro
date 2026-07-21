@@ -32,9 +32,9 @@ describe("formattingEngine", () => {
     expect(result.docx_paragraphs[0]?.text).toContain("MR. BENTLEY:  Objection.");
   });
 
-  it("preserves BY-line two-space exception", () => {
+  it("normalizes BY-line honorific spacing", () => {
     const result = formatTranscriptBlocks([block({ block_type: "Q", text: "(BY MR.  BENTLEY)  What happened next?" })]);
-    expect(result.docx_paragraphs[0]?.text).toContain("(BY MR.  BENTLEY)  What happened next?");
+    expect(result.docx_paragraphs[0]?.text).toContain("(BY MR. BENTLEY)  What happened next?");
   });
 
   it("formats parentheticals with four tabs", () => {
