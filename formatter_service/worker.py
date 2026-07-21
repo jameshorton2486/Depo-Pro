@@ -17,6 +17,10 @@ class ExportStore(Protocol):
 
     def read_job(self, job_id: str) -> dict[str, object] | None: ...
 
+    def claim_processing(self, job_id: str) -> bool: ...
+
+    def release_processing(self, job_id: str) -> None: ...
+
     def write_job(self, job: dict[str, object], task: FormatterTask, retry_eligible: bool, updated_at: datetime) -> None: ...
 
     def upload_artifact(self, job_id: str, format_name: str, path: Path) -> str: ...
@@ -44,43 +48,58 @@ def process_formatter_task(
     now: datetime | None = None,
 ) -> WorkerResult:
     task = validate_formatter_task(payload)
-    timestamp = now or datetime.now(UTC)
+    started_at = now or _utc_now()
     claimed_job_id = store.claim_idempotency(task.transcript_id, task.idempotency_key, task.job_id)
     if claimed_job_id != task.job_id:
         claimed_job = store.read_job(claimed_job_id)
         if claimed_job is None:
-            raise RetryableFormatterError(WorkerResult(_job(task, "FAILED", [], "idempotent job is not yet available"), True))
+            raise RetryableFormatterError(WorkerResult(_job(task, "PROCESSING", [], None), True))
         return WorkerResult(claimed_job, False)
 
     existing_job = store.read_job(task.job_id)
     if existing_job and existing_job.get("status") == "COMPLETED":
         return WorkerResult(existing_job, False)
 
-    processing = _job(task, "PROCESSING", [], None)
-    store.write_job(processing, task, True, timestamp)
+    if not store.claim_processing(task.job_id):
+        raise RetryableFormatterError(WorkerResult(_job(task, "PROCESSING", [], None), True))
 
     try:
-        render_model = task.request["renderModel"]
-        formats = task.request["formats"]
-        assert isinstance(render_model, dict)
-        assert isinstance(formats, list)
-        artifacts = format_render_model(render_model, formats, work_directory / task.job_id)
-        expires_at = timestamp + timedelta(seconds=url_ttl_seconds)
-        completed_artifacts = [
-            _artifact(store, task.job_id, format_name, path, expires_at)
-            for format_name, path in artifacts.items()
-        ]
-        completed = _job(task, "COMPLETED", completed_artifacts, None)
-        store.write_job(completed, task, False, timestamp)
-        return WorkerResult(completed, False)
-    except ValueError as error:
-        failed = _job(task, "FAILED", [], str(error))
-        store.write_job(failed, task, False, timestamp)
-        return WorkerResult(failed, False)
-    except Exception as error:
-        failed = _job(task, "FAILED", [], str(error))
-        store.write_job(failed, task, True, timestamp)
-        raise RetryableFormatterError(WorkerResult(failed, True)) from error
+        existing_job = store.read_job(task.job_id)
+        if existing_job and existing_job.get("status") == "COMPLETED":
+            return WorkerResult(existing_job, False)
+
+        processing = _job(task, "PROCESSING", [], None)
+        store.write_job(processing, task, True, started_at)
+
+        try:
+            render_model = task.request["renderModel"]
+            formats = task.request["formats"]
+            assert isinstance(render_model, dict)
+            assert isinstance(formats, list)
+            artifacts = format_render_model(render_model, formats, work_directory / task.job_id)
+            completed_at = now or _utc_now()
+            expires_at = completed_at + timedelta(seconds=url_ttl_seconds)
+            completed_artifacts = [
+                _artifact(store, task.job_id, format_name, path, expires_at)
+                for format_name, path in artifacts.items()
+            ]
+            completed = _job(task, "COMPLETED", completed_artifacts, None)
+            store.write_job(completed, task, False, completed_at)
+            return WorkerResult(completed, False)
+        except ValueError as error:
+            failed = _job(task, "FAILED", [], str(error))
+            store.write_job(failed, task, False, now or _utc_now())
+            return WorkerResult(failed, False)
+        except Exception as error:
+            failed = _job(task, "FAILED", [], str(error))
+            store.write_job(failed, task, True, now or _utc_now())
+            raise RetryableFormatterError(WorkerResult(failed, True)) from error
+    finally:
+        store.release_processing(task.job_id)
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
 
 
 def _artifact(store: ExportStore, job_id: str, format_name: str, path: Path, expires_at: datetime) -> dict[str, object]:

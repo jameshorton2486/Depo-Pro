@@ -41,6 +41,24 @@ class CloudStorageExportStore:
         job = payload.get("job")
         return job if isinstance(job, dict) else None
 
+    def claim_processing(self, job_id: str) -> bool:
+        from google.api_core.exceptions import PreconditionFailed
+
+        blob = self._bucket.blob(_processing_object_name(job_id))
+        try:
+            blob.upload_from_string("", content_type="text/plain", if_generation_match=0)
+            return True
+        except PreconditionFailed:
+            return False
+
+    def release_processing(self, job_id: str) -> None:
+        from google.api_core.exceptions import NotFound
+
+        try:
+            self._bucket.blob(_processing_object_name(job_id)).delete()
+        except NotFound:
+            pass
+
     def write_job(self, job: dict[str, object], task: FormatterTask, retry_eligible: bool, updated_at: datetime) -> None:
         payload = {
             "job": job,
@@ -77,6 +95,10 @@ class CloudStorageExportStore:
 
 def _job_object_name(job_id: str) -> str:
     return f"exports/jobs/{job_id}.json"
+
+
+def _processing_object_name(job_id: str) -> str:
+    return f"exports/processing/{job_id}.lock"
 
 
 def _idempotency_object_name(transcript_id: str, idempotency_key: str) -> str:

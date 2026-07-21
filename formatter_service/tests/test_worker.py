@@ -1,7 +1,9 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from formatter_service.worker import process_formatter_task
+import pytest
+
+from formatter_service.worker import RetryableFormatterError, process_formatter_task
 
 
 class FakeStore:
@@ -9,12 +11,23 @@ class FakeStore:
         self.jobs: dict[str, dict[str, object]] = {}
         self.claims: dict[tuple[str, str], str] = {}
         self.write_history: list[dict[str, object]] = []
+        self.processing: set[str] = set()
+        self.processing_available = True
 
     def claim_idempotency(self, transcript_id: str, idempotency_key: str, job_id: str) -> str:
         return self.claims.setdefault((transcript_id, idempotency_key), job_id)
 
     def read_job(self, job_id: str) -> dict[str, object] | None:
         return self.jobs.get(job_id)
+
+    def claim_processing(self, job_id: str) -> bool:
+        if not self.processing_available or job_id in self.processing:
+            return False
+        self.processing.add(job_id)
+        return True
+
+    def release_processing(self, job_id: str) -> None:
+        self.processing.discard(job_id)
 
     def write_job(self, job, task, retry_eligible, updated_at) -> None:
         self.jobs[task.job_id] = job
@@ -93,3 +106,51 @@ def test_duplicate_idempotency_key_returns_original_artifacts(monkeypatch, tmp_p
 
     assert duplicate.job == original.job
     assert "job-002" not in store.jobs
+
+
+def test_missing_idempotent_job_is_retryable_processing(tmp_path: Path) -> None:
+    store = FakeStore()
+    store.claims[("transcript-001", "request-001")] = "job-original"
+
+    with pytest.raises(RetryableFormatterError) as raised:
+        process_formatter_task(task_payload("job-duplicate"), store, tmp_path, 900, datetime(2026, 7, 21, tzinfo=UTC))
+
+    assert raised.value.result.job["status"] == "PROCESSING"
+    assert raised.value.result.job["error"] is None
+    assert raised.value.result.retry_eligible is True
+
+
+def test_overlapping_delivery_does_not_format(monkeypatch, tmp_path: Path) -> None:
+    def fail_formatter(*_arguments):
+        raise AssertionError("overlapping delivery must not format")
+
+    monkeypatch.setattr("formatter_service.worker.format_render_model", fail_formatter)
+    store = FakeStore()
+    store.processing_available = False
+
+    with pytest.raises(RetryableFormatterError) as raised:
+        process_formatter_task(task_payload(), store, tmp_path, 900, datetime(2026, 7, 21, tzinfo=UTC))
+
+    assert raised.value.result.job["status"] == "PROCESSING"
+    assert store.write_history == []
+
+
+def test_signed_url_ttl_starts_after_formatting(monkeypatch, tmp_path: Path) -> None:
+    started_at = datetime(2026, 7, 21, 12, 0, tzinfo=UTC)
+    completed_at = started_at + timedelta(minutes=4)
+    timestamps = iter([started_at, completed_at])
+
+    def fake_formatter(_render_model, _formats, output_directory):
+        output_directory.mkdir(parents=True)
+        docx = output_directory / "transcript.docx"
+        docx.write_text("synthetic")
+        return {"DOCX": docx}
+
+    monkeypatch.setattr("formatter_service.worker._utc_now", lambda: next(timestamps))
+    monkeypatch.setattr("formatter_service.worker.format_render_model", fake_formatter)
+    store = FakeStore()
+
+    result = process_formatter_task(task_payload(), store, tmp_path, 900)
+
+    artifact = result.job["artifacts"][0]
+    assert artifact["expiresAt"] == (completed_at + timedelta(seconds=900)).isoformat()

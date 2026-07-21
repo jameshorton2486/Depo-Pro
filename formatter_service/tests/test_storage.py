@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from google.api_core.exceptions import NotFound, PreconditionFailed
+
 from formatter_service.storage import CloudStorageExportStore
 
 
@@ -20,6 +22,23 @@ class FakeBlob:
     def generate_signed_url(self, **arguments) -> str:
         self.arguments = arguments
         return "https://storage.example.test/signed"
+
+
+class FakeLeaseBlob:
+    def __init__(self, claimed: bool = False) -> None:
+        self.claimed = claimed
+        self.deleted = False
+
+    def upload_from_string(self, *_arguments, **_keyword_arguments) -> None:
+        if self.claimed:
+            raise PreconditionFailed("already claimed")
+        self.claimed = True
+
+    def delete(self) -> None:
+        if not self.claimed:
+            raise NotFound("not found")
+        self.claimed = False
+        self.deleted = True
 
 
 class FakeBucket:
@@ -47,3 +66,24 @@ def test_signed_url_uses_runtime_identity_for_iam_signing() -> None:
         "service_account_email": "depo-pro-formatter@example.test",
         "access_token": "runtime-access-token",
     }
+
+
+def test_processing_lease_uses_conditional_create_and_release() -> None:
+    blob = FakeLeaseBlob()
+    store = CloudStorageExportStore.__new__(CloudStorageExportStore)
+    store._bucket = FakeBucket(blob)
+
+    assert store.claim_processing("job-001") is True
+    assert store.claim_processing("job-001") is False
+
+    store.release_processing("job-001")
+
+    assert blob.deleted is True
+
+
+def test_missing_processing_lease_can_be_released() -> None:
+    blob = FakeLeaseBlob()
+    store = CloudStorageExportStore.__new__(CloudStorageExportStore)
+    store._bucket = FakeBucket(blob)
+
+    store.release_processing("job-001")
