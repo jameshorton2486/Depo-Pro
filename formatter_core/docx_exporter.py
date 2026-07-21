@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Mapping
 
 from docx import Document
-from docx.enum.text import WD_LINE_SPACING
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
@@ -434,7 +434,7 @@ def _expand_render_lines(logical_lines: list[object], format_box_width: float) -
         if role == "qa":
             import re
 
-            match = re.match(r"^([QA]\\.)\\s*(.*)$", content, flags=re.DOTALL)
+            match = re.match(r"^([QA]\.)\s*(.*)$", content, flags=re.DOTALL)
             if match:
                 label, body = match.groups()
 
@@ -495,6 +495,8 @@ def _add_render_line(doc: Document, line: _PhysicalRenderLine, line_number: int,
         if stop is not None and stop > 0
     ]
     _set_tab_stops(paragraph, sorted(set(stops)))
+    if line.role == "centered":
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     number_run = paragraph.add_run(f"{line_number:2d} ")
     _apply_run_style(number_run)
@@ -505,7 +507,7 @@ def _add_render_line(doc: Document, line: _PhysicalRenderLine, line_number: int,
         _apply_run_style(content_run)
         return
 
-    if line.first_line_tab_inches > 0:
+    if line.first_line_tab_inches > 0 and line.role != "centered":
         paragraph.add_run("\t")
     if line.role == "qa" and line.text_tab_inches is not None:
         label, separator, remainder = line.content.partition(" ")

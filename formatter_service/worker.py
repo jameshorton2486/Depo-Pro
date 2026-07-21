@@ -53,7 +53,7 @@ def process_formatter_task(
     if claimed_job_id != task.job_id:
         claimed_job = store.read_job(claimed_job_id)
         if claimed_job is None:
-            raise RetryableFormatterError(WorkerResult(_job(task, "PROCESSING", [], None), True))
+            raise RetryableFormatterError(WorkerResult(_job(task, "PROCESSING", [], None, job_id=claimed_job_id), True))
         return WorkerResult(claimed_job, False)
 
     existing_job = store.read_job(task.job_id)
@@ -112,9 +112,15 @@ def _artifact(store: ExportStore, job_id: str, format_name: str, path: Path, exp
     }
 
 
-def _job(task: FormatterTask, status: str, artifacts: list[dict[str, object]], error: str | None) -> dict[str, object]:
+def _job(
+    task: FormatterTask,
+    status: str,
+    artifacts: list[dict[str, object]],
+    error: str | None,
+    job_id: str | None = None,
+) -> dict[str, object]:
     return {
-        "jobId": task.job_id,
+        "jobId": job_id or task.job_id,
         "transcriptId": task.transcript_id,
         "status": status,
         "artifacts": artifacts,

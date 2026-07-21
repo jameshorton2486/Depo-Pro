@@ -102,3 +102,21 @@ def test_consumes_all_geometry_without_inferring_role_from_text(tmp_path: Path) 
     assert "w:pos=\"1440\"" not in first._p.xml
     assert "w:pos=\"360\"" in continuation._p.xml
     assert first.text.lstrip().startswith("1 \tQ.")
+
+
+def test_centers_centered_role_and_wraps_qa_at_text_tab(tmp_path: Path) -> None:
+    path = format_render_model(
+        render_model([
+            line("SECTION HEADING", "centered", 3.25),
+            line("Q. " + "word " * 30, "qa", 0.5, 1.0, 1.0),
+        ]),
+        ["DOCX"],
+        tmp_path,
+    )["DOCX"]
+
+    document = Document(path)
+    centered = document.paragraphs[0]
+    first_qa = document.paragraphs[1]
+    assert centered.alignment == 1
+    assert centered.text.lstrip().startswith("1 SECTION HEADING")
+    assert len(first_qa.text.split("\t")[-1]) <= 55
