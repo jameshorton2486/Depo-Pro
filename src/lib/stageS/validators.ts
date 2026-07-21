@@ -18,6 +18,7 @@ interface FindingSeed {
   line: UnifiedRenderLine | null;
   index: number | null;
   message: string;
+  count?: number;
   autoRepairable?: boolean;
 }
 
@@ -32,8 +33,26 @@ function makeFinding(seed: FindingSeed): RepairFinding {
     paragraphId,
     paragraphIndex: seed.index,
     message: seed.message,
+    count: seed.count ?? 1,
     autoRepairable: seed.autoRepairable ?? false,
   };
+}
+
+/** Section headers that open an examination (Direct/Cross/Redirect/Recross). */
+export function isExaminationHeader(content: string): boolean {
+  return /EXAMINATION/i.test(content);
+}
+
+/** The spoken portion of a rendered line, with any Q./A./speaker label removed. */
+function spokenText(line: UnifiedRenderLine): string {
+  if (line.kind === "Q" || line.kind === "A") {
+    return line.content.replace(/^[QA]\.\s+/, "").trim();
+  }
+  if (line.kind === "COLLOQUY") {
+    const colon = line.content.indexOf(":");
+    return colon >= 0 ? line.content.slice(colon + 1).trim() : line.content.trim();
+  }
+  return line.content.trim();
 }
 
 const QA_KINDS = new Set(["Q", "A"]);
@@ -108,29 +127,46 @@ export function validateQaContinuity(model: UnifiedRenderModel): RepairFinding[]
   return findings;
 }
 
-/** Examination boundary: Q/A testimony must be introduced by an EXAMINATION section header. */
+/**
+ * Examination boundary: EVERY run of Q/A testimony must sit under an examination
+ * section header. A deposition has multiple examinations (Direct, Cross,
+ * Redirect, Recross); each transition is validated, not just the first. The
+ * "active examination" is the most recent SECTION_HEADER; a non-examination
+ * header (or none) invalidates the Q/A run that follows.
+ */
 export function validateExaminationBoundary(model: UnifiedRenderModel): RepairFinding[] {
-  const firstQaIndex = model.lines.findIndex((line) => QA_KINDS.has(line.kind));
-  if (firstQaIndex === -1) {
-    return [];
-  }
-  const hasExaminationHeader = model.lines
-    .slice(0, firstQaIndex + 1)
-    .some((line) => line.kind === "SECTION_HEADER" && /EXAMINATION/i.test(line.content));
-  if (hasExaminationHeader) {
-    return [];
-  }
-  const line = model.lines[firstQaIndex] ?? null;
-  return [
-    makeFinding({
-      category: "EXAMINATION_BOUNDARY",
-      severity: "MAJOR",
-      owner: "COMPILER",
-      line,
-      index: firstQaIndex,
-      message: "Q/A testimony is not introduced by an EXAMINATION section header.",
-    }),
-  ];
+  const findings: RepairFinding[] = [];
+  let activeExamination = false;
+  let flaggedCurrentRun = false;
+
+  model.lines.forEach((line, index) => {
+    if (line.kind === "SECTION_HEADER") {
+      activeExamination = isExaminationHeader(line.content);
+      flaggedCurrentRun = false;
+      return;
+    }
+    if (!QA_KINDS.has(line.kind)) {
+      // A non-Q/A, non-header paragraph (parenthetical, colloquy) ends the run
+      // but does not change the active examination context.
+      flaggedCurrentRun = false;
+      return;
+    }
+    if (!activeExamination && !flaggedCurrentRun) {
+      flaggedCurrentRun = true;
+      findings.push(
+        makeFinding({
+          category: "EXAMINATION_BOUNDARY",
+          severity: "MAJOR",
+          owner: "COMPILER",
+          line,
+          index,
+          message: `Q/A testimony at paragraph ${line.paragraphId} is not under an examination section header.`,
+        }),
+      );
+    }
+  });
+
+  return findings;
 }
 
 /** Colloquy transitions: colloquy paragraphs must carry a speaker label. */
@@ -184,11 +220,17 @@ export function validateSpeakerLabelContinuity(model: UnifiedRenderModel): Repai
   return findings;
 }
 
-/** Objection placement: objections should be spoken (colloquy) and canonically formatted. */
+/**
+ * Objection placement: an objection is recognized by its canonical STRUCTURE —
+ * the spoken utterance *begins* with "Objection" — not by mere presence of the
+ * word (which produces false positives like "I have no objection" in testimony).
+ * A structural objection must be spoken in colloquy and canonically formatted.
+ */
 export function validateObjectionPlacement(model: UnifiedRenderModel): RepairFinding[] {
   const findings: RepairFinding[] = [];
   model.lines.forEach((line, index) => {
-    if (!/\bobjection\b/i.test(line.content)) {
+    const spoken = spokenText(line);
+    if (!/^Objection\b/i.test(spoken)) {
       return;
     }
     if (line.kind !== "COLLOQUY") {
@@ -199,12 +241,12 @@ export function validateObjectionPlacement(model: UnifiedRenderModel): RepairFin
           owner: "COMPILER",
           line,
           index,
-          message: `Objection text appears in a ${line.kind} paragraph rather than colloquy.`,
+          message: `A spoken objection appears in a ${line.kind} paragraph rather than colloquy.`,
         }),
       );
       return;
     }
-    if (!/Objection\.\s{2}\S/.test(line.content)) {
+    if (!/^Objection\.\s{2}\S/.test(spoken)) {
       findings.push(
         makeFinding({
           category: "OBJECTION_PLACEMENT",
@@ -282,7 +324,6 @@ const EXPECTED_ROLE: Record<string, string> = {
 export function validateGeometry(model: UnifiedRenderModel): RepairFinding[] {
   const findings: RepairFinding[] = [];
   const geometry = model.geometry;
-  const charsPerLine = estimateCharsPerLine(geometry.format_box_width_inches);
 
   model.lines.forEach((line, index) => {
     if (line.geometry.paragraph_index < 0) {
@@ -311,17 +352,24 @@ export function validateGeometry(model: UnifiedRenderModel): RepairFinding[] {
         }),
       );
     }
-    if (charsPerLine > 0 && line.content.length > charsPerLine) {
-      findings.push(
-        makeFinding({
-          category: "LINE_OVERFLOW",
-          severity: "COSMETIC",
-          owner: "GEOMETRY",
-          line,
-          index,
-          message: `Paragraph ${line.paragraphId} content length ${line.content.length} exceeds ~${charsPerLine} chars per line.`,
-        }),
-      );
+    // Layout-aware overflow: text WRAPS, so a long paragraph is not a defect.
+    // Only an unbreakable token wider than the usable line box is a real
+    // overflow. Usable width accounts for the paragraph's indentation.
+    const usable = usableCharsPerLine(geometry.format_box_width_inches, lineIndentInches(line));
+    if (usable > 0) {
+      const longestToken = longestTokenLength(line.content);
+      if (longestToken > usable) {
+        findings.push(
+          makeFinding({
+            category: "LINE_OVERFLOW",
+            severity: "COSMETIC",
+            owner: "GEOMETRY",
+            line,
+            index,
+            message: `Paragraph ${line.paragraphId} has an unbreakable token of ${longestToken} chars exceeding the ~${usable}-char usable line width.`,
+          }),
+        );
+      }
     }
   });
 
@@ -353,21 +401,62 @@ export function validateGeometry(model: UnifiedRenderModel): RepairFinding[] {
   return findings;
 }
 
-/** Courier 10-CPI approximation of usable characters per line within the format box. */
+/** Characters-per-inch of the fixed-pitch (Courier 10-CPI) transcript font. */
+const CHARS_PER_INCH = 10;
+
+/** Courier 10-CPI approximation of characters per inch of format-box width. */
 export function estimateCharsPerLine(formatBoxWidthInches: number): number {
   if (!(formatBoxWidthInches > 0)) {
     return 0;
   }
-  return Math.floor(formatBoxWidthInches * 10);
+  return Math.floor(formatBoxWidthInches * CHARS_PER_INCH);
 }
 
-/** Page count from paragraph count and lines-per-page (measurement helper). */
+/** Usable characters on a line after subtracting the paragraph's indentation. */
+export function usableCharsPerLine(formatBoxWidthInches: number, indentInches: number): number {
+  const usableInches = formatBoxWidthInches - Math.max(0, indentInches);
+  if (!(usableInches > 0)) {
+    return 0;
+  }
+  return Math.floor(usableInches * CHARS_PER_INCH);
+}
+
+/** The effective indentation of a rendered line (first-line vs continuation). */
+function lineIndentInches(line: UnifiedRenderLine): number {
+  return Math.max(line.geometry.first_line_tab_inches, line.geometry.continuation_indent_inches);
+}
+
+function longestTokenLength(content: string): number {
+  return content.split(/\s+/).reduce((max, token) => Math.max(max, token.length), 0);
+}
+
+/**
+ * Estimate rendered line count for a paragraph: its text wraps within the usable
+ * width, so a long paragraph occupies multiple lines (min one).
+ */
+function estimateRenderedLines(line: UnifiedRenderLine, formatBoxWidthInches: number): number {
+  const usable = usableCharsPerLine(formatBoxWidthInches, lineIndentInches(line));
+  if (usable <= 0) {
+    return 1;
+  }
+  return Math.max(1, Math.ceil(line.content.length / usable));
+}
+
+/**
+ * Estimate page count from the total WRAPPED rendered lines (not paragraph
+ * count) and lines-per-page. Still a heuristic — labeled as an estimate and not
+ * used for RC pass/fail — but far closer than counting paragraphs.
+ */
 export function estimatePageCount(model: UnifiedRenderModel): number {
   const perPage = model.geometry.lines_per_page;
   if (!(perPage > 0)) {
     return 0;
   }
-  return Math.max(1, Math.ceil(model.lines.length / perPage));
+  const renderedLines = model.lines.reduce(
+    (sum, line) => sum + estimateRenderedLines(line, model.geometry.format_box_width_inches),
+    0,
+  );
+  return Math.max(1, Math.ceil(renderedLines / perPage));
 }
 
 export const STRUCTURAL_VALIDATORS: readonly ((model: UnifiedRenderModel) => RepairFinding[])[] = [

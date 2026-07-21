@@ -48,23 +48,27 @@ export function computeRepairBurden(
   const byCategory = zeroCategory();
   const byOwner = zeroOwner();
   const affectedParagraphs = new Set<string>();
+  let total = 0;
 
   for (const finding of findings) {
-    bySeverity[finding.severity] += 1;
-    byCategory[finding.category] += 1;
-    byOwner[finding.owner] += 1;
+    const count = finding.count;
+    total += count;
+    bySeverity[finding.severity] += count;
+    byCategory[finding.category] += count;
+    byOwner[finding.owner] += count;
     if (finding.paragraphId) {
       affectedParagraphs.add(finding.paragraphId);
     }
   }
 
   const paragraphsAffected = affectedParagraphs.size;
-  const repairDensity = paragraphsTotal > 0 ? round(findings.length / paragraphsTotal) : 0;
+  const repairDensity = paragraphsTotal > 0 ? round(total / paragraphsTotal) : 0;
   const repairPercentage =
     paragraphsTotal > 0 ? round((paragraphsAffected / paragraphsTotal) * 100, 2) : 0;
 
   return {
-    total: findings.length,
+    total,
+    findingCount: findings.length,
     bySeverity,
     byCategory,
     byOwner,
@@ -81,11 +85,13 @@ export function mergeRepairBurdens(burdens: readonly RepairBurden[]): RepairBurd
   const byCategory = zeroCategory();
   const byOwner = zeroOwner();
   let total = 0;
+  let findingCount = 0;
   let paragraphsAffected = 0;
   let paragraphsTotal = 0;
 
   for (const burden of burdens) {
     total += burden.total;
+    findingCount += burden.findingCount;
     paragraphsAffected += burden.paragraphsAffected;
     paragraphsTotal += burden.paragraphsTotal;
     for (const severity of REPAIR_SEVERITIES) {
@@ -105,6 +111,7 @@ export function mergeRepairBurdens(burdens: readonly RepairBurden[]): RepairBurd
 
   return {
     total,
+    findingCount,
     bySeverity,
     byCategory,
     byOwner,

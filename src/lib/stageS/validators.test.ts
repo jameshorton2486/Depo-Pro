@@ -106,12 +106,53 @@ describe("stageS validators", () => {
     expect(labels.some((f) => f.category === "SPEAKER_LABEL")).toBe(true);
   });
 
-  it("flags objections outside colloquy and non-canonical objections", () => {
+  it("detects objections by canonical structure, not mere word presence", () => {
+    // Spoken objection misplaced in a Q line -> MAJOR.
     const misplaced = validateObjectionPlacement(model([line("Q", "Q. Objection to that.", 0)]));
     expect(misplaced.some((f) => f.severity === "MAJOR")).toBe(true);
 
+    // Canonical colloquy objection -> no finding.
     const canonical = validateObjectionPlacement(model([line("COLLOQUY", "MR. SAMPLE:  Objection.  Form.", 0)]));
     expect(canonical).toHaveLength(0);
+
+    // "objection" as an ordinary word in testimony must NOT be flagged.
+    const falsePositive = validateObjectionPlacement(model([
+      line("A", "A. I have no objection to that document.", 0),
+      line("Q", "Q. Did you raise an objection at the time?", 1),
+    ]));
+    expect(falsePositive).toHaveLength(0);
+  });
+
+  it("validates every examination transition, not only the first", () => {
+    const valid = validateExaminationBoundary(model([
+      line("SECTION_HEADER", "EXAMINATION", 0),
+      line("Q", "Q. A?", 1),
+      line("A", "A. Yes.", 2),
+      line("SECTION_HEADER", "CROSS-EXAMINATION", 3),
+      line("Q", "Q. B?", 4),
+      line("A", "A. No.", 5),
+    ]));
+    expect(valid).toHaveLength(0);
+
+    const secondRunUnheadered = validateExaminationBoundary(model([
+      line("SECTION_HEADER", "EXAMINATION", 0),
+      line("Q", "Q. A?", 1),
+      line("A", "A. Yes.", 2),
+      line("SECTION_HEADER", "PROCEEDINGS", 3),
+      line("Q", "Q. B?", 4),
+      line("A", "A. No.", 5),
+    ]));
+    expect(secondRunUnheadered).toHaveLength(1);
+    expect(secondRunUnheadered[0].category).toBe("EXAMINATION_BOUNDARY");
+  });
+
+  it("flags only unbreakable tokens as overflow, not long paragraphs", () => {
+    const longToken = "x".repeat(70);
+    const overflow = validateGeometry(model([line("COLLOQUY", `THE COURT:  ${longToken}`, 0)]));
+    expect(overflow.some((f) => f.category === "LINE_OVERFLOW")).toBe(true);
+
+    const longWrappableAnswer = validateGeometry(model([line("A", `A. ${"word ".repeat(80).trim()}`, 0)]));
+    expect(longWrappableAnswer.some((f) => f.category === "LINE_OVERFLOW")).toBe(false);
   });
 
   it("flags parentheticals without parentheses and lowercase section headers", () => {

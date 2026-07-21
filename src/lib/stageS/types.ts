@@ -87,6 +87,12 @@ export interface RepairFinding {
   paragraphIndex: number | null;
   message: string;
   /**
+   * Number of discrete repairs this finding represents. Structural findings are
+   * 1; an aggregate finding (e.g. residual editorial corrections) carries the
+   * true count so repair-burden totals are not under-reported.
+   */
+  count: number;
+  /**
    * True only for deterministic, semantics-preserving repairs Stage S is
    * permitted to apply itself (presentation-layer only).
    */
@@ -94,7 +100,10 @@ export interface RepairFinding {
 }
 
 export interface RepairBurden {
+  /** Total repairs (sum of finding counts), not the number of finding records. */
   total: number;
+  /** Number of distinct finding records (issue instances). */
+  findingCount: number;
   bySeverity: Record<RepairSeverity, number>;
   byCategory: Record<RepairCategory, number>;
   byOwner: Record<RepairOwner, number>;
@@ -135,6 +144,11 @@ export interface StageSValidationResult {
   /** True when there are zero CRITICAL findings and all owner contracts hold. */
   pass: boolean;
   appliedRepairs: AppliedRepair[];
+  /**
+   * The presentation output after Stage-S deterministic repairs were applied.
+   * Faithfully exposes what the repair pass produced (not discarded).
+   */
+  repairedText: string;
 }
 
 export interface StageSSuiteResult {
@@ -145,7 +159,7 @@ export interface StageSSuiteResult {
     fixtures: number;
     passing: number;
     failing: number;
-    totalFindings: number;
+    totalRepairs: number;
     burden: RepairBurden;
     /** True only when every fixture passes (RC quality gate). */
     releaseCandidateReady: boolean;

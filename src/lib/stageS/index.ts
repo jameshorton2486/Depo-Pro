@@ -30,6 +30,8 @@ export { applyStageSPresentationRepairs, type PresentationRepairResult } from ".
 export {
   estimateCharsPerLine,
   estimatePageCount,
+  isExaminationHeader,
+  usableCharsPerLine,
   STRUCTURAL_VALIDATORS,
   validateColloquyTransitions,
   validateExaminationBoundary,

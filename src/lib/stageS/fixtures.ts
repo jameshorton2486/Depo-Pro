@@ -93,8 +93,21 @@ const answerBeforeQuestion = buildFixture(
   ],
 );
 
+/** Well-structured, but with residual editorial corrections to measure (number formatting). */
+const editorialResidual = buildFixture(
+  "editorial-residual",
+  "Structurally sound examination whose testimony still needs editorial number-formatting corrections.",
+  "stage-s-editorial-residual",
+  [
+    { kind: "SECTION_HEADER", text: "EXAMINATION", utteranceId: "utt_er_1" },
+    { kind: "Q", label: "Q.", speakerLabel: "MR. SAMPLE", text: "How much did the repair cost?", utteranceId: "utt_er_2" },
+    { kind: "A", label: "A.", speakerLabel: "THE WITNESS", text: "It was $5.00, about 5% over the estimate.", utteranceId: "utt_er_3" },
+  ],
+);
+
 export const STAGE_S_RC_FIXTURES: readonly StageSFixture[] = [
   cleanExamination,
   missingExaminationHeader,
   answerBeforeQuestion,
+  editorialResidual,
 ];

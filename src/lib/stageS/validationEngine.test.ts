@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { STAGE_S_RC_FIXTURES } from "./fixtures";
-import { runStageSValidation, runStageSValidationSuite } from "./validationEngine";
+import { editorialFindings, runStageSValidation, runStageSValidationSuite } from "./validationEngine";
 
 function fixture(name: string) {
   const found = STAGE_S_RC_FIXTURES.find((f) => f.name === name);
@@ -19,6 +19,23 @@ describe("runStageSValidation", () => {
     expect(result.upstream.renderParityErrors).toEqual([]);
     expect(result.upstream.exportContractValid).toBe(true);
     expect(result.completeness).toBe(1);
+    // Repaired presentation output is exposed, not discarded.
+    expect(typeof result.repairedText).toBe("string");
+    expect(result.repairedText.length).toBeGreaterThan(0);
+  });
+
+  it("counts each residual editorial correction as a repair (no under-reporting)", () => {
+    const findings = editorialFindings({
+      punctuationCorrections: 100,
+      capitalizationCorrections: 3,
+      objectionFormattingCorrections: 0,
+      numberFormattingCorrections: 0,
+    });
+    expect(findings).toHaveLength(2);
+    const punctuation = findings.find((f) => f.message.includes("punctuation"));
+    expect(punctuation?.count).toBe(100);
+    const totalRepairs = findings.reduce((sum, f) => sum + f.count, 0);
+    expect(totalRepairs).toBe(103);
   });
 
   it("fails when an answer precedes any question (critical Q/A break)", () => {

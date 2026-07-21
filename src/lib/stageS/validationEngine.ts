@@ -28,7 +28,7 @@ export interface RunOptions {
 
 const DEFAULT_GENERATED_AT = "1970-01-01T00:00:00.000Z";
 
-function editorialFindings(metrics: EditorialMetrics): RepairFinding[] {
+export function editorialFindings(metrics: EditorialMetrics): RepairFinding[] {
   const findings: RepairFinding[] = [];
   const entries: [keyof EditorialMetrics, string][] = [
     ["punctuationCorrections", "punctuation"],
@@ -47,6 +47,9 @@ function editorialFindings(metrics: EditorialMetrics): RepairFinding[] {
         paragraphId: null,
         paragraphIndex: null,
         message: `${count} residual ${label} correction(s) still required after editorial normalization.`,
+        // Each correction is a discrete repair — count them all, don't collapse
+        // an entire category to a single finding.
+        count,
         autoRepairable: false,
       });
     }
@@ -75,6 +78,7 @@ function measureUpstream(model: UnifiedRenderModel): {
       paragraphId: null,
       paragraphIndex: null,
       message,
+      count: 1,
       autoRepairable: false,
     });
   });
@@ -99,6 +103,7 @@ function measureUpstream(model: UnifiedRenderModel): {
       paragraphId: null,
       paragraphIndex: null,
       message: `Export contract rejected the render model: ${exportContractError}`,
+      count: 1,
       autoRepairable: false,
     });
   }
@@ -161,6 +166,7 @@ export function runStageSValidation(
     completeness,
     pass,
     appliedRepairs: presentation.repairs,
+    repairedText: presentation.text,
   };
 }
 
@@ -182,7 +188,7 @@ export function runStageSValidationSuite(
       fixtures: results.length,
       passing,
       failing: results.length - passing,
-      totalFindings: burden.total,
+      totalRepairs: burden.total,
       burden,
       releaseCandidateReady: results.length > 0 && passing === results.length && burden.bySeverity.CRITICAL === 0,
     },

@@ -36,7 +36,7 @@ function fixtureSection(result: StageSValidationResult): string {
   lines.push("");
   lines.push(`- Transcript: \`${result.transcriptId}\``);
   lines.push(`- Paragraphs: ${result.burden.paragraphsTotal}`);
-  lines.push(`- Findings: ${result.burden.total} (${severityLine(result.burden)})`);
+  lines.push(`- Repairs: ${result.burden.total} across ${result.burden.findingCount} finding(s) (${severityLine(result.burden)})`);
   lines.push(`- Repair density: ${result.burden.repairDensity} · Repair %: ${result.burden.repairPercentage}`);
   lines.push(`- Completeness: ${(result.completeness * 100).toFixed(2)}%`);
   lines.push(`- Pages (est.): ${result.upstream.pageCount}`);
@@ -73,7 +73,7 @@ export function generateValidationReport(suite: StageSSuiteResult): string {
   lines.push(`- Generated at: ${suite.generatedAt}`);
   lines.push(`- Export contract version: ${suite.contractVersion}`);
   lines.push(`- Fixtures: ${aggregate.fixtures} · Passing: ${aggregate.passing} · Failing: ${aggregate.failing}`);
-  lines.push(`- Total findings: ${aggregate.totalFindings} (${severityLine(aggregate.burden)})`);
+  lines.push(`- Total repairs: ${aggregate.totalRepairs} across ${aggregate.burden.findingCount} finding(s) (${severityLine(aggregate.burden)})`);
   lines.push(`- Release Candidate ready: ${aggregate.releaseCandidateReady ? "YES" : "NO"}`);
   lines.push("");
   lines.push("## Per-fixture results");

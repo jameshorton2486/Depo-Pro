@@ -9,6 +9,7 @@
       "findings": [],
       "burden": {
         "total": 0,
+        "findingCount": 0,
         "bySeverity": {
           "CRITICAL": 0,
           "MAJOR": 0,
@@ -67,7 +68,8 @@
           "description": "Normalized the trailing newline.",
           "count": 1
         }
-      ]
+      ],
+      "repairedText": "EXAMINATION\n\nQ. Please state your name for the record.\n\nA. Alex Morgan.\n\nTHE COURT:  Objection.  Form.\n\n(Whereupon, a recess was taken.)\n"
     },
     {
       "fixtureName": "missing-examination-header",
@@ -81,12 +83,14 @@
           "owner": "COMPILER",
           "paragraphId": "paragraph:0:utt_me_1",
           "paragraphIndex": 0,
-          "message": "Q/A testimony is not introduced by an EXAMINATION section header.",
+          "message": "Q/A testimony at paragraph paragraph:0:utt_me_1 is not under an examination section header.",
+          "count": 1,
           "autoRepairable": false
         }
       ],
       "burden": {
         "total": 1,
+        "findingCount": 1,
         "bySeverity": {
           "CRITICAL": 0,
           "MAJOR": 1,
@@ -145,7 +149,8 @@
           "description": "Normalized the trailing newline.",
           "count": 1
         }
-      ]
+      ],
+      "repairedText": "Q. Where were you on the night in question?\n\nA. At home.\n"
     },
     {
       "fixtureName": "answer-before-question",
@@ -160,11 +165,13 @@
           "paragraphId": "paragraph:1:utt_ab_2",
           "paragraphIndex": 1,
           "message": "Answer paragraph paragraph:1:utt_ab_2 appears before any question.",
+          "count": 1,
           "autoRepairable": false
         }
       ],
       "burden": {
         "total": 1,
+        "findingCount": 1,
         "bySeverity": {
           "CRITICAL": 1,
           "MAJOR": 0,
@@ -223,20 +230,103 @@
           "description": "Normalized the trailing newline.",
           "count": 1
         }
-      ]
+      ],
+      "repairedText": "EXAMINATION\n\nA. Yes, that is correct.\n\nQ. Is that your signature?\n"
+    },
+    {
+      "fixtureName": "editorial-residual",
+      "transcriptId": "stage-s-editorial-residual",
+      "generatedAt": "2026-07-21T00:00:00.000Z",
+      "findings": [
+        {
+          "id": "stage-s:EDITORIAL:numberFormattingCorrections",
+          "category": "EDITORIAL",
+          "severity": "MINOR",
+          "owner": "EDITORIAL",
+          "paragraphId": null,
+          "paragraphIndex": null,
+          "message": "2 residual number formatting correction(s) still required after editorial normalization.",
+          "count": 2,
+          "autoRepairable": false
+        }
+      ],
+      "burden": {
+        "total": 2,
+        "findingCount": 1,
+        "bySeverity": {
+          "CRITICAL": 0,
+          "MAJOR": 0,
+          "MINOR": 2,
+          "COSMETIC": 0
+        },
+        "byCategory": {
+          "PARAGRAPH_CONTINUITY": 0,
+          "QA_CONTINUITY": 0,
+          "EXAMINATION_BOUNDARY": 0,
+          "COLLOQUY_TRANSITION": 0,
+          "OBJECTION_PLACEMENT": 0,
+          "PARENTHETICAL_PLACEMENT": 0,
+          "SPEAKER_LABEL": 0,
+          "SECTION_TRANSITION": 0,
+          "HEADING": 0,
+          "SPACING": 0,
+          "INDENT": 0,
+          "MARGIN": 0,
+          "LINE_OVERFLOW": 0,
+          "PAGE_BREAK": 0,
+          "EDITORIAL": 2,
+          "RENDER_PARITY": 0,
+          "EXPORT_CONTRACT": 0
+        },
+        "byOwner": {
+          "STAGE_S": 0,
+          "COMPILER": 0,
+          "GEOMETRY": 0,
+          "RENDERING": 0,
+          "EDITORIAL": 2,
+          "EXPORT_CONTRACT": 0
+        },
+        "paragraphsAffected": 0,
+        "paragraphsTotal": 3,
+        "repairDensity": 0.6667,
+        "repairPercentage": 0
+      },
+      "upstream": {
+        "editorial": {
+          "punctuationCorrections": 0,
+          "capitalizationCorrections": 0,
+          "objectionFormattingCorrections": 0,
+          "numberFormattingCorrections": 2
+        },
+        "renderParityErrors": [],
+        "exportContractValid": true,
+        "exportContractError": null,
+        "pageCount": 1
+      },
+      "completeness": 1,
+      "pass": true,
+      "appliedRepairs": [
+        {
+          "category": "SPACING",
+          "description": "Normalized the trailing newline.",
+          "count": 1
+        }
+      ],
+      "repairedText": "EXAMINATION\n\nQ. How much did the repair cost?\n\nA. It was $5.00, about 5% over the estimate.\n"
     }
   ],
   "aggregate": {
-    "fixtures": 3,
-    "passing": 2,
+    "fixtures": 4,
+    "passing": 3,
     "failing": 1,
-    "totalFindings": 2,
+    "totalRepairs": 4,
     "burden": {
-      "total": 2,
+      "total": 4,
+      "findingCount": 3,
       "bySeverity": {
         "CRITICAL": 1,
         "MAJOR": 1,
-        "MINOR": 0,
+        "MINOR": 2,
         "COSMETIC": 0
       },
       "byCategory": {
@@ -254,7 +344,7 @@
         "MARGIN": 0,
         "LINE_OVERFLOW": 0,
         "PAGE_BREAK": 0,
-        "EDITORIAL": 0,
+        "EDITORIAL": 2,
         "RENDER_PARITY": 0,
         "EXPORT_CONTRACT": 0
       },
@@ -263,13 +353,13 @@
         "COMPILER": 2,
         "GEOMETRY": 0,
         "RENDERING": 0,
-        "EDITORIAL": 0,
+        "EDITORIAL": 2,
         "EXPORT_CONTRACT": 0
       },
       "paragraphsAffected": 2,
-      "paragraphsTotal": 10,
-      "repairDensity": 0.2,
-      "repairPercentage": 20
+      "paragraphsTotal": 13,
+      "repairDensity": 0.3077,
+      "repairPercentage": 15.38
     },
     "releaseCandidateReady": false
   }

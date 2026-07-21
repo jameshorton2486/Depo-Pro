@@ -12,6 +12,7 @@ function finding(overrides: Partial<RepairFinding>): RepairFinding {
     paragraphId: overrides.paragraphId ?? null,
     paragraphIndex: overrides.paragraphIndex ?? null,
     message: overrides.message ?? "message",
+    count: overrides.count ?? 1,
     autoRepairable: overrides.autoRepairable ?? false,
   };
 }
@@ -36,6 +37,20 @@ describe("computeRepairBurden", () => {
     expect(burden.paragraphsTotal).toBe(4);
     expect(burden.repairDensity).toBe(0.75);
     expect(burden.repairPercentage).toBe(50);
+  });
+
+  it("counts every repair in an aggregate finding, not one per category", () => {
+    const burden = computeRepairBurden(
+      [finding({ id: "ed", severity: "MINOR", category: "EDITORIAL", owner: "EDITORIAL", count: 100 })],
+      10,
+    );
+    expect(burden.total).toBe(100);
+    expect(burden.findingCount).toBe(1);
+    expect(burden.bySeverity.MINOR).toBe(100);
+    expect(burden.byCategory.EDITORIAL).toBe(100);
+    expect(burden.byOwner.EDITORIAL).toBe(100);
+    // repair density reflects repairs, not finding records
+    expect(burden.repairDensity).toBe(10);
   });
 
   it("handles zero paragraphs without dividing by zero", () => {
