@@ -18,7 +18,9 @@ FIXES vs. original:
   ✓ 25-line pagination enforcement
 """
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping
 
 from docx import Document
 from docx.enum.text import WD_LINE_SPACING
@@ -365,3 +367,154 @@ def export_to_docx(
 
     doc.save(destination)
     return str(destination)
+
+
+@dataclass(frozen=True)
+class _PhysicalRenderLine:
+    content: str
+    role: str
+    first_line_tab_inches: float
+    text_tab_inches: float | None
+    continuation_indent_inches: float
+    continuation: bool
+
+
+def export_render_model_to_docx(render_model: Mapping[str, object], output_path: str) -> str:
+    geometry = render_model["geometry"]
+    logical_lines = render_model["lines"]
+    assert isinstance(geometry, dict)
+    assert isinstance(logical_lines, list)
+
+    format_box_width = float(geometry["format_box_width_inches"])
+    lines_per_page = int(geometry["lines_per_page"])
+    physical_lines = _expand_render_lines(logical_lines, format_box_width)
+
+    doc = Document()
+    section = doc.sections[0]
+    section.page_width = _PAGE_W
+    section.page_height = _PAGE_H
+    section.left_margin = Inches(float(geometry["left_margin_inches"]))
+    section.right_margin = Inches(float(geometry["right_margin_inches"]))
+    section.top_margin = _M_TOP
+    section.bottom_margin = _M_BOTTOM
+
+    for page_index in range(0, len(physical_lines), lines_per_page):
+        page_lines = physical_lines[page_index : page_index + lines_per_page]
+        for line_index, line in enumerate(page_lines):
+            _add_render_line(doc, line, line_index + 1)
+        if page_index + lines_per_page < len(physical_lines):
+            from docx.enum.text import WD_BREAK
+
+            page_break = doc.add_paragraph()
+            page_break.add_run().add_break(WD_BREAK.PAGE)
+
+    destination = Path(output_path)
+    if destination.suffix.lower() != ".docx":
+        destination = destination.with_suffix(".docx")
+    doc.save(destination)
+    return str(destination)
+
+
+def _expand_render_lines(logical_lines: list[object], format_box_width: float) -> list[_PhysicalRenderLine]:
+    physical: list[_PhysicalRenderLine] = []
+    for entry in logical_lines:
+        assert isinstance(entry, dict)
+        content = entry["content"]
+        geometry = entry["geometry"]
+        assert isinstance(content, str)
+        assert isinstance(geometry, dict)
+        role = str(geometry["role"])
+        first_tab = float(geometry["first_line_tab_inches"])
+        raw_text_tab = geometry.get("text_tab_inches")
+        text_tab = float(raw_text_tab) if isinstance(raw_text_tab, (int, float)) else None
+        continuation_tab = float(geometry["continuation_indent_inches"])
+
+        label = ""
+        body = content
+        if role == "qa":
+            import re
+
+            match = re.match(r"^([QA]\\.)\\s*(.*)$", content, flags=re.DOTALL)
+            if match:
+                label, body = match.groups()
+
+        first_start = text_tab if label and text_tab is not None else first_tab
+        first_width = _character_capacity(format_box_width, first_start)
+        continuation_width = _character_capacity(format_box_width, continuation_tab)
+        fragments = _wrap_content(body, first_width, continuation_width)
+        for index, fragment in enumerate(fragments):
+            line_content = f"{label} {fragment}".rstrip() if index == 0 and label else fragment
+            physical.append(
+                _PhysicalRenderLine(
+                    content=line_content,
+                    role=role,
+                    first_line_tab_inches=first_tab,
+                    text_tab_inches=text_tab,
+                    continuation_indent_inches=continuation_tab,
+                    continuation=index > 0,
+                )
+            )
+    return physical
+
+
+def _character_capacity(format_box_width: float, indent: float) -> int:
+    return max(1, int((format_box_width - min(format_box_width, max(0.0, indent))) * 10))
+
+
+def _wrap_content(content: str, first_width: int, continuation_width: int) -> list[str]:
+    words = content.split()
+    if not words:
+        return [""]
+
+    lines: list[str] = []
+    current = ""
+    width = first_width
+    for word in words:
+        candidate = word if not current else f"{current} {word}"
+        if current and len(candidate) > width:
+            lines.append(current)
+            current = word
+            width = continuation_width
+        else:
+            current = candidate
+    lines.append(current)
+    return lines
+
+
+def _add_render_line(doc: Document, line: _PhysicalRenderLine, line_number: int) -> None:
+    paragraph = doc.add_paragraph()
+    paragraph_format = paragraph.paragraph_format
+    paragraph_format.space_before = Pt(0)
+    paragraph_format.space_after = Pt(0)
+    paragraph_format.line_spacing_rule = WD_LINE_SPACING.EXACTLY
+    paragraph_format.line_spacing = _LINE_SP
+
+    stops = [
+        stop
+        for stop in (line.first_line_tab_inches, line.text_tab_inches, line.continuation_indent_inches)
+        if stop is not None and stop > 0
+    ]
+    _set_tab_stops(paragraph, sorted(set(stops)))
+
+    number_run = paragraph.add_run(f"{line_number:2d} ")
+    _apply_run_style(number_run)
+    if line.continuation:
+        if line.continuation_indent_inches > 0:
+            paragraph.add_run("\t")
+        content_run = paragraph.add_run(line.content)
+        _apply_run_style(content_run)
+        return
+
+    if line.first_line_tab_inches > 0:
+        paragraph.add_run("\t")
+    if line.role == "qa" and line.text_tab_inches is not None:
+        label, separator, remainder = line.content.partition(" ")
+        label_run = paragraph.add_run(label)
+        _apply_run_style(label_run)
+        paragraph.add_run("\t")
+        content_run = paragraph.add_run(remainder if separator else "")
+        _apply_run_style(content_run)
+        return
+
+    content_run = paragraph.add_run(line.content)
+    _apply_run_style(content_run, bold=line.role == "speaker", color=_NAVY if line.role == "parenthetical" else None)

@@ -47,7 +47,25 @@ def task_payload(job_id: str = "job-001") -> dict[str, object]:
         "request": {
             "contractVersion": "2026-07-21",
             "transcriptId": "transcript-001",
-            "renderModel": {"transcriptId": "transcript-001", "lines": [{"content": "A. Austin."}]},
+            "renderModel": {
+                "transcriptId": "transcript-001",
+                "geometry": {
+                    "format_box_width_inches": 6.5,
+                    "left_margin_inches": 1.25,
+                    "right_margin_inches": 0.75,
+                    "line_spacing_points": 28,
+                    "lines_per_page": 25,
+                },
+                "lines": [{
+                    "content": "A. Austin.",
+                    "geometry": {
+                        "role": "qa",
+                        "first_line_tab_inches": 0.5,
+                        "text_tab_inches": 1.0,
+                        "continuation_indent_inches": 0.0,
+                    },
+                }],
+            },
             "formats": ["DOCX"],
             "idempotencyKey": "request-001",
         },
@@ -56,7 +74,7 @@ def task_payload(job_id: str = "job-001") -> dict[str, object]:
 
 def test_updates_job_and_preserves_rendered_content(monkeypatch, tmp_path: Path) -> None:
     def fake_formatter(render_model, formats, output_directory):
-        assert render_model["lines"] == [{"content": "A. Austin."}]
+        assert render_model["lines"][0]["content"] == "A. Austin."
         output_directory.mkdir(parents=True)
         docx = output_directory / "transcript.docx"
         docx.write_text("synthetic")

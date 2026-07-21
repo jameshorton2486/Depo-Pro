@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from google.api_core.exceptions import NotFound, PreconditionFailed
 
@@ -25,16 +25,21 @@ class FakeBlob:
 
 
 class FakeLeaseBlob:
-    def __init__(self, claimed: bool = False) -> None:
+    def __init__(self, claimed: bool = False, updated: datetime | None = None) -> None:
         self.claimed = claimed
         self.deleted = False
+        self.updated = updated
+        self.generation = 7
+
+    def reload(self) -> None:
+        pass
 
     def upload_from_string(self, *_arguments, **_keyword_arguments) -> None:
         if self.claimed:
             raise PreconditionFailed("already claimed")
         self.claimed = True
 
-    def delete(self) -> None:
+    def delete(self, **_keyword_arguments) -> None:
         if not self.claimed:
             raise NotFound("not found")
         self.claimed = False
@@ -87,3 +92,21 @@ def test_missing_processing_lease_can_be_released() -> None:
     store._bucket = FakeBucket(blob)
 
     store.release_processing("job-001")
+
+
+
+def test_stale_processing_lease_is_reclaimed(monkeypatch) -> None:
+    now = datetime(2026, 7, 21, 12, 0, tzinfo=UTC)
+    blob = FakeLeaseBlob(claimed=True, updated=now - timedelta(minutes=11))
+    store = CloudStorageExportStore.__new__(CloudStorageExportStore)
+    store._bucket = FakeBucket(blob)
+    monkeypatch.setattr("formatter_service.storage.datetime", FixedDatetime)
+
+    assert store.claim_processing("job-001") is True
+    assert blob.claimed is True
+
+
+class FixedDatetime(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return datetime(2026, 7, 21, 12, 0, tzinfo=tz)

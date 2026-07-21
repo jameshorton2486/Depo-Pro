@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -33,17 +34,26 @@ def create_app() -> FastAPI:
         except ValueError as error:
             raise HTTPException(status_code=500, detail="EXPORT_ARTIFACT_URL_TTL_SECONDS must be positive") from error
 
+        store = CloudStorageExportStore(bucket_name)
         try:
             with tempfile.TemporaryDirectory(prefix="depo-pro-export-") as temporary_directory:
                 result = process_formatter_task(
                     payload,
-                    CloudStorageExportStore(bucket_name),
+                    store,
                     Path(temporary_directory),
                     ttl_seconds,
                 )
         except RetryableFormatterError as error:
             return JSONResponse(error.result.job, status_code=500)
         except ValueError as error:
+            job_id = payload.get("jobId")
+            request = payload.get("request")
+            if isinstance(job_id, str) and job_id.strip():
+                transcript_id = request.get("transcriptId", "") if isinstance(request, dict) else ""
+                if not isinstance(transcript_id, str):
+                    transcript_id = ""
+                failed = store.write_rejected_job(job_id, transcript_id, str(error), datetime.now(UTC))
+                return JSONResponse(failed, status_code=200)
             raise HTTPException(status_code=400, detail=str(error)) from error
 
         return JSONResponse(result.job, status_code=200)

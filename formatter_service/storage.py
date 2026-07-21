@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .models import FormatterTask
+
+
+_PROCESSING_LEASE_TTL = timedelta(minutes=10)
 
 
 class CloudStorageExportStore:
@@ -42,14 +45,23 @@ class CloudStorageExportStore:
         return job if isinstance(job, dict) else None
 
     def claim_processing(self, job_id: str) -> bool:
-        from google.api_core.exceptions import PreconditionFailed
+        from google.api_core.exceptions import NotFound, PreconditionFailed
 
         blob = self._bucket.blob(_processing_object_name(job_id))
         try:
             blob.upload_from_string("", content_type="text/plain", if_generation_match=0)
             return True
         except PreconditionFailed:
-            return False
+            try:
+                blob.reload()
+                updated = blob.updated
+                if updated is None or datetime.now(UTC) - updated <= _PROCESSING_LEASE_TTL:
+                    return False
+                blob.delete(if_generation_match=blob.generation)
+                blob.upload_from_string("", content_type="text/plain", if_generation_match=0)
+                return True
+            except (NotFound, PreconditionFailed):
+                return False
 
     def release_processing(self, job_id: str) -> None:
         from google.api_core.exceptions import NotFound
@@ -58,6 +70,21 @@ class CloudStorageExportStore:
             self._bucket.blob(_processing_object_name(job_id)).delete()
         except NotFound:
             pass
+
+    def write_rejected_job(self, job_id: str, transcript_id: str, error: str, updated_at: datetime) -> dict[str, object]:
+        job: dict[str, object] = {
+            "jobId": job_id,
+            "transcriptId": transcript_id,
+            "status": "FAILED",
+            "artifacts": [],
+            "error": error,
+        }
+        payload = {"job": job, "idempotencyKey": None, "retryEligible": False, "updatedAt": updated_at.isoformat()}
+        self._bucket.blob(_job_object_name(job_id)).upload_from_string(
+            json.dumps(payload, separators=(",", ":")),
+            content_type="application/json",
+        )
+        return job
 
     def write_job(self, job: dict[str, object], task: FormatterTask, retry_eligible: bool, updated_at: datetime) -> None:
         payload = {
