@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
 import { buildGeometryLayout, buildStructuredTranscriptGeometryLayout, checkGeometry, renderBlock } from "./geometryEngine";
 import { buildStructuredTranscriptPackage } from "./structuredTranscriptPackage";
 import type { ValidationBlock } from "./correctionValidator";
@@ -83,6 +84,20 @@ describe("geometryEngine", () => {
         continuation_indent_inches: 0,
       },
     ]);
+  });
+  it("returns safe empty layouts and violations for absent runtime inputs", () => {
+    expect(buildGeometryLayout(null).lines).toEqual([]);
+    expect(buildStructuredTranscriptGeometryLayout(undefined).lines).toEqual([]);
+    expect(checkGeometry(undefined)).toEqual([]);
+  });
+
+  it("does not throw when an invalid tab step reaches the runtime boundary", () => {
+    const invalidProfile = {
+      ...DEFAULT_GEOMETRY_PROFILE,
+      tabs: { ...DEFAULT_GEOMETRY_PROFILE.tabs, qaLabelInches: 0 },
+    };
+
+    expect(() => renderBlock(block({ block_type: "Q" }), invalidProfile)).not.toThrow();
   });
   it("reports a geometry violation when a locked tab position is absent", () => {
     expect(checkGeometry([{ kind: "PN", text: "\t\t\t(Off the record.)" }])).toEqual([

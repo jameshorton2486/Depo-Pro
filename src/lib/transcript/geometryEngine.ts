@@ -68,7 +68,7 @@ export function renderBlock(
 }
 
 export function buildGeometryLayout(
-  paragraphs: FormattedParagraph[],
+  paragraphs: readonly FormattedParagraph[] | null | undefined,
   profile: GeometryProfile = DEFAULT_GEOMETRY_PROFILE
 ): GeometryLayoutModel {
   return {
@@ -77,7 +77,7 @@ export function buildGeometryLayout(
     right_margin_inches: profile.rightMarginInches,
     line_spacing_points: profile.lineSpacingPoints,
     lines_per_page: profile.linesPerPage,
-    lines: paragraphs.map((paragraph, paragraphIndex) => ({
+    lines: (paragraphs ?? []).map((paragraph, paragraphIndex) => ({
       paragraph_index: paragraphIndex,
       paragraph_id: null,
       ...layoutFor(paragraph.kind, profile),
@@ -86,7 +86,7 @@ export function buildGeometryLayout(
 }
 
 export function buildStructuredTranscriptGeometryLayout(
-  transcriptPackage: StructuredTranscriptPackage,
+  transcriptPackage: StructuredTranscriptPackage | null | undefined,
   profile: GeometryProfile = DEFAULT_GEOMETRY_PROFILE
 ): GeometryLayoutModel {
   return {
@@ -95,7 +95,7 @@ export function buildStructuredTranscriptGeometryLayout(
     right_margin_inches: profile.rightMarginInches,
     line_spacing_points: profile.lineSpacingPoints,
     lines_per_page: profile.linesPerPage,
-    lines: transcriptPackage.paragraphs.map((entry, paragraphIndex) => ({
+    lines: (transcriptPackage?.paragraphs ?? []).map((entry, paragraphIndex) => ({
       paragraph_index: paragraphIndex,
       paragraph_id: entry.id,
       ...layoutForTranscriptParagraph(entry.paragraph.kind, profile),
@@ -103,10 +103,14 @@ export function buildStructuredTranscriptGeometryLayout(
   };
 }
 export function checkGeometry(
-  paragraphs: FormattedParagraph[],
+  paragraphs: readonly FormattedParagraph[] | null | undefined,
   profile: GeometryProfile = DEFAULT_GEOMETRY_PROFILE
 ): GeometryViolation[] {
   const issues: GeometryViolation[] = [];
+
+  if (!paragraphs) {
+    return issues;
+  }
 
   paragraphs.forEach((paragraph, index) => {
     if (paragraph.kind === "Q" && !paragraph.text.startsWith(`${tabsFor(profile.tabs.qaLabelInches, profile)}Q.${tabsFor(profile.tabs.qaTextInches - profile.tabs.qaLabelInches, profile)}`)) {
@@ -127,12 +131,16 @@ export function checkGeometry(
 }
 
 function tabsFor(inches: number, profile: GeometryProfile): string {
-  const tabCount = Math.round(inches / profile.tabs.qaLabelInches);
-  return "\t".repeat(Math.max(0, tabCount));
+  const qaLabelInches = profile.tabs.qaLabelInches;
+  if (qaLabelInches <= 0) {
+    return "";
+  }
+  const tabCount = Math.round(inches / qaLabelInches);
+  return "\t".repeat(Math.max(0, Number.isFinite(tabCount) ? tabCount : 0));
 }
 
 function layoutFor(
-  kind: FormattedParagraph["kind"],
+  kind: FormattedParagraph["kind"] | null | undefined,
   profile: GeometryProfile
 ): Omit<GeometryLayoutLine, "paragraph_index" | "paragraph_id"> {
   if (kind === "Q" || kind === "A") {
@@ -170,7 +178,7 @@ function layoutFor(
   };
 }
 function layoutForTranscriptParagraph(
-  kind: StructuredTranscriptPackage["paragraphs"][number]["paragraph"]["kind"],
+  kind: StructuredTranscriptPackage["paragraphs"][number]["paragraph"]["kind"] | null | undefined,
   profile: GeometryProfile
 ): Omit<GeometryLayoutLine, "paragraph_index" | "paragraph_id"> {
   if (kind === "Q" || kind === "A") {
