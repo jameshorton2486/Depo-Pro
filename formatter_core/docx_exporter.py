@@ -518,5 +518,3 @@ def _add_render_line(doc: Document, line: _PhysicalRenderLine, line_number: int,
 
     content_run = paragraph.add_run(line.content)
     _apply_run_style(content_run, bold=line.role == "speaker", color=_NAVY if line.role == "parenthetical" else None)
-
-
