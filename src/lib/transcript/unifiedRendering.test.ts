@@ -126,4 +126,21 @@ describe("unifiedRendering", () => {
       entityRegistryEntryCount: 0,
     });
   });
+
+  it("honors clean paragraph mode without leaking inline scopist flags", () => {
+    const transcriptPackage = makePackage();
+    const cleanPackage = {
+      ...transcriptPackage,
+      paragraphs: transcriptPackage.paragraphs.map((entry) => entry.paragraph.kind === "Q"
+        ? { ...entry, paragraph: { ...entry.paragraph, mode: "clean" as const, text: "Please [SCOPIST: FLAG 1: \"please\" — verify from audio] state your name." } }
+        : entry),
+    };
+    const model = buildUnifiedRenderModel({
+      transcriptPackage: cleanPackage,
+      geometry: buildStructuredTranscriptGeometryLayout(cleanPackage),
+    });
+
+    expect(renderTxt(model).content).toContain("Q. Please state your name.");
+    expect(renderTxt(model).content).not.toContain("[SCOPIST: FLAG");
+  });
 });

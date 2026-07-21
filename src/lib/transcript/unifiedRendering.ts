@@ -111,21 +111,30 @@ export function validateRenderParity(model: UnifiedRenderModel): string[] {
 
   return errors;
 }
-
 function renderParagraphContent(paragraph: TranscriptParagraph | null | undefined): string {
   if (!paragraph) {
     return "";
   }
 
-  if (paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE" || paragraph.kind === "PARENTHETICAL") {
+  const text = paragraph.mode === "clean" ? stripInlineFlagSpans(paragraph.text).trim() : paragraph.text;
+
+  if (paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE") {
     return paragraph.text;
   }
 
   if (paragraph.kind === "Q" || paragraph.kind === "A") {
-    return `${paragraph.label} ${paragraph.text}`.trim();
+    return `${paragraph.label} ${text}`.trim();
   }
 
-  return paragraph.label ? `${paragraph.label}:  ${paragraph.text}`.trim() : paragraph.text;
+  if (paragraph.kind === "PARENTHETICAL") {
+    return text;
+  }
+
+  return paragraph.label ? `${paragraph.label}:  ${text}`.trim() : text;
+}
+
+function stripInlineFlagSpans(text: string): string {
+  return text.replace(/\s*\[SCOPIST:\s*FLAG\s*\d+:[^\]]+\]/g, "");
 }
 
 function fallbackGeometry(paragraphId: string): GeometryLayoutLine {
