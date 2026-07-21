@@ -13,12 +13,19 @@ export interface ExportServiceRequest {
   idempotencyKey: string;
 }
 
-export interface ExportArtifact {
-  format: ExportArtifactFormat;
-  contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/pdf";
-  downloadUrl: string;
-  expiresAt: string;
-}
+export type ExportArtifact =
+  | {
+      format: "DOCX";
+      contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      downloadUrl: string;
+      expiresAt: string;
+    }
+  | {
+      format: "PDF";
+      contentType: "application/pdf";
+      downloadUrl: string;
+      expiresAt: string;
+    };
 
 export interface ExportJob {
   jobId: string;
@@ -45,20 +52,34 @@ export function buildExportServiceRequest(input: {
   return request;
 }
 
-export function validateExportServiceRequest(request: ExportServiceRequest): void {
-  if (!request.transcriptId.trim()) {
+export function validateExportServiceRequest(request: unknown): asserts request is ExportServiceRequest {
+  if (!request || typeof request !== "object") {
+    throw new Error("export request must be an object");
+  }
+
+  const candidate = request as Partial<ExportServiceRequest>;
+  if (candidate.contractVersion !== EXPORT_SERVICE_CONTRACT_VERSION) {
+    throw new Error("export request uses an unsupported contract version");
+  }
+  if (typeof candidate.transcriptId !== "string" || !candidate.transcriptId.trim()) {
     throw new Error("export request requires a transcript id");
   }
-  if (request.renderModel.transcriptId !== request.transcriptId) {
+  if (!candidate.renderModel || typeof candidate.renderModel !== "object") {
+    throw new Error("export request requires a render model");
+  }
+  if (candidate.renderModel.transcriptId !== candidate.transcriptId) {
     throw new Error("export request transcript id must match the render model");
   }
-  if (!request.idempotencyKey.trim()) {
+  if (typeof candidate.idempotencyKey !== "string" || !candidate.idempotencyKey.trim()) {
     throw new Error("export request requires an idempotency key");
   }
-  if (request.formats.length === 0 || new Set(request.formats).size !== request.formats.length) {
+  if (!Array.isArray(candidate.formats) || candidate.formats.length === 0 || new Set(candidate.formats).size !== candidate.formats.length) {
     throw new Error("export request requires unique output formats");
   }
-  if (request.renderModel.lines.length === 0) {
+  if (candidate.formats.some((format) => format !== "DOCX" && format !== "PDF")) {
+    throw new Error("export request requires valid output formats");
+  }
+  if (!Array.isArray(candidate.renderModel.lines) || candidate.renderModel.lines.length === 0) {
     throw new Error("export request requires rendered transcript content");
   }
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildExportServiceRequest,
   canTransitionExportJob,
+  validateExportServiceRequest,
   type ExportArtifactFormat,
 } from "./exportServiceContract";
 import type { UnifiedRenderModel } from "../transcript/unifiedRendering";
@@ -67,5 +68,16 @@ describe("exportServiceContract", () => {
     expect(canTransitionExportJob("QUEUED", "PROCESSING")).toBe(true);
     expect(canTransitionExportJob("PROCESSING", "COMPLETED")).toBe(true);
     expect(canTransitionExportJob("COMPLETED", "PROCESSING")).toBe(false);
+  });
+
+  it("rejects stale contract versions and untrusted format values", () => {
+    const validRequest = buildExportServiceRequest({
+      renderModel: makeRenderModel(),
+      formats: ["DOCX"],
+      idempotencyKey: "synthetic-request-4",
+    });
+
+    expect(() => validateExportServiceRequest({ ...validRequest, contractVersion: "2026-01-01" })).toThrow("unsupported contract version");
+    expect(() => validateExportServiceRequest({ ...validRequest, formats: ["RTF"] })).toThrow("valid output formats");
   });
 });
