@@ -26,6 +26,7 @@ describe("editorialEngine", () => {
   });
   it("keeps context-sensitive No. as a sentence boundary", () => {
     expect(applyEditorialRules("No. No. I am sorry.").text).toBe("No.  No.  I am sorry.");
+    expect(applyEditorialRules("Cause No. C-5722-24-L.").text).toBe("Cause No. C-5722-24-L.");
   });
   it("normalizes only punctuation mechanically adjacent to interruptions", () => {
     expect(applyEditorialRules('He said "one-year,"—no.').text).toBe('He said "one-year" -- no.');

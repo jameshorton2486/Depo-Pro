@@ -82,8 +82,9 @@ function applyPunctuationRules(text: string): { text: string; changes: number } 
     if (match !== replacement) changes += 1;
     return replacement;
   });
-  next = next.replace(/(\S+)\.\s+(?=[A-Z])/g, (match, token: string) => {
-    const usesOneSpace = token.toLocaleLowerCase() === "okay" || isAbbreviation(token);
+  next = next.replace(/(\S+)\.\s+(?=[A-Z])/g, (match, token: string, offset: number, source: string) => {
+    const followingText = source.slice(offset + match.length);
+    const usesOneSpace = token.toLocaleLowerCase() === "okay" || isAbbreviation(token, followingText);
     const replacement = `${token}.${usesOneSpace ? " " : "  "}`;
     if (match !== replacement) changes += 1;
     return replacement;
@@ -119,9 +120,11 @@ function applyNumberFormatting(text: string): { text: string; changes: number } 
   return { text: timeAdjusted, changes };
 }
 
-function isAbbreviation(token: string): boolean {
+function isAbbreviation(token: string, followingText: string): boolean {
   const normalized = `${token}.`.toLocaleLowerCase();
-  if (normalized === "no.") return false;
+  if (normalized === "no.") {
+    return /^(?:\d|[A-Z][A-Z0-9-]*\d)/.test(followingText);
+  }
   return abbreviationTokens.has(normalized) || /^[A-Z]$/.test(token) || /[A-Za-z]\.[A-Za-z]$/.test(token);
 }
 
