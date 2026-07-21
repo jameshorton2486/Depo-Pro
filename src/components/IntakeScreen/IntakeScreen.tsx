@@ -41,6 +41,7 @@ import { CaseStatusBadge } from "./CaseStatusBadge";
 import { DocumentUploadPanel } from "./DocumentUploadPanel";
 import { resolveHydration } from "./hydration";
 import { serializeManagedKeyterms } from "../../lib/keyterms/managedKeyterms";
+import { titleCaseLegalText } from "../../lib/format/legalText";
 import { UfmPayloadPreview } from "./UfmPayloadPreview";
 import { ParticipantsPanel } from "./ParticipantsPanel";
 import { WorkflowStageNav } from "../WorkflowStageNav";
@@ -184,7 +185,7 @@ function CaseStatusBanner({
     (row) => row.value !== "" && row.status === "Needs Confirmation" && row.source !== "manual",
   ).length;
 
-  const caseName = record.caption.case_name.value || "New Case";
+  const caseName = record.caption.case_name.value ? titleCaseLegalText(record.caption.case_name.value) : "New Case";
   const caseNo   = record.caption.case_number.value || "—";
 
   return (
@@ -770,7 +771,7 @@ export function LegacyAppearancesPanel() {
                   ) : (
                     <div key={a.attorney_id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <span className="flex-1 text-sm font-medium text-slate-800">{a.name.value}</span>
+                      <span className="flex-1 text-sm font-medium text-slate-800">{titleCaseLegalText(a.name.value)}</span>
                       <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">
                           {attorneyBadgeLabel(a.representing.value, a.role.value)}
                       </span>
@@ -971,7 +972,7 @@ export function LegacyAppearancesPanel() {
                 <div key={i.interpreter_id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <Mic size={13} className="text-slate-400" />
-                    <span className="flex-1 text-sm text-slate-800">{i.name.value}</span>
+                    <span className="flex-1 text-sm text-slate-800">{titleCaseLegalText(i.name.value)}</span>
                   </div>
                   {(i.language_from || i.language_to) && (
                     <p className="mt-1 text-[11px] text-slate-500">
@@ -1044,7 +1045,7 @@ export function LegacyAppearancesPanel() {
                 <div key={v.videographer_id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <Video size={13} className="text-slate-400" />
-                    <span className="flex-1 text-sm text-slate-800">{v.name.value}</span>
+                    <span className="flex-1 text-sm text-slate-800">{titleCaseLegalText(v.name.value)}</span>
                   </div>
                   {v.role_title && (
                     <p className="mt-1 text-[11px] text-slate-500">{v.role_title}</p>
@@ -1390,7 +1391,6 @@ export function IntakeScreen({ jobId }: Props) {
       } catch (error) {
         console.error("[DEPO-PRO] Case load failed", {
           operation: "loadCaseBundle",
-          caseId,
           message: error instanceof Error ? error.message : String(error),
         });
       }
@@ -1495,7 +1495,6 @@ export function IntakeScreen({ jobId }: Props) {
       } catch (error) {
         console.error("[DEPO-PRO] Case save failed", {
           operation: "saveCase",
-          caseId: currentRecord.case_id,
           message: error instanceof Error ? error.message : String(error),
         });
         setSaveState("error");

@@ -78,7 +78,7 @@ describe("UFM extraction expansion fixtures", () => {
     expect(envelope.ufm_metadata.judicial_district).toBe("275th Judicial District");
     expect(envelope.ufm_metadata.noticing_party).toBe("Plaintiff");
     expect(envelope.ufm_metadata.service_type).toBe("CR_plus_Zoom");
-    expect(envelope.ufm_metadata.service_emails).toEqual(["Raul@LJGLaw.com"]);
+    expect(envelope.ufm_metadata.service_emails).toEqual(["raul@ljglaw.com"]);
     expect(envelope.ufm_metadata.parties).toHaveLength(1);
   });
 });

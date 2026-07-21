@@ -21,6 +21,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.*
+!.env.example
+.supabase/
 test-results/
 supabase/.temp/
 bolt_export/
@@ -30,3 +33,4 @@ bolt_export/
 *.pyc
 *_response.json
 scripts/fixtures/*-real.*
+transcript_formatter/UsersjamesAppDataLocalTempdepo_pytest/

@@ -1,5 +1,7 @@
 import type { CaseRecord } from "../../types/case";
 import { PRIMARY_MODEL } from "../aiModels";
+import { externalJsonRequest } from "../../api/client";
+import { buildEntityRegistry, listRegistryTerms } from "./entityRegistry";
 
 export interface AISuggestionInput {
   transcriptId: string;
@@ -49,6 +51,7 @@ export interface AISuggestionInput {
     reporterName: string;
     caseType: string;
     jurisdiction: string;
+    entityTerms?: string[];
   };
 }
 
@@ -121,8 +124,9 @@ export interface AISuggestionTransport {
 
 export const anthropicFetchTransport: AISuggestionTransport = {
   async createMessage(input) {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+    const payload = await externalJsonRequest<{
+      content?: Array<{ type: string; text?: string }>;
+    }>("POST", "https://api.anthropic.com/v1/messages", {
       headers: {
         "Content-Type": "application/json",
         "x-api-key": input.apiKey,
@@ -136,15 +140,6 @@ export const anthropicFetchTransport: AISuggestionTransport = {
         messages: [{ role: "user", content: input.user }],
       }),
     });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Anthropic request failed: ${response.status} ${text}`);
-    }
-
-    const payload = await response.json() as {
-      content?: Array<{ type: string; text?: string }>;
-    };
     const text = payload.content?.find((item) => item.type === "text")?.text;
     if (!text) {
       throw new Error("Unexpected response type from AI");
@@ -157,6 +152,7 @@ export function buildUserMessage(input: AISuggestionInput): string {
   return JSON.stringify({
     task: "transcript_correction",
     case_record: input.caseRecord,
+    entity_registry: input.caseRecord.entityTerms ?? [],
     flagged_tokens: input.correctionReport.ambiguousFlags.map((flag) => ({
       word_id: flag.word_id,
       utterance_id: flag.utterance_id,
@@ -258,6 +254,8 @@ export async function generateAISuggestions(
 }
 
 export function buildSuggestionCaseRecord(record: CaseRecord | null | undefined): AISuggestionInput["caseRecord"] {
+  const entityTerms = listRegistryTerms(buildEntityRegistry(record), ["witness", "attorney", "law_firm", "party", "employer"]);
+
   return {
     causeNumber: record?.caption?.case_number?.value ?? "",
     caseStyle: record?.caption?.case_style?.value ?? "",
@@ -267,5 +265,7 @@ export function buildSuggestionCaseRecord(record: CaseRecord | null | undefined)
     reporterName: "Miah Bardot, CSR No. 12129",
     caseType: "",
     jurisdiction: record?.caption?.county?.value ?? "",
+    entityTerms,
   };
 }
+

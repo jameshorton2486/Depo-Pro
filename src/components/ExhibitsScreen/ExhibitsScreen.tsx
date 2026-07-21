@@ -5,6 +5,7 @@ import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 import { WorkflowStageNav } from "../WorkflowStageNav";
+import { titleCaseLegalText } from "../../lib/format/legalText";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
 function buildExhibitLabel(index: number) {
@@ -76,7 +77,7 @@ export function ExhibitsScreen({ jobId }: { jobId: string }) {
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Stage 4</p>
                 <h1 className="text-lg font-semibold text-slate-900">Exhibits</h1>
               </div>
-              <span className="ml-auto text-xs text-slate-500">{record.caption.case_name.value || jobId}</span>
+              <span className="ml-auto text-xs text-slate-500">{record.caption.case_name.value ? titleCaseLegalText(record.caption.case_name.value) : jobId}</span>
             </div>
           </header>
 

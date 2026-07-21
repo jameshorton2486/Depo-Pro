@@ -108,4 +108,30 @@ describe("applyAndPersistExtraction", () => {
     expect(result.summary).toEqual({ appliedCount: 1, conflictCount: 0 });
     expect(result.saveErrorMessage).toContain("save exploded");
   });
+  it("counts populated fields inside collection additions instead of counting only the add operation", async () => {
+    const application = buildApplication();
+    const extracted = <T,>(value: T) => ({
+      value,
+      source: "extracted" as const,
+      confirmed: false,
+      conflict: false,
+      confidence_score: 0.9,
+    });
+    application.partyAdds.push({
+      party: {
+        name: extracted("Sample Party"),
+        role: extracted("plaintiff" as const),
+        role_modifier: extracted(null),
+        entity_type: extracted("individual" as const),
+        fka_or_dba: extracted(null),
+      },
+    });
+
+    const result = await applyAndPersistExtraction({
+      caseId: "case_20260605_count", application, applyParsedExtraction: vi.fn(), recordExtraction: vi.fn(),
+      detectConflict: vi.fn(), onRevealExtractedFields: vi.fn(), saveCaseRecord: vi.fn().mockResolvedValue(undefined),
+    });
+
+    expect(result.summary).toEqual({ appliedCount: 4, conflictCount: 0 });
+  });
 });

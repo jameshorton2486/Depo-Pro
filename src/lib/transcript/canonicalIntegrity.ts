@@ -4,6 +4,7 @@ import type { NormalizedTranscriptData } from "./normalize";
 const DEFAULT_AUTO_CHUNK_THRESHOLD_SECONDS = 4500;
 const DUPLICATE_SPAN_MIN_TOKENS = 8;
 const DUPLICATE_SPAN_SIMILARITY_THRESHOLD = 0.7;
+const TIMING_TOLERANCE_SECONDS = 0.05;
 
 export interface CanonicalIntegrityResult {
   integrity_passed: boolean;
@@ -41,9 +42,28 @@ export function auditCanonicalTranscript(input: {
   const warnings: string[] = [];
   const wordsByUtterance = new Map<string, typeof normalized.words>();
   const utteranceIds = new Set(normalized.utterances.map((utterance) => utterance.utterance_id));
+  const speakerIds = new Set(normalized.speakers.map((speaker) => speaker.speaker_id));
   const seenWordIds = new Set<string>();
+  const seenUtteranceIds = new Set<string>();
+  const seenSpeakerIds = new Set<string>();
+
+  if (!Number.isFinite(normalized.durationSeconds) || normalized.durationSeconds < 0) {
+    failures.push("Canonical transcript has an invalid duration.");
+  }
+
+  for (const speaker of normalized.speakers) {
+    if (seenSpeakerIds.has(speaker.speaker_id)) {
+      failures.push(`Duplicate canonical speaker_id '${speaker.speaker_id}'.`);
+    } else {
+      seenSpeakerIds.add(speaker.speaker_id);
+    }
+  }
 
   for (const word of normalized.words) {
+    if (!Number.isFinite(word.start_time) || !Number.isFinite(word.end_time) || word.start_time < 0 || word.end_time < 0) {
+      failures.push(`Word ${word.word_id} has invalid timing.`);
+    }
+
     if (seenWordIds.has(word.word_id)) {
       failures.push(`Duplicate canonical word_id '${word.word_id}'.`);
     } else {
@@ -52,6 +72,9 @@ export function auditCanonicalTranscript(input: {
 
     if (!utteranceIds.has(word.utterance_id)) {
       failures.push(`Word ${word.word_id} references missing utterance ${word.utterance_id}.`);
+    }
+    if (!speakerIds.has(word.speaker_id)) {
+      failures.push(`Word ${word.word_id} references missing speaker ${word.speaker_id}.`);
     }
 
     const bucket = wordsByUtterance.get(word.utterance_id) ?? [];
@@ -79,6 +102,18 @@ export function auditCanonicalTranscript(input: {
   });
 
   normalized.utterances.forEach((utterance, index) => {
+    if (seenUtteranceIds.has(utterance.utterance_id)) {
+      failures.push(`Duplicate canonical utterance_id '${utterance.utterance_id}'.`);
+    } else {
+      seenUtteranceIds.add(utterance.utterance_id);
+    }
+
+    if (!Number.isFinite(utterance.start_time) || !Number.isFinite(utterance.end_time) || utterance.start_time < 0 || utterance.end_time < 0) {
+      failures.push(`Utterance ${utterance.utterance_id} has invalid timing.`);
+    } else if (utterance.end_time < utterance.start_time) {
+      failures.push(`Utterance ${utterance.utterance_id} ends before it starts.`);
+    }
+
     if (utterance.utterance_index !== index) {
       failures.push(
         `Utterance ${utterance.utterance_id} has non-contiguous utterance_index ${utterance.utterance_index}; expected ${index}.`,
@@ -90,12 +125,39 @@ export function auditCanonicalTranscript(input: {
       failures.push(`Utterance ${utterance.utterance_id} has no canonical words.`);
       return;
     }
+    if (!speakerIds.has(utterance.speaker_id)) {
+      failures.push(`Utterance ${utterance.utterance_id} references missing speaker ${utterance.speaker_id}.`);
+    }
 
     const joinedWords = utteranceWords.map((word) => word.raw_text).join(" ");
     if (utterance.text !== joinedWords) {
       failures.push(
         `Utterance ${utterance.utterance_id} text does not equal joined canonical words.`,
       );
+    }
+    if (utteranceWords.some((word) => word.speaker_id !== utterance.speaker_id)) {
+      warnings.push(`Utterance ${utterance.utterance_id} contains provider word-level speaker changes.`);
+    }
+
+    const earliestWordStart = Math.min(...utteranceWords.map((word) => word.start_time));
+    const latestWordEnd = Math.max(...utteranceWords.map((word) => word.end_time));
+    if (
+      Number.isFinite(earliestWordStart)
+      && Number.isFinite(latestWordEnd)
+      && (earliestWordStart < utterance.start_time - TIMING_TOLERANCE_SECONDS
+        || latestWordEnd > utterance.end_time + TIMING_TOLERANCE_SECONDS)
+    ) {
+      warnings.push(`Utterance ${utterance.utterance_id} timing does not bound its canonical words.`);
+    }
+
+    const sortedIndices = utteranceWords
+      .map((word) => word.word_index)
+      .sort((left, right) => left - right);
+    for (let wordIndex = 1; wordIndex < sortedIndices.length; wordIndex += 1) {
+      if (sortedIndices[wordIndex] !== sortedIndices[wordIndex - 1] + 1) {
+        warnings.push(`Utterance ${utterance.utterance_id} has non-contiguous canonical word span.`);
+        break;
+      }
     }
   });
 

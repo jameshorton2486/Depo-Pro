@@ -8,6 +8,7 @@ import { useContactStore } from "../../store/contactStore";
 import type { Contact, ContactInsert, ContactType } from "../../types/contact";
 import type { Firm } from "../../types/firm";
 import type { AttorneyFunction, AttorneyRole, ParticipantRole } from "../../types/case";
+import { titleCaseLegalText } from "../../lib/format/legalText";
 import {
   digitsOnly,
   formatPhoneDisplay,
@@ -433,12 +434,10 @@ function buildContactInsert(category: PanelCategory, draft: DrawerDraft, selecte
 function DrawerField({
   config,
   draft,
-  category,
   onChange,
 }: {
   config: FieldConfig;
   draft: DrawerDraft;
-  category: PanelCategory | null;
   onChange: (key: keyof DrawerDraft, value: string | boolean) => void;
 }) {
   const value = draft[config.key as keyof DrawerDraft];
@@ -446,7 +445,7 @@ function DrawerField({
     if (typeof value !== "string") {
       return "";
     }
-    if (config.kind === "tel" && category === "reporter" && config.key === "phone") {
+    if (config.kind === "tel") {
       return formatPhoneDisplay(value);
     }
     return value;
@@ -832,7 +831,7 @@ export function ParticipantsPanel() {
             Reporter
           </div>
           <div className="text-sm text-slate-800">
-            <div className="font-semibold">{record.reporter.name.value || "No reporter selected"}</div>
+            <div className="font-semibold">{record.reporter.name.value ? titleCaseLegalText(record.reporter.name.value) : "No reporter selected"}</div>
             <div className="text-xs text-slate-500">CSR {record.reporter.cert_number.value || "—"} · Firm Reg. {record.reporter.firm_registration_number.value || "—"}</div>
           </div>
           <button
@@ -849,8 +848,8 @@ export function ParticipantsPanel() {
             {record.attorneys.map((attorney) => (
               <EntryCard
                 key={attorney.attorney_id}
-                title={attorney.name.value}
-                subtitle={attorney.representing.value || attorney.firm.value || "No representing party"}
+                title={titleCaseLegalText(attorney.name.value)}
+                subtitle={attorney.representing.value || (attorney.firm.value ? titleCaseLegalText(attorney.firm.value) : "No representing party")}
                 onRemove={() => removeAttorney(attorney.attorney_id)}
               />
             ))}
@@ -860,7 +859,7 @@ export function ParticipantsPanel() {
             {record.interpreters.map((interpreter) => (
               <EntryCard
                 key={interpreter.interpreter_id}
-                title={interpreter.name.value}
+                title={titleCaseLegalText(interpreter.name.value)}
                 subtitle={`${interpreter.language_from || "—"} → ${interpreter.language_to || "—"}`}
                 onRemove={() => removeInterpreter(interpreter.interpreter_id)}
               />
@@ -871,8 +870,8 @@ export function ParticipantsPanel() {
             {record.videographers.map((videographer) => (
               <EntryCard
                 key={videographer.videographer_id}
-                title={videographer.name.value}
-                subtitle={videographer.firm.value || "No firm linked"}
+                title={titleCaseLegalText(videographer.name.value)}
+                subtitle={videographer.firm.value ? titleCaseLegalText(videographer.firm.value) : "No firm linked"}
                 onRemove={() => removeVideographer(videographer.videographer_id)}
               />
             ))}
@@ -899,8 +898,8 @@ export function ParticipantsPanel() {
             {record.participants.map((participant) => (
               <EntryCard
                 key={participant.participant_id}
-                title={participant.name.value}
-                subtitle={participant.role_in_this_proceeding || participant.organization || participant.role}
+                title={titleCaseLegalText(participant.name.value)}
+                subtitle={participant.role_in_this_proceeding || (participant.organization ? titleCaseLegalText(participant.organization) : participant.role)}
                 onRemove={() => removeParticipant(participant.participant_id)}
               />
             ))}
@@ -982,7 +981,7 @@ export function ParticipantsPanel() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {directoryFields.map((config) => (
-                          <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                          <DrawerField key={config.key} config={config} draft={draft} onChange={handleDraftChange} />
                         ))}
                       </div>
 
@@ -990,14 +989,14 @@ export function ParticipantsPanel() {
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Firm Directory</div>
                           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                            <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                            <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                            <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                            <DrawerField config={{ key: "firmCity", label: "City", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                            <DrawerField config={{ key: "firmState", label: "State", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                            <DrawerField config={{ key: "firmZip", label: "ZIP", kind: "text" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                            <DrawerField config={{ key: "firmMainPhone", label: "Main Phone", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
-                            <DrawerField config={{ key: "firmFax", label: "Fax", kind: "tel" }} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmQuery", label: "Search Firms", kind: "text" }} draft={draft} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmName", label: "Firm Name", kind: "text" }} draft={draft} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmAddress", label: "Address", kind: "text" }} draft={draft} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmCity", label: "City", kind: "text" }} draft={draft} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmState", label: "State", kind: "text" }} draft={draft} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmZip", label: "ZIP", kind: "text" }} draft={draft} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmMainPhone", label: "Main Phone", kind: "tel" }} draft={draft} onChange={handleDraftChange} />
+                            <DrawerField config={{ key: "firmFax", label: "Fax", kind: "tel" }} draft={draft} onChange={handleDraftChange} />
                           </div>
                           {firmResults.length > 0 && (
                             <div className="mt-3 space-y-2">
@@ -1054,7 +1053,7 @@ export function ParticipantsPanel() {
                       )}
                       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                         {caseFields.map((config) => (
-                          <DrawerField key={config.key} config={config} draft={draft} category={drawerCategory} onChange={handleDraftChange} />
+                          <DrawerField key={config.key} config={config} draft={draft} onChange={handleDraftChange} />
                         ))}
                       </div>
                     </div>

@@ -79,6 +79,7 @@ export type SetStageCompleteAction = { type: "SET_STAGE_COMPLETE"; payload: { st
 export type SetNotesAction       = { type: "SET_NOTES"; payload: { notes: string } };
 export type SetAudioAction       = { type: "SET_AUDIO"; payload: { audio: CaseAudio | null } };
 export type SetKeytermsAction    = { type: "SET_KEYTERMS"; payload: { keyterms: CaseRecord["deepgram"]["keyterms"] } };
+export type SetDeepgramConfigAction = { type: "SET_DEEPGRAM_CONFIG"; payload: { config: Partial<Omit<CaseRecord["deepgram"], "keyterms">> } };
 export type SetCertificationAction = { type: "SET_CERTIFICATION"; payload: { certification: CaseCertification | null } };
 
 // ── Field update (generic path into CaseRecord) ───────────────────────────────
@@ -223,6 +224,7 @@ export type IntakeAction =
   | SetNotesAction
   | SetAudioAction
   | SetKeytermsAction
+  | SetDeepgramConfigAction
   | SetCertificationAction
   | UpdateFieldAction
   | ApplyExtractionAction
@@ -436,6 +438,18 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
             ...state.record.deepgram,
             keyterms: action.payload.keyterms,
           },
+        },
+      };
+    }
+
+    case "SET_DEEPGRAM_CONFIG": {
+      return {
+        ...state,
+        dirty: true,
+        editSeq: state.editSeq + 1,
+        record: {
+          ...state.record,
+          deepgram: { ...state.record.deepgram, ...action.payload.config },
         },
       };
     }
@@ -884,6 +898,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           exhibits: [...state.record.exhibits, exhibit],
@@ -895,6 +910,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           exhibits: state.record.exhibits.filter(
@@ -909,6 +925,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       return {
         ...state,
         dirty: true,
+        editSeq: state.editSeq + 1,
         record: {
           ...state.record,
           exhibits: state.record.exhibits.map((e) =>

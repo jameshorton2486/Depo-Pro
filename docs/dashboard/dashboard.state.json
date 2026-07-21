@@ -1,0 +1,408 @@
+{
+  "schemaVersion": "1.1.0",
+  "dashboardVersion": "1.0.0",
+  "statusVocabularyVersion": "1.0.0",
+  "currentWave": "Wave 0",
+  "currentMilestone": "Wave 0 Frozen",
+  "nextMilestone": "Wave 21 Recognition Benchmarking",
+  "statusVocabulary": "docs/architecture/W0_STATUS_VOCABULARY.md",
+  "currentSprint": {
+    "id": "W0.2C",
+    "objective": "Wave 0 Freeze",
+    "owner": "Engineering Operations",
+    "semanticProducer": "N/A",
+    "status": "COMPLETE",
+    "overallStatus": "GREEN",
+    "goal": "Accept the final status vocabulary, add dashboard versioning, and freeze Wave 0 permanently.",
+    "scope": [
+      "Accept and freeze the canonical status vocabulary",
+      "Reclassify verified integrations (GitHub, Supabase) as Verified",
+      "Dashboard versioning (dashboard + vocabulary versions)",
+      "CURRENT_FIXTURE dashboard",
+      "Architecture Document Layer governance rule",
+      "Freeze Wave 0 and mark it Verified"
+    ],
+    "outOfScope": [
+      "Wave 21 recognition changes",
+      "Wave 22 semantic runtime changes",
+      "Wave 23 transcript production changes",
+      "Wave renumbering (Reporter Productivity) — recorded as an open decision",
+      "TypeScript producer header comments — deferred to a Wave 2x sprint"
+    ],
+    "validation": {
+      "test": "PASS",
+      "testDetail": "npm test: PASS",
+      "typecheck": "PASS",
+      "build": "PASS"
+    },
+    "definitionOfDone": [
+      "tests pass",
+      "TypeScript passes",
+      "build passes",
+      "dashboard is updated",
+      "dashboard is archived",
+      "sprint report is archived",
+      "wave status is updated",
+      "no architecture drift is introduced",
+      "open decisions are recorded"
+    ],
+    "exitCriteria": [
+      "The canonical status vocabulary is frozen (v1.0.0).",
+      "Dashboard and vocabulary versions are recorded in state.",
+      "CURRENT_FIXTURE dashboard exists.",
+      "Wave 0 is marked Verified and frozen.",
+      "SPRINT_W0.2C_REPORT.md is archived."
+    ],
+    "reviewStatus": "PENDING",
+    "changedFiles": [
+      "docs/architecture/W0_STATUS_VOCABULARY.md",
+      "docs/architecture/W0_ENGINEERING_OPERATIONS_STANDARD.md",
+      "docs/dashboard/dashboard.schema.json",
+      "docs/dashboard/dashboard.state.json",
+      "docs/dashboard/PROJECT_HEALTH.md",
+      "docs/dashboard/CURRENT_FIXTURE.md",
+      "scripts/update-dashboard.mjs",
+      "SPRINT_W0.2C_REPORT.md"
+    ]
+  },
+  "sprintStatus": "COMPLETE",
+  "architectureHealth": {
+    "wave21": "Active",
+    "wave22": "Verified",
+    "wave23": "Active",
+    "contractDrift": 0,
+    "duplicateProducers": 0,
+    "duplicateConsumers": 0,
+    "openDecisions": 7
+  },
+  "benchmarkStatus": {
+    "overallTrend": "Unknown",
+    "fixtures": [
+      {
+        "fixture": "001 Etminan",
+        "purpose": "Medical expert, Zoom deposition, objections, exhibits",
+        "currentBaseline": "Nova-3, utt_split 0.8",
+        "recognition": "Unknown",
+        "rci": "Unknown",
+        "previous": "N/A",
+        "trend": "Unknown"
+      }
+    ]
+  },
+  "semanticScore": {
+    "overall": "Active",
+    "layers": [
+      {
+        "layer": "Recognition",
+        "status": "Active"
+      },
+      {
+        "layer": "Canonical",
+        "status": "Operational"
+      },
+      {
+        "layer": "Semantics",
+        "status": "Verified"
+      },
+      {
+        "layer": "Contract",
+        "status": "Operational"
+      },
+      {
+        "layer": "Region Engine",
+        "status": "Operational"
+      },
+      {
+        "layer": "Caption",
+        "status": "Operational"
+      },
+      {
+        "layer": "Proceedings",
+        "status": "Operational"
+      },
+      {
+        "layer": "Examination",
+        "status": "Planned"
+      },
+      {
+        "layer": "Dialogue",
+        "status": "Planned"
+      },
+      {
+        "layer": "Events",
+        "status": "Planned"
+      },
+      {
+        "layer": "Geometry",
+        "status": "Active"
+      }
+    ]
+  },
+  "engineeringHealth": {
+    "build": "PASS",
+    "tests": "PASS",
+    "typecheck": "PASS",
+    "dashboardFreshness": "Current",
+    "sprintFreshness": "Current",
+    "documentationFreshness": "Current",
+    "architectureDrift": "0"
+  },
+  "openDecisions": [
+    {
+      "decision": "Deepgram paragraphs",
+      "status": "Awaiting Wave 21 benchmark",
+      "owner": "James",
+      "impact": "Medium"
+    },
+    {
+      "decision": "Normalized WAV benchmark adoption",
+      "status": "Awaiting Wave 21 audio experiment",
+      "owner": "James",
+      "impact": "Medium"
+    },
+    {
+      "decision": "Wave renumbering: insert Wave 24 Reporter Productivity and shift Deterministic/Punctuation/AI to 25/26/27",
+      "status": "Proposed in review; conflicts with frozen compiler library (W24 Deterministic, W25 Punctuation, W26 AI Context)",
+      "owner": "James",
+      "impact": "High"
+    },
+    {
+      "decision": "Canonical branch / default branch",
+      "status": "DONE: release/2026.1 cut from trunk; main preserved (archive/main-pre-wave23). Phase A (release->main) held until RC validated; default stays trunk until then",
+      "owner": "James",
+      "impact": "High"
+    },
+    {
+      "decision": "Repository visibility",
+      "status": "DONE: repository set Private (2026-07-13)",
+      "owner": "James",
+      "impact": "Low"
+    },
+    {
+      "decision": "Branch protection requires GitHub Pro on a private repo",
+      "status": "BLOCKED: GitHub Free allows no branch protection/rulesets on private repos. Options: upgrade to Pro, or rely on CI Verify + a local pre-push hook. CI still runs on push/PR",
+      "owner": "James",
+      "impact": "High"
+    },
+    {
+      "decision": "main reconciliation: preserve bucket-B/C unique features",
+      "status": "VERIFIED: multi-file + copy-transcript superseded on trunk; Stage S + dev-auth drop; only case-reuse (05996ad) unique -> defer to backlog. Reconciliation de-risked; needs GO + Stage-S drop ack",
+      "owner": "James",
+      "impact": "High"
+    }
+  ],
+  "technicalDebt": {
+    "activeDebt": [
+      "Wave 21 benchmark corpus has not been populated beyond the Etminan baseline definition.",
+      "Dashboard operational fields are still partly human-maintained through dashboard.state.json."
+    ],
+    "acceptedDebt": [
+      "Dashboard generator does not yet derive benchmark metrics automatically from benchmark run artifacts."
+    ],
+    "plannedDebt": [
+      "Automate benchmark status ingestion from dated benchmark run reports."
+    ]
+  },
+  "waveStatus": [
+    {
+      "wave": "Wave 0",
+      "goal": "Engineering Operations",
+      "status": "Verified",
+      "completion": "100%"
+    },
+    {
+      "wave": "Wave 21",
+      "goal": "Recognition Quality",
+      "status": "Active",
+      "completion": "10%"
+    },
+    {
+      "wave": "Wave 22",
+      "goal": "Semantic Runtime",
+      "status": "Verified",
+      "completion": "100%"
+    },
+    {
+      "wave": "Wave 23",
+      "goal": "Deposition Production",
+      "status": "Active",
+      "completion": "35%"
+    },
+    {
+      "wave": "Wave 24",
+      "goal": "Deterministic Corrections",
+      "status": "Planned",
+      "completion": "0%"
+    },
+    {
+      "wave": "Wave 25",
+      "goal": "Canonical Punctuation",
+      "status": "Planned",
+      "completion": "0%"
+    },
+    {
+      "wave": "Wave 26",
+      "goal": "AI Context",
+      "status": "Planned",
+      "completion": "0%"
+    }
+  ],
+  "deploymentHealth": [
+    {
+      "system": "GitHub",
+      "status": "Verified",
+      "basis": "Integration verified against DEPO-PRO requirements: repository connected; branches, pushes, and pulls exercised and working."
+    },
+    {
+      "system": "Supabase",
+      "status": "Verified",
+      "basis": "Integration verified in-environment: auth, storage, RLS, and edge functions exercised, with in-repo audits (AUTH_RLS_AUDIT.md)."
+    },
+    {
+      "system": "Vercel",
+      "status": "Unknown",
+      "basis": "No repo-side Vercel config; dashboard-side audit pending (W0.2A)."
+    },
+    {
+      "system": "Environment Configuration",
+      "status": "Unknown",
+      "basis": "Three VITE_ vars referenced in src are undocumented in .env.example; client/server split not yet verified (W0.2A section 5)."
+    },
+    {
+      "system": "Preview Deployments",
+      "status": "Unknown",
+      "basis": "Preview behavior not verified in the Vercel console (W0.2A section 7)."
+    },
+    {
+      "system": "Production Deployment",
+      "status": "Unknown",
+      "basis": "Production branch and last successful deploy not verified (W0.2A section 7)."
+    }
+  ],
+  "currentFixture": {
+    "id": "001",
+    "name": "Etminan",
+    "purpose": "Medical expert, Zoom deposition, objections, exhibits",
+    "drivingWave": "Wave 21 recognition benchmark; Wave 23 production reference",
+    "currentBenchmark": "Baseline defined, not yet run",
+    "rci": "Unknown",
+    "status": "Unknown",
+    "sprint": "W0.2C"
+  },
+  "pipelineStatus": [
+    {
+      "stage": "Audio",
+      "layer": "Intake",
+      "status": "Operational"
+    },
+    {
+      "stage": "Wave 21 Recognition",
+      "layer": "Recognition",
+      "status": "Active"
+    },
+    {
+      "stage": "Canonical Transcript",
+      "layer": "Contract",
+      "status": "Operational"
+    },
+    {
+      "stage": "Wave 22 Semantics",
+      "layer": "Semantics",
+      "status": "Verified"
+    },
+    {
+      "stage": "Structured Transcript Contract",
+      "layer": "Contract",
+      "status": "Operational"
+    },
+    {
+      "stage": "Wave 23 Deposition Production",
+      "layer": "Production",
+      "status": "Active"
+    },
+    {
+      "stage": "Produced Transcript",
+      "layer": "Production",
+      "status": "Active"
+    },
+    {
+      "stage": "TP-5 Geometry",
+      "layer": "Geometry",
+      "status": "Active"
+    },
+    {
+      "stage": "Rendered Transcript",
+      "layer": "Render",
+      "status": "Active"
+    },
+    {
+      "stage": "Wave 24 Deterministic Corrections",
+      "layer": "Corrections",
+      "status": "Planned"
+    },
+    {
+      "stage": "Wave 25 Canonical Punctuation",
+      "layer": "Punctuation",
+      "status": "Planned"
+    },
+    {
+      "stage": "Wave 26 AI Context Review",
+      "layer": "AI",
+      "status": "Planned"
+    },
+    {
+      "stage": "Professional Draft Transcript",
+      "layer": "Output",
+      "status": "Planned"
+    }
+  ],
+  "architectureChangelog": [
+    {
+      "date": "2026-07-13",
+      "change": "Wave 23.1 checkpoint: current implementation characterized; pre-workspace pipeline is ~70-80% built, original plan superseded (W23_CURRENT_IMPLEMENTATION_CHARACTERIZATION.md)",
+      "reason": "Code moved ahead of the plan; rewrite the roadmap to the true remaining gaps instead of rebuilding existing modules."
+    },
+    {
+      "date": "2026-07-13",
+      "change": "Wave 0 Engineering Operations frozen and marked Verified at sprint W0.2C",
+      "reason": "Governance is architecturally complete; Wave 0 now only governs execution of later waves."
+    },
+    {
+      "date": "2026-07-13",
+      "change": "Canonical status vocabulary v1.0.0 frozen; dashboard versioning added",
+      "reason": "Prevent status-word drift and make future dashboard upgrades manageable."
+    },
+    {
+      "date": "2026-07-13",
+      "change": "GitHub and Supabase reclassified Verified (integration verified in-environment)",
+      "reason": "Verified for integrations means the integration is confirmed against DEPO-PRO requirements, not that the vendor was audited."
+    },
+    {
+      "date": "2026-07-13",
+      "change": "Canonical 6-state status vocabulary frozen (Unknown, Planned, Active, Operational, Verified, Blocked)",
+      "reason": "Give every dashboard, wave, sprint, benchmark, and system one status language."
+    },
+    {
+      "date": "2026-07-13",
+      "change": "Wave 0 Engineering Operations completed and frozen",
+      "reason": "Establish a fixed engineering operating system for all future waves."
+    },
+    {
+      "date": "2026-07-13",
+      "change": "Wave 0 Engineering Operations dashboard introduced",
+      "reason": "Make the repository the primary communication tool for project state."
+    },
+    {
+      "date": "2026-07-12",
+      "change": "Wave 23 Region Engine introduced",
+      "reason": "Separate document regions before testimony production."
+    },
+    {
+      "date": "2026-07-11",
+      "change": "Wave 22 semantic pipeline architecture frozen",
+      "reason": "Preserve one producer per semantic responsibility and one contract."
+    }
+  ],
+  "generatedAt": "2026-07-13T20:04:10.480Z",
+  "currentBranch": "feature/stage3-workspace-core"
+}

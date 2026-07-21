@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ManagedKeyterm } from "../../components/DeepgramKeytermManager/types";
-import { mergeManagedDerivedKeyterms } from "./managedKeyterms";
+import { mergeManagedDerivedKeyterms, serializeManagedKeyterms } from "./managedKeyterms";
 
 function buildManagedManualTerm(): ManagedKeyterm {
   return {
@@ -29,5 +29,23 @@ describe("mergeManagedDerivedKeyterms", () => {
     }]);
 
     expect(merged.find((term) => term.term === "Heath Thomas")?.notes).toBe("derived:witness");
+  });
+});
+
+describe("serializeManagedKeyterms", () => {
+  it("applies legal display punctuation and capitalization to Deepgram terms", () => {
+    const keyterms = serializeManagedKeyterms([{
+      ...buildManagedManualTerm(),
+      term: "HOME DEPOT U.S.A., INC.",
+    }, {
+      ...buildManagedManualTerm(),
+      id: "kt_case_number",
+      term: "25-cv-00598-OLG",
+    }]);
+
+    expect(keyterms.map((keyterm) => keyterm.term)).toEqual([
+      "Home Depot U.S.A., Inc.",
+      "25-CV-00598-OLG",
+    ]);
   });
 });

@@ -88,6 +88,10 @@ export function IntakeProvider({
     dispatch({ type: "SET_KEYTERMS", payload: { keyterms } });
   }, []);
 
+  const setDeepgramConfig = useCallback((config: Partial<Omit<CaseRecord["deepgram"], "keyterms">>) => {
+    dispatch({ type: "SET_DEEPGRAM_CONFIG", payload: { config } });
+  }, []);
+
   const setCertification = useCallback((certification: CaseRecord["certification"]) => {
     dispatch({ type: "SET_CERTIFICATION", payload: { certification } });
   }, []);
@@ -265,6 +269,7 @@ export function IntakeProvider({
     setNotes,
     setAudio,
     setKeyterms,
+    setDeepgramConfig,
     setCertification,
     updateField,
     applyExtraction,

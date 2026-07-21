@@ -6,6 +6,8 @@ interface EditorContextValue {
   setEditor: (editor: Editor | null) => void;
   showInterpreterLayer: boolean;
   setShowInterpreterLayer: (show: boolean) => void;
+  showTabStops: boolean;
+  setShowTabStops: (show: boolean) => void;
   languageMap: Map<string, string>;
   setLanguageMap: (map: Map<string, string>) => void;
 }
@@ -15,6 +17,8 @@ const Ctx = createContext<EditorContextValue>({
   setEditor: () => {},
   showInterpreterLayer: false,
   setShowInterpreterLayer: () => {},
+  showTabStops: false,
+  setShowTabStops: () => {},
   languageMap: new Map(),
   setLanguageMap: () => {},
 });
@@ -22,6 +26,7 @@ const Ctx = createContext<EditorContextValue>({
 export function EditorProvider({ children }: { children: React.ReactNode }) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [showInterpreterLayer, setShowInterpreterLayer] = useState(false);
+  const [showTabStops, setShowTabStops] = useState(false);
   const [languageMap, setLanguageMap] = useState<Map<string, string>>(new Map());
 
   return (
@@ -31,6 +36,8 @@ export function EditorProvider({ children }: { children: React.ReactNode }) {
         setEditor,
         showInterpreterLayer,
         setShowInterpreterLayer,
+        showTabStops,
+        setShowTabStops,
         languageMap,
         setLanguageMap,
       }}

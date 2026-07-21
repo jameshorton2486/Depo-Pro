@@ -278,7 +278,6 @@ Deno.serve(async (request) => {
         } catch (error) {
           await cleanupTranscript(serviceClient, {
             jobId: job.id,
-            transcriptId: job.transcript_id,
           });
           await persistCanonicalManualReviewTranscript(
             serviceClient,
@@ -313,7 +312,6 @@ Deno.serve(async (request) => {
           await captureOriginalSnapshot(serviceClient, job);
         } catch (error) {
           console.error("[transcribe-callback] original snapshot capture failed", {
-            transcriptId: job.transcript_id,
             message: error instanceof Error ? error.message : String(error),
           });
         }
@@ -332,8 +330,7 @@ Deno.serve(async (request) => {
             await pruneSupersededTranscripts(serviceClient, job);
           } catch (error) {
             console.error("[transcribe-callback] superseded-transcript prune failed", {
-              transcriptId: job.transcript_id,
-              message: error instanceof Error ? error.message : String(error),
+                message: error instanceof Error ? error.message : String(error),
             });
           }
         }
@@ -356,15 +353,13 @@ Deno.serve(async (request) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[transcribe-callback] unexpected error", {
-      jobId,
       message,
     });
     try {
       await updateJob(serviceClient, jobId, { error: `RETRYABLE_CALLBACK_ERROR: ${message}` });
     } catch (updateError) {
       console.error("[transcribe-callback] failed to persist callback error", {
-        jobId,
-        message: updateError instanceof Error ? updateError.message : String(updateError),
+          message: updateError instanceof Error ? updateError.message : String(updateError),
       });
     }
     return respondError(500, "unexpected server error");
@@ -723,9 +718,7 @@ async function runBoundaryEngine(
   job: TranscriptionJobRecord,
 ): Promise<void> {
   if (!anthropicApiKey) {
-    console.warn("[transcribe-callback] boundary engine skipped: missing ANTHROPIC_API_KEY", {
-      transcriptId: job.transcript_id,
-    });
+    console.warn("[transcribe-callback] boundary engine skipped: missing ANTHROPIC_API_KEY");
     return;
   }
 
@@ -902,7 +895,6 @@ async function runBoundaryEngine(
     }
   } catch (error) {
     console.error("[transcribe-callback] boundary engine failed", {
-      transcriptId: job.transcript_id,
       message: error instanceof Error ? error.message : String(error),
     });
     throw error;
@@ -1655,7 +1647,6 @@ function triggerAiReview(transcriptId: string): void {
     body: JSON.stringify({ transcript_id: transcriptId }),
   }).catch((error) => {
     console.error("[transcribe-callback] ai-review trigger failed", {
-      transcriptId,
       message: error instanceof Error ? error.message : String(error),
     });
   });

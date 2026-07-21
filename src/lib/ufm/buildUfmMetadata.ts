@@ -4,7 +4,7 @@ import type { Contact, ContactType } from "../../types/contact.ts";
 import type { Firm } from "../../types/firm.ts";
 import type { ReporterProfile } from "../../types/reporterProfile.ts";
 import { getMissingRequiredUfmFieldNames } from "./requiredFields.ts";
-import { titleCaseLegalText } from "../format/legalText.ts";
+import { formatUsPhoneNumber, titleCaseLegalText } from "../format/legalText.ts";
 
 type UfmFieldKey =
   | "cause_number"
@@ -194,6 +194,11 @@ function formatUfmEmail(value: string | null | undefined): string | null {
   const normalized = normalizeValue(value);
   return normalized ? normalized.toLowerCase() : null;
 }
+
+function formatUfmPhone(value: string | null | undefined): string | null {
+  const normalized = normalizeValue(value);
+  return normalized ? formatUsPhoneNumber(normalized) : null;
+}
 function normalizeIdentity(value: string | null | undefined): string | null {
   const normalized = normalizeValue(value);
   if (!normalized) {
@@ -306,7 +311,7 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
       role: normalizeValue(attorney.role.value),
       representing: normalizeValue(attorney.representing.value),
       bar_number: normalizeValue(attorney.bar_number.value) ?? details?.bar_number ?? null,
-      phone: normalizeValue(attorney.phone) ?? normalizeValue(details?.direct_phone) ?? normalizeValue(contact?.phone),
+      phone: formatUfmPhone(attorney.phone) ?? formatUfmPhone(details?.direct_phone) ?? formatUfmPhone(contact?.phone),
       email: formatUfmEmail(attorney.email) ?? formatUfmEmail(contact?.email),
       address: formatUfmText(attorney.address),
       city: formatUfmText(attorney.city),
@@ -324,7 +329,7 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
 
     return {
       category: "interpreter",
-      name: normalizeValue(interpreter.name.value),
+      name: formatUfmText(interpreter.name.value),
       role: "INTERPRETER",
       certified: interpreter.certified || details?.certified || false,
       cert_number: normalizeValue(interpreter.cert_number) ?? details?.cert_number ?? null,
@@ -335,7 +340,7 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
       language_from: normalizeValue(interpreter.language_from),
       language_to: normalizeValue(interpreter.language_to),
       oath_administered: interpreter.oath_administered,
-      phone: normalizeValue(interpreter.phone) ?? normalizeValue(contact?.phone),
+      phone: formatUfmPhone(interpreter.phone) ?? formatUfmPhone(contact?.phone),
       email: normalizeValue(interpreter.email) ?? normalizeValue(contact?.email),
     };
   });
@@ -346,12 +351,12 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
 
     return {
       category: "videographer",
-      name: normalizeValue(videographer.name.value),
-      firm: normalizeValue(videographer.firm.value),
+      name: formatUfmText(videographer.name.value),
+      firm: formatUfmText(videographer.firm.value),
       role: "VIDEOGRAPHER",
       cert_number: normalizeValue(videographer.cert_number) ?? normalizeValue(details?.cert_number),
       role_title: normalizeValue(videographer.role_title) ?? normalizeValue(details?.role_title),
-      phone: normalizeValue(videographer.phone) ?? normalizeValue(contact?.phone),
+      phone: formatUfmPhone(videographer.phone) ?? formatUfmPhone(contact?.phone),
       email: normalizeValue(videographer.email) ?? normalizeValue(contact?.email),
     };
   });
@@ -367,11 +372,11 @@ function buildAppearances(record: CaseRecord, directoryContacts: Contact[]): Ufm
 
     return {
       category: "participant",
-      name: normalizeValue(participant.name.value),
+      name: formatUfmText(participant.name.value),
       role: normalizeValue(participant.role),
-      organization: normalizeValue(participant.organization) ?? normalizeValue(contact?.organization),
+      organization: formatUfmText(participant.organization) ?? formatUfmText(contact?.organization),
       email: normalizeValue(participant.email) ?? normalizeValue(contact?.email),
-      phone: normalizeValue(participant.phone) ?? normalizeValue(contact?.phone),
+      phone: formatUfmPhone(participant.phone) ?? formatUfmPhone(contact?.phone),
       role_in_this_proceeding: normalizeValue(participant.role_in_this_proceeding),
     };
   });
@@ -396,8 +401,8 @@ function buildLawFirms(record: CaseRecord, directoryFirms: Firm[]): UfmLawFirm[]
     city: formatUfmText(lawFirm.city.value),
     state: formatUfmState(lawFirm.state.value),
     zip: normalizeValue(lawFirm.zip.value),
-    phone: normalizeValue(lawFirm.phone.value),
-    fax: normalizeValue(lawFirm.fax.value),
+    phone: formatUfmPhone(lawFirm.phone.value),
+    fax: formatUfmPhone(lawFirm.fax.value),
     email: formatUfmEmail(lawFirm.email.value),
     represented_party: normalizeValue(lawFirm.represented_party.value),
   }));
@@ -416,8 +421,8 @@ function buildLawFirms(record: CaseRecord, directoryFirms: Firm[]): UfmLawFirm[]
       city: formatUfmText(directoryFirm?.city) ?? formatUfmText(attorney.city),
       state: formatUfmState(directoryFirm?.state) ?? formatUfmState(attorney.state),
       zip: normalizeValue(directoryFirm?.zip) ?? normalizeValue(attorney.zip),
-      phone: normalizeValue(directoryFirm?.main_phone),
-      fax: normalizeValue(directoryFirm?.fax),
+      phone: formatUfmPhone(directoryFirm?.main_phone),
+      fax: formatUfmPhone(directoryFirm?.fax),
       email: null,
       represented_party: normalizeValue(attorney.representing.value),
     });
@@ -437,8 +442,8 @@ function buildLawFirms(record: CaseRecord, directoryFirms: Firm[]): UfmLawFirm[]
       city: normalizeValue(directoryFirm?.city),
       state: normalizeValue(directoryFirm?.state),
       zip: normalizeValue(directoryFirm?.zip),
-      phone: normalizeValue(directoryFirm?.main_phone),
-      fax: normalizeValue(directoryFirm?.fax),
+      phone: formatUfmPhone(directoryFirm?.main_phone),
+      fax: formatUfmPhone(directoryFirm?.fax),
       email: null,
       represented_party: null,
     });
@@ -573,7 +578,7 @@ export function buildUfmMetadata(args: {
   const computedAt = args.computedAt ?? new Date().toISOString();
   const effectiveReporterProfile = resolveReporterProfileUsage(record, reporterProfile);
   const address = joinLocation(record);
-  const caption = normalizeValue(record.caption.case_style.value) ?? normalizeValue(record.caption.case_name.value);
+  const caption = formatUfmText(record.caption.case_style.value) ?? formatUfmText(record.caption.case_name.value);
   const deponent = deponentName(record);
   const depositionDate = normalizeValue(record.session.deposition_date.value);
   const dateParts = computeDateParts(depositionDate);

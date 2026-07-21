@@ -73,7 +73,8 @@ export function DeepgramPayloadPreview() {
   const request = useMemo(() => buildDeepgramRequestFromStoredKeyterms({
     caseId: record.case_id,
     keyterms: record.deepgram.keyterms,
-  }), [record.case_id, record.deepgram.keyterms]);
+    config: record.deepgram,
+  }), [record.case_id, record.deepgram]);
 
   const selectedTerms = request.envelope.keyterms;
   const structuredPayload = JSON.stringify(request.envelope, null, 2);

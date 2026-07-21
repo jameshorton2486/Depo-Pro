@@ -61,7 +61,7 @@ function buildMountedConfig(config: DepoEditorConfig, session: Session | null): 
   };
 }
 
-function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session | null) {
+function renderEditor(config: DepoEditorConfig, session: Session | null) {
   const mountedConfig = buildMountedConfig(config, session);
   const el = document.querySelector(mountedConfig.mountSelector);
   if (!el) {
@@ -75,12 +75,6 @@ function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, sess
   }
 
   lastRenderedSessionKey = buildSessionRenderKey(session);
-  console.info("[DEPO-PRO] Mounting editor with config:", {
-    ...mountedConfig,
-    apiBaseUrl: resolvedApiBaseUrl,
-    supabaseAccessToken: mountedConfig.supabaseAccessToken ? "[redacted]" : undefined,
-    supabaseRefreshToken: mountedConfig.supabaseRefreshToken ? "[redacted]" : undefined,
-  });
   editorRoot?.render(<DepoEditor config={mountedConfig} />);
 }
 
@@ -101,7 +95,7 @@ function subscribeToAuthChanges() {
       return;
     }
 
-    renderEditor(currentConfig, currentApiBaseUrl, session);
+    renderEditor(currentConfig, session);
   });
 
   authStateUnsubscribe = () => {
@@ -125,10 +119,10 @@ export async function mountEditor(config: DepoEditorConfig) {
       refreshToken: config.supabaseRefreshToken,
     });
   } catch (error) {
-    console.warn("[DEPO-PRO] Supabase session bootstrap failed before mount.", error);
+    console.warn("[DEPO-PRO] Supabase session bootstrap failed before mount.");
   }
 
-  renderEditor(config, resolvedApiBaseUrl, session);
+  renderEditor(config, session);
   subscribeToAuthChanges();
 }
 

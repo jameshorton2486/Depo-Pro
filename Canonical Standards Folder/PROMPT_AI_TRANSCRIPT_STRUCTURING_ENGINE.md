@@ -1,5 +1,14 @@
 # PROMPT — AI Transcript Structuring Engine
 
+> **STATUS: HISTORICAL / SUPERSEDED (2026-07-13).** This monolithic prompt is
+> retained for historical reference only. It has been superseded by the
+> architecture-aligned **DEPO-PRO Transcript Compiler Prompt Library** at
+> `docs/prompts/transcript-compiler/` (see `MASTER_TRANSCRIPT_COMPILER_PROMPT.md`
+> and its per-layer modules W21/W22/W23/TP-5/W24/W25/W26). New rule work happens
+> in the owning module, not here. Per the Prompt–Architecture Ownership Rule
+> (`docs/architecture/W0_ENGINEERING_OPERATIONS_STANDARD.md`), every rule has
+> exactly one architectural owner.
+>
 > **STATUS: REFERENCE DESIGN ONLY.** This document is not an active authority.
 > It describes future or proposed work. Current authoritative behavior is governed
 > by `DP-010`, `DP-011`, `DP-012`, and `CANONICAL_STANDARDS_INDEX.md`.

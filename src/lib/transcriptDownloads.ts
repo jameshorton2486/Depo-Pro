@@ -5,7 +5,22 @@ import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { serializeFormattedDocumentClean } from "./format/serialize";
 import { buildInclusionPagesText } from "./transcript/inclusionPages";
-import { buildWorkspaceTranscriptTextClean } from "./transcript/workspacePresentation";
+import { buildStructuredTranscriptPackage, renderStructuredTranscriptText } from "./transcript/structuredTranscriptPackage";
+import { stripInlineFlagSpans } from "./transcript/wordDisplay";
+
+function filterVisibleTranscript(document: EditorDocument): EditorDocument {
+  const visibleUtterances = document.utterances.filter((utterance) => {
+    const candidate = utterance as typeof utterance & { excluded_from_output?: boolean };
+    return candidate.excluded_from_output !== true;
+  });
+  const visibleUtteranceIds = new Set(visibleUtterances.map((utterance) => utterance.utterance_id));
+
+  return {
+    ...document,
+    utterances: visibleUtterances,
+    words: document.words.filter((word) => visibleUtteranceIds.has(word.utterance_id)),
+  };
+}
 
 export function buildFormattedTranscriptText(
   document: EditorDocument,
@@ -16,9 +31,17 @@ export function buildFormattedTranscriptText(
     inclusionPages?: Record<string, unknown> | null;
   },
 ): string {
+  const visibleDocument = filterVisibleTranscript(document);
   const body = options?.structureConfirmed && !options?.keepRawLabels
-    ? buildWorkspaceTranscriptTextClean(document, options.record)
-    : serializeFormattedDocumentClean(cfe(document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry));
+    ? renderStructuredTranscriptText(
+        buildStructuredTranscriptPackage(visibleDocument, {
+          record: options?.record,
+          mode: "clean",
+        }),
+        stripInlineFlagSpans,
+        "clean",
+      )
+    : serializeFormattedDocumentClean(cfe(visibleDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry));
   const frontMatter = buildInclusionPagesText(options?.inclusionPages);
 
   return frontMatter ? `${frontMatter}\n\n${body}`.trim() : body;

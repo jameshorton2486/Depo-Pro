@@ -1,5 +1,6 @@
 import type { EditorDocument } from "../../api/types";
 import type { CaseRecord } from "../../types/case";
+import { buildEntityRegistry, findEntityMatch, listRegistryTerms } from "./entityRegistry";
 import {
   AMBIGUOUS_FLAGS,
   DETERMINISTIC_PHRASE_CORRECTIONS,
@@ -40,6 +41,14 @@ export interface RetranscriptionCandidate {
   occurrence_count: number;
 }
 
+export interface CorrectionReportQueueItem {
+  kind: "speaker" | "low_confidence" | "ambiguous" | "money";
+  utterance_id?: string;
+  word_id?: string;
+  severity: "high" | "medium" | "low";
+  description: string;
+}
+
 export interface CorrectionReport {
   job_id: string;
   generated_at: string;
@@ -58,6 +67,7 @@ export interface CorrectionReport {
   implausible_money: TranscriptDefect[];
   speaker_issues: SpeakerIssue[];
   retranscription_candidates: RetranscriptionCandidate[];
+  curated_review_queue?: CorrectionReportQueueItem[];
 }
 
 const LOW_CONFIDENCE_THRESHOLD = 0.70;
@@ -73,6 +83,7 @@ export function buildCorrectionReport(
   const speakerIssues: SpeakerIssue[] = [];
   const flaggedSpeakerIds = new Set<string>();
   const retranscriptionCandidates = new Map<string, RetranscriptionCandidate>();
+  const entityRegistry = buildEntityRegistry(record);
 
   for (let i = 0; i < document.words.length; i += 1) {
     const word = document.words[i];
@@ -145,7 +156,7 @@ export function buildCorrectionReport(
     const ambiguousRule = AMBIGUOUS_FLAGS.find(
       (flag) => word.raw_text.toLowerCase() === flag.match.toLowerCase()
     );
-    if (ambiguousRule) {
+    if (ambiguousRule && !findEntityMatch(entityRegistry, word.raw_text)) {
       ambiguousFlags.push({
         layer: "AMBIGUOUS_FLAG",
         raw_token: word.raw_text,
@@ -239,6 +250,52 @@ export function buildCorrectionReport(
     addCaseRecordRetranscriptionCandidates(document, record, retranscriptionCandidates);
   }
 
+  for (const keyterm of listRegistryTerms(entityRegistry, ["witness", "attorney", "law_firm", "party", "employer"])) {
+    if (!retranscriptionCandidates.has(keyterm)) {
+      const normalized = keyterm.toLowerCase();
+      const fullText = document.words.map((word) => word.raw_text).join(" ").toLowerCase();
+      if (!fullText.includes(normalized) && normalized.length > 3) {
+        retranscriptionCandidates.set(keyterm, {
+          keyterm,
+          reason: `Case entity "${keyterm}" not found in transcript — add as keyterm`,
+          occurrence_count: 0,
+        });
+      }
+    }
+  }
+
+  const curatedReviewQueue: CorrectionReportQueueItem[] = [
+    ...speakerIssues.map((issue) => ({
+      kind: "speaker" as const,
+      severity: "high" as const,
+      description: issue.description,
+    })),
+    ...ambiguousFlags.slice(0, 20).map((issue) => ({
+      kind: "ambiguous" as const,
+      utterance_id: issue.utterance_id,
+      word_id: issue.word_id,
+      severity: "medium" as const,
+      description: issue.description,
+    })),
+    ...lowConfidence
+      .filter((issue) => issue.confidence != null && issue.confidence < 0.55)
+      .slice(0, 20)
+      .map((issue) => ({
+        kind: "low_confidence" as const,
+        utterance_id: issue.utterance_id,
+        word_id: issue.word_id,
+        severity: "medium" as const,
+        description: issue.description,
+      })),
+    ...implausibleMoney.map((issue) => ({
+      kind: "money" as const,
+      utterance_id: issue.utterance_id,
+      word_id: issue.word_id,
+      severity: "high" as const,
+      description: issue.description,
+    })),
+  ];
+
   return {
     job_id: document.job_id,
     generated_at: new Date().toISOString(),
@@ -258,6 +315,7 @@ export function buildCorrectionReport(
     speaker_issues: speakerIssues,
     retranscription_candidates: [...retranscriptionCandidates.values()]
       .sort((left, right) => right.occurrence_count - left.occurrence_count),
+    curated_review_queue: curatedReviewQueue,
   };
 }
 

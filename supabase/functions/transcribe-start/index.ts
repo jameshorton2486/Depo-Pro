@@ -196,7 +196,6 @@ Deno.serve(async (request) => {
     };
     if (budgetedKeyterms.droppedCount > 0) {
       console.warn("[transcribe-start] trimmed keyterms to request budget", {
-        caseId,
         droppedCount: budgetedKeyterms.droppedCount,
         estimatedTokens: budgetedKeyterms.estimatedTokens,
       });
@@ -205,6 +204,7 @@ Deno.serve(async (request) => {
     const requestPreview = buildDeepgramRequestFromStoredKeyterms({
       caseId,
       keyterms: budgetedKeyterms.keyterms,
+      config: record.deepgram,
     });
     const callbackToken = createCallbackToken();
     const callbackTokenHash = await sha256Hex(callbackToken);

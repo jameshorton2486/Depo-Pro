@@ -38,6 +38,26 @@ function makeRecord(): CaseRecord {
   } as unknown as CaseRecord;
 }
 
+function makeProceedingsMetadataRecord(): CaseRecord {
+  return {
+    ...makeRecord(),
+    session: {
+      ...makeRecord().session,
+      deposition_date: { value: "2026-04-24" },
+      start_time: { value: "13:27" },
+      remote_platform: { value: "Zoom" },
+    },
+    scheduling: {
+      remote_platform: { value: "Zoom" },
+    },
+    reporter: {
+      ...makeRecord().reporter,
+      cert_number: { value: "12129" },
+      cert_state: { value: "Texas" },
+    },
+  } as unknown as CaseRecord;
+}
+
 function makeDocument(): EditorDocument {
   return {
     job_id: "job-1",
@@ -343,6 +363,62 @@ describe("transcriptParagraphs", () => {
     expect(text).not.toContain("You may proceed with the examination.");
     expect(assignments.get("utt-2")?.lineType).toBe("PN");
     expect(assignments.get("utt-3")?.lineType).toBe("PN");
+  });
+
+  it("generates proceedings metadata from the case record and suppresses duplicated admin speech", () => {
+    const document = makeDocument();
+    document.speakers = [
+      { speaker_id: "spk-0", display_name: "Speaker 0", deepgram_speaker: 0, role: "OTHER" },
+      { speaker_id: "spk-1", display_name: "Speaker 1", deepgram_speaker: 1, role: "OTHER" },
+      { speaker_id: "spk-2", display_name: "Speaker 2", deepgram_speaker: 2, role: "OTHER" },
+      { speaker_id: "spk-3", display_name: "Speaker 3", deepgram_speaker: 3, role: "OTHER" },
+    ];
+    document.utterances = [
+      { utterance_id: "utt-1", speaker_id: "spk-0", start_time: 0, end_time: 1, word_ids: ["w1", "w2", "w3", "w4"] },
+      { utterance_id: "utt-2", speaker_id: "spk-1", start_time: 1, end_time: 2, word_ids: ["w5", "w6", "w7", "w8", "w9", "w10"] },
+      { utterance_id: "utt-3", speaker_id: "spk-2", start_time: 2, end_time: 3, word_ids: ["w11", "w12", "w13", "w14", "w15"] },
+      { utterance_id: "utt-4", speaker_id: "spk-1", start_time: 3, end_time: 4, word_ids: ["w16", "w17", "w18", "w19"] },
+      { utterance_id: "utt-5", speaker_id: "spk-3", start_time: 4, end_time: 5, word_ids: ["w20", "w21"] },
+    ];
+    document.words = [
+      { word_id: "w1", text: "PROCEEDINGS", raw_text: "PROCEEDINGS", speaker_id: "spk-0", utterance_id: "utt-1", start_time: 0, end_time: 0.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w2", text: "", raw_text: "", speaker_id: "spk-0", utterance_id: "utt-1", start_time: 0.1, end_time: 0.2, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w3", text: "", raw_text: "", speaker_id: "spk-0", utterance_id: "utt-1", start_time: 0.2, end_time: 0.3, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w4", text: "", raw_text: "", speaker_id: "spk-0", utterance_id: "utt-1", start_time: 0.3, end_time: 0.4, confidence: 1, reviewed: false, edited: false },
+
+      { word_id: "w5", text: "We", raw_text: "We", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.4, end_time: 0.5, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w6", text: "are on the record.", raw_text: "are on the record.", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.5, end_time: 0.6, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w7", text: "Today's date is", raw_text: "Today's date is", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.6, end_time: 0.7, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w8", text: "April 24, 2026,", raw_text: "April 24, 2026,", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.7, end_time: 0.8, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w9", text: "and the time is now", raw_text: "and the time is now", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.8, end_time: 0.9, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w10", text: "1:27 p.m.", raw_text: "1:27 p.m.", speaker_id: "spk-1", utterance_id: "utt-2", start_time: 0.9, end_time: 1.0, confidence: 1, reviewed: false, edited: false },
+
+      { word_id: "w11", text: "This", raw_text: "This", speaker_id: "spk-2", utterance_id: "utt-3", start_time: 1.0, end_time: 1.1, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w12", text: "is Cause Number", raw_text: "is Cause Number", speaker_id: "spk-2", utterance_id: "utt-3", start_time: 1.1, end_time: 1.2, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w13", text: "raw-123.", raw_text: "raw-123.", speaker_id: "spk-2", utterance_id: "utt-3", start_time: 1.2, end_time: 1.3, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w14", text: "Licensed in Texas.", raw_text: "Licensed in Texas.", speaker_id: "spk-2", utterance_id: "utt-3", start_time: 1.3, end_time: 1.4, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w15", text: "State your agreement.", raw_text: "State your agreement.", speaker_id: "spk-2", utterance_id: "utt-3", start_time: 1.4, end_time: 1.5, confidence: 1, reviewed: false, edited: false },
+
+      { word_id: "w16", text: "Good", raw_text: "Good", speaker_id: "spk-1", utterance_id: "utt-4", start_time: 1.5, end_time: 1.6, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w17", text: "afternoon.", raw_text: "afternoon.", speaker_id: "spk-1", utterance_id: "utt-4", start_time: 1.6, end_time: 1.7, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w18", text: "Dennis", raw_text: "Dennis", speaker_id: "spk-1", utterance_id: "utt-4", start_time: 1.7, end_time: 1.8, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w19", text: "Bentley for the plaintiff.", raw_text: "Bentley for the plaintiff.", speaker_id: "spk-1", utterance_id: "utt-4", start_time: 1.8, end_time: 1.9, confidence: 1, reviewed: false, edited: false },
+
+      { word_id: "w20", text: "I", raw_text: "I", speaker_id: "spk-3", utterance_id: "utt-5", start_time: 1.9, end_time: 2.0, confidence: 1, reviewed: false, edited: false },
+      { word_id: "w21", text: "do.", raw_text: "do.", speaker_id: "spk-3", utterance_id: "utt-5", start_time: 2.0, end_time: 2.1, confidence: 1, reviewed: false, edited: false },
+    ];
+
+    const text = buildWorkspaceTranscriptText(document, stripInlineFlagSpans, makeProceedingsMetadataRecord());
+
+    expect(text).toContain("PROCEEDINGS");
+    expect(text).toContain("THE VIDEOGRAPHER:  And good afternoon. We are on the record. Today's date is April 24, 2026, and the time is now 1:27 p.m..");
+    expect(text).toContain("This is the beginning of the deposition of Mohammad Etminan, M.D..");
+    expect(text).toContain("THE REPORTER:  Yes. This is Cause Number 2026-CV-1042, Jordan Alvarez v. Acme Logistics, Inc..");
+    expect(text).toContain("This deposition is taking place via Zoom in accordance with the Texas Rules of Civil Procedure.");
+    expect(text).toContain("I'm Nellie Bardel, court reporter, licensed in Texas, No. 12129.");
+    expect(text).toContain("MR. BENTLEY:  Good afternoon.  Dennis Bentley for the plaintiff.");
+    expect(text).not.toContain("raw-123");
+    expect(text).not.toContain("THE REPORTER:  This is Cause Number raw-123.");
   });
 
   it("reconstructs opening attorney appearances and first examination question from a reporter-owned cluster", () => {

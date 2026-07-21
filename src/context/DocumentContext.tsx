@@ -17,6 +17,7 @@ import type { ChangeLogEntry, ChangeSource } from "../types";
 import { workspaceApi, type WorkspaceAudioSegment } from "../api/workspaceService";
 import type { CorrectionReport } from "../lib/transcript/correctionOrchestrator";
 import { buildCorrectionReport } from "../lib/transcript/correctionOrchestrator";
+import { hasStructuredLineTypes } from "../lib/transcript/structuredTranscript";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -84,8 +85,12 @@ function buildWordMap(doc: EditorDocument): Record<string, Word> {
 function shouldApplyStructuredView(
   speakerMapConfirmed: boolean,
   pipelineState: string | null,
+  document?: EditorDocument | null,
 ): boolean {
-  return speakerMapConfirmed || pipelineState === "AWAITING_SPEAKER_VERIFICATION" || pipelineState === "SPEAKER_VERIFIED";
+  return speakerMapConfirmed
+    || pipelineState === "AWAITING_SPEAKER_VERIFICATION"
+    || pipelineState === "SPEAKER_VERIFIED"
+    || hasStructuredLineTypes(document);
 }
 
 export function documentReducer(state: State, action: Action): State {
@@ -108,7 +113,7 @@ export function documentReducer(state: State, action: Action): State {
         inclusionPages: action.inclusionPages,
         speakerMapConfirmed: action.speakerMapConfirmed,
         pipelineState: action.pipelineState,
-        structureConfirmed: shouldApplyStructuredView(action.speakerMapConfirmed, action.pipelineState),
+        structureConfirmed: shouldApplyStructuredView(action.speakerMapConfirmed, action.pipelineState, action.doc),
         keepRawLabels: false,
         audioSegments: action.audioSegments,
       };
@@ -301,7 +306,6 @@ export function DocumentProvider({
     dispatch({ type: "LOAD_START" });
     try {
       const loaded = await workspaceApi.getDocument(jobId);
-      console.info("[DEPO-PRO] EditorDocument loaded:", loaded.document);
       dispatch({
         type: "LOAD_OK",
         doc: loaded.document,

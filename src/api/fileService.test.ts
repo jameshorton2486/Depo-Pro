@@ -7,11 +7,18 @@ import {
   createFileId,
   isAudioUploadWithinLimit,
   MAX_AUDIO_BYTES,
+  SIGNED_URL_TTL_SECONDS,
   normalizeAudioUploadError,
   sanitizeFilename,
   validateCaseAudioUpload,
   validateCaseFileUpload,
 } from "./fileService";
+
+describe("SIGNED_URL_TTL_SECONDS", () => {
+  it("keeps initial media links valid for two hours before the player refreshes them", () => {
+    expect(SIGNED_URL_TTL_SECONDS).toBe(2 * 60 * 60);
+  });
+});
 
 describe("sanitizeFilename", () => {
   it("strips path separators and collapses whitespace", () => {

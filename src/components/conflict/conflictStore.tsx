@@ -176,8 +176,6 @@ export async function persistEntry(entry: ProvenanceEntry): Promise<boolean> {
     console.error("[DEPO-PRO] Supabase provenance write failed", {
       operation: `persistEntry:${entry.event_type}`,
       table: "field_provenance",
-      caseId: entry.case_id,
-      fieldPath: entry.field_path,
       message: error instanceof Error ? error.message : String(error),
     });
     return false;

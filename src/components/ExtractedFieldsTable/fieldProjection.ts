@@ -1,4 +1,5 @@
 import type { CaseRecord, FieldSource } from "../../types/case.ts";
+import { formatUsPhoneNumber, titleCaseLegalText } from "../../lib/format/legalText";
 
 // ─── Row model ────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,48 @@ function formatLocationType(value: CaseRecord["session"]["location_type"]["value
   }
 }
 
+const RAW_VALUE_PATH_SUFFIXES = [
+  "case_number",
+  "cert_number",
+  "bar_number",
+  "zip",
+  "phone",
+  "fax",
+  "email",
+  "deposition_date",
+  "start_time",
+  "end_time",
+] as const;
+
+function formatExtractedValue(value: string, path: string): string {
+  if (path.endsWith("state")) {
+    return value.trim().toUpperCase() === "TEXAS" ? "TX" : value.trim().toUpperCase();
+  }
+  if (path.endsWith("case_number")) {
+    return value.trim().toUpperCase();
+  }
+  if (path.includes("email") || value.includes("@")) {
+    return value.toLowerCase();
+  }
+  if (path.endsWith("phone") || path.endsWith("fax")) {
+    return formatUsPhoneNumber(value);
+  }
+  if (path.endsWith("read_and_sign") && value.toLowerCase() === "read_and_sign") {
+    return "Read and Sign";
+  }
+  if (path === "session.reporting_method") {
+    if (value === "voice_writer" || value === "machine_shorthand") return "Voice Writer";
+    if (value === "digital" || value === "audio_recording") return "Digital";
+  }
+  if (
+    RAW_VALUE_PATH_SUFFIXES.some((suffix) => path.endsWith(suffix))
+    || /^https?:\/\//i.test(value)
+  ) {
+    return value;
+  }
+  return titleCaseLegalText(value);
+}
+
 function toDisplaySource(s: FieldSource, path: string): DisplaySource {
   if (s === "extracted") {
     return JOB_SHEET_PATHS.has(path) ? "Job Sheet" : "Notice";
@@ -97,7 +140,7 @@ function makeRow(
   required: boolean,
   conflictAlternate: FieldRow["conflictAlternate"] = null,
 ): FieldRow {
-  const value = rawValue == null || rawValue === "" ? "" : String(rawValue);
+  const value = rawValue == null || rawValue === "" ? "" : formatExtractedValue(String(rawValue), path);
   const displaySource = toDisplaySource(source, path);
 
   let status: FieldStatus;

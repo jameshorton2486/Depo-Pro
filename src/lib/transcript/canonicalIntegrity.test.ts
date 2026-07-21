@@ -56,6 +56,96 @@ describe("auditCanonicalTranscript", () => {
     expect(result.failures.some((failure) => failure.includes("references missing utterance"))).toBe(true);
   });
 
+  it("fails when a word references a missing speaker", () => {
+    const normalized = buildNormalized();
+    normalized.words[0] = {
+      ...normalized.words[0],
+      speaker_id: "missing_speaker",
+    };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("references missing speaker"))).toBe(true);
+  });
+
+  it("warns when words in an utterance drift to a different speaker", () => {
+    const normalized = buildNormalized();
+    normalized.words[0] = {
+      ...normalized.words[0],
+      speaker_id: normalized.speakers[1]?.speaker_id ?? "spk_other",
+    };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes("word-level speaker changes"))).toBe(true);
+  });
+
+  it("fails on duplicate canonical speaker IDs", () => {
+    const normalized = buildNormalized();
+    normalized.speakers[1] = {
+      ...normalized.speakers[1],
+      speaker_id: normalized.speakers[0]?.speaker_id ?? "spk_000",
+    };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("Duplicate canonical speaker_id"))).toBe(true);
+  });
+
+  it("fails when an utterance ends before it starts", () => {
+    const normalized = buildNormalized();
+    normalized.utterances[0] = {
+      ...normalized.utterances[0],
+      start_time: 5,
+      end_time: 4,
+    };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("ends before it starts"))).toBe(true);
+  });
+  it("fails on duplicate canonical utterance IDs", () => {
+    const normalized = buildNormalized();
+    normalized.utterances[1] = {
+      ...normalized.utterances[1],
+      utterance_id: normalized.utterances[0]?.utterance_id ?? "utt_000000",
+    };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("Duplicate canonical utterance_id"))).toBe(true);
+  });
+
+  it("fails on invalid canonical timestamps", () => {
+    const normalized = buildNormalized();
+    normalized.words[0] = {
+      ...normalized.words[0],
+      start_time: Number.NaN,
+    };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("has invalid timing"))).toBe(true);
+  });
+
+  it("warns when an utterance does not bound its canonical words", () => {
+    const normalized = buildNormalized();
+    normalized.utterances[0] = {
+      ...normalized.utterances[0],
+      end_time: (normalized.utterances[0]?.start_time ?? 0) + 0.01,
+    };
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes("does not bound its canonical words"))).toBe(true);
+  });
   it("fails on suspicious adjacent duplicate spans with wording drift", () => {
     const normalized = buildNormalized();
     normalized.utterances = [

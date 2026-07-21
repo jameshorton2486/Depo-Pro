@@ -36,6 +36,7 @@ export interface IntakeContextValue {
   setNotes: (notes: string) => void;
   setAudio: (audio: CaseAudio | null) => void;
   setKeyterms: (keyterms: CaseRecord["deepgram"]["keyterms"]) => void;
+  setDeepgramConfig: (config: Partial<Omit<CaseRecord["deepgram"], "keyterms">>) => void;
   setCertification: (certification: CaseCertification | null) => void;
   updateField: (
     path: string,

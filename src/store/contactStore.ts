@@ -96,8 +96,6 @@ export function useContactStore() {
       console.error("[DEPO-PRO] Supabase contacts search failed", {
         operation: "searchContacts",
         table: "contacts",
-        message: err instanceof Error ? err.message : String(err),
-        term,
       });
       dispatch({ type: "FETCH_ERROR", payload: String(err) });
     }

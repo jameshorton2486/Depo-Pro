@@ -80,6 +80,16 @@ describe("deriveAutoSeedKeytermsFromCaseRecord", () => {
     ]);
   });
 
+  it("uses the reporter on the current case rather than a fixed reporter name", () => {
+    const record = buildRecord();
+    record.reporter.name = manualField("Avery Kim");
+
+    const terms = deriveAutoSeedKeytermsFromCaseRecord(record);
+    expect(terms).toContain("Avery Kim");
+    expect(terms).toContain("Kim");
+    expect(terms).not.toContain("Miah Bardot");
+  });
+
   it("caps auto-seeded terms at 20 entries", () => {
     const record = buildRecord();
     record.attorneys = Array.from({ length: 20 }, (_, index) => ({

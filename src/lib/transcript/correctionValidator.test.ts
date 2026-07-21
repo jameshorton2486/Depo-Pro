@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validateCorrections } from "./correctionValidator";
+import { buildResidualReviewQueue, validateCorrections } from "./correctionValidator";
 import type { CorrectionLogEntry } from "./correctionEngines";
 
 function block(overrides: Partial<Parameters<typeof validateCorrections>[0][number]> = {}) {
@@ -80,5 +80,21 @@ describe("correctionValidator", () => {
     const result = validateCorrections([block({ role: "ATTORNEY", block_type: "A" })], [correction()]);
     expect(result.validation_passed).toBe(true);
     expect(result.metrics.warnings_found).toBeGreaterThan(0);
+  });
+
+  it("builds a residual review queue from validation issues", () => {
+    const queue = buildResidualReviewQueue([
+      { type: "ERROR_CASE", severity: "ERROR", word_id: "w_1", message: "Hard failure" },
+      { type: "WARN_CASE", severity: "WARNING", utterance_index: 1, message: "Needs review" },
+    ]);
+
+    expect(queue[0]).toEqual({
+      kind: "validation_error",
+      severity: "high",
+      word_id: "w_1",
+      utterance_index: undefined,
+      message: "Hard failure",
+    });
+    expect(queue[1]?.kind).toBe("validation_warning");
   });
 });

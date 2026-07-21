@@ -1,6 +1,6 @@
 # Depo-Pro — Deepgram Go-Live Checklist
 
-**Code status:** complete. `diarize_model` removed, `mip_opt_out=true` shipped,
+**Code status:** complete. `diarize_model=latest` enables the current batch diarizer, `mip_opt_out=true` shipped,
 keyterms on the live request, both Edge Functions wired. Everything below is
 **configuration**, not code. Work top to bottom; the smoke test at the end is the
 proof.

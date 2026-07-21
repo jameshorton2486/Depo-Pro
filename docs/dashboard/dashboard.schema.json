@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DEPO-PRO Dashboard State",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "currentWave",
+    "currentSprint",
+    "sprintStatus",
+    "architectureHealth",
+    "benchmarkStatus",
+    "semanticScore",
+    "engineeringHealth",
+    "openDecisions",
+    "currentBranch",
+    "generatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "dashboardVersion": {
+      "type": "string",
+      "description": "Version of the dashboard output format."
+    },
+    "statusVocabularyVersion": {
+      "type": "string",
+      "description": "Version of the frozen canonical status vocabulary (W0_STATUS_VOCABULARY.md)."
+    },
+    "currentWave": {
+      "type": "string"
+    },
+    "currentMilestone": {
+      "type": "string"
+    },
+    "nextMilestone": {
+      "type": "string"
+    },
+    "currentSprint": {
+      "type": "object",
+      "required": [
+        "id",
+        "objective",
+        "status",
+        "overallStatus",
+        "validation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "semanticProducer": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "overallStatus": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outOfScope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "validation": {
+          "type": "object",
+          "required": [
+            "test",
+            "testDetail",
+            "typecheck",
+            "build"
+          ],
+          "properties": {
+            "test": {
+              "type": "string"
+            },
+            "testDetail": {
+              "type": "string"
+            },
+            "typecheck": {
+              "type": "string"
+            },
+            "build": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "sprintStatus": {
+      "type": "string"
+    },
+    "architectureHealth": {
+      "type": "object"
+    },
+    "benchmarkStatus": {
+      "type": "object"
+    },
+    "semanticScore": {
+      "type": "object"
+    },
+    "engineeringHealth": {
+      "type": "object"
+    },
+    "openDecisions": {
+      "type": "array"
+    },
+    "statusVocabulary": {
+      "type": "string",
+      "description": "Path to the canonical status vocabulary authority (W0_STATUS_VOCABULARY.md)."
+    },
+    "deploymentHealth": {
+      "type": "array",
+      "description": "Infrastructure/deployment systems and their canonical status, surfaced in PROJECT_HEALTH.md."
+    },
+    "pipelineStatus": {
+      "type": "array",
+      "description": "Transcript Compiler pipeline stages and their canonical status, surfaced in PIPELINE_STATUS.md."
+    },
+    "currentFixture": {
+      "type": "object",
+      "description": "The transcript fixture currently driving development, surfaced in CURRENT_FIXTURE.md."
+    },
+    "currentBranch": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    }
+  }
+}

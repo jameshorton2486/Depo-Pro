@@ -259,4 +259,14 @@ describe("integrityAudit", () => {
     expect(result.utterance_count).toBe(2);
     expect(result.speaker_ids_found).toEqual(["0", "1"]);
   });
+
+  it("allows a legitimate single-speaker result and flags it for confirmation", () => {
+    const response = cloneFixture();
+    response.results.utterances = [response.results.utterances?.[0]].filter(Boolean) as NonNullable<DeepgramResponse["results"]["utterances"]>;
+    const result = integrityAudit(response, { expectedSpeakerCount: 1 });
+
+    expect(result.integrity_passed).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes("Only 1 distinct speaker"))).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes("expected"))).toBe(false);
+  });
 });

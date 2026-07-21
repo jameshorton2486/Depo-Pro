@@ -55,18 +55,50 @@ function toDisplaySourceFromFieldSource(source: FieldSource): DisplaySource {
   return "Manual";
 }
 
+function hasMeaningfulValue(value: unknown): boolean {
+  if (value == null) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return true;
+}
+
+function isExtractedField(value: unknown): value is { value: unknown; source: FieldSource } {
+  return typeof value === "object"
+    && value !== null
+    && "value" in value
+    && "source" in value;
+}
+
+function countAppliedFields(value: unknown): number {
+  if (isExtractedField(value)) {
+    return hasMeaningfulValue(value.value) ? 1 : 0;
+  }
+  if (Array.isArray(value)) {
+    return value.reduce((count, item) => count + countAppliedFields(item), 0);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.values(value).reduce((count, item) => count + countAppliedFields(item), 0);
+  }
+  return 0;
+}
 function buildSummary(application: ExtractionApplication): ExtractionSummary {
   return {
     appliedCount:
-      application.fieldUpdates.length +
-      application.attorneyAdds.length +
-      application.attorneyPatches.length +
-      application.witnessAdds.length +
-      application.witnessPatches.length +
-      application.partyAdds.length +
-      application.partyPatches.length +
-      application.lawFirmAdds.length +
-      application.lawFirmPatches.length,
+      application.fieldUpdates.filter((update) => hasMeaningfulValue(update.value)).length +
+      countAppliedFields(application.attorneyAdds) +
+      countAppliedFields(application.attorneyPatches) +
+      countAppliedFields(application.witnessAdds) +
+      countAppliedFields(application.witnessPatches) +
+      countAppliedFields(application.partyAdds) +
+      countAppliedFields(application.partyPatches) +
+      countAppliedFields(application.lawFirmAdds) +
+      countAppliedFields(application.lawFirmPatches),
     conflictCount: application.conflicts.length,
   };
 }

@@ -57,6 +57,10 @@ const LOCATION_TYPE_OPTIONS = [
   { value: "hybrid", label: "Hybrid" },
   { value: "phone", label: "Phone" },
 ] as const;
+const REPORTING_METHOD_OPTIONS = [
+  { value: "voice_writer", label: "Voice Writer" },
+  { value: "digital", label: "Digital" },
+] as const;
 
 // ─── Confidence bar ───────────────────────────────────────────────────────────
 
@@ -140,7 +144,11 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate, conf
   const { state } = useConflict();
   const [editing, setEditing] = useState(false);
   const isLocationType = row.path === "session.location_type";
-  const initialDraftValue = isLocationType && typeof row.rawValue === "string" ? row.rawValue : row.value;
+  const isReportingMethod = row.path === "session.reporting_method";
+  const rawDraftValue = (isLocationType || isReportingMethod) && typeof row.rawValue === "string" ? row.rawValue : row.value;
+  const initialDraftValue = isReportingMethod
+    ? rawDraftValue === "machine_shorthand" ? "voice_writer" : rawDraftValue === "audio_recording" ? "digital" : rawDraftValue
+    : rawDraftValue;
   const [draftValue, setDraftValue] = useState(initialDraftValue);
   const resolvedEntry = state.history[row.id]?.find(
     (e) => e.event_type === "conflict_resolved",
@@ -230,14 +238,14 @@ function TableRow({ row, isResolved, onConfirm, onOpenProvenance, onUpdate, conf
           {isEditable && (
             editing ? (
               <div className="flex items-center gap-1">
-                {isLocationType ? (
+                {isLocationType || isReportingMethod ? (
                   <select
                     value={draftValue}
                     onChange={(e) => setDraftValue(e.target.value)}
                     className="w-32 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/30"
                   >
                     <option value="">Select</option>
-                    {LOCATION_TYPE_OPTIONS.map((option) => (
+                    {(isLocationType ? LOCATION_TYPE_OPTIONS : REPORTING_METHOD_OPTIONS).map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>

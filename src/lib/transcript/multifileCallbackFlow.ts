@@ -27,7 +27,7 @@ export interface AdvanceOrFinalizeDeps {
     patch: Partial<Pick<TranscriptionJobRecord, "status" | "source_audio_id" | "source_index" | "request_path" | "response_path" | "error">>,
   ) => Promise<void>;
   finalize: () => Promise<{ status: "complete" | "needs_manual_review"; responsePath: string }>;
-  cleanupTranscript: (transcriptId: string) => Promise<void>;
+  cleanupTranscript: (job: Pick<TranscriptionJobRecord, "id" | "transcript_id">) => Promise<void>;
   failJob: (jobId: string, responsePath: string, errorMessage: string) => Promise<void>;
 }
 
@@ -62,7 +62,7 @@ export async function advanceOrFinalizeMultifileJob(
 
     return deps.finalize();
   } catch (error) {
-    await deps.cleanupTranscript(job.transcript_id);
+    await deps.cleanupTranscript(job);
     await deps.failJob(
       job.id,
       responsePath,

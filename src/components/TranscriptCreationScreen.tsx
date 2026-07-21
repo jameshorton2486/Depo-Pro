@@ -28,7 +28,7 @@ import { WorkspaceSidebar } from "./WorkspaceSidebar/WorkspaceSidebar";
 const REQUIRE_BINDING_CONFIRM = import.meta.env.VITE_REQUIRE_BINDING_CONFIRM !== "false";
 
 export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
-  const { record } = useIntake();
+  const { record, setDeepgramConfig } = useIntake();
   const { openWorkspace } = useStage();
   const [audio, setAudio] = useState<CaseAudioRecord | null>(null);
   const [jobs, setJobs] = useState<TranscriptionJobRecord[]>([]);
@@ -45,7 +45,8 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const requestPreview = useMemo(() => buildDeepgramRequestFromStoredKeyterms({
     caseId,
     keyterms: record.deepgram.keyterms,
-  }), [caseId, record.deepgram.keyterms]);
+    config: record.deepgram,
+  }), [caseId, record.deepgram]);
 
   const caseIdentity = useMemo(() => ({
     caseId: record.case_id,
@@ -178,6 +179,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     setError(null);
 
     try {
+      await saveCase(record);
       await startTranscription(caseId, { sourceTranscriptId: sourceTranscriptId ?? null });
       const transcriptJobs = await listTranscriptionJobs(caseId);
       setJobs(transcriptJobs);
@@ -186,7 +188,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
     } finally {
       setRunning(false);
     }
-  }, [audio, caseId]);
+  }, [audio, caseId, record]);
 
   // Guard against the countdown effect firing after the user has already
   // proceeded manually, cancelled, or switched to a new pre-analysis report.
@@ -485,6 +487,27 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                   ? "Offline fixture mode is active. Output is marked non-authoritative and cannot be certified."
                   : "Deepgram Nova-3 is configured for batch ingestion."}
               </p>
+              <div className="mt-4 grid gap-3">
+                <label className="text-xs font-semibold text-slate-600">
+                  Audio profile
+                  <select value={record.deepgram.audio_profile} onChange={(event) => {
+                      const audioProfile = event.target.value as typeof record.deepgram.audio_profile;
+                      const splitByProfile = { clean: 0.8, remote: 1, telephone: 0.6, courtroom: 1.2 } as const;
+                      setDeepgramConfig({ audio_profile: audioProfile, utterance_split_seconds: splitByProfile[audioProfile] });
+                    }} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="clean">Clean recording</option>
+                    <option value="remote">Remote deposition</option>
+                    <option value="telephone">Telephone</option>
+                    <option value="courtroom">Courtroom / room mic</option>
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-slate-600">Expected speakers
+                  <input type="number" min={1} max={20} value={record.deepgram.speaker_count ?? ""} placeholder="Auto-detect" onChange={(event) => setDeepgramConfig({ speaker_count: event.target.value ? Number(event.target.value) : null })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+                </label>
+                <label className="text-xs font-semibold text-slate-600">Utterance split (seconds)
+                  <input type="number" min={0.1} max={5} step={0.1} value={record.deepgram.utterance_split_seconds} onChange={(event) => setDeepgramConfig({ utterance_split_seconds: Number(event.target.value) })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+                </label>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5">

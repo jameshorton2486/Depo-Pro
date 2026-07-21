@@ -49,7 +49,7 @@ export type AttorneyFunction =
   | "CUSTODIAL_ATTORNEY"
   | "CROSS_EXAMINATION";
 export type AttorneyFunctionValue = AttorneyFunction[] | AttorneyRole;
-export type ReportingMethod = "machine_shorthand" | "zoom" | "in_person" | "audio_recording";
+export type ReportingMethod = "voice_writer" | "digital" | "machine_shorthand" | "zoom" | "in_person" | "audio_recording";
 export type LocationType = "zoom" | "in_person" | "hybrid" | "phone";
 export type JurisdictionType = "texas_state" | "federal" | "state" | "other";
 export type PartyRole = "plaintiff" | "defendant" | "third_party" | "cross_plaintiff" | "cross_defendant" | "witness" | "other";
@@ -354,6 +354,8 @@ export interface DeepgramConfig {
   speaker_count:     number | null;  // null = auto-detect
   smart_format:      boolean;
   numerals:          boolean;
+  audio_profile:     "clean" | "remote" | "telephone" | "courtroom";
+  utterance_split_seconds: number;
   keyterms:          DeepgramKeyterm[];
 }
 
@@ -453,6 +455,8 @@ export function defaultDeepgramConfig(): DeepgramConfig {
     speaker_count:   null,
     smart_format:    true,
     numerals:        false,
+    audio_profile:   "clean",
+    utterance_split_seconds: 0.8,
     keyterms:        [],
   };
 }
@@ -1250,7 +1254,7 @@ function normalizeSession(source: unknown, defaults: Session): Session {
     reporting_method: normalizeNullableRoleField(
       session?.reporting_method,
       defaults.reporting_method,
-      ["machine_shorthand", "zoom", "in_person", "audio_recording"] as const,
+      ["voice_writer", "digital", "machine_shorthand", "zoom", "in_person", "audio_recording"] as const,
     ),
     is_remote: normalizeBoolean(session?.is_remote),
     remote_platform: normalizeNullableStringField(session?.remote_platform, defaults.remote_platform),
@@ -1367,6 +1371,17 @@ function normalizeDeepgram(source: unknown, defaults: DeepgramConfig, coercedPat
     speaker_count: deepgram?.speaker_count === null || typeof deepgram?.speaker_count === "number" ? deepgram.speaker_count : defaults.speaker_count,
     smart_format: typeof deepgram?.smart_format === "boolean" ? deepgram.smart_format : defaults.smart_format,
     numerals: typeof deepgram?.numerals === "boolean" ? deepgram.numerals : defaults.numerals,
+    audio_profile:
+      deepgram?.audio_profile === "remote"
+      || deepgram?.audio_profile === "telephone"
+      || deepgram?.audio_profile === "courtroom"
+      || deepgram?.audio_profile === "clean"
+        ? deepgram.audio_profile
+        : defaults.audio_profile,
+    utterance_split_seconds:
+      typeof deepgram?.utterance_split_seconds === "number"
+        ? Math.min(5, Math.max(0.1, deepgram.utterance_split_seconds))
+        : defaults.utterance_split_seconds,
     keyterms: normalizeArrayField(
       deepgram?.keyterms,
       "deepgram.keyterms",
@@ -1508,7 +1523,6 @@ export function normalizeCaseRecord(record: unknown): CaseRecord {
   if (coercedPaths.size > 0 && !warnedLegacyCaseIds.has(deduped.case_id)) {
     warnedLegacyCaseIds.add(deduped.case_id);
     console.warn("[DEPO-PRO] Normalized legacy case payload", {
-      case_id: deduped.case_id,
       coercedPaths: [...coercedPaths],
     });
   }

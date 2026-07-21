@@ -33,7 +33,12 @@ function formatJobIdSuffix(jobId: string): string {
 
 export function Toolbar({ jobId, onSave }: Props) {
   const { state } = useDocument();
-  const { showInterpreterLayer, setShowInterpreterLayer } = useEditorContext();
+  const {
+    showInterpreterLayer,
+    setShowInterpreterLayer,
+    showTabStops,
+    setShowTabStops,
+  } = useEditorContext();
   const { record } = useIntake();
   const [showOriginal, setShowOriginal] = useState(false);
   const shortJobId = formatJobIdSuffix(jobId);
@@ -76,6 +81,19 @@ export function Toolbar({ jobId, onSave }: Props) {
         >
           <Languages size={14} />
           <span className="hidden xl:inline">Interpreter</span>
+        </button>
+
+        <button
+          onClick={() => setShowTabStops(!showTabStops)}
+          className={`rounded px-2.5 py-1.5 text-sm transition-colors ${
+            showTabStops
+              ? "bg-blue-700 text-blue-100 hover:bg-blue-600"
+              : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          }`}
+          title="Toggle transcript tab stop guides"
+          data-testid="toolbar-tab-stops-toggle"
+        >
+          Tabs
         </button>
 
         <button

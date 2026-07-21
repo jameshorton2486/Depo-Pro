@@ -8,6 +8,7 @@ import { useStage } from "../../context/StageContext";
 import { isCaseUfmReady } from "../../lib/ufm/requiredFields";
 import type { CaseCertification } from "../../types/case";
 import { WorkflowStageNav } from "../WorkflowStageNav";
+import { titleCaseLegalText } from "../../lib/format/legalText";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
 const DEFAULT_STATEMENT =
@@ -208,7 +209,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Stage 6</p>
                 <h1 className="text-lg font-semibold text-slate-900">Certification</h1>
               </div>
-              <span className="ml-auto text-xs text-slate-500">{record.caption.case_name.value || jobId}</span>
+              <span className="ml-auto text-xs text-slate-500">{record.caption.case_name.value ? titleCaseLegalText(record.caption.case_name.value) : jobId}</span>
             </div>
           </header>
 

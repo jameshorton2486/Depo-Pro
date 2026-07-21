@@ -67,6 +67,7 @@ const CASE_FILES_BUCKET = "case-files";
 const DOCUMENT_LIMIT_BYTES = 50 * 1024 * 1024;
 const TRANSCRIPT_SOURCE_LIMIT_BYTES = 100 * 1024 * 1024;
 export const MAX_AUDIO_BYTES = 2 * 1024 * 1024 * 1024;
+export const SIGNED_URL_TTL_SECONDS = 2 * 60 * 60;
 
 const DOCUMENT_EXTENSIONS = new Set(["pdf", "docx", "txt", "png", "jpg", "jpeg"]);
 const DOCUMENT_MIME_TYPES = new Set([
@@ -555,7 +556,7 @@ export async function getSignedUrl(storagePath: string): Promise<string> {
   const client = await getSupabaseClient("getSignedUrl");
   const { data, error } = await client.storage
     .from(CASE_FILES_BUCKET)
-    .createSignedUrl(storagePath, 60 * 60);
+    .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
 
   if (error) {
     throw error;

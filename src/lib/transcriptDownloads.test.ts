@@ -8,7 +8,7 @@ import {
   buildWordTranscriptHtml,
   buildWorkspaceTranscriptJson,
 } from "./transcriptDownloads";
-import { stripInlineFlagSpans } from "./transcript/workspacePresentation";
+import { stripInlineFlagSpans } from "./transcript/wordDisplay";
 
 function makeDocument(): EditorDocument {
   return {
@@ -167,6 +167,62 @@ describe("transcriptDownloads", () => {
     expect(structuredText).toContain("BY DENNIS BENTLEY:");
   });
 
+  it("preserves persisted line_type and speaker_label in structured exports instead of rebuilding them", () => {
+    const document = makeDocument();
+    document.speakers = [
+      {
+        speaker_id: "spk-1",
+        display_name: "Speaker 1",
+        deepgram_speaker: 0,
+        role: "OTHER",
+      },
+    ];
+    document.utterances = [
+      {
+        utterance_id: "utt-1",
+        speaker_id: "spk-1",
+        start_time: 0,
+        end_time: 1,
+        word_ids: ["w1", "w2"],
+        line_type: "Q",
+        speaker_label: "MR. BENTLEY",
+      } as EditorDocument["utterances"][number] & { line_type: "Q"; speaker_label: string },
+    ];
+    document.words = [
+      {
+        word_id: "w1",
+        text: "Please",
+        raw_text: "Please",
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+        start_time: 0,
+        end_time: 0.25,
+        confidence: 1,
+        reviewed: false,
+        edited: false,
+      },
+      {
+        word_id: "w2",
+        text: "proceed.",
+        raw_text: "proceed.",
+        speaker_id: "spk-1",
+        utterance_id: "utt-1",
+        start_time: 0.25,
+        end_time: 0.5,
+        confidence: 1,
+        reviewed: false,
+        edited: false,
+      },
+    ];
+
+    const structuredText = buildFormattedTranscriptText(document, {
+      structureConfirmed: true,
+    });
+
+    expect(structuredText).toContain("Q. Please proceed.");
+    expect(structuredText).not.toContain("THE REPORTER");
+  });
+
   it("prepends persisted inclusion pages to transcript downloads", () => {
     const text = buildFormattedTranscriptText(makeDocument(), {
       structureConfirmed: true,
@@ -194,6 +250,25 @@ describe("transcriptDownloads", () => {
     expect(text).toContain("APPEARANCES");
     expect(text).toContain("Dennis Bentley");
     expect(text).toContain("EXAMINATION");
+  });
+
+  it("omits utterances excluded by boundary semantics from structured exports", () => {
+    const document = makeDocument();
+    document.utterances = [
+      {
+        ...document.utterances[0],
+        excluded_from_output: true,
+      } as typeof document.utterances[number] & { excluded_from_output: boolean },
+      document.utterances[1],
+    ];
+
+    const text = buildFormattedTranscriptText(document, {
+      structureConfirmed: true,
+      record: makeRecord(),
+    });
+
+    expect(text).not.toContain("Please state your");
+    expect(text).toContain("A. No. 12129");
   });
 
   it("strips inline flag spans from raw TXT download output while preserving verbatim tokens", () => {

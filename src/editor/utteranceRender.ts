@@ -15,8 +15,12 @@ export function formatUtteranceTimeTitle(startTime: number): string {
   return `${Math.floor(startTime / 60)}:${String(Math.floor(startTime % 60)).padStart(2, "0")}`;
 }
 
-export function getUtterancePrefix(role: Speaker["role"] | null, speakerLabel: string): string {
-  const blockRole = getBlockRole(role);
+export function getUtterancePrefix(
+  role: Speaker["role"] | null,
+  speakerLabel: string,
+  lineType?: string | null,
+): string {
+  const blockRole = getBlockRole(role, lineType);
   if (blockRole === "Q") return "Q.";
   if (blockRole === "A") return "A.";
   return abbreviateUtteranceLabel(speakerLabel);

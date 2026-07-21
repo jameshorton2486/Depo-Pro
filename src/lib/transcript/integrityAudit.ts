@@ -35,6 +35,11 @@ export interface IntegrityAuditResult {
   metrics: Record<string, unknown>;
 }
 
+export interface IntegrityAuditOptions {
+  expectedSpeakerCount?: number | null;
+}
+
+
 type AuditWord = {
   id?: string;
   word?: string;
@@ -137,7 +142,10 @@ function classifyOverlap(overlapSeconds: number): "ignore" | "warning" | "elevat
   return "failure";
 }
 
-export function integrityAudit(rawDeepgramJson: DeepgramResponse): IntegrityAuditResult {
+export function integrityAudit(
+  rawDeepgramJson: DeepgramResponse,
+  options: IntegrityAuditOptions = {},
+): IntegrityAuditResult {
   const failures: string[] = [];
   const warnings: string[] = [];
   const gaps: IntegrityAuditResult["gaps"] = [];
@@ -215,7 +223,12 @@ export function integrityAudit(rawDeepgramJson: DeepgramResponse): IntegrityAudi
 
   const speakerIds = [...speakerWordCounts.keys()].sort();
   if (speakerIds.length < 2) {
-    failures.push(`Only ${speakerIds.length} distinct speaker(s) detected.`);
+    warnings.push(`Only ${speakerIds.length} distinct speaker(s) detected. Confirm this matches the proceeding.`);
+  }
+  if (options.expectedSpeakerCount != null && speakerIds.length !== options.expectedSpeakerCount) {
+    warnings.push(
+      `${speakerIds.length} speaker cluster(s) detected; ${options.expectedSpeakerCount} expected. Review speaker mapping.`,
+    );
   }
   if (speakerIds.length > 8) {
     warnings.push(`${speakerIds.length} speaker clusters detected. Likely diarization fragmentation.`);

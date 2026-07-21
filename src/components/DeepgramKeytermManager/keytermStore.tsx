@@ -14,6 +14,7 @@ import { rankKeyterms, countTokens, totalTokens, selectedCount } from "../../lib
 import { pruneToLimits, checkLimits, type LimitStatus } from "../../lib/keytermPruner";
 import type { HarvestedKeyterm } from "../../lib/keyterms/harvestKeyterms";
 import { mergeManagedKeytermSuggestions } from "../../lib/keyterms/managedKeyterms";
+import { formatDeepgramKeyterm } from "../../lib/format/legalText";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ function keytermReducer(state: KeytermState, action: Action): KeytermState {
 
     case "ADD": {
       const f = action.payload;
-      const trimmed = f.term.trim();
+      const trimmed = formatDeepgramKeyterm(f.term);
       if (!trimmed) return state;
 
       const exists = state.terms.some(

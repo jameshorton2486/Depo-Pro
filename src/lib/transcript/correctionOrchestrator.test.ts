@@ -167,4 +167,14 @@ describe("buildCorrectionReport", () => {
     expect(report.summary.implausible_money_flags).toBe(0);
     expect(report.summary.speaker_issues).toBe(0);
   });
+
+  it("builds a curated review queue from unresolved issues", () => {
+    const doc = makeDocument({ displayName: "SPEAKER 0", role: "OTHER", wordText: "$7.50", rawText: "$7.50", confidence: 0.4 });
+    const report = buildCorrectionReport(doc);
+
+    expect(report.curated_review_queue!.some((item) => item.kind === "speaker")).toBe(true);
+    expect(report.curated_review_queue!.some((item) => item.kind === "money")).toBe(true);
+    expect(report.curated_review_queue!.some((item) => item.kind === "low_confidence")).toBe(true);
+  });
 });
+

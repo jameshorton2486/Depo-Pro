@@ -141,7 +141,6 @@ Deno.serve(async (request) => {
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error("[editor-api] missing supabase env", {
       route: match.kind,
-      jobId: match.jobId,
     });
     return respondError(500, "server misconfigured");
   }
@@ -199,7 +198,6 @@ Deno.serve(async (request) => {
 
     console.error("[editor-api] unexpected error", {
       route: match.kind,
-      jobId: match.jobId,
       message: error instanceof Error ? error.message : String(error),
     });
     return respondError(500, "unexpected server error");
@@ -372,10 +370,7 @@ async function resolveMediaUrl(
     return audio.media_url;
   }
 
-  console.warn("[editor-api] transcript has no case audio media", {
-    jobId: transcript.transcript_id,
-    caseId: transcript.case_id,
-  });
+  console.warn("[editor-api] transcript has no case audio media");
 
   return "";
 }
@@ -455,7 +450,6 @@ async function handlePutWorking(context: RouteContext): Promise<Response> {
   if (error) {
     console.error("[editor-api] PUT working failed", {
       route: "PUT /:jobId/working",
-      jobId: context.transcript.transcript_id,
       message: error.message,
     });
     throw new HttpError(500, "failed to save working transcript");
@@ -713,7 +707,6 @@ async function handlePostSpeaker(context: RouteContext): Promise<Response> {
   if (error) {
     console.error("[editor-api] POST speaker failed", {
       route: "POST /:jobId/speakers",
-      jobId: context.transcript.transcript_id,
       message: error.message,
     });
     throw new HttpError(500, "failed to create speaker");
@@ -1125,7 +1118,6 @@ async function handleForceAiReview(context: RouteContext): Promise<Response> {
     }),
   }).catch((error) => {
     console.error("[editor-api] force ai-review trigger failed", {
-      transcriptId,
       message: error instanceof Error ? error.message : String(error),
     });
   });

@@ -2,25 +2,27 @@
 
 ## Current Sprint
 
-- Sprint ID: `TP-0.5A`
-- Goal: Caption Production
-- Semantic producer: `src/lib/transcript/transcriptParagraphs.ts`
+- Sprint ID: `W0.1`
+- Goal: Engineering Operations Completion
+- Semantic producer: `N/A`
 - Status: `COMPLETE`
 
 ## Files Modified
 
-- `src/lib/transcript/qaStructureUtils.ts`
-- `src/lib/transcript/transcriptParagraphs.ts`
-- `src/lib/transcript/transcriptParagraphs.test.ts`
-- `src/lib/transcript/structuredTranscriptPackage.test.ts`
-- `SPRINT_TP-0.5A_REPORT.md`
+- `docs/architecture/W0_ENGINEERING_OPERATIONS_STANDARD.md`
+- `docs/dashboard/`
+- `scripts/update-dashboard.mjs`
+- `scripts/sprint-complete.mjs`
+- `SPRINT_W0.1_REPORT.md`
 
 ## Exit Criteria
 
-- Caption-region transcript content is replaced by generated caption output from `CaseRecord` metadata when metadata is available.
-- Caption production owns cause number, court, party caption text, and appearances block generation.
-- Caption output remains isolated in the `CAPTION` region and does not leak into proceedings or testimony semantics.
-- Certification isolation and existing testimony behavior are preserved.
+- Dashboard state is schema-validated.
+- Dashboard updates archive `CURRENT_STATUS.md` into `docs/dashboard/history/`.
+- Technical debt is visible in the dashboard.
+- Sprint completion is automated.
+- Definition of Done includes engineering, operations, and architecture requirements.
+- Wave 0 can be declared complete and frozen.
 - Validation gates are green.
 - Sprint report is generated.
 
@@ -29,6 +31,8 @@
 - `npm test`: PASS
 - `npm run typecheck`: PASS
 - `npm run build`: PASS
+- `npm run dashboard:update`: PASS
+- `npm run sprint:complete`: PASS
 
 ## Review Status
 

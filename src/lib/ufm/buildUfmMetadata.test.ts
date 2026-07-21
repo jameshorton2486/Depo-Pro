@@ -466,8 +466,8 @@ describe("buildUfmMetadata", () => {
           city: "San Antonio",
           state: "TX",
           zip: "78205",
-          phone: "2105559999",
-          fax: "2105558888",
+          phone: "(210) 555-9999",
+          fax: "(210) 555-8888",
           represented_party: "Defendant",
         }),
       ]),
@@ -569,5 +569,27 @@ describe("buildUfmMetadata", () => {
     expect(envelope.ufm_metadata.csr_license).toBe("99887");
     expect(envelope.field_sources.ufmCsrName).toBe("manual");
     expect(envelope.field_confirmations.ufmCsrName).toBe(true);
+  });
+  it("formats UFM export values and emits advisory review warnings", () => {
+    const record = buildRecord();
+    record.caption.case_number.value = "25-cv-00598-OLG";
+    record.caption.case_style.value = "DELIA GARZA V. HOME DEPOT U.S.A., INC.";
+    record.caption.state.value = "Texas";
+    record.service.service_emails.value = ["SERVICE-ALVARADO@BROTHERS-LAW.COM"];
+
+    const envelope = buildUfmMetadata({
+      record,
+      provenance: buildProvenance(),
+    });
+
+    expect(envelope.ufm_metadata.cause_number).toBe("25-CV-00598-OLG");
+    expect(envelope.ufm_metadata.caption).toBe("Delia Garza v. Home Depot U.S.A., Inc.");
+    expect(envelope.ufm_metadata.state).toBe("TX");
+    expect(envelope.ufm_metadata.service_emails).toEqual(["service-alvarado@brothers-law.com"]);
+    expect(envelope.review_warnings.map((warning) => warning.code)).toEqual(expect.arrayContaining([
+      "unconfirmed_fields",
+      "missing_end_time",
+      "missing_firm_registration",
+    ]));
   });
 });

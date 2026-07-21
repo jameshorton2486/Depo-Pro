@@ -31,6 +31,17 @@ export function titleCaseLegalText(value: string): string {
     .replace(/\b[a-z]\/[a-z]\/[a-z]\b/gi, (acronym) => acronym.toUpperCase());
 }
 
+export function formatUsPhoneNumber(value: string): string {
+  const normalized = value.trim();
+  const digits = normalized.replace(/\D/g, "");
+  const localDigits = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+
+  if (localDigits.length !== 10) {
+    return normalized;
+  }
+
+  return `(${localDigits.slice(0, 3)}) ${localDigits.slice(3, 6)}-${localDigits.slice(6)}`;
+}
 export function formatDeepgramKeyterm(value: string): string {
   const trimmed = value.trim().replace(/\s+/g, " ");
   return /^\d{1,4}-[a-z]{1,8}-[a-z0-9-]+$/i.test(trimmed)

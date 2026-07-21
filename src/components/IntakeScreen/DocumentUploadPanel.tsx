@@ -823,7 +823,7 @@ export function DocumentUploadPanel({
     setExtractDiagnosticsState(slotId, buildDiagnostics(text, "jobsheet"));
     assertExtractableText(text);
     const parsed = parseReporterNotes(text);
-    const { application, droppedPaths } = applyJobSheetExtraction(parsed, record);
+    const { application } = applyJobSheetExtraction(parsed, record);
     const nextState = previewExtractionState(application);
 
     const result = await applyAndPersistExtraction({
@@ -838,13 +838,6 @@ export function DocumentUploadPanel({
       sourceLabel: "Job Sheet",
     });
     mergeHarvestedSuggestions("Job Sheet", application);
-
-    console.info("[DEPO-PRO] Job Sheet extraction filtered unsupported fields", {
-      caseId: record.case_id,
-      slotId,
-      droppedCount: droppedPaths.length,
-      droppedPaths,
-    });
 
     setExtractState(slotId, result.saveErrorMessage, result.summary);
   }
@@ -1063,7 +1056,7 @@ export function DocumentUploadPanel({
                   )}
                   {extractSummaries[slot.id] && (
                     <p className="text-center text-[11px] text-slate-600">
-                      Extracted {extractSummaries[slot.id]?.appliedCount} fields, {extractSummaries[slot.id]?.conflictCount} conflicts to resolve
+                      Extracted {extractSummaries[slot.id]?.appliedCount} populated fields, {extractSummaries[slot.id]?.conflictCount} conflicts to resolve
                     </p>
                   )}
                   {extractErrors[slot.id] && (

@@ -26,6 +26,8 @@ import {
   planWorkingTextPersistence,
   WorkingTextOverflowError,
 } from "../lib/transcript/workingTextPersistence";
+import { type StructuredUtterance } from "../lib/transcript/structuredTranscript";
+import { resolveStoredSpeakerSemantic } from "../lib/transcript/speakerResolutionEngine";
 
 const USE_MOCK_WORKSPACE = import.meta.env.VITE_USE_MOCKS === "true";
 
@@ -68,26 +70,6 @@ type CaseAudioLookupRow = {
 
 type TranscriptionJobLookupRow = Pick<TranscriptionJobRecord, "source_audio_id">;
 
-function mapSpeakerRole(role: string | null | undefined): Speaker["role"] | undefined {
-  switch (role) {
-    case "court_reporter":
-    case "reporter":
-      return "REPORTER";
-    case "witness":
-      return "WITNESS";
-    case "attorney":
-    case "examining_attorney":
-    case "defending_attorney":
-      return "ATTORNEY";
-    case "interpreter":
-      return "INTERPRETER";
-    case "other":
-      return "OTHER";
-    default:
-      return undefined;
-  }
-}
-
 function buildEditorDocumentFromSnapshot(
   snapshot: NonNullable<Awaited<ReturnType<typeof loadTranscriptSnapshot>>>,
   mediaUrl: string,
@@ -112,10 +94,7 @@ function buildEditorDocumentFromSnapshot(
     media_url: mediaUrl,
     duration: snapshot.job.duration_seconds ?? snapshot.job.duration ?? 0,
     speakers: snapshot.speakers.map((speaker) => ({
-      speaker_id: speaker.speaker_id,
-      display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
-      deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker ?? null,
-      role: mapSpeakerRole(speaker.speaker_role || speaker.role),
+      ...resolveStoredSpeakerSemantic(speaker),
       ai_suggested: speakerResolutionById.get(speaker.speaker_id)?.ai_suggested ?? false,
       ai_suggestion_reason: speakerResolutionById.get(speaker.speaker_id)?.evidence ?? "",
     })) as EditorDocument["speakers"],
@@ -125,7 +104,9 @@ function buildEditorDocumentFromSnapshot(
       start_time: utterance.start_time,
       end_time: utterance.end_time,
       word_ids: wordIdsByUtterance.get(utterance.utterance_id) ?? [],
-    })),
+      line_type: utterance.line_type ?? null,
+      speaker_label: utterance.speaker_label ?? null,
+    } satisfies StructuredUtterance)),
     words: snapshot.words
       .filter((word) => !word.removed && visibleUtteranceIds.has(word.utterance_id))
       .map((word) => ({

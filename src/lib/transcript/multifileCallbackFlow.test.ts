@@ -93,7 +93,10 @@ describe("advanceOrFinalizeMultifileJob", () => {
     expect(submitNextDeepgramJob).toHaveBeenCalledOnce();
     expect(updateJob).not.toHaveBeenCalled();
     expect(finalize).not.toHaveBeenCalled();
-    expect(cleanupTranscript).toHaveBeenCalledWith(job.transcript_id);
+    expect(cleanupTranscript).toHaveBeenCalledWith(expect.objectContaining({
+      id: job.id,
+      transcript_id: job.transcript_id,
+    }));
     expect(failJob).toHaveBeenCalledWith(job.id, responsePath, "Deepgram start failed for source 1");
     expect(job.status).toBe("failed");
     expect(canonicalTranscriptRows).toEqual([]);
@@ -133,6 +136,42 @@ describe("advanceOrFinalizeMultifileJob", () => {
 
     expect(result).toEqual({
       status: "needs_manual_review",
+      responsePath: "artifacts/job_001_file_000_deepgram_response.json",
+    });
+  });
+
+  it("returns complete when finalize succeeds without altering the response path contract", async () => {
+    const job = buildJob();
+    const orderedSources = [{
+      source_audio_id: "audio_0",
+      source_index: 0,
+      source_filename: "source_1.mp3",
+      mime_type: "audio/mpeg",
+      storage_path: "cases/demo/audio_0.mp3",
+      media_url: null,
+      kind: "physical_audio" as const,
+    }];
+
+    const result = await advanceOrFinalizeMultifileJob({
+      job,
+      orderedSources,
+      currentSource: orderedSources[0],
+      totalSources: 1,
+      responsePath: "artifacts/job_001_file_000_deepgram_response.json",
+    }, {
+      requireRequestArtifact: vi.fn(),
+      submitNextDeepgramJob: vi.fn(),
+      updateJob: vi.fn(),
+      finalize: vi.fn().mockResolvedValue({
+        status: "complete",
+        responsePath: "artifacts/job_001_file_000_deepgram_response.json",
+      }),
+      cleanupTranscript: vi.fn(),
+      failJob: vi.fn(),
+    });
+
+    expect(result).toEqual({
+      status: "complete",
       responsePath: "artifacts/job_001_file_000_deepgram_response.json",
     });
   });

@@ -20,6 +20,14 @@ export interface ValidationIssue {
   message: string;
 }
 
+export interface ValidationReviewQueueItem {
+  kind: "validation_error" | "validation_warning";
+  severity: "high" | "medium";
+  word_id?: string;
+  utterance_index?: number;
+  message: string;
+}
+
 export interface ValidationResult {
   validation_passed: boolean;
   verbatim_violations: ValidationIssue[];
@@ -31,6 +39,7 @@ export interface ValidationResult {
     total_corrections_approved: number;
     by_authority: Record<string, number>;
   };
+  review_queue: ValidationReviewQueueItem[];
   metrics: {
     engine: "correction_validation";
     validation_passed: boolean;
@@ -221,6 +230,16 @@ export function checkSpeakerConsistency(correctedBlocks: ValidationBlock[]): Val
   return issues;
 }
 
+export function buildResidualReviewQueue(issues: ValidationIssue[]): ValidationReviewQueueItem[] {
+  return issues.map((issue) => ({
+    kind: issue.severity === "ERROR" ? "validation_error" : "validation_warning",
+    severity: issue.severity === "ERROR" ? "high" : "medium",
+    word_id: issue.word_id,
+    utterance_index: issue.utterance_index,
+    message: issue.message,
+  }));
+}
+
 export function validateCorrections(
   correctedBlocks: ValidationBlock[],
   correctionLog: CorrectionLogEntry[],
@@ -249,6 +268,7 @@ export function validateCorrections(
       total_corrections_approved: consistency.resolvedLog.length,
       by_authority: byAuthority,
     },
+    review_queue: buildResidualReviewQueue(allIssues),
     metrics: {
       engine: "correction_validation",
       validation_passed: errors.length === 0,
