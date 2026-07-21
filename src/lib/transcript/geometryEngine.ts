@@ -80,7 +80,7 @@ export function buildGeometryLayout(
     lines: (paragraphs ?? []).map((paragraph, paragraphIndex) => ({
       paragraph_index: paragraphIndex,
       paragraph_id: null,
-      ...layoutFor(paragraph.kind, profile),
+      ...layoutFor(paragraph?.kind, profile),
     })),
   };
 }
@@ -97,8 +97,8 @@ export function buildStructuredTranscriptGeometryLayout(
     lines_per_page: profile.linesPerPage,
     lines: (transcriptPackage?.paragraphs ?? []).map((entry, paragraphIndex) => ({
       paragraph_index: paragraphIndex,
-      paragraph_id: entry.id,
-      ...layoutForTranscriptParagraph(entry.paragraph.kind, profile),
+      paragraph_id: entry?.id ?? null,
+      ...layoutForTranscriptParagraph(entry?.paragraph?.kind, profile),
     })),
   };
 }

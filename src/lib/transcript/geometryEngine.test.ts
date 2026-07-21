@@ -91,6 +91,19 @@ describe("geometryEngine", () => {
     expect(checkGeometry(undefined)).toEqual([]);
   });
 
+  it("keeps a layout model available for malformed runtime entries", () => {
+    const malformedPackage = { paragraphs: [null] } as unknown as import("./structuredTranscriptPackage").StructuredTranscriptPackage;
+    const malformedParagraphs = [null] as unknown as import("./geometryEngine").FormattedParagraph[];
+
+    expect(buildStructuredTranscriptGeometryLayout(malformedPackage).lines[0]).toMatchObject({
+      paragraph_id: null,
+      role: "speaker",
+    });
+    expect(buildGeometryLayout(malformedParagraphs).lines[0]).toMatchObject({
+      paragraph_id: null,
+      role: "speaker",
+    });
+  });
   it("does not throw when an invalid tab step reaches the runtime boundary", () => {
     const invalidProfile = {
       ...DEFAULT_GEOMETRY_PROFILE,
