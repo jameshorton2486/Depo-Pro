@@ -27,10 +27,14 @@ export interface FormattingResult {
 export { checkGeometry } from "./geometryEngine";
 export function formatTranscriptBlocks(blocks: ValidationBlock[]): FormattingResult {
   let punctuationCorrections = 0;
+  let capitalizationCorrections = 0;
+  let objectionFormattingCorrections = 0;
   let numberFormattingApplied = 0;
   const rendered = blocks.flatMap((block) => {
     const editorial = applyEditorialRules(block.text);
     punctuationCorrections += editorial.punctuationCorrections;
+    capitalizationCorrections += editorial.capitalizationCorrections;
+    objectionFormattingCorrections += editorial.objectionFormattingCorrections;
     numberFormattingApplied += editorial.numberFormattingApplied;
     return renderBlock({ ...block, text: editorial.text });
   });
@@ -56,7 +60,7 @@ export function formatTranscriptBlocks(blocks: ValidationBlock[]): FormattingRes
       geometry_violations: {
         errors: errorCount,
         warnings: warningCount,
-        auto_fixed: punctuationCorrections + numberFormattingApplied,
+        auto_fixed: punctuationCorrections + capitalizationCorrections + objectionFormattingCorrections + numberFormattingApplied,
       },
       punctuation_corrections: punctuationCorrections,
       number_formatting_applied: numberFormattingApplied,

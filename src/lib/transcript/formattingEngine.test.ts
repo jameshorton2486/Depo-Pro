@@ -32,9 +32,9 @@ describe("formattingEngine", () => {
     expect(result.docx_paragraphs[0]?.text).toContain("MR. BENTLEY:  Objection.");
   });
 
-  it("preserves BY-line two-space exception", () => {
+  it("normalizes BY-line honorific spacing", () => {
     const result = formatTranscriptBlocks([block({ block_type: "Q", text: "(BY MR.  BENTLEY)  What happened next?" })]);
-    expect(result.docx_paragraphs[0]?.text).toContain("(BY MR.  BENTLEY)  What happened next?");
+    expect(result.docx_paragraphs[0]?.text).toContain("(BY MR. BENTLEY)  What happened next?");
   });
 
   it("formats parentheticals with four tabs", () => {
@@ -66,5 +66,9 @@ describe("formattingEngine", () => {
     const result = formatTranscriptBlocks([block({ block_type: "A", role: "WITNESS", text: "$350.00 equals 8%" })]);
     expect(result.formatted_text).toContain("$350");
     expect(result.formatted_text).toContain("8 percent");
+  });
+  it("counts capitalization and objection corrections as automatic fixes", () => {
+    const result = formatTranscriptBlocks([block({ block_type: "SP", text: "the witness: Objection, form" })]);
+    expect(result.metrics.geometry_violations.auto_fixed).toBe(2);
   });
 });
