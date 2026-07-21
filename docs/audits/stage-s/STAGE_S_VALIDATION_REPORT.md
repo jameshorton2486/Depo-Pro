@@ -62,14 +62,14 @@ Deterministic Stage S presentation repairs applied:
 - Transcript: `stage-s-editorial-residual`
 - Paragraphs: 3
 - Repairs: 2 across 1 finding(s) (CRITICAL 0 · MAJOR 0 · MINOR 2 · COSMETIC 0)
-- Repair density: 0.6667 · Repair %: 0
+- Repair density: 0.6667 · Repair %: 33.33
 - Completeness: 100.00%
 - Pages (est.): 1
 - Upstream: render-parity OK · export-contract OK
 
 | Severity | Category | Owner | Paragraph | Message |
 | --- | --- | --- | --- | --- |
-| MINOR | EDITORIAL | EDITORIAL | — | 2 residual number formatting correction(s) still required after editorial normalization. |
+| MINOR | EDITORIAL | EDITORIAL | paragraph:2:utt_er_3 | 2 residual number formatting correction(s) in paragraph paragraph:2:utt_er_3. |
 
 Deterministic Stage S presentation repairs applied:
 - SPACING: Normalized the trailing newline. (1)

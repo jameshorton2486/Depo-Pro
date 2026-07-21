@@ -6,7 +6,7 @@ _How much manual repair remains to certify the compiled transcript, and which ow
 - Fixtures measured: 4
 - Total repairs: 4
 - Critical: 1 · Major: 1 · Minor: 2 · Cosmetic: 0
-- Paragraphs affected: 2/13 (15.38%)
+- Paragraphs affected: 3/13 (23.08%)
 - Repair density: 0.3077 findings/paragraph
 
 ## Repairs by category
@@ -31,5 +31,5 @@ _How much manual repair remains to certify the compiled transcript, and which ow
 ## Certification readiness questions
 
 - How many repairs remain before certification? **4** (1 critical).
-- What percentage of paragraphs require manual intervention? **15.38%**.
+- What percentage of paragraphs require manual intervention? **23.08%**.
 - Is the current pipeline Release Candidate quality? **NO**.

@@ -1,4 +1,4 @@
-import { applyEditorialRulesToRenderModel, type EditorialMetrics } from "../transcript/editorialEngine";
+import { applyEditorialRules, applyEditorialRulesToRenderModel, type EditorialMetrics } from "../transcript/editorialEngine";
 import { renderTxt, validateRenderParity, type UnifiedRenderModel } from "../transcript/unifiedRendering";
 import {
   buildExportServiceRequest,
@@ -28,32 +28,32 @@ export interface RunOptions {
 
 const DEFAULT_GENERATED_AT = "1970-01-01T00:00:00.000Z";
 
-export function editorialFindings(metrics: EditorialMetrics): RepairFinding[] {
+function editorialFindings(model: UnifiedRenderModel): RepairFinding[] {
   const findings: RepairFinding[] = [];
-  const entries: [keyof EditorialMetrics, string][] = [
-    ["punctuationCorrections", "punctuation"],
-    ["capitalizationCorrections", "capitalization"],
-    ["objectionFormattingCorrections", "objection formatting"],
-    ["numberFormattingCorrections", "number formatting"],
+  const entries: [keyof EditorialMetrics, keyof ReturnType<typeof applyEditorialRules>, string][] = [
+    ["punctuationCorrections", "punctuationCorrections", "punctuation"],
+    ["capitalizationCorrections", "capitalizationCorrections", "capitalization"],
+    ["objectionFormattingCorrections", "objectionFormattingCorrections", "objection formatting"],
+    ["numberFormattingCorrections", "numberFormattingApplied", "number formatting"],
   ];
-  for (const [key, label] of entries) {
-    const count = metrics[key];
-    if (count > 0) {
+  model.lines.forEach((line, paragraphIndex) => {
+    const result = applyEditorialRules(line.content);
+    for (const [metricKey, resultKey, label] of entries) {
+      const count = result[resultKey];
+      if (typeof count !== "number" || count === 0) continue;
       findings.push({
-        id: `stage-s:EDITORIAL:${key}`,
+        id: `stage-s:EDITORIAL:${metricKey}:${line.paragraphId}`,
         category: "EDITORIAL",
         severity: "MINOR",
         owner: "EDITORIAL",
-        paragraphId: null,
-        paragraphIndex: null,
-        message: `${count} residual ${label} correction(s) still required after editorial normalization.`,
-        // Each correction is a discrete repair — count them all, don't collapse
-        // an entire category to a single finding.
+        paragraphId: line.paragraphId,
+        paragraphIndex,
+        message: `${count} residual ${label} correction(s) in paragraph ${line.paragraphId}.`,
         count,
         autoRepairable: false,
       });
     }
-  }
+  });
   return findings;
 }
 
@@ -65,7 +65,7 @@ function measureUpstream(model: UnifiedRenderModel): {
 
   // Editorial residual (owner #4) — measurement only; the returned model is discarded.
   const editorial = applyEditorialRulesToRenderModel(model);
-  findings.push(...editorialFindings(editorial.metrics));
+  findings.push(...editorialFindings(model));
 
   // Render parity (owner #3).
   const renderParityErrors = validateRenderParity(model);

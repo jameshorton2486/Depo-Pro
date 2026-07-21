@@ -239,13 +239,13 @@
       "generatedAt": "2026-07-21T00:00:00.000Z",
       "findings": [
         {
-          "id": "stage-s:EDITORIAL:numberFormattingCorrections",
+          "id": "stage-s:EDITORIAL:numberFormattingCorrections:paragraph:2:utt_er_3",
           "category": "EDITORIAL",
           "severity": "MINOR",
           "owner": "EDITORIAL",
-          "paragraphId": null,
-          "paragraphIndex": null,
-          "message": "2 residual number formatting correction(s) still required after editorial normalization.",
+          "paragraphId": "paragraph:2:utt_er_3",
+          "paragraphIndex": 2,
+          "message": "2 residual number formatting correction(s) in paragraph paragraph:2:utt_er_3.",
           "count": 2,
           "autoRepairable": false
         }
@@ -286,10 +286,10 @@
           "EDITORIAL": 2,
           "EXPORT_CONTRACT": 0
         },
-        "paragraphsAffected": 0,
+        "paragraphsAffected": 1,
         "paragraphsTotal": 3,
         "repairDensity": 0.6667,
-        "repairPercentage": 0
+        "repairPercentage": 33.33
       },
       "upstream": {
         "editorial": {
@@ -356,10 +356,10 @@
         "EDITORIAL": 2,
         "EXPORT_CONTRACT": 0
       },
-      "paragraphsAffected": 2,
+      "paragraphsAffected": 3,
       "paragraphsTotal": 13,
       "repairDensity": 0.3077,
-      "repairPercentage": 15.38
+      "repairPercentage": 23.08
     },
     "releaseCandidateReady": false
   }
