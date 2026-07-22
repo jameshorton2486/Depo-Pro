@@ -96,3 +96,12 @@ The final review-correction image was deployed on 2026-07-21 (America/Chicago) a
 | Malformed completed-job replay | Acknowledged; completed job generation and MD5 remained unchanged |
 
 The processing-lease renewal, stale takeover, owner-token conditional release, and lost-lease publication guards are verified by deterministic storage/worker regression tests. Production validation used only fabricated transcript data and did not read or mutate client data.
+### Final reviewed runtime promotion
+
+After the final lost-lease failure-write regression was added, runtime commit `1608991` was built as image `17b-20260721-7` (digest `sha256:acdac57aedfb03764f0b438bf1b771479611bce51d2baf70890984c5fe29c2df`; Cloud Build `ee37d48f-a98c-4433-9d7c-659c5d707d83`) and deployed as revision `depo-pro-formatter-00008-wvb` with 100% traffic. Synthetic job `pr17b-final-head-20260721-07` completed with signed DOCX and PDF artifacts and `retryEligible=false`.
+
+| Object | Generation | MD5 | Bytes |
+| --- | ---: | --- | ---: |
+| Job | `1784692637688028` | `sOK82ns2c3+S/C12pGoaqg==` | — |
+| DOCX | `1784692637359481` | `th3qrmkDn2wYdmcKFcUnMQ==` | `37038` |
+| PDF | `1784692637532331` | `fq47sfinM3oOU1FfkyHexg==` | `19564` |
