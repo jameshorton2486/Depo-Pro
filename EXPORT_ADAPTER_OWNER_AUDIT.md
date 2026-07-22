@@ -64,13 +64,14 @@ Focused tests cover:
 - canonical owner-pipeline composition;
 - Export screen certification gating and formatter controls;
 - continued lifecycle polling when cancellation fails;
-- disabled formatter controls while the initial create request is pending.
+- disabled formatter controls while the initial create request is pending;
+- active polling abort on unmount.
 
 ## Validation Evidence
 
 Local implementation evidence:
 
-- focused Export Adapter/UI protocol suite: 13 targeted tests passed for the latest staging and UI fixes;
+- focused Export Adapter/UI protocol suite: 15 targeted tests passed for the latest staging and UI fixes;
 - full repository suite: 730 tests passed with `STAGE_S_WRITE=1`;
 - TypeScript typecheck: passed;
 - ESLint: passed;

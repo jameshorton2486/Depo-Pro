@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, Clipboard, Download, FileArchive, FileText, Loader2, X } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
 import { exportAdapterTransport } from "../../api/client";
@@ -40,6 +40,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportStarting, setExportStarting] = useState(false);
   const exportAbort = useRef<AbortController | null>(null);
+  const exportAttempt = useRef(0);
 
   const certificationReady = useMemo(
     () => isCertificationReady(record.certification) && isCertificationLocked(record.certification),
@@ -56,6 +57,9 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     exportAbort.current?.abort();
     const controller = new AbortController();
     exportAbort.current = controller;
+    const attempt = exportAttempt.current + 1;
+    exportAttempt.current = attempt;
+    const isCurrentAttempt = () => exportAttempt.current === attempt && !controller.signal.aborted;
     setExportError(null);
     setExportStarting(true);
 
@@ -66,21 +70,32 @@ export function ExportScreen({ jobId }: { jobId: string }) {
         formats,
         idempotencyKey: crypto.randomUUID(),
       });
+      if (!isCurrentAttempt()) return;
       setExportJob(queued);
       setExportStarting(false);
       const completed = await exportAdapter.waitForCompletion(queued, {
         signal: controller.signal,
-        onUpdate: setExportJob,
+        onUpdate: (job) => {
+          if (isCurrentAttempt()) setExportJob(job);
+        },
       });
-      setExportJob(completed);
+      if (isCurrentAttempt()) setExportJob(completed);
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
-      setExportError(error instanceof Error ? error.message : "Export failed.");
+      if (isCurrentAttempt()) {
+        setExportError(error instanceof Error ? error.message : "Export failed.");
+      }
     } finally {
-      setExportStarting(false);
+      if (isCurrentAttempt()) setExportStarting(false);
     }
   }
 
+  useEffect(() => {
+    return () => {
+      exportAttempt.current += 1;
+      exportAbort.current?.abort();
+    };
+  }, []);
   async function handleCancelExport() {
     if (!exportJob || exportJob.status !== "QUEUED") return;
     setExportError(null);
