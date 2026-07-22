@@ -83,4 +83,8 @@ Deployment evidence:
 - bundle SHA-256: `39198d752fd550c957b5f77068d8ceab06336b6607c25b8fbd53dfb5a1eca5dc`;
 - status: `ACTIVE` with JWT verification enabled.
 
-Production end-to-end acceptance remains pending until the required Google runtime credential/configuration is installed as Supabase secrets. No production completion claim is made before the authenticated synthetic export succeeds. Production resource identifiers and synthetic job evidence belong in `docs/operations/EXPORT_ADAPTER_DEPLOYMENT.md`.
+Production end-to-end acceptance passed on July 22, 2026. The authenticated fabricated export traversed Application credentials → Export Adapter → Cloud Tasks → private Formatter Service → Cloud Storage and reached `COMPLETED` with DOCX and PDF signed artifacts. Repeating the same idempotency key returned the same completed job.
+
+The dedicated runtime identity is `depo-pro-export-adapter@depo-pro-website.iam.gserviceaccount.com`. Its only project roles are `roles/cloudtasks.enqueuer` and `roles/cloudtasks.taskDeleter`. Self-impersonation is limited to `roles/iam.serviceAccountUser` on that same service account. `roles/run.invoker` is scoped to `depo-pro-formatter`, and `roles/storage.objectUser` is scoped to `gs://depo-pro-exports`.
+
+One user-managed JSON key exists because the Supabase Edge Function has no Google ambient identity. Supabase secret digests confirmed installation, and the temporary local key file was deleted immediately afterward. Production resource identifiers and synthetic job evidence are recorded in `docs/operations/EXPORT_ADAPTER_DEPLOYMENT.md`.

@@ -38,7 +38,7 @@ The function returns the frozen `ExportJob` shape.
 - JWT verification: enabled
 - Status: `ACTIVE`
 
-The function is deployed, but production acceptance is not complete until its server-only Google credential/configuration is installed and the synthetic flow below succeeds.
+The function is deployed with its server-only Google credential/configuration installed as Supabase secrets. Secret-list verification exposed names and digests only; credential contents were not printed. The temporary local key file was deleted after installation.
 
 ## Production acceptance
 
@@ -54,3 +54,31 @@ Production validation must record:
 - formatter failure behavior;
 - queued cancellation behavior;
 - confirmation that no client data was used or changed.
+## Production evidence — July 22, 2026
+
+- Synthetic case: `RC17C-CASE-b3e3204f187e`
+- Synthetic transcript: `rc17c-transcript-b3e3204f187e`
+- Export job: `export-7b52b968507266302fb1fd02006dac2e`
+- Formatter revision: `depo-pro-formatter-00009-26b`
+- Observed lifecycle: `QUEUED → PROCESSING → COMPLETED`
+- Artifacts: DOCX (36,810 bytes) and PDF (16,661 bytes)
+- Signed URLs: present for both artifacts; token values were not recorded
+- Duplicate dispatch: returned the same job ID and immutable `COMPLETED` result
+- Error: `null`
+- Client data: none used or modified; all names and identifiers were fabricated
+
+Certification immutability correctly rejected automatic deletion of the certified synthetic acceptance record. The record is retained as isolated RC evidence rather than bypassing Certification-owner database triggers.
+
+## Runtime IAM evidence
+
+Dedicated identity: `depo-pro-export-adapter@depo-pro-website.iam.gserviceaccount.com`
+
+| Scope | Role |
+| --- | --- |
+| Project | `roles/cloudtasks.enqueuer` |
+| Project | `roles/cloudtasks.taskDeleter` |
+| Export Adapter service account only | `roles/iam.serviceAccountUser` (self only) |
+| Cloud Run service `depo-pro-formatter` only | `roles/run.invoker` |
+| Bucket `gs://depo-pro-exports` only | `roles/storage.objectUser` |
+
+No project-wide Storage role or project-wide Cloud Run role was granted.
