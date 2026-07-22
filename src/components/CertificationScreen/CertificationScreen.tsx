@@ -173,12 +173,26 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
 
   const allComplete = isCertificationReady(certification);
 
-  function handleCertify() {
-    if (!allComplete || certificationLocked) return;
-    updateCertification({
+  async function handleCertify() {
+    if (!allComplete || certificationLocked || saving) return;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const nextCertification = {
       ...certification,
       certification_date: formatLocalCertificationDate(new Date()),
-    });
+    };
+    setSaving(true);
+    try {
+      await saveCase({
+        ...record,
+        certification: nextCertification,
+      });
+      updateCertification(nextCertification);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleNavigate(stage: "workspace" | "export") {
@@ -304,7 +318,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                   <button
                     type="button"
                     onClick={handleCertify}
-                    disabled={!allComplete}
+                    disabled={!allComplete || saving}
                     className="rounded-lg bg-emerald-700 px-5 py-1.5 text-xs font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Certify Transcript

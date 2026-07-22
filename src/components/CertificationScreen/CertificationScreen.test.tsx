@@ -170,7 +170,7 @@ describe("CertificationScreen", () => {
     cleanup();
   });
 
-  it("requires an explicit certification action after all checks are ready", () => {
+  it("persists the server lock before exposing the certified UI state", async () => {
     const record = buildReadyRecord();
     record.certification = {
       ...record.certification!,
@@ -181,6 +181,10 @@ describe("CertificationScreen", () => {
       },
     };
     const setCertification = vi.fn();
+    let finishSave!: () => void;
+    saveCaseMock.mockImplementationOnce(() => new Promise<void>((resolve) => {
+      finishSave = resolve;
+    }));
     useIntakeMock.mockReturnValue({ record, setCertification, dirty: false });
 
     const { container, cleanup } = renderScreen();
@@ -189,6 +193,18 @@ describe("CertificationScreen", () => {
     const certifyButton = Array.from(container.querySelectorAll("button"))
       .find((button) => button.textContent?.includes("Certify Transcript"));
     act(() => certifyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+
+    expect(saveCaseMock).toHaveBeenCalledWith(expect.objectContaining({
+      certification: expect.objectContaining({
+        certification_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      }),
+    }));
+    expect(setCertification).not.toHaveBeenCalled();
+
+    await act(async () => {
+      finishSave();
+      await Promise.resolve();
+    });
 
     expect(setCertification).toHaveBeenCalledWith(expect.objectContaining({
       certification_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
