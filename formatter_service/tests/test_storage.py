@@ -1,6 +1,8 @@
 import json
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from google.api_core.exceptions import NotFound, PreconditionFailed
 
 from formatter_service.storage import CloudStorageExportStore
@@ -133,17 +135,18 @@ def test_stale_processing_lease_is_reclaimed(monkeypatch) -> None:
     assert blob.content == lease_token
 
 
-def test_rejected_job_does_not_overwrite_completed_job() -> None:
-    completed = {
+@pytest.mark.parametrize("authoritative_status", ["PROCESSING", "COMPLETED"])
+def test_rejected_job_does_not_overwrite_authoritative_job(authoritative_status: str) -> None:
+    authoritative = {
         "job": {
             "jobId": "job-001",
             "transcriptId": "transcript-001",
-            "status": "COMPLETED",
+            "status": authoritative_status,
             "artifacts": [{"format": "DOCX"}],
             "error": None,
         }
     }
-    blob = FakeLeaseBlob(claimed=True, content=json.dumps(completed))
+    blob = FakeLeaseBlob(claimed=True, content=json.dumps(authoritative))
     store = CloudStorageExportStore.__new__(CloudStorageExportStore)
     store._bucket = FakeBucket(blob)
 
@@ -154,7 +157,7 @@ def test_rejected_job_does_not_overwrite_completed_job() -> None:
         datetime(2026, 7, 21, tzinfo=UTC),
     )
 
-    assert result["status"] == "COMPLETED"
+    assert result["status"] == authoritative_status
     assert blob.uploads == 0
 
 

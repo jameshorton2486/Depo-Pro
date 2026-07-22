@@ -108,7 +108,7 @@ class CloudStorageExportStore:
             generation = blob.generation
             current_payload = json.loads(blob.download_as_text(if_generation_match=generation))
             current_job = current_payload.get("job")
-            if isinstance(current_job, dict) and current_job.get("status") == "COMPLETED":
+            if isinstance(current_job, dict) and current_job.get("status") in {"PROCESSING", "COMPLETED"}:
                 return current_job
         except NotFound:
             pass
@@ -129,7 +129,7 @@ class CloudStorageExportStore:
             )
         except PreconditionFailed:
             current_job = self.read_job(job_id)
-            if current_job and current_job.get("status") == "COMPLETED":
+            if current_job and current_job.get("status") in {"PROCESSING", "COMPLETED"}:
                 return current_job
             raise
         return job

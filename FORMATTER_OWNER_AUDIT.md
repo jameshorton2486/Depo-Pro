@@ -31,7 +31,7 @@ The formatter expands logical render lines into physical wrapped lines using the
 ## Task and Worker Lifecycle
 
 - Malformed named tasks are recorded as terminal, non-retryable failures and acknowledged with HTTP 200.
-- A malformed redelivery cannot overwrite an already completed job.
+- A malformed redelivery cannot overwrite an active processing or completed job.
 - `(transcriptId, idempotencyKey)` is claimed before formatting.
 - Completed jobs are immutable under duplicate dispatch.
 - Processing leases use unique ownership tokens, conditional generation updates, periodic renewal, stale recovery, and owner-only release.
@@ -57,7 +57,7 @@ Formatter regressions cover:
 
 ## Local Validation
 
-- Formatter suite: 26 tests passed.
+- Formatter suite: 27 tests passed.
 - Full repository suite: 110 files, 692 tests passed.
 - Typecheck: passed.
 - Lint: passed.
