@@ -395,6 +395,42 @@ describe("ExportScreen", () => {
     vi.useRealTimers();
   });
 
+  it("clears stale completed artifacts when a new formatter create fails", async () => {
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: certifiedFixture(),
+      },
+    });
+    const completed = {
+      jobId: "export-completed",
+      transcriptId: "job_123",
+      status: "COMPLETED" as const,
+      artifacts: [{ format: "DOCX" as const, downloadUrl: "https://example.invalid/docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 12 }],
+      error: null,
+    };
+    exportTransportMocks.create
+      .mockResolvedValueOnce(completed)
+      .mockRejectedValueOnce(new Error("formatter unavailable"));
+
+    const { container, cleanup } = renderExportScreen();
+    const exportButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    if (!exportButton) throw new Error("expected DOCX export button");
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(container.querySelectorAll("a")).toHaveLength(1);
+
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("formatter unavailable");
+    expect(container.querySelectorAll("a")).toHaveLength(0);
+    cleanup();
+  });
   it("re-enables formatter exports after polling fails", async () => {
     vi.useFakeTimers();
     useIntakeMock.mockReturnValue({

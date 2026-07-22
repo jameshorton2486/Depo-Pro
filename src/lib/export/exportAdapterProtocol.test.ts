@@ -3,6 +3,7 @@ import type { ExportJob } from "../../../src/lib/export/exportServiceContract";
 import {
   assertJobTranscript,
   buildFormatterRelayRequest,
+  buildGoogleDependencyAdapterError,
   buildStagedFormatterRequest,
   parseFormatterRelayRequest,
   buildCancelledJob,
@@ -24,6 +25,14 @@ function queuedJob(): ExportJob {
   };
 }
 
+describe("Export Adapter dependency errors", () => {
+  it("surfaces Google API failures as structured dependency errors", () => {
+    expect(buildGoogleDependencyAdapterError(403)).toEqual({
+      status: 503,
+      message: "google api request failed (403)",
+    });
+  });
+});
 describe("Export Adapter server protocol", () => {
   it("validates canonical create requests without modifying the render model", () => {
     const renderModel = {

@@ -50,6 +50,10 @@ export type StoredJobVersion = {
   generation: string;
 };
 
+export function buildGoogleDependencyAdapterError(status: number): { status: number; message: string } {
+  return { status: 503, message: `google api request failed (${status})` };
+}
+
 export class CancellationConflictError extends Error {
   constructor() {
     super("export state changed during cancellation");

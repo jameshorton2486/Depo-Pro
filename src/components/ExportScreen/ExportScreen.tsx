@@ -61,6 +61,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     exportAttempt.current = attempt;
     const isCurrentAttempt = () => exportAttempt.current === attempt && !controller.signal.aborted;
     setExportError(null);
+    setExportJob(null);
     setExportStarting(true);
 
     try {

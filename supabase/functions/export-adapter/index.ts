@@ -8,6 +8,7 @@ import {
 import {
   assertJobTranscript,
   buildFormatterRelayRequest,
+  buildGoogleDependencyAdapterError,
   buildStagedFormatterRequest,
   type ExportJob,
   type ExportServiceRequest,
@@ -108,6 +109,14 @@ Deno.serve(async (request) => {
   } catch (error) {
     if (error instanceof AdapterError) {
       return respondError(error.status, error.message);
+    }
+    if (error instanceof GoogleApiError) {
+      console.error("[export-adapter] google api error", {
+        status: error.status,
+        message: error.message,
+      });
+      const dependencyError = buildGoogleDependencyAdapterError(error.status);
+      return respondError(dependencyError.status, dependencyError.message);
     }
     console.error("[export-adapter] unexpected error", {
       message: error instanceof Error ? error.message : String(error),
