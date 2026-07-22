@@ -11,7 +11,9 @@ import type {
   CertifyChecklist,
 } from "./types";
 import { isRealApiMode } from "../lib/runtime/mode";
-import { AuthRequiredError, getSupabaseAccessToken } from "../lib/supabase";
+import { AuthRequiredError, getSupabaseAccessToken, supabase } from "../lib/supabase";
+import type { ExportAdapterTransport } from "../lib/export/exportAdapter";
+import type { ExportJob, ExportServiceRequest } from "../lib/export/exportServiceContract";
 
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
@@ -97,6 +99,25 @@ export async function externalJsonRequest<T>(
   return response.json() as Promise<T>;
 }
 
+async function invokeExportAdapter(body: Record<string, unknown>): Promise<ExportJob> {
+  if (!supabase) {
+    throw new Error("Export Adapter is unavailable because Supabase is not configured.");
+  }
+  const { data, error } = await supabase.functions.invoke<ExportJob>("export-adapter", { body });
+  if (error) {
+    throw new Error(`Export Adapter request failed: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error("Export Adapter returned an empty response.");
+  }
+  return data;
+}
+
+export const exportAdapterTransport: ExportAdapterTransport = {
+  create: (request: ExportServiceRequest) => invokeExportAdapter({ action: "create", request }),
+  get: (jobId: string, transcriptId: string) => invokeExportAdapter({ action: "get", jobId, transcriptId }),
+  cancel: (jobId: string, transcriptId: string) => invokeExportAdapter({ action: "cancel", jobId, transcriptId }),
+};
 function url(jobId: string, path: string): string {
   return `${_baseUrl}/${jobId}/${path}`;
 }

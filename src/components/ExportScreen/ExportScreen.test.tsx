@@ -9,7 +9,33 @@ const useDocumentMock = vi.fn();
 const useIntakeMock = vi.fn();
 const useStageMock = vi.fn();
 const buildFormattedTranscriptTextMock = vi.fn();
+const exportTransportMocks = vi.hoisted(() => ({
+  create: vi.fn(),
+  get: vi.fn(),
+  cancel: vi.fn(),
+}));
 
+vi.mock("../../api/client", () => ({
+  exportAdapterTransport: exportTransportMocks,
+}));
+vi.mock("../../lib/export/exportAdapter", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../lib/export/exportAdapter")>();
+  return {
+    ...original,
+    buildCanonicalExportRenderModel: () => ({
+      transcriptId: "job_123",
+      geometry: {
+        format_box_width_inches: 6.5,
+        left_margin_inches: 1.25,
+        right_margin_inches: 0.75,
+        line_spacing_points: 28,
+        lines_per_page: 25,
+      },
+      lines: [{ content: "Q. Synthetic?", geometry: { role: "qa" } }],
+      entityRegistryEntryCount: 0,
+    }),
+  };
+});
 vi.mock("../../context/DocumentContext", () => ({
   useDocument: () => useDocumentMock(),
 }));
@@ -52,12 +78,29 @@ function renderExportScreen() {
   };
 }
 
+function certifiedFixture() {
+  return {
+    certification_date: "2026-07-22",
+    certification_statement: "Certified synthetic transcript",
+    checklist: {
+      review_complete: true,
+      speaker_mapping_complete: true,
+      confidence_review_complete: true,
+      exhibits_complete: true,
+      ufm_complete: true,
+    },
+    signature_hash: null,
+  };
+}
 describe("ExportScreen", () => {
   beforeEach(() => {
     window.localStorage.clear();
     useDocumentMock.mockReset();
     useIntakeMock.mockReset();
     useStageMock.mockReset();
+    exportTransportMocks.create.mockReset();
+    exportTransportMocks.get.mockReset();
+    exportTransportMocks.cancel.mockReset();
 
     useDocumentMock.mockReturnValue({
       state: {
@@ -231,26 +274,225 @@ describe("ExportScreen", () => {
     cleanup();
   });
 
-  it("shows DOCX and PDF as explicitly gated beta controls", () => {
+  it("enables formatter exports only for persisted certification", () => {
     useIntakeMock.mockReturnValue({
       record: {
-        caption: {
-          case_name: { value: "Example Case" },
-          case_number: { value: "123" },
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: {
+          certification_date: "2026-07-22",
+          certification_statement: "Certified synthetic transcript",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
         },
-        certification: null,
       },
     });
 
     const { container, cleanup } = renderExportScreen();
     const buttons = Array.from(container.querySelectorAll("button"));
-    const docxButton = buttons.find((button) => button.textContent?.includes("DOCX Coming After Beta"));
-    const pdfButton = buttons.find((button) => button.textContent?.includes("PDF Coming After Beta"));
+    const docxButton = buttons.find((button) => button.textContent?.includes("Export DOCX"));
+    const pdfButton = buttons.find((button) => button.textContent?.includes("Export PDF"));
 
-    expect(container.textContent).toContain("DOCX / PDF Export");
-    expect(container.textContent).toContain("WAVE-22");
-    expect(docxButton?.hasAttribute("disabled")).toBe(true);
-    expect(pdfButton?.hasAttribute("disabled")).toBe(true);
+    expect(container.textContent).toContain("Formatter Service Export");
+    expect(docxButton?.hasAttribute("disabled")).toBe(false);
+    expect(pdfButton?.hasAttribute("disabled")).toBe(false);
     cleanup();
   });
+  it("disables formatter exports while the create request is pending", async () => {
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: {
+          certification_date: "2026-07-22",
+          certification_statement: "Certified synthetic transcript",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
+        },
+      },
+    });
+    const completed = {
+      jobId: "export-completed",
+      transcriptId: "job_123",
+      status: "COMPLETED" as const,
+      artifacts: [],
+      error: null,
+    };
+    let resolveCreate: ((job: typeof completed) => void) | null = null;
+    exportTransportMocks.create.mockReturnValue(new Promise((resolve) => {
+      resolveCreate = resolve;
+    }));
+
+    const { container, cleanup } = renderExportScreen();
+    const docxButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    if (!docxButton) throw new Error("expected DOCX export button");
+
+    await act(async () => {
+      docxButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(docxButton.hasAttribute("disabled")).toBe(true);
+
+    await act(async () => {
+      docxButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(exportTransportMocks.create).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveCreate?.(completed);
+      await Promise.resolve();
+    });
+    cleanup();
+  });
+  it("continues polling when queued cancellation fails", async () => {
+    vi.useFakeTimers();
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: certifiedFixture(),
+      },
+    });
+    const queued = { jobId: "export-queued", transcriptId: "job_123", status: "QUEUED" as const, artifacts: [], error: null };
+    const completed = { ...queued, status: "COMPLETED" as const, artifacts: [], error: null };
+    exportTransportMocks.create.mockResolvedValue(queued);
+    exportTransportMocks.cancel.mockRejectedValue(new Error("export is already processing"));
+    exportTransportMocks.get.mockResolvedValue(completed);
+
+    const { container, cleanup } = renderExportScreen();
+    const exportButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    await act(async () => {
+      exportButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const cancelButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Cancel Export"));
+    await act(async () => {
+      cancelButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("export is already processing");
+    expect(exportButton?.hasAttribute("disabled")).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(exportTransportMocks.get).toHaveBeenCalledWith("export-queued", "job_123");
+    expect(container.textContent).toContain("Export completed");
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("clears stale completed artifacts when a new formatter create fails", async () => {
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: certifiedFixture(),
+      },
+    });
+    const completed = {
+      jobId: "export-completed",
+      transcriptId: "job_123",
+      status: "COMPLETED" as const,
+      artifacts: [{ format: "DOCX" as const, downloadUrl: "https://example.invalid/docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 12 }],
+      error: null,
+    };
+    exportTransportMocks.create
+      .mockResolvedValueOnce(completed)
+      .mockRejectedValueOnce(new Error("formatter unavailable"));
+
+    const { container, cleanup } = renderExportScreen();
+    const exportButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    if (!exportButton) throw new Error("expected DOCX export button");
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(container.querySelectorAll("a")).toHaveLength(1);
+
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("formatter unavailable");
+    expect(container.querySelectorAll("a")).toHaveLength(0);
+    cleanup();
+  });
+  it("re-enables formatter exports after polling fails", async () => {
+    vi.useFakeTimers();
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: certifiedFixture(),
+      },
+    });
+    const queued = { jobId: "export-queued", transcriptId: "job_123", status: "QUEUED" as const, artifacts: [], error: null };
+    exportTransportMocks.create.mockResolvedValue(queued);
+    exportTransportMocks.get.mockRejectedValue(new Error("network unavailable"));
+
+    const { container, cleanup } = renderExportScreen();
+    const exportButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    if (!exportButton) throw new Error("expected DOCX export button");
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(exportButton.hasAttribute("disabled")).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(container.textContent).toContain("network unavailable");
+    expect(exportButton.hasAttribute("disabled")).toBe(false);
+
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(exportTransportMocks.create).toHaveBeenCalledTimes(2);
+    cleanup();
+    vi.useRealTimers();
+  });
+  it("aborts formatter polling when the export screen unmounts", async () => {
+    vi.useFakeTimers();
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: certifiedFixture(),
+      },
+    });
+    const queued = { jobId: "export-queued", transcriptId: "job_123", status: "QUEUED" as const, artifacts: [], error: null };
+    exportTransportMocks.create.mockResolvedValue(queued);
+
+    const { container, cleanup } = renderExportScreen();
+    const exportButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    await act(async () => {
+      exportButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    cleanup();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(exportTransportMocks.get).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
 });
