@@ -225,15 +225,39 @@ async function cancelExport(
       `${transcriptId}:${stored.value.idempotencyKey ?? ""}`,
     ),
   );
-  const cancelled = await persistCancellation(jobId, transcriptId, stored);
   const response = await googleRequest(
     `https://cloudtasks.googleapis.com/v2/${taskName}`,
     { method: "DELETE" },
   );
-  if (response.status !== 404 && !response.ok) {
+  if (response.status === 404) {
+    throw new AdapterError(409, "export is already processing");
+  }
+  if (!response.ok) {
     throw new GoogleApiError(response.status, await response.text());
   }
-  return cancelled;
+
+  try {
+    return await persistCancellation(jobId, transcriptId, stored);
+  } catch (error) {
+    if (!(error instanceof AdapterError)) {
+      await recoverDeletedCancellationTask(jobId, transcriptId);
+    }
+    throw error;
+  }
+}
+
+async function recoverDeletedCancellationTask(
+  jobId: string,
+  transcriptId: string,
+): Promise<void> {
+  try {
+    await dispatchFormatterTask(jobId, transcriptId, formatterRequestObjectName(jobId));
+  } catch (error) {
+    console.error("[export-adapter] failed to recover cancellation task", {
+      jobId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 async function persistCancellation(
@@ -242,7 +266,7 @@ async function persistCancellation(
   stored: StoredJobVersion,
 ): Promise<ExportJob> {
   try {
-    return await persistQueuedCancellation(
+    const result = await persistQueuedCancellation(
       stored,
       async (job, generation) => {
         await writeStoredJob(jobId, job, generation);
@@ -250,6 +274,10 @@ async function persistCancellation(
       () => requireStoredJob(jobId, transcriptId),
       (error) => error instanceof GoogleApiError && error.status === 412,
     );
+    if (result.status !== "FAILED" || result.error !== "export cancelled") {
+      throw new AdapterError(409, "export is already processing");
+    }
+    return result;
   } catch (error) {
     if (error instanceof Error && error.name === "CancellationConflictError") {
       throw new AdapterError(409, error.message);
