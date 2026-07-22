@@ -52,6 +52,36 @@ describe("boundaryEngine", () => {
     }));
   });
 
+  it("preserves persisted boundary semantics when mapping document utterances", () => {
+    const doc = makeDocument();
+    const boundaryAwareDoc = {
+      ...doc,
+      utterances: [
+        {
+          ...doc.utterances[0],
+          excluded_from_output: true,
+          exclusion_reason: "OFF_RECORD",
+          is_synthetic: true,
+        },
+        ...doc.utterances.slice(1),
+      ],
+    } as typeof doc & {
+      utterances: Array<typeof doc.utterances[number] & {
+        excluded_from_output?: boolean;
+        exclusion_reason?: "PRE_RECORD" | "OFF_RECORD" | "POST_RECORD" | null;
+        is_synthetic?: boolean;
+      }>;
+    };
+
+    const utterances = mapDocumentToBoundaryUtterances(boundaryAwareDoc);
+    expect(utterances[0]).toEqual(expect.objectContaining({
+      utterance_id: "utt_001",
+      excluded_from_output: true,
+      exclusion_reason: "OFF_RECORD",
+      is_synthetic: true,
+    }));
+  });
+
   it("applies a pre-record cutoff from prompt 1-A", async () => {
     const utterances = mapDocumentToBoundaryUtterances(makeDocument());
     const client: BoundaryAiClient = {
@@ -121,10 +151,59 @@ describe("boundaryEngine", () => {
 
     expect(synthetic).toHaveLength(2);
     expect(synthetic[0]?.is_synthetic).toBe(true);
-    expect(synthetic[0]?.text).toBe("(Whereupon, a recess was taken at 10:00 a.m..)");
-    expect(synthetic[1]?.text).toBe("(Whereupon, the proceedings resumed at 10:15 a.m..)");
+    expect(synthetic[0]?.text).toBe("(Whereupon, a recess was taken at 10:00 a.m.)");
+    expect(synthetic[1]?.text).toBe("(Whereupon, the proceedings resumed at 10:15 a.m.)");
   });
 
+  it("normalizes duplicate periods and equivalent event times before deduplication", () => {
+    const base = {
+      off_utterance_index: 4,
+      on_utterance_index: 6,
+      is_conclusion: false,
+      section_type: "RECESS" as const,
+      confidence: 0.97,
+      evidence: ["recess language"],
+    };
+
+    const synthetic = generateSyntheticParentheticals([
+      { ...base, off_time: "10:00 a.m..", on_time: "10:15 a.m. " },
+      { ...base, off_time: "10:00 a.m.", on_time: "10:15 a.m." },
+    ]);
+
+    expect(synthetic).toHaveLength(2);
+    expect(synthetic.map((event) => event.utterance_id)).toEqual([
+      "synthetic_boundary_1_off",
+      "synthetic_boundary_2_on",
+    ]);
+        expect(synthetic.map((event) => event.text)).toEqual([
+      "(Whereupon, a recess was taken at 10:00 a.m.)",
+      "(Whereupon, the proceedings resumed at 10:15 a.m.)",
+    ]);
+  });
+  it("deduplicates repeated boundary events", () => {
+    const section = {
+      off_utterance_index: 4,
+      off_time: "10:00 a.m.",
+      on_utterance_index: 6,
+      on_time: "10:15 a.m.",
+      is_conclusion: false,
+      section_type: "RECESS" as const,
+      confidence: 0.97,
+      evidence: ["recess language"],
+    };
+
+    const synthetic = generateSyntheticParentheticals([section, section]);
+
+    expect(synthetic).toHaveLength(2);
+    expect(synthetic.map((event) => event.utterance_id)).toEqual([
+      "synthetic_boundary_1_off",
+      "synthetic_boundary_2_on",
+    ]);
+        expect(synthetic.map((event) => event.text)).toEqual([
+      "(Whereupon, a recess was taken at 10:00 a.m.)",
+      "(Whereupon, the proceedings resumed at 10:15 a.m.)",
+    ]);
+  });
   it("prevents editing synthetic utterances", () => {
     const synthetic: BoundaryUtteranceView = {
       utterance_id: "synthetic_1",

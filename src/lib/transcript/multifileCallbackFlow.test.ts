@@ -59,7 +59,7 @@ describe("advanceOrFinalizeMultifileJob", () => {
     const finalize = vi.fn(async () => {
       canonicalTranscriptRows.push("tr_001");
       canonicalWordRows.push("w_001");
-      return "artifacts/job_001_multifile_manifest.json";
+      return { status: "complete" as const, responsePath: "artifacts/job_001_multifile_manifest.json" };
     });
     const cleanupTranscript = vi.fn(async () => {
       canonicalTranscriptRows.length = 0;

@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { PRIMARY_MODEL } from "../_shared/models.ts";
 
 import { integrityAudit, type IntegrityAuditResult } from "../../../src/lib/transcript/integrityAudit.ts";
+import { auditCanonicalTranscript, type CanonicalIntegrityResult } from "../../../src/lib/transcript/canonicalIntegrity.ts";
 import { normalizeTranscriptResponse } from "../../../src/lib/transcript/normalize.ts";
 import { advanceOrFinalizeMultifileJob } from "../../../src/lib/transcript/multifileCallbackFlow.ts";
 import {
@@ -223,6 +224,21 @@ Deno.serve(async (request) => {
               return { path: manifestPath, checksum };
             })();
 
+        const canonicalIntegrity = auditCanonicalTranscript({
+          normalized: merged.normalized,
+          segments: merged.segments,
+        });
+
+        if (!canonicalIntegrity.integrity_passed) {
+          await persistCanonicalManualReviewTranscript(serviceClient, job, merged.segments, merged.normalized, deepgramRequestId, finalArtifact.path, finalArtifact.checksum, canonicalIntegrity);
+          await updateJob(serviceClient, job.id, {
+            status: "failed",
+            response_path: finalArtifact.path,
+            error: buildCanonicalIntegrityFailureMessage(canonicalIntegrity),
+          });
+          return { status: "needs_manual_review" as const, responsePath: finalArtifact.path };
+        }
+
         await ingestTranscript(
           serviceClient,
           job,
@@ -239,7 +255,7 @@ Deno.serve(async (request) => {
         });
         await runBoundaryEngine(serviceClient, job);
         triggerAiReview(job.transcript_id);
-        return finalArtifact.path;
+        return { status: "complete" as const, responsePath: finalArtifact.path };
       },
       cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
       failJob: (jobId, failedResponsePath, errorMessage) =>
@@ -887,6 +903,52 @@ async function persistManualReviewTranscript(
   }
 }
 
+async function persistCanonicalManualReviewTranscript(
+  supabase: SupabaseClient<Database>,
+  job: TranscriptionJobRecord,
+  segments: MergedSourceSegment[],
+  normalized: ReturnType<typeof mergeSourceTranscriptSegments>["normalized"],
+  deepgramRequestId: string | null,
+  responsePath: string,
+  rawChecksum: string,
+  auditResult: CanonicalIntegrityResult,
+): Promise<void> {
+  const transcriptRow: TranscriptInsertRow = {
+    transcript_id: job.transcript_id,
+    case_id: job.case_id,
+    job_id: job.id,
+    media_url: getPrimaryMediaUrl(segments),
+    duration: normalized.durationSeconds,
+    based_on: getPrimarySourceAudioId(segments),
+    deepgram_request_id: deepgramRequestId,
+    session_id: null,
+    source_filename: getPrimarySourceFilename(segments),
+    media_kind: detectMediaKind(getPrimaryMimeType(segments)),
+    status: "needs_manual_review",
+    engine: "deepgram-nova-3",
+    transcription_source: "deepgram",
+    sequence_index: 0,
+    duration_seconds: normalized.durationSeconds,
+    word_count: normalized.words.length,
+    utterance_count: normalized.utterances.length,
+    speaker_count: normalized.speakers.length,
+    avg_confidence: normalized.avgConfidence != null ? normalized.avgConfidence.toFixed(4) : null,
+    raw_storage_path: responsePath,
+    raw_checksum: rawChecksum,
+    last_error: buildCanonicalIntegrityFailureMessage(auditResult),
+    speaker_map_confirmed: false,
+    owner_user_id: job.owner_user_id,
+  };
+
+  const { error } = await supabase.from("transcripts").upsert(transcriptRow, { onConflict: "transcript_id" });
+  if (error) {
+    throw error;
+  }
+}
+
+function buildCanonicalIntegrityFailureMessage(auditResult: CanonicalIntegrityResult): string {
+  return `NEEDS_MANUAL_REVIEW: ${auditResult.failures[0] ?? "Canonical integrity audit failed."}`;
+}
 function buildIntegrityFailureMessage(auditResult: IntegrityAuditResult): string {
   return `NEEDS_MANUAL_REVIEW: ${auditResult.failures[0] ?? "Integrity audit failed."}`;
 }

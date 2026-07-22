@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  applyByLineToNextQuestion,
   classifyBlocks,
   extractEmbeddedObjections,
   mergeConsecutiveFragments,
+  produceDialogueBlocks,
   validateConversationFlow,
   verifyColloquy,
-  type ClassifiedBlock,
   type StructureSpeakerMapEntry,
   type StructureUtterance,
 } from "./structureEngine";
@@ -65,16 +64,35 @@ describe("structureEngine", () => {
     expect(result?.remaining_a_text).toBe("I went to the store. Then I left.");
   });
 
-  it("prepends BY-line to next question after objection extraction", () => {
-    const blocks: Array<ClassifiedBlock & { text: string }> = [
-      { utterance_index: 1, utterance_id: "utt_1", block_type: "SP", speaker_id: "durbin", display_name: "MS.  DURBIN", confidence: 1, text: "Objection. Form." },
-      { utterance_index: 2, utterance_id: "utt_2", block_type: "Q", speaker_id: "bentley", display_name: "MR.  BENTLEY", confidence: 1, text: "What happened next?" },
-    ];
+  it("produces deterministic dialogue blocks without BY-lines", () => {
+    const result = produceDialogueBlocks([
+      utterance({ utterance_id: "utt_question", text: "What happened next?" }),
+      utterance({ utterance_id: "utt_answer", speaker_id: "witness", text: "I left the store." }),
+      utterance({ utterance_id: "utt_objection", speaker_id: "durbin", text: "Objection. Form." }),
+    ], speakerMap);
 
-    const result = applyByLineToNextQuestion(blocks, "MR.  BENTLEY");
-    expect(result[1]?.text).toBe("(BY MR.  BENTLEY)  What happened next?");
+    expect(result.map((block) => block.block_type)).toEqual(["Q", "A", "SP"]);
+    expect(result.map((block) => block.dialogue_block_id)).toEqual([
+      "dialogue:utt_question",
+      "dialogue:utt_answer",
+      "dialogue:utt_objection",
+    ]);
+    expect(result.map((block) => block.source_utterance_ids)).toEqual([
+      ["utt_question"],
+      ["utt_answer"],
+      ["utt_objection"],
+    ]);
+    expect(result.some((block) => /\bBY\s+(MR|MS)\./i.test(block.text))).toBe(false);
   });
 
+  it("omits excluded or absent utterances and accepts an absent speaker map", () => {
+    expect(produceDialogueBlocks(null, speakerMap)).toEqual([]);
+    expect(produceDialogueBlocks([
+      utterance({ utterance_id: "utt_visible" }),
+      utterance({ utterance_id: "utt_excluded", excluded_from_output: true }),
+      null,
+    ], null).map((block) => block.utterance_id)).toEqual(["utt_visible"]);
+  });
   it("merges consecutive same-speaker incomplete fragments", () => {
     const result = mergeConsecutiveFragments([
       { utterance_index: 1, utterance_id: "utt_1", block_type: "Q", speaker_id: "bentley", display_name: "MR.  BENTLEY", confidence: 1, text: "Please state" },

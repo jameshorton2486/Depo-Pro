@@ -61,6 +61,12 @@ export interface BoundaryUtteranceView {
   is_synthetic?: boolean;
 }
 
+type BoundaryAwareUtterance = EditorDocument["utterances"][number] & {
+  excluded_from_output?: boolean | null;
+  exclusion_reason?: "PRE_RECORD" | "OFF_RECORD" | "POST_RECORD" | null;
+  is_synthetic?: boolean | null;
+};
+
 const MODEL = "claude-sonnet-4-6";
 const TEMPERATURE = 0;
 
@@ -185,54 +191,74 @@ export function applyOffRecordSections(
   ));
 }
 
+function formatEventTime(value: string): string {
+  const normalized = value.trim().replace(/\.+$/, ".");
+  return /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
+}
+
 export function generateSyntheticParentheticals(
   sections: OffRecordSection[],
 ): BoundaryUtteranceView[] {
-  return sections.flatMap((section, index) => {
-    const baseId = `synthetic_boundary_${index + 1}`;
+  const parentheticals: BoundaryUtteranceView[] = [];
+  const emitted = new Set<string>();
+  let syntheticIndex = 0;
+
+  const append = (
+    event: Omit<BoundaryUtteranceView, "utterance_id">,
+    dedupeKey: string,
+    suffix: "off" | "on" | "conclusion",
+  ) => {
+    if (emitted.has(dedupeKey)) return;
+    emitted.add(dedupeKey);
+    syntheticIndex += 1;
+    parentheticals.push({ ...event, utterance_id: `synthetic_boundary_${syntheticIndex}_${suffix}` });
+  };
+
+  for (const section of sections) {
     if (section.section_type === "CONCLUSION" || section.is_conclusion) {
-      return [{
-        utterance_id: `${baseId}_conclusion`,
+      const formattedTime = formatEventTime(section.off_time);
+      append({
         speaker_id: "spk_synthetic_boundary",
         start_time: section.on_utterance_index,
         end_time: section.on_utterance_index,
-        text: `(Whereupon, the deposition was concluded at ${section.off_time}.)`,
+        text: `(Whereupon, the deposition was concluded at ${formattedTime})`,
         is_synthetic: true,
-      }];
+      }, `CONCLUSION:${section.off_utterance_index}:${section.on_utterance_index}:${formattedTime}`, "conclusion");
+      continue;
     }
 
     if (section.section_type === "ZOOM_GAP") {
-      return [{
-        utterance_id: `${baseId}_zoom_gap`,
+      append({
         speaker_id: "spk_synthetic_boundary",
         start_time: section.off_utterance_index,
         end_time: section.off_utterance_index,
         text: "(Whereupon, a brief interruption in the remote proceedings occurred.)",
         is_synthetic: true,
-      }];
+      }, `ZOOM_GAP:${section.off_utterance_index}:${section.on_utterance_index}`, "off");
+      continue;
     }
 
-    return [
-      {
-        utterance_id: `${baseId}_off`,
-        speaker_id: "spk_synthetic_boundary",
-        start_time: section.off_utterance_index,
-        end_time: section.off_utterance_index,
-        text: `(Whereupon, a recess was taken at ${section.off_time}.)`,
-        is_synthetic: true,
-      },
-      {
-        utterance_id: `${baseId}_on`,
-        speaker_id: "spk_synthetic_boundary",
-        start_time: section.on_utterance_index,
-        end_time: section.on_utterance_index,
-        text: `(Whereupon, the proceedings resumed at ${section.on_time}.)`,
-        is_synthetic: true,
-      },
-    ];
-  });
-}
+    const formattedOffTime = formatEventTime(section.off_time);
+    append({
+      speaker_id: "spk_synthetic_boundary",
+      start_time: section.off_utterance_index,
+      end_time: section.off_utterance_index,
+      text: `(Whereupon, a recess was taken at ${formattedOffTime})`,
+      is_synthetic: true,
+    }, `RECESS:${section.off_utterance_index}:${formattedOffTime}`, "off");
 
+    const formattedOnTime = formatEventTime(section.on_time);
+    append({
+      speaker_id: "spk_synthetic_boundary",
+      start_time: section.on_utterance_index,
+      end_time: section.on_utterance_index,
+      text: `(Whereupon, the proceedings resumed at ${formattedOnTime})`,
+      is_synthetic: true,
+    }, `RESUME:${section.on_utterance_index}:${formattedOnTime}`, "on");
+  }
+
+  return parentheticals;
+}
 export function canEditUtterance(utterance: BoundaryUtteranceView): boolean {
   return utterance.is_synthetic !== true;
 }
@@ -245,5 +271,8 @@ export function mapDocumentToBoundaryUtterances(document: EditorDocument): Bound
     start_time: utterance.start_time,
     end_time: utterance.end_time,
     text: utterance.word_ids.map((wordId) => wordById.get(wordId)?.text ?? "").join(" ").trim(),
+    excluded_from_output: (utterance as BoundaryAwareUtterance).excluded_from_output ?? undefined,
+    exclusion_reason: (utterance as BoundaryAwareUtterance).exclusion_reason ?? null,
+    is_synthetic: (utterance as BoundaryAwareUtterance).is_synthetic ?? undefined,
   }));
 }
