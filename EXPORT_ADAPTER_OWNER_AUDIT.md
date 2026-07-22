@@ -56,18 +56,19 @@ Focused tests cover:
 - completed signed-artifact retrieval;
 - formatter failure propagation;
 - retry and duplicate idempotency-key reuse;
-- queued cancellation and processing cancellation conflict;
+- queued cancellation, processing cancellation conflict, and generation-conflict recovery;
 - malformed formatter responses;
 - cross-transcript job access rejection;
 - canonical owner-pipeline composition;
-- Export screen certification gating and formatter controls.
+- Export screen certification gating and formatter controls;
+- continued lifecycle polling when cancellation fails.
 
 ## Validation Evidence
 
 Local implementation evidence:
 
-- focused Export Adapter/UI protocol suite: 17 tests passed;
-- full repository suite: 726 tests passed;
+- focused Export Adapter/UI protocol suite: 19 tests passed;
+- full repository suite: 728 tests passed;
 - TypeScript typecheck: passed;
 - ESLint: passed;
 - production build: passed;
@@ -78,9 +79,9 @@ Deployment evidence:
 
 - Supabase project: `lqxiuwlwzkofdfitxuqe`;
 - Edge Function: `export-adapter`;
-- deployed version: `2`;
+- deployed version: `5`;
 - function ID: `20e7228d-bffe-4496-bbb8-7ba790806dcb`;
-- bundle SHA-256: `39198d752fd550c957b5f77068d8ceab06336b6607c25b8fbd53dfb5a1eca5dc`;
+- bundle SHA-256: `735210a53c30304b25f84308f6e7c1857809d1b1ccbf455c99f9c4d910f477b5`;
 - status: `ACTIVE` with JWT verification enabled.
 
 Production end-to-end acceptance passed on July 22, 2026. The authenticated fabricated export traversed Application credentials → Export Adapter → Cloud Tasks → private Formatter Service → Cloud Storage and reached `COMPLETED` with DOCX and PDF signed artifacts. Repeating the same idempotency key returned the same completed job.

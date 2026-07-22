@@ -78,10 +78,13 @@ export function ExportScreen({ jobId }: { jobId: string }) {
 
   async function handleCancelExport() {
     if (!exportJob || exportJob.status !== "QUEUED") return;
-    exportAbort.current?.abort();
     setExportError(null);
     try {
-      setExportJob(await exportAdapter.cancel(exportJob.jobId, exportJob.transcriptId));
+      const cancelled = await exportAdapter.cancel(exportJob.jobId, exportJob.transcriptId);
+      setExportJob(cancelled);
+      if (cancelled.status === "FAILED" && cancelled.error === "export cancelled") {
+        exportAbort.current?.abort();
+      }
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "Cancellation failed.");
     }

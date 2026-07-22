@@ -9,14 +9,83 @@ const useDocumentMock = vi.fn();
 const useIntakeMock = vi.fn();
 const useStageMock = vi.fn();
 const buildFormattedTranscriptTextMock = vi.fn();
+const exportTransportMocks = vi.hoisted(() => ({
+  create: vi.fn(),
+  get: vi.fn(),
+  cancel: vi.fn(),
+}));
 
 vi.mock("../../api/client", () => ({
-  exportAdapterTransport: {
-    create: vi.fn(),
-    get: vi.fn(),
-    cancel: vi.fn(),
-  },
+  exportAdapterTransport: exportTransportMocks,
 }));
+vi.mock("../../lib/export/exportAdapter", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../lib/export/exportAdapter")>();
+  return {
+    ...original,
+    buildCanonicalExportRenderModel: () => ({
+      transcriptId: "job_123",
+      geometry: {
+        format_box_width_inches: 6.5,
+        left_margin_inches: 1.25,
+        right_margin_inches: 0.75,
+        line_spacing_points: 28,
+        lines_per_page: 25,
+      },
+      lines: [{ content: "Q. Synthetic?", geometry: { role: "qa" } }],
+      entityRegistryEntryCount: 0,
+    }),
+  };
+  it("continues polling when queued cancellation fails", async () => {
+    vi.useFakeTimers();
+    const certification = {
+      certification_date: "2026-07-22",
+      certification_statement: "Certified synthetic transcript",
+      checklist: {
+        review_complete: true,
+        speaker_mapping_complete: true,
+        confidence_review_complete: true,
+        exhibits_complete: true,
+        ufm_complete: true,
+      },
+      signature_hash: null,
+    };
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification,
+      },
+    });
+    const queued = { jobId: "export-queued", transcriptId: "job_123", status: "QUEUED", artifacts: [], error: null };
+    const completed = { ...queued, status: "COMPLETED", artifacts: [], error: null };
+    exportTransportMocks.create.mockResolvedValue(queued);
+    exportTransportMocks.cancel.mockRejectedValue(new Error("export is already processing"));
+    exportTransportMocks.get.mockResolvedValue(completed);
+
+    const { container, cleanup } = renderExportScreen();
+    const exportButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    await act(async () => {
+      exportButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+
+    const cancelButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Cancel Export"));
+    await act(async () => {
+      cancelButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("export is already processing");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(exportTransportMocks.get).toHaveBeenCalledWith("export-queued", "job_123");
+    expect(container.textContent).toContain("Export completed");
+    cleanup();
+    vi.useRealTimers();
+  });
+});
 vi.mock("../../context/DocumentContext", () => ({
   useDocument: () => useDocumentMock(),
 }));
@@ -65,6 +134,9 @@ describe("ExportScreen", () => {
     useDocumentMock.mockReset();
     useIntakeMock.mockReset();
     useStageMock.mockReset();
+    exportTransportMocks.create.mockReset();
+    exportTransportMocks.get.mockReset();
+    exportTransportMocks.cancel.mockReset();
 
     useDocumentMock.mockReturnValue({
       state: {

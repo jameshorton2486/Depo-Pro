@@ -4,6 +4,7 @@ import {
   assertJobTranscript,
   buildCancelledJob,
   parseAdapterRequest,
+  persistQueuedCancellation,
   validateStoredJob,
 } from "../../../supabase/functions/export-adapter/protocol";
 
@@ -76,5 +77,47 @@ describe("Export Adapter server protocol", () => {
       error: "export cancelled",
     });
     expect(() => buildCancelledJob({ ...queuedJob(), status: "PROCESSING" })).toThrow("only queued exports");
+  });
+
+  it("retries a generation conflict after task deletion and persists terminal cancellation", async () => {
+    const writes: string[] = [];
+    let writeAttempt = 0;
+    const result = await persistQueuedCancellation(
+      {
+        value: { job: queuedJob(), idempotencyKey: "request-synthetic", retryEligible: true, updatedAt: "first" },
+        generation: "1",
+      },
+      async (stored, generation) => {
+        writes.push(`${generation}:${stored.job.status}`);
+        writeAttempt += 1;
+        if (writeAttempt === 1) throw new Error("generation conflict");
+      },
+      async () => ({
+        value: { job: queuedJob(), idempotencyKey: "request-synthetic", retryEligible: true, updatedAt: "second" },
+        generation: "2",
+      }),
+      (error) => error instanceof Error && error.message === "generation conflict",
+    );
+
+    expect(result).toMatchObject({ status: "FAILED", error: "export cancelled" });
+    expect(writes).toEqual(["1:FAILED", "2:FAILED"]);
+  });
+
+  it("returns the formatter state when a cancellation conflict reveals processing", async () => {
+    const processing = { ...queuedJob(), status: "PROCESSING" as const };
+    const result = await persistQueuedCancellation(
+      {
+        value: { job: queuedJob(), idempotencyKey: "request-synthetic", retryEligible: true, updatedAt: "first" },
+        generation: "1",
+      },
+      async () => { throw new Error("generation conflict"); },
+      async () => ({
+        value: { job: processing, idempotencyKey: "request-synthetic", retryEligible: true, updatedAt: "second" },
+        generation: "2",
+      }),
+      () => true,
+    );
+
+    expect(result).toBe(processing);
   });
 });

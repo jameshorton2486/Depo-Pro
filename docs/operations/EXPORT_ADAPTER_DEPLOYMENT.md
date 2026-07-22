@@ -32,9 +32,9 @@ The function returns the frozen `ExportJob` shape.
 
 - Supabase project: `lqxiuwlwzkofdfitxuqe`
 - Function: `export-adapter`
-- Version: `2`
+- Version: `5`
 - Function ID: `20e7228d-bffe-4496-bbb8-7ba790806dcb`
-- Bundle SHA-256: `39198d752fd550c957b5f77068d8ceab06336b6607c25b8fbd53dfb5a1eca5dc`
+- Bundle SHA-256: `735210a53c30304b25f84308f6e7c1857809d1b1ccbf455c99f9c4d910f477b5`
 - JWT verification: enabled
 - Status: `ACTIVE`
 
