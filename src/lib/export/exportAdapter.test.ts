@@ -149,6 +149,25 @@ describe("ExportAdapter", () => {
 
     expect(updates.map((job) => job.status)).toEqual(["PROCESSING", "COMPLETED"]);
   });
+  it("removes abort listeners after each resolved polling delay", async () => {
+    vi.useFakeTimers();
+    const queued = { ...completedJob, status: "QUEUED" as const, artifacts: [] };
+    const controller = new AbortController();
+    const addEventListener = vi.spyOn(controller.signal, "addEventListener");
+    const removeEventListener = vi.spyOn(controller.signal, "removeEventListener");
+    const adapter = new ExportAdapter(transport({ get: vi.fn().mockResolvedValueOnce(completedJob) }));
+
+    const result = adapter.waitForCompletion(queued, {
+      intervalMs: 100,
+      signal: controller.signal,
+    });
+    await vi.advanceTimersByTimeAsync(100);
+
+    await expect(result).resolves.toBe(completedJob);
+    expect(addEventListener).toHaveBeenCalledWith("abort", expect.any(Function), { once: true });
+    expect(removeEventListener).toHaveBeenCalledWith("abort", expect.any(Function));
+    vi.useRealTimers();
+  });
   it("propagates cancellation as a terminal adapter result", async () => {
     const adapter = new ExportAdapter(transport());
 

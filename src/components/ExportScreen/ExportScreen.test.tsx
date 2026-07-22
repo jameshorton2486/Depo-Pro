@@ -385,6 +385,7 @@ describe("ExportScreen", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain("export is already processing");
+    expect(exportButton?.hasAttribute("disabled")).toBe(true);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);

@@ -72,8 +72,8 @@ Focused tests cover:
 
 Local implementation evidence:
 
-- focused Export Adapter/UI protocol suite: 20 targeted tests passed for the latest staging and UI fixes;
-- full repository suite: 737 tests passed with `STAGE_S_WRITE=1`;
+- focused Export Adapter/UI protocol suite: 29 targeted tests passed for the latest staging and UI fixes;
+- full repository suite: 738 tests passed with `STAGE_S_WRITE=1`;
 - TypeScript typecheck: passed;
 - ESLint: passed;
 - production build: passed;

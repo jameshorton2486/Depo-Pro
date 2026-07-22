@@ -39,6 +39,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportStarting, setExportStarting] = useState(false);
+  const [formatterRetryAllowed, setFormatterRetryAllowed] = useState(false);
   const exportAbort = useRef<AbortController | null>(null);
   const exportAttempt = useRef(0);
 
@@ -61,6 +62,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     exportAttempt.current = attempt;
     const isCurrentAttempt = () => exportAttempt.current === attempt && !controller.signal.aborted;
     setExportError(null);
+    setFormatterRetryAllowed(false);
     setExportJob(null);
     setExportStarting(true);
 
@@ -85,6 +87,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       if (isCurrentAttempt()) {
         setExportError(error instanceof Error ? error.message : "Export failed.");
+        setFormatterRetryAllowed(true);
       }
     } finally {
       if (isCurrentAttempt()) setExportStarting(false);
@@ -100,6 +103,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   async function handleCancelExport() {
     if (!exportJob || exportJob.status !== "QUEUED") return;
     setExportError(null);
+    setFormatterRetryAllowed(false);
     try {
       const cancelled = await exportAdapter.cancel(exportJob.jobId, exportJob.transcriptId);
       setExportJob(cancelled);
@@ -162,7 +166,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   );
 
   const formatterExportInFlight = exportJob?.status === "QUEUED" || exportJob?.status === "PROCESSING";
-  const formatterExportDisabled = !certificationReady || !renderModel || exportStarting || (formatterExportInFlight && !exportError);
+  const formatterExportDisabled = !certificationReady || !renderModel || exportStarting || (formatterExportInFlight && !formatterRetryAllowed);
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900">
       <WorkflowStageNav jobId={jobId} />

@@ -82,11 +82,15 @@ export class ExportAdapter {
 
 function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(resolve, milliseconds);
-    signal?.addEventListener("abort", () => {
+    const abort = () => {
       clearTimeout(timeout);
       reject(new DOMException("Export polling was cancelled.", "AbortError"));
-    }, { once: true });
+    };
+    const timeout = setTimeout(() => {
+      signal?.removeEventListener("abort", abort);
+      resolve();
+    }, milliseconds);
+    signal?.addEventListener("abort", abort, { once: true });
   });
 }
 
