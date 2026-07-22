@@ -34,7 +34,7 @@ The function returns the frozen `ExportJob` shape. Create requests stage `export
 
 - Supabase project: `lqxiuwlwzkofdfitxuqe`
 - Function: `export-adapter` and relay function `export-adapter-relay`
-- Versions: `export-adapter` v10; `export-adapter-relay` v1
+- Versions: `export-adapter` v11; `export-adapter-relay` v1
 - Function IDs: `export-adapter` `20e7228d-bffe-4496-bbb8-7ba790806dcb`; `export-adapter-relay` `2a452d94-7959-461d-8773-ecfcf9d7ce2b`
 - Bundle SHA-256: pending final bundle digest capture after commit
 - JWT verification: enabled for `export-adapter`; disabled for `export-adapter-relay` because it accepts Google Cloud Tasks OIDC and verifies that token in function code
@@ -58,14 +58,14 @@ Production validation must record:
 - confirmation that no client data was used or changed.
 ## Production evidence — July 22, 2026
 
-- Synthetic case: `RC17C-RELAY-CASE-126fd114cbe2`
-- Synthetic transcript: `rc17c-relay-transcript-126fd114cbe2`
-- Export job: `export-8a4d4573e1719426d6aa03ee9536312c`
+- Synthetic case: `RC17C-RELAY-CASE-6c2ef2398ba2`
+- Synthetic transcript: `rc17c-relay-transcript-6c2ef2398ba2`
+- Export job: `export-83fdcddc1e456fe9c017bdbeb0545318`
 - Inline formatter envelope size: 1,252,365 bytes
 - Relay Cloud Task envelope size: 205 bytes
-- Staged request object: `exports/requests/export-8a4d4573e1719426d6aa03ee9536312c.json`
+- Staged request object: `exports/requests/export-83fdcddc1e456fe9c017bdbeb0545318.json`
 - Staged request cleanup: object returned 404 after terminal formatter response
-- Completed job object: `exports/jobs/export-8a4d4573e1719426d6aa03ee9536312c.json`, generation `1784729586749606`, size 2,329 bytes
+- Completed job object: `exports/jobs/export-83fdcddc1e456fe9c017bdbeb0545318.json`, generation `1784730411965191`, size 2,329 bytes
 - Observed lifecycle: `QUEUED → PROCESSING → COMPLETED`
 - Artifacts: DOCX and PDF signed URLs present
 - Duplicate dispatch: returned the same job ID and immutable `COMPLETED` result

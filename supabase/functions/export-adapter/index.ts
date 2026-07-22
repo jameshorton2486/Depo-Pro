@@ -14,7 +14,6 @@ import {
   type ExportServiceRequest,
   parseAdapterRequest,
   persistQueuedCancellation,
-  shouldPersistCancellationAfterMissingTask,
   shouldRecoverQueuedDispatch,
   type StoredJob,
   type StoredJobVersion,
@@ -226,22 +225,15 @@ async function cancelExport(
       `${transcriptId}:${stored.value.idempotencyKey ?? ""}`,
     ),
   );
+  const cancelled = await persistCancellation(jobId, transcriptId, stored);
   const response = await googleRequest(
     `https://cloudtasks.googleapis.com/v2/${taskName}`,
     { method: "DELETE" },
   );
-  if (response.status === 404) {
-    const current = await requireStoredJob(jobId, transcriptId);
-    if (!shouldPersistCancellationAfterMissingTask(current.value.job)) {
-      return current.value.job;
-    }
-    return persistCancellation(jobId, transcriptId, current);
-  }
-  if (!response.ok) {
+  if (response.status !== 404 && !response.ok) {
     throw new GoogleApiError(response.status, await response.text());
   }
-
-  return persistCancellation(jobId, transcriptId, stored);
+  return cancelled;
 }
 
 async function persistCancellation(

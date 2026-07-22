@@ -72,8 +72,8 @@ Focused tests cover:
 
 Local implementation evidence:
 
-- focused Export Adapter/UI protocol suite: 29 targeted tests passed for the latest staging and UI fixes;
-- full repository suite: 738 tests passed with `STAGE_S_WRITE=1`;
+- focused Export Adapter/UI protocol suite: 28 targeted tests passed for the latest staging and UI fixes;
+- full repository suite: 737 tests passed with `STAGE_S_WRITE=1`;
 - TypeScript typecheck: passed;
 - ESLint: passed;
 - production build: passed;
@@ -84,12 +84,12 @@ Deployment evidence:
 
 - Supabase project: `lqxiuwlwzkofdfitxuqe`;
 - Edge Functions: `export-adapter` and `export-adapter-relay`;
-- deployed versions: `export-adapter` v10 and `export-adapter-relay` v1;
+- deployed versions: `export-adapter` v11 and `export-adapter-relay` v1;
 - function IDs: `export-adapter` `20e7228d-bffe-4496-bbb8-7ba790806dcb`; `export-adapter-relay` `2a452d94-7959-461d-8773-ecfcf9d7ce2b`;
 - bundle SHA-256: pending final bundle digest capture after commit;
 - status: both functions `ACTIVE`.
 
-Production end-to-end acceptance passed after the relay deployment on July 22, 2026. Fabricated case `RC17C-RELAY-CASE-126fd114cbe2`, transcript `rc17c-relay-transcript-126fd114cbe2`, and job `export-8a4d4573e1719426d6aa03ee9536312c` traversed Application credentials -> Export Adapter -> staged GCS request object -> Cloud Tasks relay -> private Formatter Service -> Cloud Storage. The inline formatter body would have been 1,252,365 bytes; the relay task body was 205 bytes. Observed job lifecycle was `QUEUED -> PROCESSING -> COMPLETED`, with DOCX/PDF signed artifacts and duplicate idempotent create returning the same completed job. The staged request object `exports/requests/export-8a4d4573e1719426d6aa03ee9536312c.json` was deleted after terminal formatter response; the completed job object remains at `exports/jobs/export-8a4d4573e1719426d6aa03ee9536312c.json` generation `1784729586749606`.
+Production end-to-end acceptance passed after the relay deployment on July 22, 2026. Fabricated case `RC17C-RELAY-CASE-6c2ef2398ba2`, transcript `rc17c-relay-transcript-6c2ef2398ba2`, and job `export-83fdcddc1e456fe9c017bdbeb0545318` traversed Application credentials -> Export Adapter -> staged GCS request object -> Cloud Tasks relay -> private Formatter Service -> Cloud Storage. The inline formatter body would have been 1,252,365 bytes; the relay task body was 205 bytes. Observed job lifecycle was `QUEUED -> PROCESSING -> COMPLETED`, with DOCX/PDF signed artifacts and duplicate idempotent create returning the same completed job. The staged request object `exports/requests/export-83fdcddc1e456fe9c017bdbeb0545318.json` was deleted after terminal formatter response; the completed job object remains at `exports/jobs/export-83fdcddc1e456fe9c017bdbeb0545318.json` generation `1784730411965191`.
 
 The dedicated runtime identity is `depo-pro-export-adapter@depo-pro-website.iam.gserviceaccount.com`. Its only project roles remain `roles/cloudtasks.enqueuer` and `roles/cloudtasks.taskDeleter`. The service account policy is self-scoped to `roles/iam.serviceAccountUser` and `roles/iam.serviceAccountOpenIdTokenCreator`; the latter is required for relay-generated formatter Cloud Run audience tokens. `roles/run.invoker` remains scoped to `depo-pro-formatter`, and `roles/storage.objectUser` remains scoped to `gs://depo-pro-exports`.
 

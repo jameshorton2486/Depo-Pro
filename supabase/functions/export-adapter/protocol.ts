@@ -262,9 +262,6 @@ export function shouldRecoverQueuedDispatch(job: ExportJob): boolean {
   return job.status === "QUEUED";
 }
 
-export function shouldPersistCancellationAfterMissingTask(job: ExportJob): boolean {
-  return job.status === "QUEUED";
-}
 
 export function buildCancelledJob(job: ExportJob): ExportJob {
   if (job.status !== "QUEUED") {
