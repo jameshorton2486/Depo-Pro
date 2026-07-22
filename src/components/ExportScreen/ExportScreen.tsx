@@ -37,6 +37,19 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     [record.certification],
   );
 
+  function handleExportTxt() {
+    if (!certificationReady || !docState.document) return;
+    setLastArtifact(
+      downloadBlob(`${jobId}-transcript.txt`, "text/plain;charset=utf-8", transcriptText),
+    );
+  }
+
+  function handleExportPackage() {
+    if (!certificationReady || !docState.document) return;
+    setLastArtifact(
+      downloadBlob(`${jobId}-package.json`, "application/json;charset=utf-8", packageJson),
+    );
+  }
   async function handleCopyTranscript() {
     if (!certificationReady || !transcriptText) return;
     try {
@@ -117,15 +130,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               <button
                 type="button"
                 disabled={!certificationReady || !docState.document}
-                onClick={() =>
-                  setLastArtifact(
-                    downloadBlob(
-                      `${jobId}-transcript.txt`,
-                      "text/plain;charset=utf-8",
-                      transcriptText
-                    )
-                  )
-                }
+                onClick={handleExportTxt}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />
@@ -144,15 +149,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               <button
                 type="button"
                 disabled={!certificationReady || !docState.document}
-                onClick={() =>
-                  setLastArtifact(
-                    downloadBlob(
-                      `${jobId}-package.json`,
-                      "application/json;charset=utf-8",
-                      packageJson
-                    )
-                  )
-                }
+                onClick={handleExportPackage}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />

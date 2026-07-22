@@ -210,11 +210,24 @@ describe("ExportScreen", () => {
       },
     });
 
+    const createObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+
     const { container, cleanup } = renderExportScreen();
-    const exportTxtButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Export TXT"));
+    const buttons = Array.from(container.querySelectorAll("button"));
+    const exportTxtButton = buttons.find((button) => button.textContent?.includes("Export TXT"));
+    const exportPackageButton = buttons.find((button) => button.textContent?.includes("Export Package"));
 
     expect(exportTxtButton?.hasAttribute("disabled")).toBe(true);
+    expect(exportPackageButton?.hasAttribute("disabled")).toBe(true);
+
+    exportTxtButton?.removeAttribute("disabled");
+    exportPackageButton?.removeAttribute("disabled");
+    act(() => {
+      exportTxtButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      exportPackageButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(createObjectURL).not.toHaveBeenCalled();
     cleanup();
   });
 
