@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "../types/database";
-import type { NormalizedTranscriptData } from "../lib/transcript/normalize";
 import { getSupabaseClient } from "../lib/supabase";
 
 export type TranscriptJobRow = {
@@ -194,26 +193,8 @@ type TranscriptDatabase = Omit<Database, "public"> & {
   };
 };
 
-const WORD_CHUNK_SIZE = 500;
-
 function getTranscriptClient(client: SupabaseClient<Database>): SupabaseClient<TranscriptDatabase> {
   return client as unknown as SupabaseClient<TranscriptDatabase>;
-}
-
-function toAuditChangeId(jobId: string): string {
-  return `chg_ingest_${jobId}`;
-}
-
-function formatNumericConfidence(value: number | null): string | null {
-  return value == null ? null : value.toFixed(4);
-}
-
-function chunk<T>(values: readonly T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let index = 0; index < values.length; index += size) {
-    chunks.push(values.slice(index, index + size));
-  }
-  return chunks;
 }
 
 export async function updateTranscriptJob(
@@ -359,113 +340,6 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
     utterances: (utterancesResult.data ?? []) as unknown as TranscriptUtteranceRow[],
     words: (wordsResult.data ?? []) as unknown as TranscriptWordRow[],
   };
-}
-
-export async function insertNormalizedTranscript(
-  job: Pick<TranscriptJobRow, "transcript_id" | "case_id" | "job_id">,
-  normalized: NormalizedTranscriptData,
-): Promise<void> {
-  const client = await getSupabaseClient("insertNormalizedTranscript");
-  const transcriptClient = getTranscriptClient(client);
-
-  const speakers: TranscriptSpeakerInsert[] = normalized.speakers.map((speaker) => ({
-    transcript_id: job.transcript_id,
-    speaker_id: speaker.speaker_id,
-    display_name: speaker.speaker_label,
-    deepgram_speaker: speaker.speaker_index,
-    role: null,
-    job_id: job.job_id,
-    speaker_index: speaker.speaker_index,
-    speaker_label: speaker.speaker_label,
-    assigned_name: speaker.assigned_name,
-    speaker_role: speaker.speaker_role,
-    word_count: speaker.word_count,
-  }));
-
-  const utterances: TranscriptUtteranceInsert[] = normalized.utterances.map((utterance) => ({
-    transcript_id: job.transcript_id,
-    utterance_id: utterance.utterance_id,
-    speaker_id: utterance.speaker_id,
-    start_time: utterance.start_time,
-    end_time: utterance.end_time,
-    ordinal: utterance.utterance_index,
-    job_id: job.job_id,
-    utterance_index: utterance.utterance_index,
-    speaker_index: utterance.speaker_index,
-    speaker_label: utterance.speaker_label,
-    text: utterance.text,
-    avg_confidence: formatNumericConfidence(utterance.avg_confidence),
-  }));
-
-  const words: TranscriptWordInsert[] = normalized.words.map((word) => ({
-    transcript_id: job.transcript_id,
-    utterance_id: word.utterance_id,
-    word_id: word.word_id,
-    speaker_id: word.speaker_id,
-    ordinal: word.word_index,
-    text: word.raw_text,
-    raw_text: word.raw_text,
-    start_time: word.start_time,
-    end_time: word.end_time,
-    confidence: word.confidence,
-    reviewed: word.reviewed,
-    edited: word.edited,
-    job_id: job.job_id,
-    word_index: word.word_index,
-    working_text: word.working_text,
-    speaker_index: word.speaker_index,
-    is_filler: word.is_filler,
-    removed: false,
-  }));
-
-  const audit: TranscriptAuditInsert = {
-    transcript_id: job.transcript_id,
-    change_id: toAuditChangeId(job.job_id),
-    utterance_id: null,
-    word_id: null,
-    old_text: null,
-    new_text: null,
-    source: "system",
-    suggestion_id: null,
-    reviewer_user_id: null,
-    case_id: job.case_id,
-    job_id: job.job_id,
-    actor: null,
-    action: "ingest",
-    before_text: null,
-    after_text: null,
-  };
-
-  try {
-    if (speakers.length > 0) {
-      const { error } = await transcriptClient.from("transcript_speakers").insert(speakers as never);
-      if (error) {
-        throw error;
-      }
-    }
-
-    if (utterances.length > 0) {
-      const { error } = await transcriptClient.from("transcript_utterances").insert(utterances as never);
-      if (error) {
-        throw error;
-      }
-    }
-
-    for (const wordChunk of chunk(words, WORD_CHUNK_SIZE)) {
-      const { error } = await transcriptClient.from("transcript_words").insert(wordChunk as never);
-      if (error) {
-        throw error;
-      }
-    }
-
-    const { error: auditError } = await transcriptClient.from("transcript_audit_log").insert(audit as never);
-    if (auditError) {
-      throw auditError;
-    }
-  } catch (error) {
-    await cleanupTranscriptJobData(job.transcript_id);
-    throw error;
-  }
 }
 
 export async function cleanupTranscriptJobData(transcriptId: string): Promise<void> {
