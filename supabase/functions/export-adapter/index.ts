@@ -13,6 +13,7 @@ import {
   type ExportServiceRequest,
   parseAdapterRequest,
   persistQueuedCancellation,
+  shouldPersistCancellationAfterMissingTask,
   shouldRecoverQueuedDispatch,
   type StoredJob,
   type StoredJobVersion,
@@ -164,7 +165,11 @@ async function createExport(
     generation = await writeStoredJob(jobId, stored, "0");
   } catch (error) {
     if (error instanceof GoogleApiError && error.status === 412) {
-      return (await requireStoredJob(jobId, request.transcriptId)).value.job;
+      const current = await requireStoredJob(jobId, request.transcriptId);
+      if (shouldRecoverQueuedDispatch(current.value.job)) {
+        await recoverQueuedDispatch(jobId, request);
+      }
+      return current.value.job;
     }
     throw error;
   }
@@ -218,15 +223,23 @@ async function cancelExport(
   );
   if (response.status === 404) {
     const current = await requireStoredJob(jobId, transcriptId);
-    if (current.value.job.status !== "QUEUED") {
+    if (!shouldPersistCancellationAfterMissingTask(current.value.job)) {
       return current.value.job;
     }
-    throw new AdapterError(409, "export is already processing");
+    return persistCancellation(jobId, transcriptId, current);
   }
   if (!response.ok) {
     throw new GoogleApiError(response.status, await response.text());
   }
 
+  return persistCancellation(jobId, transcriptId, stored);
+}
+
+async function persistCancellation(
+  jobId: string,
+  transcriptId: string,
+  stored: StoredJobVersion,
+): Promise<ExportJob> {
   try {
     return await persistQueuedCancellation(
       stored,

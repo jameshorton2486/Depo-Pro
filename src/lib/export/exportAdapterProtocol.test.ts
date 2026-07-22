@@ -8,6 +8,7 @@ import {
   buildCancelledJob,
   parseAdapterRequest,
   persistQueuedCancellation,
+  shouldPersistCancellationAfterMissingTask,
   shouldRecoverQueuedDispatch,
   validateStagedFormatterRequest,
   validateStoredJob,
@@ -126,6 +127,11 @@ describe("Export Adapter server protocol", () => {
     expect(shouldRecoverQueuedDispatch({ ...queuedJob(), status: "COMPLETED" })).toBe(false);
   });
 
+  it("persists queued cancellation when Cloud Tasks already removed the task", () => {
+    expect(shouldPersistCancellationAfterMissingTask(queuedJob())).toBe(true);
+    expect(shouldPersistCancellationAfterMissingTask({ ...queuedJob(), status: "PROCESSING" })).toBe(false);
+    expect(shouldPersistCancellationAfterMissingTask({ ...queuedJob(), status: "COMPLETED" })).toBe(false);
+  });
   it("cancels only queued jobs using the existing FAILED contract state", () => {
     expect(buildCancelledJob(queuedJob())).toMatchObject({
       status: "FAILED",

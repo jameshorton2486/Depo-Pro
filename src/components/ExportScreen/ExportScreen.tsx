@@ -160,6 +160,8 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     [docState.document, jobId, record.caption.case_name.value, record.caption.case_number.value, transcriptText]
   );
 
+  const formatterExportInFlight = exportJob?.status === "QUEUED" || exportJob?.status === "PROCESSING";
+  const formatterExportDisabled = !certificationReady || !renderModel || exportStarting || (formatterExportInFlight && !exportError);
   return (
     <div className="flex h-full flex-col bg-slate-100 text-slate-900">
       <WorkflowStageNav jobId={jobId} />
@@ -265,7 +267,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 <button
                   key={format}
                   type="button"
-                  disabled={!certificationReady || !renderModel || exportStarting || exportJob?.status === "QUEUED" || exportJob?.status === "PROCESSING"}
+                  disabled={formatterExportDisabled}
                   onClick={() => void handleFormatterExport([format])}
                   className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
                 >

@@ -395,6 +395,42 @@ describe("ExportScreen", () => {
     vi.useRealTimers();
   });
 
+  it("re-enables formatter exports after polling fails", async () => {
+    vi.useFakeTimers();
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: certifiedFixture(),
+      },
+    });
+    const queued = { jobId: "export-queued", transcriptId: "job_123", status: "QUEUED" as const, artifacts: [], error: null };
+    exportTransportMocks.create.mockResolvedValue(queued);
+    exportTransportMocks.get.mockRejectedValue(new Error("network unavailable"));
+
+    const { container, cleanup } = renderExportScreen();
+    const exportButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    if (!exportButton) throw new Error("expected DOCX export button");
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(exportButton.hasAttribute("disabled")).toBe(true);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(container.textContent).toContain("network unavailable");
+    expect(exportButton.hasAttribute("disabled")).toBe(false);
+
+    await act(async () => {
+      exportButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(exportTransportMocks.create).toHaveBeenCalledTimes(2);
+    cleanup();
+    vi.useRealTimers();
+  });
   it("aborts formatter polling when the export screen unmounts", async () => {
     vi.useFakeTimers();
     useIntakeMock.mockReturnValue({
