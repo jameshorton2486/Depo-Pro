@@ -81,56 +81,6 @@ def _try_libreoffice(docx_path: str, pdf_path: str) -> bool:
         return False
 
 
-def _try_reportlab(docx_path: str, pdf_path: str) -> bool:
-    """Last-resort plain-text PDF render using ReportLab."""
-    try:
-        from reportlab.lib.enums import TA_LEFT
-        from reportlab.lib.pagesizes import letter
-        from reportlab.lib.styles import ParagraphStyle
-        from reportlab.lib.units import inch
-        from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate
-
-        from .exporter import extract_text_from_docx, strip_to_ascii
-
-        raw = extract_text_from_docx(docx_path)
-        clean = strip_to_ascii(raw)
-        lines = clean.splitlines()
-
-        courier_style = ParagraphStyle(
-            "Courier12",
-            fontName="Courier",
-            fontSize=12,
-            leading=18,
-            alignment=TA_LEFT,
-        )
-
-        story = []
-        page_lines = []
-        for line in lines:
-            page_lines.append(line)
-            if len(page_lines) >= 25:
-                for ln in page_lines:
-                    story.append(Paragraph(ln or "&nbsp;", courier_style))
-                story.append(PageBreak())
-                page_lines = []
-
-        if page_lines:
-            for ln in page_lines:
-                story.append(Paragraph(ln or "&nbsp;", courier_style))
-
-        doc_rl = SimpleDocTemplate(
-            pdf_path,
-            pagesize=letter,
-            leftMargin=1.5 * inch,
-            rightMargin=0.5 * inch,
-            topMargin=0.75 * inch,
-            bottomMargin=0.75 * inch,
-        )
-        doc_rl.build(story)
-        return Path(pdf_path).exists()
-    except Exception:
-        return False
-
 
 def export_pdf(docx_path: str, pdf_path: str) -> str:
     """Convert DOCX to PDF using the first working strategy."""
@@ -146,7 +96,6 @@ def export_pdf(docx_path: str, pdf_path: str) -> str:
         ("Word COM (Windows)", _try_win32_com),
         ("docx2pdf", _try_docx2pdf),
         ("LibreOffice headless", _try_libreoffice),
-        ("ReportLab (text only)", _try_reportlab),
     ]
 
     log = logging.getLogger(__name__)

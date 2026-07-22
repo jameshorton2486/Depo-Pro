@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -44,34 +45,74 @@ class CloudStorageExportStore:
         job = payload.get("job")
         return job if isinstance(job, dict) else None
 
-    def claim_processing(self, job_id: str) -> bool:
+    def claim_processing(self, job_id: str) -> str | None:
         from google.api_core.exceptions import NotFound, PreconditionFailed
 
         blob = self._bucket.blob(_processing_object_name(job_id))
+        lease_token = uuid.uuid4().hex
         try:
-            blob.upload_from_string("", content_type="text/plain", if_generation_match=0)
-            return True
+            blob.upload_from_string(lease_token, content_type="text/plain", if_generation_match=0)
+            return lease_token
         except PreconditionFailed:
             try:
                 blob.reload()
                 updated = blob.updated
                 if updated is None or datetime.now(UTC) - updated <= _PROCESSING_LEASE_TTL:
-                    return False
-                blob.delete(if_generation_match=blob.generation)
-                blob.upload_from_string("", content_type="text/plain", if_generation_match=0)
-                return True
+                    return None
+                blob.upload_from_string(
+                    lease_token,
+                    content_type="text/plain",
+                    if_generation_match=blob.generation,
+                )
+                return lease_token
             except (NotFound, PreconditionFailed):
-                return False
+                return None
 
-    def release_processing(self, job_id: str) -> None:
-        from google.api_core.exceptions import NotFound
+    def renew_processing(self, job_id: str, lease_token: str) -> bool:
+        from google.api_core.exceptions import NotFound, PreconditionFailed
 
+        blob = self._bucket.blob(_processing_object_name(job_id))
         try:
-            self._bucket.blob(_processing_object_name(job_id)).delete()
-        except NotFound:
+            blob.reload()
+            generation = blob.generation
+            if blob.download_as_text(if_generation_match=generation).strip() != lease_token:
+                return False
+            blob.upload_from_string(
+                lease_token,
+                content_type="text/plain",
+                if_generation_match=generation,
+            )
+            return True
+        except (NotFound, PreconditionFailed):
+            return False
+
+    def release_processing(self, job_id: str, lease_token: str) -> None:
+        from google.api_core.exceptions import NotFound, PreconditionFailed
+
+        blob = self._bucket.blob(_processing_object_name(job_id))
+        try:
+            blob.reload()
+            generation = blob.generation
+            if blob.download_as_text(if_generation_match=generation).strip() == lease_token:
+                blob.delete(if_generation_match=generation)
+        except (NotFound, PreconditionFailed):
             pass
 
     def write_rejected_job(self, job_id: str, transcript_id: str, error: str, updated_at: datetime) -> dict[str, object]:
+        from google.api_core.exceptions import NotFound, PreconditionFailed
+
+        blob = self._bucket.blob(_job_object_name(job_id))
+        generation = 0
+        try:
+            blob.reload()
+            generation = blob.generation
+            current_payload = json.loads(blob.download_as_text(if_generation_match=generation))
+            current_job = current_payload.get("job")
+            if isinstance(current_job, dict) and current_job.get("status") == "COMPLETED":
+                return current_job
+        except NotFound:
+            pass
+
         job: dict[str, object] = {
             "jobId": job_id,
             "transcriptId": transcript_id,
@@ -80,10 +121,17 @@ class CloudStorageExportStore:
             "error": error,
         }
         payload = {"job": job, "idempotencyKey": None, "retryEligible": False, "updatedAt": updated_at.isoformat()}
-        self._bucket.blob(_job_object_name(job_id)).upload_from_string(
-            json.dumps(payload, separators=(",", ":")),
-            content_type="application/json",
-        )
+        try:
+            blob.upload_from_string(
+                json.dumps(payload, separators=(",", ":")),
+                content_type="application/json",
+                if_generation_match=generation,
+            )
+        except PreconditionFailed:
+            current_job = self.read_job(job_id)
+            if current_job and current_job.get("status") == "COMPLETED":
+                return current_job
+            raise
         return job
 
     def write_job(self, job: dict[str, object], task: FormatterTask, retry_eligible: bool, updated_at: datetime) -> None:

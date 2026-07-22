@@ -3,6 +3,7 @@ from pathlib import Path
 from docx import Document
 
 from formatter_core import format_render_model
+from formatter_core.pdf_exporter import export_pdf
 
 
 def render_model(lines: list[dict[str, object]]) -> dict[str, object]:
@@ -120,3 +121,19 @@ def test_centers_centered_role_and_wraps_qa_at_text_tab(tmp_path: Path) -> None:
     assert centered.alignment == 1
     assert centered.text.lstrip().startswith("1 SECTION HEADING")
     assert len(first_qa.text.split("\t")[-1]) <= 55
+
+def test_pdf_export_fails_instead_of_dropping_render_geometry(monkeypatch, tmp_path: Path) -> None:
+    source = tmp_path / "transcript.docx"
+    source.write_bytes(b"synthetic")
+    output = tmp_path / "transcript.pdf"
+
+    monkeypatch.setattr("formatter_core.pdf_exporter._try_win32_com", lambda *_args: False)
+    monkeypatch.setattr("formatter_core.pdf_exporter._try_docx2pdf", lambda *_args: False)
+    monkeypatch.setattr("formatter_core.pdf_exporter._try_libreoffice", lambda *_args: False)
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="PDF export failed"):
+        export_pdf(str(source), str(output))
+
+    assert output.exists() is False

@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from time import sleep
 
 import pytest
 
@@ -11,7 +12,9 @@ class FakeStore:
         self.jobs: dict[str, dict[str, object]] = {}
         self.claims: dict[tuple[str, str], str] = {}
         self.write_history: list[dict[str, object]] = []
-        self.processing: set[str] = set()
+        self.processing: dict[str, str] = {}
+        self.renewals = 0
+        self.renewal_available = True
         self.processing_available = True
 
     def claim_idempotency(self, transcript_id: str, idempotency_key: str, job_id: str) -> str:
@@ -20,14 +23,20 @@ class FakeStore:
     def read_job(self, job_id: str) -> dict[str, object] | None:
         return self.jobs.get(job_id)
 
-    def claim_processing(self, job_id: str) -> bool:
+    def claim_processing(self, job_id: str) -> str | None:
         if not self.processing_available or job_id in self.processing:
-            return False
-        self.processing.add(job_id)
-        return True
+            return None
+        lease_token = f"lease-{job_id}"
+        self.processing[job_id] = lease_token
+        return lease_token
 
-    def release_processing(self, job_id: str) -> None:
-        self.processing.discard(job_id)
+    def renew_processing(self, job_id: str, lease_token: str) -> bool:
+        self.renewals += 1
+        return self.renewal_available and self.processing.get(job_id) == lease_token
+
+    def release_processing(self, job_id: str, lease_token: str) -> None:
+        if self.processing.get(job_id) == lease_token:
+            self.processing.pop(job_id)
 
     def write_job(self, job, task, retry_eligible, updated_at) -> None:
         self.jobs[task.job_id] = job
@@ -173,3 +182,40 @@ def test_signed_url_ttl_starts_after_formatting(monkeypatch, tmp_path: Path) -> 
 
     artifact = result.job["artifacts"][0]
     assert artifact["expiresAt"] == (completed_at + timedelta(seconds=900)).isoformat()
+
+def test_long_formatting_renews_processing_lease(monkeypatch, tmp_path: Path) -> None:
+    def slow_formatter(_render_model, _formats, output_directory):
+        sleep(0.04)
+        output_directory.mkdir(parents=True)
+        docx = output_directory / "transcript.docx"
+        docx.write_text("synthetic")
+        return {"DOCX": docx}
+
+    monkeypatch.setattr("formatter_service.worker._PROCESSING_LEASE_RENEW_INTERVAL_SECONDS", 0.01)
+    monkeypatch.setattr("formatter_service.worker.format_render_model", slow_formatter)
+    store = FakeStore()
+
+    result = process_formatter_task(task_payload(), store, tmp_path, 900)
+
+    assert result.job["status"] == "COMPLETED"
+    assert store.renewals >= 1
+    assert store.processing == {}
+
+def test_lost_processing_lease_never_publishes_completion(monkeypatch, tmp_path: Path) -> None:
+    def slow_formatter(_render_model, _formats, output_directory):
+        sleep(0.04)
+        output_directory.mkdir(parents=True)
+        docx = output_directory / "transcript.docx"
+        docx.write_text("synthetic")
+        return {"DOCX": docx}
+
+    monkeypatch.setattr("formatter_service.worker._PROCESSING_LEASE_RENEW_INTERVAL_SECONDS", 0.01)
+    monkeypatch.setattr("formatter_service.worker.format_render_model", slow_formatter)
+    store = FakeStore()
+    store.renewal_available = False
+
+    with pytest.raises(RetryableFormatterError) as raised:
+        process_formatter_task(task_payload(), store, tmp_path, 900)
+
+    assert raised.value.result.job["status"] == "PROCESSING"
+    assert [entry["status"] for entry in store.write_history] == ["PROCESSING"]

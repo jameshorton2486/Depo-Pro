@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 
 from google.api_core.exceptions import NotFound, PreconditionFailed
@@ -25,23 +26,43 @@ class FakeBlob:
 
 
 class FakeLeaseBlob:
-    def __init__(self, claimed: bool = False, updated: datetime | None = None) -> None:
+    def __init__(self, claimed: bool = False, updated: datetime | None = None, content: str = "existing-lease") -> None:
         self.claimed = claimed
+        self.content = content if claimed else ""
         self.deleted = False
         self.updated = updated
         self.generation = 7
+        self.uploads = 0
 
     def reload(self) -> None:
-        pass
-
-    def upload_from_string(self, *_arguments, **_keyword_arguments) -> None:
-        if self.claimed:
-            raise PreconditionFailed("already claimed")
-        self.claimed = True
-
-    def delete(self, **_keyword_arguments) -> None:
         if not self.claimed:
             raise NotFound("not found")
+
+    def download_as_text(self, **keyword_arguments) -> str:
+        if not self.claimed:
+            raise NotFound("not found")
+        expected = keyword_arguments.get("if_generation_match")
+        if expected is not None and expected != self.generation:
+            raise PreconditionFailed("generation changed")
+        return self.content
+
+    def upload_from_string(self, content, *_arguments, **keyword_arguments) -> None:
+        expected = keyword_arguments.get("if_generation_match")
+        if expected == 0 and self.claimed:
+            raise PreconditionFailed("already claimed")
+        if expected not in (None, 0) and (not self.claimed or expected != self.generation):
+            raise PreconditionFailed("generation changed")
+        self.claimed = True
+        self.content = content
+        self.generation += 1
+        self.uploads += 1
+
+    def delete(self, **keyword_arguments) -> None:
+        if not self.claimed:
+            raise NotFound("not found")
+        expected = keyword_arguments.get("if_generation_match")
+        if expected is not None and expected != self.generation:
+            raise PreconditionFailed("generation changed")
         self.claimed = False
         self.deleted = True
 
@@ -73,16 +94,20 @@ def test_signed_url_uses_runtime_identity_for_iam_signing() -> None:
     }
 
 
-def test_processing_lease_uses_conditional_create_and_release() -> None:
+def test_processing_lease_uses_conditional_create_renewal_and_owned_release() -> None:
     blob = FakeLeaseBlob()
     store = CloudStorageExportStore.__new__(CloudStorageExportStore)
     store._bucket = FakeBucket(blob)
 
-    assert store.claim_processing("job-001") is True
-    assert store.claim_processing("job-001") is False
+    lease_token = store.claim_processing("job-001")
+    assert lease_token is not None
+    assert store.claim_processing("job-001") is None
+    assert store.renew_processing("job-001", lease_token) is True
 
-    store.release_processing("job-001")
+    store.release_processing("job-001", "different-owner")
+    assert blob.deleted is False
 
+    store.release_processing("job-001", lease_token)
     assert blob.deleted is True
 
 
@@ -91,8 +116,7 @@ def test_missing_processing_lease_can_be_released() -> None:
     store = CloudStorageExportStore.__new__(CloudStorageExportStore)
     store._bucket = FakeBucket(blob)
 
-    store.release_processing("job-001")
-
+    store.release_processing("job-001", "lease-token")
 
 
 def test_stale_processing_lease_is_reclaimed(monkeypatch) -> None:
@@ -102,8 +126,36 @@ def test_stale_processing_lease_is_reclaimed(monkeypatch) -> None:
     store._bucket = FakeBucket(blob)
     monkeypatch.setattr("formatter_service.storage.datetime", FixedDatetime)
 
-    assert store.claim_processing("job-001") is True
+    lease_token = store.claim_processing("job-001")
+
+    assert lease_token is not None
     assert blob.claimed is True
+    assert blob.content == lease_token
+
+
+def test_rejected_job_does_not_overwrite_completed_job() -> None:
+    completed = {
+        "job": {
+            "jobId": "job-001",
+            "transcriptId": "transcript-001",
+            "status": "COMPLETED",
+            "artifacts": [{"format": "DOCX"}],
+            "error": None,
+        }
+    }
+    blob = FakeLeaseBlob(claimed=True, content=json.dumps(completed))
+    store = CloudStorageExportStore.__new__(CloudStorageExportStore)
+    store._bucket = FakeBucket(blob)
+
+    result = store.write_rejected_job(
+        "job-001",
+        "transcript-001",
+        "malformed payload",
+        datetime(2026, 7, 21, tzinfo=UTC),
+    )
+
+    assert result["status"] == "COMPLETED"
+    assert blob.uploads == 0
 
 
 class FixedDatetime(datetime):
