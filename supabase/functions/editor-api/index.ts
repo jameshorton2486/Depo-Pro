@@ -150,6 +150,10 @@ Deno.serve(async (request) => {
       request,
     };
 
+    if (requiresUnlockedTranscript(match)) {
+      await requireUnlockedTranscript(context);
+    }
+
     switch (match.kind) {
       case "document":
         return handleGetDocument(context);
@@ -191,6 +195,32 @@ Deno.serve(async (request) => {
     return respondError(500, "unexpected server error");
   }
 });
+
+function requiresUnlockedTranscript(match: RouteMatch): boolean {
+  return match.kind === "working"
+    || match.kind === "review"
+    || match.kind === "speakers"
+    || match.kind === "resolveSuggestion"
+    || match.kind === "aiSuggestionAction"
+    || match.kind === "aiSuggestionAcceptAll"
+    || match.kind === "aiReview";
+}
+
+async function requireUnlockedTranscript(context: RouteContext): Promise<void> {
+  const { data, error } = await context.supabase
+    .from("case_certifications")
+    .select("certification_date")
+    .eq("case_id", context.transcript.case_id)
+    .maybeSingle();
+
+  if (error) {
+    throw new HttpError(500, "failed to verify certification lock");
+  }
+
+  if (data?.certification_date) {
+    throw new HttpError(409, "certified transcript is locked");
+  }
+}
 
 async function requireTranscript(
   supabase: SupabaseClient<Database>,

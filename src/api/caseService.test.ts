@@ -11,9 +11,11 @@ const certificationsSelect = vi.fn();
 const certificationsUpsert = vi.fn();
 const certificationsDeleteEq = vi.fn();
 const certificationsDelete = vi.fn();
+const saveCaseRpc = vi.fn();
 
 vi.mock("../lib/supabase", () => ({
   getSupabaseClient: vi.fn(async () => ({
+    rpc: saveCaseRpc,
     from(table: string) {
       if (table === "cases") {
         return { select: casesSelect, upsert: casesUpsert };
@@ -156,7 +158,10 @@ describe("listRecentCases", () => {
       in: async () => ({ data: [{ case_id: "case_live" }, { case_id: "case_live" }], error: null }),
     });
     certificationsSelect.mockReturnValue({
-      in: async () => ({ data: [{ case_id: "case_live" }], error: null }),
+      in: async () => ({
+        data: [{ case_id: "case_live", certification_date: "2026-06-05" }],
+        error: null,
+      }),
     });
 
     await expect(listRecentCases()).resolves.toEqual([
@@ -228,17 +233,11 @@ describe("listRecentCases", () => {
 
 describe("saveCase", () => {
   beforeEach(() => {
-    casesUpsert.mockReset();
-    certificationsUpsert.mockReset();
-    certificationsDeleteEq.mockReset();
-    certificationsDelete.mockReset();
-    certificationsDelete.mockReturnValue({ eq: certificationsDeleteEq });
-    certificationsDeleteEq.mockResolvedValue({ error: null });
-    casesUpsert.mockResolvedValue({ error: null });
-    certificationsUpsert.mockResolvedValue({ error: null });
+    saveCaseRpc.mockReset();
+    saveCaseRpc.mockResolvedValue({ error: null });
   });
 
-  it("persists certification payloads into case_certifications alongside the case row", async () => {
+  it("persists the case and certification through one atomic database call", async () => {
     const record = emptyCaseRecord("case_certified", "2026-06-05T12:00:00.000Z");
     record.certification = {
       certification_date: "2026-06-30",
@@ -255,28 +254,38 @@ describe("saveCase", () => {
 
     await saveCase(record);
 
-    expect(casesUpsert).toHaveBeenCalledTimes(1);
-    expect(certificationsUpsert).toHaveBeenCalledTimes(1);
-    expect(certificationsUpsert).toHaveBeenCalledWith(
+    expect(saveCaseRpc).toHaveBeenCalledTimes(1);
+    expect(saveCaseRpc).toHaveBeenCalledWith(
+      "save_case_with_certification",
       expect.objectContaining({
-        case_id: "case_certified",
-        certification_date: "2026-06-30",
-        certification_statement: "Ready for release.",
-        checklist: record.certification.checklist,
-        signature_hash: null,
+        p_case: expect.objectContaining({
+          case_id: "case_certified",
+          payload: expect.objectContaining({ certification: record.certification }),
+        }),
+        p_certification: record.certification,
+        p_updated_at: expect.any(String),
       }),
-      { onConflict: "case_id" },
     );
-    expect(certificationsDelete).not.toHaveBeenCalled();
   });
 
-  it("removes persisted certification rows when certification is cleared", async () => {
+  it("persists an absent certification atomically with the case payload", async () => {
     const record = emptyCaseRecord("case_uncertified", "2026-06-05T12:00:00.000Z");
 
     await saveCase(record);
 
-    expect(certificationsDelete).toHaveBeenCalledTimes(1);
-    expect(certificationsDeleteEq).toHaveBeenCalledWith("case_id", "case_uncertified");
-    expect(certificationsUpsert).not.toHaveBeenCalled();
+    expect(saveCaseRpc).toHaveBeenCalledTimes(1);
+    expect(saveCaseRpc).toHaveBeenCalledWith(
+      "save_case_with_certification",
+      expect.objectContaining({ p_certification: null }),
+    );
+  });
+
+  it("does not expose a partially saved case when the atomic call fails", async () => {
+    const error = new Error("certification rejected");
+    saveCaseRpc.mockResolvedValue({ error });
+    const record = emptyCaseRecord("case_failed", "2026-06-05T12:00:00.000Z");
+
+    await expect(saveCase(record)).rejects.toBe(error);
+    expect(saveCaseRpc).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,6 +6,11 @@ import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 import { isCaseUfmReady } from "../../lib/ufm/requiredFields";
+import {
+  formatLocalCertificationDate,
+  isCertificationLocked,
+  isCertificationReady,
+} from "../../lib/certification";
 import type { CaseCertification } from "../../types/case";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
@@ -36,6 +41,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
   const [saving, setSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const certification = record.certification ?? buildDefaultCertification();
+  const certificationLocked = isCertificationLocked(certification);
   const derivedExhibitsComplete = useMemo(
     () => record.exhibits.every((exhibit) => exhibit.label.trim().length > 0 && Boolean(exhibit.file_url || exhibit.filename)),
     [record.exhibits],
@@ -143,6 +149,10 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
       return;
     }
 
+    if (certificationLocked) {
+      return;
+    }
+
     updateCertification({
       ...certification,
       checklist: {
@@ -156,24 +166,34 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
     certification,
     derivedExhibitsComplete,
     derivedUfmComplete,
+    certificationLocked,
     record.certification,
     updateCertification,
   ]);
 
-  const allComplete = checklistEntries.every(
-    ([key]) => certification.checklist[key] && certification.certification_statement.trim().length > 0,
-  );
+  const allComplete = isCertificationReady(certification);
 
-  useEffect(() => {
-    if (!record.certification || !allComplete || certification.certification_date) {
-      return;
+  async function handleCertify() {
+    if (!allComplete || certificationLocked || saving) return;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
     }
-
-    updateCertification({
+    const nextCertification = {
       ...certification,
-      certification_date: new Date().toISOString().slice(0, 10),
-    });
-  }, [allComplete, certification, record.certification, updateCertification]);
+      certification_date: formatLocalCertificationDate(new Date()),
+    };
+    setSaving(true);
+    try {
+      await saveCase({
+        ...record,
+        certification: nextCertification,
+      });
+      updateCertification(nextCertification);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleNavigate(stage: "workspace" | "export") {
     await persistCertification();
@@ -226,7 +246,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                         <input
                           type="checkbox"
                           checked={certification.checklist[key]}
-                          disabled={key === "exhibits_complete" || key === "ufm_complete"}
+                          disabled={certificationLocked || key === "exhibits_complete" || key === "ufm_complete"}
                           onChange={(e) =>
                             updateCertification({
                               ...certification,
@@ -254,6 +274,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                 <h2 className="mb-2 text-sm font-semibold text-slate-900">Certification Statement</h2>
                 <textarea
                   value={certification.certification_statement}
+                  disabled={certificationLocked}
                   onChange={(e) =>
                     updateCertification({
                       ...certification,
@@ -270,8 +291,10 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 size={16} className={allComplete ? "text-emerald-600" : "text-slate-300"} />
                   <p className="text-sm font-medium text-slate-800">
-                    {allComplete
-                      ? "Certification complete. Export is now available."
+                    {certificationLocked
+                      ? "Transcript certified and locked. Export is available."
+                      : allComplete
+                      ? "All checks are complete. Certify the transcript to lock it and enable export."
                       : "Complete all checklist items and the statement to continue to export."}
                   </p>
                 </div>
@@ -290,15 +313,27 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
                 Back to Workspace
               </button>
 
-              <button
-                type="button"
-                onClick={() => void handleNavigate("export")}
-                disabled={!allComplete}
-                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-5 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Continue to Export
-                <ChevronRight size={13} />
-              </button>
+              <div className="flex items-center gap-2">
+                {!certificationLocked && (
+                  <button
+                    type="button"
+                    onClick={handleCertify}
+                    disabled={!allComplete || saving}
+                    className="rounded-lg bg-emerald-700 px-5 py-1.5 text-xs font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Certify Transcript
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void handleNavigate("export")}
+                  disabled={!certificationLocked}
+                  className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-5 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Continue to Export
+                  <ChevronRight size={13} />
+                </button>
+              </div>
             </div>
           </footer>
         </div>

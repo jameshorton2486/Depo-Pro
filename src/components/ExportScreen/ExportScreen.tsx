@@ -4,6 +4,7 @@ import { useDocument } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 import { buildFormattedTranscriptText } from "../../lib/transcriptDownloads";
+import { isCertificationLocked, isCertificationReady } from "../../lib/certification";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
@@ -31,15 +32,26 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
-  const certificationReady = useMemo(() => {
-    const certification = record.certification;
-    if (!certification) return false;
-    return certification.certification_statement.trim().length > 0
-      && Object.values(certification.checklist).every(Boolean);
-  }, [record.certification]);
+  const certificationReady = useMemo(
+    () => isCertificationReady(record.certification) && isCertificationLocked(record.certification),
+    [record.certification],
+  );
 
+  function handleExportTxt() {
+    if (!certificationReady || !docState.document) return;
+    setLastArtifact(
+      downloadBlob(`${jobId}-transcript.txt`, "text/plain;charset=utf-8", transcriptText),
+    );
+  }
+
+  function handleExportPackage() {
+    if (!certificationReady || !docState.document) return;
+    setLastArtifact(
+      downloadBlob(`${jobId}-package.json`, "application/json;charset=utf-8", packageJson),
+    );
+  }
   async function handleCopyTranscript() {
-    if (!transcriptText) return;
+    if (!certificationReady || !transcriptText) return;
     try {
       await navigator.clipboard.writeText(transcriptText);
       setCopyState("copied");
@@ -118,15 +130,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               <button
                 type="button"
                 disabled={!certificationReady || !docState.document}
-                onClick={() =>
-                  setLastArtifact(
-                    downloadBlob(
-                      `${jobId}-transcript.txt`,
-                      "text/plain;charset=utf-8",
-                      transcriptText
-                    )
-                  )
-                }
+                onClick={handleExportTxt}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />
@@ -145,15 +149,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               <button
                 type="button"
                 disabled={!certificationReady || !docState.document}
-                onClick={() =>
-                  setLastArtifact(
-                    downloadBlob(
-                      `${jobId}-package.json`,
-                      "application/json;charset=utf-8",
-                      packageJson
-                    )
-                  )
-                }
+                onClick={handleExportPackage}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={13} />
@@ -171,7 +167,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               </p>
               <button
                 type="button"
-                disabled={!docState.document || copyState === "copied"}
+                disabled={!certificationReady || !docState.document || copyState === "copied"}
                 onClick={() => void handleCopyTranscript()}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >

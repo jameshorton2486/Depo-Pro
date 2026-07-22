@@ -83,33 +83,13 @@ export async function saveCase(record: CaseRecord): Promise<CaseRecord> {
   const client = await getSupabaseClient("saveCase");
   const now = new Date().toISOString();
   const nextRecord = withSaveTimestamp(record, now);
-  const { error } = await client
-    .from("cases")
-    .upsert(toCaseRow(nextRecord), { onConflict: "case_id" });
+  const { error } = await client.rpc("save_case_with_certification", {
+    p_case: toCaseRow(nextRecord),
+    p_certification: nextRecord.certification,
+    p_updated_at: now,
+  });
 
   if (error) throw error;
-
-  if (nextRecord.certification) {
-    const { error: certificationError } = await client
-      .from("case_certifications")
-      .upsert({
-        case_id: nextRecord.case_id,
-        certification_date: nextRecord.certification.certification_date,
-        certification_statement: nextRecord.certification.certification_statement,
-        checklist: nextRecord.certification.checklist,
-        signature_hash: nextRecord.certification.signature_hash,
-        updated_at: now,
-      }, { onConflict: "case_id" });
-
-    if (certificationError) throw certificationError;
-  } else {
-    const { error: certificationDeleteError } = await client
-      .from("case_certifications")
-      .delete()
-      .eq("case_id", nextRecord.case_id);
-
-    if (certificationDeleteError) throw certificationDeleteError;
-  }
 
   return nextRecord;
 }
@@ -224,7 +204,7 @@ function summarizeIndicators(
   }
 
   for (const row of certificationRows) {
-    ensure(row.case_id).certified = true;
+    ensure(row.case_id).certified = Boolean(row.certification_date);
   }
 
   return indicators;
@@ -260,7 +240,7 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
       client.from("case_audio").select("case_id").in("case_id", caseIds),
       client.from("transcripts").select("case_id").in("case_id", caseIds),
       client.from("case_exhibits").select("case_id").in("case_id", caseIds),
-      client.from("case_certifications").select("case_id").in("case_id", caseIds),
+      client.from("case_certifications").select("case_id, certification_date").in("case_id", caseIds),
     ]);
 
   if (audioResult.error) throw audioResult.error;
