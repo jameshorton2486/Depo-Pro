@@ -44,6 +44,21 @@ describe("certification state", () => {
     expect(isCertificationReady(malformedCertification)).toBe(false);
   });
 
+  it("requires every canonical checklist item for legacy rows", () => {
+    const emptyChecklist = {
+      ...readyCertification,
+      checklist: {},
+    } as unknown as CaseCertification;
+    const partialChecklist = {
+      ...readyCertification,
+      checklist: { review_complete: true },
+    } as unknown as CaseCertification;
+
+    expect(isCertificationReady(emptyChecklist)).toBe(false);
+    expect(isCertificationReady(partialChecklist)).toBe(false);
+    expect(isCertificationReady(readyCertification)).toBe(true);
+  });
+
   it("formats the reporter's local calendar date", () => {
     expect(formatLocalCertificationDate(new Date(2026, 6, 10, 23, 30))).toBe("2026-07-10");
   });
