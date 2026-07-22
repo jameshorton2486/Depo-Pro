@@ -38,7 +38,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   );
 
   async function handleCopyTranscript() {
-    if (!transcriptText) return;
+    if (!certificationReady || !transcriptText) return;
     try {
       await navigator.clipboard.writeText(transcriptText);
       setCopyState("copied");
@@ -170,7 +170,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
               </p>
               <button
                 type="button"
-                disabled={!docState.document || copyState === "copied"}
+                disabled={!certificationReady || !docState.document || copyState === "copied"}
                 onClick={() => void handleCopyTranscript()}
                 className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >

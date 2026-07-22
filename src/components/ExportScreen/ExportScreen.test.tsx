@@ -158,6 +158,39 @@ describe("ExportScreen", () => {
     cleanup();
   });
 
+  it("blocks transcript copying until certification is persisted", () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: {
+          certification_date: null,
+          certification_statement: "Ready",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
+        },
+      },
+    });
+
+    const { container, cleanup } = renderExportScreen();
+    const copyButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Copy Transcript"));
+
+    expect(copyButton?.hasAttribute("disabled")).toBe(true);
+    expect(writeText).not.toHaveBeenCalled();
+    cleanup();
+  });
   it("keeps export gated until a ready transcript is explicitly certified", () => {
     useIntakeMock.mockReturnValue({
       record: {
