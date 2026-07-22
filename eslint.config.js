@@ -8,8 +8,10 @@ export default tseslint.config(
   {
     ignores: [
       'dist',
+      '.tmp/**',
+      '**/.pytest_cache/**',
+      '**/__pycache__/**',
       'reference/**',
-      '.pytest_cache/**',
       'public/mockServiceWorker.js',
       'src/types/database.ts',
       'Audit/runAudit.ts',

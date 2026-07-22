@@ -6,6 +6,7 @@ import {
   buildCanonicalExportRenderModel,
   ExportAdapter,
   ExportEligibilityError,
+  ExportPollingTimeoutError,
   type ExportAdapterTransport,
 } from "./exportAdapter";
 
@@ -148,6 +149,22 @@ describe("ExportAdapter", () => {
     })).resolves.toEqual(completedJob);
 
     expect(updates.map((job) => job.status)).toEqual(["PROCESSING", "COMPLETED"]);
+  });
+  it("fails deterministically when export polling exceeds the timeout", async () => {
+    vi.useFakeTimers();
+    const queued = { ...completedJob, status: "QUEUED" as const, artifacts: [] };
+    const get = vi.fn().mockResolvedValue(queued);
+    const adapter = new ExportAdapter(transport({ get }));
+
+    const result = expect(adapter.waitForCompletion(queued, {
+      intervalMs: 100,
+      timeoutMs: 250,
+    })).rejects.toBeInstanceOf(ExportPollingTimeoutError);
+
+    await vi.advanceTimersByTimeAsync(300);
+    await result;
+    expect(get).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
   });
   it("removes abort listeners after each resolved polling delay", async () => {
     vi.useFakeTimers();

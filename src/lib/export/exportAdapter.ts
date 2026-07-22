@@ -27,6 +27,12 @@ export class ExportEligibilityError extends Error {
   }
 }
 
+export class ExportPollingTimeoutError extends Error {
+  constructor(message = "Export did not complete before the polling timeout.") {
+    super(message);
+    this.name = "ExportPollingTimeoutError";
+  }
+}
 export interface ExportAdapterTransport {
   create(request: ExportServiceRequest): Promise<ExportJob>;
   get(jobId: string, transcriptId: string): Promise<ExportJob>;
@@ -63,16 +69,25 @@ export class ExportAdapter {
     initialJob: ExportJob,
     options: {
       intervalMs?: number;
+      timeoutMs?: number;
       signal?: AbortSignal;
       onUpdate?: (job: ExportJob) => void;
     } = {},
   ): Promise<ExportJob> {
     let job = initialJob;
+    const startedAt = Date.now();
+    const timeoutMs = options.timeoutMs;
     while (job.status === "QUEUED" || job.status === "PROCESSING") {
       if (options.signal?.aborted) {
         throw new DOMException("Export polling was cancelled.", "AbortError");
       }
+      if (timeoutMs !== undefined && Date.now() - startedAt >= timeoutMs) {
+        throw new ExportPollingTimeoutError();
+      }
       await delay(options.intervalMs ?? 1000, options.signal);
+      if (options.signal?.aborted) {
+        throw new DOMException("Export polling was cancelled.", "AbortError");
+      }
       job = await this.get(job.jobId, job.transcriptId);
       options.onUpdate?.(job);
     }
