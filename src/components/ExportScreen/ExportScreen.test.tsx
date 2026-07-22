@@ -10,6 +10,13 @@ const useIntakeMock = vi.fn();
 const useStageMock = vi.fn();
 const buildFormattedTranscriptTextMock = vi.fn();
 
+vi.mock("../../api/client", () => ({
+  exportAdapterTransport: {
+    create: vi.fn(),
+    get: vi.fn(),
+    cancel: vi.fn(),
+  },
+}));
 vi.mock("../../context/DocumentContext", () => ({
   useDocument: () => useDocumentMock(),
 }));
@@ -231,26 +238,33 @@ describe("ExportScreen", () => {
     cleanup();
   });
 
-  it("shows DOCX and PDF as explicitly gated beta controls", () => {
+  it("enables formatter exports only for persisted certification", () => {
     useIntakeMock.mockReturnValue({
       record: {
-        caption: {
-          case_name: { value: "Example Case" },
-          case_number: { value: "123" },
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: {
+          certification_date: "2026-07-22",
+          certification_statement: "Certified synthetic transcript",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
         },
-        certification: null,
       },
     });
 
     const { container, cleanup } = renderExportScreen();
     const buttons = Array.from(container.querySelectorAll("button"));
-    const docxButton = buttons.find((button) => button.textContent?.includes("DOCX Coming After Beta"));
-    const pdfButton = buttons.find((button) => button.textContent?.includes("PDF Coming After Beta"));
+    const docxButton = buttons.find((button) => button.textContent?.includes("Export DOCX"));
+    const pdfButton = buttons.find((button) => button.textContent?.includes("Export PDF"));
 
-    expect(container.textContent).toContain("DOCX / PDF Export");
-    expect(container.textContent).toContain("WAVE-22");
-    expect(docxButton?.hasAttribute("disabled")).toBe(true);
-    expect(pdfButton?.hasAttribute("disabled")).toBe(true);
+    expect(container.textContent).toContain("Formatter Service Export");
+    expect(docxButton?.hasAttribute("disabled")).toBe(false);
+    expect(pdfButton?.hasAttribute("disabled")).toBe(false);
     cleanup();
   });
 });

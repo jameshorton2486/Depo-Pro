@@ -1,12 +1,17 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, Clipboard, Download, FileArchive, FileText } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronLeft, Clipboard, Download, FileArchive, FileText, Loader2, X } from "lucide-react";
 import { useDocument } from "../../context/DocumentContext";
+import { exportAdapterTransport } from "../../api/client";
+import { buildCanonicalExportRenderModel, ExportAdapter } from "../../lib/export/exportAdapter";
+import type { ExportArtifactFormat, ExportJob } from "../../lib/export/exportServiceContract";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 import { buildFormattedTranscriptText } from "../../lib/transcriptDownloads";
 import { isCertificationLocked, isCertificationReady } from "../../lib/certification";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
+
+const exportAdapter = new ExportAdapter(exportAdapterTransport);
 
 interface GeneratedArtifact {
   name: string;
@@ -31,12 +36,56 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const { setStage } = useStage();
   const [lastArtifact, setLastArtifact] = useState<GeneratedArtifact | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [exportJob, setExportJob] = useState<ExportJob | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const exportAbort = useRef<AbortController | null>(null);
 
   const certificationReady = useMemo(
     () => isCertificationReady(record.certification) && isCertificationLocked(record.certification),
     [record.certification],
   );
 
+  const renderModel = useMemo(
+    () => docState.document ? buildCanonicalExportRenderModel(docState.document, record) : null,
+    [docState.document, record],
+  );
+
+  async function handleFormatterExport(formats: readonly ExportArtifactFormat[]) {
+    if (!certificationReady || !renderModel) return;
+    exportAbort.current?.abort();
+    const controller = new AbortController();
+    exportAbort.current = controller;
+    setExportError(null);
+
+    try {
+      const queued = await exportAdapter.start({
+        certification: record.certification,
+        renderModel,
+        formats,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      setExportJob(queued);
+      const completed = await exportAdapter.waitForCompletion(queued, {
+        signal: controller.signal,
+        onUpdate: setExportJob,
+      });
+      setExportJob(completed);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setExportError(error instanceof Error ? error.message : "Export failed.");
+    }
+  }
+
+  async function handleCancelExport() {
+    if (!exportJob || exportJob.status !== "QUEUED") return;
+    exportAbort.current?.abort();
+    setExportError(null);
+    try {
+      setExportJob(await exportAdapter.cancel(exportJob.jobId, exportJob.transcriptId));
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "Cancellation failed.");
+    }
+  }
   function handleExportTxt() {
     if (!certificationReady || !docState.document) return;
     setLastArtifact(
@@ -180,35 +229,62 @@ export function ExportScreen({ jobId }: { jobId: string }) {
             </div>
           </section>
 
-          <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-2">
-              <FileText size={16} className="text-amber-700" />
-              <h2 className="text-sm font-semibold text-slate-900">DOCX / PDF Export</h2>
+              <FileText size={16} className="text-blue-700" />
+              <h2 className="text-sm font-semibold text-slate-900">Formatter Service Export</h2>
             </div>
-            <p className="mt-2 text-sm text-slate-700">
-              Word and PDF transcript export remain gated for this beta. Use TXT or Transcript Package for local validation until the tracked export path is promoted.
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Tracking note: NUMBERING_REGISTRY.md entry `WAVE-22` reserved for post-beta export delivery.
+            <p className="mt-2 text-sm text-slate-600">
+              Generate geometry-preserving Word and PDF artifacts from the certified render model.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                disabled
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-400"
-              >
-                <Download size={13} />
-                DOCX Coming After Beta
-              </button>
-              <button
-                type="button"
-                disabled
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-400"
-              >
-                <Download size={13} />
-                PDF Coming After Beta
-              </button>
+              {(["DOCX", "PDF"] as const).map((format) => (
+                <button
+                  key={format}
+                  type="button"
+                  disabled={!certificationReady || !renderModel || exportJob?.status === "QUEUED" || exportJob?.status === "PROCESSING"}
+                  onClick={() => void handleFormatterExport([format])}
+                  className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Download size={13} />
+                  Export {format}
+                </button>
+              ))}
+              {exportJob?.status === "QUEUED" && (
+                <button
+                  type="button"
+                  onClick={() => void handleCancelExport()}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  <X size={13} />
+                  Cancel Export
+                </button>
+              )}
             </div>
+
+            {exportJob && (
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  {(exportJob.status === "QUEUED" || exportJob.status === "PROCESSING") && <Loader2 size={14} className="animate-spin" />}
+                  Export {exportJob.status.toLowerCase()}
+                </p>
+                {exportJob.error && <p className="mt-1 text-sm text-red-700">{exportJob.error}</p>}
+                {exportJob.artifacts.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {exportJob.artifacts.map((artifact) => (
+                      <a
+                        key={artifact.format}
+                        href={artifact.downloadUrl}
+                        className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+                      >
+                        Download {artifact.format}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {exportError && <p className="mt-3 text-sm text-red-700">{exportError}</p>}
           </section>
 
           {lastArtifact && (
