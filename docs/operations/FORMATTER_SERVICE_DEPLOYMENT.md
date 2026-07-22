@@ -76,3 +76,23 @@ The authenticated production gate passed on 2026-07-21 against Cloud Run revisio
 The task reached the private IAM-protected Cloud Run service, executed the registered FastAPI route, invoked `formatter_core`, uploaded both requested artifacts, generated signed URLs through IAM `signBlob`, persisted the completed job in Cloud Storage, and returned success to Cloud Tasks. The completed task was removed from the queue automatically.
 
 An authenticated duplicate dispatch using the identical job and idempotency key also returned success without rewriting state. The job object retained generation `1784673201119863`, the DOCX retained generation `1784673200597111`, and the PDF retained generation `1784673200958653`; Cloud Tasks removed the duplicate task after acknowledgement.
+## Review-correction production gate
+
+The final review-correction image was deployed on 2026-07-21 (America/Chicago) as Cloud Run revision `depo-pro-formatter-00007-2z7`, serving 100% of traffic from image `17b-20260721-6` (digest `sha256:5ad5848d701206684f9387b1f64987b86efcc091b899c4b26940dcd6a181acef`; Cloud Build `ed2e2a1a-221f-4cc4-92ee-0374f912129a`).
+
+| Check | Verified value |
+| --- | --- |
+| Synthetic job | `pr17b-review-final-20260721-06` |
+| Final status | `COMPLETED`; `retryEligible=false`; `error=null` |
+| Job generation / MD5 | `1784692126265112` / `MtuJG5fGTBUa8IN9oNdH2Q==` |
+| DOCX generation / MD5 / bytes | `1784692125927031` / `mK3gizz/n33FDuJoGc4+IQ==` / `37146` |
+| PDF generation / MD5 / bytes | `1784692126092221` / `4flinoc+d7kIz0hJ7LHoFQ==` / `20098` |
+| Physical lines | 11 numbered physical lines from 3 logical render lines |
+| Artificial blank lines | 0 |
+| Global geometry | 1.25-inch left margin; 0.75-inch right margin; 28-point line spacing |
+| Line geometry | Q/A tabs at 0.5/1.0 inches; continuation at 1.0 inch; parenthetical at 2.0 inches |
+| Duplicate dispatch | Acknowledged; job, DOCX, and PDF generations and MD5 values remained unchanged |
+| Malformed named task | `pr17b-malformed-final-20260721-06` persisted `FAILED`, `retryEligible=false`, then left the queue |
+| Malformed completed-job replay | Acknowledged; completed job generation and MD5 remained unchanged |
+
+The processing-lease renewal, stale takeover, owner-token conditional release, and lost-lease publication guards are verified by deterministic storage/worker regression tests. Production validation used only fabricated transcript data and did not read or mutate client data.

@@ -70,7 +70,7 @@ The production acceptance path is:
 
 `Cloud Tasks → private Cloud Run → FastAPI /tasks/format → formatter_core → Cloud Storage → signed URLs → ExportJob COMPLETED`
 
-Deployment identifiers, synthetic job evidence, object generations, and retry results are recorded in `docs/operations/FORMATTER_SERVICE_DEPLOYMENT.md` after each production acceptance run.
+Revision `depo-pro-formatter-00007-2z7` completed the authenticated production path with both DOCX and PDF artifacts, signed URLs, preserved geometry, physical-line pagination, no artificial blank lines, immutable duplicate dispatch, terminal malformed-task handling, and completed-job protection. Deployment identifiers, object generations, checksums, and detailed results are recorded in `docs/operations/FORMATTER_SERVICE_DEPLOYMENT.md`.
 
 ## Conclusion
 
