@@ -2,7 +2,7 @@
 
 ## Runtime
 
-The Export Adapter is an authenticated Supabase Edge Function named `export-adapter`. It performs short-lived orchestration only; DOCX/PDF work remains in the private Cloud Run Formatter Service.
+The Export Adapter is an authenticated Supabase Edge Function named `export-adapter`. It performs short-lived orchestration only; DOCX/PDF work remains in the private Cloud Run Formatter Service. Large canonical render models are staged in Cloud Storage and dispatched through the adapter-owned `export-adapter-relay` function so Cloud Tasks carries only a bounded object reference.
 
 ## Required secrets and configuration
 
@@ -12,6 +12,8 @@ The Export Adapter is an authenticated Supabase Edge Function named `export-adap
 | `EXPORT_GCP_PROJECT` | `depo-pro-website` |
 | `EXPORT_TASKS_LOCATION` | `us-central1` |
 | `EXPORT_TASKS_QUEUE` | `depo-pro-formatter` |
+| `EXPORT_ADAPTER_RELAY_URL` | Supabase Edge Function URL ending in `/functions/v1/export-adapter-relay` |
+| `EXPORT_ADAPTER_RELAY_OIDC_AUDIENCE` | Exact relay URL used as the Cloud Tasks OIDC audience |
 | `EXPORT_FORMATTER_TASK_URL` | Private formatter route ending in `/tasks/format` |
 | `EXPORT_FORMATTER_OIDC_AUDIENCE` | Cloud Run service audience without a path |
 | `EXPORT_ARTIFACT_BUCKET` | `depo-pro-exports` |
@@ -26,17 +28,17 @@ The client invokes the function with an authenticated JSON envelope:
 - `{ action: "get", jobId, transcriptId }`
 - `{ action: "cancel", jobId, transcriptId }`
 
-The function returns the frozen `ExportJob` shape.
+The function returns the frozen `ExportJob` shape. Create requests stage `exports/requests/{jobId}.json`, enqueue a relay task containing only `{ jobId, transcriptId, requestObjectName }`, and let the relay load and forward the unchanged `{ jobId, request }` formatter envelope. The staged request object is deleted after a terminal formatter response; lifecycle retention for orphaned request objects should also be enforced with a bucket lifecycle rule.
 
 ## Deployed adapter
 
 - Supabase project: `lqxiuwlwzkofdfitxuqe`
-- Function: `export-adapter`
-- Version: `5`
-- Function ID: `20e7228d-bffe-4496-bbb8-7ba790806dcb`
-- Bundle SHA-256: `735210a53c30304b25f84308f6e7c1857809d1b1ccbf455c99f9c4d910f477b5`
-- JWT verification: enabled
-- Status: `ACTIVE`
+- Function: `export-adapter` and relay function `export-adapter-relay`
+- Versions: `export-adapter` v7; `export-adapter-relay` v1
+- Function IDs: `export-adapter` `20e7228d-bffe-4496-bbb8-7ba790806dcb`; `export-adapter-relay` `2a452d94-7959-461d-8773-ecfcf9d7ce2b`
+- Bundle SHA-256: pending final bundle digest capture after commit
+- JWT verification: enabled for `export-adapter`; disabled for `export-adapter-relay` because it accepts Google Cloud Tasks OIDC and verifies that token in function code
+- Status: both functions `ACTIVE`
 
 The function is deployed with its server-only Google credential/configuration installed as Supabase secrets. Secret-list verification exposed names and digests only; credential contents were not printed. The temporary local key file was deleted after installation.
 
@@ -56,18 +58,20 @@ Production validation must record:
 - confirmation that no client data was used or changed.
 ## Production evidence — July 22, 2026
 
-- Synthetic case: `RC17C-CASE-b3e3204f187e`
-- Synthetic transcript: `rc17c-transcript-b3e3204f187e`
-- Export job: `export-7b52b968507266302fb1fd02006dac2e`
-- Formatter revision: `depo-pro-formatter-00009-26b`
+- Synthetic case: `RC17C-RELAY-CASE-628bcc200d1b`
+- Synthetic transcript: `rc17c-relay-transcript-628bcc200d1b`
+- Export job: `export-8d409290fac9c63ce23cd16d70df9573`
+- Formatter route observed: `POST https://depo-pro-formatter-skgci45tcq-uc.a.run.app/tasks/format` returned 200 at `2026-07-22T13:22:50.557230Z`
+- Inline formatter envelope size: 1,252,365 bytes
+- Relay Cloud Task envelope size: 205 bytes
+- Staged request object: `exports/requests/export-8d409290fac9c63ce23cd16d70df9573.json`
+- Staged request cleanup: object returned 404 after terminal formatter response
+- Completed job object: `exports/jobs/export-8d409290fac9c63ce23cd16d70df9573.json`, generation `1784726585980537`, size 2,329 bytes
 - Observed lifecycle: `QUEUED → PROCESSING → COMPLETED`
-- Artifacts: DOCX (36,810 bytes) and PDF (16,661 bytes)
-- Signed URLs: present for both artifacts; token values were not recorded
+- Artifacts: DOCX and PDF signed URLs present
 - Duplicate dispatch: returned the same job ID and immutable `COMPLETED` result
 - Error: `null`
 - Client data: none used or modified; all names and identifiers were fabricated
-
-Certification immutability correctly rejected automatic deletion of the certified synthetic acceptance record. The record is retained as isolated RC evidence rather than bypassing Certification-owner database triggers.
 
 ## Runtime IAM evidence
 
@@ -78,6 +82,7 @@ Dedicated identity: `depo-pro-export-adapter@depo-pro-website.iam.gserviceaccoun
 | Project | `roles/cloudtasks.enqueuer` |
 | Project | `roles/cloudtasks.taskDeleter` |
 | Export Adapter service account only | `roles/iam.serviceAccountUser` (self only) |
+| Export Adapter service account only | `roles/iam.serviceAccountOpenIdTokenCreator` (self only; required by relay to mint formatter audience token) |
 | Cloud Run service `depo-pro-formatter` only | `roles/run.invoker` |
 | Bucket `gs://depo-pro-exports` only | `roles/storage.objectUser` |
 

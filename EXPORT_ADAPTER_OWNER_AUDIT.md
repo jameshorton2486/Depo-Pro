@@ -9,7 +9,7 @@
 
 ## Owns
 
-The Export Adapter owns authenticated export orchestration, persisted-certification verification, canonical request routing, initial `ExportJob` creation, Cloud Tasks dispatch, status propagation, artifact metadata retrieval, queued cancellation, adapter-level errors, and caller idempotency propagation.
+The Export Adapter owns authenticated export orchestration, persisted-certification verification, canonical request routing, large-request staging, relay dispatch, initial `ExportJob` creation, Cloud Tasks dispatch, status propagation, artifact metadata retrieval, queued cancellation, adapter-level errors, and caller idempotency propagation.
 
 ## Consumes
 
@@ -21,7 +21,7 @@ The Export Adapter owns authenticated export orchestration, persisted-certificat
 | Unified Rendering | `UnifiedRenderModel` | Sends the completed model as the formatter request input |
 | Editorial | Deterministic editorial render model | Applies the existing Editorial API before dispatch without adding rules |
 | Export Contract | `ExportServiceRequest` and `ExportJob` | Uses the frozen contract and existing transition states |
-| Formatter Service | Private `POST /tasks/format` worker | Dispatches through Cloud Tasks and does not format artifacts |
+| Formatter Service | Private `POST /tasks/format` worker | Relays the unchanged formatter envelope after loading the staged canonical request and does not format artifacts |
 
 ## Explicitly Does Not Own
 
@@ -29,13 +29,13 @@ The adapter does not own or modify compiler semantics, transcript meaning, parag
 
 ## Lifecycle
 
-The adapter creates a deterministic job identifier from `(transcriptId, idempotencyKey)`, persists `QUEUED`, and schedules the unchanged formatter envelope. The Formatter Service owns `PROCESSING`, `COMPLETED`, and operational `FAILED` updates. Polling returns stored formatter output without changing artifact metadata.
+The adapter creates a deterministic job identifier from `(transcriptId, idempotencyKey)`, persists `QUEUED`, stages the canonical formatter request under `exports/requests/{jobId}.json`, and schedules a bounded Cloud Task containing only the staged object reference. The adapter-owned relay verifies Google Cloud Tasks OIDC, loads the staged request, and forwards the unchanged `{ jobId, request }` formatter envelope to the private Formatter Service. The Formatter Service owns `PROCESSING`, `COMPLETED`, and operational `FAILED` updates. Polling returns stored formatter output without changing artifact metadata.
 
 Cancellation is bounded to a task that is still `QUEUED`. The adapter deletes that named Cloud Task before recording the existing contract state `FAILED` with `error = "export cancelled"`. Once dispatch has begun, cancellation returns conflict and does not interfere with the Formatter Service lease.
 
 ## Authentication and Authorization
 
-The client invokes an authenticated Supabase Edge Function with its user JWT. The function validates the caller with Supabase Auth and performs transcript and certification reads through the caller-scoped Supabase client so existing RLS remains authoritative. Google credentials are server-side secrets only and are never exposed to the browser or committed to Git.
+The client invokes an authenticated Supabase Edge Function with its user JWT. The function validates the caller with Supabase Auth and performs transcript and certification reads through the caller-scoped Supabase client so existing RLS remains authoritative. The `export-adapter-relay` function is not a user endpoint; it accepts only Google Cloud Tasks OIDC for the configured relay audience and service account. Google credentials are server-side secrets only and are never exposed to the browser or committed to Git.
 
 ## Geometry Preservation
 
@@ -52,6 +52,8 @@ Focused tests cover:
 - successful certified orchestration;
 - certification-date enforcement;
 - unchanged formatter request and geometry;
+- production-sized render model staging with bounded Cloud Tasks payload;
+- relay request validation and staged request matching;
 - queued and processing progress propagation;
 - completed signed-artifact retrieval;
 - formatter failure propagation;
@@ -61,31 +63,32 @@ Focused tests cover:
 - cross-transcript job access rejection;
 - canonical owner-pipeline composition;
 - Export screen certification gating and formatter controls;
-- continued lifecycle polling when cancellation fails.
+- continued lifecycle polling when cancellation fails;
+- disabled formatter controls while the initial create request is pending.
 
 ## Validation Evidence
 
 Local implementation evidence:
 
-- focused Export Adapter/UI protocol suite: 19 tests passed;
-- full repository suite: 728 tests passed;
+- focused Export Adapter/UI protocol suite: 13 targeted tests passed for the latest staging and UI fixes;
+- full repository suite: 730 tests passed with `STAGE_S_WRITE=1`;
 - TypeScript typecheck: passed;
 - ESLint: passed;
 - production build: passed;
-- Deno Edge Function check: passed;
+- Deno Edge Function check: passed for `export-adapter` and `export-adapter-relay`;
 - `git diff --check`: passed.
 
 Deployment evidence:
 
 - Supabase project: `lqxiuwlwzkofdfitxuqe`;
-- Edge Function: `export-adapter`;
-- deployed version: `5`;
-- function ID: `20e7228d-bffe-4496-bbb8-7ba790806dcb`;
-- bundle SHA-256: `735210a53c30304b25f84308f6e7c1857809d1b1ccbf455c99f9c4d910f477b5`;
-- status: `ACTIVE` with JWT verification enabled.
+- Edge Functions: `export-adapter` and `export-adapter-relay`;
+- deployed versions: `export-adapter` v7 and `export-adapter-relay` v1;
+- function IDs: `export-adapter` `20e7228d-bffe-4496-bbb8-7ba790806dcb`; `export-adapter-relay` `2a452d94-7959-461d-8773-ecfcf9d7ce2b`;
+- bundle SHA-256: pending final bundle digest capture after commit;
+- status: both functions `ACTIVE`.
 
-Production end-to-end acceptance passed on July 22, 2026. The authenticated fabricated export traversed Application credentials → Export Adapter → Cloud Tasks → private Formatter Service → Cloud Storage and reached `COMPLETED` with DOCX and PDF signed artifacts. Repeating the same idempotency key returned the same completed job.
+Production end-to-end acceptance passed after the relay deployment on July 22, 2026. Fabricated case `RC17C-RELAY-CASE-628bcc200d1b`, transcript `rc17c-relay-transcript-628bcc200d1b`, and job `export-8d409290fac9c63ce23cd16d70df9573` traversed Application credentials -> Export Adapter -> staged GCS request object -> Cloud Tasks relay -> private Formatter Service -> Cloud Storage. The inline formatter body would have been 1,252,365 bytes; the relay task body was 205 bytes. Observed job lifecycle was `QUEUED -> PROCESSING -> COMPLETED`, with DOCX/PDF signed artifacts and duplicate idempotent create returning the same completed job. The staged request object `exports/requests/export-8d409290fac9c63ce23cd16d70df9573.json` was deleted after terminal formatter response; the completed job object remains at `exports/jobs/export-8d409290fac9c63ce23cd16d70df9573.json`.
 
-The dedicated runtime identity is `depo-pro-export-adapter@depo-pro-website.iam.gserviceaccount.com`. Its only project roles are `roles/cloudtasks.enqueuer` and `roles/cloudtasks.taskDeleter`. Self-impersonation is limited to `roles/iam.serviceAccountUser` on that same service account. `roles/run.invoker` is scoped to `depo-pro-formatter`, and `roles/storage.objectUser` is scoped to `gs://depo-pro-exports`.
+The dedicated runtime identity is `depo-pro-export-adapter@depo-pro-website.iam.gserviceaccount.com`. Its only project roles remain `roles/cloudtasks.enqueuer` and `roles/cloudtasks.taskDeleter`. The service account policy is self-scoped to `roles/iam.serviceAccountUser` and `roles/iam.serviceAccountOpenIdTokenCreator`; the latter is required for relay-generated formatter Cloud Run audience tokens. `roles/run.invoker` remains scoped to `depo-pro-formatter`, and `roles/storage.objectUser` remains scoped to `gs://depo-pro-exports`.
 
 One user-managed JSON key exists because the Supabase Edge Function has no Google ambient identity. Supabase secret digests confirmed installation, and the temporary local key file was deleted immediately afterward. Production resource identifiers and synthetic job evidence are recorded in `docs/operations/EXPORT_ADAPTER_DEPLOYMENT.md`.

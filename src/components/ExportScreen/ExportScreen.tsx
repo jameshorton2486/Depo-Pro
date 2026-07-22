@@ -38,6 +38,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportStarting, setExportStarting] = useState(false);
   const exportAbort = useRef<AbortController | null>(null);
 
   const certificationReady = useMemo(
@@ -56,6 +57,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     const controller = new AbortController();
     exportAbort.current = controller;
     setExportError(null);
+    setExportStarting(true);
 
     try {
       const queued = await exportAdapter.start({
@@ -65,6 +67,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
         idempotencyKey: crypto.randomUUID(),
       });
       setExportJob(queued);
+      setExportStarting(false);
       const completed = await exportAdapter.waitForCompletion(queued, {
         signal: controller.signal,
         onUpdate: setExportJob,
@@ -73,6 +76,8 @@ export function ExportScreen({ jobId }: { jobId: string }) {
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       setExportError(error instanceof Error ? error.message : "Export failed.");
+    } finally {
+      setExportStarting(false);
     }
   }
 
@@ -245,7 +250,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
                 <button
                   key={format}
                   type="button"
-                  disabled={!certificationReady || !renderModel || exportJob?.status === "QUEUED" || exportJob?.status === "PROCESSING"}
+                  disabled={!certificationReady || !renderModel || exportStarting || exportJob?.status === "QUEUED" || exportJob?.status === "PROCESSING"}
                   onClick={() => void handleFormatterExport([format])}
                   className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-1.5 text-xs font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
                 >

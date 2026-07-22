@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { ExportJob } from "../../../src/lib/export/exportServiceContract";
 import {
   assertJobTranscript,
+  buildFormatterRelayRequest,
+  buildStagedFormatterRequest,
+  parseFormatterRelayRequest,
   buildCancelledJob,
   parseAdapterRequest,
   persistQueuedCancellation,
+  validateStagedFormatterRequest,
   validateStoredJob,
 } from "../../../supabase/functions/export-adapter/protocol";
 
@@ -63,6 +67,50 @@ describe("Export Adapter server protocol", () => {
     expect(parsed.request.renderModel).toBe(renderModel);
   });
 
+  it("stages production-sized render models and keeps Cloud Tasks payloads bounded", () => {
+    const renderModel = {
+      transcriptId: "transcript-synthetic",
+      lines: Array.from({ length: 30_000 }, (_, index) => ({
+        paragraphId: `paragraph-${index}`,
+        kind: "Q" as const,
+        content: `Q. Synthetic production line ${index.toString().padStart(5, "0")}?`,
+        sourceUtteranceIds: [`utterance-${index}`],
+        sourceWordIds: [`word-${index}`],
+        geometry: {
+          paragraph_index: index,
+          paragraph_id: `paragraph-${index}`,
+          role: "qa" as const,
+          first_line_tab_inches: 0.5,
+          text_tab_inches: 1,
+          continuation_indent_inches: 1,
+        },
+      })),
+    };
+    const request = {
+      contractVersion: "2026-07-21" as const,
+      transcriptId: "transcript-synthetic",
+      renderModel,
+      formats: ["DOCX", "PDF"] as Array<"DOCX" | "PDF">,
+      idempotencyKey: "request-production-sized",
+    };
+    const inlineFormatterTaskBytes = new TextEncoder().encode(JSON.stringify({
+      jobId: "export-production-sized",
+      request,
+    })).byteLength;
+    const staged = buildStagedFormatterRequest("export-production-sized", request, "2026-07-22T00:00:00.000Z");
+    const relay = buildFormatterRelayRequest(
+      staged.jobId,
+      staged.transcriptId,
+      "exports/requests/export-production-sized.json",
+    );
+    const relayTaskBytes = new TextEncoder().encode(JSON.stringify(relay)).byteLength;
+
+    expect(inlineFormatterTaskBytes).toBeGreaterThan(1_000_000);
+    expect(relayTaskBytes).toBeLessThan(1024);
+    expect(staged.request.renderModel).toBe(renderModel);
+    expect(parseFormatterRelayRequest(relay)).toEqual(relay);
+    expect(() => validateStagedFormatterRequest(staged, relay)).not.toThrow();
+  });
   it("rejects malformed formatter responses", () => {
     expect(() => validateStoredJob({ job: { status: "UNKNOWN" } })).toThrow("malformed export job");
   });

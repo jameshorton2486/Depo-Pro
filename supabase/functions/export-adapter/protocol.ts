@@ -25,6 +25,20 @@ export type AdapterRequest =
   | { action: "get"; jobId: string; transcriptId: string }
   | { action: "cancel"; jobId: string; transcriptId: string };
 
+export type FormatterRelayRequest = {
+  action: "relay";
+  jobId: string;
+  transcriptId: string;
+  requestObjectName: string;
+};
+
+export type StagedFormatterRequest = {
+  jobId: string;
+  transcriptId: string;
+  request: ExportServiceRequest;
+  createdAt: string;
+};
+
 export type StoredJob = {
   job: ExportJob;
   idempotencyKey: string | null;
@@ -73,7 +87,7 @@ export async function persistQueuedCancellation(
   throw new CancellationConflictError();
 }
 
-function validateExportServiceRequest(
+export function validateExportServiceRequest(
   value: unknown,
 ): asserts value is ExportServiceRequest {
   if (!value || typeof value !== "object") {
@@ -126,6 +140,88 @@ export function parseAdapterRequest(value: unknown): AdapterRequest {
     };
   }
   throw new Error("adapter request is invalid");
+}
+export function buildStagedFormatterRequest(
+  jobId: string,
+  request: ExportServiceRequest,
+  createdAt = new Date().toISOString(),
+): StagedFormatterRequest {
+  return {
+    jobId,
+    transcriptId: request.transcriptId,
+    request,
+    createdAt,
+  };
+}
+
+export function buildFormatterRelayRequest(
+  jobId: string,
+  transcriptId: string,
+  requestObjectName: string,
+): FormatterRelayRequest {
+  return {
+    action: "relay",
+    jobId,
+    transcriptId,
+    requestObjectName,
+  };
+}
+
+export function parseFormatterRelayRequest(
+  value: unknown,
+): FormatterRelayRequest {
+  if (!value || typeof value !== "object") {
+    throw new Error("formatter relay request must be an object");
+  }
+  const candidate = value as Partial<FormatterRelayRequest>;
+  if (candidate.action !== "relay") {
+    throw new Error("formatter relay request requires relay action");
+  }
+  if (typeof candidate.jobId !== "string" || !candidate.jobId.trim()) {
+    throw new Error("formatter relay request requires a job id");
+  }
+  if (
+    typeof candidate.transcriptId !== "string" ||
+    !candidate.transcriptId.trim()
+  ) {
+    throw new Error("formatter relay request requires a transcript id");
+  }
+  if (
+    typeof candidate.requestObjectName !== "string" ||
+    !candidate.requestObjectName.startsWith("exports/requests/") ||
+    !candidate.requestObjectName.endsWith(".json")
+  ) {
+    throw new Error("formatter relay request requires a staged request object");
+  }
+  return {
+    action: "relay",
+    jobId: candidate.jobId,
+    transcriptId: candidate.transcriptId,
+    requestObjectName: candidate.requestObjectName,
+  };
+}
+
+export function validateStagedFormatterRequest(
+  value: unknown,
+  relay: FormatterRelayRequest,
+): asserts value is StagedFormatterRequest {
+  if (!value || typeof value !== "object") {
+    throw new Error("staged formatter request must be an object");
+  }
+  const staged = value as Partial<StagedFormatterRequest>;
+  if (staged.jobId !== relay.jobId) {
+    throw new Error("staged formatter request job mismatch");
+  }
+  if (staged.transcriptId !== relay.transcriptId) {
+    throw new Error("staged formatter request transcript mismatch");
+  }
+  validateExportServiceRequest(staged.request);
+  if (staged.request.transcriptId !== relay.transcriptId) {
+    throw new Error("staged formatter request transcript mismatch");
+  }
+  if (typeof staged.createdAt !== "string" || !staged.createdAt.trim()) {
+    throw new Error("staged formatter request requires creation time");
+  }
 }
 
 export function validateStoredJob(value: unknown): asserts value is StoredJob {

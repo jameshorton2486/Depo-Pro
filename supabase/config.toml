@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.export-adapter]
 verify_jwt = true
+
+[functions.export-adapter-relay]
+verify_jwt = false

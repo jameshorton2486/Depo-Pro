@@ -339,4 +339,57 @@ describe("ExportScreen", () => {
     expect(pdfButton?.hasAttribute("disabled")).toBe(false);
     cleanup();
   });
+  it("disables formatter exports while the create request is pending", async () => {
+    useIntakeMock.mockReturnValue({
+      record: {
+        caption: { case_name: { value: "Example Case" }, case_number: { value: "123" } },
+        certification: {
+          certification_date: "2026-07-22",
+          certification_statement: "Certified synthetic transcript",
+          checklist: {
+            review_complete: true,
+            speaker_mapping_complete: true,
+            confidence_review_complete: true,
+            exhibits_complete: true,
+            ufm_complete: true,
+          },
+          signature_hash: null,
+        },
+      },
+    });
+    const completed = {
+      jobId: "export-completed",
+      transcriptId: "job_123",
+      status: "COMPLETED" as const,
+      artifacts: [],
+      error: null,
+    };
+    let resolveCreate: ((job: typeof completed) => void) | null = null;
+    exportTransportMocks.create.mockReturnValue(new Promise((resolve) => {
+      resolveCreate = resolve;
+    }));
+
+    const { container, cleanup } = renderExportScreen();
+    const docxButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Export DOCX"));
+    if (!docxButton) throw new Error("expected DOCX export button");
+
+    await act(async () => {
+      docxButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(docxButton.hasAttribute("disabled")).toBe(true);
+
+    await act(async () => {
+      docxButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(exportTransportMocks.create).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveCreate?.(completed);
+      await Promise.resolve();
+    });
+    cleanup();
+  });
 });

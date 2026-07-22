@@ -1,6 +1,14 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
+  bytesToBase64,
+  GoogleApiError,
+  googleRequest,
+  serviceAccountEmail,
+} from "./google.ts";
+import {
   assertJobTranscript,
+  buildFormatterRelayRequest,
+  buildStagedFormatterRequest,
   type ExportJob,
   type ExportServiceRequest,
   parseAdapterRequest,
@@ -18,12 +26,6 @@ type TranscriptRow = {
   job_id: string;
 };
 
-type ServiceAccount = {
-  client_email: string;
-  private_key: string;
-  token_uri: string;
-};
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -37,12 +39,10 @@ const config = {
   gcpProject: Deno.env.get("EXPORT_GCP_PROJECT") ?? "",
   gcpLocation: Deno.env.get("EXPORT_TASKS_LOCATION") ?? "us-central1",
   queue: Deno.env.get("EXPORT_TASKS_QUEUE") ?? "depo-pro-formatter",
-  targetUrl: Deno.env.get("EXPORT_FORMATTER_TASK_URL") ?? "",
-  oidcAudience: Deno.env.get("EXPORT_FORMATTER_OIDC_AUDIENCE") ?? "",
+  relayTargetUrl: Deno.env.get("EXPORT_ADAPTER_RELAY_URL") ?? "",
+  relayOidcAudience: Deno.env.get("EXPORT_ADAPTER_RELAY_OIDC_AUDIENCE") ?? "",
   bucket: Deno.env.get("EXPORT_ARTIFACT_BUCKET") ?? "",
 };
-
-let cachedToken: { value: string; expiresAt: number } | null = null;
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
@@ -166,7 +166,14 @@ async function createExport(
   }
 
   try {
-    await dispatchFormatterTask(jobId, request);
+    const requestObjectName = formatterRequestObjectName(jobId);
+    const requestGeneration = await writeStagedFormatterRequest(jobId, request);
+    try {
+      await dispatchFormatterTask(jobId, request.transcriptId, requestObjectName);
+    } catch (error) {
+      await deleteStorageObject(requestObjectName, requestGeneration);
+      throw error;
+    }
   } catch (error) {
     await deleteStoredJob(jobId, generation);
     if (error instanceof GoogleApiError) {
@@ -276,22 +283,28 @@ async function requirePersistedCertification(
 
 async function dispatchFormatterTask(
   jobId: string,
-  request: ExportServiceRequest,
+  transcriptId: string,
+  requestObjectName: string,
 ): Promise<void> {
+  const relayRequest = buildFormatterRelayRequest(
+    jobId,
+    transcriptId,
+    requestObjectName,
+  );
   const body = bytesToBase64(
-    new TextEncoder().encode(JSON.stringify({ jobId, request })),
+    new TextEncoder().encode(JSON.stringify(relayRequest)),
   );
   const task = {
     task: {
       name: taskResourceName(jobId),
       httpRequest: {
         httpMethod: "POST",
-        url: config.targetUrl,
+        url: config.relayTargetUrl,
         headers: { "Content-Type": "application/json" },
         body,
         oidcToken: {
-          serviceAccountEmail: serviceAccount().client_email,
-          audience: config.oidcAudience,
+          serviceAccountEmail: serviceAccountEmail(),
+          audience: config.relayOidcAudience,
         },
       },
     },
@@ -317,7 +330,7 @@ async function dispatchFormatterTask(
 }
 
 async function readStoredJob(jobId: string): Promise<StoredJobVersion | null> {
-  const response = await googleRequest(storageObjectUrl(jobId, true));
+  const response = await googleRequest(storageObjectUrl(jobObjectName(jobId), true));
   if (response.status === 404) {
     return null;
   }
@@ -350,7 +363,25 @@ async function writeStoredJob(
   value: StoredJob,
   generation: string,
 ): Promise<string> {
-  const objectName = jobObjectName(jobId);
+  return await writeJsonObject(jobObjectName(jobId), value, generation);
+}
+
+async function writeStagedFormatterRequest(
+  jobId: string,
+  request: ExportServiceRequest,
+): Promise<string> {
+  return await writeJsonObject(
+    formatterRequestObjectName(jobId),
+    buildStagedFormatterRequest(jobId, request),
+    "0",
+  );
+}
+
+async function writeJsonObject(
+  objectName: string,
+  value: unknown,
+  generation: string,
+): Promise<string> {
   const url = `https://storage.googleapis.com/upload/storage/v1/b/${
     encodeURIComponent(config.bucket)
   }/o?uploadType=media&name=${
@@ -366,7 +397,7 @@ async function writeStoredJob(
   }
   const metadata = await response.json() as { generation?: string };
   if (!metadata.generation) {
-    throw new AdapterError(502, "export job generation is missing");
+    throw new AdapterError(502, "export object generation is missing");
   }
   return metadata.generation;
 }
@@ -375,8 +406,15 @@ async function deleteStoredJob(
   jobId: string,
   generation: string,
 ): Promise<void> {
+  await deleteStorageObject(jobObjectName(jobId), generation);
+}
+
+async function deleteStorageObject(
+  objectName: string,
+  generation: string,
+): Promise<void> {
   const response = await googleRequest(
-    `${storageObjectUrl(jobId, false)}&ifGenerationMatch=${
+    `${storageObjectUrl(objectName, false)}&ifGenerationMatch=${
       encodeURIComponent(generation)
     }`,
     { method: "DELETE" },
@@ -386,16 +424,20 @@ async function deleteStoredJob(
   }
 }
 
-function storageObjectUrl(jobId: string, media: boolean): string {
+function storageObjectUrl(objectName: string, media: boolean): string {
   return `https://storage.googleapis.com/storage/v1/b/${
     encodeURIComponent(config.bucket)
-  }/o/${encodeURIComponent(jobObjectName(jobId))}?alt=${
+  }/o/${encodeURIComponent(objectName)}?alt=${
     media ? "media" : "json"
   }`;
 }
 
 function jobObjectName(jobId: string): string {
   return `exports/jobs/${jobId}.json`;
+}
+
+function formatterRequestObjectName(jobId: string): string {
+  return `exports/requests/${jobId}.json`;
 }
 
 function taskResourceName(jobId: string): string {
@@ -417,117 +459,6 @@ async function deterministicIdentifier(
   }`;
 }
 
-async function googleRequest(
-  url: string,
-  init: RequestInit = {},
-): Promise<Response> {
-  const token = await googleAccessToken();
-  return fetch(url, {
-    ...init,
-    headers: {
-      ...Object.fromEntries(new Headers(init.headers).entries()),
-      Authorization: `Bearer ${token}`,
-    },
-  });
-}
-
-async function googleAccessToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
-    return cachedToken.value;
-  }
-  const account = serviceAccount();
-  const issuedAt = Math.floor(Date.now() / 1000);
-  const header = base64Url(
-    new TextEncoder().encode(JSON.stringify({ alg: "RS256", typ: "JWT" })),
-  );
-  const claims = base64Url(new TextEncoder().encode(JSON.stringify({
-    iss: account.client_email,
-    scope: "https://www.googleapis.com/auth/cloud-platform",
-    aud: account.token_uri,
-    iat: issuedAt,
-    exp: issuedAt + 3600,
-  })));
-  const unsigned = `${header}.${claims}`;
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pemPrivateKey(account.private_key),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    "RSASSA-PKCS1-v1_5",
-    key,
-    new TextEncoder().encode(unsigned),
-  );
-  const assertion = `${unsigned}.${base64Url(new Uint8Array(signature))}`;
-  const response = await fetch(account.token_uri, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion,
-    }),
-  });
-  if (!response.ok) {
-    throw new GoogleApiError(response.status, await response.text());
-  }
-  const token = await response.json() as {
-    access_token?: string;
-    expires_in?: number;
-  };
-  if (!token.access_token) {
-    throw new AdapterError(502, "Google access token is missing");
-  }
-  cachedToken = {
-    value: token.access_token,
-    expiresAt: Date.now() + (token.expires_in ?? 3600) * 1000,
-  };
-  return cachedToken.value;
-}
-
-function serviceAccount(): ServiceAccount {
-  const raw = Deno.env.get("EXPORT_GCP_SERVICE_ACCOUNT_JSON");
-  if (!raw) {
-    throw new AdapterError(500, "export adapter credentials are missing");
-  }
-  const candidate = JSON.parse(raw) as Partial<ServiceAccount>;
-  if (
-    !candidate.client_email || !candidate.private_key || !candidate.token_uri
-  ) {
-    throw new AdapterError(500, "export adapter credentials are invalid");
-  }
-  return candidate as ServiceAccount;
-}
-
-function pemPrivateKey(value: string): ArrayBuffer {
-  const base64 = value.replace(
-    /-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g,
-    "",
-  );
-  const bytes = Uint8Array.from(
-    atob(base64),
-    (character) => character.charCodeAt(0),
-  );
-  return bytes.buffer;
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function base64Url(bytes: Uint8Array): string {
-  return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(
-    /=+$/g,
-    "",
-  );
-}
-
 function requireConfiguration(): void {
   const required = [
     config.supabaseUrl,
@@ -535,8 +466,8 @@ function requireConfiguration(): void {
     config.gcpProject,
     config.gcpLocation,
     config.queue,
-    config.targetUrl,
-    config.oidcAudience,
+    config.relayTargetUrl,
+    config.relayOidcAudience,
     config.bucket,
   ];
   if (required.some((value) => !value)) {
@@ -556,12 +487,6 @@ function respondError(status: number, message: string): Response {
 }
 
 class AdapterError extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message);
-  }
-}
-
-class GoogleApiError extends Error {
   constructor(readonly status: number, message: string) {
     super(message);
   }
