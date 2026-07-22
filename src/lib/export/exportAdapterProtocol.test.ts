@@ -8,6 +8,7 @@ import {
   buildCancelledJob,
   parseAdapterRequest,
   persistQueuedCancellation,
+  shouldRecoverQueuedDispatch,
   validateStagedFormatterRequest,
   validateStoredJob,
 } from "../../../supabase/functions/export-adapter/protocol";
@@ -117,6 +118,12 @@ describe("Export Adapter server protocol", () => {
 
   it("prevents cross-transcript artifact retrieval", () => {
     expect(() => assertJobTranscript(queuedJob(), "different-transcript")).toThrow("transcript mismatch");
+  });
+
+  it("recovers dispatch for idempotent replays that are still queued", () => {
+    expect(shouldRecoverQueuedDispatch(queuedJob())).toBe(true);
+    expect(shouldRecoverQueuedDispatch({ ...queuedJob(), status: "PROCESSING" })).toBe(false);
+    expect(shouldRecoverQueuedDispatch({ ...queuedJob(), status: "COMPLETED" })).toBe(false);
   });
 
   it("cancels only queued jobs using the existing FAILED contract state", () => {

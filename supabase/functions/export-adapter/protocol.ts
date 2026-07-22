@@ -254,6 +254,9 @@ export function assertJobTranscript(
   }
 }
 
+export function shouldRecoverQueuedDispatch(job: ExportJob): boolean {
+  return job.status === "QUEUED";
+}
 export function buildCancelledJob(job: ExportJob): ExportJob {
   if (job.status !== "QUEUED") {
     throw new Error("only queued exports can be cancelled");

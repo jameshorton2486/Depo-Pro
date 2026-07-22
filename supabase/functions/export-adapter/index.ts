@@ -13,6 +13,7 @@ import {
   type ExportServiceRequest,
   parseAdapterRequest,
   persistQueuedCancellation,
+  shouldRecoverQueuedDispatch,
   type StoredJob,
   type StoredJobVersion,
   validateStoredJob,
@@ -138,6 +139,9 @@ async function createExport(
         "Idempotency key already belongs to another transcript",
       );
     }
+    if (shouldRecoverQueuedDispatch(existing.value.job)) {
+      await recoverQueuedDispatch(jobId, request);
+    }
     return existing.value.job;
   }
 
@@ -185,6 +189,14 @@ async function createExport(
   return queued;
 }
 
+async function recoverQueuedDispatch(
+  jobId: string,
+  request: ExportServiceRequest,
+): Promise<void> {
+  const requestObjectName = formatterRequestObjectName(jobId);
+  await writeStagedFormatterRequestIfMissing(jobId, request);
+  await dispatchFormatterTask(jobId, request.transcriptId, requestObjectName);
+}
 async function cancelExport(
   jobId: string,
   transcriptId: string,
@@ -377,6 +389,19 @@ async function writeStagedFormatterRequest(
   );
 }
 
+async function writeStagedFormatterRequestIfMissing(
+  jobId: string,
+  request: ExportServiceRequest,
+): Promise<void> {
+  try {
+    await writeStagedFormatterRequest(jobId, request);
+  } catch (error) {
+    if (error instanceof GoogleApiError && error.status === 412) {
+      return;
+    }
+    throw error;
+  }
+}
 async function writeJsonObject(
   objectName: string,
   value: unknown,
