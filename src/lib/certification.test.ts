@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { CaseCertification } from "../types/case";
-import { isCertificationLocked, isCertificationReady } from "./certification";
+import {
+  formatLocalCertificationDate,
+  isCertificationLocked,
+  isCertificationReady,
+} from "./certification";
 
 const readyCertification: CaseCertification = {
   certification_date: null,
@@ -29,5 +33,18 @@ describe("certification state", () => {
       ...readyCertification,
       checklist: { ...readyCertification.checklist, review_complete: false },
     })).toBe(false);
+  });
+
+  it("rejects malformed legacy certification data without throwing", () => {
+    const malformedCertification = {
+      ...readyCertification,
+      checklist: undefined,
+    } as unknown as CaseCertification;
+
+    expect(isCertificationReady(malformedCertification)).toBe(false);
+  });
+
+  it("formats the reporter's local calendar date", () => {
+    expect(formatLocalCertificationDate(new Date(2026, 6, 10, 23, 30))).toBe("2026-07-10");
   });
 });

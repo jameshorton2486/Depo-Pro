@@ -6,7 +6,11 @@ import { useCase } from "../../context/useCase";
 import { useIntake } from "../../context/useIntake";
 import { useStage } from "../../context/StageContext";
 import { isCaseUfmReady } from "../../lib/ufm/requiredFields";
-import { isCertificationLocked, isCertificationReady } from "../../lib/certification";
+import {
+  formatLocalCertificationDate,
+  isCertificationLocked,
+  isCertificationReady,
+} from "../../lib/certification";
 import type { CaseCertification } from "../../types/case";
 import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
@@ -173,7 +177,7 @@ export function CertificationScreen({ jobId }: { jobId: string }) {
     if (!allComplete || certificationLocked) return;
     updateCertification({
       ...certification,
-      certification_date: new Date().toISOString().slice(0, 10),
+      certification_date: formatLocalCertificationDate(new Date()),
     });
   }
 
