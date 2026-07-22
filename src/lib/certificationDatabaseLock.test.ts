@@ -17,6 +17,14 @@ const payloadMigration = readFileSync(
   "utf8",
 );
 
+
+const atomicSaveMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260722024834_atomic_case_certification_save.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 describe("certification database lock", () => {
   it("makes a persisted certification immutable", () => {
     expect(migration).toContain("case_certifications_reject_unlock");
@@ -47,5 +55,12 @@ describe("certification database lock", () => {
     "speaker_resolution_current",
   ])("blocks mutation of %s after certification", (table) => {
     expect(migration).toContain(`${table}_reject_certified_mutation`);
+  });
+
+  it("persists the case payload and canonical certification in one transaction", () => {
+    expect(atomicSaveMigration).toContain("save_case_with_certification");
+    expect(atomicSaveMigration).toContain("insert into public.case_certifications");
+    expect(atomicSaveMigration).toContain("insert into public.cases");
+    expect(atomicSaveMigration).toContain("grant execute on function");
   });
 });

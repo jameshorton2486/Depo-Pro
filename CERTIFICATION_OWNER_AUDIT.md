@@ -70,6 +70,9 @@ The persisted certification row cannot be cleared, changed, or deleted after `ce
 - Follow-up migration: `20260722022713_preserve_certification_payload.sql`
 - Remote follow-up: `20260722022713_preserve_certification_payload`
 - Follow-up execution timestamp: 2026-07-22 02:27:13 UTC
+- Atomic-save migration: `20260722024834_atomic_case_certification_save.sql`
+- Remote atomic-save migration: `20260722024834_atomic_case_certification_save`
+- Atomic-save execution timestamp: 2026-07-22 02:48:34 UTC
 - Execution result: successful
 
 Catalog verification found ten expected triggers: two certification/case lock triggers and eight transcript mutation triggers.
@@ -84,6 +87,8 @@ A transactionally rolled-back synthetic verification established:
 | Stale certification statement change | Rejected |
 | Stale certification checklist change | Rejected |
 | Matching certification payload with unrelated metadata update | Allowed |
+| Atomic case and canonical certification save | 1 case row, 1 certification row, payload matched canonical |
+| Forced certification failure left partial state | 0 case rows, 0 certification rows |
 | Synthetic rows retained | 0 |
 
 The synthetic transaction used fabricated identifiers and content. It did not modify client transcript data.
@@ -93,7 +98,7 @@ Supabase security and performance advisors were run after migration. They report
 ## Verification Gates
 
 - Focused certification and database-lock regressions: passed.
-- Full suite: 112 files, 709 tests passed.
+- Full suite: 112 files, 714 tests passed.
 - Typecheck: passed.
 - Lint: passed.
 - Production build: passed.
