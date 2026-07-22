@@ -137,16 +137,27 @@ def process_formatter_task(
                 WorkerResult(_job(task, "PROCESSING", [], str(error)), True),
             ) from error
         except ValueError as error:
+            _require_active_lease(heartbeat, task)
             failed = _job(task, "FAILED", [], str(error))
             store.write_job(failed, task, False, now or _utc_now())
             return WorkerResult(failed, False)
         except Exception as error:
+            _require_active_lease(heartbeat, task)
             failed = _job(task, "FAILED", [], str(error))
             store.write_job(failed, task, True, now or _utc_now())
             raise RetryableFormatterError(WorkerResult(failed, True)) from error
     finally:
         heartbeat.close()
         store.release_processing(task.job_id, lease_token)
+
+def _require_active_lease(heartbeat: _ProcessingLeaseHeartbeat, task: FormatterTask) -> None:
+    try:
+        heartbeat.ensure_active()
+    except ProcessingLeaseLost as error:
+        raise RetryableFormatterError(
+            WorkerResult(_job(task, "PROCESSING", [], str(error)), True),
+        ) from error
+
 
 def _utc_now() -> datetime:
     return datetime.now(UTC)

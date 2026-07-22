@@ -219,3 +219,19 @@ def test_lost_processing_lease_never_publishes_completion(monkeypatch, tmp_path:
 
     assert raised.value.result.job["status"] == "PROCESSING"
     assert [entry["status"] for entry in store.write_history] == ["PROCESSING"]
+@pytest.mark.parametrize("formatter_error", [ValueError("invalid synthetic input"), RuntimeError("synthetic converter failure")])
+def test_lost_processing_lease_never_publishes_failure(monkeypatch, tmp_path: Path, formatter_error: Exception) -> None:
+    def slow_failing_formatter(_render_model, _formats, _output_directory):
+        sleep(0.04)
+        raise formatter_error
+
+    monkeypatch.setattr("formatter_service.worker._PROCESSING_LEASE_RENEW_INTERVAL_SECONDS", 0.01)
+    monkeypatch.setattr("formatter_service.worker.format_render_model", slow_failing_formatter)
+    store = FakeStore()
+    store.renewal_available = False
+
+    with pytest.raises(RetryableFormatterError) as raised:
+        process_formatter_task(task_payload(), store, tmp_path, 900)
+
+    assert raised.value.result.job["status"] == "PROCESSING"
+    assert [entry["status"] for entry in store.write_history] == ["PROCESSING"]

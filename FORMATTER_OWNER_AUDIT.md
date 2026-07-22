@@ -51,13 +51,13 @@ Formatter regressions cover:
 - idempotent duplicate dispatch;
 - stale-lease recovery;
 - processing-lease renewal and ownership-safe release;
-- lost-lease publication prevention;
+- lost-lease completion and failure publication prevention;
 - runtime-identity signed URLs;
 - faithful PDF conversion failure when no layout-preserving converter exists.
 
 ## Local Validation
 
-- Formatter suite: 24 tests passed.
+- Formatter suite: 26 tests passed.
 - Full repository suite: 110 files, 692 tests passed.
 - Typecheck: passed.
 - Lint: passed.
