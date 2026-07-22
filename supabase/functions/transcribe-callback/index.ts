@@ -140,12 +140,19 @@ Deno.serve(async (request) => {
   // token hash via an anon-scoped RPC.
   const serviceClient = createClient<Database>(supabaseUrl, supabaseServiceRoleKey);
 
+  // Once the callback token is validated, any later failure must mark the job
+  // `failed` (with the real error) rather than leave it silently stuck in
+  // `processing`. currentResponsePath records the raw response we were on.
+  let authenticated = false;
+  let currentResponsePath: string | null = null;
+
   try {
     const job = await requireJob(serviceClient, jobId);
     const tokenHash = await sha256Hex(token);
     if (tokenHash !== job.callback_token_hash) {
       return respondError(401, "unauthorized");
     }
+    authenticated = true;
 
     if (job.status !== "processing") {
       return respondError(409, "job is not accepting callbacks");
@@ -165,6 +172,7 @@ Deno.serve(async (request) => {
       buildDeepgramResponseFileName(job.id, currentSource.source_index, totalSources),
     );
     const rawChecksum = await uploadJsonArtifact(serviceClient, responsePath, payload);
+    currentResponsePath = responsePath;
 
     const parsed = parseDeepgramResponse(payload);
     if (!parsed.ok) {
@@ -253,8 +261,17 @@ Deno.serve(async (request) => {
           response_path: finalArtifact.path,
           error: null,
         });
-        await runBoundaryEngine(serviceClient, job);
-        triggerAiReview(job.transcript_id);
+        // Best-effort enrichment: the transcript is already COMPLETE and must
+        // not be flipped to `failed` if boundary detection or AI review throws.
+        try {
+          await runBoundaryEngine(serviceClient, job);
+          triggerAiReview(job.transcript_id);
+        } catch (enrichmentError) {
+          console.error("[transcribe-callback] post-completion enrichment failed", {
+            jobId: job.id,
+            message: enrichmentError instanceof Error ? enrichmentError.message : String(enrichmentError),
+          });
+        }
         return { status: "complete" as const, responsePath: finalArtifact.path };
       },
       cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
@@ -264,10 +281,24 @@ Deno.serve(async (request) => {
 
     return respondJson(200, { ok: true, status: outcome.status });
   } catch (error) {
-    console.error("[transcribe-callback] unexpected error", {
-      jobId,
-      message: error instanceof Error ? error.message : String(error),
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[transcribe-callback] unexpected error", { jobId, message });
+    if (authenticated) {
+      // Never leave an authenticated job silently stuck in `processing`.
+      try {
+        await updateJob(serviceClient, jobId, {
+          status: "failed",
+          error: `finalization failed: ${message}`,
+          ...(currentResponsePath ? { response_path: currentResponsePath } : {}),
+        });
+      } catch (markError) {
+        console.error("[transcribe-callback] failed to mark job failed", {
+          jobId,
+          message: markError instanceof Error ? markError.message : String(markError),
+        });
+      }
+      return respondJson(200, { ok: true, status: "failed" });
+    }
     return respondError(500, "unexpected server error");
   }
 });
