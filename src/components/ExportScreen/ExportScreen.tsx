@@ -12,6 +12,7 @@ import { WorkflowStageNav } from "../WorkflowStageNav";
 import { WorkspaceSidebar } from "../WorkspaceSidebar/WorkspaceSidebar";
 
 const exportAdapter = new ExportAdapter(exportAdapterTransport);
+const FORMATTER_EXPORT_POLL_TIMEOUT_MS = 5 * 60 * 1000;
 
 interface GeneratedArtifact {
   name: string;
@@ -78,6 +79,7 @@ export function ExportScreen({ jobId }: { jobId: string }) {
       setExportStarting(false);
       const completed = await exportAdapter.waitForCompletion(queued, {
         signal: controller.signal,
+        timeoutMs: FORMATTER_EXPORT_POLL_TIMEOUT_MS,
         onUpdate: (job) => {
           if (isCurrentAttempt()) setExportJob(job);
         },
