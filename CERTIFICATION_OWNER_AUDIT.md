@@ -67,6 +67,9 @@ The persisted certification row cannot be cleared, changed, or deleted after `ce
 - Repository migration: `20260722020816_enforce_certification_lock.sql`
 - Remote migration: `20260722020816_enforce_certification_lock`
 - Execution timestamp: 2026-07-22 02:08:16 UTC
+- Follow-up migration: `20260722022713_preserve_certification_payload.sql`
+- Remote follow-up: `20260722022713_preserve_certification_payload`
+- Follow-up execution timestamp: 2026-07-22 02:27:13 UTC
 - Execution result: successful
 
 Catalog verification found ten expected triggers: two certification/case lock triggers and eight transcript mutation triggers.
@@ -78,6 +81,9 @@ A transactionally rolled-back synthetic verification established:
 | Transcript mutation after certification | Rejected |
 | Clearing `certification_date` | Rejected |
 | Stale case payload removing certification | Rejected |
+| Stale certification statement change | Rejected |
+| Stale certification checklist change | Rejected |
+| Matching certification payload with unrelated metadata update | Allowed |
 | Synthetic rows retained | 0 |
 
 The synthetic transaction used fabricated identifiers and content. It did not modify client transcript data.

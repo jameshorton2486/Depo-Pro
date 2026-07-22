@@ -9,6 +9,14 @@ const migration = readFileSync(
   "utf8",
 );
 
+const payloadMigration = readFileSync(
+  new URL(
+    "../../supabase/migrations/20260722022713_preserve_certification_payload.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 describe("certification database lock", () => {
   it("makes a persisted certification immutable", () => {
     expect(migration).toContain("case_certifications_reject_unlock");
@@ -19,6 +27,13 @@ describe("certification database lock", () => {
   it("prevents stale case payloads from clearing certification", () => {
     expect(migration).toContain("cases_preserve_certification_lock");
     expect(migration).toContain("{certification,certification_date}");
+  });
+
+  it("requires embedded certification data to match the canonical row", () => {
+    expect(payloadMigration).toContain("locked_certification public.case_certifications%rowtype");
+    expect(payloadMigration).toContain("certification_statement");
+    expect(payloadMigration).toContain("incoming_certification -> 'checklist'");
+    expect(payloadMigration).toContain("certified case payload must match the immutable certification record");
   });
 
   it.each([
