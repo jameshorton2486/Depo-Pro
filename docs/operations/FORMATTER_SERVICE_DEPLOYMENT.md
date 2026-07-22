@@ -105,3 +105,14 @@ After the final lost-lease failure-write regression was added, runtime commit `1
 | Job | `1784692637688028` | `sOK82ns2c3+S/C12pGoaqg==` | — |
 | DOCX | `1784692637359481` | `th3qrmkDn2wYdmcKFcUnMQ==` | `37038` |
 | PDF | `1784692637532331` | `fq47sfinM3oOU1FfkyHexg==` | `19564` |
+### Active-job immutability promotion
+
+Runtime commit `a4960d1` was built as image `17b-20260721-8` (digest `sha256:8c5bf1fbc669d40404e70e7e73d1dd4b2e6babe7aacd7a1f236c0efac9d6b582`; Cloud Build `050ff6b0-1a3c-4818-98d4-e13fbff8c8c5`) and deployed as revision `depo-pro-formatter-00009-26b` with 100% traffic. Synthetic job `pr17b-final-head-20260721-08` completed with signed DOCX and PDF artifacts and `retryEligible=false`.
+
+| Object | Generation | MD5 | Bytes |
+| --- | ---: | --- | ---: |
+| Job | `1784692983045045` | `ZyFvutCNchbUp3tkvN0vlQ==` | — |
+| DOCX | `1784692982716516` | `xnzl4834FlnfpbEw6qahGA==` | `36961` |
+| PDF | `1784692982872893` | `n1SxDVRGklDGCf3QxqYV+w==` | `18785` |
+
+A fabricated `PROCESSING` job was then subjected to malformed redelivery through Cloud Tasks. The task was acknowledged and removed while the stored job remained byte-for-byte in `PROCESSING`; the synthetic guard record was deleted after verification.
