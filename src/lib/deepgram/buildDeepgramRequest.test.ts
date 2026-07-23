@@ -33,6 +33,7 @@ describe("buildDeepgramRequest", () => {
       deepgram_request: {
         model: "nova-3",
         punctuate: "true",
+        diarize: "true",
         diarize_model: "latest",
         filler_words: "true",
         numerals: "true",
@@ -74,7 +75,9 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("category");
     expect(request.wireQueryString).not.toContain("source");
     expect(request.wireQueryString).toContain("diarize_model=latest");
-    expect(request.wireQueryString).not.toContain("diarize=true");
+    // Diarization is now sent EXPLICITLY (aligned with defaultDeepgramConfig's
+    // diarize: true) rather than relying on diarize_model to imply the enable.
+    expect(request.wireQueryString).toContain("diarize=true");
     expect(request.wireQueryString).toContain("numerals=true");
     expect(request.wireQueryString).toContain("utt_split=0.8");
     expect(request.wireQueryString).toContain("language=en");
