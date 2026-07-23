@@ -16,6 +16,7 @@ export interface DeepgramRequestPreviewEnvelope {
   deepgram_request: {
     model: string;
     punctuate: string;
+    diarize: string;
     diarize_model: string;
     filler_words: string;
     numerals: string;
@@ -50,6 +51,11 @@ const MAX_KEYTERMS = 100;
 export const DEEPGRAM_REQUEST_PARAMS = {
   model: "nova-3",
   punctuate: "true",
+  // Explicit diarization enable — do NOT rely on diarize_model to imply it.
+  // The canonical Speaker/Utterance model (normalize.ts groups words by
+  // word.speaker) collapses to a single "Speaker 0" with no error if
+  // diarization silently turns off. diarize_model selects the model.
+  diarize: "true",
   diarize_model: "latest",
   filler_words: "true",
   numerals: "true",
