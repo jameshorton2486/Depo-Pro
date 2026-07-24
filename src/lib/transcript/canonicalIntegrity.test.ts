@@ -9,6 +9,71 @@ function buildNormalized(): NormalizedTranscriptData {
   return normalizeTranscriptResponse(createOfflineDeepgramFixture("case_integrity"));
 }
 
+function buildTwoUtteranceNormalized(leftText: string, rightText: string, rightStartTime: number): NormalizedTranscriptData {
+  const leftTokens = leftText.split(/\s+/);
+  const rightTokens = rightText.split(/\s+/);
+  const speaker = {
+    speaker_id: "spk_000",
+    speaker_index: 0,
+    speaker_label: "Speaker 0",
+    assigned_name: null,
+    speaker_role: null,
+    word_count: leftTokens.length + rightTokens.length,
+  };
+  const words = [...leftTokens, ...rightTokens].map((rawText, wordIndex) => {
+    const isRight = wordIndex >= leftTokens.length;
+    const localIndex = isRight ? wordIndex - leftTokens.length : wordIndex;
+    const start = (isRight ? rightStartTime : 0) + localIndex * 0.2;
+    return {
+      word_id: `w_${String(wordIndex).padStart(8, "0")}`,
+      utterance_id: isRight ? "utt_000001" : "utt_000000",
+      word_index: wordIndex,
+      raw_text: rawText,
+      working_text: null,
+      speaker_id: speaker.speaker_id,
+      speaker_index: 0,
+      start_time: start,
+      end_time: start + 0.1,
+      confidence: 0.99,
+      is_filler: false,
+      reviewed: false,
+      edited: false,
+    };
+  });
+  const leftWords = words.filter((word) => word.utterance_id === "utt_000000");
+  const rightWords = words.filter((word) => word.utterance_id === "utt_000001");
+  return {
+    durationSeconds: rightWords[rightWords.length - 1]?.end_time ?? 0,
+    avgConfidence: 0.99,
+    speakers: [speaker],
+    utterances: [
+      {
+        utterance_id: "utt_000000",
+        utterance_index: 0,
+        speaker_id: speaker.speaker_id,
+        speaker_index: 0,
+        speaker_label: speaker.speaker_label,
+        start_time: leftWords[0]?.start_time ?? 0,
+        end_time: leftWords[leftWords.length - 1]?.end_time ?? 0,
+        text: leftText,
+        avg_confidence: 0.99,
+      },
+      {
+        utterance_id: "utt_000001",
+        utterance_index: 1,
+        speaker_id: speaker.speaker_id,
+        speaker_index: 0,
+        speaker_label: speaker.speaker_label,
+        start_time: rightWords[0]?.start_time ?? rightStartTime,
+        end_time: rightWords[rightWords.length - 1]?.end_time ?? rightStartTime,
+        text: rightText,
+        avg_confidence: 0.99,
+      },
+    ],
+    words,
+  };
+}
+
 describe("auditCanonicalTranscript", () => {
   it("passes a clean normalized transcript", () => {
     const normalized = buildNormalized();
@@ -193,28 +258,12 @@ describe("auditCanonicalTranscript", () => {
     expect(result.integrity_passed).toBe(false);
     expect(result.failures.some((failure) => failure.includes("invalid timing") || failure.includes("timing order regressed"))).toBe(true);
   });
-  it("fails on suspicious adjacent duplicate spans with wording drift", () => {
-    const normalized = buildNormalized();
-    normalized.utterances = [
-      {
-        ...normalized.utterances[0],
-        utterance_id: "utt_000000",
-        utterance_index: 0,
-        text: "We are on the record today's date is April 24 2026 and the time is now 1 27 PM",
-      },
-      {
-        ...normalized.utterances[1],
-        utterance_id: "utt_000001",
-        utterance_index: 1,
-        text: "We are on the record today's date is April 24 2026 and the time is now 01 27PM",
-      },
-    ];
-    normalized.words = [
-      { ...normalized.words[0], utterance_id: "utt_000000", word_index: 0, raw_text: "We", start_time: 0, end_time: 0.1 },
-      { ...normalized.words[1], utterance_id: "utt_000000", word_index: 1, raw_text: "are", start_time: 0.1, end_time: 0.2 },
-      { ...normalized.words[2], utterance_id: "utt_000001", word_index: 2, raw_text: "We", start_time: 2, end_time: 2.1 },
-      { ...normalized.words[3], utterance_id: "utt_000001", word_index: 3, raw_text: "are", start_time: 2.1, end_time: 2.2 },
-    ];
+  it("fails on suspicious adjacent duplicate spans only when timing also overlaps", () => {
+    const normalized = buildTwoUtteranceNormalized(
+      "We are on the record today's date is April 24 2026 and the time is now 1 27 PM",
+      "We are on the record today's date is April 24 2026 and the time is now 01 27PM",
+      0.8,
+    );
 
     const result = auditCanonicalTranscript({ normalized });
 
@@ -222,6 +271,19 @@ describe("auditCanonicalTranscript", () => {
     expect(result.failures.some((failure) => failure.includes("Suspicious duplicate canonical span"))).toBe(true);
   });
 
+  it("warns instead of failing for similar but time-separated follow-up questions", () => {
+    const normalized = buildTwoUtteranceNormalized(
+      "So you've seen somebody get hit with a with merchandise Correct",
+      "Okay So you've seen somebody get bumped with a cart with merchandise Correct",
+      5,
+    );
+
+    const result = auditCanonicalTranscript({ normalized });
+
+    expect(result.integrity_passed).toBe(true);
+    expect(result.failures).toEqual([]);
+    expect(result.warnings.some((warning) => warning.includes("Similar adjacent canonical span"))).toBe(true);
+  });
   it("warns when a single-source transcript exceeds the auto-chunk threshold", () => {
     const normalized = buildNormalized();
     const result = auditCanonicalTranscript({

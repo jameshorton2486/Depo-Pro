@@ -7,7 +7,7 @@
 -- exceeded edge-function CPU/time/memory limits and left jobs silently stuck in
 -- `processing`. The new flow adds a `finalizing` state: the webhook stores the
 -- last chunk, flips the job to `finalizing`, and hands off to the
--- `finalize-transcript` worker.
+-- Cloud Run finalize worker.
 --
 -- This migration:
 --   1. widens the status check to allow `finalizing`,

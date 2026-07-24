@@ -31,6 +31,7 @@ import {
   type DeepgramRequestArtifact,
   type TranscriptInsertRow,
 } from "../_shared/transcriptFinalize.ts";
+import { dispatchFinalizeTask } from "./finalizeTasks.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -144,7 +145,7 @@ Deno.serve(async (request) => {
       updateJob: (jobId, patch) => updateJob(serviceClient, jobId, patch),
       // Phase 2: the webhook no longer finalizes inline (that heavy work blew
       // edge limits and left jobs stuck). On the last chunk we flip the job to
-      // `finalizing` and hand off to the dedicated `finalize-transcript` worker,
+      // `finalizing` and hand off to the dedicated Cloud Run finalize worker,
       // returning fast. If the dispatch is dropped, the watchdog (Phase 4)
       // re-drives any stale `finalizing` job.
       finalize: async () => {
@@ -154,7 +155,7 @@ Deno.serve(async (request) => {
           response_path: responsePath,
           error: null,
         });
-        dispatchFinalize(job.id);
+        await dispatchFinalizeTask(job.id);
         return { status: "finalizing" as const, responsePath };
       },
       cleanupTranscript: (transcriptId) => cleanupTranscript(serviceClient, transcriptId),
@@ -185,28 +186,6 @@ Deno.serve(async (request) => {
     return respondError(500, "unexpected server error");
   }
 });
-
-/**
- * Fire-and-forget invocation of the finalize worker. Best-effort: the webhook
- * must not block on the (potentially minutes-long) finalize. Reliability comes
- * from the watchdog re-driving any job left in `finalizing`.
- */
-function dispatchFinalize(jobId: string): void {
-  const finalizeUrl = `${supabaseUrl}/functions/v1/finalize-transcript`;
-  void fetch(finalizeUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${supabaseServiceRoleKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ job_id: jobId }),
-  }).catch((error) => {
-    console.error("[transcribe-callback] finalize dispatch failed", {
-      jobId,
-      message: error instanceof Error ? error.message : String(error),
-    });
-  });
-}
 
 async function persistManualReviewTranscript(
   supabase: SupabaseClient<Database>,

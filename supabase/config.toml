@@ -1,12 +1,6 @@
 [functions.transcribe-callback]
 verify_jwt = false
 
-# Internal finalize worker: invoked by transcribe-callback (and, later, the
-# watchdog) with the service-role key as bearer. Not called by end-user JWTs, so
-# JWT verification is disabled and the function checks the service-role bearer
-# itself.
-[functions.finalize-transcript]
-verify_jwt = false
 
 [functions.export-adapter]
 verify_jwt = true

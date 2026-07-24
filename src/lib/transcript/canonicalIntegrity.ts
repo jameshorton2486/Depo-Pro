@@ -1,5 +1,5 @@
-import type { MergedSourceSegment } from "./multifileMerge";
-import type { NormalizedTranscriptData } from "./normalize";
+import type { MergedSourceSegment } from "./multifileMerge.ts";
+import type { NormalizedTranscriptData } from "./normalize.ts";
 
 const DEFAULT_AUTO_CHUNK_THRESHOLD_SECONDS = 4500;
 const DUPLICATE_SPAN_MIN_TOKENS = 8;
@@ -173,13 +173,18 @@ export function auditCanonicalTranscript(input: {
     const previousTokens = tokenizeComparableText(previous.text);
     const currentTokens = tokenizeComparableText(current.text);
 
-    if (
-      previousTokens.length >= DUPLICATE_SPAN_MIN_TOKENS
+    const hasDuplicateText = previousTokens.length >= DUPLICATE_SPAN_MIN_TOKENS
       && currentTokens.length >= DUPLICATE_SPAN_MIN_TOKENS
-      && computeTokenOverlap(previousTokens, currentTokens) >= DUPLICATE_SPAN_SIMILARITY_THRESHOLD
-    ) {
+      && computeTokenOverlap(previousTokens, currentTokens) >= DUPLICATE_SPAN_SIMILARITY_THRESHOLD;
+    const hasDuplicateTiming = current.start_time <= previous.end_time + TIMING_TOLERANCE_SECONDS;
+
+    if (hasDuplicateText && hasDuplicateTiming) {
       failures.push(
         `Suspicious duplicate canonical span between ${previous.utterance_id} and ${current.utterance_id}.`,
+      );
+    } else if (hasDuplicateText) {
+      warnings.push(
+        `Similar adjacent canonical span between ${previous.utterance_id} and ${current.utterance_id}.`,
       );
     }
   }

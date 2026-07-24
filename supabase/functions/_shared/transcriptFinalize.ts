@@ -1,7 +1,7 @@
 // Shared transcript-finalization logic (DTAS Stage 1 -> persistence).
 //
 // Phase 2 of the DTAS Roadmap moves the heavy finalize out of the Deepgram
-// webhook (`transcribe-callback`) into a dedicated worker (`finalize-transcript`).
+// webhook (`transcribe-callback`) into a dedicated Cloud Run worker.
 // The webhook now only stores the last chunk, flips the job to `finalizing`, and
 // hands off to that worker. This module is the single home for:
 //   - loading the stored per-source Deepgram responses (recovery-safe: it reads
@@ -61,8 +61,50 @@ import {
   type TranscriptionJobRecord,
 } from "../../../src/lib/transcriptionJobs.ts";
 
-export type Database = Record<string, never>;
+type GenericRow = Record<string, unknown>;
+type GenericRelationship = {
+  foreignKeyName: string;
+  columns: string[];
+  isOneToOne?: boolean;
+  referencedRelation: string;
+  referencedColumns: string[];
+};
+type Table<Row extends GenericRow, Insert extends GenericRow = Row, Update extends GenericRow = Partial<Row>> = {
+  Row: Row;
+  Insert: Insert;
+  Update: Update;
+  Relationships: GenericRelationship[];
+};
+type GenericTable = Table<GenericRow>;
 
+type CasesRow = GenericRow & { payload: unknown };
+type TranscriptsRow = GenericRow;
+type TranscriptSpeakersRow = GenericRow;
+type TranscriptAuditRow = GenericRow;
+
+type TranscriptFinalizeTables = Record<string, GenericTable> & {
+  case_audio: Table<GenericRow & CaseAudioRow>;
+  cases: Table<CasesRow>;
+  transcription_jobs: Table<GenericRow & TranscriptionJobRecord, GenericRow, GenericRow & JobPatch>;
+  transcripts: Table<TranscriptsRow, GenericRow & TranscriptInsertRow, GenericRow>;
+  transcript_speakers: Table<TranscriptSpeakersRow>;
+  transcript_utterances: Table<GenericRow & BoundaryTranscriptUtteranceRow>;
+  transcript_words: Table<GenericRow & BoundaryTranscriptWordRow>;
+  transcript_audit_log: Table<TranscriptAuditRow>;
+};
+
+export type Database = {
+  __InternalSupabase: {
+    PostgrestVersion: "14.5";
+  };
+  public: {
+    Tables: TranscriptFinalizeTables;
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
 export type CaseAudioRow = {
   audio_id: string;
   original_filename: string;
@@ -75,7 +117,10 @@ export type CaseAudioRow = {
 };
 
 export type DeepgramRequestArtifact = {
+  method?: "POST";
   url: string;
+  headers?: Record<string, string>;
+  body?: { url: string };
   callback_url: string;
   preview?: unknown;
   total_sources?: number;
@@ -244,7 +289,7 @@ export async function finalizeTranscriptJob(
     await runBoundaryEngine(supabase, job);
     triggerAiReview(job.transcript_id);
   } catch (enrichmentError) {
-    console.error("[finalize-transcript] post-completion enrichment failed", {
+    console.error("[transcript-finalize] post-completion enrichment failed", {
       jobId: job.id,
       message: enrichmentError instanceof Error ? enrichmentError.message : String(enrichmentError),
     });
@@ -492,7 +537,7 @@ type BoundaryTranscriptWordRow = {
 
 function createBoundaryAiClient(apiKey: string): BoundaryAiClient {
   return {
-    async completeJson<T>(input): Promise<T> {
+    async completeJson<T>(input: Parameters<BoundaryAiClient["completeJson"]>[0]): Promise<T> {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -615,7 +660,7 @@ async function runBoundaryEngine(
   job: TranscriptionJobRecord,
 ): Promise<void> {
   if (!anthropicApiKey) {
-    console.warn("[finalize-transcript] boundary engine skipped: missing ANTHROPIC_API_KEY", {
+    console.warn("[transcript-finalize] boundary engine skipped: missing ANTHROPIC_API_KEY", {
       transcriptId: job.transcript_id,
     });
     return;
@@ -793,7 +838,7 @@ async function runBoundaryEngine(
       }
     }
   } catch (error) {
-    console.error("[finalize-transcript] boundary engine failed", {
+    console.error("[transcript-finalize] boundary engine failed", {
       transcriptId: job.transcript_id,
       message: error instanceof Error ? error.message : String(error),
     });
@@ -1096,7 +1141,7 @@ function triggerAiReview(transcriptId: string): void {
     headers,
     body: JSON.stringify({ transcript_id: transcriptId }),
   }).catch((error) => {
-    console.error("[finalize-transcript] ai-review trigger failed", {
+    console.error("[transcript-finalize] ai-review trigger failed", {
       transcriptId,
       message: error instanceof Error ? error.message : String(error),
     });

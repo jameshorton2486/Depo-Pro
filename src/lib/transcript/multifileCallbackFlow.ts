@@ -1,5 +1,5 @@
-import type { TranscriptionJobRecord } from "../transcriptionJobs";
-import type { SequentialTranscriptSource } from "./autoChunking";
+import type { TranscriptionJobRecord } from "../transcriptionJobs.ts";
+import type { SequentialTranscriptSource } from "./autoChunking.ts";
 
 export interface NextRequestArtifact {
   url: string;

@@ -1,10 +1,10 @@
-import type { DeepgramResponse } from "./types";
+import type { DeepgramResponse } from "./types.ts";
 import type {
   CanonicalSpeakerRow,
   CanonicalUtteranceRow,
   CanonicalWordRow,
   NormalizedTranscriptData,
-} from "./normalize";
+} from "./normalize.ts";
 
 export interface SourceTranscriptSegment {
   source_audio_id: string;

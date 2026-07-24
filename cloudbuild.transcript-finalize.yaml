@@ -1,0 +1,15 @@
+substitutions:
+  _IMAGE: us-central1-docker.pkg.dev/depo-pro-website/depo-pro/depo-pro-transcript-finalize:manual
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file
+      - transcript_finalize_service/Dockerfile
+      - --tag
+      - ${_IMAGE}
+      - .
+
+images:
+  - ${_IMAGE}
