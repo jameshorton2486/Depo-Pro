@@ -155,6 +155,26 @@ async function resolveWorkspaceTarget(value: string): Promise<TranscriptJobRow |
   return getLatestCompletedTranscriptJob(value);
 }
 
+function isDirectMediaUrl(value: string): boolean {
+  return /^(https?:|blob:|data:)/i.test(value);
+}
+
+async function resolveWorkspaceMediaUrl(
+  candidate: string | null | undefined,
+  fallbackTarget: TranscriptJobRow,
+): Promise<string> {
+  const normalized = candidate?.trim() ?? "";
+  if (!normalized) {
+    return resolveSourceAudioFallbackMediaUrl(fallbackTarget);
+  }
+
+  if (isDirectMediaUrl(normalized)) {
+    return normalized;
+  }
+
+  return getSignedUrl(normalized);
+}
+
 async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResult> {
   const target = await resolveWorkspaceTarget(caseId);
   if (!target) {
@@ -166,9 +186,7 @@ async function loadWorkspaceDocument(caseId: string): Promise<WorkspaceLoadResul
     throw new Error(`Transcript job ${target.job_id} could not be loaded.`);
   }
 
-  const mediaUrl = snapshot.job.media_url
-    ? await getSignedUrl(snapshot.job.media_url)
-    : await resolveSourceAudioFallbackMediaUrl(snapshot.job);
+  const mediaUrl = await resolveWorkspaceMediaUrl(snapshot.job.media_url, snapshot.job);
 
   const audioSegments = await loadAudioSegments(snapshot.job, mediaUrl);
 
@@ -691,7 +709,7 @@ export const workspaceApi = {
       }
 
       const document = await contractApi.getDocument(target.transcript_id);
-      const mediaUrl = document.media_url || await resolveSourceAudioFallbackMediaUrl(target);
+      const mediaUrl = await resolveWorkspaceMediaUrl(document.media_url, target);
       return {
         document: {
           ...document,
