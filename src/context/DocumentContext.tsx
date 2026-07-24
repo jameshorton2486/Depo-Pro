@@ -291,7 +291,6 @@ export function DocumentProvider({
     dispatch({ type: "LOAD_START" });
     try {
       const loaded = await workspaceApi.getDocument(jobId);
-      console.info("[DEPO-PRO] EditorDocument loaded:", loaded.document);
       dispatch({
         type: "LOAD_OK",
         doc: loaded.document,

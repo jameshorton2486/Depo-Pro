@@ -159,4 +159,63 @@ describe("aiReview helpers", () => {
     expect(isAIReviewAutoApplyEnabled("false")).toBe(false);
     expect(isAIReviewAutoApplyEnabled("true")).toBe(true);
   });
+
+  // Tier 2 edge case — zero flagged words. These three functions decide whether
+  // the server calls the AI at all (it short-circuits when the correction report
+  // is empty) and how an empty result is summarized.
+  it("produces no ambiguous flags when every word is confident and unflagged", () => {
+    const flags = buildAmbiguousFlags([
+      { id: "1", word_id: "w_1", utterance_id: "utt_1", raw_text: "the", working_text: null, confidence: 0.99 },
+      { id: "2", word_id: "w_2", utterance_id: "utt_1", raw_text: "record", working_text: null, confidence: 0.95 },
+      { id: "3", word_id: "w_3", utterance_id: "utt_1", raw_text: "reflects", working_text: null, confidence: 0.88 },
+    ]);
+    expect(flags).toEqual([]);
+  });
+
+  it("summarizes an all-empty AI result as zero counts without dividing by zero", () => {
+    const summary = summarizeSuggestions({
+      wordSuggestions: [],
+      speakerSuggestions: [],
+      structureSuggestions: [],
+      promptVersion: AI_REVIEW_PROMPT_VERSION,
+      model: "claude-sonnet-4-6",
+    });
+    expect(summary.totalSuggestions).toBe(0);
+    expect(summary.autoAppliedCount).toBe(0);
+    expect(summary.pendingReviewCount).toBe(0);
+  });
+
+  it("emits an all-empty correction report when nothing needs review", () => {
+    const input = buildAISuggestionInput({
+      transcriptId: "tr_1",
+      utterances: [{
+        id: "utt_1",
+        utterance_id: "utt_1",
+        speaker_id: "spk_1",
+        speaker_display_name: "Dennis Bentley",
+        speaker_role: "ATTORNEY",
+        raw_text: "The record reflects.",
+        working_text: "The record reflects.",
+        line_type: "COLLOQUY",
+      }],
+      words: [{
+        id: "1",
+        word_id: "w_1",
+        utterance_id: "utt_1",
+        raw_text: "record",
+        working_text: null,
+        confidence: 0.98,
+      }],
+      speakers: [{
+        speaker_id: "spk_1",
+        display_name: "Dennis Bentley",
+        verified_role: "ATTORNEY",
+      }],
+      caseRecord: null,
+    });
+
+    expect(input.correctionReport.ambiguousFlags).toEqual([]);
+    expect(input.correctionReport.speakerIssues).toEqual([]);
+    expect(input.correctionReport.unstructuredBlocks).toEqual([]);
+  });
 });

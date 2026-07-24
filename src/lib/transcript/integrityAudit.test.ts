@@ -259,4 +259,35 @@ describe("integrityAudit", () => {
     expect(result.utterance_count).toBe(2);
     expect(result.speaker_ids_found).toEqual(["0", "1"]);
   });
+
+  // Tier 2 edge case — Deepgram API failure: a "successful" callback whose body
+  // carries no usable transcript (empty utterances) must be caught by the
+  // integrity gate rather than ingested as a blank transcript.
+  it("fails an empty transcript with no utterances", () => {
+    const response = cloneFixture();
+    response.results.utterances = [];
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("No utterances found"))).toBe(true);
+    expect(result.failures.some((failure) => failure.includes("No confidence scores found"))).toBe(true);
+  });
+
+  // Tier 2 edge case — very short audio: a legitimately short, single-voice clip
+  // (e.g. a videographer intro) trips the >=2 speaker gate and is routed to
+  // manual review rather than auto-completed. This is intentional for a
+  // deposition; the test documents/locks the behavior.
+  it("routes a single-speaker clip to manual review via the >=2 speaker gate", () => {
+    const response = cloneFixture();
+    response.results.utterances?.forEach((utterance) => {
+      utterance.speaker = 0;
+      utterance.words.forEach((word) => {
+        word.speaker = 0;
+      });
+    });
+
+    const result = integrityAudit(response);
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("Only 1 distinct speaker(s) detected"))).toBe(true);
+  });
 });

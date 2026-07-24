@@ -335,7 +335,63 @@ export async function uploadCaseFile(caseId: string, file: File, fileType: CaseF
   return data as unknown as CaseFileRecord;
 }
 
-export async function uploadCaseAudio(caseId: string, file: File): Promise<CaseAudioRecord> {
+function throwIfAborted(signal: AbortSignal | undefined, message: string): void {
+  if (signal?.aborted) {
+    const error = new Error(message);
+    error.name = "AbortError";
+    throw error;
+  }
+}
+
+/**
+ * Persist the case_audio row for an already-uploaded object, removing the
+ * orphaned storage object if the insert fails OR the upload was cancelled after
+ * the object landed. Extracted from uploadCaseAudio so the cancellation/orphan
+ * cleanup logic is unit-testable without the DOM-bound audio-duration decode.
+ */
+export async function finalizeAudioUpload(
+  client: SupabaseClient<Database>,
+  storagePath: string,
+  row: Database["public"]["Tables"]["case_audio"]["Insert"],
+  signal?: AbortSignal,
+): Promise<CaseAudioRecord> {
+  try {
+    // A cancellation that arrived during the upload must not persist a row.
+    throwIfAborted(signal, "Case audio upload cancelled.");
+
+    const { data, error: insertError } = await client
+      .from("case_audio")
+      .insert(row)
+      .select("*")
+      .single();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    return data as CaseAudioRecord;
+  } catch (error) {
+    // Best-effort orphan cleanup: the object is in storage but has no valid
+    // case_audio row, so remove it rather than leak it. Preserve the original
+    // failure if cleanup itself fails.
+    try {
+      await client.storage.from(CASE_FILES_BUCKET).remove([storagePath]);
+    } catch {
+      // ignore — surface the original error
+    }
+    throw error;
+  }
+}
+
+export async function uploadCaseAudio(
+  caseId: string,
+  file: File,
+  options: { signal?: AbortSignal } = {},
+): Promise<CaseAudioRecord> {
+  const { signal } = options;
+  // Do not even begin a cancelled upload.
+  throwIfAborted(signal, "Case audio upload cancelled.");
+
   validateCaseAudioUpload(file);
 
   const client = await getSupabaseClient("uploadCaseAudio");
@@ -348,6 +404,9 @@ export async function uploadCaseAudio(caseId: string, file: File): Promise<CaseA
     throw new Error("Authentication is required to upload case audio.");
   }
   const storagePath = buildStoragePath(uploadedBy, caseId, "audio", fileId, file.name);
+
+  // Last cheap cancellation check before the expensive PUT.
+  throwIfAborted(signal, "Case audio upload cancelled.");
 
   const { error: uploadError } = await client.storage
     .from(CASE_FILES_BUCKET)
@@ -369,18 +428,7 @@ export async function uploadCaseAudio(caseId: string, file: File): Promise<CaseA
     uploaded_at: new Date().toISOString(),
   };
 
-  const { data, error: insertError } = await client
-    .from("case_audio")
-    .insert(row)
-    .select("*")
-    .single();
-
-  if (insertError) {
-    await client.storage.from(CASE_FILES_BUCKET).remove([storagePath]);
-    throw insertError;
-  }
-
-  return data;
+  return finalizeAudioUpload(client, storagePath, row, signal);
 }
 
 export async function listCaseFiles(caseId: string, includeRemoved = false): Promise<CaseFileRecord[]> {

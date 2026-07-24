@@ -80,6 +80,21 @@ describe("deriveAutoSeedKeytermsFromCaseRecord", () => {
     ]);
   });
 
+  it("derives reporter terms from the case record reporter", () => {
+    const record = buildRecord();
+    record.reporter.name = manualField("Jordan Reyes");
+
+    expect(deriveAutoSeedKeytermsFromCaseRecord(record)).toEqual([
+      "Mohammad Etminan",
+      "Etminan",
+      "Dennis Bentley",
+      "Bentley",
+      "C-5722-24-L",
+      "Jordan Reyes",
+      "Reyes",
+    ]);
+  });
+
   it("caps auto-seeded terms at 20 entries", () => {
     const record = buildRecord();
     record.attorneys = Array.from({ length: 20 }, (_, index) => ({

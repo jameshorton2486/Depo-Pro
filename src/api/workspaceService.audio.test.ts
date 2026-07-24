@@ -187,6 +187,55 @@ describe("workspaceService audio fallback", () => {
     expect(result.audioSegments[0]?.mediaUrl).toBe("https://signed.example/audio.m4a");
   });
 
+  it("signs raw document media storage paths before returning workspace audio", async () => {
+    vi.doMock("../lib/runtime/mode", () => ({
+      isRealApiMode: () => true,
+    }));
+
+    const transcript = buildTranscriptRow();
+    repo.getTranscriptJobByTranscriptId.mockResolvedValue(transcript);
+    clientApi.getDocument.mockResolvedValue({
+      job_id: "tr_123",
+      media_url: "case_123/audio/source.m4a",
+      duration: 120,
+      speakers: [],
+      utterances: [],
+      words: [],
+    });
+    getSignedUrl.mockResolvedValue("https://signed.example/source.m4a");
+
+    const { workspaceApi } = await import("./workspaceService");
+    const result = await workspaceApi.getDocument("tr_123");
+
+    expect(getSignedUrl).toHaveBeenCalledWith("case_123/audio/source.m4a");
+    expect(result.document.media_url).toBe("https://signed.example/source.m4a");
+    expect(result.audioSegments[0]?.mediaUrl).toBe("https://signed.example/source.m4a");
+  });
+
+  it("passes through direct document media URLs without storage signing", async () => {
+    vi.doMock("../lib/runtime/mode", () => ({
+      isRealApiMode: () => true,
+    }));
+
+    const transcript = buildTranscriptRow();
+    repo.getTranscriptJobByTranscriptId.mockResolvedValue(transcript);
+    clientApi.getDocument.mockResolvedValue({
+      job_id: "tr_123",
+      media_url: "https://cdn.example/audio/source.m4a",
+      duration: 120,
+      speakers: [],
+      utterances: [],
+      words: [],
+    });
+
+    const { workspaceApi } = await import("./workspaceService");
+    const result = await workspaceApi.getDocument("tr_123");
+
+    expect(getSignedUrl).not.toHaveBeenCalled();
+    expect(result.document.media_url).toBe("https://cdn.example/audio/source.m4a");
+    expect(result.audioSegments[0]?.mediaUrl).toBe("https://cdn.example/audio/source.m4a");
+  });
+
   it("falls back to transcription_jobs.source_audio_id when transcript based_on is missing", async () => {
     vi.doMock("../lib/runtime/mode", () => ({
       isRealApiMode: () => false,
