@@ -17,6 +17,8 @@ function buildJob(): TranscriptionJobRecord {
     response_path: null,
     error: null,
     auto_seed_audit: null,
+    finalize_started_at: null,
+    finalize_attempts: 0,
     created_at: "2026-06-10T12:00:00.000Z",
     updated_at: "2026-06-10T12:00:00.000Z",
   };
@@ -96,5 +98,53 @@ describe("advanceOrFinalizeMultifileJob", () => {
     expect(canonicalTranscriptRows).toEqual([]);
     expect(canonicalWordRows).toEqual([]);
     expect(preservedArtifacts.has(responsePath)).toBe(true);
+  });
+
+  it("hands off to the finalize worker on the last source without submitting another Deepgram job", async () => {
+    const job = buildJob();
+    // Single source => the current source is already the last one.
+    const orderedSources = [
+      {
+        source_audio_id: "audio_0",
+        source_index: 0,
+        source_filename: "source_1.mp3",
+        mime_type: "audio/mpeg",
+        storage_path: "cases/demo/audio_0.mp3",
+        media_url: null,
+        kind: "physical_audio" as const,
+      },
+    ];
+    const responsePath = "artifacts/job_001_file_000_deepgram_response.json";
+
+    const requireRequestArtifact = vi.fn();
+    const submitNextDeepgramJob = vi.fn();
+    const updateJob = vi.fn();
+    const cleanupTranscript = vi.fn();
+    const failJob = vi.fn();
+    // The webhook's finalize dep flips the job to `finalizing` and dispatches;
+    // it no longer ingests inline.
+    const finalize = vi.fn(async () => ({ status: "finalizing" as const, responsePath }));
+
+    const outcome = await advanceOrFinalizeMultifileJob({
+      job,
+      orderedSources,
+      currentSource: orderedSources[0],
+      totalSources: orderedSources.length,
+      responsePath,
+    }, {
+      requireRequestArtifact,
+      submitNextDeepgramJob,
+      updateJob,
+      finalize,
+      cleanupTranscript,
+      failJob,
+    });
+
+    expect(outcome).toEqual({ status: "finalizing", responsePath });
+    expect(finalize).toHaveBeenCalledOnce();
+    // No further Deepgram submission and no failure/cleanup on the happy path.
+    expect(submitNextDeepgramJob).not.toHaveBeenCalled();
+    expect(cleanupTranscript).not.toHaveBeenCalled();
+    expect(failJob).not.toHaveBeenCalled();
   });
 });

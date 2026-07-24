@@ -44,6 +44,8 @@ export function formatTranscriptStatus(status: string): string {
     case "transcribing":
     case "assembling":
       return "Processing";
+    case "finalizing":
+      return "Finalizing";
     case "complete":
     case "completed":
       return "Complete";
