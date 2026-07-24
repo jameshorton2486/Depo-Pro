@@ -206,6 +206,8 @@ function UploadCard({
   removable,
   onDrop,
   onRemove,
+  onCancelUpload,
+  uploadCancelling,
   children,
 }: {
   slot: UploadSlotConfig;
@@ -218,13 +220,15 @@ function UploadCard({
   removable: boolean;
   onDrop: (slotId: SlotId, file: File) => void;
   onRemove: (() => void) | null;
+  onCancelUpload: (() => void) | null;
+  uploadCancelling: boolean;
   children?: React.ReactNode;
 }) {
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || status === "uploading") return;
     onDrop(slot.id, files[0]);
   }
 
@@ -235,9 +239,13 @@ function UploadCard({
     <div
       role="button"
       tabIndex={0}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => {
+        if (status !== "uploading") {
+          inputRef.current?.click();
+        }
+      }}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if ((event.key === "Enter" || event.key === " ") && status !== "uploading") {
           event.preventDefault();
           inputRef.current?.click();
         }
@@ -326,6 +334,20 @@ function UploadCard({
           × Remove
         </button>
       )}
+      {status === "uploading" && onCancelUpload && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancelUpload();
+          }}
+          disabled={uploadCancelling}
+          className="mt-2 inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
+        >
+          {uploadCancelling ? "Cancelling..." : "Cancel upload"}
+        </button>
+      )}
 
       {error && (
         <p className="mt-2 text-center text-[11px] text-rose-600">
@@ -364,6 +386,8 @@ export function DocumentUploadPanel({
   const [reorderingAudioId, setReorderingAudioId] = useState<string | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [audioUploadCancelling, setAudioUploadCancelling] = useState(false);
+  const audioUploadAbortRef = useRef<AbortController | null>(null);
 
   const currentFiles = useMemo(() => ({
     notice: files.find((file) => file.file_type === "notice") ?? null,
@@ -374,6 +398,10 @@ export function DocumentUploadPanel({
     () => [...audio].sort((left, right) => left.source_index - right.source_index || (left.uploaded_at ?? "").localeCompare(right.uploaded_at ?? "")),
     [audio],
   );
+
+  useEffect(() => () => {
+    audioUploadAbortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -449,6 +477,13 @@ export function DocumentUploadPanel({
   }
 
   async function handleDrop(slotId: SlotId, file: File) {
+    const audioUploadController = slotId === "audio" ? new AbortController() : null;
+    if (audioUploadController) {
+      audioUploadAbortRef.current?.abort();
+      audioUploadAbortRef.current = audioUploadController;
+      setAudioUploadCancelling(false);
+    }
+
     setSlotUi((previous) => ({
       ...previous,
       [slotId]: { status: "uploading", error: null },
@@ -458,7 +493,7 @@ export function DocumentUploadPanel({
       await ensureUploadPrecondition();
 
       if (slotId === "audio") {
-        const uploadedAudio = await uploadCaseAudio(record.case_id, file);
+        const uploadedAudio = await uploadCaseAudio(record.case_id, file, { signal: audioUploadController?.signal });
         onAudioUploaded(uploadedAudio);
         setAudio(toCaseAudioRecord(uploadedAudio));
         setLocalFiles((previous) => ({ ...previous, [slotId]: file }));
@@ -483,12 +518,42 @@ export function DocumentUploadPanel({
         [slotId]: { status: "done", error: null },
       }));
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        setLocalFiles((previous) => {
+          const next = { ...previous };
+          delete next[slotId];
+          return next;
+        });
+        setSlotUi((previous) => ({
+          ...previous,
+          [slotId]: { status: slotId === "audio" && orderedAudio.length > 0 ? "done" : "idle", error: null },
+        }));
+        return;
+      }
+
       const message = error instanceof Error ? error.message : "Upload failed.";
       setSlotUi((previous) => ({
         ...previous,
         [slotId]: { status: "error", error: message },
       }));
+    } finally {
+      if (audioUploadController && audioUploadAbortRef.current === audioUploadController) {
+        audioUploadAbortRef.current = null;
+      }
+      if (slotId === "audio") {
+        setAudioUploadCancelling(false);
+      }
     }
+  }
+
+  function handleCancelAudioUpload() {
+    const controller = audioUploadAbortRef.current;
+    if (!controller || controller.signal.aborted) {
+      return;
+    }
+
+    setAudioUploadCancelling(true);
+    controller.abort();
   }
 
   function requestFileRemoval(slotId: Exclude<SlotId, "audio">) {
@@ -928,6 +993,8 @@ export function DocumentUploadPanel({
               onRemove={slot.id === "audio" ? null : () => {
                 requestFileRemoval(slot.id as Exclude<SlotId, "audio">);
               }}
+              onCancelUpload={slot.id === "audio" ? handleCancelAudioUpload : null}
+              uploadCancelling={slot.id === "audio" && audioUploadCancelling}
             >
               {slot.id === "audio" && orderedAudio.length > 0 ? (
                 <div className="mt-3 w-full space-y-2">
