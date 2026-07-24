@@ -1,6 +1,12 @@
 [functions.transcribe-callback]
 verify_jwt = false
 
+# Operator recovery tool: promotes a stalled job to `finalizing` and re-drives
+# the finalize worker from stored responses. Invoked with the service-role key,
+# which it checks itself, so JWT verification is disabled.
+[functions.recover-transcript]
+verify_jwt = false
+
 
 [functions.export-adapter]
 verify_jwt = true
