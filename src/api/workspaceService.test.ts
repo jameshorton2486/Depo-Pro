@@ -126,6 +126,23 @@ describe("workspaceApi real-API mutation wrappers", () => {
     expect(result.updatedAt).toBe("T2");
   });
 
+  // Tier 2 edge case — browser refresh during a correction save. After a reload
+  // the client holds an older revision token; if another writer advanced the
+  // transcript in the meantime, the save must be rejected (prompting a reload)
+  // instead of silently overwriting the newer server state.
+  it("rejects a save whose known revision is stale, without calling the writer", async () => {
+    repo.getTranscriptJobByTranscriptId.mockResolvedValueOnce(buildTranscriptRow("T2"));
+
+    const { workspaceApi } = await import("./workspaceService");
+    await expect(workspaceApi.saveWorking(
+      "tr_123",
+      { changes: [{ utterance_id: "utt_1", working_text: "updated text" }], source: "editor" },
+      { lastKnownUpdatedAt: "T1" },
+    )).rejects.toThrow(/reload/i);
+
+    expect(clientApi.saveWorking).not.toHaveBeenCalled();
+  });
+
   it("returns the post-save token from saveReview", async () => {
     repo.getTranscriptJobByTranscriptId
       .mockResolvedValueOnce(buildTranscriptRow("T1"))

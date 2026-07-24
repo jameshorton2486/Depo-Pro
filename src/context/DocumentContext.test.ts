@@ -110,6 +110,74 @@ describe("documentReducer save sequencing", () => {
     expect(state.editSeq).toBe(2);
   });
 
+  // Tier 2 edge case — browser refresh during a correction save.
+  // If the save request fails (or the tab is torn down mid-flight), the edit must
+  // remain dirty and unrolled-back, so a retry or the beforeunload guard still
+  // has the user's change — a legal transcript must never silently lose a keystroke.
+  it("keeps a failed save dirty and retryable without rolling back the edit", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+      pipelineState: null,
+      audioSegments: [],
+    });
+    state = documentReducer(state, {
+      type: "EDIT_UTTERANCE",
+      utterance_id: "utt_001",
+      word_id: null,
+      old_text: "hello",
+      new_text: "hello there",
+      source: "editor",
+    });
+    state = documentReducer(state, { type: "SAVE_START" });
+    state = documentReducer(state, { type: "SAVE_ERR", error: "network unavailable" });
+
+    expect(state.saving).toBe(false);
+    expect(state.dirty).toBe(true);
+    expect(state.saveError).toBe("network unavailable");
+    expect(state.workingTexts.utt_001).toBe("hello there");
+  });
+
+  // A refresh re-runs loadDocument -> LOAD_OK, rehydrating purely from the server
+  // snapshot: unsaved working text is intentionally discarded (the beforeunload
+  // guard is what warns the user first). This locks that boundary.
+  it("discards unsaved working text on reload and rehydrates from the server snapshot", () => {
+    let state = createInitialDocumentState("case_test_001");
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+      pipelineState: null,
+      audioSegments: [],
+    });
+    state = documentReducer(state, {
+      type: "EDIT_UTTERANCE",
+      utterance_id: "utt_001",
+      word_id: null,
+      old_text: "hello",
+      new_text: "hello there",
+      source: "editor",
+    });
+    expect(state.dirty).toBe(true);
+
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:00.000Z",
+      speakerMapConfirmed: false,
+      pipelineState: null,
+      audioSegments: [],
+    });
+
+    expect(state.dirty).toBe(false);
+    expect(state.editSeq).toBe(0);
+    expect(state.workingTexts).toEqual({});
+  });
+
   it("resets structure confirmation on load and allows a transient confirm", () => {
     let state = createInitialDocumentState("case_test_001");
     state = documentReducer(state, {

@@ -184,4 +184,70 @@ describe("mergeSourceTranscriptSegments", () => {
       expect(utteranceIds.has(word.utterance_id)).toBe(true);
     }
   });
+
+  // Tier 2 edge case — very long audio: three overlapping virtual chunks exercise
+  // the double-seam path (the middle chunk overlaps both neighbors). We assert
+  // structural invariants that hold regardless of exact seam-dedup counts.
+  it("merges three overlapping virtual chunks without orphaning words or breaking word ordering", () => {
+    const chunks = [0, 1, 2].map((index) => buildSegment("case_three_chunk", index, {
+      sourceAudioId: "audio_shared",
+      virtualChunk: {
+        chunkIndex: index,
+        startSeconds: index * 2,
+        endSeconds: index * 2 + 12.4,
+        nominalOffsetSeconds: index * 2,
+        overlapWithNextSeconds: index < 2 ? 2 : 0,
+      },
+    }));
+
+    const merged = mergeSourceTranscriptSegments(chunks);
+
+    // No orphaned words across the double seam.
+    const utteranceIds = new Set(merged.normalized.utterances.map((utt) => utt.utterance_id));
+    for (const word of merged.normalized.words) {
+      expect(word.utterance_id).not.toBe("");
+      expect(utteranceIds.has(word.utterance_id)).toBe(true);
+    }
+    // word_index stays strictly increasing after re-sequencing.
+    const wordIndices = merged.normalized.words.map((word) => word.word_index);
+    for (let i = 1; i < wordIndices.length; i += 1) {
+      expect(wordIndices[i]).toBeGreaterThan(wordIndices[i - 1]);
+    }
+    // Dedup bounds: at least one chunk's words survive, never more than all three.
+    const singleChunkWordCount = chunks[0].normalized.words.length;
+    expect(merged.normalized.words.length).toBeGreaterThanOrEqual(singleChunkWordCount);
+    expect(merged.normalized.words.length).toBeLessThanOrEqual(singleChunkWordCount * 3);
+    // Speaker identity stays stable across all three chunks.
+    expect(new Set(merged.normalized.speakers.map((speaker) => speaker.speaker_id))).toEqual(new Set([
+      "spk_audio_shared_s000",
+      "spk_audio_shared_s001",
+    ]));
+  });
+
+  // Tier 2 edge case — very short / silent audio: a zero-word source must resolve
+  // its duration from metadata (no crash), and fail LOUDLY when no duration
+  // exists anywhere rather than persist a 0-length transcript.
+  it("resolves duration for a zero-word single source from metadata without throwing", () => {
+    const segment = buildSegment("case_zero_word", 0, { metadataDuration: 8 });
+    segment.normalized.words = [];
+    segment.normalized.utterances = [];
+    segment.normalized.speakers = [];
+    segment.normalized.durationSeconds = Number.NaN; // force the metadata fallback
+
+    const merged = mergeSourceTranscriptSegments([segment]);
+
+    expect(merged.normalized.words).toHaveLength(0);
+    expect(merged.segments[0].duration_seconds).toBe(8);
+  });
+
+  it("throws a clear error when a zero-word source has no duration metadata anywhere", () => {
+    const segment = buildSegment("case_zero_word_nodur", 0, {
+      metadataDuration: Number.NaN,
+      fallbackDurationSeconds: null,
+    });
+    segment.normalized.words = [];
+    segment.normalized.durationSeconds = Number.NaN;
+
+    expect(() => mergeSourceTranscriptSegments([segment])).toThrow(/missing duration metadata/);
+  });
 });

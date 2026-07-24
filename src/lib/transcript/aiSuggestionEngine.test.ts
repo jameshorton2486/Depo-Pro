@@ -62,6 +62,18 @@ describe("aiSuggestionEngine", () => {
     expect(result.promptVersion).toBe(PROMPT_VERSION);
   });
 
+  // Tier 2 edge case — zero flagged words: a null / empty / malformed AI payload
+  // must normalize to empty arrays, never crash the review pipeline.
+  it("returns empty suggestion arrays for null, empty, or malformed payloads", () => {
+    for (const raw of [null, undefined, {}, { wordSuggestions: "not-an-array" }, 42, "text"]) {
+      const result = normalizeAndScore(raw);
+      expect(result.wordSuggestions).toEqual([]);
+      expect(result.speakerSuggestions).toEqual([]);
+      expect(result.structureSuggestions).toEqual([]);
+      expect(result.promptVersion).toBe(PROMPT_VERSION);
+    }
+  });
+
   it("uses the transport and returns normalized suggestions", async () => {
     const transport = {
       createMessage: vi.fn().mockResolvedValue(JSON.stringify({
