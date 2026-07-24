@@ -21,13 +21,13 @@
  *     verdict; persistence (ingest) is a separate concern downstream.
  */
 
-import { auditCanonicalTranscript, type CanonicalIntegrityResult } from "./canonicalIntegrity";
+import { auditCanonicalTranscript, type CanonicalIntegrityResult } from "./canonicalIntegrity.ts";
 import {
   mergeSourceTranscriptSegments,
   type MergedSourceSegment,
   type SourceTranscriptSegment,
-} from "./multifileMerge";
-import type { NormalizedTranscriptData } from "./normalize";
+} from "./multifileMerge.ts";
+import type { NormalizedTranscriptData } from "./normalize.ts";
 
 export interface FinalizationResult {
   /** The merged canonical transcript (words / utterances / speakers). */

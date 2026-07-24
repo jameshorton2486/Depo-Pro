@@ -1,6 +1,9 @@
 .gcloudignore
 .git
 .gitignore
+.env.*.local
+.env.local
+.env
 node_modules/
 .venv/
 __pycache__/

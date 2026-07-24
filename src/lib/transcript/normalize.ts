@@ -1,4 +1,4 @@
-import type { DeepgramResponse, DeepgramUtterance, DeepgramWord } from "./types";
+import type { DeepgramResponse, DeepgramUtterance, DeepgramWord } from "./types.ts";
 
 const FILLER_TOKENS = new Set(["um", "uh", "uh-huh", "huh-uh", "mm-hmm", "er", "ah"]);
 

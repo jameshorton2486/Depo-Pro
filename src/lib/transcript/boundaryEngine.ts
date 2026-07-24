@@ -1,4 +1,4 @@
-import type { EditorDocument } from "../../api/types";
+import type { EditorDocument } from "../../api/types.ts";
 
 export interface BoundaryJobConfig {
   caseType?: string | null;

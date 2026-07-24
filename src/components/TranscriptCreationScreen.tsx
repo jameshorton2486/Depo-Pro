@@ -137,7 +137,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   }, [caseId]);
 
   useEffect(() => {
-    const activeJob = jobs.find((job) => job.status === "queued" || job.status === "processing") ?? null;
+    const activeJob = jobs.find((job) => job.status === "queued" || job.status === "processing" || job.status === "finalizing") ?? null;
     if (!activeJob) {
       return;
     }

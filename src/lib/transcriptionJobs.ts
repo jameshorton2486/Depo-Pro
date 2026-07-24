@@ -1,4 +1,4 @@
-export type TranscriptionJobStatus = "queued" | "processing" | "complete" | "failed";
+export type TranscriptionJobStatus = "queued" | "processing" | "finalizing" | "complete" | "failed";
 
 export interface TranscriptionJobAutoSeedAudit {
   source: "case_record";
@@ -21,6 +21,10 @@ export interface TranscriptionJobRecord {
   response_path: string | null;
   error: string | null;
   auto_seed_audit: TranscriptionJobAutoSeedAudit | null;
+  /** When the finalize worker most recently began; watchdog staleness anchor. */
+  finalize_started_at: string | null;
+  /** Finalize re-invocation counter; caps retries before surfacing failure. */
+  finalize_attempts: number;
   created_at: string;
   updated_at: string;
 }

@@ -1,6 +1,7 @@
 [functions.transcribe-callback]
 verify_jwt = false
 
+
 [functions.export-adapter]
 verify_jwt = true
 

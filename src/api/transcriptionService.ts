@@ -66,6 +66,8 @@ function createMockJob(caseId: string): TranscriptionJobRecord {
     response_path: null,
     error: null,
     auto_seed_audit: null,
+    finalize_started_at: null,
+    finalize_attempts: 0,
     created_at: now,
     updated_at: now,
   };
@@ -130,7 +132,7 @@ export async function startTranscription(
 ): Promise<TranscriptionJobRecord> {
   if (isMockMode()) {
     const existing = mockJobs.get(caseId)?.job ?? null;
-    if (existing && (existing.status === "queued" || existing.status === "processing")) {
+    if (existing && (existing.status === "queued" || existing.status === "processing" || existing.status === "finalizing")) {
       return existing;
     }
 
@@ -258,7 +260,7 @@ function readJobFromFunctionPayload(value: unknown): TranscriptionJobRecord | nu
     case_id: job.case_id,
     transcript_id: job.transcript_id,
     owner_user_id: typeof job.owner_user_id === "string" ? job.owner_user_id : "",
-    status: job.status === "queued" || job.status === "processing" || job.status === "complete" || job.status === "failed"
+    status: job.status === "queued" || job.status === "processing" || job.status === "finalizing" || job.status === "complete" || job.status === "failed"
       ? job.status
       : "queued",
     callback_token_hash: typeof job.callback_token_hash === "string" ? job.callback_token_hash : "",
@@ -270,6 +272,8 @@ function readJobFromFunctionPayload(value: unknown): TranscriptionJobRecord | nu
     auto_seed_audit: job.auto_seed_audit && typeof job.auto_seed_audit === "object"
       ? job.auto_seed_audit
       : null,
+    finalize_started_at: typeof job.finalize_started_at === "string" ? job.finalize_started_at : null,
+    finalize_attempts: typeof job.finalize_attempts === "number" ? job.finalize_attempts : 0,
     created_at: typeof job.created_at === "string" ? job.created_at : new Date().toISOString(),
     updated_at: typeof job.updated_at === "string" ? job.updated_at : new Date().toISOString(),
   };

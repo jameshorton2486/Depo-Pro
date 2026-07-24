@@ -1,4 +1,4 @@
-import type { DeepgramResponse } from "./types";
+import type { DeepgramResponse } from "./types.ts";
 
 const REQUIRED_TOP_LEVEL_KEYS = ["results", "metadata"] as const;
 const REQUIRED_UTTERANCE_KEYS = ["id", "start", "end", "confidence", "speaker", "words", "transcript"] as const;
