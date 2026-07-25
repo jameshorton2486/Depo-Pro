@@ -1,6 +1,12 @@
 [functions.transcribe-callback]
 verify_jwt = false
 
+# Scheduled sweep (pg_cron/pg_net or external cron). Not called by end-user JWTs;
+# it authenticates the caller's bearer secret itself (WATCHDOG_SECRET or the
+# service-role key), so JWT verification is disabled.
+[functions.transcribe-watchdog]
+verify_jwt = false
+
 # Operator recovery tool: promotes a stalled job to `finalizing` and re-drives
 # the finalize worker from stored responses. Invoked with the service-role key,
 # which it checks itself, so JWT verification is disabled.
