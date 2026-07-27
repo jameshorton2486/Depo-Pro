@@ -169,11 +169,18 @@ These twelve laws are binding. A change that violates a law is not permitted; it
 
 ## 7A. Architectural Principles
 
-The twelve Laws (§7) are constitutional: they state timeless truths about the transcript itself — evidence is immutable, there is one canonical model, there is one Render Model. They depend on no framework, transport, or vendor, and they change only by amendment (§18).
+Below the Laws sit two lighter registers. Together they form a three-tier hierarchy of governance, each tier constrained by the one above it:
 
-**Architectural Principles are a second, distinct register.** They are durable engineering doctrine that *follows from* the Laws but is expressed against the realities of the current platform — the UI framework, the transport, the auth provider. A Principle is expected to outlive any particular implementation, but not necessarily the platform itself: when the platform changes, a Principle may be restated, while the Law it serves does not move. Principles are therefore revised more readily than Laws — a documentation change with a recorded rationale (and an ADR where a specific decision warrants one), not a constitutional amendment or a version increment.
+- **Laws (§7)** — constitutional and timeless. Framework-, transport-, and vendor-agnostic; they state truths about the transcript itself. They change only by versioned amendment (§18).
+- **Principles (§7A)** — durable engineering doctrine that *follows from* the Laws but is expressed against the realities of the current platform (UI framework, transport, auth provider). A Principle is expected to outlive any particular implementation, but not necessarily the platform: when the platform changes, a Principle may be restated while the Law it serves does not move. Revised by documentation change with a recorded rationale — and an ADR where a specific decision warrants one — not a constitutional amendment or a version increment.
+- **Practices (§7B)** — recommended engineering patterns (coding idioms, state scope, case handling). They evolve rapidly, without ADRs, and live in a separate register ([`PRACTICES.md`](./PRACTICES.md)) so day-to-day guidance never clutters the architecture.
 
-The test is simple. If the statement would still be true were the codebase rewritten in a different framework, it is a Law. If it encodes *how* we honor a Law given today's tools, it is a Principle.
+The boundary tests:
+
+- *Would this still be true if the application were rewritten in a different framework?* If yes, it is a **Law**. If it encodes *how* we honor a Law given today's tools, it is a **Principle**.
+- *Is it about the shape of the architecture, or merely a preferred way to write code?* Architecture → **Principle**. Coding preference → **Practice**.
+
+A lower tier may never contradict a higher one — a Principle may never contradict a Law; a Practice may never contradict a Principle or a Law. If it appears to, the lower-tier item is the thing that is wrong.
 
 ### Principle 1 — Reactive State Ownership
 
@@ -186,6 +193,14 @@ This is the Law 1 and Law 8 intent — single ownership, single authority, no co
 **Worked example — authentication.** Authentication is owned by the auth gate and published as a reactive session store; the API layer reads a fresh token per request. An authentication event (token refresh, sign-in) therefore requires no reconstruction of the editor, the audio player, or the document model — those domains subscribe to what they need. Reconstructing the application root on every auth event violates this Principle. See [ADR-0007](./ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md).
 
 **Domains this Principle governs (non-exhaustive):** authentication, configuration, feature flags, telemetry, logging, localization. Each publishes; none reconstructs its consumers.
+
+---
+
+## 7B. Practices
+
+Practices are recommended engineering patterns — dependency management, collection immutability, exhaustive case handling, state scope, and the like. They are **engineering guidance, not architecture**: they shape how code is written *inside* the boundaries the Laws and Principles already set.
+
+Unlike Principles, Practices carry no constitutional weight and need no ADR to adopt, revise, or retire. They live in [`PRACTICES.md`](./PRACTICES.md), a deliberately fast-moving register, so that everyday coding guidance never accretes into the governing documents. A Practice that turns out to encode an architectural boundary should be **promoted** to a Principle (with an ADR); a Principle that turns out to be mere style should be **demoted**.
 
 ---
 
@@ -324,7 +339,9 @@ Architectural performance obligations (specific budgets belong to the Implementa
 - **Amendment, not erosion.** The laws change only by explicit amendment to this document, with a version increment and a recorded rationale. They are never eroded silently by an implementation that finds them inconvenient — such an implementation is the thing that is wrong.
 - **Conformance is reviewable.** Every design and PR states which stage it touches and affirms conformance to the relevant laws. Reviews check architecture before implementation.
 - **Versioning.** This is DTAS v1.0. Backward-incompatible changes to a law increment the major version; clarifications increment the minor version. Companion documents (CTS, Implementation Specification, Migration Roadmap) reference the DTAS version they implement.
-- **Two registers.** §7 **Laws** are constitutional and change only by versioned amendment. §7A **Architectural Principles** are durable engineering doctrine bound to the current platform; they are revised by documentation change with a recorded rationale (and an ADR where a specific decision warrants one), without a DTAS version increment. A Principle may never contradict a Law; if it appears to, the Principle is the thing that is wrong.
+- **Three registers.** §7 **Laws** are constitutional (versioned amendment only). §7A **Principles** are durable, platform-bound doctrine (revised by documentation change with a recorded rationale; an ADR where a decision warrants one; no version increment). §7B **Practices** are engineering patterns that evolve freely in `PRACTICES.md` without ADRs. Each tier is constrained by the one above: a Principle may never contradict a Law, and a Practice may never contradict a Principle or a Law. If it appears to, the lower-tier item is what is wrong.
+- **The chain binds downward — architecture leads implementation.** A significant engineering change routes as: **problem → architecture review → does it change the Constitution?** If yes, **amend a Law** (versioned, argued). If no, **record an ADR**. Then **implement → verify → merge**. Two invariants complete the chain: *a Principle may never contradict a Law*, and *an implementation may never contradict an accepted ADR.*
+- **ADRs record Architectural Impact.** Every ADR states the DTAS Principles it applies, the transformation owners (§8) it affects, and — explicitly — the owners it leaves untouched, so the scope of a decision is legible later.
 
 ---
 

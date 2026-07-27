@@ -28,6 +28,14 @@ Therefore the `session` argument threaded through `renderEditor` was needed only
 - **Cleaner ownership boundaries** — authentication publishes; consumers subscribe. Auth no longer reaches across into unrelated domains to force their reconstruction.
 - Operational hygiene (same PR): the initial `ws.load()` in `AudioPlayer` now swallows the expected teardown `AbortError`; genuine failures still route through the idempotent `handleRecoverableError` and the WaveSurfer `error` event.
 
+## Architectural Impact
+
+**Affected DTAS Principles:** §7A Principle 1 — Reactive State Ownership (this ADR is its first application).
+
+**Affected owners:** Authentication; Presentation (the application root and component lifecycle).
+
+**Unaffected owners:** Canonical Transcript Model, Semantic Interpretation, Editorial, Legal Structure, Render Model, Recognition. No transcript evidence, overlay, derivation, or output is touched — this decision is confined to runtime state propagation.
+
 ## Alternatives considered
 
 - **Memoize the config object** so re-renders reconcile cheaply. Rejected: it treats the symptom (churn) rather than the cause (a cross-cutting service reconstructing unrelated domains), and leaves the ownership inversion in place.
