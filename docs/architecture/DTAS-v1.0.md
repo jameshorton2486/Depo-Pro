@@ -167,6 +167,28 @@ These twelve laws are binding. A change that violates a law is not permitted; it
 
 ---
 
+## 7A. Architectural Principles
+
+The twelve Laws (§7) are constitutional: they state timeless truths about the transcript itself — evidence is immutable, there is one canonical model, there is one Render Model. They depend on no framework, transport, or vendor, and they change only by amendment (§18).
+
+**Architectural Principles are a second, distinct register.** They are durable engineering doctrine that *follows from* the Laws but is expressed against the realities of the current platform — the UI framework, the transport, the auth provider. A Principle is expected to outlive any particular implementation, but not necessarily the platform itself: when the platform changes, a Principle may be restated, while the Law it serves does not move. Principles are therefore revised more readily than Laws — a documentation change with a recorded rationale (and an ADR where a specific decision warrants one), not a constitutional amendment or a version increment.
+
+The test is simple. If the statement would still be true were the codebase rewritten in a different framework, it is a Law. If it encodes *how* we honor a Law given today's tools, it is a Principle.
+
+### Principle 1 — Reactive State Ownership
+
+> Cross-cutting services publish state. Consumers subscribe to that state. A cross-cutting service must not reconstruct an unrelated application domain when its published state changes.
+
+A cross-cutting concern — authentication, configuration, telemetry, logging, feature flags, localization — owns a slice of state that many parts of the application read. That state must be exposed as a **subscription** consumers observe, not **pushed** by rebuilding the parts that happen to depend on it. Reconstructing an unrelated domain because a cross-cutting value changed couples layers the architecture keeps separate, and (Law 1) risks a second, transient representation of state that already has one owner.
+
+This is the Law 1 and Law 8 intent — single ownership, single authority, no competing representations — applied to *runtime state propagation* rather than to the transcript model.
+
+**Worked example — authentication.** Authentication is owned by the auth gate and published as a reactive session store; the API layer reads a fresh token per request. An authentication event (token refresh, sign-in) therefore requires no reconstruction of the editor, the audio player, or the document model — those domains subscribe to what they need. Reconstructing the application root on every auth event violates this Principle. See [ADR-0007](./ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md).
+
+**Domains this Principle governs (non-exhaustive):** authentication, configuration, feature flags, telemetry, logging, localization. Each publishes; none reconstructs its consumers.
+
+---
+
 ## 8. Ownership of transformations
 
 Each transformation has exactly one owner. Ownership means: this party is responsible for the transformation's correctness, and no other party may perform it.
@@ -302,6 +324,7 @@ Architectural performance obligations (specific budgets belong to the Implementa
 - **Amendment, not erosion.** The laws change only by explicit amendment to this document, with a version increment and a recorded rationale. They are never eroded silently by an implementation that finds them inconvenient — such an implementation is the thing that is wrong.
 - **Conformance is reviewable.** Every design and PR states which stage it touches and affirms conformance to the relevant laws. Reviews check architecture before implementation.
 - **Versioning.** This is DTAS v1.0. Backward-incompatible changes to a law increment the major version; clarifications increment the minor version. Companion documents (CTS, Implementation Specification, Migration Roadmap) reference the DTAS version they implement.
+- **Two registers.** §7 **Laws** are constitutional and change only by versioned amendment. §7A **Architectural Principles** are durable engineering doctrine bound to the current platform; they are revised by documentation change with a recorded rationale (and an ADR where a specific decision warrants one), without a DTAS version increment. A Principle may never contradict a Law; if it appears to, the Principle is the thing that is wrong.
 
 ---
 
