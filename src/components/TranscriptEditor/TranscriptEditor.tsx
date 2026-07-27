@@ -335,20 +335,21 @@ export function TranscriptEditor({ readOnly }: Props) {
         // canonical mode, otherwise the editable editor. (In canonical mode the
         // editor is unmounted, so there are no duplicate data-word-id nodes.)
         const root: ParentNode | null = isCanonical ? evidenceRootRef.current : editor.view.dom;
-        const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
-        const els = root
-          ? Array.from(root.querySelectorAll<HTMLElement>(selector))
-          : [];
-        // Only COMMIT the active word once we've actually matched nodes.
-        // clearHighlightedWord() above reset lastWordIdRef to null, so if the
-        // surface isn't mounted yet (e.g. just switched layers) we leave it null
-        // and retry next frame instead of skipping this word for good.
-        if (els.length > 0) {
-          els.forEach((el) => el.classList.add("word-playing"));
-          lastElsRef.current = els;
+        if (root) {
+          const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
+          const els = Array.from(root.querySelectorAll<HTMLElement>(selector));
+          if (els.length > 0) {
+            els.forEach((el) => el.classList.add("word-playing"));
+            lastElsRef.current = els;
+            maybeScrollWordIntoView(els[0]);
+          }
+          // Commit once the surface is MOUNTED, even if this word has no node
+          // (e.g. a word with empty raw_text is omitted from the baseline view).
+          // Otherwise the loop would re-clear/re-query it every frame forever.
           lastWordIdRef.current = wordId;
-          maybeScrollWordIntoView(els[0]);
         }
+        // root null → surface not mounted yet (just switched layers): leave
+        // lastWordIdRef null (cleared above) so the next frame retries.
       }
     }
 
