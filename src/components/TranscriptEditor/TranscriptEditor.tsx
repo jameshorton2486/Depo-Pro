@@ -331,20 +331,24 @@ export function TranscriptEditor({ readOnly }: Props) {
     if (wordId !== lastWordIdRef.current) {
       clearHighlightedWord();
       if (wordId) {
-        // Query the currently VISIBLE surface: the read-only evidence view in
-        // canonical mode, otherwise the editable editor. (The other one is
-        // hidden and carries duplicate data-word-id nodes we must not target.)
+        // Query the currently VISIBLE surface: the read-only baseline view in
+        // canonical mode, otherwise the editable editor. (In canonical mode the
+        // editor is unmounted, so there are no duplicate data-word-id nodes.)
         const root: ParentNode | null = isCanonical ? evidenceRootRef.current : editor.view.dom;
         const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
         const els = root
           ? Array.from(root.querySelectorAll<HTMLElement>(selector))
           : [];
-        els.forEach((el) => el.classList.add("word-playing"));
-        lastElsRef.current = els;
-        lastWordIdRef.current = wordId;
-
-        const firstEl = els[0];
-        if (firstEl) maybeScrollWordIntoView(firstEl);
+        // Only COMMIT the active word once we've actually matched nodes.
+        // clearHighlightedWord() above reset lastWordIdRef to null, so if the
+        // surface isn't mounted yet (e.g. just switched layers) we leave it null
+        // and retry next frame instead of skipping this word for good.
+        if (els.length > 0) {
+          els.forEach((el) => el.classList.add("word-playing"));
+          lastElsRef.current = els;
+          lastWordIdRef.current = wordId;
+          maybeScrollWordIntoView(els[0]);
+        }
       }
     }
 
@@ -369,6 +373,13 @@ export function TranscriptEditor({ readOnly }: Props) {
       }
     };
   }, [clearHighlightedWord, highlightLoop, playing]);
+
+  // On a layer switch during playback, drop the highlight + reset the active
+  // word so the follow-along loop re-applies "word-playing" to the newly
+  // visible surface on the next frame (instead of waiting for audio to advance).
+  useEffect(() => {
+    clearHighlightedWord();
+  }, [isCanonical, clearHighlightedWord]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
