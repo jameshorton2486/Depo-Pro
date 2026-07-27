@@ -24,14 +24,17 @@ function nextChangeId(): string {
 }
 
 // Which render path drives the editor. Session-only (never persisted).
-//   "reporter"    → the working transcript a reporter edits (buildEditorContent).
-//                   This is the FRONT DOOR — reporters must land here.
-//   "recognition" → "Recognition Evidence": immutable Deepgram recognition
-//                   (buildBaselineContent), reached only via the Pipeline
-//                   Inspector. Read-only because it is evidence, not a draft.
+//   "reporter"  → the working transcript a reporter edits (buildEditorContent).
+//                 This is the FRONT DOOR — reporters must land here.
+//   "canonical" → "Canonical Baseline": per-word raw_text shown verbatim, but
+//                 on the already-normalized CANONICAL document (Recognition +
+//                 Normalization — the raw Deepgram payload isn't available
+//                 client-side). Reached only via the Pipeline Inspector;
+//                 read-only because it is evidence, not a draft. A true
+//                 "recognition" layer arrives once raw responses are exposed.
 // Defaults to "reporter" so the everyday surface is the usable transcript;
-// inspecting raw recognition is a deliberate, separate mode.
-export type RenderLayer = "reporter" | "recognition";
+// inspecting the canonical baseline is a deliberate, separate mode.
+export type RenderLayer = "reporter" | "canonical";
 
 interface State {
   jobId: string;

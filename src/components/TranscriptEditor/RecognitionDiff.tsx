@@ -59,7 +59,7 @@ export function RecognitionDiff({ document, record, onClose }: RecognitionDiffPr
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="Recognition versus current comparison"
+      aria-label="Canonical baseline versus reporter view comparison"
       onClick={onClose}
     >
       <div
@@ -69,11 +69,12 @@ export function RecognitionDiff({ document, record, onClose }: RecognitionDiffPr
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              Recognition Evidence vs. Reporter View
+              Canonical Baseline vs. Reporter View
             </p>
             <p className="mt-0.5 text-xs text-slate-500">
-              Left is exactly what Deepgram returned. Right is the working transcript
-              the pipeline produced. Differences are changes the pipeline made — not Deepgram.
+              Left is the canonical baseline (recognition after normalization). Right is
+              the working transcript the pipeline produced. Differences are changes the
+              pipeline made downstream of the baseline.
             </p>
             <p className="mt-0.5 text-[11px] text-slate-400">
               Reflects the loaded transcript; save pending edits to include them.
@@ -90,8 +91,8 @@ export function RecognitionDiff({ document, record, onClose }: RecognitionDiffPr
 
         <div className="grid min-h-0 flex-1 grid-cols-2 divide-x divide-slate-200">
           <DiffColumn
-            title="Recognition Evidence"
-            subtitle={`${baselineLines.length} utterances · raw_text · immutable`}
+            title="Canonical Baseline"
+            subtitle={`${baselineLines.length} utterances · raw_text · canonical`}
             lines={baselineLines}
           />
           <DiffColumn

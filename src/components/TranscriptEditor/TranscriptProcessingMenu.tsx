@@ -4,7 +4,7 @@ import { useDocument, type RenderLayer } from "../../context/DocumentContext";
 import { useIntake } from "../../context/useIntake";
 import { RecognitionDiff } from "./RecognitionDiff";
 
-// The DTAS pipeline stages between Recognition Evidence and the Reporter View.
+// The DTAS pipeline stages between the Canonical Baseline and the Reporter View.
 // Only the two endpoints are individually renderable today; the intermediate
 // stages are not yet isolated as addressable snapshots (that is the next build
 // phase — each stage emits a document + a reversible, explainable change-set).
@@ -43,12 +43,12 @@ export function TranscriptProcessingMenu({ document }: TranscriptProcessingMenuP
         className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
       >
         <span
-          className={`h-2 w-2 rounded-full ${active === "recognition" ? "bg-amber-500" : "bg-emerald-500"}`}
+          className={`h-2 w-2 rounded-full ${active === "canonical" ? "bg-amber-500" : "bg-emerald-500"}`}
           aria-hidden
         />
         Inspect Pipeline
-        {active === "recognition" && (
-          <span className="text-xs font-normal text-amber-600">Recognition Evidence</span>
+        {active === "canonical" && (
+          <span className="text-xs font-normal text-amber-600">Canonical Baseline</span>
         )}
       </button>
 
@@ -72,11 +72,11 @@ export function TranscriptProcessingMenu({ document }: TranscriptProcessingMenuP
               onClick={() => select("reporter")}
             />
             <LayerChoice
-              label="Recognition Evidence"
-              note="Immutable Deepgram output · read-only · no transformations"
-              selected={active === "recognition"}
+              label="Canonical Baseline"
+              note="Canonical recognition (post-normalization) · read-only · no editorial transforms"
+              selected={active === "canonical"}
               tone="amber"
-              onClick={() => select("recognition")}
+              onClick={() => select("canonical")}
             />
 
             <div className="my-2 border-t border-slate-100" />

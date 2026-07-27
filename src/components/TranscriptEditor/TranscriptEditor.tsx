@@ -21,7 +21,7 @@ import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewB
 import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
 import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
 import { TranscriptProcessingMenu } from "./TranscriptProcessingMenu";
-import { RecognitionEvidenceView } from "./RecognitionEvidenceView";
+import { CanonicalBaselineView } from "./CanonicalBaselineView";
 
 interface Props {
   readOnly: boolean;
@@ -135,10 +135,10 @@ export function TranscriptEditor({ readOnly }: Props) {
   const editUtteranceRef = useRef(editUtterance);
   editUtteranceRef.current = editUtterance;
 
-  const isRecognition = state.renderLayer === "recognition";
+  const isCanonical = state.renderLayer === "canonical";
 
   // The reporter editor ALWAYS renders the working transcript — never baseline.
-  // Recognition Evidence is a separate read-only view (RecognitionEvidenceView),
+  // The Canonical Baseline is a separate read-only view (CanonicalBaselineView),
   // so switching layers never rebuilds/replaces the editor content and can never
   // drop unsaved reporter edits or autosave baseline tokens over corrections.
   const editorContent = useMemo(
@@ -258,9 +258,9 @@ export function TranscriptEditor({ readOnly }: Props) {
     const editorDom = editor.view.dom;
 
     function handleContextMenu(event: MouseEvent) {
-      // Recognition Evidence is immutable: no speaker reassignment (the context
+      // Canonical Baseline is immutable: no speaker reassignment (the context
       // menu persists via saveSpeakers, which must never fire from an evidence view).
-      if (isRecognition) {
+      if (isCanonical) {
         return;
       }
 
@@ -282,14 +282,14 @@ export function TranscriptEditor({ readOnly }: Props) {
 
     editorDom.addEventListener("contextmenu", handleContextMenu);
     return () => editorDom.removeEventListener("contextmenu", handleContextMenu);
-  }, [editor, isRecognition]);
+  }, [editor, isCanonical]);
 
-  // Clear any open context menu when switching to Recognition Evidence so it
+  // Clear any open context menu when switching to the Canonical Baseline so it
   // cannot reappear at stale coordinates (with stale utterance context) on
   // returning to Reporter View.
   useEffect(() => {
-    if (isRecognition) setContextMenu(null);
-  }, [isRecognition]);
+    if (isCanonical) setContextMenu(null);
+  }, [isCanonical]);
 
   const clearHighlightedWord = useCallback(() => {
     lastElsRef.current.forEach((el) => el.classList.remove("word-playing"));
@@ -332,9 +332,9 @@ export function TranscriptEditor({ readOnly }: Props) {
       clearHighlightedWord();
       if (wordId) {
         // Query the currently VISIBLE surface: the read-only evidence view in
-        // recognition mode, otherwise the editable editor. (The other one is
+        // canonical mode, otherwise the editable editor. (The other one is
         // hidden and carries duplicate data-word-id nodes we must not target.)
-        const root: ParentNode | null = isRecognition ? evidenceRootRef.current : editor.view.dom;
+        const root: ParentNode | null = isCanonical ? evidenceRootRef.current : editor.view.dom;
         const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
         const els = root
           ? Array.from(root.querySelectorAll<HTMLElement>(selector))
@@ -349,7 +349,7 @@ export function TranscriptEditor({ readOnly }: Props) {
     }
 
     rafRef.current = requestAnimationFrame(highlightLoop);
-  }, [audio.currentTimeRef, clearHighlightedWord, editor, isRecognition, maybeScrollWordIntoView, playing, wordTimings]);
+  }, [audio.currentTimeRef, clearHighlightedWord, editor, isCanonical, maybeScrollWordIntoView, playing, wordTimings]);
 
   useEffect(() => {
     if (!playing) {
@@ -402,13 +402,13 @@ export function TranscriptEditor({ readOnly }: Props) {
       className="flex-1 min-h-0 overflow-y-auto transcript-scroll bg-transcript-bg"
       data-show-interpreter={showInterpreterLayer ? "true" : "false"}
     >
-      {!isRecognition && !state.structureConfirmed && (
+      {!isCanonical && !state.structureConfirmed && (
         <StructureReviewBanner
           onConfirm={confirmStructure}
           onDismiss={keepRawLabels}
         />
       )}
-      {!isRecognition && (
+      {!isCanonical && (
         <AIReviewBanner
           jobId={state.document?.job_id ?? state.jobId}
           pendingCount={aiReviewBannerState.pendingCount}
@@ -419,12 +419,12 @@ export function TranscriptEditor({ readOnly }: Props) {
         <TranscriptProcessingMenu document={state.document} />
       </div>
       <div className="transcript-page-area">
-        {/* Document caption. In Layer 0 (baseline) the transcript is NOT certified
-            and carries no court-reporter framing — show a neutral recognition
-            header instead of the certification title. */}
+        {/* Document caption. In the Canonical Baseline the transcript is NOT
+            certified and carries no court-reporter framing — show a neutral
+            baseline header instead of the certification title. */}
         <div className="transcript-header">
           <p className="transcript-header-title">
-            {isRecognition ? "RECOGNITION EVIDENCE — IMMUTABLE (READ-ONLY)" : "CERTIFIED TRANSCRIPT OF DEPOSITION"}
+            {isCanonical ? "CANONICAL BASELINE — READ-ONLY" : "CERTIFIED TRANSCRIPT OF DEPOSITION"}
           </p>
           {state.document && (
             <p className="transcript-header-meta">
@@ -433,7 +433,7 @@ export function TranscriptEditor({ readOnly }: Props) {
               {state.document.utterances.length} entries
               {"  ·  "}
               {state.document.words.length} words
-              {isRecognition ? "  ·  evidence · not for editing" : ""}
+              {isCanonical ? "  ·  canonical baseline · read-only" : ""}
             </p>
           )}
         </div>
@@ -444,10 +444,10 @@ export function TranscriptEditor({ readOnly }: Props) {
             Unsaved edits survive because the TipTap Editor instance — not
             EditorContent — owns the document state, and editorContent does not
             depend on renderLayer, so no setContent runs on the switch. */}
-        {!isRecognition && <EditorContent editor={editor} className="tiptap-transcript" />}
-        {isRecognition && <RecognitionEvidenceView document={state.document} rootRef={evidenceRootRef} />}
+        {!isCanonical && <EditorContent editor={editor} className="tiptap-transcript" />}
+        {isCanonical && <CanonicalBaselineView document={state.document} rootRef={evidenceRootRef} />}
       </div>
-      {contextMenu && !isRecognition && (
+      {contextMenu && !isCanonical && (
         <UtteranceContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
