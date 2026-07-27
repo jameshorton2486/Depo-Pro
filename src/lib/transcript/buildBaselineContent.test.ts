@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { JSONContent } from "@tiptap/core";
 import type { EditorDocument } from "../../api/types";
-import { buildBaselineContent, baselineToLabeledLines } from "./buildBaselineContent";
+import { buildBaselineRows, baselineToLabeledLines } from "./buildBaselineContent";
 
 type OverlayWord = EditorDocument["words"][number] & {
   working_text?: string | null;
@@ -24,7 +23,7 @@ function makeDoc(overrides?: Partial<EditorDocument>): EditorDocument {
     ],
     words: [
       makeWord("w1", "Good", "spk-1", "utt-1", { start_time: 0, confidence: 0.4 }),
-      makeWord("w2", "afternoon", "spk-1", "utt-1", { start_time: 0.5 }),
+      makeWord("w2", "afternoon", "spk-1", "utt-1", { start_time: 0.5, confidence: 0.6 }),
       makeWord("w3", "Yes", "spk-0", "utt-2", { start_time: 2 }),
       makeWord("w4", "sir", "spk-0", "utt-2", { start_time: 2.5 }),
     ],
@@ -54,66 +53,45 @@ function makeWord(
   };
 }
 
-function textOf(block: JSONContent): string {
-  return (block.content ?? []).map((n) => n.text ?? "").join("");
-}
-
-describe("buildBaselineContent", () => {
-  it("renders one utterance block per Deepgram utterance, in order", () => {
-    const content = buildBaselineContent(makeDoc());
-    const blocks = (content.content ?? []).filter((b) => b.type === "utterance");
-    expect(blocks).toHaveLength(2);
-    expect(blocks[0].attrs?.utterance_id).toBe("utt-1");
-    expect(blocks[1].attrs?.utterance_id).toBe("utt-2");
-    expect(textOf(blocks[0])).toBe("Good afternoon");
-    expect(textOf(blocks[1])).toBe("Yes sir");
+describe("buildBaselineRows", () => {
+  it("produces one row per Deepgram utterance, in order", () => {
+    const rows = buildBaselineRows(makeDoc());
+    expect(rows).toHaveLength(2);
+    expect(rows[0].utterance_id).toBe("utt-1");
+    expect(rows[1].utterance_id).toBe("utt-2");
+    expect(rows[0].words.map((w) => w.text)).toEqual(["Good", "afternoon"]);
+    expect(rows[1].words.map((w) => w.text)).toEqual(["Yes", "sir"]);
   });
 
   it("labels speakers with Deepgram speaker numbers, not inferred names", () => {
-    const content = buildBaselineContent(makeDoc());
-    const blocks = (content.content ?? []).filter((b) => b.type === "utterance");
-    expect(blocks[0].attrs?.speaker_label).toBe("Speaker 1");
-    expect(blocks[0].attrs?.prefix_text).toBe("Speaker 1");
-    expect(blocks[1].attrs?.speaker_label).toBe("Speaker 0");
-    // Never the legal display_name / role prefixes.
-    expect(blocks[0].attrs?.prefix_text).not.toContain("MR.");
-    expect(blocks[0].attrs?.role).toBeNull();
+    const rows = buildBaselineRows(makeDoc());
+    expect(rows[0].speaker_label).toBe("Speaker 1");
+    expect(rows[1].speaker_label).toBe("Speaker 0");
   });
 
   it("uses raw_text and ignores working_text / AI suggestions", () => {
     const doc = makeDoc();
-    (doc.words[0] as OverlayWord).text = "GOODBYE"; // working override
+    (doc.words[0] as OverlayWord).text = "GOODBYE";
     (doc.words[0] as OverlayWord).working_text = "GOODBYE";
     (doc.words[0] as OverlayWord).ai_suggestion = "Greetings";
     (doc.words[0] as OverlayWord).ai_suggestion_status = "pending";
-    const blocks = (buildBaselineContent(doc).content ?? []).filter((b) => b.type === "utterance");
-    // Immutable recognition wins: "Good", not the override or the suggestion.
-    expect(textOf(blocks[0])).toBe("Good afternoon");
+    const rows = buildBaselineRows(doc);
+    expect(rows[0].words[0].text).toBe("Good");
   });
 
-  it("marks every word as the raw layer, never pending AI", () => {
-    const blocks = (buildBaselineContent(makeDoc()).content ?? []).filter((b) => b.type === "utterance");
-    const firstWordMark = blocks[0].content?.[0].marks?.[0];
-    expect(firstWordMark?.type).toBe("wordMark");
-    expect(firstWordMark?.attrs?.ai_layer).toBe("raw_text");
-    expect(firstWordMark?.attrs?.ai_pending).toBe(false);
-    // Confidence and timing survive for coloring + audio sync.
-    expect(firstWordMark?.attrs?.confidence).toBe(0.4);
-    expect(firstWordMark?.attrs?.start_time).toBe(0);
+  it("preserves confidence + timing and buckets the confidence level", () => {
+    const rows = buildBaselineRows(makeDoc());
+    expect(rows[0].words[0].confidence).toBe(0.4);
+    expect(rows[0].words[0].start_time).toBe(0);
+    expect(rows[0].words[0].confidenceLevel).toBe("very-low"); // < 0.5
+    expect(rows[0].words[1].confidenceLevel).toBe("low"); // < 0.75
+    expect(rows[1].words[0].confidenceLevel).toBe("ok"); // 1.0
   });
 
-  it("hides nothing — excluded utterances still render", () => {
+  it("hides nothing — excluded utterances still appear", () => {
     const doc = makeDoc();
     (doc.utterances[1] as typeof doc.utterances[number] & { excluded_from_output?: boolean }).excluded_from_output = true;
-    const blocks = (buildBaselineContent(doc).content ?? []).filter((b) => b.type === "utterance");
-    expect(blocks).toHaveLength(2);
-  });
-
-  it("emits no pageBreak / geometry framing", () => {
-    const content = buildBaselineContent(makeDoc());
-    expect((content.content ?? []).some((b) => b.type === "pageBreak")).toBe(false);
-    const block = (content.content ?? [])[0];
-    expect(block.attrs?.format_box_width_inches).toBeUndefined();
+    expect(buildBaselineRows(doc)).toHaveLength(2);
   });
 
   it("falls back to speaker index when deepgram_speaker is null", () => {
@@ -122,8 +100,7 @@ describe("buildBaselineContent", () => {
       utterances: [{ utterance_id: "u", speaker_id: "spk-0", start_time: 0, end_time: 1, word_ids: ["w1"] }],
       words: [makeWord("w1", "Hi", "spk-0", "u")],
     });
-    const blocks = (buildBaselineContent(doc).content ?? []).filter((b) => b.type === "utterance");
-    expect(blocks[0].attrs?.speaker_label).toBe("Speaker 0");
+    expect(buildBaselineRows(doc)[0].speaker_label).toBe("Speaker 0");
   });
 });
 

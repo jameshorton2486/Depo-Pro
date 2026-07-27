@@ -9,7 +9,6 @@ import { PageBreakNode } from "../../extensions/PageBreakNode";
 import { ExhibitRefNode } from "../../extensions/ExhibitRefNode";
 import { ExhibitRefNodeView } from "./ExhibitRefNodeView";
 import { buildEditorContent } from "../../lib/buildEditorContent";
-import { buildBaselineContent } from "../../lib/transcript/buildBaselineContent";
 import { extractUtteranceTextsFromDoc } from "../../lib/format/editorFragments";
 import { buildWordTimings, findWordAtTime } from "../../lib/wordTimings";
 import { useDocument } from "../../context/DocumentContext";
@@ -22,6 +21,7 @@ import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewB
 import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
 import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
 import { TranscriptProcessingMenu } from "./TranscriptProcessingMenu";
+import { RecognitionEvidenceView } from "./RecognitionEvidenceView";
 
 interface Props {
   readOnly: boolean;
@@ -136,22 +136,18 @@ export function TranscriptEditor({ readOnly }: Props) {
 
   const isRecognition = state.renderLayer === "recognition";
 
+  // The reporter editor ALWAYS renders the working transcript — never baseline.
+  // Recognition Evidence is a separate read-only view (RecognitionEvidenceView),
+  // so switching layers never rebuilds/replaces the editor content and can never
+  // drop unsaved reporter edits or autosave baseline tokens over corrections.
   const editorContent = useMemo(
-    () => {
-      if (!state.document) return null;
-      // Recognition Evidence: immutable Deepgram recognition, bypassing the
-      // entire transformation stack. Reached only via the Pipeline Inspector.
-      if (state.renderLayer === "recognition") {
-        return buildBaselineContent(state.document);
-      }
-      return buildEditorContent(state.document, {
-        languageMap,
-        structureConfirmed: state.structureConfirmed,
-        keepRawLabels: state.keepRawLabels,
-        record,
-      });
-    },
-    [languageMap, record, state.document, state.keepRawLabels, state.renderLayer, state.structureConfirmed]
+    () => (state.document ? buildEditorContent(state.document, {
+      languageMap,
+      structureConfirmed: state.structureConfirmed,
+      keepRawLabels: state.keepRawLabels,
+      record,
+    }) : null),
+    [languageMap, record, state.document, state.keepRawLabels, state.structureConfirmed]
   );
 
   const wordTimings = useMemo(
@@ -193,14 +189,6 @@ export function TranscriptEditor({ readOnly }: Props) {
     setEditor(editor ?? null);
     return () => setEditor(null);
   }, [editor, setEditor]);
-
-  // Recognition Evidence is read-only because it is EVIDENCE, not a draft — the
-  // raw Deepgram recognition must never be edited. Editability returns in
-  // Reporter View (unless the caller passed readOnly).
-  useEffect(() => {
-    if (!editor) return;
-    editor.setEditable(!readOnly && !isRecognition);
-  }, [editor, readOnly, isRecognition]);
 
   // Push document content into TipTap whenever the source document changes.
   // false = don't fire an update event (avoids false-dirty on initial load).
@@ -438,7 +426,12 @@ export function TranscriptEditor({ readOnly }: Props) {
           )}
         </div>
 
-        <EditorContent editor={editor} className="tiptap-transcript" />
+        {/* Reporter editor stays mounted (just hidden) in recognition mode so
+            unsaved edits and editor state survive the layer switch. */}
+        <div hidden={isRecognition}>
+          <EditorContent editor={editor} className="tiptap-transcript" />
+        </div>
+        {isRecognition && <RecognitionEvidenceView document={state.document} />}
       </div>
       {contextMenu && !isRecognition && (
         <UtteranceContextMenu

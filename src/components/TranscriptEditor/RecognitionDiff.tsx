@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { JSONContent } from "@tiptap/core";
 import type { EditorDocument } from "../../api/types";
 import type { CaseRecord } from "../../types/case";
@@ -74,6 +75,9 @@ export function RecognitionDiff({ document, record, onClose }: RecognitionDiffPr
               Left is exactly what Deepgram returned. Right is the working transcript
               the pipeline produced. Differences are changes the pipeline made — not Deepgram.
             </p>
+            <p className="mt-0.5 text-[11px] text-slate-400">
+              Reflects the loaded transcript; save pending edits to include them.
+            </p>
           </div>
           <button
             type="button"
@@ -101,6 +105,9 @@ export function RecognitionDiff({ document, record, onClose }: RecognitionDiffPr
   );
 }
 
+// Virtualized column — only the visible rows are in the DOM, so the inspector
+// stays responsive on the 30,000+ word transcripts the app must support
+// (per AGENTS.md "Virtualize the utterance list").
 function DiffColumn({
   title,
   subtitle,
@@ -110,23 +117,41 @@ function DiffColumn({
   subtitle: string;
   lines: string[];
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 40,
+    overscan: 12,
+  });
+
   return (
     <div className="flex min-h-0 flex-col">
       <div className="border-b border-slate-100 bg-slate-50 px-4 py-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">{title}</p>
         <p className="text-[11px] text-slate-400">{subtitle}</p>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-        <ol className="space-y-1">
-          {lines.map((line, i) => (
-            <li
-              key={i}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
+          {virtualizer.getVirtualItems().map((item) => (
+            <div
+              key={item.key}
+              data-index={item.index}
+              ref={virtualizer.measureElement}
               className="whitespace-pre-wrap font-mono text-[12px] leading-5 text-slate-700"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${item.start}px)`,
+                paddingBottom: "4px",
+              }}
             >
-              {line}
-            </li>
+              {lines[item.index]}
+            </div>
           ))}
-        </ol>
+        </div>
       </div>
     </div>
   );
