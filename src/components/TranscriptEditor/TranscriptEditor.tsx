@@ -269,6 +269,12 @@ export function TranscriptEditor({ readOnly }: Props) {
     const editorDom = editor.view.dom;
 
     function handleContextMenu(event: MouseEvent) {
+      // Recognition Evidence is immutable: no speaker reassignment (the context
+      // menu persists via saveSpeakers, which must never fire from an evidence view).
+      if (isRecognition) {
+        return;
+      }
+
       const target = event.target as HTMLElement | null;
       const utteranceEl = target?.closest<HTMLElement>("[data-utterance-id]");
       if (!utteranceEl?.dataset.utteranceId || !utteranceEl.dataset.speakerId) {
@@ -287,7 +293,7 @@ export function TranscriptEditor({ readOnly }: Props) {
 
     editorDom.addEventListener("contextmenu", handleContextMenu);
     return () => editorDom.removeEventListener("contextmenu", handleContextMenu);
-  }, [editor]);
+  }, [editor, isRecognition]);
 
   const clearHighlightedWord = useCallback(() => {
     lastElsRef.current.forEach((el) => el.classList.remove("word-playing"));
@@ -434,7 +440,7 @@ export function TranscriptEditor({ readOnly }: Props) {
 
         <EditorContent editor={editor} className="tiptap-transcript" />
       </div>
-      {contextMenu && (
+      {contextMenu && !isRecognition && (
         <UtteranceContextMenu
           x={contextMenu.x}
           y={contextMenu.y}

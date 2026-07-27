@@ -4,6 +4,8 @@ import type { EditorDocument } from "../../api/types";
 import type { CaseRecord } from "../../types/case";
 import { buildEditorContent } from "../../lib/buildEditorContent";
 import { baselineToLabeledLines } from "../../lib/transcript/buildBaselineContent";
+import { useDocument } from "../../context/DocumentContext";
+import { useEditorContext } from "../../context/EditorContext";
 
 interface RecognitionDiffProps {
   document: EditorDocument;
@@ -34,18 +36,22 @@ function contentToLabeledLines(content: JSONContent): string[] {
 }
 
 export function RecognitionDiff({ document, record, onClose }: RecognitionDiffProps) {
+  const { state } = useDocument();
+  const { languageMap } = useEditorContext();
   const baselineLines = useMemo(() => baselineToLabeledLines(document), [document]);
 
-  // "Current" = the full Depo-Pro pipeline with structure inference ON, so the
-  // comparison reveals the maximum set of transformations the pipeline applies.
+  // Build the "Reporter View" column with the SAME options the live editor uses
+  // (session structure flags + languageMap), so the diff shows the transcript the
+  // reporter actually sees in the workspace — not an idealized full-inference view.
   const processedLines = useMemo(() => {
     const content = buildEditorContent(document, {
-      structureConfirmed: true,
-      keepRawLabels: false,
+      languageMap,
+      structureConfirmed: state.structureConfirmed,
+      keepRawLabels: state.keepRawLabels,
       record,
     });
     return contentToLabeledLines(content);
-  }, [document, record]);
+  }, [document, record, languageMap, state.structureConfirmed, state.keepRawLabels]);
 
   return (
     <div
