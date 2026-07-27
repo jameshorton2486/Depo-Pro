@@ -348,7 +348,15 @@ export function AudioPlayer({
     };
     mediaElement?.addEventListener("error", handleMediaElementError);
 
-    ws.load(resolvedMediaUrl);
+    // Operational hygiene: when this effect tears down mid-load, ws.destroy()
+    // aborts the in-flight fetch and ws.load() rejects with AbortError. That is
+    // expected teardown, not a failure — swallow it so it doesn't surface as an
+    // unhandled rejection. Genuine load failures still route through the same
+    // recovery path (and the ws "error" event).
+    void Promise.resolve(ws.load(resolvedMediaUrl)).catch((error: unknown) => {
+      if (error instanceof Error && error.name === "AbortError") return;
+      void handleRecoverableError();
+    });
 
     return () => {
       cancelAnimationFrame(rafRef.current);
