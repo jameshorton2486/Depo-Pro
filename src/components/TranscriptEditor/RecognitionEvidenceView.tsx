@@ -1,10 +1,14 @@
 import { useMemo } from "react";
+import type React from "react";
 import type { EditorDocument } from "../../api/types";
 import { buildBaselineRows, type ConfidenceLevel } from "../../lib/transcript/buildBaselineContent";
 import { useAudio } from "../../context/AudioContext";
 
 interface RecognitionEvidenceViewProps {
   document: EditorDocument | null;
+  // Root element ref, so the audio follow-along loop can query this view's word
+  // nodes (the editable editor is hidden in recognition mode).
+  rootRef?: React.Ref<HTMLDivElement>;
 }
 
 function confClass(level: ConfidenceLevel): string {
@@ -19,14 +23,14 @@ function confClass(level: ConfidenceLevel): string {
 // never reach the reporter's working-text or autosave pipeline. It is evidence,
 // not a draft — there is no editing, no context menu, no suggestion application.
 // Confidence coloring and click-to-seek are preserved.
-export function RecognitionEvidenceView({ document }: RecognitionEvidenceViewProps) {
+export function RecognitionEvidenceView({ document, rootRef }: RecognitionEvidenceViewProps) {
   const audio = useAudio();
   const rows = useMemo(() => (document ? buildBaselineRows(document) : []), [document]);
 
   if (!document) return null;
 
   return (
-    <div className="evidence-view" data-testid="recognition-evidence-view">
+    <div ref={rootRef} className="evidence-view" data-testid="recognition-evidence-view">
       {rows.map((row) => (
         <div key={row.utterance_id} className="evidence-row">
           <span className="evidence-speaker" contentEditable={false}>

@@ -119,6 +119,7 @@ export function TranscriptEditor({ readOnly }: Props) {
   const lastScrollAtRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const evidenceRootRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -323,10 +324,14 @@ export function TranscriptEditor({ readOnly }: Props) {
     if (wordId !== lastWordIdRef.current) {
       clearHighlightedWord();
       if (wordId) {
+        // Query the currently VISIBLE surface: the read-only evidence view in
+        // recognition mode, otherwise the editable editor. (The other one is
+        // hidden and carries duplicate data-word-id nodes we must not target.)
+        const root: ParentNode | null = isRecognition ? evidenceRootRef.current : editor.view.dom;
         const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
-        const els = Array.from(
-          editor.view.dom.querySelectorAll<HTMLElement>(selector)
-        );
+        const els = root
+          ? Array.from(root.querySelectorAll<HTMLElement>(selector))
+          : [];
         els.forEach((el) => el.classList.add("word-playing"));
         lastElsRef.current = els;
         lastWordIdRef.current = wordId;
@@ -337,7 +342,7 @@ export function TranscriptEditor({ readOnly }: Props) {
     }
 
     rafRef.current = requestAnimationFrame(highlightLoop);
-  }, [audio.currentTimeRef, clearHighlightedWord, editor, maybeScrollWordIntoView, playing, wordTimings]);
+  }, [audio.currentTimeRef, clearHighlightedWord, editor, isRecognition, maybeScrollWordIntoView, playing, wordTimings]);
 
   useEffect(() => {
     if (!playing) {
@@ -431,7 +436,7 @@ export function TranscriptEditor({ readOnly }: Props) {
         <div hidden={isRecognition}>
           <EditorContent editor={editor} className="tiptap-transcript" />
         </div>
-        {isRecognition && <RecognitionEvidenceView document={state.document} />}
+        {isRecognition && <RecognitionEvidenceView document={state.document} rootRef={evidenceRootRef} />}
       </div>
       {contextMenu && !isRecognition && (
         <UtteranceContextMenu
