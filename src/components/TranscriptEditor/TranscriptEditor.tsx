@@ -9,6 +9,7 @@ import { PageBreakNode } from "../../extensions/PageBreakNode";
 import { ExhibitRefNode } from "../../extensions/ExhibitRefNode";
 import { ExhibitRefNodeView } from "./ExhibitRefNodeView";
 import { buildEditorContent } from "../../lib/buildEditorContent";
+import { buildBaselineContent } from "../../lib/transcript/buildBaselineContent";
 import { extractUtteranceTextsFromDoc } from "../../lib/format/editorFragments";
 import { buildWordTimings, findWordAtTime } from "../../lib/wordTimings";
 import { useDocument } from "../../context/DocumentContext";
@@ -20,6 +21,7 @@ import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
 import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
 import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
 import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
+import { TranscriptProcessingMenu } from "./TranscriptProcessingMenu";
 
 interface Props {
   readOnly: boolean;
@@ -132,14 +134,24 @@ export function TranscriptEditor({ readOnly }: Props) {
   const editUtteranceRef = useRef(editUtterance);
   editUtteranceRef.current = editUtterance;
 
+  const isRecognition = state.renderLayer === "recognition";
+
   const editorContent = useMemo(
-    () => (state.document ? buildEditorContent(state.document, {
-      languageMap,
-      structureConfirmed: state.structureConfirmed,
-      keepRawLabels: state.keepRawLabels,
-      record,
-    }) : null),
-    [languageMap, record, state.document, state.keepRawLabels, state.structureConfirmed]
+    () => {
+      if (!state.document) return null;
+      // Recognition Evidence: immutable Deepgram recognition, bypassing the
+      // entire transformation stack. Reached only via the Pipeline Inspector.
+      if (state.renderLayer === "recognition") {
+        return buildBaselineContent(state.document);
+      }
+      return buildEditorContent(state.document, {
+        languageMap,
+        structureConfirmed: state.structureConfirmed,
+        keepRawLabels: state.keepRawLabels,
+        record,
+      });
+    },
+    [languageMap, record, state.document, state.keepRawLabels, state.renderLayer, state.structureConfirmed]
   );
 
   const wordTimings = useMemo(
@@ -181,6 +193,14 @@ export function TranscriptEditor({ readOnly }: Props) {
     setEditor(editor ?? null);
     return () => setEditor(null);
   }, [editor, setEditor]);
+
+  // Recognition Evidence is read-only because it is EVIDENCE, not a draft — the
+  // raw Deepgram recognition must never be edited. Editability returns in
+  // Reporter View (unless the caller passed readOnly).
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!readOnly && !isRecognition);
+  }, [editor, readOnly, isRecognition]);
 
   // Push document content into TipTap whenever the source document changes.
   // false = don't fire an update event (avoids false-dirty on initial load).
@@ -376,22 +396,29 @@ export function TranscriptEditor({ readOnly }: Props) {
       className="flex-1 min-h-0 overflow-y-auto transcript-scroll bg-transcript-bg"
       data-show-interpreter={showInterpreterLayer ? "true" : "false"}
     >
-      {!state.structureConfirmed && (
+      {!isRecognition && !state.structureConfirmed && (
         <StructureReviewBanner
           onConfirm={confirmStructure}
           onDismiss={keepRawLabels}
         />
       )}
-      <AIReviewBanner
-        jobId={state.document?.job_id ?? state.jobId}
-        pendingCount={aiReviewBannerState.pendingCount}
-        autoAppliedCount={aiReviewBannerState.autoAppliedCount}
-      />
+      {!isRecognition && (
+        <AIReviewBanner
+          jobId={state.document?.job_id ?? state.jobId}
+          pendingCount={aiReviewBannerState.pendingCount}
+          autoAppliedCount={aiReviewBannerState.autoAppliedCount}
+        />
+      )}
+      <div className="sticky top-0 z-20 flex items-center justify-end border-b border-slate-100 bg-transcript-bg/80 px-6 py-2 backdrop-blur">
+        <TranscriptProcessingMenu document={state.document} />
+      </div>
       <div className="transcript-page-area">
-        {/* Document caption */}
+        {/* Document caption. In Layer 0 (baseline) the transcript is NOT certified
+            and carries no court-reporter framing — show a neutral recognition
+            header instead of the certification title. */}
         <div className="transcript-header">
           <p className="transcript-header-title">
-            CERTIFIED TRANSCRIPT OF DEPOSITION
+            {isRecognition ? "RECOGNITION EVIDENCE — IMMUTABLE (READ-ONLY)" : "CERTIFIED TRANSCRIPT OF DEPOSITION"}
           </p>
           {state.document && (
             <p className="transcript-header-meta">
@@ -400,6 +427,7 @@ export function TranscriptEditor({ readOnly }: Props) {
               {state.document.utterances.length} entries
               {"  ·  "}
               {state.document.words.length} words
+              {isRecognition ? "  ·  evidence · not for editing" : ""}
             </p>
           )}
         </div>

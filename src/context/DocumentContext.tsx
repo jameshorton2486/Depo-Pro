@@ -23,6 +23,16 @@ function nextChangeId(): string {
   return `chg_${Date.now()}_${++_changeIdSeq}`;
 }
 
+// Which render path drives the editor. Session-only (never persisted).
+//   "reporter"    → the working transcript a reporter edits (buildEditorContent).
+//                   This is the FRONT DOOR — reporters must land here.
+//   "recognition" → "Recognition Evidence": immutable Deepgram recognition
+//                   (buildBaselineContent), reached only via the Pipeline
+//                   Inspector. Read-only because it is evidence, not a draft.
+// Defaults to "reporter" so the everyday surface is the usable transcript;
+// inspecting raw recognition is a deliberate, separate mode.
+export type RenderLayer = "reporter" | "recognition";
+
 interface State {
   jobId: string;
   document: EditorDocument | null;
@@ -38,6 +48,7 @@ interface State {
   pipelineState: string | null;
   structureConfirmed: boolean;
   keepRawLabels: boolean;
+  renderLayer: RenderLayer;
   audioSegments: WorkspaceAudioSegment[];
   changeLog: ChangeLogEntry[];
   activeUtteranceId: UtteranceId | null;
@@ -54,6 +65,7 @@ type Action =
   | { type: "LOAD_ERR"; error: string }
   | { type: "UPDATE_MEDIA_URL"; mediaUrl: string; segmentIndex: number }
   | { type: "SET_ACTIVE"; id: UtteranceId | null }
+  | { type: "SET_RENDER_LAYER"; layer: RenderLayer }
   | {
       type: "EDIT_UTTERANCE";
       utterance_id: UtteranceId;
@@ -186,6 +198,9 @@ export function documentReducer(state: State, action: Action): State {
         pipelineState: action.pipelineState ?? state.pipelineState,
       };
 
+    case "SET_RENDER_LAYER":
+      return { ...state, renderLayer: action.layer };
+
     case "CONFIRM_STRUCTURE":
       return { ...state, structureConfirmed: true, keepRawLabels: false };
 
@@ -243,6 +258,7 @@ interface ContextValue {
   setSpeakerMapConfirmed: (confirmed: boolean, pipelineState?: string | null) => void;
   confirmStructure: () => void;
   keepRawLabels: () => void;
+  setRenderLayer: (layer: RenderLayer) => void;
   markReviewed: (word_ids: string[]) => void;
   markUnreviewed: (word_ids: string[]) => void;
   getUtteranceText: (utterance_id: UtteranceId) => string;
@@ -266,6 +282,7 @@ export function createInitialDocumentState(jobId: string): State {
     pipelineState: null,
     structureConfirmed: false,
     keepRawLabels: false,
+    renderLayer: "reporter",
     audioSegments: [],
     changeLog: [],
     activeUtteranceId: null,
@@ -432,6 +449,10 @@ export function DocumentProvider({
     dispatch({ type: "KEEP_RAW_LABELS" });
   }, []);
 
+  const setRenderLayer = useCallback((layer: RenderLayer) => {
+    dispatch({ type: "SET_RENDER_LAYER", layer });
+  }, []);
+
   const markReviewed = useCallback((word_ids: string[]) => {
     dispatch({ type: "MARK_REVIEWED", word_ids });
   }, []);
@@ -470,11 +491,12 @@ export function DocumentProvider({
       setSpeakerMapConfirmed,
       confirmStructure,
       keepRawLabels,
+      setRenderLayer,
       markReviewed,
       markUnreviewed,
       getUtteranceText,
     }),
-    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, confirmStructure, keepRawLabels, markReviewed, markUnreviewed, getUtteranceText]
+    [state, loadDocument, refreshMediaUrl, setActive, editUtterance, logSuggestionEdit, saveNow, updateSpeakers, setTranscriptVersion, setSpeakerMapConfirmed, confirmStructure, keepRawLabels, setRenderLayer, markReviewed, markUnreviewed, getUtteranceText]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
