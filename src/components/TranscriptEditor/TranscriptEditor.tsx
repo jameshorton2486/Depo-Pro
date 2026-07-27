@@ -284,6 +284,13 @@ export function TranscriptEditor({ readOnly }: Props) {
     return () => editorDom.removeEventListener("contextmenu", handleContextMenu);
   }, [editor, isRecognition]);
 
+  // Clear any open context menu when switching to Recognition Evidence so it
+  // cannot reappear at stale coordinates (with stale utterance context) on
+  // returning to Reporter View.
+  useEffect(() => {
+    if (isRecognition) setContextMenu(null);
+  }, [isRecognition]);
+
   const clearHighlightedWord = useCallback(() => {
     lastElsRef.current.forEach((el) => el.classList.remove("word-playing"));
     lastElsRef.current = [];
@@ -431,11 +438,13 @@ export function TranscriptEditor({ readOnly }: Props) {
           )}
         </div>
 
-        {/* Reporter editor stays mounted (just hidden) in recognition mode so
-            unsaved edits and editor state survive the layer switch. */}
-        <div hidden={isRecognition}>
-          <EditorContent editor={editor} className="tiptap-transcript" />
-        </div>
+        {/* In recognition mode the editor's DOM is unmounted entirely so there
+            are NO duplicate/hidden data-word-id nodes for global querySelector
+            flows (confidence nav, suggestion scroll, corrections) to match.
+            Unsaved edits survive because the TipTap Editor instance — not
+            EditorContent — owns the document state, and editorContent does not
+            depend on renderLayer, so no setContent runs on the switch. */}
+        {!isRecognition && <EditorContent editor={editor} className="tiptap-transcript" />}
         {isRecognition && <RecognitionEvidenceView document={state.document} rootRef={evidenceRootRef} />}
       </div>
       {contextMenu && !isRecognition && (
