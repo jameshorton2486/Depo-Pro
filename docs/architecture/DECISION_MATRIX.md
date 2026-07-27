@@ -4,22 +4,44 @@
 
 This routing table exists so the "where does this belong?" conversation happens **once, here**, instead of in every PR. It is the first page of the eventual Depo-Pro Governance Manual; it is deliberately not part of DTAS, because DTAS answers *what Depo-Pro is*, not *how the document system works*.
 
+## The DPAS Specification Set
+
+These documents are not independent essays. Together they are one coordinated artifact — the **Depo-Pro Architecture Specification (DPAS)** — describing the system from different viewpoints. Members: DTAS, CTS, DPS, DTS, Engineering Standards, ADRs, and this Decision Matrix.
+
+**Specification inheritance chain:**
+
+```
+DTAS  →  CTS  →  DPS  →  DTS  →  Implementation
+```
+
+The four spec viewpoints are orthogonal — each answers a different question, and none subsumes another:
+
+- **DTAS — *why*** the architecture exists (the Laws).
+- **CTS — *what*** exists (the objects and their invariants).
+- **DPS — *where*** transformations happen (the pipeline: stages, boundaries, ownership, ordering, determinism, replay, failure).
+- **DTS — *what a transformation is*** (the language every stage speaks: transformation object, classes, patch algebra, lineage, identity propagation, reversibility, provenance, diff generation).
+
+**Why DPS and DTS are both kept, not merged.** They are proven distinct by the replaceability test: replace the recognition vendor and only Stage 0's *implementation* changes — DPS/DTS/CTS/DTAS all hold. Replace the AI and the *stage* (Semantic Interpretation) still exists in DPS; only the transformations it emits (DTS instances) change. When a substitution touches exactly one layer, the boundaries are correct. Collapsing "where processing happens" and "what a transformation is" into one document would couple two things that change for different reasons.
+
+**One-fact-one-place at the document level (Law 4, applied to the specs).** DPS references DTS invariants rather than restating them: DPS's replay and determinism guarantees are a *consequence* of DTS reversibility and determinism, so DPS cites them, never redefines them. The same fact lives in exactly one specification.
+
 ## The document hierarchy (frozen)
 
 Each level is constrained by the ones above it. Each answers exactly one question.
 
-| Level | Document | Answers | Changes at |
+| Level | Document | Answers (one question) | State |
 |---|---|---|---|
-| 0 | **DTAS** — Depo-Pro Constitution | *What is a transcript? What is immutable? What are the Laws?* | Constitutional — rarely |
-| 1 | **CTS** — Canonical Transcript Specification | *What objects exist, and what are their invariants?* | Slow |
-| 2 | **DPS** — Depo-Pro Processing Standard | *What happens to a transcript — the transformations and their contract?* | Slow–moderate |
-| 3 | **Engineering Standards** | *What engineering rules do we hold code to?* | Fast |
-| 4 | **ADRs** — Architecture Decision Records | *What specific implementation decision did we make, and why?* | Append-only |
-| 5 | **Implementation Specification** | *How is it built on this stack (schema, interfaces, persistence)?* | Fast |
-| 6 | **Migration Roadmap** | *In what order do we get there?* | Continuous |
-| 7 | **Release / Governance Manual** | *How does engineering work here — and how do we ship?* | As needed |
+| 0 | **DTAS** — Constitution / Architecture Standard | *Why does the architecture exist? What are the Laws?* | Ratifying (PR #33 + #36) |
+| 1 | **CTS** — Canonical Transcript Specification | *What objects exist, and what are their invariants?* | Planned |
+| 2 | **DPS** — Processing Standard | *How does a transcript move through the system? (stages, boundaries, ordering, determinism, replay, failure)* | Planned |
+| 3 | **DTS** — Transformation Standard | *What is a transformation? (object, classes, patch algebra, lineage, reversibility, provenance, diff)* | Planned |
+| 4 | **Engineering Standards** | *What engineering rules do we hold code to?* | Living |
+| 5 | **ADRs** — Architecture Decision Records | *What specific implementation decision, and why?* | Append-only |
+| 6 | **Implementation Specification** | *How is it built on this stack (schema, interfaces, persistence)?* | Active |
+| 7 | **Migration Roadmap** | *In what order do we get there?* | Continuous |
+| 8 | **Release / Governance Manual** | *How does engineering work here — and how do we ship?* | Future |
 
-> **Naming note (unresolved):** Level 2 is written here as **DPS (Processing Standard)**. An earlier discussion named a **DTS (Transformation Standard)** — the spec that defines what a *Transformation* is (input, output, owner, reason, reversibility, provenance, diff). These need reconciling before either is authored: is DTS the same document as DPS, or is the Transformation object contract a *section within* DPS? Flagged for the architect to decide.
+**Ratification order — hold below Level 0 until DTAS is constitutional:** ratify DTAS (merge PR #33 + #36) → write CTS → review and lock objects → write DPS → write DTS → only then expand implementation. Everything below Level 0 inherits from it; a late DTAS change is exponentially expensive, so nothing beneath it is authored until it is ratified.
 
 ## Where a change belongs
 
@@ -27,7 +49,8 @@ Each level is constrained by the ones above it. Each answers exactly one questio
 |---|---|---|
 | Changes what a transcript *is*, or a Law | **DTAS** (amendment) | Constitutional |
 | Adds / removes / redefines a transcript object or invariant | **CTS** | Constitutional |
-| Changes processing behavior or a transformation's contract | **DPS** | Architectural |
+| Changes how a transcript moves through the system (stages, ordering, stage contracts) | **DPS** | Architectural |
+| Changes what a transformation *is* (object, patch algebra, lineage, reversibility, provenance) | **DTS** | Architectural |
 | Records a specific implementation decision / trade-off | **ADR** | Architectural |
 | Changes an engineering convention (state scope, idioms, error handling) | **Engineering Standards** | Engineering |
 | Changes storage, schema, interfaces, or indexes | **Implementation Specification** | Engineering |
