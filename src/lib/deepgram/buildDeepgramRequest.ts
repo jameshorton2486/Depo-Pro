@@ -16,6 +16,7 @@ export interface DeepgramRequestPreviewEnvelope {
   deepgram_request: {
     model: string;
     punctuate: string;
+    paragraphs: string;
     diarize: string;
     filler_words: string;
     numerals: string;
@@ -50,6 +51,10 @@ const MAX_KEYTERMS = 100;
 export const DEEPGRAM_REQUEST_PARAMS = {
   model: "nova-3",
   punctuate: "true",
+  // Request Deepgram paragraph boundaries in the response (requires punctuate).
+  // Not yet consumed by rendering (the workspace reconstructs paragraphs from
+  // utterances) — this makes the upstream metadata available for later use.
+  paragraphs: "true",
   // Explicit diarization enable. Deepgram rejects diarize_model when sent with
   // diarize / diarize_version (400 INVALID_QUERY_PARAMETER), and nova-3
   // diarizes with diarize=true alone — so diarize_model is intentionally

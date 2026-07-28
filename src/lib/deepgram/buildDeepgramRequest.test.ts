@@ -33,6 +33,7 @@ describe("buildDeepgramRequest", () => {
       deepgram_request: {
         model: "nova-3",
         punctuate: "true",
+        paragraphs: "true",
         diarize: "true",
         filler_words: "true",
         numerals: "true",
@@ -77,6 +78,7 @@ describe("buildDeepgramRequest", () => {
     // present — Deepgram rejects it alongside diarize (400 INVALID_QUERY_PARAMETER).
     expect(request.wireQueryString).toContain("diarize=true");
     expect(request.wireQueryString).not.toContain("diarize_model");
+    expect(request.wireQueryString).toContain("paragraphs=true");
     expect(request.wireQueryString).toContain("numerals=true");
     expect(request.wireQueryString).toContain("utt_split=0.8");
     expect(request.wireQueryString).toContain("language=en");
