@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** Constitutional authority. Ratified architecture. Every future change to the transcript system must conform to this document or amend it.
-**Scope of this document:** *Architecture only.* This document defines what a transcript **is**, what is **immutable**, the **laws** that govern it, **who owns** each transformation, the **AI charter**, the **Render Model**, and **provenance**. It contains no schema, no code, no vendor APIs, and no migration plan. Those live in the three companion documents.
+**Scope of this document:** *Architecture only.* This document defines what a transcript **is**, what is **immutable**, the **laws** that govern it, **who owns** each transformation, the **AI charter**, the **Render Model**, and **provenance**. It contains no schema, no code, no vendor APIs, and no migration plan. Those live in the companion documents. The governing rule of that boundary: **architecture shall describe intent, never implementation.**
 
 ---
 
@@ -18,6 +18,8 @@ DTAS is the first of four documents. Each answers a different question and chang
 | 4 | **Migration Roadmap** | In what order do we get there? | Phased plan, sequencing, deadlines | Continuous — changes constantly |
 
 **The inversion this establishes.** The system is designed around a **Canonical Transcript Model**, not around any recognition vendor's output, any database's tables, or the current pipeline. Recognition output, storage, and pipelines are *implementations of* the model. When implementation and architecture disagree, architecture wins — the implementation is the defect.
+
+The four documents above are the *architecture and implementation* layer. The full governance hierarchy — Laws, Principles, Engineering Standards, ADRs, and the review that binds them — and the routing of where any given change belongs, are defined in the [Decision Matrix](./DECISION_MATRIX.md). DTAS defines only the architecture itself.
 
 ---
 
@@ -167,6 +169,43 @@ These twelve laws are binding. A change that violates a law is not permitted; it
 
 ---
 
+## 7A. Architectural Principles
+
+Below the Laws sit two lighter registers. Together they form a three-tier hierarchy of governance, each tier constrained by the one above it:
+
+- **Laws (§7)** — constitutional and timeless. Framework-, transport-, and vendor-agnostic; they state truths about the transcript itself. They change only by versioned amendment (§18).
+- **Principles (§7A)** — durable engineering doctrine that *follows from* the Laws but is expressed against the realities of the current platform (UI framework, transport, auth provider). A Principle is expected to outlive any particular implementation, but not necessarily the platform: when the platform changes, a Principle may be restated while the Law it serves does not move. Revised by documentation change with a recorded rationale — and an ADR where a specific decision warrants one — not a constitutional amendment or a version increment.
+- **Engineering Standards (§7B)** — enforceable engineering rules (coding idioms, state scope, case handling): measurable, reviewable, and checked in Engineering Review. They evolve without ADRs and live in a separate register ([`ENGINEERING_STANDARDS.md`](./ENGINEERING_STANDARDS.md)) so day-to-day rules never clutter the architecture.
+
+The boundary tests:
+
+- *Would this still be true if the application were rewritten in a different framework?* If yes, it is a **Law**. If it encodes *how* we honor a Law given today's tools, it is a **Principle**.
+- *Is it about the shape of the architecture, or merely how code is written within it?* Architecture → **Principle**. Coding rule → **Engineering Standard**.
+
+A lower tier may never contradict a higher one — a Principle may never contradict a Law; an Engineering Standard may never contradict a Principle or a Law. If it appears to, the lower-tier item is the thing that is wrong.
+
+### Principle 1 — Reactive State Ownership
+
+> Cross-cutting services publish state. Consumers subscribe to that state. A cross-cutting service must not reconstruct an unrelated application domain when its published state changes.
+
+A cross-cutting concern — authentication, configuration, telemetry, logging, feature flags, localization — owns a slice of state that many parts of the application read. That state must be exposed as a **subscription** consumers observe, not **pushed** by rebuilding the parts that happen to depend on it. Reconstructing an unrelated domain because a cross-cutting value changed couples layers the architecture keeps separate, and (Law 1) risks a second, transient representation of state that already has one owner.
+
+This is the Law 1 and Law 8 intent — single ownership, single authority, no competing representations — applied to *runtime state propagation* rather than to the transcript model.
+
+**Worked example — authentication.** Authentication is owned by the auth gate and published as a reactive session store; the API layer reads a fresh token per request. An authentication event (token refresh, sign-in) therefore requires no reconstruction of the editor, the audio player, or the document model — those domains subscribe to what they need. Reconstructing the application root on every auth event violates this Principle. See [ADR-0007](./ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md).
+
+**Domains this Principle governs (non-exhaustive):** authentication, configuration, feature flags, telemetry, logging, localization. Each publishes; none reconstructs its consumers.
+
+---
+
+## 7B. Engineering Standards
+
+Engineering Standards are enforceable engineering rules — dependency management, collection immutability, exhaustive case handling, state scope, and the like. They are **engineering guidance, not architecture**: they shape how code is written *inside* the boundaries the Laws and Principles already set. Unlike loose "practices," a Standard is **measurable, reviewable, and enforced** in Engineering Review — it is a rule, not a good idea.
+
+A Standard carries no constitutional weight and needs no ADR to adopt, revise, or retire; it evolves in [`ENGINEERING_STANDARDS.md`](./ENGINEERING_STANDARDS.md), a deliberately fast-moving register, so that everyday engineering rules never accrete into the governing documents. A Standard that turns out to encode an architectural boundary should be **promoted** to a Principle (with an ADR); a Principle that turns out to be mere convention should be **demoted** to a Standard.
+
+---
+
 ## 8. Ownership of transformations
 
 Each transformation has exactly one owner. Ownership means: this party is responsible for the transformation's correctness, and no other party may perform it.
@@ -301,7 +340,10 @@ Architectural performance obligations (specific budgets belong to the Implementa
 - **Constitutional authority.** DTAS governs every change to the transcript system. Any pull request that conflicts with a law in §7 is non-conformant and must not merge.
 - **Amendment, not erosion.** The laws change only by explicit amendment to this document, with a version increment and a recorded rationale. They are never eroded silently by an implementation that finds them inconvenient — such an implementation is the thing that is wrong.
 - **Conformance is reviewable.** Every design and PR states which stage it touches and affirms conformance to the relevant laws. Reviews check architecture before implementation.
-- **Versioning.** This is DTAS v1.0. Backward-incompatible changes to a law increment the major version; clarifications increment the minor version. Companion documents (CTS, Implementation Specification, Migration Roadmap) reference the DTAS version they implement.
+- **Versioning.** DTAS uses semantic versioning: a **major** bump changes or removes a Law (backward-incompatible architecture); a **minor** bump adds a Principle or clarifies a Law; a **patch** fixes wording without changing meaning. This is DTAS v1.0. **An ADR is immutable once accepted** — it is superseded by a new ADR, never edited in place. Companion documents (CTS, Implementation Specification, Migration Roadmap) carry their own versioning and reference the DTAS version they implement.
+- **Three registers.** §7 **Laws** are constitutional (versioned amendment only). §7A **Principles** are durable, platform-bound doctrine (revised by documentation change with a recorded rationale; an ADR where a decision warrants one; no version increment). §7B **Engineering Standards** are enforceable engineering rules that evolve freely in `ENGINEERING_STANDARDS.md` without ADRs. Each tier is constrained by the one above: a Principle may never contradict a Law, and an Engineering Standard may never contradict a Principle or a Law. If it appears to, the lower-tier item is what is wrong.
+- **The chain binds downward — architecture leads implementation.** A significant engineering change routes as: **problem → architecture review → does it change the Constitution?** If yes, **amend a Law** (versioned, argued). If no, **record an ADR**. Then **implement → verify → merge**. Two invariants complete the chain: *a Principle may never contradict a Law*, and *an implementation may never contradict an accepted ADR.*
+- **ADRs record Architectural Impact.** Every ADR states the DTAS Principles it applies, the transformation owners (§8) it affects, and — explicitly — the owners it leaves untouched, so the scope of a decision is legible later.
 
 ---
 
