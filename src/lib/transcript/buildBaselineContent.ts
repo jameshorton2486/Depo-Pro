@@ -6,7 +6,9 @@ import type { EditorDocument } from "../../api/types";
 // Produces plain, read-only rows straight from the recognition data:
 //   • raw_text only — never working_text, never AI suggestions
 //   • Deepgram speaker numbers ("Speaker 0", "Speaker 1", …)
-//   • Deepgram utterance order and boundaries (utterance.word_ids)
+//   • one row per SPEAKER TURN — consecutive same-speaker utterances are
+//     grouped into a paragraph (like Deepgram Playground); tokens are never
+//     reordered, edited, or dropped
 //
 // These rows are rendered by RecognitionEvidenceView OUTSIDE the editable TipTap
 // editor, so recognition can never flow into the reporter's working-text /
@@ -33,7 +35,10 @@ export interface BaselineWord {
 }
 
 export interface BaselineRow {
+  /** First utterance of the turn — stable render key. */
   utterance_id: string;
+  /** Every utterance merged into this turn, in order (lineage). */
+  utterance_ids: string[];
   speaker_id: string;
   speaker_label: string;
   start_time: number;
@@ -60,7 +65,9 @@ export function buildBaselineRows(doc: EditorDocument): BaselineRow[] {
   const wordById = new Map(doc.words.map((w) => [w.word_id, w]));
   const speakerLabels = buildSpeakerLabels(doc);
 
-  return doc.utterances.map((utt) => {
+  const rows: BaselineRow[] = [];
+
+  for (const utt of doc.utterances) {
     const words: BaselineWord[] = [];
     utt.word_ids.forEach((wid) => {
       const word = wordById.get(wid);
@@ -77,14 +84,28 @@ export function buildBaselineRows(doc: EditorDocument): BaselineRow[] {
       });
     });
 
-    return {
+    // Group consecutive same-speaker utterances into one speaker turn
+    // (paragraph), the way Deepgram Playground groups paragraphs. This only
+    // joins adjacent same-speaker utterances — it never reorders, edits, or
+    // drops a token; per-word data is preserved for confidence + click-to-seek.
+    const prev = rows[rows.length - 1];
+    if (prev && prev.speaker_id === utt.speaker_id) {
+      prev.words.push(...words);
+      prev.utterance_ids.push(utt.utterance_id);
+      continue;
+    }
+
+    rows.push({
       utterance_id: utt.utterance_id,
+      utterance_ids: [utt.utterance_id],
       speaker_id: utt.speaker_id,
       speaker_label: speakerLabels.get(utt.speaker_id) ?? utt.speaker_id,
       start_time: utt.start_time,
       words,
-    };
-  });
+    });
+  }
+
+  return rows;
 }
 
 // Flatten baseline rows into readable, speaker-labeled lines.
