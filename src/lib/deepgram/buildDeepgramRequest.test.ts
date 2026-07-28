@@ -38,7 +38,7 @@ describe("buildDeepgramRequest", () => {
         filler_words: "true",
         numerals: "true",
         utterances: "true",
-        utt_split: "0.8",
+        utt_split: "1.0",
         smart_format: "true",
         language: "en",
         mip_opt_out: "true",
@@ -80,7 +80,7 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("diarize_model");
     expect(request.wireQueryString).toContain("paragraphs=true");
     expect(request.wireQueryString).toContain("numerals=true");
-    expect(request.wireQueryString).toContain("utt_split=0.8");
+    expect(request.wireQueryString).toContain("utt_split=1.0");
     expect(request.wireQueryString).toContain("language=en");
     expect(request.wireQueryString).toContain("mip_opt_out=true");
   });
