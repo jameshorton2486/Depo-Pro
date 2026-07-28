@@ -54,13 +54,45 @@ function makeWord(
 }
 
 describe("buildBaselineRows", () => {
-  it("produces one row per Deepgram utterance, in order", () => {
+  it("produces one row per speaker turn, in order", () => {
     const rows = buildBaselineRows(makeDoc());
     expect(rows).toHaveLength(2);
     expect(rows[0].utterance_id).toBe("utt-1");
     expect(rows[1].utterance_id).toBe("utt-2");
     expect(rows[0].words.map((w) => w.text)).toEqual(["Good", "afternoon"]);
     expect(rows[1].words.map((w) => w.text)).toEqual(["Yes", "sir"]);
+  });
+
+  it("groups consecutive same-speaker utterances into one turn", () => {
+    const doc = makeDoc({
+      speakers: [{ speaker_id: "spk-0", display_name: "", deepgram_speaker: 1 }],
+      utterances: [
+        { utterance_id: "u1", speaker_id: "spk-0", start_time: 0, end_time: 1, word_ids: ["w1"] },
+        { utterance_id: "u2", speaker_id: "spk-0", start_time: 1, end_time: 2, word_ids: ["w2"] },
+        { utterance_id: "u3", speaker_id: "spk-0", start_time: 2, end_time: 3, word_ids: ["w3", "w4", "w5"] },
+      ],
+      words: [
+        makeWord("w1", "No.", "spk-0", "u1"),
+        makeWord("w2", "Okay.", "spk-0", "u2"),
+        makeWord("w3", "Where", "spk-0", "u3"),
+        makeWord("w4", "do", "spk-0", "u3"),
+        makeWord("w5", "you?", "spk-0", "u3"),
+      ],
+    });
+    const rows = buildBaselineRows(doc);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].speaker_label).toBe("Speaker 1");
+    expect(rows[0].utterance_ids).toEqual(["u1", "u2", "u3"]);
+    expect(rows[0].words.map((w) => w.text)).toEqual(["No.", "Okay.", "Where", "do", "you?"]);
+    expect(rows[0].start_time).toBe(0); // start of the turn
+  });
+
+  it("starts a new turn when the speaker changes", () => {
+    const rows = buildBaselineRows(makeDoc()); // spk-1 then spk-0
+    expect(rows).toHaveLength(2);
+    expect(rows[0].speaker_id).toBe("spk-1");
+    expect(rows[1].speaker_id).toBe("spk-0");
+    expect(rows[0].utterance_ids).toEqual(["utt-1"]);
   });
 
   it("labels speakers with Deepgram speaker numbers, not inferred names", () => {
