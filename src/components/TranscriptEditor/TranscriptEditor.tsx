@@ -20,6 +20,8 @@ import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
 import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
 import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
 import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
+import { TranscriptProcessingMenu } from "./TranscriptProcessingMenu";
+import { CanonicalBaselineView } from "./CanonicalBaselineView";
 
 interface Props {
   readOnly: boolean;
@@ -117,6 +119,7 @@ export function TranscriptEditor({ readOnly }: Props) {
   const lastScrollAtRef = useRef<number>(0);
   const rafRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const evidenceRootRef = useRef<HTMLDivElement | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -132,6 +135,12 @@ export function TranscriptEditor({ readOnly }: Props) {
   const editUtteranceRef = useRef(editUtterance);
   editUtteranceRef.current = editUtterance;
 
+  const isCanonical = state.renderLayer === "canonical";
+
+  // The reporter editor ALWAYS renders the working transcript — never baseline.
+  // The Canonical Baseline is a separate read-only view (CanonicalBaselineView),
+  // so switching layers never rebuilds/replaces the editor content and can never
+  // drop unsaved reporter edits or autosave baseline tokens over corrections.
   const editorContent = useMemo(
     () => (state.document ? buildEditorContent(state.document, {
       languageMap,
@@ -249,6 +258,12 @@ export function TranscriptEditor({ readOnly }: Props) {
     const editorDom = editor.view.dom;
 
     function handleContextMenu(event: MouseEvent) {
+      // Canonical Baseline is immutable: no speaker reassignment (the context
+      // menu persists via saveSpeakers, which must never fire from an evidence view).
+      if (isCanonical) {
+        return;
+      }
+
       const target = event.target as HTMLElement | null;
       const utteranceEl = target?.closest<HTMLElement>("[data-utterance-id]");
       if (!utteranceEl?.dataset.utteranceId || !utteranceEl.dataset.speakerId) {
@@ -267,7 +282,14 @@ export function TranscriptEditor({ readOnly }: Props) {
 
     editorDom.addEventListener("contextmenu", handleContextMenu);
     return () => editorDom.removeEventListener("contextmenu", handleContextMenu);
-  }, [editor]);
+  }, [editor, isCanonical]);
+
+  // Clear any open context menu when switching to the Canonical Baseline so it
+  // cannot reappear at stale coordinates (with stale utterance context) on
+  // returning to Reporter View.
+  useEffect(() => {
+    if (isCanonical) setContextMenu(null);
+  }, [isCanonical]);
 
   const clearHighlightedWord = useCallback(() => {
     lastElsRef.current.forEach((el) => el.classList.remove("word-playing"));
@@ -309,21 +331,30 @@ export function TranscriptEditor({ readOnly }: Props) {
     if (wordId !== lastWordIdRef.current) {
       clearHighlightedWord();
       if (wordId) {
-        const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
-        const els = Array.from(
-          editor.view.dom.querySelectorAll<HTMLElement>(selector)
-        );
-        els.forEach((el) => el.classList.add("word-playing"));
-        lastElsRef.current = els;
-        lastWordIdRef.current = wordId;
-
-        const firstEl = els[0];
-        if (firstEl) maybeScrollWordIntoView(firstEl);
+        // Query the currently VISIBLE surface: the read-only baseline view in
+        // canonical mode, otherwise the editable editor. (In canonical mode the
+        // editor is unmounted, so there are no duplicate data-word-id nodes.)
+        const root: ParentNode | null = isCanonical ? evidenceRootRef.current : editor.view.dom;
+        if (root) {
+          const selector = `[data-word-id="${CSS.escape(wordId)}"]`;
+          const els = Array.from(root.querySelectorAll<HTMLElement>(selector));
+          if (els.length > 0) {
+            els.forEach((el) => el.classList.add("word-playing"));
+            lastElsRef.current = els;
+            maybeScrollWordIntoView(els[0]);
+          }
+          // Commit once the surface is MOUNTED, even if this word has no node
+          // (e.g. a word with empty raw_text is omitted from the baseline view).
+          // Otherwise the loop would re-clear/re-query it every frame forever.
+          lastWordIdRef.current = wordId;
+        }
+        // root null → surface not mounted yet (just switched layers): leave
+        // lastWordIdRef null (cleared above) so the next frame retries.
       }
     }
 
     rafRef.current = requestAnimationFrame(highlightLoop);
-  }, [audio.currentTimeRef, clearHighlightedWord, editor, maybeScrollWordIntoView, playing, wordTimings]);
+  }, [audio.currentTimeRef, clearHighlightedWord, editor, isCanonical, maybeScrollWordIntoView, playing, wordTimings]);
 
   useEffect(() => {
     if (!playing) {
@@ -343,6 +374,13 @@ export function TranscriptEditor({ readOnly }: Props) {
       }
     };
   }, [clearHighlightedWord, highlightLoop, playing]);
+
+  // On a layer switch during playback, drop the highlight + reset the active
+  // word so the follow-along loop re-applies "word-playing" to the newly
+  // visible surface on the next frame (instead of waiting for audio to advance).
+  useEffect(() => {
+    clearHighlightedWord();
+  }, [isCanonical, clearHighlightedWord]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -376,22 +414,29 @@ export function TranscriptEditor({ readOnly }: Props) {
       className="flex-1 min-h-0 overflow-y-auto transcript-scroll bg-transcript-bg"
       data-show-interpreter={showInterpreterLayer ? "true" : "false"}
     >
-      {!state.structureConfirmed && (
+      {!isCanonical && !state.structureConfirmed && (
         <StructureReviewBanner
           onConfirm={confirmStructure}
           onDismiss={keepRawLabels}
         />
       )}
-      <AIReviewBanner
-        jobId={state.document?.job_id ?? state.jobId}
-        pendingCount={aiReviewBannerState.pendingCount}
-        autoAppliedCount={aiReviewBannerState.autoAppliedCount}
-      />
+      {!isCanonical && (
+        <AIReviewBanner
+          jobId={state.document?.job_id ?? state.jobId}
+          pendingCount={aiReviewBannerState.pendingCount}
+          autoAppliedCount={aiReviewBannerState.autoAppliedCount}
+        />
+      )}
+      <div className="sticky top-0 z-20 flex items-center justify-end border-b border-slate-100 bg-transcript-bg/80 px-6 py-2 backdrop-blur">
+        <TranscriptProcessingMenu document={state.document} />
+      </div>
       <div className="transcript-page-area">
-        {/* Document caption */}
+        {/* Document caption. In the Canonical Baseline the transcript is NOT
+            certified and carries no court-reporter framing — show a neutral
+            baseline header instead of the certification title. */}
         <div className="transcript-header">
           <p className="transcript-header-title">
-            CERTIFIED TRANSCRIPT OF DEPOSITION
+            {isCanonical ? "CANONICAL BASELINE — READ-ONLY" : "CERTIFIED TRANSCRIPT OF DEPOSITION"}
           </p>
           {state.document && (
             <p className="transcript-header-meta">
@@ -400,13 +445,21 @@ export function TranscriptEditor({ readOnly }: Props) {
               {state.document.utterances.length} entries
               {"  ·  "}
               {state.document.words.length} words
+              {isCanonical ? "  ·  canonical baseline · read-only" : ""}
             </p>
           )}
         </div>
 
-        <EditorContent editor={editor} className="tiptap-transcript" />
+        {/* In recognition mode the editor's DOM is unmounted entirely so there
+            are NO duplicate/hidden data-word-id nodes for global querySelector
+            flows (confidence nav, suggestion scroll, corrections) to match.
+            Unsaved edits survive because the TipTap Editor instance — not
+            EditorContent — owns the document state, and editorContent does not
+            depend on renderLayer, so no setContent runs on the switch. */}
+        {!isCanonical && <EditorContent editor={editor} className="tiptap-transcript" />}
+        {isCanonical && <CanonicalBaselineView document={state.document} rootRef={evidenceRootRef} />}
       </div>
-      {contextMenu && (
+      {contextMenu && !isCanonical && (
         <UtteranceContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
