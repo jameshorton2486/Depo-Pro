@@ -34,7 +34,6 @@ describe("buildDeepgramRequest", () => {
         model: "nova-3",
         punctuate: "true",
         diarize: "true",
-        diarize_model: "latest",
         filler_words: "true",
         numerals: "true",
         utterances: "true",
@@ -74,10 +73,10 @@ describe("buildDeepgramRequest", () => {
     expect(request.wireQueryString).not.toContain("boost");
     expect(request.wireQueryString).not.toContain("category");
     expect(request.wireQueryString).not.toContain("source");
-    expect(request.wireQueryString).toContain("diarize_model=latest");
-    // Diarization is now sent EXPLICITLY (aligned with defaultDeepgramConfig's
-    // diarize: true) rather than relying on diarize_model to imply the enable.
+    // Diarization is sent EXPLICITLY via diarize=true. diarize_model must NOT be
+    // present — Deepgram rejects it alongside diarize (400 INVALID_QUERY_PARAMETER).
     expect(request.wireQueryString).toContain("diarize=true");
+    expect(request.wireQueryString).not.toContain("diarize_model");
     expect(request.wireQueryString).toContain("numerals=true");
     expect(request.wireQueryString).toContain("utt_split=0.8");
     expect(request.wireQueryString).toContain("language=en");
@@ -118,12 +117,14 @@ describe("buildDeepgramRequest", () => {
     expect(defaults.model).toBe("nova-3");
     expect(defaults.diarize).toBe(true);
     expect(defaults.smart_format).toBe(true);
-    expect(buildDeepgramRequest({ caseId: "case_defaults", keyterms: [] }).envelope.deepgram_request).toEqual(
+    const defaultRequest = buildDeepgramRequest({ caseId: "case_defaults", keyterms: [] }).envelope.deepgram_request;
+    expect(defaultRequest).toEqual(
       expect.objectContaining({
         model: "nova-3",
-        diarize_model: "latest",
+        diarize: "true",
         smart_format: "true",
       }),
     );
+    expect(defaultRequest).not.toHaveProperty("diarize_model");
   });
 });
