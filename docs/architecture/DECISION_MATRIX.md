@@ -31,8 +31,8 @@ Each level is constrained by the ones above it. Each answers exactly one questio
 
 | Level | Document | Answers (one question) | State |
 |---|---|---|---|
-| 0 | **DTAS** — Constitution / Architecture Standard | *Why does the architecture exist? What are the Laws?* | Ratifying (PR #33 + #36) |
-| 1 | **CTS** — Canonical Transcript Specification | *What objects exist, and what are their invariants?* | Planned |
+| 0 | **DTAS** — Constitution / Architecture Standard | *Why does the architecture exist? What are the Laws?* | Ratified |
+| 1 | **CTS** — Canonical Transcript Specification | *What objects exist, and what are their invariants?* | Draft (v1.0) |
 | 2 | **DPS** — Processing Standard | *How does a transcript move through the system? (stages, boundaries, ordering, determinism, replay, failure)* | Planned |
 | 3 | **DTS** — Transformation Standard | *What is a transformation? (object, classes, patch algebra, lineage, reversibility, provenance, diff)* | Planned |
 | 4 | **Engineering Standards** | *What engineering rules do we hold code to?* | Living |
