@@ -36,8 +36,6 @@ async function startMocks() {
 
 let editorRoot: Root | null = null;
 let mountedElement: HTMLElement | null = null;
-let currentConfig: DepoEditorConfig | null = null;
-let currentApiBaseUrl: string | null = null;
 let authStateUnsubscribe: (() => void) | null = null;
 
 function buildMountedConfig(config: DepoEditorConfig, session: Session | null): DepoEditorConfig {
@@ -89,17 +87,15 @@ function subscribeToAuthChanges() {
   }
 
   const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    if (!currentConfig || !currentApiBaseUrl) {
-      return;
-    }
-
+    // Root stability (DTAS): auth events must NOT rebuild the React root.
+    // Session state reaches the UI reactively via the auth store (AuthGate's
+    // useSyncExternalStore), and the API client reads a fresh token per request
+    // (getSupabaseAccessToken), so token refresh / sign-in need no re-render.
+    // The only event that requires action here is sign-out.
     if (!session) {
       console.warn("[DEPO-PRO] Supabase session cleared after mount; redirecting to login.");
       redirectToLogin();
-      return;
     }
-
-    renderEditor(currentConfig, currentApiBaseUrl, session);
   });
 
   authStateUnsubscribe = () => {
@@ -113,8 +109,6 @@ export async function mountEditor(config: DepoEditorConfig) {
       ? String(import.meta.env.VITE_EDITOR_API_BASE_URL)
       : config.apiBaseUrl;
 
-  currentConfig = config;
-  currentApiBaseUrl = resolvedApiBaseUrl;
   configureClient(resolvedApiBaseUrl);
   let session: Session | null = null;
   try {
