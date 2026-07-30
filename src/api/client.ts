@@ -54,8 +54,20 @@ async function request<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
-    throw new Error(`API ${method} ${url} → ${res.status} ${res.statusText}`);
+    const detail = await res.text();
+    throw new Error(
+      `API ${method} ${url} → ${res.status} ${res.statusText}${detail ? ` — ${detail.slice(0, 300)}` : ""}`,
+    );
   }
+
+  const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("application/json")) {
+    const preview = (await res.text()).trim().slice(0, 120);
+    throw new Error(
+      `API ${method} ${url} returned ${contentType || "an unknown content type"} instead of JSON${preview ? ` — ${preview}` : ""}`,
+    );
+  }
+
   return res.json() as Promise<T>;
 }
 

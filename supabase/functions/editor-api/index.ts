@@ -92,6 +92,8 @@ type RouteMatch =
   | { kind: "aiSuggestionAction"; jobId: string; wordId: string }
   | { kind: "aiSuggestionAcceptAll"; jobId: string }
   | { kind: "aiReview"; jobId: string }
+  | { kind: "corrections"; jobId: string }
+  | { kind: "correctionDecide"; jobId: string; correctionId: string }
   | { kind: "exhibits"; jobId: string }
   | { kind: "certifyStatus"; jobId: string };
 
@@ -177,6 +179,10 @@ Deno.serve(async (request) => {
         return handleAcceptAllAiSuggestions(context);
       case "aiReview":
         return handleForceAiReview(context);
+      case "corrections":
+        return handleGetCorrections(context);
+      case "correctionDecide":
+        return handleDecideCorrection(context, match.correctionId);
       case "exhibits":
         return handleGetExhibits(context);
       case "certifyStatus":
@@ -203,7 +209,8 @@ function requiresUnlockedTranscript(match: RouteMatch): boolean {
     || match.kind === "resolveSuggestion"
     || match.kind === "aiSuggestionAction"
     || match.kind === "aiSuggestionAcceptAll"
-    || match.kind === "aiReview";
+    || match.kind === "aiReview"
+    || match.kind === "correctionDecide";
 }
 
 async function requireUnlockedTranscript(context: RouteContext): Promise<void> {
@@ -415,7 +422,14 @@ function mapUtteranceRow(
     start_time: row.start_time,
     end_time: row.end_time,
     word_ids: wordIdsByUtterance.get(row.utterance_id) ?? [],
-  };
+    // Additive wire fields (NOT part of the frozen Utterance TS contract).
+    // buildEditorContent reads excluded_from_output via a local cast to hide
+    // boundary-excluded (pre/off/post-record) utterances from the working view.
+    // Without them the filter is a silent no-op in real-API mode and off-record
+    // content leaks into the Workspace — the snapshot path already filters it.
+    excluded_from_output: row.excluded_from_output ?? false,
+    is_synthetic: row.is_synthetic ?? false,
+  } as Utterance;
 }
 
 function mapWordRow(row: TranscriptWordRow): Word {
@@ -1462,6 +1476,19 @@ function matchRoute(request: Request): RouteMatch | null {
     };
   }
 
+  if (routeParts.length === 2 && request.method === "GET" && routeParts[1] === "corrections") {
+    return { kind: "corrections", jobId: routeParts[0] };
+  }
+
+  if (
+    routeParts.length === 4
+    && request.method === "POST"
+    && routeParts[1] === "corrections"
+    && routeParts[3] === "decide"
+  ) {
+    return { kind: "correctionDecide", jobId: routeParts[0], correctionId: routeParts[2] };
+  }
+
   if (routeParts.length === 2 && request.method === "GET" && routeParts[1] === "exhibits") {
     return { kind: "exhibits", jobId: routeParts[0] };
   }
@@ -1476,6 +1503,333 @@ function matchRoute(request: Request): RouteMatch | null {
   }
 
   return null;
+}
+
+// ── ATIA CorrectionObject endpoints (§4.8 / §4.9) ──────────────────────────
+
+type CorrectionRow = {
+  id: string;
+  transcript_id: string;
+  case_id: string;
+  specialty: string;
+  prompt_version: string;
+  context_hash: string | null;
+  location: Record<string, unknown>;
+  change: Record<string, unknown>;
+  reason: string;
+  reason_kind: string;
+  confidence: number;
+  confidence_source: string | null;
+  provenance: Record<string, unknown>;
+  supporting_evidence: unknown;
+  review: Record<string, unknown>;
+  downstream: Record<string, unknown>;
+  owner_user_id: string | null;
+  created_at: string;
+};
+
+const CORRECTION_COLUMNS =
+  "id, transcript_id, case_id, specialty, prompt_version, context_hash, location, change, reason, reason_kind, confidence, confidence_source, provenance, supporting_evidence, review, downstream, owner_user_id, created_at";
+
+async function handleGetCorrections(context: RouteContext): Promise<Response> {
+  const url = new URL(context.request.url);
+  const stateFilter = url.searchParams.get("state"); // optional: pending|accepted|...
+
+  let query = context.supabase
+    .from("corrections")
+    .select(CORRECTION_COLUMNS)
+    .eq("transcript_id", context.transcript.transcript_id)
+    .order("created_at", { ascending: true });
+
+  if (stateFilter) {
+    query = query.eq("review->>state", stateFilter);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new HttpError(500, "failed to load corrections");
+  }
+
+  // Rows already carry the CorrectionObject shape (JSONB columns rehydrate to
+  // objects); return them as-is so the panel consumes the same contract the
+  // validator enforced on write.
+  return respondJson(200, data ?? []);
+}
+
+type DecidePayload = {
+  action: "accept" | "reject" | "edit";
+  decision_note?: string | null;
+  final_value?: Record<string, unknown> | null;
+  context?: {
+    time_to_decide_ms?: number | null;
+    audio_played?: boolean | null;
+    navigated_to_location?: boolean | null;
+  };
+};
+
+function validateDecidePayload(value: unknown): DecidePayload {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+  const payload = value as Record<string, unknown>;
+  if (payload.action !== "accept" && payload.action !== "reject" && payload.action !== "edit") {
+    throw new HttpError(400, "bad payload");
+  }
+  if (payload.action === "edit" && (!payload.final_value || typeof payload.final_value !== "object")) {
+    throw new HttpError(400, "edit requires final_value");
+  }
+  const ctx = (payload.context && typeof payload.context === "object" ? payload.context : {}) as Record<string, unknown>;
+  return {
+    action: payload.action,
+    decision_note: typeof payload.decision_note === "string" ? payload.decision_note : null,
+    final_value: (payload.final_value && typeof payload.final_value === "object") ? payload.final_value as Record<string, unknown> : null,
+    context: {
+      time_to_decide_ms: typeof ctx.time_to_decide_ms === "number" ? ctx.time_to_decide_ms : null,
+      audio_played: typeof ctx.audio_played === "boolean" ? ctx.audio_played : null,
+      navigated_to_location: typeof ctx.navigated_to_location === "boolean" ? ctx.navigated_to_location : null,
+    },
+  };
+}
+
+const TEXT_CHANGE_TYPES = new Set(["proper_name_correction", "medical_term_correction", "contextual_number_flag"]);
+
+async function handleDecideCorrection(context: RouteContext, correctionId: string): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateDecidePayload(body);
+  const transcriptId = context.transcript.transcript_id;
+
+  const { data, error } = await context.supabase
+    .from("corrections")
+    .select(CORRECTION_COLUMNS)
+    .eq("transcript_id", transcriptId)
+    .eq("id", correctionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new HttpError(500, "failed to load correction");
+  }
+  if (!data) {
+    throw new HttpError(404, "unknown correction");
+  }
+
+  const correction = data as CorrectionRow;
+  const fromState = typeof correction.review?.state === "string" ? String(correction.review.state) : "pending";
+  const toState = payload.action === "accept" ? "accepted" : payload.action === "reject" ? "rejected" : "edited";
+  const now = new Date().toISOString();
+  const finalValue = payload.action === "edit" ? (payload.final_value ?? null) : null;
+
+  // Apply accepted/edited corrections to the working transcript (best effort:
+  // an apply failure is surfaced as applied=false, the decision still records).
+  let applied = false;
+  let applyError: string | null = null;
+  let pendingReason: string | null = null;
+  if (toState === "accepted" || toState === "edited") {
+    try {
+      const outcome = await applyCorrection(context, correction, finalValue);
+      applied = outcome.applied;
+      pendingReason = outcome.pendingReason ?? null;
+    } catch (err) {
+      applyError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  const newReview = {
+    ...correction.review,
+    state: toState,
+    decided_at: now,
+    decision_note: payload.decision_note ?? null,
+    final_value: finalValue,
+  };
+  const newDownstream = {
+    ...correction.downstream,
+    applied_to_working_transcript: applied,
+    applied_at: applied ? now : (correction.downstream?.applied_at ?? null),
+    // Explicit deferral signal so the panel can show "accepted — will apply
+    // when structural support ships" instead of looking like a silent no-op.
+    pending_reason: applied ? null : pendingReason,
+  };
+
+  const updateResult = await context.supabase
+    .from("corrections")
+    .update({ review: newReview, downstream: newDownstream })
+    .eq("transcript_id", transcriptId)
+    .eq("id", correctionId);
+  if (updateResult.error) {
+    throw new HttpError(500, "failed to update correction");
+  }
+
+  const decisionInsert = await context.supabase
+    .from("correction_decisions")
+    .insert({
+      correction_id: correctionId,
+      transcript_id: transcriptId,
+      case_id: context.transcript.case_id,
+      from_state: fromState,
+      to_state: toState,
+      decision_note: payload.decision_note ?? null,
+      final_value: finalValue,
+      time_to_decide_ms: payload.context?.time_to_decide_ms ?? null,
+      audio_played: payload.context?.audio_played ?? null,
+      navigated_to_location: payload.context?.navigated_to_location ?? null,
+      // Set explicitly (not via the auth.uid() column default) so the decision
+      // records correctly under both a reporter JWT and a service-role caller.
+      owner_user_id: correction.owner_user_id,
+    });
+  if (decisionInsert.error) {
+    throw new HttpError(500, "failed to record correction decision");
+  }
+
+  return respondJson(200, { ok: true, state: toState, applied, pending_reason: newDownstream.pending_reason, apply_error: applyError });
+}
+
+// Deferred structural change types: accepted + recorded, but their canonical
+// restructuring waits for the v2 apply engine. The panel reads pending_reason.
+const STRUCTURAL_DEFER_REASON = "structural_apply_engine_v2";
+const DEFERRED_STRUCTURAL_TYPES = new Set([
+  "qa_split",
+  "examination_section_change",
+  "off_record_boundary_mark",
+  "objection_attribution",
+]);
+
+// Applies the correction to the working transcript. `applied=false` with a
+// `pendingReason` means "accepted, apply deferred" (not a failure).
+async function applyCorrection(
+  context: RouteContext,
+  correction: CorrectionRow,
+  finalValue: Record<string, unknown> | null,
+): Promise<{ applied: boolean; pendingReason?: string }> {
+  const change = correction.change ?? {};
+  const changeType = String(change.type ?? "");
+
+  if (TEXT_CHANGE_TYPES.has(changeType)) {
+    const afterText = typeof finalValue?.after === "string"
+      ? finalValue.after
+      : (typeof change.after === "string" ? change.after : "");
+    if (!afterText) return { applied: false };
+    return { applied: await applyTextCorrectionWorking(context, correction.location, afterText) };
+  }
+
+  if (changeType === "speaker_reassignment") {
+    const structural = (finalValue?.structural_change && typeof finalValue.structural_change === "object")
+      ? finalValue.structural_change as Record<string, unknown>
+      : (change.structural_change && typeof change.structural_change === "object" ? change.structural_change as Record<string, unknown> : null);
+    if (!structural) return { applied: false };
+    return { applied: await applySpeakerCorrection(context, correction.location, structural) };
+  }
+
+  if (DEFERRED_STRUCTURAL_TYPES.has(changeType)) {
+    return { applied: false, pendingReason: STRUCTURAL_DEFER_REASON };
+  }
+
+  return { applied: false };
+}
+
+async function applyTextCorrectionWorking(
+  context: RouteContext,
+  location: Record<string, unknown>,
+  afterText: string,
+): Promise<boolean> {
+  const transcriptId = context.transcript.transcript_id;
+  const startId = String(location.start_word_id ?? "");
+  const endId = String(location.end_word_id ?? "");
+  if (!startId || !endId) return false;
+
+  const endpointRes = await context.supabase
+    .from("transcript_words")
+    .select("word_id, word_index")
+    .eq("transcript_id", transcriptId)
+    .in("word_id", [startId, endId]);
+  if (endpointRes.error) {
+    throw new HttpError(500, "failed to resolve correction range");
+  }
+  const endpoints = (endpointRes.data ?? []) as Array<{ word_id: string; word_index: number }>;
+  const startIdx = endpoints.find((w) => w.word_id === startId)?.word_index;
+  const endIdx = endpoints.find((w) => w.word_id === endId)?.word_index;
+  if (startIdx == null || endIdx == null) {
+    throw new HttpError(422, "correction location words not found");
+  }
+
+  const rangeRes = await context.supabase
+    .from("transcript_words")
+    .select("word_id, raw_text, word_index")
+    .eq("transcript_id", transcriptId)
+    .gte("word_index", Math.min(startIdx, endIdx))
+    .lte("word_index", Math.max(startIdx, endIdx))
+    .order("word_index", { ascending: true });
+  if (rangeRes.error) {
+    throw new HttpError(500, "failed to load correction range");
+  }
+  const words = (rangeRes.data ?? []) as Array<{ word_id: string; raw_text: string }>;
+  if (words.length === 0) return false;
+
+  // Distribute the replacement across the word range (last word absorbs the
+  // remainder), mirroring the working-text save path so multi-word names apply
+  // cleanly without orphaning tokens.
+  const tokens = afterText.trim().length > 0 ? afterText.trim().split(/\s+/) : [""];
+  for (let i = 0; i < words.length; i += 1) {
+    const word = words[i];
+    const nextText = i < words.length - 1 ? (tokens[i] ?? "") : tokens.slice(i).join(" ");
+    const workingText = nextText === word.raw_text ? null : nextText;
+    const upd = await context.supabase
+      .from("transcript_words")
+      .update({ working_text: workingText, text: workingText ?? word.raw_text, edited: Boolean(workingText) })
+      .eq("transcript_id", transcriptId)
+      .eq("word_id", word.word_id);
+    if (upd.error) {
+      throw new HttpError(500, "failed to apply correction");
+    }
+  }
+  return true;
+}
+
+async function applySpeakerCorrection(
+  context: RouteContext,
+  location: Record<string, unknown>,
+  structural: Record<string, unknown>,
+): Promise<boolean> {
+  const transcriptId = context.transcript.transcript_id;
+  const utteranceId = String(location.paragraph_id ?? "");
+  if (!utteranceId) return false;
+
+  const uttRes = await context.supabase
+    .from("transcript_utterances")
+    .select("speaker_id")
+    .eq("transcript_id", transcriptId)
+    .eq("utterance_id", utteranceId)
+    .maybeSingle();
+  if (uttRes.error || !uttRes.data) {
+    throw new HttpError(422, "correction paragraph not found");
+  }
+  const speakerId = String((uttRes.data as { speaker_id: string }).speaker_id);
+
+  const displayName = typeof structural.display_name === "string" ? structural.display_name.trim() : "";
+  const roleRaw = typeof structural.new_speaker_role === "string" ? structural.new_speaker_role : "";
+  const normalizedRole = normalizeSpeakerRoleForDatabase(
+    (roleRaw.toUpperCase() as SpeakersPayload["speakers"][number]["role"]),
+  );
+
+  const update: Record<string, unknown> = {};
+  if (displayName) {
+    update.assigned_name = displayName;
+    update.display_name = displayName;
+    update.speaker_label = displayName;
+  }
+  if (normalizedRole) {
+    update.role = normalizedRole;
+    update.speaker_role = normalizedRole;
+  }
+  if (Object.keys(update).length === 0) return false;
+
+  const speakerUpd = await context.supabase
+    .from("transcript_speakers")
+    .update(update)
+    .eq("transcript_id", transcriptId)
+    .eq("speaker_id", speakerId);
+  if (speakerUpd.error) {
+    throw new HttpError(500, "failed to apply speaker correction");
+  }
+  return true;
 }
 
 function respondJson(status: number, body: unknown): Response {

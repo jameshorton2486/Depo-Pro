@@ -8,6 +8,25 @@ Violations must be reverted before a prompt is considered complete.
 
 ---
 
+## AI transcript work — ATIA v1.0 (read before touching any AI/correction code)
+
+As of the AI Transcript Intelligence Audit (`docs/atia/AI_TRANSCRIPT_INTELLIGENCE_AUDIT.md`),
+active AI transcript-editing work belongs in **`transcript_formatter/services/tie/`** and
+**`transcript_formatter/providers/`**, and produces **CorrectionObjects**
+(`transcript_formatter/schema/correction_object.schema.json`) — never a rewritten transcript.
+
+- **Do not delete legacy AI code.** It is characterization data + the migration fallback.
+- **`transcript_formatter/ai_tools.py` is on the deprecation path (ATIA-STATUS: quarantine).**
+  Any change to it — or any new `anthropic.Anthropic(...)` instantiation outside
+  `transcript_formatter/providers/anthropic_adapter.py` — requires an explicit approval
+  reason in the PR description. `transcript_formatter/tests/test_import_guard.py` enforces this.
+- Providers are pluggable: code asks for a vendor-neutral hint (`opus`/`sonnet`/`haiku`),
+  never a vendor model ID.
+- The live TS AI-Review path (`supabase/functions/ai-review/`, `src/lib/transcript/aiReview.ts`)
+  is reconciled with the TIE in Phase 4; until then it stays working.
+
+---
+
 ## Stack
 
 - **Runtime**: Vite + React 18 + TypeScript. No Next.js, no SSR.

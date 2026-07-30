@@ -225,6 +225,11 @@ export function buildEditorContent(
   const languageMap = options?.languageMap;
   const shouldInferStructure = options?.structureConfirmed && !options?.keepRawLabels;
   const displayDoc = shouldInferStructure ? buildDisplayDocument(visibleDoc, options.record) : visibleDoc;
+  // Build the word index ONCE. Every render path below resolves overlay metadata
+  // by word_id; a per-word `displayDoc.words.find(...)` inside the per-line loop
+  // is O(words²) and freezes the initial render of a multi-hour deposition
+  // (tens of thousands of words) so the Workspace never paints.
+  const displayWordById = new Map(displayDoc.words.map((word) => [word.word_id, word as OverlayWord]));
 
   if (!ENABLE_DISPLAY_TURN_SEGMENTATION) {
     return buildLegacyEditorContent(displayDoc, languageMap);
@@ -251,7 +256,7 @@ export function buildEditorContent(
       const speaker = displayDoc.speakers.find((candidate) => candidate.speaker_id === line.speaker_id);
       const role = formattedLineRoleToSpeakerRole(line.role, speaker?.role ?? null);
       const overlayWords = line.words.map((word) => {
-        const sourceWord = displayDoc.words.find((candidate) => candidate.word_id === word.word_id) as OverlayWord | undefined;
+        const sourceWord = displayWordById.get(word.word_id);
         const resolvedWord = resolveWordDisplay(sourceWord
           ? {
               raw_text: word.text,
@@ -309,7 +314,6 @@ export function buildEditorContent(
 
   const blocks: JSONContent[] = [];
   let currentPage = 0;
-  const displayWordById = new Map(displayDoc.words.map((word) => [word.word_id, word as OverlayWord]));
   const paragraphs = buildTranscriptParagraphs(visibleDoc, options?.record, "display");
 
   paragraphs.forEach((paragraph, paragraphIndex) => {

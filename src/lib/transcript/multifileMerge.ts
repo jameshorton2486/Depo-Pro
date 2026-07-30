@@ -119,6 +119,7 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
   const mergedSpeakers = new Map<string, CanonicalSpeakerRow>();
   const speakerSourceKeys = new Map<string, string>();
   const candidateWords: Array<CanonicalWordRow & {
+    sourceIndex: number;
     sourceUtteranceKey: string;
     sourceUtteranceOrder: number;
     speakerLabel: string;
@@ -170,6 +171,7 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
           speaker_id: speakerId,
           start_time: word.start_time + rebasedOffsetSeconds,
           end_time: word.end_time + rebasedOffsetSeconds,
+          sourceIndex: segment.source_index,
           sourceUtteranceKey: `${segment.source_index}:${utterance.utterance_id}`,
           sourceUtteranceOrder: utteranceOrder,
           speakerLabel: stableChunkSpeakerLabel(word.speaker_index),
@@ -196,7 +198,12 @@ function mergeVirtualChunkTranscriptSegments(segments: SourceTranscriptSegment[]
     // physical audio. Matching on text+timing alone catches the overlap
     // duplicates the virtual-chunk merge is designed to remove.
     const duplicateIndex = dedupedWords.findIndex((existing) =>
-      existing.raw_text.toLowerCase() === candidate.raw_text.toLowerCase()
+      // Only collapse duplicates that straddle the chunk-overlap seam (different
+      // source chunks). Deepgram never emits the same word twice within one
+      // chunk, so an intra-chunk text+timing match is a genuine repeat ("that
+      // that", a stutter) — deduping those silently deletes dictated words.
+      existing.sourceIndex !== candidate.sourceIndex
+      && existing.raw_text.toLowerCase() === candidate.raw_text.toLowerCase()
       && Math.abs(existing.start_time - candidate.start_time) <= matchToleranceSeconds
       && Math.abs(existing.end_time - candidate.end_time) <= matchToleranceSeconds
     );

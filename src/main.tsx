@@ -6,6 +6,7 @@ import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
 import { isMockMode, isRealApiMode } from "./lib/runtime/mode";
 import { initializeSupabaseSession, supabase } from "./lib/supabase";
+import { resolveEditorApiBaseUrl } from "./lib/runtime/editorApiUrl";
 
 declare global {
   interface Window {
@@ -108,10 +109,12 @@ function subscribeToAuthChanges() {
 }
 
 export async function mountEditor(config: DepoEditorConfig) {
-  const resolvedApiBaseUrl =
-    isRealApiMode() && import.meta.env.VITE_EDITOR_API_BASE_URL
-      ? String(import.meta.env.VITE_EDITOR_API_BASE_URL)
-      : config.apiBaseUrl;
+  const resolvedApiBaseUrl = resolveEditorApiBaseUrl({
+    configBaseUrl: config.apiBaseUrl,
+    configuredEditorApiUrl: import.meta.env.VITE_EDITOR_API_BASE_URL,
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+    realApiMode: isRealApiMode(),
+  });
 
   currentConfig = config;
   currentApiBaseUrl = resolvedApiBaseUrl;

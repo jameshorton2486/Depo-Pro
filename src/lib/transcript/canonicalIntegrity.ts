@@ -51,6 +51,15 @@ export function auditCanonicalTranscript(input: {
     failures.push("Canonical transcript has an invalid duration.");
   }
 
+  // A transcript with no recognized words is never a valid deposition. Without
+  // this gate a zero-word result (silent / music-only / failed-decode audio, or
+  // a finalize re-driven by the watchdog on empty stored responses) skips every
+  // loop below, passes with zero failures, and is ingested as `completed` — a
+  // blank Workspace with no error. Route it to manual review instead.
+  if (normalized.words.length === 0 || normalized.utterances.length === 0) {
+    failures.push("Canonical transcript contains no recognized words.");
+  }
+
   for (const speaker of normalized.speakers) {
     if (seenSpeakerIds.has(speaker.speaker_id)) {
       failures.push(`Duplicate canonical speaker_id '${speaker.speaker_id}'.`);

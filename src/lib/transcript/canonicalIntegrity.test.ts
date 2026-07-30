@@ -302,4 +302,19 @@ describe("auditCanonicalTranscript", () => {
 
     expect(result.warnings.some((warning) => warning.includes("Single-source finalize exceeded auto-chunk threshold"))).toBe(true);
   });
+
+  it("fails a zero-word transcript instead of passing it as complete", () => {
+    const result = auditCanonicalTranscript({
+      normalized: {
+        durationSeconds: 30,
+        avgConfidence: null,
+        speakers: [],
+        utterances: [],
+        words: [],
+      },
+    });
+
+    expect(result.integrity_passed).toBe(false);
+    expect(result.failures.some((failure) => failure.includes("no recognized words"))).toBe(true);
+  });
 });

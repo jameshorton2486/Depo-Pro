@@ -1,6 +1,15 @@
 """
 ai_tools.py — Anthropic AI integration for legal transcript correction.
 
+ATIA-STATUS: quarantine — on the deprecation path.
+    Replaced by the Transcript Intelligence Engine: services/tie/ (correction
+    engine) + providers/anthropic_adapter.py (the ONLY sanctioned home for
+    `anthropic.Anthropic(...)`). Kept working during migration (fallback +
+    reference-behavior characterization) — do NOT delete. Any change here, or any
+    new `anthropic.Anthropic(...)` outside providers/anthropic_adapter.py,
+    requires an explicit approval reason (enforced by tests/test_import_guard.py).
+    See docs/atia/AI_TRANSCRIPT_INTELLIGENCE_AUDIT.md.
+
 FIXES vs. original:
   FIX-1  Model name:  "claude-sonnet-4-20250514" → "claude-sonnet-4-6" (correct ID)
   FIX-2  SDK:         Switched from raw requests → official anthropic SDK.

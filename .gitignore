@@ -30,3 +30,5 @@ bolt_export/
 *.pyc
 *_response.json
 scripts/fixtures/*-real.*
+.vercel
+.env*.local
