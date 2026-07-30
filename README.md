@@ -37,10 +37,10 @@ Install dependencies:
 npm ci
 ```
 
-Create a local environment file:
+Create a local environment file (single source of truth — not `.env.local`):
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 
 Mock mode is the safe default:
@@ -55,7 +55,13 @@ Start the development server:
 npm run dev
 ```
 
-Do not place service-role keys, Deepgram keys, Anthropic keys, client data, or signed URLs in `.env.local` variables prefixed with `VITE_`; Vite exposes those values to browser code.
+Audit which env key names are declared, present locally, and referenced by code (names only, never values):
+
+```bash
+npm run env:audit
+```
+
+Do not place service-role keys, Deepgram keys, Anthropic keys, client data, or signed URLs in any `VITE_*` variable; Vite exposes those values to browser code. Do not create `.env.local` — local scripts load `.env` only. Edge Function secrets belong in Supabase secrets (`supabase secrets set`), not in browser-exposed Vite vars.
 
 ## Verification
 

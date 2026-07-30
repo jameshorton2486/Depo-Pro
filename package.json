@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "stage:validate": "vitest run src/lib/stageS"
+    "stage:validate": "vitest run src/lib/stageS",
+    "env:audit": "node scripts/audit-env.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
