@@ -21,6 +21,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.scaffold
 test-results/
 supabase/.temp/
 bolt_export/
