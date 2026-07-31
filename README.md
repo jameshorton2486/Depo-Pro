@@ -49,6 +49,18 @@ Mock mode is the safe default:
 VITE_USE_REAL_API=0
 ```
 
+For real-API local + Supabase Edge + Vercel setup on Windows, use the interactive PowerShell CLI (prompts for secrets; never prints them):
+
+```powershell
+.\scripts\setup-env.ps1 -All
+# or stepwise:
+.\scripts\setup-env.ps1 -LocalEnv -Validate
+.\scripts\setup-env.ps1 -SupabaseSecrets -DeployFunctions
+.\scripts\setup-env.ps1 -VercelEnv
+```
+
+`VITE_EDITOR_API_BASE_URL` must end with `/functions/v1/editor-api` (not just `/functions/v1`).
+
 Start the development server:
 
 ```bash
@@ -61,7 +73,7 @@ Audit which env key names are declared, present locally, and referenced by code 
 npm run env:audit
 ```
 
-Do not place service-role keys, Deepgram keys, Anthropic keys, client data, or signed URLs in any `VITE_*` variable; Vite exposes those values to browser code. Do not create `.env.local` — local scripts load `.env` only. Edge Function secrets belong in Supabase secrets (`supabase secrets set`), not in browser-exposed Vite vars.
+Do not place service-role keys, Deepgram keys, Anthropic keys, client data, or signed URLs in any `VITE_*` variable; Vite exposes those values to browser code. Do not create `.env.local` — local scripts load `.env` only. Edge Function secrets belong in Supabase secrets (`supabase secrets set`), not in browser-exposed Vite vars. Never put those server secrets in Vercel for this Vite app.
 
 ## Verification
 
