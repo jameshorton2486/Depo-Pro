@@ -244,11 +244,19 @@ export function splitQParagraph(paragraph: TranscriptParagraph): TranscriptParag
 
   if (objectionMatch && objectionMatch.index !== undefined) {
     const beforeObjection = normalized.text.slice(0, objectionMatch.index).trim();
-    const afterObjection = normalized.text.slice(objectionMatch.index).trim();
+    // Slice by the objection's character offset in the original paragraph so
+    // each child keeps only its own words. cloneParagraph with a substring text
+    // left the full word list attached, so sliceParagraphWords downstream mapped
+    // the wrong words — and wrong sourceWordIds — onto the Q and COLLOQUY lines,
+    // corrupting per-word provenance on certified output.
     const leadingParts = beforeObjection
-      ? splitShortAnswerParagraph(cloneParagraph(normalized, "Q", "Q.", beforeObjection))
+      ? splitShortAnswerParagraph(
+          sliceParagraph(normalized, "Q", "Q.", 0, objectionMatch.index, normalized.leadingText),
+        )
       : [];
-    const objectionParts = splitEmbeddedObjections(cloneParagraph(normalized, "Q", "Q.", afterObjection));
+    const objectionParts = splitEmbeddedObjections(
+      sliceParagraph(normalized, "Q", "Q.", objectionMatch.index, normalized.text.length),
+    );
     return [...leadingParts, ...objectionParts];
   }
 
