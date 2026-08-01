@@ -308,8 +308,14 @@ type BridgeTranscript = {
   owner_user_id: string;
 };
 
+type BridgeCasePayload = {
+  caption?: { case_number?: unknown; case_style?: unknown; county?: unknown };
+  witnesses?: Array<{ name?: unknown }>;
+  attorneys?: Array<{ name?: unknown }>;
+};
+
 function bridgeCaseFromPayload(payload: Record<string, unknown> | null): BridgeReviewContext["case"] {
-  const p = (payload ?? {}) as Record<string, any>;
+  const p = (payload ?? {}) as BridgeCasePayload;
   const cap = p.caption ?? {};
   const val = (v: unknown) => (v && typeof v === "object" && "value" in (v as object) ? String((v as { value: unknown }).value ?? "") : String(v ?? ""));
   return {
@@ -322,6 +328,13 @@ function bridgeCaseFromPayload(payload: Record<string, unknown> | null): BridgeR
     jurisdiction: val(cap.county),
   };
 }
+
+// Shape of a prior accepted correction row (corrections: specialty, change, reason).
+type AcceptedCorrectionRow = {
+  specialty?: unknown;
+  change?: { before?: unknown; after?: unknown } | null;
+  reason?: unknown;
+};
 
 // ATIA Phase-4 bridge: produce + persist CorrectionObjects for one transcript.
 async function runBridgeReview(
@@ -382,7 +395,7 @@ async function runBridgeReview(
     })),
   } as unknown as EditorDocument;
 
-  const recentAccepted = ((acceptedRes?.data ?? []) as Array<Record<string, any>>).map((row) => ({
+  const recentAccepted = ((acceptedRes?.data ?? []) as Array<AcceptedCorrectionRow>).map((row) => ({
     specialty: String(row.specialty ?? ""),
     before: row.change?.before,
     after: row.change?.after,
