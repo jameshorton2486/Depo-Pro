@@ -34,4 +34,15 @@ describe("BenchmarkBatchRunner", () => {
   it("rejects configuration changes outside utt_split", () => {
     expect(() => verifyBatchConfiguration({ ...(configuration as BenchmarkConfiguration), parameterSweep: { utt_split: [0.8], model: ["nova-2"] } })).toThrow(/exactly one swept parameter/);
   });
+  it("requires the same diarization mode as production", () => {
+    const mismatched = {
+      ...(configuration as BenchmarkConfiguration),
+      baseConfiguration: {
+        ...(configuration as BenchmarkConfiguration).baseConfiguration,
+        diarize: true,
+        diarize_model: "latest",
+      },
+    };
+    expect(() => verifyBatchConfiguration(mismatched)).toThrow(/match production/);
+  });
 });

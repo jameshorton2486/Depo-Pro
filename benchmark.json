@@ -5,7 +5,7 @@
     "language": "en",
     "paragraphs": true,
     "utterances": true,
-    "diarize_model": "latest",
+    "diarize": true,
     "smart_format": true,
     "punctuate": true,
     "filler_words": true,

@@ -67,9 +67,12 @@ export function verifyBatchConfiguration(configuration: BenchmarkConfiguration):
   if (configuration.parameterSweep.utt_split.length === 0) {
     throw new Error("Batch integrity requires at least one utt_split candidate.");
   }
-  const required = ["model", "language", "paragraphs", "utterances", "diarize_model", "smart_format", "filler_words", "mip_opt_out"];
+  const required = ["model", "language", "paragraphs", "utterances", "diarize", "smart_format", "filler_words", "mip_opt_out"];
   const missing = required.filter((key) => configuration.baseConfiguration[key] === undefined);
   if (missing.length > 0) throw new Error(`Batch base configuration is missing invariant parameters: ${missing.join(", ")}.`);
+  if (configuration.baseConfiguration.diarize_model !== undefined) {
+    throw new Error("Batch configuration must match production by using diarize without diarize_model.");
+  }
   return "utt_split";
 }
 
