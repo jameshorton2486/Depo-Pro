@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, FileAudio2, FileSearch, FolderOpen, ListMusic, Plus, Search } from "lucide-react";
+import { AlertTriangle, FileAudio2, FileSearch, FlaskConical, FolderOpen, ListMusic, Plus, Search } from "lucide-react";
 import { listRecentCases, type CaseBrowserSummary } from "../api/caseService";
 import { caseStatusFromStage, matchesCaseSearch } from "../lib/caseLifecycle";
 import { useCase } from "../context/useCase";
 import { AuthStatusChip } from "./AuthGate/AuthGate";
 import { WorkflowSidebar } from "./WorkspaceSidebar/WorkspaceSidebar";
+import { BenchmarkScreen } from "./BenchmarkScreen";
 
 function StatusChip({
   stage,
@@ -88,6 +89,7 @@ export function CaseBrowserScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [showBenchmark, setShowBenchmark] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,6 +146,10 @@ export function CaseBrowserScreen() {
     }
   }
 
+  if (showBenchmark) {
+    return <BenchmarkScreen onClose={() => setShowBenchmark(false)} />;
+  }
+
   return (
     <div className="flex min-h-full bg-slate-100 text-slate-900">
       <WorkflowSidebar activeTarget="cases" hasActiveCase={false} />
@@ -158,6 +164,8 @@ export function CaseBrowserScreen() {
                 Case content stays in Supabase. This screen only selects the active case identity for the single mounted editor shell.
               </p>
             </div>
+            <div className="flex flex-wrap gap-2">
+              {import.meta.env.DEV ? <button type="button" onClick={() => setShowBenchmark(true)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700"><FlaskConical size={16} /> Benchmark</button> : null}
             <button
               type="button"
               onClick={() => void createAndOpen()}
@@ -166,6 +174,7 @@ export function CaseBrowserScreen() {
               <Plus size={16} />
               New Deposition
             </button>
+            </div>
           </div>
 
           <div className="mt-4 flex justify-end">

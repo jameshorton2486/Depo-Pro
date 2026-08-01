@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0",
+  "scenarios": [
+    { "id": "clean-one-on-one", "category": "clean_one_on_one", "audio": null, "certifiedTranscript": null },
+    { "id": "multiple-attorneys", "category": "multiple_attorneys", "audio": null, "certifiedTranscript": null },
+    { "id": "frequent-objections", "category": "frequent_objections", "audio": null, "certifiedTranscript": null },
+    { "id": "heavy-crosstalk", "category": "heavy_crosstalk", "audio": null, "certifiedTranscript": null },
+    { "id": "medical-terminology", "category": "medical_terminology", "audio": null, "certifiedTranscript": null },
+    { "id": "technical-terminology", "category": "technical_terminology", "audio": null, "certifiedTranscript": null },
+    { "id": "poor-audio", "category": "poor_audio", "audio": null, "certifiedTranscript": null },
+    { "id": "telephone-participants", "category": "telephone_participants", "audio": null, "certifiedTranscript": null },
+    { "id": "remote-video", "category": "remote_video", "audio": null, "certifiedTranscript": null },
+    { "id": "interpreters", "category": "interpreters", "audio": null, "certifiedTranscript": null }
+  ]
+}

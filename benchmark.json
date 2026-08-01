@@ -1,0 +1,29 @@
+{
+  "provider": "deepgram",
+  "baseConfiguration": {
+    "model": "nova-3",
+    "language": "en",
+    "paragraphs": true,
+    "utterances": true,
+    "diarize_model": "latest",
+    "smart_format": true,
+    "punctuate": true,
+    "filler_words": true,
+    "numerals": true,
+    "mip_opt_out": true
+  },
+  "parameterSweep": {
+    "utt_split": [0.6, 0.8, 1.0, 1.2, 1.5]
+  },
+  "keyterms": [],
+  "weights": {
+    "wordAccuracy": 20,
+    "qaRecovery": 20,
+    "speakerAccuracy": 15,
+    "reconstruction": 15,
+    "paragraphs": 10,
+    "objections": 10,
+    "colloquy": 5,
+    "editing": 5
+  }
+}
