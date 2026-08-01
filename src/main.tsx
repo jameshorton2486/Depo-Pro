@@ -53,13 +53,7 @@ function buildMountedConfig(config: DepoEditorConfig, session: Session | null): 
   };
 }
 
-function redirectToLogin() {
-  const loginUrl = new URL("/login", window.location.origin);
-  loginUrl.searchParams.set("redirectTo", window.location.href);
-  window.location.assign(loginUrl.toString());
-}
-
-function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session) {
+function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session | null) {
   const mountedConfig = buildMountedConfig(config, session);
   const el = document.querySelector(mountedConfig.mountSelector);
   if (!el) {
@@ -95,9 +89,7 @@ function subscribeToAuthChanges() {
     }
 
     if (!session) {
-      console.warn("[DEPO-PRO] Supabase session cleared after mount; redirecting to login.");
-      redirectToLogin();
-      return;
+      console.warn("[DEPO-PRO] Supabase session cleared after mount; showing AuthGate.");
     }
 
     renderEditor(currentConfig, currentApiBaseUrl, session);
@@ -130,15 +122,12 @@ export async function mountEditor(config: DepoEditorConfig) {
   }
 
   if (!isMockMode() && !session) {
-    console.warn("[DEPO-PRO] No Supabase session resolved before mount; redirecting to login.");
-    redirectToLogin();
-    return;
+    console.warn("[DEPO-PRO] No Supabase session resolved before mount; AuthGate will prompt for sign-in.");
   }
 
-  if (!session) {
-    return;
-  }
-
+  // Always mount in real mode without a session so AuthGate can render the
+  // sign-in UI. Hard-navigating to /login?redirectTo=... loops on this SPA and
+  // eventually triggers HTTP 431 (request header fields too large).
   renderEditor(config, resolvedApiBaseUrl, session);
   subscribeToAuthChanges();
 }
