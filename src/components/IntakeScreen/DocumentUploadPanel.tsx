@@ -1200,7 +1200,7 @@ export function DocumentUploadPanel({
               {pendingRemoval.filename}
             </p>
             <p className="mt-3 text-sm text-slate-600">
-              This file will be permanently removed from the case.
+              This file will be permanently removed from Intake. Existing transcripts and certification records will not be deleted.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <button

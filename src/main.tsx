@@ -6,6 +6,7 @@ import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
 import { isMockMode, isRealApiMode } from "./lib/runtime/mode";
 import { initializeSupabaseSession, supabase } from "./lib/supabase";
+import { resolveEditorApiBaseUrl } from "./lib/runtime/editorApiUrl";
 
 declare global {
   interface Window {
@@ -50,13 +51,7 @@ function buildMountedConfig(config: DepoEditorConfig, session: Session | null): 
   };
 }
 
-function redirectToLogin() {
-  const loginUrl = new URL("/login", window.location.origin);
-  loginUrl.searchParams.set("redirectTo", window.location.href);
-  window.location.assign(loginUrl.toString());
-}
-
-function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session) {
+function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session | null) {
   const mountedConfig = buildMountedConfig(config, session);
   const el = document.querySelector(mountedConfig.mountSelector);
   if (!el) {
@@ -93,8 +88,7 @@ function subscribeToAuthChanges() {
     // (getSupabaseAccessToken), so token refresh / sign-in need no re-render.
     // The only event that requires action here is sign-out.
     if (!session) {
-      console.warn("[DEPO-PRO] Supabase session cleared after mount; redirecting to login.");
-      redirectToLogin();
+      console.warn("[DEPO-PRO] Supabase session cleared after mount; showing AuthGate.");
     }
   });
 
@@ -104,10 +98,12 @@ function subscribeToAuthChanges() {
 }
 
 export async function mountEditor(config: DepoEditorConfig) {
-  const resolvedApiBaseUrl =
-    isRealApiMode() && import.meta.env.VITE_EDITOR_API_BASE_URL
-      ? String(import.meta.env.VITE_EDITOR_API_BASE_URL)
-      : config.apiBaseUrl;
+  const resolvedApiBaseUrl = resolveEditorApiBaseUrl({
+    configBaseUrl: config.apiBaseUrl,
+    configuredEditorApiUrl: import.meta.env.VITE_EDITOR_API_BASE_URL,
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+    realApiMode: isRealApiMode(),
+  });
 
   configureClient(resolvedApiBaseUrl);
   let session: Session | null = null;
@@ -121,15 +117,12 @@ export async function mountEditor(config: DepoEditorConfig) {
   }
 
   if (!isMockMode() && !session) {
-    console.warn("[DEPO-PRO] No Supabase session resolved before mount; redirecting to login.");
-    redirectToLogin();
-    return;
+    console.warn("[DEPO-PRO] No Supabase session resolved before mount; AuthGate will prompt for sign-in.");
   }
 
-  if (!session) {
-    return;
-  }
-
+  // Always mount in real mode without a session so AuthGate can render the
+  // sign-in UI. Hard-navigating to /login?redirectTo=... loops on this SPA and
+  // eventually triggers HTTP 431 (request header fields too large).
   renderEditor(config, resolvedApiBaseUrl, session);
   subscribeToAuthChanges();
 }

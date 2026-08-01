@@ -1,0 +1,42 @@
+capability_id,capability,category,current_home,target_home,priority,notes
+C1,Detect merged Q/A in a single speaker block,structural,monolithic_prompt,specialty:qa_split,P0,Depends on speaker_reassignment output
+C2,Attribute unlabeled objection to correct attorney,structural,monolithic_prompt,specialty:objection_attribution,P1,Requires attorney directory from case knowledge
+C3,Reassign speech when Deepgram diarization drops,structural,monolithic_prompt,specialty:speaker_reassignment,P0,Must run first in pipeline
+C4,Correct phonetic name against case registry,content,prompt+JobConfig.confirmed_spellings,deterministic:rules/registry_lookup.py,P0,Deterministic once registry exists
+C4b,Propose spelling for novel proper name not in registry,content,monolithic_prompt,specialty:proper_name_novel,P0,Feeds case registry
+C5,Recognize polyhydraminose as polyhydramnios,content,monolithic_prompt,deterministic:knowledge/global/medical_terms.json,P0,High-confidence known misrecognition
+C6,Recognize microsomia as macrosomia (context-dependent),content,monolithic_prompt,specialty:medical_context,P1,Context-dependent because both are valid terms
+C7,Normalize sevenseventeentwenty 22 to 07/17/2022,mechanical,monolithic_prompt,deterministic:rules/date_normalize.py,P0,Fully deterministic
+C8,Recognize $12.50 hourly as likely $1250 artifact,contextual,monolithic_prompt,specialty:contextual_number,P1,Low-confidence flag rather than auto-correct
+C9,Convert stutter repeats to em-dash form,mechanical,corrections.py+prompt,deterministic:rules/em_dash.py,P0,Already partially deterministic
+C10,Preserve uh/um in verbatim mode,mechanical,corrections.py,deterministic:rules/verbatim.py,P0,Already enforced by tests
+C11,Insert two spaces after sentence-ending punctuation,mechanical,renderer+prompt,deterministic:renderer,P0,Belongs to formatter_core not AI
+C12,Detect examination section transitions,structural,monolithic_prompt,specialty:examination_section,P0,Uses haiku-tier model for cost
+C13,Emit BY line after colloquy break,structural,renderer+prompt,deterministic:renderer,P0,Derived from examination state
+C14,Recognize Doctor as title vs Dr abbreviation,mechanical,monolithic_prompt,deterministic:rules/titles.py,P0,Fully deterministic
+C15,Handle exhibit references inline in Q text,mechanical,monolithic_prompt,deterministic:rules/exhibits.py,P1,No AI needed
+C16,Flag DOB or name inconsistencies within transcript,content,monolithic_prompt,specialty:inconsistency_flag,P1,Requires seeing entire transcript
+C17,Distinguish off-record chat from on-record colloquy,structural,monolithic_prompt,specialty:off_record_boundary,P1,Videographer-language pattern
+C18,Format cause number per court convention,mechanical,monolithic_prompt,deterministic:rules/cause_number.py,P0,Per-court format table
+C19,Recognize Bexar vs Baer vs Bayer (name vs institution),content,monolithic_prompt,specialty:phonetic_disambiguation,P1,Requires registry hints
+C20,Emit read-and-sign vs waive decision at close,structural,monolithic_prompt,deterministic:rules/read_and_sign.py,P0,Parse closing colloquy pattern
+C21,Attach reviewer flags for ambiguous decisions,meta,monolithic_prompt,output_of_every_specialty,P0,Cross-cutting concern
+C22,Normalize time format (04:01PM to 4:01 p.m.),mechanical,monolithic_prompt,deterministic:rules/time_normalize.py,P0,Fully deterministic
+C23,Format dollar amounts with thousands separator,mechanical,monolithic_prompt,deterministic:rules/currency_normalize.py,P0,Fully deterministic
+C24,Protect abbreviations from double-space rule,mechanical,monolithic_prompt,deterministic:rules/abbreviations.py,P0,Known abbreviation table
+C25,Remove doubled-word Deepgram artifacts (4+ char words),mechanical,corrections.py,deterministic:rules/artifact_removal.py,P0,Already partially deterministic
+C26,Preserve Morson Rule 270 ellipsis integrity,policy,corrections.py+prompt,deterministic:policy+rules,P0,Never modify ...
+C27,Sentence-start number spell-out (1-10),mechanical,corrections.py,deterministic:preserve current,P0,Already deterministic
+C28,Handle Doctor/Dr title in speaker labels,mechanical,monolithic_prompt,deterministic:rules/titles.py,P0,Fully deterministic
+C29,Emit correct examination header (DIRECT/CROSS/etc),structural,renderer+prompt,deterministic:renderer,P0,Derived from examination state
+C30,Format caption per court convention,mechanical,renderer,deterministic:formatter_core,P0,Already correct home
+C31,Generate certificate page,mechanical,renderer,deterministic:formatter_core,P0,Already correct home
+C32,Generate word index,mechanical,renderer,deterministic:formatter_core,P0,Already correct home
+C33,Recognize colloquial witness responses (yeah/nope),mechanical,monolithic_prompt,deterministic:rules/informal_responses.py,P1,Preserve verbatim
+C34,Handle interrupted answers (em-dash at end),mechanical,monolithic_prompt,deterministic:rules/em_dash.py,P0,Already scoped
+C35,Detect and mark off-record segments,structural,monolithic_prompt,specialty:off_record_boundary,P1,Renderer respects mark
+C36,Attribute video/reporter statements to correct role,structural,monolithic_prompt,specialty:speaker_reassignment,P1,Special roles like VIDEOGRAPHER
+C37,Handle multi-day proceedings (Volume II etc),structural,monolithic_prompt,deterministic:rules/multi_volume.py,P2,Rare edge case
+C38,Detect sworn interpreter presence,structural,monolithic_prompt,specialty:speaker_reassignment,P2,Adds INTERPRETER role
+C39,Handle attorney appearances vs also-present distinction,structural,monolithic_prompt,deterministic:rules/appearances.py,P1,From case metadata
+C40,Detect and mark exhibit introductions,content,monolithic_prompt,deterministic:rules/exhibits.py,P1,Pattern-based

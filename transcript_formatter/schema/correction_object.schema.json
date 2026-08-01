@@ -1,0 +1,421 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depopro.com/schemas/correction_object.schema.json",
+  "title": "CorrectionObject",
+  "description": "The atomic unit of transcript intelligence. Represents one proposed change against the immutable canonical Deepgram baseline. Produced by either a deterministic rule or an AI specialty prompt. Reviewed by a human court reporter.",
+  "type": "object",
+  "required": [
+    "id",
+    "transcript_id",
+    "case_id",
+    "specialty",
+    "prompt_version",
+    "location",
+    "change",
+    "reason",
+    "reason_kind",
+    "confidence",
+    "provenance",
+    "review",
+    "downstream"
+  ],
+  "additionalProperties": false,
+
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^corr_[0-9A-Z]{26}$",
+      "description": "ULID prefixed with 'corr_'. Immutable once assigned."
+    },
+
+    "transcript_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The transcript this correction targets."
+    },
+
+    "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The case that owns this transcript. Enforced by RLS."
+    },
+
+    "specialty": {
+      "type": "string",
+      "enum": [
+        "proper_name_novel",
+        "medical_context",
+        "qa_split",
+        "speaker_reassignment",
+        "objection_attribution",
+        "examination_section",
+        "off_record_boundary",
+        "inconsistency_flag",
+        "contextual_number",
+        "phonetic_disambiguation",
+        "deterministic_rule"
+      ],
+      "description": "Which specialty produced this correction. 'deterministic_rule' is used when the source is a rule module rather than an AI prompt."
+    },
+
+    "prompt_version": {
+      "type": "string",
+      "pattern": "^v[0-9]+$",
+      "description": "Version of the specialty prompt (or rule module) that produced this correction. For deterministic corrections, the rule's version."
+    },
+
+    "location": {
+      "type": "object",
+      "required": ["paragraph_id", "start_word_id", "end_word_id"],
+      "additionalProperties": false,
+      "properties": {
+        "paragraph_id": {
+          "type": "string",
+          "description": "ID of the paragraph in the canonical transcript."
+        },
+        "start_word_id": {
+          "type": "string",
+          "description": "First word of the affected range."
+        },
+        "end_word_id": {
+          "type": "string",
+          "description": "Last word of the affected range (inclusive)."
+        },
+        "start_offset_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Millisecond offset from start of audio."
+        },
+        "end_offset_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+
+    "change": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "proper_name_correction",
+            "medical_term_correction",
+            "speaker_reassignment",
+            "qa_split",
+            "objection_attribution",
+            "examination_section_change",
+            "off_record_boundary_mark",
+            "inconsistency_flag",
+            "contextual_number_flag"
+          ],
+          "description": "Determines which further fields are required. See per-type constraints in the audit document."
+        },
+        "before": {
+          "type": "string",
+          "description": "Text as it appears in the canonical. Required for text-substitution types; absent for structural types."
+        },
+        "after": {
+          "type": "string",
+          "description": "Proposed text. Required for text-substitution types."
+        },
+        "structural_change": {
+          "type": "object",
+          "description": "For non-text corrections. Shape varies by type:\n- speaker_reassignment: {new_speaker_id, new_speaker_role}\n- qa_split: {split_after_word_id, new_q_paragraph_speaker_id, new_a_paragraph_speaker_id}\n- objection_attribution: {new_attorney_name, new_speaker_role}\n- examination_section_change: {new_section: 'DIRECT'|'CROSS'|'REDIRECT'|'RECROSS'|'FURTHER_...'}\n- off_record_boundary_mark: {boundary: 'start'|'end', recess_time_note}"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "proper_name_correction",
+                  "medical_term_correction",
+                  "contextual_number_flag"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": ["before", "after"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "speaker_reassignment",
+                  "qa_split",
+                  "objection_attribution",
+                  "examination_section_change",
+                  "off_record_boundary_mark"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": ["structural_change"],
+            "not": {
+              "anyOf": [
+                {"required": ["before"]},
+                {"required": ["after"]}
+              ]
+            }
+          }
+        }
+      ]
+    },
+
+    "reason": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 500,
+      "description": "Human-readable explanation. Displayed to the reporter in the CorrectionsPanel. Empty or generic reasons ('improved clarity', 'looks better') are rejected by the validator."
+    },
+
+    "reason_kind": {
+      "type": "string",
+      "enum": [
+        "registry_match",
+        "phonetic_similarity",
+        "context_pattern",
+        "prior_correction",
+        "inconsistency_detected",
+        "structural_boundary",
+        "confidence_threshold",
+        "reporter_preference",
+        "rule_pattern"
+      ],
+      "description": "Category of reasoning. Used for filtering and metrics."
+    },
+
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "0.0 = no confidence; 1.0 = maximum. Corrections below 0.5 are rendered as low-confidence in the UI and require explicit accept."
+    },
+
+    "confidence_source": {
+      "type": "string",
+      "description": "Explanation of how confidence was derived. E.g., 'registry+deepgram_low_confidence' or 'phonetic_edit_distance_1'."
+    },
+
+    "provenance": {
+      "type": "object",
+      "required": ["source", "generated_at"],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["ai", "deterministic", "reporter"],
+          "description": "Who created this correction."
+        },
+        "provider": {
+          "type": "string",
+          "description": "AI provider name for source=='ai'. E.g., 'anthropic', 'openai', 'google', 'local'."
+        },
+        "model": {
+          "type": "string",
+          "description": "Actual model ID used. E.g., 'claude-opus-4-7'. Version-locked."
+        },
+        "prompt_versions": {
+          "type": "object",
+          "description": "Map of prompt component name to version used. E.g., {'system_role': 'v1', 'specialty/proper_name_novel': 'v3'}. Enables exact replay."
+        },
+        "context_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Hash of the exact context envelope submitted with this call. Enables exact replay."
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+
+    "supporting_evidence": {
+      "type": "array",
+      "description": "Optional evidence pointers that back up the correction. Rendered as tooltips in the UI.",
+      "items": {
+        "type": "object",
+        "required": ["kind"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "registry_entry",
+              "deepgram_confidence",
+              "prior_transcript_correction",
+              "glossary_entry",
+              "speaker_pattern_match",
+              "phonetic_similarity_score"
+            ]
+          },
+          "id": {"type": "string"},
+          "value": {"type": ["string", "number"]},
+          "case_id": {"type": "string", "format": "uuid"}
+        }
+      }
+    },
+
+    "review": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["pending", "accepted", "rejected", "edited", "superseded"],
+          "description": "Current lifecycle state. Transitions logged in correction_decisions."
+        },
+        "decided_by": {
+          "type": ["string", "null"],
+          "format": "uuid",
+          "description": "User ID of the reporter who made the decision. Null while pending."
+        },
+        "decided_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "decision_note": {
+          "type": ["string", "null"],
+          "maxLength": 1000,
+          "description": "Optional free-text note from the reporter. Especially useful for reject and edit decisions."
+        },
+        "final_value": {
+          "type": ["object", "null"],
+          "description": "For state='edited', the reporter's modified version of change.after (or structural_change)."
+        }
+      }
+    },
+
+    "downstream": {
+      "type": "object",
+      "properties": {
+        "applied_to_working_transcript": {
+          "type": "boolean",
+          "description": "True after the correction has been merged into the working transcript projection."
+        },
+        "applied_at": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "reverted_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Non-null if the correction was later reverted."
+        },
+        "pending_reason": {
+          "type": ["string", "null"],
+          "description": "Set when review.state is accepted/edited but applied_to_working_transcript is false: the correction is accepted, its apply is deferred. E.g. 'structural_apply_engine_v2' for qa_split and other structural changes whose canonical restructuring is not yet implemented. The workspace shows 'accepted — apply pending' rather than treating it as a silent no-op."
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "example_proper_name_correction": {
+      "id": "corr_01HXA92NVXZM3K4T7B2R9WQPD5",
+      "transcript_id": "aa6f2c3d-8e91-4b57-a123-1234567890ab",
+      "case_id": "11111111-2222-3333-4444-555555555555",
+      "specialty": "proper_name_novel",
+      "prompt_version": "v3",
+      "location": {
+        "paragraph_id": "p_00042",
+        "start_word_id": "w_9821",
+        "end_word_id": "w_9822",
+        "start_offset_ms": 4823100,
+        "end_offset_ms": 4823950
+      },
+      "change": {
+        "type": "proper_name_correction",
+        "before": "Bayer Imaging",
+        "after": "Baer Imaging"
+      },
+      "reason": "Case registry entry 'Baer Imaging' matches phonetically; Deepgram confidence on 'Bayer' was 0.62.",
+      "reason_kind": "registry_match",
+      "confidence": 0.88,
+      "confidence_source": "registry+deepgram_low_confidence",
+      "provenance": {
+        "source": "ai",
+        "provider": "anthropic",
+        "model": "claude-opus-4-7",
+        "prompt_versions": {
+          "system_role": "v1",
+          "correction_object_schema": "v1",
+          "verbatim_policy": "v1",
+          "specialty/proper_name_novel": "v3"
+        },
+        "context_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "generated_at": "2026-10-01T14:23:11Z"
+      },
+      "supporting_evidence": [
+        {"kind": "registry_entry", "id": "reg_baer_imaging", "case_id": "11111111-2222-3333-4444-555555555555"},
+        {"kind": "deepgram_confidence", "value": 0.62}
+      ],
+      "review": {
+        "state": "pending",
+        "decided_by": null,
+        "decided_at": null,
+        "decision_note": null,
+        "final_value": null
+      },
+      "downstream": {
+        "applied_to_working_transcript": false,
+        "applied_at": null,
+        "reverted_at": null
+      }
+    },
+
+    "example_qa_split": {
+      "id": "corr_01HXA92NVXZM3K4T7B2R9WQPD6",
+      "transcript_id": "aa6f2c3d-8e91-4b57-a123-1234567890ab",
+      "case_id": "11111111-2222-3333-4444-555555555555",
+      "specialty": "qa_split",
+      "prompt_version": "v1",
+      "location": {
+        "paragraph_id": "p_00058",
+        "start_word_id": "w_10432",
+        "end_word_id": "w_10471"
+      },
+      "change": {
+        "type": "qa_split",
+        "structural_change": {
+          "split_after_word_id": "w_10456",
+          "new_q_paragraph_speaker_id": 3,
+          "new_a_paragraph_speaker_id": 2
+        }
+      },
+      "reason": "Paragraph contains an inline question followed by an answer; text after 'You understand that?' is a witness affirmation.",
+      "reason_kind": "structural_boundary",
+      "confidence": 0.94,
+      "confidence_source": "punctuation_and_pronoun_pattern",
+      "provenance": {
+        "source": "ai",
+        "provider": "anthropic",
+        "model": "claude-sonnet-5",
+        "prompt_versions": {
+          "system_role": "v1",
+          "specialty/qa_split": "v1"
+        },
+        "context_hash": "sha256:2c1165f37b8a05dd23a4e0c5b5f5df1f9a1a5b2c9a8d7c6e5f4a3b2c1d0e9f8a",
+        "generated_at": "2026-10-01T14:23:11Z"
+      },
+      "review": {
+        "state": "pending",
+        "decided_by": null,
+        "decided_at": null,
+        "decision_note": null,
+        "final_value": null
+      },
+      "downstream": {
+        "applied_to_working_transcript": false,
+        "applied_at": null,
+        "reverted_at": null
+      }
+    }
+  }
+}

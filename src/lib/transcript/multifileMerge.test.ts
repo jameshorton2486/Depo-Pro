@@ -151,6 +151,47 @@ describe("mergeSourceTranscriptSegments", () => {
     expect(merged.normalized.words.every((word) => word.confidence === 0.95)).toBe(true);
   });
 
+  it("keeps genuine repeated words within a chunk (only cross-chunk seam duplicates are collapsed)", () => {
+    // A real stutter/repeat ("that that") lands two identically-spelled words
+    // within the 0.35s dedup tolerance. Because they share a source chunk they
+    // must both survive — Deepgram never emits the same word twice in one chunk,
+    // so an intra-chunk match is a real word, not a seam duplicate.
+    const first = buildSegment("case_repeat_a", 0, {
+      sourceAudioId: "audio_repeat",
+      virtualChunk: {
+        chunkIndex: 0,
+        startSeconds: 0,
+        endSeconds: 12.4,
+        nominalOffsetSeconds: 0,
+        overlapWithNextSeconds: 2,
+      },
+    });
+    const anchorWord = first.normalized.words[0];
+    const anchorUtteranceId = anchorWord.utterance_id;
+    first.normalized.words.push(
+      { ...anchorWord, word_id: "w_repeat_1", raw_text: "that", utterance_id: anchorUtteranceId, start_time: 5.0, end_time: 5.2, confidence: 0.9 },
+      { ...anchorWord, word_id: "w_repeat_2", raw_text: "that", utterance_id: anchorUtteranceId, start_time: 5.3, end_time: 5.5, confidence: 0.9 },
+    );
+
+    // Second chunk is a DISTINCT recording with no timing overlap, so nothing
+    // cross-dedupes and the assertion isolates the intra-chunk behavior.
+    const second = buildSegment("case_repeat_b", 1, {
+      sourceAudioId: "audio_repeat",
+      virtualChunk: {
+        chunkIndex: 1,
+        startSeconds: 40,
+        endSeconds: 52.4,
+        nominalOffsetSeconds: 40,
+        overlapWithNextSeconds: 0,
+      },
+    });
+
+    const merged = mergeSourceTranscriptSegments([first, second]);
+    const repeatCount = merged.normalized.words.filter((word) => word.raw_text === "that").length;
+
+    expect(repeatCount).toBe(2);
+  });
+
   it("assigns an utterance_id to every merged word (no orphaned words from identity collisions)", () => {
     const first = buildSegment("case_orphan_check", 0, {
       sourceAudioId: "audio_shared",
