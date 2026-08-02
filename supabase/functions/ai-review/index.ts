@@ -18,7 +18,7 @@ import {
 } from "../../../src/lib/transcript/aiCorrectionBridge.ts";
 import type { EditorDocument } from "../../../src/api/types.ts";
 
-type Database = Record<string, never>;
+import type { Database } from "../_shared/database.types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

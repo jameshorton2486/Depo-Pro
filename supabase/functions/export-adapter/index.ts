@@ -20,7 +20,7 @@ import {
   validateStoredJob,
 } from "./protocol.ts";
 
-type Database = Record<string, never>;
+import type { Database } from "../_shared/database.types.ts";
 
 type TranscriptRow = {
   transcript_id: string;

@@ -28,7 +28,7 @@ import {
 } from "../../../src/lib/transcriptionJobs.ts";
 import { buildRetranscriptionAuditArtifact } from "../../../src/lib/retranscription.ts";
 
-type Database = Record<string, never>;
+import type { Database } from "../_shared/database.types.ts";
 
 type CaseRow = {
   case_id: string;
