@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../lib/supabase";
+import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   createMockContact,
@@ -21,7 +22,7 @@ import {
 } from "../types/contact";
 
 function normalizePhone(value: string): string {
-  return value.replace(/\D/g, "");
+  return value.trim() ? canonicalizePhoneNumber(value)! : value;
 }
 
 function normalizeContactDetailsForWrite(details: Contact["details"]): Contact["details"] {
@@ -32,6 +33,7 @@ function normalizeContactDetailsForWrite(details: Contact["details"]): Contact["
   return {
     ...details,
     direct_phone: details.direct_phone ? normalizePhone(details.direct_phone) : details.direct_phone,
+    fax: details.fax ? normalizePhone(details.fax) : details.fax,
   };
 }
 
@@ -98,19 +100,19 @@ export async function getContact(id: string): Promise<Contact | null> {
 }
 
 export async function createContact(payload: ContactInsert): Promise<Contact> {
+  const normalized = normalizeContactInsert(payload);
+  const canonicalPayload = {
+    ...normalized,
+    phone: normalizePhone(normalized.phone),
+    details: normalizeContactDetailsForWrite(normalized.details),
+  };
   if (isMockMode()) {
-    return createMockContact(payload);
+    return createMockContact(canonicalPayload);
   }
   const client = await getSupabaseClient("createContact");
-  const normalized = normalizeContactInsert(payload);
   const { data, error } = await client
     .from("contacts")
-    .insert({
-      ...normalized,
-      phone: normalizePhone(normalized.phone),
-      details: normalizeContactDetailsForWrite(normalized.details),
-      times_used: 0,
-    })
+    .insert({ ...canonicalPayload, times_used: 0 })
     .select()
     .single();
 
@@ -119,22 +121,25 @@ export async function createContact(payload: ContactInsert): Promise<Contact> {
 }
 
 export async function updateContact(id: string, patch: ContactUpdate): Promise<Contact> {
-  if (isMockMode()) {
-    return updateMockContact(id, patch);
-  }
-  const client = await getSupabaseClient("updateContact");
-  const current = await getContact(id);
+  const current = isMockMode() ? getMockContact(id) : await getContact(id);
   if (!current) {
     throw new Error(`Contact ${id} not found.`);
   }
   const normalized = normalizeContactUpdate(current.type, patch);
+  const canonicalPatch = {
+    ...normalized,
+    ...(normalized.phone !== undefined ? { phone: normalizePhone(normalized.phone) } : {}),
+    ...(normalized.details
+      ? { details: normalizeContactDetailsForWrite(normalized.details as Contact["details"]) }
+      : {}),
+  };
+  if (isMockMode()) {
+    return updateMockContact(id, canonicalPatch);
+  }
+  const client = await getSupabaseClient("updateContact");
   const { data, error } = await client
     .from("contacts")
-    .update({
-      ...normalized,
-      phone: normalized.phone ? normalizePhone(normalized.phone) : normalized.phone,
-      details: normalized.details ? normalizeContactDetailsForWrite(normalized.details as Contact["details"]) : normalized.details,
-    })
+    .update(canonicalPatch)
     .eq("id", id)
     .select()
     .single();
