@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DocumentProvider, useDocument } from "../context/DocumentContext";
 import { AudioProvider } from "../context/AudioContext";
 import { EditorProvider, useEditorContext } from "../context/EditorContext";
@@ -37,11 +37,74 @@ const CaseBrowserScreen = lazy(() =>
   import("./CaseBrowserScreen").then((m) => ({ default: m.CaseBrowserScreen })),
 );
 
+// Full-screen Suspense fallback for stage-level screens. Uses the same
+// min-h-screen convention as the app's other top-level loaders (e.g. the
+// "Loading case lifecycle..." state in CaseShell).
 function ScreenFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500">
       Loading...
     </div>
+  );
+}
+
+// Editor-area Suspense fallback: fills the editor pane (flex-1) rather than the
+// viewport, so suspending the editor chunk never resizes an embedded host node.
+function EditorAreaFallback() {
+  return (
+    <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+      Loading editor...
+    </div>
+  );
+}
+
+// Recovers from a failed dynamic import() of a split chunk — most commonly a
+// stale client requesting a hashed chunk that no longer exists after a deploy.
+// Suspense does not handle promise rejection, so without this boundary the
+// rejection propagates to the React root and bricks the mounted widget.
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown): void {
+    console.error("[DEPO-PRO] Lazy screen chunk failed to load", error);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-slate-100 p-6">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Screen Unavailable</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">This screen couldn&apos;t be loaded.</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              A newer version may have been deployed. Reload to fetch the latest.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Pairs a Suspense fallback with the chunk-load error boundary for one lazy region.
+function LazyRegion({ fallback, children }: { fallback: ReactNode; children: ReactNode }) {
+  return (
+    <ChunkErrorBoundary>
+      <Suspense fallback={fallback}>{children}</Suspense>
+    </ChunkErrorBoundary>
   );
 }
 import { CaseProvider } from "../context/CaseContext";
@@ -96,7 +159,12 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
         <div className="flex-1 min-h-0 flex overflow-hidden">
           <WorkspaceSidebar />
           <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-            <TranscriptEditor readOnly={config.readOnly ?? false} />
+            {/* Inner boundary so loading the editor chunk suspends here and does
+                not unmount the stateful WorkspaceStage above (which would drop
+                its fetched transcript selection and re-run the loading state). */}
+            <LazyRegion fallback={<EditorAreaFallback />}>
+              <TranscriptEditor readOnly={config.readOnly ?? false} />
+            </LazyRegion>
             {(mediaUrl || audioSegments.length > 0) && (
               <AudioPlayer mediaUrl={mediaUrl} duration={duration} audioSegments={audioSegments} />
             )}
@@ -120,7 +188,7 @@ function StageRouter({
   const { stage } = useStage();
 
   return (
-    <Suspense fallback={<ScreenFallback />}>
+    <LazyRegion fallback={<ScreenFallback />}>
       {stage === "intake" ? (
         <IntakeScreen jobId={activeCaseId} />
       ) : stage === "creation" ? (
@@ -142,7 +210,7 @@ function StageRouter({
           </DocumentProvider>
         </AudioProvider>
       )}
-    </Suspense>
+    </LazyRegion>
   );
 }
 
@@ -372,9 +440,9 @@ function CaseShell({ config }: { config: DepoEditorConfig }) {
           initialProvenance={activeProvenance}
         />
       ) : (
-        <Suspense fallback={<ScreenFallback />}>
+        <LazyRegion fallback={<ScreenFallback />}>
           <CaseBrowserScreen />
-        </Suspense>
+        </LazyRegion>
       )}
       <CaseSwitchDialog />
     </>
