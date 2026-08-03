@@ -184,7 +184,7 @@ describe("normalizeCaseRecord", () => {
           zip: "78205",
           time_used: null,
           email: "curtis@example.com",
-          phone: "555-1234",
+          phone: "2105550123",
         },
       ],
       participants: [
@@ -202,7 +202,7 @@ describe("normalizeCaseRecord", () => {
           role: "PARALEGAL",
           organization: "Home Depot",
           email: "shawn@example.com",
-          phone: "555-5678",
+          phone: "2105550168",
           role_in_this_proceeding: "Observer",
           notes: "Duplicate test",
         },
