@@ -25,6 +25,7 @@ import {
   emptyCaseRecord,
 } from "../types/case";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
+import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
 
 function canonicalizePhoneValue(value: string | null): string | null {
   return value == null || !value.trim() ? value : canonicalizePhoneNumber(value);
@@ -36,10 +37,30 @@ function isPhoneFieldPath(path: string): boolean {
     || /^law_firms\[\d+\]\.(?:phone|fax)$/.test(path);
 }
 
+function namePolicyForPath(path: string): string | null {
+  if (path === "caption.court_name") return COURT_POLICY_ID;
+  if (path === "reporter.name" || /^(?:parties|witnesses|attorneys|interpreters|videographers|participants)\[\d+\]\.name$/.test(path)) return PERSON_NAME_POLICY_ID;
+  if (/^law_firms\[\d+\]\.name$/.test(path) || /^attorneys\[\d+\]\.firm$/.test(path) || /^witnesses\[\d+\]\.employer$/.test(path) || /^videographers\[\d+\]\.firm$/.test(path)) return ORGANIZATION_POLICY_ID;
+  return null;
+}
+
 function canonicalizePathValue(path: string, value: unknown): unknown {
-  if (!isPhoneFieldPath(path)) return value;
-  if (value == null || typeof value === "string") return canonicalizePhoneValue(value ?? null);
-  throw new Error(`Phone field ${path} requires a string or null value`);
+  if (isPhoneFieldPath(path)) {
+    if (value == null || typeof value === "string") return canonicalizePhoneValue(value ?? null);
+    throw new Error(`Phone field ${path} requires a string or null value`);
+  }
+  const policyId = namePolicyForPath(path);
+  if (!policyId) return value;
+  if (value == null || typeof value === "string") return canonicalizeGovernedName(policyId, value);
+  throw new Error(`Governed name field ${path} requires a string or null value`);
+}
+
+function canonicalizeNameField<T extends string | null>(field: ExtractedField<T>, policyId: string): ExtractedField<T> {
+  return { ...field, value: canonicalizeGovernedName(policyId, field.value) as T };
+}
+
+function canonicalizeOrganization(value: string | null): string | null {
+  return canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value);
 }
 
 // ─── ID generator ─────────────────────────────────────────────────────────────
@@ -675,6 +696,8 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_ATTORNEY": {
       const attorney: Attorney = {
         ...action.payload.attorney,
+        name: canonicalizeNameField(action.payload.attorney.name, PERSON_NAME_POLICY_ID),
+        firm: canonicalizeNameField(action.payload.attorney.firm, ORGANIZATION_POLICY_ID),
         phone: canonicalizePhoneValue(action.payload.attorney.phone),
         attorney_id: newId("atty"),
       };
@@ -715,7 +738,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           attorneys: state.record.attorneys.map((a) =>
-            a.attorney_id === attorney_id ? { ...a, ...canonicalPatch } : a,
+            a.attorney_id === attorney_id ? { ...a, ...canonicalPatch, name: patch.name ? canonicalizeNameField(patch.name, PERSON_NAME_POLICY_ID) : a.name, firm: patch.firm ? canonicalizeNameField(patch.firm, ORGANIZATION_POLICY_ID) : a.firm } : a,
           ),
         },
       };
@@ -726,6 +749,9 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_WITNESS": {
       const witness: Witness = {
         ...action.payload.witness,
+        name: canonicalizeNameField(action.payload.witness.name, PERSON_NAME_POLICY_ID),
+        employer: canonicalizeNameField(action.payload.witness.employer, ORGANIZATION_POLICY_ID),
+        corporate_entity: canonicalizeOrganization(action.payload.witness.corporate_entity),
         phone: canonicalizePhoneValue(action.payload.witness.phone),
         witness_id: newId("wit"),
       };
@@ -766,7 +792,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           witnesses: state.record.witnesses.map((w) =>
-            w.witness_id === witness_id ? { ...w, ...canonicalPatch } : w,
+            w.witness_id === witness_id ? { ...w, ...canonicalPatch, name: patch.name ? canonicalizeNameField(patch.name, PERSON_NAME_POLICY_ID) : w.name, employer: patch.employer ? canonicalizeNameField(patch.employer, ORGANIZATION_POLICY_ID) : w.employer, corporate_entity: patch.corporate_entity !== undefined ? canonicalizeOrganization(patch.corporate_entity) : w.corporate_entity } : w,
           ),
         },
       };
@@ -777,6 +803,8 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_INTERPRETER": {
       const interpreter: Interpreter = {
         ...action.payload.interpreter,
+        name: canonicalizeNameField(action.payload.interpreter.name, PERSON_NAME_POLICY_ID),
+        agency: canonicalizeOrganization(action.payload.interpreter.agency),
         phone: canonicalizePhoneValue(action.payload.interpreter.phone),
         interpreter_id: newId("interp"),
       };
@@ -817,7 +845,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           interpreters: state.record.interpreters.map((i) =>
-            i.interpreter_id === interpreter_id ? { ...i, ...canonicalPatch } : i,
+            i.interpreter_id === interpreter_id ? { ...i, ...canonicalPatch, name: patch.name ? canonicalizeNameField(patch.name, PERSON_NAME_POLICY_ID) : i.name, agency: patch.agency !== undefined ? canonicalizeOrganization(patch.agency) : i.agency } : i,
           ),
         },
       };
@@ -828,6 +856,8 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_VIDEOGRAPHER": {
       const videographer: Videographer = {
         ...action.payload.videographer,
+        name: canonicalizeNameField(action.payload.videographer.name, PERSON_NAME_POLICY_ID),
+        firm: canonicalizeNameField(action.payload.videographer.firm, ORGANIZATION_POLICY_ID),
         phone: canonicalizePhoneValue(action.payload.videographer.phone),
         videographer_id: newId("vid"),
       };
@@ -868,7 +898,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           videographers: state.record.videographers.map((v) =>
-            v.videographer_id === videographer_id ? { ...v, ...canonicalPatch } : v,
+            v.videographer_id === videographer_id ? { ...v, ...canonicalPatch, name: patch.name ? canonicalizeNameField(patch.name, PERSON_NAME_POLICY_ID) : v.name, firm: patch.firm ? canonicalizeNameField(patch.firm, ORGANIZATION_POLICY_ID) : v.firm } : v,
           ),
         },
       };
@@ -879,6 +909,8 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_PARTICIPANT": {
       const participant: Participant = {
         ...action.payload.participant,
+        name: canonicalizeNameField(action.payload.participant.name, PERSON_NAME_POLICY_ID),
+        organization: canonicalizeOrganization(action.payload.participant.organization),
         phone: canonicalizePhoneValue(action.payload.participant.phone),
         participant_id: newId("part"),
       };
@@ -919,7 +951,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           participants: state.record.participants.map((p) =>
-            p.participant_id === participant_id ? { ...p, ...canonicalPatch } : p,
+            p.participant_id === participant_id ? { ...p, ...canonicalPatch, name: patch.name ? canonicalizeNameField(patch.name, PERSON_NAME_POLICY_ID) : p.name, organization: patch.organization !== undefined ? canonicalizeOrganization(patch.organization) : p.organization } : p,
           ),
         },
       };
