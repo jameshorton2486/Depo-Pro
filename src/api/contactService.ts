@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "../lib/supabase";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
+import { ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   createMockContact,
@@ -34,6 +35,17 @@ function normalizeContactDetailsForWrite(details: Contact["details"]): Contact["
     ...details,
     direct_phone: details.direct_phone ? normalizePhone(details.direct_phone) : details.direct_phone,
     fax: details.fax ? normalizePhone(details.fax) : details.fax,
+  };
+}
+
+export function canonicalizeContactInsertForWrite(payload: ContactInsert): ContactInsert {
+  const normalized = normalizeContactInsert(payload);
+  return {
+    ...normalized,
+    name: canonicalizeGovernedName(PERSON_NAME_POLICY_ID, normalized.name)!,
+    organization: canonicalizeGovernedName(ORGANIZATION_POLICY_ID, normalized.organization) ?? "",
+    phone: normalizePhone(normalized.phone),
+    details: normalizeContactDetailsForWrite(normalized.details),
   };
 }
 
@@ -100,12 +112,7 @@ export async function getContact(id: string): Promise<Contact | null> {
 }
 
 export async function createContact(payload: ContactInsert): Promise<Contact> {
-  const normalized = normalizeContactInsert(payload);
-  const canonicalPayload = {
-    ...normalized,
-    phone: normalizePhone(normalized.phone),
-    details: normalizeContactDetailsForWrite(normalized.details),
-  };
+  const canonicalPayload = canonicalizeContactInsertForWrite(payload);
   if (isMockMode()) {
     return createMockContact(canonicalPayload);
   }
@@ -128,6 +135,8 @@ export async function updateContact(id: string, patch: ContactUpdate): Promise<C
   const normalized = normalizeContactUpdate(current.type, patch);
   const canonicalPatch = {
     ...normalized,
+    ...(normalized.name !== undefined ? { name: canonicalizeGovernedName(PERSON_NAME_POLICY_ID, normalized.name)! } : {}),
+    ...(normalized.organization !== undefined ? { organization: canonicalizeGovernedName(ORGANIZATION_POLICY_ID, normalized.organization) ?? "" } : {}),
     ...(normalized.phone !== undefined ? { phone: normalizePhone(normalized.phone) } : {}),
     ...(normalized.details
       ? { details: normalizeContactDetailsForWrite(normalized.details as Contact["details"]) }

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "../lib/supabase";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
+import { ORGANIZATION_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   createMockFirm,
@@ -12,9 +13,12 @@ import {
 import { decideFirmUpsert, type DirectoryMergeConflict } from "../lib/directory/mergeDirectoryRecords";
 import { normalizeFirmInsert, normalizeFirmRow, normalizeFirmUpdate, type Firm, type FirmInsert, type FirmUpdate } from "../types/firm";
 
-function canonicalizeFirmPhones<T extends FirmInsert | FirmUpdate>(value: T): T {
+export function canonicalizeFirmFields<T extends FirmInsert | FirmUpdate>(value: T): T {
   return {
     ...value,
+    ...("name" in value && value.name !== undefined
+      ? { name: canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value.name)! }
+      : {}),
     ...("main_phone" in value && value.main_phone !== undefined
       ? { main_phone: value.main_phone.trim() ? canonicalizePhoneNumber(value.main_phone)! : value.main_phone }
       : {}),
@@ -75,7 +79,7 @@ export async function getFirm(id: string): Promise<Firm | null> {
 }
 
 export async function createFirm(payload: FirmInsert): Promise<Firm> {
-  const canonicalPayload = canonicalizeFirmPhones(payload);
+  const canonicalPayload = canonicalizeFirmFields(payload);
   if (isMockMode()) {
     return createMockFirm(canonicalPayload);
   }
@@ -92,7 +96,7 @@ export async function createFirm(payload: FirmInsert): Promise<Firm> {
 }
 
 export async function updateFirm(id: string, patch: FirmUpdate): Promise<Firm> {
-  const canonicalPatch = canonicalizeFirmPhones(patch);
+  const canonicalPatch = canonicalizeFirmFields(patch);
   if (isMockMode()) {
     return updateMockFirm(id, canonicalPatch);
   }
