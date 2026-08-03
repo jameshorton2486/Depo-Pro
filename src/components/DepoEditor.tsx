@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { DocumentProvider, useDocument } from "../context/DocumentContext";
 import { AudioProvider } from "../context/AudioContext";
 import { EditorProvider, useEditorContext } from "../context/EditorContext";
@@ -8,16 +8,42 @@ import { IntakeProvider } from "../context/IntakeContext";
 import { ConflictProvider } from "./conflict/conflictStore";
 import { KeytermProvider } from "./DeepgramKeytermManager/keytermStore";
 import { Toolbar } from "./Toolbar/Toolbar";
-import { TranscriptEditor } from "./TranscriptEditor/TranscriptEditor";
 import { AudioPlayer } from "./AudioPlayer/AudioPlayer";
 import { RightSidebar } from "./RightSidebar/RightSidebar";
 import { WorkspaceSidebar } from "./WorkspaceSidebar/WorkspaceSidebar";
-import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
-import { TranscriptCreationScreen } from "./TranscriptCreationScreen";
-import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
-import { ExportScreen } from "./ExportScreen/ExportScreen";
-import { CaseBrowserScreen } from "./CaseBrowserScreen";
 import { CaseScopedErrorBoundary } from "./CaseScopedErrorBoundary";
+
+// Stage screens are code-split: each renders for exactly one stage, and the
+// editor screen pulls the heavy TipTap/ProseMirror bundle. Loading them lazily
+// keeps the initial app-shell chunk small and defers the editor bundle until a
+// reporter actually opens the editor/workspace stage. Suspense boundaries are
+// provided by StageRouter and CaseShell below.
+const TranscriptEditor = lazy(() =>
+  import("./TranscriptEditor/TranscriptEditor").then((m) => ({ default: m.TranscriptEditor })),
+);
+const IntakeScreen = lazy(() =>
+  import("./IntakeScreen/IntakeScreen").then((m) => ({ default: m.IntakeScreen })),
+);
+const TranscriptCreationScreen = lazy(() =>
+  import("./TranscriptCreationScreen").then((m) => ({ default: m.TranscriptCreationScreen })),
+);
+const CertificationScreen = lazy(() =>
+  import("./CertificationScreen/CertificationScreen").then((m) => ({ default: m.CertificationScreen })),
+);
+const ExportScreen = lazy(() =>
+  import("./ExportScreen/ExportScreen").then((m) => ({ default: m.ExportScreen })),
+);
+const CaseBrowserScreen = lazy(() =>
+  import("./CaseBrowserScreen").then((m) => ({ default: m.CaseBrowserScreen })),
+);
+
+function ScreenFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500">
+      Loading...
+    </div>
+  );
+}
 import { CaseProvider } from "../context/CaseContext";
 import { useCase } from "../context/useCase";
 import type { DepoEditorConfig } from "../types";
@@ -93,32 +119,30 @@ function StageRouter({
 }) {
   const { stage } = useStage();
 
-  if (stage === "intake") {
-    return <IntakeScreen jobId={activeCaseId} />;
-  }
-
-  if (stage === "creation") {
-    return <TranscriptCreationScreen caseId={activeCaseId} />;
-  }
-
-  if (stage === "workspace") {
-    return <WorkspaceStage config={config} activeCaseId={activeCaseId} />;
-  }
-
   return (
-    <AudioProvider>
-      <DocumentProvider jobId={activeCaseId}>
-        <EditorProvider>
-          {stage === "certification" ? (
-            <CertificationScreen jobId={activeCaseId} />
-          ) : stage === "export" ? (
-            <ExportScreen jobId={activeCaseId} />
-          ) : (
-            <EditorInner config={{ ...config, jobId: activeCaseId }} />
-          )}
-        </EditorProvider>
-      </DocumentProvider>
-    </AudioProvider>
+    <Suspense fallback={<ScreenFallback />}>
+      {stage === "intake" ? (
+        <IntakeScreen jobId={activeCaseId} />
+      ) : stage === "creation" ? (
+        <TranscriptCreationScreen caseId={activeCaseId} />
+      ) : stage === "workspace" ? (
+        <WorkspaceStage config={config} activeCaseId={activeCaseId} />
+      ) : (
+        <AudioProvider>
+          <DocumentProvider jobId={activeCaseId}>
+            <EditorProvider>
+              {stage === "certification" ? (
+                <CertificationScreen jobId={activeCaseId} />
+              ) : stage === "export" ? (
+                <ExportScreen jobId={activeCaseId} />
+              ) : (
+                <EditorInner config={{ ...config, jobId: activeCaseId }} />
+              )}
+            </EditorProvider>
+          </DocumentProvider>
+        </AudioProvider>
+      )}
+    </Suspense>
   );
 }
 
@@ -348,7 +372,9 @@ function CaseShell({ config }: { config: DepoEditorConfig }) {
           initialProvenance={activeProvenance}
         />
       ) : (
-        <CaseBrowserScreen />
+        <Suspense fallback={<ScreenFallback />}>
+          <CaseBrowserScreen />
+        </Suspense>
       )}
       <CaseSwitchDialog />
     </>
