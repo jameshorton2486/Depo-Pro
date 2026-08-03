@@ -1,4 +1,5 @@
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
+import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
 
 // UFM Case Data Model — UI-only types, not part of the API contract.
 // Field names match docs/architecture/UFM_DATA_DICTIONARY.md.
@@ -663,6 +664,18 @@ function normalizePhoneField(
   const normalized = normalizeNullableStringField(input, fallback);
   return { ...normalized, value: canonicalizePhoneNumber(normalized.value) };
 }
+function normalizeGovernedField<T extends string | null>(
+  input: unknown,
+  fallback: ExtractedField<T>,
+  policyId: string,
+): ExtractedField<T> {
+  const normalized = normalizeExtractedField(input, fallback, (value): value is T => typeof value === "string" || value === null);
+  return { ...normalized, value: canonicalizeGovernedName(policyId, normalized.value) as T };
+}
+
+function normalizeGovernedValue(input: unknown, policyId: string): string | null {
+  return canonicalizeGovernedName(policyId, normalizeNullableString(input));
+}
 
 function normalizeStringArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -754,7 +767,7 @@ function normalizePartyFromUnknown(party: unknown, fallbackId: string): CasePart
   return {
     ...defaults,
     party_id: partyId,
-    name: normalizeStringField(source?.name, defaults.name),
+    name: normalizeGovernedField(source?.name, defaults.name, PERSON_NAME_POLICY_ID),
     role: normalizePartyRole(source?.role, defaults.role),
     role_modifier: normalizeNullableStringField(source?.role_modifier, defaults.role_modifier),
     entity_type: normalizeNullableStringField(source?.entity_type, defaults.entity_type),
@@ -785,7 +798,7 @@ function normalizeLawFirmFromUnknown(lawFirm: unknown, fallbackId: string): LawF
   return {
     ...defaults,
     law_firm_id: lawFirmId,
-    name: normalizeStringField(source?.name, defaults.name),
+    name: normalizeGovernedField(source?.name, defaults.name, ORGANIZATION_POLICY_ID),
     address: normalizeNullableStringField(source?.address, defaults.address),
     city: normalizeNullableStringField(source?.city, defaults.city),
     state: normalizeNullableStringField(source?.state, defaults.state),
@@ -857,10 +870,10 @@ function normalizeWitness(witness: unknown, fallbackId: string, legacyFallbacks?
     ...defaults,
     ...source,
     witness_id: witnessId,
-    name: normalizeStringField(source?.name ?? legacyFallbacks?.name ?? defaults.name, defaults.name),
+    name: normalizeGovernedField(source?.name ?? legacyFallbacks?.name ?? defaults.name, defaults.name, PERSON_NAME_POLICY_ID),
     role: normalizeWitnessRole(source?.role ?? legacyFallbacks?.role ?? defaults.role, defaults.role),
     title: normalizeNullableStringField(source?.title, defaults.title),
-    employer: normalizeNullableStringField(source?.employer, defaults.employer),
+    employer: normalizeGovernedField(source?.employer, defaults.employer, ORGANIZATION_POLICY_ID),
     prefix_suffix: normalizeNullableString(source?.prefix_suffix),
     party_affiliation: normalizeNullableRoleField(
       source?.party_affiliation,
@@ -868,7 +881,7 @@ function normalizeWitness(witness: unknown, fallbackId: string, legacyFallbacks?
       ["plaintiff", "defendant", "third_party"] as const,
     ),
     is_corporate_rep: normalizeBoolean(source?.is_corporate_rep),
-    corporate_entity: normalizeNullableString(source?.corporate_entity),
+    corporate_entity: normalizeGovernedValue(source?.corporate_entity, ORGANIZATION_POLICY_ID),
     read_and_sign: normalizeNullableRoleField(
       source?.read_and_sign,
       defaults.read_and_sign,
@@ -1030,8 +1043,8 @@ function normalizeAttorneyFromUnknown(attorney: unknown, fallbackId: string): At
   return normalizeAttorney({
     ...defaults,
     attorney_id: attorneyId,
-    name: normalizeStringField(source?.name, defaults.name),
-    firm: normalizeNullableStringField(source?.firm, defaults.firm),
+    name: normalizeGovernedField(source?.name, defaults.name, PERSON_NAME_POLICY_ID),
+    firm: normalizeGovernedField(source?.firm, defaults.firm, ORGANIZATION_POLICY_ID),
     role: normalizeAttorneyRole(source?.role ?? derivedRole, defaults.role),
     function: functionField,
     representing: normalizeNullableStringField(source?.representing, defaults.representing),
@@ -1069,13 +1082,13 @@ function normalizeInterpreterFromUnknown(interpreter: unknown, fallbackId: strin
   return normalizeInterpreter({
     ...defaults,
     interpreter_id: interpreterId,
-    name: normalizeStringField(source?.name, defaults.name),
+    name: normalizeGovernedField(source?.name, defaults.name, PERSON_NAME_POLICY_ID),
     language_from: typeof source?.language_from === "string" ? source.language_from : defaults.language_from,
     language_to: typeof source?.language_to === "string" ? source.language_to : defaults.language_to,
     oath_administered: typeof source?.oath_administered === "boolean" ? source.oath_administered : null,
     certified: normalizeBoolean(source?.certified),
     cert_number: normalizeNullableString(source?.cert_number),
-    agency: normalizeNullableString(source?.agency),
+    agency: normalizeGovernedValue(source?.agency, ORGANIZATION_POLICY_ID),
     email: normalizeNullableString(source?.email),
     phone: normalizePhoneValue(source?.phone),
   });
@@ -1103,8 +1116,8 @@ function normalizeVideographerFromUnknown(videographer: unknown, fallbackId: str
   return normalizeVideographer({
     ...defaults,
     videographer_id: videographerId,
-    name: normalizeStringField(source?.name, defaults.name),
-    firm: normalizeNullableStringField(source?.firm, defaults.firm),
+    name: normalizeGovernedField(source?.name, defaults.name, PERSON_NAME_POLICY_ID),
+    firm: normalizeGovernedField(source?.firm, defaults.firm, ORGANIZATION_POLICY_ID),
     role_title: normalizeNullableString(source?.role_title),
     cert_number: normalizeNullableString(source?.cert_number),
     email: normalizeNullableString(source?.email),
@@ -1136,7 +1149,7 @@ function normalizeParticipantFromUnknown(participant: unknown, fallbackId: strin
   return {
     ...defaults,
     participant_id: participantId,
-    name: normalizeStringField(source?.name, defaults.name),
+    name: normalizeGovernedField(source?.name, defaults.name, PERSON_NAME_POLICY_ID),
     role:
       role === "REPORTER"
       || role === "ATTORNEY"
@@ -1148,7 +1161,7 @@ function normalizeParticipantFromUnknown(participant: unknown, fallbackId: strin
       || role === "OTHER"
         ? role
         : defaults.role,
-    organization: normalizeNullableString(source?.organization),
+    organization: normalizeGovernedValue(source?.organization, ORGANIZATION_POLICY_ID),
     email: normalizeNullableString(source?.email),
     phone: normalizePhoneValue(source?.phone),
     role_in_this_proceeding: normalizeNullableString(source?.role_in_this_proceeding),
@@ -1233,7 +1246,7 @@ function normalizeCaption(source: unknown, defaults: CaseCaption): CaseCaption {
     case_name: normalizeStringField(caption?.case_name, defaults.case_name),
     case_style: normalizeStringField(caption?.case_style, defaults.case_style),
     case_number: normalizeStringField(caption?.case_number, defaults.case_number),
-    court_name: normalizeStringField(caption?.court_name, defaults.court_name),
+    court_name: normalizeGovernedField(caption?.court_name, defaults.court_name, COURT_POLICY_ID),
     judicial_district: normalizeNullableStringField(caption?.judicial_district, defaults.judicial_district),
     division: normalizeNullableStringField(caption?.division, defaults.division),
     county: normalizeStringField(caption?.county, defaults.county),
@@ -1245,7 +1258,7 @@ function normalizeCaption(source: unknown, defaults: CaseCaption): CaseCaption {
     ),
     venue: normalizeStringField(caption?.venue, defaults.venue),
     department: normalizeNullableStringField(caption?.department, defaults.department),
-    judge_name: normalizeNullableStringField(caption?.judge_name, defaults.judge_name),
+    judge_name: normalizeGovernedField(caption?.judge_name, defaults.judge_name, PERSON_NAME_POLICY_ID),
   };
 }
 
@@ -1277,9 +1290,9 @@ function normalizeProceeding(source: unknown, defaults: Proceeding): Proceeding 
     proceeding_type: proceeding?.proceeding_type === "freelance_deposition" || proceeding?.proceeding_type === "official_court_record"
       ? proceeding.proceeding_type
       : defaults.proceeding_type,
-    ordering_firm: normalizeNullableString(proceeding?.ordering_firm),
-    ordering_contact: normalizeNullableString(proceeding?.ordering_contact),
-    clerk_name: normalizeNullableString(proceeding?.clerk_name),
+    ordering_firm: normalizeGovernedValue(proceeding?.ordering_firm, ORGANIZATION_POLICY_ID),
+    ordering_contact: normalizeGovernedValue(proceeding?.ordering_contact, PERSON_NAME_POLICY_ID),
+    clerk_name: normalizeGovernedValue(proceeding?.clerk_name, PERSON_NAME_POLICY_ID),
     clerk_badge: normalizeNullableString(proceeding?.clerk_badge),
     filing_deadline: normalizeNullableString(proceeding?.filing_deadline),
     notes: normalizeNullableString(proceeding?.notes),
@@ -1293,8 +1306,8 @@ function normalizeScheduling(source: unknown, defaults: SchedulingMetadata): Sch
     remote_platform: normalizeNullableStringField(scheduling?.remote_platform, defaults.remote_platform),
     noticing_party: normalizeNullableStringField(scheduling?.noticing_party, defaults.noticing_party),
     ordered_by: normalizeNullableStringField(scheduling?.ordered_by, defaults.ordered_by),
-    scheduler: normalizeNullableStringField(scheduling?.scheduler, defaults.scheduler),
-    scheduling_contact: normalizeNullableStringField(scheduling?.scheduling_contact, defaults.scheduling_contact),
+    scheduler: normalizeGovernedField(scheduling?.scheduler, defaults.scheduler, PERSON_NAME_POLICY_ID),
+    scheduling_contact: normalizeGovernedField(scheduling?.scheduling_contact, defaults.scheduling_contact, PERSON_NAME_POLICY_ID),
     service_type: normalizeNullableStringField(scheduling?.service_type, defaults.service_type),
     time_zone: normalizeNullableStringField(scheduling?.time_zone, defaults.time_zone),
     remote_location: normalizeNullableStringField(scheduling?.remote_location, defaults.remote_location),
@@ -1328,17 +1341,17 @@ function normalizeReporterRequests(source: unknown, defaults: ReporterRequestMet
 function normalizeReporter(source: unknown, defaults: Reporter): Reporter {
   const reporter = isRecord(source) ? source : null;
   return {
-    name: normalizeStringField(reporter?.name, defaults.name),
+    name: normalizeGovernedField(reporter?.name, defaults.name, PERSON_NAME_POLICY_ID),
     cert_number: normalizeStringField(reporter?.cert_number, defaults.cert_number),
     cert_state: normalizeStringField(reporter?.cert_state, defaults.cert_state),
-    firm: normalizeNullableStringField(reporter?.firm, defaults.firm),
+    firm: normalizeGovernedField(reporter?.firm, defaults.firm, ORGANIZATION_POLICY_ID),
     license_expiration: normalizeNullableStringField(reporter?.license_expiration, defaults.license_expiration),
     firm_registration_number: normalizeNullableStringField(reporter?.firm_registration_number, defaults.firm_registration_number),
     firm_address: normalizeNullableStringField(reporter?.firm_address, defaults.firm_address),
     email: normalizeNullableString(reporter?.email),
     phone: normalizePhoneValue(reporter?.phone),
     notary_required: normalizeBoolean(reporter?.notary_required),
-    notary_name: normalizeNullableString(reporter?.notary_name),
+    notary_name: normalizeGovernedValue(reporter?.notary_name, PERSON_NAME_POLICY_ID),
     notary_commission_expiry: normalizeNullableString(reporter?.notary_commission_expiry),
   };
 }
