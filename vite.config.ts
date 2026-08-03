@@ -48,9 +48,10 @@ export default defineConfig({
     exclude: ['reference/**'],
   },
   build: {
-    // The app shell currently lands just over Vite's default 500 kB warning
-    // threshold after existing manual chunking. Keep the warning floor aligned
-    // to observed output until a larger runtime-validated split is scheduled.
+    // Stage screens are lazy-loaded (see DepoEditor.tsx), so the app-shell
+    // entry chunk is small (~200 kB). The remaining large chunks are all
+    // deferred vendor bundles (editor-core/TipTap, pdf, doc-import) that load
+    // on demand. Keep a 550 kB floor as a regression guard on those bundles.
     chunkSizeWarningLimit: 550,
     rollupOptions: {
       output: {

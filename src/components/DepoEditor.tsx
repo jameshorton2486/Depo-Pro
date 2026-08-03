@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DocumentProvider, useDocument } from "../context/DocumentContext";
 import { AudioProvider } from "../context/AudioContext";
 import { EditorProvider, useEditorContext } from "../context/EditorContext";
@@ -8,16 +8,124 @@ import { IntakeProvider } from "../context/IntakeContext";
 import { ConflictProvider } from "./conflict/conflictStore";
 import { KeytermProvider } from "./DeepgramKeytermManager/keytermStore";
 import { Toolbar } from "./Toolbar/Toolbar";
-import { TranscriptEditor } from "./TranscriptEditor/TranscriptEditor";
 import { AudioPlayer } from "./AudioPlayer/AudioPlayer";
 import { RightSidebar } from "./RightSidebar/RightSidebar";
 import { WorkspaceSidebar } from "./WorkspaceSidebar/WorkspaceSidebar";
-import { IntakeScreen } from "./IntakeScreen/IntakeScreen";
-import { TranscriptCreationScreen } from "./TranscriptCreationScreen";
-import { CertificationScreen } from "./CertificationScreen/CertificationScreen";
-import { ExportScreen } from "./ExportScreen/ExportScreen";
-import { CaseBrowserScreen } from "./CaseBrowserScreen";
 import { CaseScopedErrorBoundary } from "./CaseScopedErrorBoundary";
+
+// Stage screens are code-split: each renders for exactly one stage, and the
+// editor screen pulls the heavy TipTap/ProseMirror bundle. Loading them lazily
+// keeps the initial app-shell chunk small and defers the editor bundle until a
+// reporter actually opens the editor/workspace stage. Suspense boundaries are
+// provided by StageRouter and CaseShell below.
+const TranscriptEditor = lazy(() =>
+  import("./TranscriptEditor/TranscriptEditor").then((m) => ({ default: m.TranscriptEditor })),
+);
+const IntakeScreen = lazy(() =>
+  import("./IntakeScreen/IntakeScreen").then((m) => ({ default: m.IntakeScreen })),
+);
+const TranscriptCreationScreen = lazy(() =>
+  import("./TranscriptCreationScreen").then((m) => ({ default: m.TranscriptCreationScreen })),
+);
+const CertificationScreen = lazy(() =>
+  import("./CertificationScreen/CertificationScreen").then((m) => ({ default: m.CertificationScreen })),
+);
+const ExportScreen = lazy(() =>
+  import("./ExportScreen/ExportScreen").then((m) => ({ default: m.ExportScreen })),
+);
+const CaseBrowserScreen = lazy(() =>
+  import("./CaseBrowserScreen").then((m) => ({ default: m.CaseBrowserScreen })),
+);
+
+// Full-screen Suspense fallback for stage-level screens. Uses the same
+// min-h-screen convention as the app's other top-level loaders (e.g. the
+// "Loading case lifecycle..." state in CaseShell).
+function ScreenFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-500">
+      Loading...
+    </div>
+  );
+}
+
+// Editor-area Suspense fallback: fills the editor pane (flex-1) rather than the
+// viewport, so suspending the editor chunk never resizes an embedded host node.
+function EditorAreaFallback() {
+  return (
+    <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+      Loading editor...
+    </div>
+  );
+}
+
+// A failed dynamic import() surfaces as one of a few browser-specific messages.
+// Match narrowly so this boundary only claims genuine chunk-load failures.
+function isChunkLoadError(error: unknown): boolean {
+  const text = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|chunkloaderror|dynamically imported module/i.test(
+    text,
+  );
+}
+
+// Recovers from a failed dynamic import() of a split chunk — most commonly a
+// stale client requesting a hashed chunk that no longer exists after a deploy.
+// Suspense does not handle promise rejection, so without this boundary the
+// rejection propagates to the React root and bricks the mounted widget.
+//
+// It handles ONLY chunk-load errors; any other render error is re-thrown so it
+// reaches the nearest outer boundary (e.g. CaseScopedErrorBoundary's "Back to
+// Cases"), which this boundary must not mask.
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error): { error: Error } {
+    return { error };
+  }
+
+  componentDidCatch(error: unknown): void {
+    if (isChunkLoadError(error)) {
+      console.error("[DEPO-PRO] Lazy screen chunk failed to load", error);
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      if (!isChunkLoadError(this.state.error)) {
+        // Not a chunk-load failure — let the case/app error boundary handle it.
+        throw this.state.error;
+      }
+      return (
+        <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-slate-100 p-6">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Screen Unavailable</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-900">This screen couldn&apos;t be loaded.</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              A newer version may have been deployed. Reload to fetch the latest.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-5 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Pairs a Suspense fallback with the chunk-load error boundary for one lazy region.
+function LazyRegion({ fallback, children }: { fallback: ReactNode; children: ReactNode }) {
+  return (
+    <ChunkErrorBoundary>
+      <Suspense fallback={fallback}>{children}</Suspense>
+    </ChunkErrorBoundary>
+  );
+}
 import { CaseProvider } from "../context/CaseContext";
 import { useCase } from "../context/useCase";
 import type { DepoEditorConfig } from "../types";
@@ -70,7 +178,12 @@ function EditorInner({ config }: { config: DepoEditorConfig }) {
         <div className="flex-1 min-h-0 flex overflow-hidden">
           <WorkspaceSidebar />
           <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-            <TranscriptEditor readOnly={config.readOnly ?? false} />
+            {/* Inner boundary so loading the editor chunk suspends here and does
+                not unmount the stateful WorkspaceStage above (which would drop
+                its fetched transcript selection and re-run the loading state). */}
+            <LazyRegion fallback={<EditorAreaFallback />}>
+              <TranscriptEditor readOnly={config.readOnly ?? false} />
+            </LazyRegion>
             {(mediaUrl || audioSegments.length > 0) && (
               <AudioPlayer mediaUrl={mediaUrl} duration={duration} audioSegments={audioSegments} />
             )}
@@ -93,32 +206,30 @@ function StageRouter({
 }) {
   const { stage } = useStage();
 
-  if (stage === "intake") {
-    return <IntakeScreen jobId={activeCaseId} />;
-  }
-
-  if (stage === "creation") {
-    return <TranscriptCreationScreen caseId={activeCaseId} />;
-  }
-
-  if (stage === "workspace") {
-    return <WorkspaceStage config={config} activeCaseId={activeCaseId} />;
-  }
-
   return (
-    <AudioProvider>
-      <DocumentProvider jobId={activeCaseId}>
-        <EditorProvider>
-          {stage === "certification" ? (
-            <CertificationScreen jobId={activeCaseId} />
-          ) : stage === "export" ? (
-            <ExportScreen jobId={activeCaseId} />
-          ) : (
-            <EditorInner config={{ ...config, jobId: activeCaseId }} />
-          )}
-        </EditorProvider>
-      </DocumentProvider>
-    </AudioProvider>
+    <LazyRegion fallback={<ScreenFallback />}>
+      {stage === "intake" ? (
+        <IntakeScreen jobId={activeCaseId} />
+      ) : stage === "creation" ? (
+        <TranscriptCreationScreen caseId={activeCaseId} />
+      ) : stage === "workspace" ? (
+        <WorkspaceStage config={config} activeCaseId={activeCaseId} />
+      ) : (
+        <AudioProvider>
+          <DocumentProvider jobId={activeCaseId}>
+            <EditorProvider>
+              {stage === "certification" ? (
+                <CertificationScreen jobId={activeCaseId} />
+              ) : stage === "export" ? (
+                <ExportScreen jobId={activeCaseId} />
+              ) : (
+                <EditorInner config={{ ...config, jobId: activeCaseId }} />
+              )}
+            </EditorProvider>
+          </DocumentProvider>
+        </AudioProvider>
+      )}
+    </LazyRegion>
   );
 }
 
@@ -348,7 +459,9 @@ function CaseShell({ config }: { config: DepoEditorConfig }) {
           initialProvenance={activeProvenance}
         />
       ) : (
-        <CaseBrowserScreen />
+        <LazyRegion fallback={<ScreenFallback />}>
+          <CaseBrowserScreen />
+        </LazyRegion>
       )}
       <CaseSwitchDialog />
     </>
