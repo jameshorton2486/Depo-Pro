@@ -1,4 +1,6 @@
 import type { Attorney, CaseParty, CaseRecord, DeepgramKeyterm, FieldSource, LawFirm, Witness } from "../../types/case";
+import { formatCanonicalField } from "../canonical/CanonicalFormatter";
+import { CAUSE_NUMBER_POLICY_ID, createCauseNumberRegistry } from "../canonical/CauseNumberPolicy";
 import type {
   ExtractedAttorney,
   ExtractedConfidenceValue,
@@ -74,6 +76,28 @@ export interface ExtractionApplication {
 }
 
 const DEFAULT_CONFIDENCE = 0.7;
+function canonicalizeCauseNumber(
+  incoming: ExtractedConfidenceValue<string>,
+): ExtractedConfidenceValue<string> {
+  if (incoming.value == null || !incoming.value.trim()) {
+    return incoming;
+  }
+
+  const result = formatCanonicalField(
+    createCauseNumberRegistry(),
+    CAUSE_NUMBER_POLICY_ID,
+    incoming.value,
+  );
+
+  if (!result.ok) {
+    throw new Error("Cause Number canonicalization failed: " + result.reason);
+  }
+
+  return {
+    value: result.value,
+    confidence: incoming.confidence,
+  };
+}
 
 export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord): ExtractionApplication {
   const fieldUpdates: ExtractionFieldUpdate[] = [];
@@ -87,7 +111,14 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
   const lawFirmAdds: LawFirmAddition[] = [];
   const lawFirmPatches: LawFirmPatch[] = [];
 
-  queueField(fieldUpdates, conflicts, record, "caption.case_number", fields.cause_number, "Case Number");
+  queueField(
+    fieldUpdates,
+    conflicts,
+    record,
+    "caption.case_number",
+    canonicalizeCauseNumber(fields.cause_number),
+    "Case Number",
+  );
   queueField(fieldUpdates, conflicts, record, "caption.case_style", fields.case_style, "Case Style");
 
   if (!cleanupValue(record.caption.case_name.value)) {
