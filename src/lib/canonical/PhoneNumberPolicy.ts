@@ -1,3 +1,4 @@
+import { formatCanonicalField } from "./CanonicalFormatter";
 import { FieldRegistry } from "./FieldRegistry";
 import type { FieldPolicy } from "./FieldPolicy";
 
@@ -57,4 +58,21 @@ export function createPhoneNumberRegistry(): FieldRegistry {
   const registry = new FieldRegistry();
   registry.register(PHONE_NUMBER_POLICY);
   return registry;
+}
+
+export function canonicalizePhoneNumber(rawInput: string | null | undefined): string | null {
+  if (rawInput == null || !rawInput.trim()) {
+    return null;
+  }
+
+  const result = formatCanonicalField(
+    createPhoneNumberRegistry(),
+    PHONE_NUMBER_POLICY_ID,
+    rawInput,
+  );
+  if (!result.ok) {
+    throw new Error(`Phone Number canonicalization failed: ${result.reason}`);
+  }
+
+  return result.value;
 }

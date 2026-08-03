@@ -7,6 +7,7 @@ import type {
   ExtractionFieldUpdate,
   WitnessPatch,
 } from "./applyExtraction";
+import { canonicalizePhoneNumber } from "../canonical/PhoneNumberPolicy";
 
 type PlainAttorneyPatch = {
   attorney_id: string;
@@ -220,7 +221,7 @@ function buildAttorneyCandidate(
     city: split.city || null,
     state: split.state || null,
     zip: split.zip,
-    phone: sanitizeText(phone) || null,
+    phone: canonicalizePhoneNumber(sanitizeText(phone)),
     email: sanitizeText(email) || null,
   };
 }
