@@ -2,6 +2,7 @@ import type { Attorney, CaseParty, CaseRecord, DeepgramKeyterm, FieldSource, Law
 import { formatCanonicalField } from "../canonical/CanonicalFormatter";
 import { CAUSE_NUMBER_POLICY_ID, createCauseNumberRegistry } from "../canonical/CauseNumberPolicy";
 import { canonicalizePhoneNumber } from "../canonical/PhoneNumberPolicy";
+import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../canonical/NamePolicies";
 import type {
   ExtractedAttorney,
   ExtractedConfidenceValue,
@@ -101,6 +102,28 @@ function canonicalizeCauseNumber(
 }
 
 export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord): ExtractionApplication {
+  const evidenceFields = fields;
+  const canonicalField = <T extends string | null>(
+    field: ExtractedConfidenceValue<T>,
+    policyId: string,
+  ): ExtractedConfidenceValue<T> => ({
+    ...field,
+    value: canonicalizeGovernedName(policyId, field.value) as T,
+  });
+  fields = {
+    ...fields,
+    witness: { ...fields.witness, name: canonicalField(fields.witness.name, PERSON_NAME_POLICY_ID) },
+    parties: fields.parties.map((party) => ({ ...party, name: canonicalField(party.name, PERSON_NAME_POLICY_ID) })),
+    attorneys: fields.attorneys.map((attorney) => ({
+      ...attorney,
+      name: canonicalField(attorney.name, PERSON_NAME_POLICY_ID),
+      firm: canonicalField(attorney.firm, ORGANIZATION_POLICY_ID),
+    })),
+    law_firms: fields.law_firms.map((firm) => ({
+      ...firm,
+      name: canonicalField(firm.name, ORGANIZATION_POLICY_ID),
+    })),
+  };
   const fieldUpdates: ExtractionFieldUpdate[] = [];
   const conflicts: ExtractionConflict[] = [];
   const attorneyAdds: AttorneyAddition[] = [];
@@ -132,7 +155,7 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
     conflicts,
     record,
     "caption.court_name",
-    withConfidence(courtName, maxConfidence(fields.court_name, fields.district, fields.division)),
+    withConfidence(canonicalizeGovernedName(COURT_POLICY_ID, courtName), maxConfidence(fields.court_name, fields.district, fields.division)),
     "Court Name",
   );
   queueField(
@@ -252,7 +275,7 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
     lawFirmAdds,
     lawFirmPatches,
     conflicts,
-    keyterms: buildKeyterms(fields),
+    keyterms: buildKeyterms(evidenceFields),
   };
 }
 
