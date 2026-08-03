@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../lib/supabase";
+import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   createMockFirm,
@@ -10,6 +11,18 @@ import {
 } from "../mocks/directoryStore";
 import { decideFirmUpsert, type DirectoryMergeConflict } from "../lib/directory/mergeDirectoryRecords";
 import { normalizeFirmInsert, normalizeFirmRow, normalizeFirmUpdate, type Firm, type FirmInsert, type FirmUpdate } from "../types/firm";
+
+function canonicalizeFirmPhones<T extends FirmInsert | FirmUpdate>(value: T): T {
+  return {
+    ...value,
+    ...("main_phone" in value && value.main_phone !== undefined
+      ? { main_phone: value.main_phone.trim() ? canonicalizePhoneNumber(value.main_phone)! : value.main_phone }
+      : {}),
+    ...("fax" in value && value.fax !== undefined
+      ? { fax: value.fax.trim() ? canonicalizePhoneNumber(value.fax)! : value.fax }
+      : {}),
+  };
+}
 
 export interface FirmUpsertResult {
   firm: Firm;
@@ -62,11 +75,12 @@ export async function getFirm(id: string): Promise<Firm | null> {
 }
 
 export async function createFirm(payload: FirmInsert): Promise<Firm> {
+  const canonicalPayload = canonicalizeFirmPhones(payload);
   if (isMockMode()) {
-    return createMockFirm(payload);
+    return createMockFirm(canonicalPayload);
   }
   const client = await getSupabaseClient("createFirm");
-  const normalized = normalizeFirmInsert(payload);
+  const normalized = normalizeFirmInsert(canonicalPayload);
   const { data, error } = await client
     .from("firms")
     .insert(normalized)
@@ -78,11 +92,12 @@ export async function createFirm(payload: FirmInsert): Promise<Firm> {
 }
 
 export async function updateFirm(id: string, patch: FirmUpdate): Promise<Firm> {
+  const canonicalPatch = canonicalizeFirmPhones(patch);
   if (isMockMode()) {
-    return updateMockFirm(id, patch);
+    return updateMockFirm(id, canonicalPatch);
   }
   const client = await getSupabaseClient("updateFirm");
-  const normalized = normalizeFirmUpdate(patch);
+  const normalized = normalizeFirmUpdate(canonicalPatch);
   const { data, error } = await client
     .from("firms")
     .update(normalized)
