@@ -1,3 +1,5 @@
+import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
+
 // UFM Case Data Model — UI-only types, not part of the API contract.
 // Field names match docs/architecture/UFM_DATA_DICTIONARY.md.
 // Do not import from src/api/types.ts here; this model is independent.
@@ -650,6 +652,18 @@ function normalizeNullableString(input: unknown, fallback: string | null = null)
   return typeof input === "string" ? input : fallback;
 }
 
+function normalizePhoneValue(input: unknown, fallback: string | null = null): string | null {
+  return canonicalizePhoneNumber(normalizeNullableString(input, fallback));
+}
+
+function normalizePhoneField(
+  input: unknown,
+  fallback = extractedEmpty<string | null>(null),
+): ExtractedField<string | null> {
+  const normalized = normalizeNullableStringField(input, fallback);
+  return { ...normalized, value: canonicalizePhoneNumber(normalized.value) };
+}
+
 function normalizeStringArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -776,8 +790,8 @@ function normalizeLawFirmFromUnknown(lawFirm: unknown, fallbackId: string): LawF
     city: normalizeNullableStringField(source?.city, defaults.city),
     state: normalizeNullableStringField(source?.state, defaults.state),
     zip: normalizeNullableStringField(source?.zip, defaults.zip),
-    phone: normalizeNullableStringField(source?.phone, defaults.phone),
-    fax: normalizeNullableStringField(source?.fax, defaults.fax),
+    phone: normalizePhoneField(source?.phone, defaults.phone),
+    fax: normalizePhoneField(source?.fax, defaults.fax),
     email: normalizeNullableStringField(source?.email, defaults.email),
     represented_party: normalizeNullableStringField(source?.represented_party, defaults.represented_party),
   };
@@ -866,7 +880,7 @@ function normalizeWitness(witness: unknown, fallbackId: string, legacyFallbacks?
       source?.spelling_corrections,
     ),
     email: normalizeNullableString(source?.email),
-    phone: normalizeNullableString(source?.phone),
+    phone: normalizePhoneValue(source?.phone),
   };
 
   return {
@@ -1028,7 +1042,7 @@ function normalizeAttorneyFromUnknown(attorney: unknown, fallbackId: string): At
     zip: normalizeNullableString(source?.zip),
     time_used: normalizeNullableString(source?.time_used),
     email: normalizeNullableString(source?.email),
-    phone: normalizeNullableString(source?.phone),
+    phone: normalizePhoneValue(source?.phone),
   });
 }
 
@@ -1063,7 +1077,7 @@ function normalizeInterpreterFromUnknown(interpreter: unknown, fallbackId: strin
     cert_number: normalizeNullableString(source?.cert_number),
     agency: normalizeNullableString(source?.agency),
     email: normalizeNullableString(source?.email),
-    phone: normalizeNullableString(source?.phone),
+    phone: normalizePhoneValue(source?.phone),
   });
 }
 
@@ -1094,7 +1108,7 @@ function normalizeVideographerFromUnknown(videographer: unknown, fallbackId: str
     role_title: normalizeNullableString(source?.role_title),
     cert_number: normalizeNullableString(source?.cert_number),
     email: normalizeNullableString(source?.email),
-    phone: normalizeNullableString(source?.phone),
+    phone: normalizePhoneValue(source?.phone),
   });
 }
 
@@ -1136,7 +1150,7 @@ function normalizeParticipantFromUnknown(participant: unknown, fallbackId: strin
         : defaults.role,
     organization: normalizeNullableString(source?.organization),
     email: normalizeNullableString(source?.email),
-    phone: normalizeNullableString(source?.phone),
+    phone: normalizePhoneValue(source?.phone),
     role_in_this_proceeding: normalizeNullableString(source?.role_in_this_proceeding),
     notes: normalizeNullableString(source?.notes),
   };
@@ -1322,7 +1336,7 @@ function normalizeReporter(source: unknown, defaults: Reporter): Reporter {
     firm_registration_number: normalizeNullableStringField(reporter?.firm_registration_number, defaults.firm_registration_number),
     firm_address: normalizeNullableStringField(reporter?.firm_address, defaults.firm_address),
     email: normalizeNullableString(reporter?.email),
-    phone: normalizeNullableString(reporter?.phone),
+    phone: normalizePhoneValue(reporter?.phone),
     notary_required: normalizeBoolean(reporter?.notary_required),
     notary_name: normalizeNullableString(reporter?.notary_name),
     notary_commission_expiry: normalizeNullableString(reporter?.notary_commission_expiry),
