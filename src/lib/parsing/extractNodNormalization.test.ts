@@ -45,7 +45,7 @@ describe("extract-nod normalization boundary", () => {
       "service@brainspine-law.com",
     ]);
 
-    expect(fieldUpdateValue(application, "caption.case_number")).toBe("25-cv-00598-OLG");
+    expect(fieldUpdateValue(application, "caption.case_number")).toBe("25-CV-00598-OLG");
     expect(fieldUpdateValue(application, "caption.judicial_district")).toBe("WESTERN DISTRICT OF TEXAS");
     expect(fieldUpdateValue(application, "caption.division")).toBe("SAN ANTONIO DIVISION");
     expect(fieldUpdateValue(application, "session.deposition_date")).toBe("2026-04-30");
