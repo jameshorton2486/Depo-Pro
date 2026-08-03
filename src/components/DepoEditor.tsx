@@ -58,23 +58,42 @@ function EditorAreaFallback() {
   );
 }
 
+// A failed dynamic import() surfaces as one of a few browser-specific messages.
+// Match narrowly so this boundary only claims genuine chunk-load failures.
+function isChunkLoadError(error: unknown): boolean {
+  const text = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return /failed to fetch dynamically imported module|error loading dynamically imported module|importing a module script failed|chunkloaderror|dynamically imported module/i.test(
+    text,
+  );
+}
+
 // Recovers from a failed dynamic import() of a split chunk — most commonly a
 // stale client requesting a hashed chunk that no longer exists after a deploy.
 // Suspense does not handle promise rejection, so without this boundary the
 // rejection propagates to the React root and bricks the mounted widget.
-class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+//
+// It handles ONLY chunk-load errors; any other render error is re-thrown so it
+// reaches the nearest outer boundary (e.g. CaseScopedErrorBoundary's "Back to
+// Cases"), which this boundary must not mask.
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
 
-  static getDerivedStateFromError(): { failed: boolean } {
-    return { failed: true };
+  static getDerivedStateFromError(error: Error): { error: Error } {
+    return { error };
   }
 
   componentDidCatch(error: unknown): void {
-    console.error("[DEPO-PRO] Lazy screen chunk failed to load", error);
+    if (isChunkLoadError(error)) {
+      console.error("[DEPO-PRO] Lazy screen chunk failed to load", error);
+    }
   }
 
   render() {
-    if (this.state.failed) {
+    if (this.state.error) {
+      if (!isChunkLoadError(this.state.error)) {
+        // Not a chunk-load failure — let the case/app error boundary handle it.
+        throw this.state.error;
+      }
       return (
         <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-slate-100 p-6">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
