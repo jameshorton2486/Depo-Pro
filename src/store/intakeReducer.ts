@@ -24,6 +24,23 @@ import type {
 import {
   emptyCaseRecord,
 } from "../types/case";
+import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
+
+function canonicalizePhoneValue(value: string | null): string | null {
+  return value == null || !value.trim() ? value : canonicalizePhoneNumber(value);
+}
+
+function isPhoneFieldPath(path: string): boolean {
+  return path === "reporter.phone"
+    || /^(?:attorneys|witnesses|interpreters|videographers|participants)\[\d+\]\.phone$/.test(path)
+    || /^law_firms\[\d+\]\.(?:phone|fax)$/.test(path);
+}
+
+function canonicalizePathValue(path: string, value: unknown): unknown {
+  if (!isPhoneFieldPath(path)) return value;
+  if (value == null || typeof value === "string") return canonicalizePhoneValue(value ?? null);
+  throw new Error(`Phone field ${path} requires a string or null value`);
+}
 
 // ─── ID generator ─────────────────────────────────────────────────────────────
 // Deterministic prefix + timestamp + random suffix — no external dependency.
@@ -454,12 +471,26 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
 
     case "UPDATE_FIELD": {
       const { path, value, source, confidence_score, force = false } = action.payload;
+      if (path === "reporter.phone") {
+        if (value != null && typeof value !== "string") {
+          throw new Error("Phone field reporter.phone requires a string or null value");
+        }
+        return {
+          ...state,
+          dirty: true,
+          editSeq: state.editSeq + 1,
+          record: {
+            ...state.record,
+            reporter: { ...state.record.reporter, phone: canonicalizePhoneValue(value ?? null) },
+          },
+        };
+      }
       const resolved = resolveExtractedPath<unknown>(state.record, path);
       if (!resolved) return state;
 
       const next = applyFieldUpdate(
         resolved.field,
-        value,
+        canonicalizePathValue(path, value),
         source,
         confidence_score,
         force,
@@ -609,7 +640,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
       if (!resolved) return state;
 
       const next: ExtractedField<unknown> = {
-        value: accepted_value,
+        value: canonicalizePathValue(path, accepted_value),
         source: accepted_source,
         confirmed: true,
         conflict: false,
@@ -644,6 +675,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_ATTORNEY": {
       const attorney: Attorney = {
         ...action.payload.attorney,
+        phone: canonicalizePhoneValue(action.payload.attorney.phone),
         attorney_id: newId("atty"),
       };
       return {
@@ -673,6 +705,9 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
 
     case "UPDATE_ATTORNEY": {
       const { attorney_id, patch } = action.payload;
+      const canonicalPatch = patch.phone !== undefined
+        ? { ...patch, phone: canonicalizePhoneValue(patch.phone) }
+        : patch;
       return {
         ...state,
         dirty: true,
@@ -680,7 +715,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           attorneys: state.record.attorneys.map((a) =>
-            a.attorney_id === attorney_id ? { ...a, ...patch } : a,
+            a.attorney_id === attorney_id ? { ...a, ...canonicalPatch } : a,
           ),
         },
       };
@@ -691,6 +726,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_WITNESS": {
       const witness: Witness = {
         ...action.payload.witness,
+        phone: canonicalizePhoneValue(action.payload.witness.phone),
         witness_id: newId("wit"),
       };
       return {
@@ -720,6 +756,9 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
 
     case "UPDATE_WITNESS": {
       const { witness_id, patch } = action.payload;
+      const canonicalPatch = patch.phone !== undefined
+        ? { ...patch, phone: canonicalizePhoneValue(patch.phone) }
+        : patch;
       return {
         ...state,
         dirty: true,
@@ -727,7 +766,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           witnesses: state.record.witnesses.map((w) =>
-            w.witness_id === witness_id ? { ...w, ...patch } : w,
+            w.witness_id === witness_id ? { ...w, ...canonicalPatch } : w,
           ),
         },
       };
@@ -738,6 +777,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_INTERPRETER": {
       const interpreter: Interpreter = {
         ...action.payload.interpreter,
+        phone: canonicalizePhoneValue(action.payload.interpreter.phone),
         interpreter_id: newId("interp"),
       };
       return {
@@ -767,6 +807,9 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
 
     case "UPDATE_INTERPRETER": {
       const { interpreter_id, patch } = action.payload;
+      const canonicalPatch = patch.phone !== undefined
+        ? { ...patch, phone: canonicalizePhoneValue(patch.phone) }
+        : patch;
       return {
         ...state,
         dirty: true,
@@ -774,7 +817,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           interpreters: state.record.interpreters.map((i) =>
-            i.interpreter_id === interpreter_id ? { ...i, ...patch } : i,
+            i.interpreter_id === interpreter_id ? { ...i, ...canonicalPatch } : i,
           ),
         },
       };
@@ -785,6 +828,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_VIDEOGRAPHER": {
       const videographer: Videographer = {
         ...action.payload.videographer,
+        phone: canonicalizePhoneValue(action.payload.videographer.phone),
         videographer_id: newId("vid"),
       };
       return {
@@ -814,6 +858,9 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
 
     case "UPDATE_VIDEOGRAPHER": {
       const { videographer_id, patch } = action.payload;
+      const canonicalPatch = patch.phone !== undefined
+        ? { ...patch, phone: canonicalizePhoneValue(patch.phone) }
+        : patch;
       return {
         ...state,
         dirty: true,
@@ -821,7 +868,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           videographers: state.record.videographers.map((v) =>
-            v.videographer_id === videographer_id ? { ...v, ...patch } : v,
+            v.videographer_id === videographer_id ? { ...v, ...canonicalPatch } : v,
           ),
         },
       };
@@ -832,6 +879,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
     case "ADD_PARTICIPANT": {
       const participant: Participant = {
         ...action.payload.participant,
+        phone: canonicalizePhoneValue(action.payload.participant.phone),
         participant_id: newId("part"),
       };
       return {
@@ -861,6 +909,9 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
 
     case "UPDATE_PARTICIPANT": {
       const { participant_id, patch } = action.payload;
+      const canonicalPatch = patch.phone !== undefined
+        ? { ...patch, phone: canonicalizePhoneValue(patch.phone) }
+        : patch;
       return {
         ...state,
         dirty: true,
@@ -868,7 +919,7 @@ export function intakeReducer(state: IntakeState, action: IntakeAction): IntakeS
         record: {
           ...state.record,
           participants: state.record.participants.map((p) =>
-            p.participant_id === participant_id ? { ...p, ...patch } : p,
+            p.participant_id === participant_id ? { ...p, ...canonicalPatch } : p,
           ),
         },
       };
