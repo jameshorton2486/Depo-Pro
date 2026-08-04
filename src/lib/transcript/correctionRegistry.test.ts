@@ -89,7 +89,7 @@ describe("DETERMINISTIC_PHRASE_CORRECTIONS", () => {
 
   it("corrects Addiction form to Objection. Form.", () => {
     const rule = DETERMINISTIC_PHRASE_CORRECTIONS.find((r) => r.match === "Addiction form");
-    expect(rule?.replacement).toBe("Objection. Form.");
+    expect(rule?.replacement).toBe("Objection.  Form.");
   });
 });
 

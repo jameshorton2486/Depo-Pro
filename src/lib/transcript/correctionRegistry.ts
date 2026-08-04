@@ -151,7 +151,7 @@ export const DETERMINISTIC_PHRASE_CORRECTIONS: PhraseDeterministicCorrection[] =
   },
   {
     match: "Addiction form",
-    replacement: "Objection. Form.",
+    replacement: "Objection.  Form.",
     reason: "ASR garble of objection — 'Addiction form' never occurs in depositions",
   },
   {

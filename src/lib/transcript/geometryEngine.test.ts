@@ -41,7 +41,7 @@ describe("geometryEngine", () => {
       { paragraph_index: 0, paragraph_id: null, role: "qa", first_line_tab_inches: 0.5, text_tab_inches: 1, continuation_indent_inches: 0 },
       { paragraph_index: 1, paragraph_id: null, role: "qa", first_line_tab_inches: 0.5, text_tab_inches: 1, continuation_indent_inches: 0 },
       { paragraph_index: 2, paragraph_id: null, role: "speaker", first_line_tab_inches: 1.5, text_tab_inches: null, continuation_indent_inches: 0 },
-      { paragraph_index: 3, paragraph_id: null, role: "parenthetical", first_line_tab_inches: 2, text_tab_inches: null, continuation_indent_inches: 0 },
+      { paragraph_index: 3, paragraph_id: null, role: "parenthetical", first_line_tab_inches: 1.5, text_tab_inches: null, continuation_indent_inches: 0 },
       { paragraph_index: 4, paragraph_id: null, role: "centered", first_line_tab_inches: 3.25, text_tab_inches: null, continuation_indent_inches: 0 },
     ]);
   });
@@ -50,7 +50,7 @@ describe("geometryEngine", () => {
     expect(renderBlock(block({ block_type: "Q" }))[0]?.text).toBe("\tQ.\tPlease state your name.");
     expect(renderBlock(block({ block_type: "A", role: "WITNESS", text: "Yes." }))[0]?.text).toBe("\tA.\tYes.");
     expect(renderBlock(block({ block_type: "SP", text: "Please answer." }))[0]?.text).toBe("\t\t\tMR. BENTLEY:  Please answer.");
-    expect(renderBlock(block({ block_type: "PN", text: "(Off the record.)" }))[0]?.text).toBe("\t\t\t\t(Off the record.)");
+    expect(renderBlock(block({ block_type: "PN", text: "(Off the record.)" }))[0]?.text).toBe("\t\t\t(Off the record.)");
   });
 
   it("uses the structured package as a geometry-only layout input", () => {
@@ -79,7 +79,7 @@ describe("geometryEngine", () => {
         paragraph_index: 0,
         paragraph_id: "paragraph:0:utt_geometry_1",
         role: "parenthetical",
-        first_line_tab_inches: 2,
+        first_line_tab_inches: 1.5,
         text_tab_inches: null,
         continuation_indent_inches: 0,
       },
@@ -113,7 +113,7 @@ describe("geometryEngine", () => {
     expect(() => renderBlock(block({ block_type: "Q" }), invalidProfile)).not.toThrow();
   });
   it("reports a geometry violation when a locked tab position is absent", () => {
-    expect(checkGeometry([{ kind: "PN", text: "\t\t\t(Off the record.)" }])).toEqual([
+    expect(checkGeometry([{ kind: "PN", text: "\t\t\t\t(Off the record.)" }])).toEqual([
       expect.objectContaining({ type: "PARENTHETICAL_INDENT", severity: "ERROR" }),
     ]);
   });
