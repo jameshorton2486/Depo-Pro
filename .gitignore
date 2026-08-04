@@ -37,3 +37,8 @@ bolt_export/
 scripts/fixtures/*-real.*
 .vercel
 .env*.local
+
+# Client / deposition material — must NEVER be committed. This is a REVIEWED rule,
+# moved here from the unshared .git/info/exclude (which was hiding it from
+# `git status`). These source documents should live OUTSIDE the code repository.
+Audit/
