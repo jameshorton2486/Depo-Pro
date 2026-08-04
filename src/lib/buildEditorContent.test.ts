@@ -116,6 +116,23 @@ function utteranceAttrsBySpeaker(
   return utterance.attrs as Record<string, unknown>;
 }
 
+function utteranceAttrsByLineRole(
+  content: ReturnType<typeof buildEditorContent>,
+  speakerId: string,
+  lineRole: string,
+) {
+  const utterance = content.content?.find(
+    (node) =>
+      node.type === "utterance" &&
+      node.attrs?.speaker_id === speakerId &&
+      node.attrs?.formatted_line_role === lineRole,
+  );
+  if (!utterance?.attrs) {
+    throw new Error(`Expected "${lineRole}" utterance attrs for speaker "${speakerId}".`);
+  }
+  return utterance.attrs as Record<string, unknown>;
+}
+
 function makeRecord(): CaseRecord {
   return {
     reporter: { name: { value: "Nellie Bardel" } },
@@ -364,9 +381,34 @@ describe("buildEditorContent", () => {
       record: makeRecord(),
     });
 
-    expect(utteranceAttrsBySpeaker(content, "spk-1").role).toBe("ATTORNEY");
-    expect(utteranceAttrsBySpeaker(content, "spk-1").prefix_text).toBe("Q.");
-    expect(utteranceAttrsBySpeaker(content, "spk-1").formatted_line_role).toBe("q");
+    const qAttrs = utteranceAttrsByLineRole(content, "spk-1", "q");
+    expect(qAttrs.role).toBe("ATTORNEY");
+    expect(qAttrs.prefix_text).toBe("Q.");
+    expect(qAttrs.formatted_line_role).toBe("q");
+  });
+
+  it("emits a standalone BY_LINE at the left margin with full \"BY MR. NAME:\" content (F15 / OQ-6)", () => {
+    const doc = makeDoc({
+      speakers: [
+        { speaker_id: "spk-1", display_name: "MR. BENTLEY", deepgram_speaker: 0, role: "ATTORNEY" },
+      ],
+      words: [
+        makeWord("word-1", "State", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+        makeWord("word-2", "your", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+        makeWord("word-3", "name.", { speaker_id: "spk-1", utterance_id: "utt-1" }),
+      ],
+    });
+
+    const content = buildEditorContent(doc, { structureConfirmed: true, record: makeRecord() });
+
+    const byLine = content.content?.find(
+      (node) => node.type === "utterance" && node.attrs?.formatted_line_role === "by_line",
+    );
+    expect(byLine).toBeDefined();
+    // Full "BY MR. NAME:" renders as line content (no prefix); CSS places it at 0".
+    expect(byLine?.attrs?.prefix_text).toBe("");
+    const byLineText = byLine?.content?.map((child) => child.text ?? "").join("") ?? "";
+    expect(byLineText).toContain("BY MR. BENTLEY:");
   });
 
   it("writes WITNESS role into structured utterance attrs for a lines", () => {
