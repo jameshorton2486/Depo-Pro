@@ -12,6 +12,10 @@ import type {
   Utterance,
   Word,
 } from "../../../src/api/types.ts";
+import {
+  resolveSpeakerDisplayName,
+  UNIDENTIFIED_SPEAKER,
+} from "../../../src/lib/transcript/resolveSpeakerDisplayName.ts";
 
 type Database = Record<string, never>;
 
@@ -406,7 +410,7 @@ async function resolveMediaUrl(
 function mapSpeakerRow(row: TranscriptSpeakerRow): Speaker {
   return {
     speaker_id: row.speaker_id,
-    display_name: row.assigned_name || row.display_name || row.speaker_label || "",
+    display_name: resolveSpeakerDisplayName(row),
     deepgram_speaker: row.speaker_index ?? row.deepgram_speaker ?? null,
     role: normalizeSpeakerRole(row.speaker_role ?? row.role),
   };
@@ -1342,8 +1346,8 @@ async function handleGetCertifyStatus(context: RouteContext): Promise<Response> 
   const checklist: CertifyChecklist = {
     review_complete: unreviewedCount === 0,
     speaker_mapping_complete: speakerRows.every((speaker) => {
-      const displayName = (speaker.assigned_name || speaker.display_name || speaker.speaker_label || "").trim();
-      return displayName.length > 0 && Boolean(normalizeSpeakerRole(speaker.speaker_role ?? speaker.role));
+      const isIdentified = resolveSpeakerDisplayName(speaker) !== UNIDENTIFIED_SPEAKER;
+      return isIdentified && Boolean(normalizeSpeakerRole(speaker.speaker_role ?? speaker.role));
     }),
     confidence_review_complete: lowConfidenceUnreviewedCount === 0,
   };
