@@ -48,7 +48,7 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 
 ---
 
-## Please confirm (four points)
+## Please confirm (five points)
 
 **1. Colloquy layout (F1–F5).** Does the colloquy speaker-label position, the two-space colon, and the flush-left wrapping match your standard?
 
@@ -65,6 +65,10 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 **4. Marking of speaker-label changes (A5).** Speaker-label changes will be marked **more prominently** than word changes — because a misattributed answer is the error a read-through is least likely to catch. Confirm or adjust.
 
 > ☐ Confirm ☐ Adjust: ___________________________________________
+
+**5. Left margin — one number has to move (F1).** We settled the colloquy label at **1.5" from the margin = 3.0" from the paper edge**, assuming a **1.5" left margin**. The formatter that's actually deployed uses a **1.25" left margin**, which would put the label at **2.75" from the paper edge**. The fixed point is where the label sits on the printed page. Which is right — should the left margin be **1.5"**, or is the label's paper-edge position different from 3.0"?
+
+> ☐ Left margin should be 1.5" ☐ Other: _______________________ (measure from the printed page)
 
 ---
 
