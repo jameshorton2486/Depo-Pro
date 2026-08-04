@@ -15,7 +15,7 @@ export interface GeometryViolation {
   message: string;
 }
 
-export type GeometryLayoutRole = "qa" | "speaker" | "parenthetical" | "centered";
+export type GeometryLayoutRole = "qa" | "speaker" | "parenthetical" | "centered" | "by_line";
 
 export interface GeometryLayoutLine {
   paragraph_index: number;
@@ -165,6 +165,16 @@ function layoutFor(
     return {
       role: "centered",
       first_line_tab_inches: profile.tabs.centerInches,
+      text_tab_inches: null,
+      continuation_indent_inches: profile.tabs.continuationInches,
+    };
+  }
+
+  if (kind === "BY_LINE") {
+    // F15 / ADR-0012 OQ-6: standalone examination by-line at the left margin (0").
+    return {
+      role: "by_line",
+      first_line_tab_inches: 0,
       text_tab_inches: null,
       continuation_indent_inches: profile.tabs.continuationInches,
     };

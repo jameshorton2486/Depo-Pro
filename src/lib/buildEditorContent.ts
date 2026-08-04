@@ -317,7 +317,10 @@ export function buildEditorContent(
   const paragraphs = buildTranscriptParagraphs(visibleDoc, options?.record, "display");
 
   paragraphs.forEach((paragraph, paragraphIndex) => {
-    if (paragraph.kind === "SECTION_HEADER" || paragraph.kind === "BY_LINE") {
+    // SECTION_HEADER (centered examination header) is not part of the body layer.
+    // BY_LINE IS emitted: a standalone "BY MR. NAME:" line at the left margin (F15 /
+    // ADR-0012 OQ-6), rendered as full line content below.
+    if (paragraph.kind === "SECTION_HEADER") {
       return;
     }
 
@@ -370,7 +373,7 @@ export function buildEditorContent(
           ? "Q."
           : paragraph.kind === "A"
             ? "A."
-            : paragraph.kind === "PARENTHETICAL"
+            : paragraph.kind === "PARENTHETICAL" || paragraph.kind === "BY_LINE"
               ? ""
               : `${paragraph.label}:`,
         line_number: sourceLine?.line_number ?? paragraphIndex + 1,
@@ -393,7 +396,9 @@ export function buildEditorContent(
         tab_center_inches: sourceLine?.geometry.tabs.centerInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.centerInches,
         tab_continuation_inches: sourceLine?.geometry.tabs.continuationInches ?? DEFAULT_GEOMETRY_PROFILE.tabs.continuationInches,
       },
-      content: buildInlineNodes(overlayWords, paragraph.leadingText),
+      content: paragraph.kind === "BY_LINE"
+        ? buildInlineNodes([], paragraph.text)
+        : buildInlineNodes(overlayWords, paragraph.leadingText),
     });
   });
 

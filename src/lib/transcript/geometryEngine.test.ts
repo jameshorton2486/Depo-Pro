@@ -46,6 +46,12 @@ describe("geometryEngine", () => {
     ]);
   });
 
+  it("lays out the standalone BY_LINE at the left margin (0\", F15 / ADR-0012 OQ-6)", () => {
+    expect(buildGeometryLayout([{ kind: "BY_LINE", text: "BY MR. BENTLEY:" }]).lines).toEqual([
+      { paragraph_index: 0, paragraph_id: null, role: "by_line", first_line_tab_inches: 0, text_tab_inches: null, continuation_indent_inches: 0 },
+    ]);
+  });
+
   it("renders the locked Q/A, speaker, and parenthetical tab positions", () => {
     expect(renderBlock(block({ block_type: "Q" }))[0]?.text).toBe("\tQ.\tPlease state your name.");
     expect(renderBlock(block({ block_type: "A", role: "WITNESS", text: "Yes." }))[0]?.text).toBe("\tA.\tYes.");
