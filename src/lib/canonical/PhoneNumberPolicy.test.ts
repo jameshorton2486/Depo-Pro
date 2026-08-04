@@ -29,6 +29,7 @@ describe("Phone Number policy v1.0.0", () => {
     expect(format(input)).toMatchObject({
       ok: true,
       policyId: PHONE_NUMBER_POLICY_ID,
+      policyVersion: PHONE_NUMBER_POLICY_VERSION,
       rawInput: input,
       value: expected,
     });

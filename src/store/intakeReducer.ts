@@ -26,9 +26,10 @@ import {
 } from "../types/case";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
+import { canonicalValue } from "../lib/canonical/FieldResult";
 
 function canonicalizePhoneValue(value: string | null): string | null {
-  return value == null || !value.trim() ? value : canonicalizePhoneNumber(value);
+  return value == null || !value.trim() ? value : canonicalValue(canonicalizePhoneNumber(value));
 }
 
 function isPhoneFieldPath(path: string): boolean {
@@ -51,16 +52,16 @@ function canonicalizePathValue(path: string, value: unknown): unknown {
   }
   const policyId = namePolicyForPath(path);
   if (!policyId) return value;
-  if (value == null || typeof value === "string") return canonicalizeGovernedName(policyId, value);
+  if (value == null || typeof value === "string") return canonicalValue(canonicalizeGovernedName(policyId, value));
   throw new Error(`Governed name field ${path} requires a string or null value`);
 }
 
 function canonicalizeNameField<T extends string | null>(field: ExtractedField<T>, policyId: string): ExtractedField<T> {
-  return { ...field, value: canonicalizeGovernedName(policyId, field.value) as T };
+  return { ...field, value: canonicalValue(canonicalizeGovernedName(policyId, field.value)) as T };
 }
 
 function canonicalizeOrganization(value: string | null): string | null {
-  return canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value);
+  return canonicalValue(canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value));
 }
 
 // ─── ID generator ─────────────────────────────────────────────────────────────

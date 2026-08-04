@@ -3,6 +3,7 @@ import { formatCanonicalField } from "../canonical/CanonicalFormatter";
 import { CAUSE_NUMBER_POLICY_ID, createCauseNumberRegistry } from "../canonical/CauseNumberPolicy";
 import { canonicalizePhoneNumber } from "../canonical/PhoneNumberPolicy";
 import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../canonical/NamePolicies";
+import { canonicalValue } from "../canonical/FieldResult";
 import type {
   ExtractedAttorney,
   ExtractedConfidenceValue,
@@ -108,7 +109,7 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
     policyId: string,
   ): ExtractedConfidenceValue<T> => ({
     ...field,
-    value: canonicalizeGovernedName(policyId, field.value) as T,
+    value: canonicalValue(canonicalizeGovernedName(policyId, field.value)) as T,
   });
   fields = {
     ...fields,
@@ -155,7 +156,7 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
     conflicts,
     record,
     "caption.court_name",
-    withConfidence(canonicalizeGovernedName(COURT_POLICY_ID, courtName), maxConfidence(fields.court_name, fields.district, fields.division)),
+    withConfidence(canonicalValue(canonicalizeGovernedName(COURT_POLICY_ID, courtName)), maxConfidence(fields.court_name, fields.district, fields.division)),
     "Court Name",
   );
   queueField(
@@ -469,7 +470,7 @@ function applyAttorneyExtraction(
       if (!existing.state && valueOf(attorney.state)) patch.state = cleanupValue(valueOf(attorney.state)) || null;
       if (!existing.zip && valueOf(attorney.zip)) patch.zip = cleanupValue(valueOf(attorney.zip)) || null;
       if (!existing.email && valueOf(attorney.email)) patch.email = cleanupValue(valueOf(attorney.email)) || null;
-      if (!existing.phone && valueOf(attorney.phone)) patch.phone = canonicalizePhoneNumber(valueOf(attorney.phone));
+      if (!existing.phone && valueOf(attorney.phone)) patch.phone = canonicalValue(canonicalizePhoneNumber(valueOf(attorney.phone)));
       if (!cleanupValue(existing.role.value)) patch.role = extractedField(resolvedRole, confidenceOf(attorney.side, attorney.representing));
       if (Object.keys(patch).length > 0) {
         attorneyPatches.push({ attorney_id: existing.attorney_id, patch });
@@ -490,7 +491,7 @@ function applyAttorneyExtraction(
         zip: orNull(valueOf(attorney.zip)),
         time_used: null,
         email: orNull(valueOf(attorney.email)),
-        phone: canonicalizePhoneNumber(valueOf(attorney.phone)),
+        phone: canonicalValue(canonicalizePhoneNumber(valueOf(attorney.phone))),
       },
     });
     pendingAttorneys.add(normalized);
@@ -579,8 +580,8 @@ function applyLawFirmExtraction(
       if (!cleanupValue(existing.city.value)) patch.city = extractedField(orNull(valueOf(lawFirm.city)), confidenceOf(lawFirm.city));
       if (!cleanupValue(existing.state.value)) patch.state = extractedField(orNull(valueOf(lawFirm.state)), confidenceOf(lawFirm.state));
       if (!cleanupValue(existing.zip.value)) patch.zip = extractedField(orNull(valueOf(lawFirm.zip)), confidenceOf(lawFirm.zip));
-      if (!cleanupValue(existing.phone.value)) patch.phone = extractedField(canonicalizePhoneNumber(valueOf(lawFirm.phone)), confidenceOf(lawFirm.phone));
-      if (!cleanupValue(existing.fax.value)) patch.fax = extractedField(canonicalizePhoneNumber(valueOf(lawFirm.fax)), confidenceOf(lawFirm.fax));
+      if (!cleanupValue(existing.phone.value)) patch.phone = extractedField(canonicalValue(canonicalizePhoneNumber(valueOf(lawFirm.phone))), confidenceOf(lawFirm.phone));
+      if (!cleanupValue(existing.fax.value)) patch.fax = extractedField(canonicalValue(canonicalizePhoneNumber(valueOf(lawFirm.fax))), confidenceOf(lawFirm.fax));
       if (!cleanupValue(existing.email.value)) patch.email = extractedField(orNull(valueOf(lawFirm.email)), confidenceOf(lawFirm.email));
       if (!cleanupValue(existing.represented_party.value)) patch.represented_party = extractedField(orNull(valueOf(lawFirm.represented_party)), confidenceOf(lawFirm.represented_party));
       if (Object.keys(patch).length > 0) {
@@ -596,8 +597,8 @@ function applyLawFirmExtraction(
         city: extractedField(orNull(valueOf(lawFirm.city)), confidenceOf(lawFirm.city)),
         state: extractedField(orNull(valueOf(lawFirm.state)), confidenceOf(lawFirm.state)),
         zip: extractedField(orNull(valueOf(lawFirm.zip)), confidenceOf(lawFirm.zip)),
-        phone: extractedField(canonicalizePhoneNumber(valueOf(lawFirm.phone)), confidenceOf(lawFirm.phone)),
-        fax: extractedField(canonicalizePhoneNumber(valueOf(lawFirm.fax)), confidenceOf(lawFirm.fax)),
+        phone: extractedField(canonicalValue(canonicalizePhoneNumber(valueOf(lawFirm.phone))), confidenceOf(lawFirm.phone)),
+        fax: extractedField(canonicalValue(canonicalizePhoneNumber(valueOf(lawFirm.fax))), confidenceOf(lawFirm.fax)),
         email: extractedField(orNull(valueOf(lawFirm.email)), confidenceOf(lawFirm.email)),
         represented_party: extractedField(orNull(valueOf(lawFirm.represented_party)), confidenceOf(lawFirm.represented_party)),
       },
