@@ -3,7 +3,7 @@ import { formatCanonicalField } from "../canonical/CanonicalFormatter";
 import { CAUSE_NUMBER_POLICY_ID, createCauseNumberRegistry } from "../canonical/CauseNumberPolicy";
 import { canonicalizePhoneNumber } from "../canonical/PhoneNumberPolicy";
 import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../canonical/NamePolicies";
-import { canonicalValue } from "../canonical/FieldResult";
+import { canonicalValue, provenanceStamp, type FieldProvenanceStamp } from "../canonical/FieldResult";
 import type {
   ExtractedAttorney,
   ExtractedConfidenceValue,
@@ -17,6 +17,12 @@ export interface ExtractionFieldUpdate {
   value: unknown;
   confidence_score: number | null;
   label: string;
+  // CANON-RAW-001 (RAW-B): raw pre-normalization input + policy identity/version
+  // for governed canonical fields (e.g. caption.case_number, caption.court_name).
+  // Null for non-governed fields. Persisted into field_provenance.
+  rawInput?: string | null;
+  policyId?: string | null;
+  policyVersion?: string | null;
 }
 
 export interface ExtractionConflict {
@@ -81,9 +87,9 @@ export interface ExtractionApplication {
 const DEFAULT_CONFIDENCE = 0.7;
 function canonicalizeCauseNumber(
   incoming: ExtractedConfidenceValue<string>,
-): ExtractedConfidenceValue<string> {
+): { field: ExtractedConfidenceValue<string>; provenance: FieldProvenanceStamp | null } {
   if (incoming.value == null || !incoming.value.trim()) {
-    return incoming;
+    return { field: incoming, provenance: null };
   }
 
   const result = formatCanonicalField(
@@ -97,8 +103,15 @@ function canonicalizeCauseNumber(
   }
 
   return {
-    value: result.value,
-    confidence: incoming.confidence,
+    field: {
+      value: result.value,
+      confidence: incoming.confidence,
+    },
+    provenance: {
+      rawInput: result.rawInput,
+      policyId: result.policyId,
+      policyVersion: result.policyVersion,
+    },
   };
 }
 
@@ -136,13 +149,15 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
   const lawFirmAdds: LawFirmAddition[] = [];
   const lawFirmPatches: LawFirmPatch[] = [];
 
+  const causeNumber = canonicalizeCauseNumber(fields.cause_number);
   queueField(
     fieldUpdates,
     conflicts,
     record,
     "caption.case_number",
-    canonicalizeCauseNumber(fields.cause_number),
+    causeNumber.field,
     "Case Number",
+    causeNumber.provenance,
   );
   queueField(fieldUpdates, conflicts, record, "caption.case_style", fields.case_style, "Case Style");
 
@@ -151,13 +166,15 @@ export function applyExtraction(fields: ExtractedNODFields, record: CaseRecord):
   }
 
   const courtName = composeCourtName(fields);
+  const courtCanonical = canonicalizeGovernedName(COURT_POLICY_ID, courtName);
   queueField(
     fieldUpdates,
     conflicts,
     record,
     "caption.court_name",
-    withConfidence(canonicalValue(canonicalizeGovernedName(COURT_POLICY_ID, courtName)), maxConfidence(fields.court_name, fields.district, fields.division)),
+    withConfidence(canonicalValue(courtCanonical), maxConfidence(fields.court_name, fields.district, fields.division)),
     "Court Name",
+    provenanceStamp(courtCanonical),
   );
   queueField(
     fieldUpdates,
@@ -887,6 +904,7 @@ function queueField(
   path: string,
   incoming: ExtractedConfidenceValue<unknown>,
   label: string,
+  provenance?: FieldProvenanceStamp | null,
 ) {
   const cleanedValue = sanitizeValue(incoming.value);
   if (isEmpty(cleanedValue)) {
@@ -919,6 +937,9 @@ function queueField(
     value: cleanedValue,
     confidence_score: clampConfidence(incoming.confidence),
     label,
+    rawInput: provenance?.rawInput ?? null,
+    policyId: provenance?.policyId ?? null,
+    policyVersion: provenance?.policyVersion ?? null,
   });
 }
 

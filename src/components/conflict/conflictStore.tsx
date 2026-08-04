@@ -14,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { getSupabaseClient } from "../../lib/supabase";
+import type { FieldProvenanceStamp } from "../../lib/canonical/FieldResult";
 import type {
   ConflictState,
   ConflictAction,
@@ -222,6 +223,9 @@ async function fetchHistory(caseId: string, fieldPath: string): Promise<Provenan
       confidence_score: row.confidence_score,
       resolution_user:  row.resolution_user,
       resolved_at:      row.resolved_at,
+      raw_value:        row.raw_value ?? null,
+      policy_id:        row.policy_id ?? null,
+      policy_version:   row.policy_version ?? null,
     }));
   } catch (error) {
     console.error("[DEPO-PRO] Supabase provenance read failed", {
@@ -247,6 +251,7 @@ interface ConflictContextValue {
     value: string,
     source: DisplaySource,
     confidence: number | null,
+    provenance?: FieldProvenanceStamp | null,
   ) => Promise<void>;
 
   detectConflict: (
@@ -303,6 +308,7 @@ export function ConflictProvider({
       value: string,
       source: DisplaySource,
       confidence: number | null,
+      provenance?: FieldProvenanceStamp | null,
     ) => {
       const entry: ProvenanceEntry = {
         id: makeId(),
@@ -318,6 +324,9 @@ export function ConflictProvider({
         confidence_score: confidence,
         resolution_user: "reporter",
         resolved_at: new Date().toISOString(),
+        raw_value: provenance?.rawInput ?? null,
+        policy_id: provenance?.policyId ?? null,
+        policy_version: provenance?.policyVersion ?? null,
       };
       dispatch({ type: "RECORD_EXTRACTION", payload: entry });
       await persistWithState(dispatch, entry);

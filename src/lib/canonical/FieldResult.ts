@@ -52,3 +52,21 @@ export function policyStamp(
 ): string {
   return `${field.policyId}@${field.policyVersion}`;
 }
+
+/**
+ * The persistable provenance triple for a governed field: the verbatim raw input
+ * and the policy identity+version that produced the canonical value. Written into
+ * field_provenance so a certified value is byte-reproducible. CANON-RAW-001.
+ */
+export interface FieldProvenanceStamp {
+  readonly rawInput: string | null;
+  readonly policyId: string | null;
+  readonly policyVersion: string | null;
+}
+
+/** Extracts the persistable provenance stamp from a canonical field (null-safe). */
+export function provenanceStamp(field: CanonicalField | null): FieldProvenanceStamp | null {
+  return field === null
+    ? null
+    : { rawInput: field.rawInput, policyId: field.policyId, policyVersion: field.policyVersion };
+}
