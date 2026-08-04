@@ -64,16 +64,16 @@ describe("AIReviewBanner", () => {
     const { container, cleanup } = renderBanner();
 
     expect(container.textContent).toContain("3 suggestions need review. 2 auto-applied.");
-    expect(container.textContent).toContain("Re-review");
+    expect(container.textContent).toContain("Run AI Review");
     cleanup();
   });
 
-  it("calls workspaceApi.triggerAIReview when Re-review is clicked", async () => {
+  it("calls workspaceApi.triggerAIReview when Run AI Review is clicked", async () => {
     triggerAIReviewMock.mockResolvedValue({ status: "re-review triggered" });
     const { container, cleanup } = renderBanner();
     const button = container.querySelector("button");
 
-    expect(button?.textContent).toContain("Re-review");
+    expect(button?.textContent).toContain("Run AI Review");
 
     await act(async () => {
       button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -83,7 +83,7 @@ describe("AIReviewBanner", () => {
     cleanup();
   });
 
-  it("shows Re-reviewing while the request is pending and re-enables afterwards", async () => {
+  it("shows Running AI Review while the request is pending and re-enables afterwards", async () => {
     let resolveRequest: (() => void) | null = null;
     triggerAIReviewMock.mockImplementation(() => new Promise<void>((resolve) => {
       resolveRequest = resolve;
@@ -96,13 +96,13 @@ describe("AIReviewBanner", () => {
       button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(container.textContent).toContain("Re-reviewing...");
+    expect(container.textContent).toContain("Running AI Review...");
 
     await act(async () => {
       resolveRequest?.();
     });
 
-    expect(container.textContent).toContain("Re-review");
+    expect(container.textContent).toContain("Run AI Review");
     cleanup();
   });
 });

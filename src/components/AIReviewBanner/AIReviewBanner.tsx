@@ -64,7 +64,7 @@ export function AIReviewBanner({
             disabled={reReviewing}
             className="shrink-0 text-[10px] text-blue-600 underline transition-colors hover:text-blue-800 disabled:opacity-50"
           >
-            {reReviewing ? "Re-reviewing..." : "Re-review"}
+            {reReviewing ? "Running AI Review..." : "Run AI Review"}
           </button>
         )}
       </div>
