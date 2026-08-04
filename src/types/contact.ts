@@ -1,3 +1,5 @@
+import type { FieldProvenanceMap } from "../lib/canonical/FieldResult";
+
 export type ContactType =
   | "attorney"
   | "interpreter"
@@ -77,6 +79,8 @@ export interface Contact {
   notes: string;
   firm_id: string | null;
   details: ContactDetails;
+  // CANON-RAW-001 (RAW-D): governed-field provenance (name/organization/phone).
+  provenance?: FieldProvenanceMap;
   created_at: string;
   updated_at: string;
 }
@@ -247,6 +251,9 @@ export function normalizeContactRow(row: RawContactRow): Contact {
     notes: normalizeString(row.notes),
     firm_id: typeof row.firm_id === "string" && row.firm_id.trim() ? row.firm_id : null,
     details: normalizeContactDetails(row.type, row.details),
+    ...(row.provenance && typeof row.provenance === "object"
+      ? { provenance: row.provenance as FieldProvenanceMap }
+      : {}),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

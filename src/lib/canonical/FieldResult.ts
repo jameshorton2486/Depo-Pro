@@ -70,3 +70,19 @@ export function provenanceStamp(field: CanonicalField | null): FieldProvenanceSt
     ? null
     : { rawInput: field.rawInput, policyId: field.policyId, policyVersion: field.policyVersion };
 }
+
+/** A map of field name → provenance stamp, e.g. for a flat directory row. CANON-RAW-001. */
+export type FieldProvenanceMap = Record<string, FieldProvenanceStamp>;
+
+/**
+ * Builds a provenance map from named canonical fields, omitting entries whose
+ * field is null (no governed value written). CANON-RAW-001 (RAW-D).
+ */
+export function provenanceMap(fields: Record<string, CanonicalField | null>): FieldProvenanceMap {
+  const map: FieldProvenanceMap = {};
+  for (const [key, field] of Object.entries(fields)) {
+    const stamp = provenanceStamp(field);
+    if (stamp) map[key] = stamp;
+  }
+  return map;
+}

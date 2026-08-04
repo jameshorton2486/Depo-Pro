@@ -1,7 +1,7 @@
 import { getSupabaseClient } from "../lib/supabase";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
-import { canonicalValue } from "../lib/canonical/FieldResult";
+import { canonicalValue, provenanceMap } from "../lib/canonical/FieldResult";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   createMockContact,
@@ -41,12 +41,18 @@ function normalizeContactDetailsForWrite(details: Contact["details"]): Contact["
 
 export function canonicalizeContactInsertForWrite(payload: ContactInsert): ContactInsert {
   const normalized = normalizeContactInsert(payload);
+  // Capture the canonical fields (RAW-D) so raw + policy stamp persist alongside
+  // the normalized values, instead of being discarded via canonicalValue().
+  const nameCf = canonicalizeGovernedName(PERSON_NAME_POLICY_ID, normalized.name);
+  const orgCf = canonicalizeGovernedName(ORGANIZATION_POLICY_ID, normalized.organization);
+  const phoneCf = normalized.phone.trim() ? canonicalizePhoneNumber(normalized.phone) : null;
   return {
     ...normalized,
-    name: canonicalValue(canonicalizeGovernedName(PERSON_NAME_POLICY_ID, normalized.name))!,
-    organization: canonicalValue(canonicalizeGovernedName(ORGANIZATION_POLICY_ID, normalized.organization)) ?? "",
-    phone: normalizePhone(normalized.phone),
+    name: canonicalValue(nameCf)!,
+    organization: canonicalValue(orgCf) ?? "",
+    phone: phoneCf ? canonicalValue(phoneCf)! : normalized.phone,
     details: normalizeContactDetailsForWrite(normalized.details),
+    provenance: provenanceMap({ name: nameCf, organization: orgCf, phone: phoneCf }),
   };
 }
 
@@ -134,14 +140,21 @@ export async function updateContact(id: string, patch: ContactUpdate): Promise<C
     throw new Error(`Contact ${id} not found.`);
   }
   const normalized = normalizeContactUpdate(current.type, patch);
+  const nameCf = normalized.name !== undefined ? canonicalizeGovernedName(PERSON_NAME_POLICY_ID, normalized.name) : null;
+  const orgCf = normalized.organization !== undefined ? canonicalizeGovernedName(ORGANIZATION_POLICY_ID, normalized.organization) : null;
+  const phoneCf = normalized.phone !== undefined && normalized.phone.trim() ? canonicalizePhoneNumber(normalized.phone) : null;
+  // Merge the patched fields' provenance into the existing map so unchanged
+  // fields keep their stored provenance (RAW-D).
+  const mergedProvenance = { ...(current.provenance ?? {}), ...provenanceMap({ name: nameCf, organization: orgCf, phone: phoneCf }) };
   const canonicalPatch = {
     ...normalized,
-    ...(normalized.name !== undefined ? { name: canonicalValue(canonicalizeGovernedName(PERSON_NAME_POLICY_ID, normalized.name))! } : {}),
-    ...(normalized.organization !== undefined ? { organization: canonicalValue(canonicalizeGovernedName(ORGANIZATION_POLICY_ID, normalized.organization)) ?? "" } : {}),
-    ...(normalized.phone !== undefined ? { phone: normalizePhone(normalized.phone) } : {}),
+    ...(normalized.name !== undefined ? { name: canonicalValue(nameCf)! } : {}),
+    ...(normalized.organization !== undefined ? { organization: canonicalValue(orgCf) ?? "" } : {}),
+    ...(normalized.phone !== undefined ? { phone: normalized.phone.trim() ? canonicalValue(phoneCf)! : normalized.phone } : {}),
     ...(normalized.details
       ? { details: normalizeContactDetailsForWrite(normalized.details as Contact["details"]) }
       : {}),
+    ...(Object.keys(mergedProvenance).length > 0 ? { provenance: mergedProvenance } : {}),
   };
   if (isMockMode()) {
     return updateMockContact(id, canonicalPatch);

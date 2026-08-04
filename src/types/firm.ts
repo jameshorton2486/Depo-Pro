@@ -1,3 +1,5 @@
+import type { FieldProvenanceMap } from "../lib/canonical/FieldResult";
+
 export interface Firm {
   id: string;
   name: string;
@@ -7,6 +9,8 @@ export interface Firm {
   zip: string;
   main_phone: string;
   fax: string;
+  // CANON-RAW-001 (RAW-D): governed-field provenance (name/main_phone/fax).
+  provenance?: FieldProvenanceMap;
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +34,9 @@ export function normalizeFirmRow(row: RawFirmRow): Firm {
     zip: normalizeString(row.zip),
     main_phone: normalizeString(row.main_phone),
     fax: normalizeString(row.fax),
+    ...(row.provenance && typeof row.provenance === "object"
+      ? { provenance: row.provenance as FieldProvenanceMap }
+      : {}),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -44,6 +51,8 @@ export function normalizeFirmInsert(payload: FirmInsert): FirmInsert {
     zip: normalizeString(payload.zip),
     main_phone: normalizeString(payload.main_phone),
     fax: normalizeString(payload.fax),
+    // Preserve provenance attached by canonicalizeFirmFields (RAW-D).
+    ...(payload.provenance ? { provenance: payload.provenance } : {}),
   };
 }
 
@@ -57,6 +66,7 @@ export function normalizeFirmUpdate(payload: FirmUpdate): FirmUpdate {
   if ("zip" in payload) normalized.zip = normalizeString(payload.zip);
   if ("main_phone" in payload) normalized.main_phone = normalizeString(payload.main_phone);
   if ("fax" in payload) normalized.fax = normalizeString(payload.fax);
+  if ("provenance" in payload && payload.provenance) normalized.provenance = payload.provenance;
 
   return normalized;
 }
