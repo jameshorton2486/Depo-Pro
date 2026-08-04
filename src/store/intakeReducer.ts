@@ -26,7 +26,7 @@ import {
 } from "../types/case";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
-import { canonicalValue } from "../lib/canonical/FieldResult";
+import { canonicalValue, provenanceStamp } from "../lib/canonical/FieldResult";
 
 function canonicalizePhoneValue(value: string | null): string | null {
   return value == null || !value.trim() ? value : canonicalValue(canonicalizePhoneNumber(value));
@@ -57,7 +57,12 @@ function canonicalizePathValue(path: string, value: unknown): unknown {
 }
 
 function canonicalizeNameField<T extends string | null>(field: ExtractedField<T>, policyId: string): ExtractedField<T> {
-  return { ...field, value: canonicalValue(canonicalizeGovernedName(policyId, field.value)) as T };
+  // CANON-RAW-001 (RAW-C): capture the raw input + policy stamp at write time
+  // instead of discarding it via canonicalValue(). Preserved on hydration.
+  const canonical = canonicalizeGovernedName(policyId, field.value);
+  const provenance = provenanceStamp(canonical) ?? field.provenance;
+  const value = canonicalValue(canonical) as T;
+  return provenance ? { ...field, value, provenance } : { ...field, value };
 }
 
 function canonicalizeOrganization(value: string | null): string | null {

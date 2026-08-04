@@ -44,6 +44,30 @@ describe("manual canonical name writers", () => {
     expect(next.record.attorneys[0]?.firm.value).toBe("Northstar Hardware LLC");
   });
 
+  it("stamps raw provenance on canonicalized name/firm writes (RAW-C)", () => {
+    const next = intakeReducer(state(), {
+      type: "ADD_ATTORNEY",
+      payload: { attorney: {
+        name: field("DELIA GARZA"), firm: field("northstar hardware llc"), role: field("OTHER"),
+        representing: field(null), bar_number: field(null), address: null, city: null,
+        state: null, zip: null, time_used: null, email: null, phone: null,
+      } },
+    });
+    const attorney = next.record.attorneys[0];
+    expect(attorney?.name.value).toBe("Delia Garza");
+    expect(attorney?.name.provenance).toEqual({
+      rawInput: "DELIA GARZA",
+      policyId: "intake.person_name",
+      policyVersion: "1.0.0",
+    });
+    expect(attorney?.firm.value).toBe("Northstar Hardware LLC");
+    expect(attorney?.firm.provenance).toEqual({
+      rawInput: "northstar hardware llc",
+      policyId: "intake.organization",
+      policyVersion: "1.0.0",
+    });
+  });
+
   it("preserves uncertain mixed-case and punctuated identities", () => {
     const next = intakeReducer(state(), {
       type: "ADD_PARTICIPANT",

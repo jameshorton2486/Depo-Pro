@@ -1,6 +1,6 @@
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
-import { canonicalValue } from "../lib/canonical/FieldResult";
+import { canonicalValue, type FieldProvenanceStamp } from "../lib/canonical/FieldResult";
 
 // UFM Case Data Model — UI-only types, not part of the API contract.
 // Field names match docs/architecture/UFM_DATA_DICTIONARY.md.
@@ -34,6 +34,11 @@ export interface ExtractedField<T> {
   confirmed: boolean;      // reporter has explicitly confirmed this value
   conflict: boolean;       // value conflicts with another source
   confidence_score: number | null; // 0.0–1.0 if source === "extracted", else null
+  // CANON-RAW-001 (RAW-C): raw pre-normalization input + policy identity/version
+  // for governed canonical fields (person/org/court names, etc.). Set at write
+  // time; preserved verbatim on hydration (never re-derived from the canonical
+  // value). Absent on non-governed fields and legacy pre-RAW-C rows.
+  provenance?: FieldProvenanceStamp;
 }
 
 // ─── Proceeding type ─────────────────────────────────────────────────────────
@@ -597,6 +602,15 @@ function normalizeFieldSource(value: unknown): FieldSource {
   return value === "manual" || value === "extracted" || value === "imported" ? value : "manual";
 }
 
+function normalizeProvenance(input: unknown): FieldProvenanceStamp | undefined {
+  if (!isRecord(input)) return undefined;
+  const rawInput = typeof input.rawInput === "string" ? input.rawInput : null;
+  const policyId = typeof input.policyId === "string" ? input.policyId : null;
+  const policyVersion = typeof input.policyVersion === "string" ? input.policyVersion : null;
+  if (rawInput === null && policyId === null && policyVersion === null) return undefined;
+  return { rawInput, policyId, policyVersion };
+}
+
 function normalizeExtractedField<T>(
   input: unknown,
   fallback: ExtractedField<T>,
@@ -604,13 +618,16 @@ function normalizeExtractedField<T>(
 ): ExtractedField<T> {
   if (isRecord(input) && hasOwn(input, "value")) {
     const value = isValidValue(input.value) ? input.value : fallback.value;
-    return {
+    // Preserve stored raw provenance verbatim (persist-raw). Never fabricated here.
+    const provenance = normalizeProvenance(input.provenance) ?? fallback.provenance;
+    const field: ExtractedField<T> = {
       value,
       source: normalizeFieldSource(input.source),
       confirmed: typeof input.confirmed === "boolean" ? input.confirmed : fallback.confirmed,
       conflict: typeof input.conflict === "boolean" ? input.conflict : fallback.conflict,
       confidence_score: typeof input.confidence_score === "number" ? input.confidence_score : fallback.confidence_score,
     };
+    return provenance ? { ...field, provenance } : field;
   }
 
   if (isValidValue(input)) {
