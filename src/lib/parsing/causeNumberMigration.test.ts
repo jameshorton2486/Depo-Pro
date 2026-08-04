@@ -28,6 +28,9 @@ describe("caption.case_number canonical migration", () => {
       value: "25-CV-00598-OLG",
       confidence_score: 0.87,
       label: "Case Number",
+      rawInput: "25-cv-00598-olg",
+      policyId: "caption.case_number",
+      policyVersion: "1.0.0",
     });
 
     const reduced = intakeReducer(
@@ -63,6 +66,11 @@ describe("caption.case_number canonical migration", () => {
       "25-CV-00598-OLG",
       "Notice",
       0.87,
+      {
+        rawInput: "25-cv-00598-olg",
+        policyId: "caption.case_number",
+        policyVersion: "1.0.0",
+      },
     );
     expect(saveCaseRecord).toHaveBeenCalledWith(reduced.record);
 
@@ -120,7 +128,7 @@ describe("caption.case_number canonical migration", () => {
     }
   });
 
-  it("produces identical applications for lowercase and canonical Cause Numbers", () => {
+  it("normalizes lowercase and canonical Cause Numbers to the same value while preserving each raw input (RAW-B)", () => {
     const lowercase = applyExtraction(
       normalizeFields({ cause_number: "syn-2026-011" }),
       buildRecord(),
@@ -130,6 +138,29 @@ describe("caption.case_number canonical migration", () => {
       buildRecord(),
     );
 
-    expect(lowercase).toEqual(canonical);
+    const lowerUpdate = lowercase.fieldUpdates.find(({ path }) => path === "caption.case_number");
+    const canonUpdate = canonical.fieldUpdates.find(({ path }) => path === "caption.case_number");
+
+    // Canonical value is identical for both inputs...
+    expect(lowerUpdate?.value).toBe("SYN-2026-011");
+    expect(canonUpdate?.value).toBe("SYN-2026-011");
+    // ...but each application preserves its own raw input and policy stamp (CANON-RAW-001 / RAW-B).
+    expect(lowerUpdate?.rawInput).toBe("syn-2026-011");
+    expect(canonUpdate?.rawInput).toBe("SYN-2026-011");
+    expect(lowerUpdate?.policyId).toBe("caption.case_number");
+    expect(lowerUpdate?.policyVersion).toBe("1.0.0");
+  });
+
+  it("carries raw input and policy stamp on the canonical court name (RAW-B)", () => {
+    const application = applyExtraction(
+      normalizeFields({ court_name: { value: "united states district court", confidence: 0.8 } }),
+      buildRecord(),
+    );
+    const courtUpdate = application.fieldUpdates.find(({ path }) => path === "caption.court_name");
+
+    expect(courtUpdate?.value).toBe("United States District Court");
+    expect(courtUpdate?.rawInput).toBe("united states district court");
+    expect(courtUpdate?.policyId).toBe("caption.court_name");
+    expect(courtUpdate?.policyVersion).toBe("1.0.0");
   });
 });

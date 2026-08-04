@@ -28,6 +28,12 @@ export interface ProvenanceEntry {
   confidence_score: number | null;
   resolution_user: string;           // "reporter" for MVP single-user
   resolved_at: string;               // ISO datetime
+  // CANON-RAW-001 (RAW-B): raw input + policy identity/version for governed
+  // fields. Optional — set on 'extracted' events for canonical fields; null/
+  // absent for non-governed fields, other event types, and pre-RAW-B rows.
+  raw_value?: string | null;
+  policy_id?: string | null;
+  policy_version?: string | null;
 }
 
 // ─── Active conflict record ───────────────────────────────────────────────────

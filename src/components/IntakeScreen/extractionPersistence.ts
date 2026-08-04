@@ -22,6 +22,11 @@ type ApplyAndPersistExtractionParams = {
     value: string,
     source: DisplaySource,
     confidence: number | null,
+    provenance?: {
+      rawInput: string | null;
+      policyId: string | null;
+      policyVersion: string | null;
+    } | null,
   ) => void | Promise<void>;
   detectConflict: (
     caseId: string,
@@ -108,7 +113,11 @@ export async function applyAndPersistExtraction({
   applyParsedExtraction(application);
 
   for (const update of application.fieldUpdates) {
-    recordExtraction(caseId, update.path, update.label, String(update.value), sourceLabel, update.confidence_score);
+    recordExtraction(caseId, update.path, update.label, String(update.value), sourceLabel, update.confidence_score, {
+      rawInput: update.rawInput ?? null,
+      policyId: update.policyId ?? null,
+      policyVersion: update.policyVersion ?? null,
+    });
   }
 
   for (const conflict of application.conflicts) {
