@@ -20,7 +20,7 @@ These decisions are binding on all implementation. They change only via a number
 
 **F5 — Colloquy body and wrapping.** Body text begins on the same line as the speaker label. Continuation lines wrap flush to the left margin (0").
 
-**F6 — Stutter rendering.** Stutters render with an em-dash: `I — I`.
+**F6 — Stutter rendering.** Stutters, false starts, and interruptions render as a spaced double hyphen: `I -- I`. *(Amended by [ADR-0011](adr/ADR-0011-stutter-double-hyphen.md); supersedes the original em-dash form, which was Miah's call and was reversed by the owner.)*
 
 **F7 — Objection spacing.** Follows F3. `Objection. Form.` — two spaces.
 
@@ -29,6 +29,10 @@ These decisions are binding on all implementation. They change only via a number
 **F9 — Speaker labels.** Generic placeholders such as "Speaker 0" are never displayed. Display a real name, or a role title (THE REPORTER, THE VIDEOGRAPHER, THE WITNESS, THE COURT). Where neither is known, flag the paragraph for reporter assignment.
 
 **F10 — Paragraph speaker reassignment.** The reporter can select any paragraph and reassign its speaker from a dropdown listing the names and role titles associated with that transcript.
+
+**F11 — Witness answers during objection colloquy.** A witness answering the pending question — including immediately after an objection — renders as an `A.` line, never a `THE WITNESS:` speaker-label block. `THE WITNESS:` (F9) is reserved for genuine non-Q/A colloquy. *(Added by [ADR-0012](adr/ADR-0012-witness-answer-during-objection.md).)*
+
+**F12 — Recess parenthetical.** A videographer "off the record" announcement triggers the canonical parenthetical `(Whereupon, a recess was taken at [time].)`. It is stored as a **reporter-authored notation** (not a Deepgram utterance), its timestamp traces to a verifiable source (the videographer's spoken time preferred; AI inference prohibited), and it is generated deterministically from persisted data. *(Added by [ADR-0013](adr/ADR-0013-recess-parenthetical.md); observes A3/A9.)*
 
 ---
 
@@ -65,6 +69,8 @@ Silent, unrecorded mutation remains prohibited.
 
 ## Still Open
 
-- Miah's visual confirmation of F1–F6 and F9 against the sample document (Prompt D).
+- Miah's visual confirmation of F1–F5 and F9 against the sample document (Prompt D), including the F1 left-margin question (1.25" deployed vs 1.5" reconciled).
+- **Miah to be informed that F6 was amended** (em-dash → `--`) by the owner after she ratified it ([ADR-0011](adr/ADR-0011-stutter-double-hyphen.md)).
+- Still Miah's call (not yet ratified): `THE REPORTER:` vs `THE COURT REPORTER:`, and whether `(continuing)` parentheticals are used at all.
 - Miah's confirmation of the A5 marking approach and the F10 dropdown behavior.
 - Additions to the abbreviation list (A10) — AI proposes, list is curated.
