@@ -1,7 +1,7 @@
 # Colloquy Rendering Findings (retires Prompt B → A2 evidence)
 
 **Branch:** `docs/colloquy-render-findings`
-**Authority:** `docs/architecture/RATIFIED_DECISIONS.md` — F1 (colloquy label 1.5" from a 1.5" margin = 3.0" from paper edge), F6 (stutters render with an em-dash `—`), F8 (line numbers at Certification only).
+**Authority:** `docs/architecture/RATIFIED_DECISIONS.md` — F1 (colloquy label 1.5" from a 1.5" margin = 3.0" from paper edge), F6 (stutters render as spaced `--` per ADR-0011, amending the original em-dash), F8 (line numbers at Certification only).
 
 ## Why Prompt B was retired, not implemented
 
@@ -24,7 +24,9 @@ Neither uses the ratified **three left tabs at 0.5"/1.0"/1.5"** scheme from F1.
 
 ## Ratified decisions violated in DEPLOYED code
 
-1. **F6 — em-dash.** `document_builder.py:343` rewrites every em-dash to `--`. Miah ratified the em-dash for stutters (`I — I`). If this path renders output, it overrides her decision. **Violation.**
+> **Update (ADR-0011):** F6 was amended after this doc was first written — stutters now render as a spaced double hyphen `--`, not an em-dash. `document_builder.py:343` (`replace("—", " -- ")`) therefore **now complies** and is no longer a violation. Two violations remain.
+
+1. **~~F6 — em-dash~~ — RESOLVED.** F6 originally required an em-dash; `document_builder.py:343` rewrote em-dashes to `--`, which *was* a violation. ADR-0011 amended F6 to require `--`, so this path is now correct. What remains is the *other* direction: any formatter that emits an em-dash in stutter/false-start/interruption position is now the defect. Confirm `formatter_core` also emits `--`.
 2. **F8 — line numbering.** `formatter_core/docx_exporter.py:501` stamps line numbers 1–25 on every rendered line, unconditionally. F8 places line numbers **at Certification only**. If `formatter_core` runs pre-certification / for the Workspace, it violates F8. **Violation (pending confirmation of when this formatter runs).**
 3. **F1 — margin/label geometry.** `formatter_core` uses a **1.25"** left margin (`:38`) with the speaker label at `_TAB3 = 1.5"`. That puts the label **2.75" from the paper edge, not 3.0"**. The ratified fixed point ("3.0" from paper edge") assumed a **1.5"** margin. One of the two numbers is wrong. **Needs Miah.**
 
@@ -35,5 +37,5 @@ Neither uses the ratified **three left tabs at 0.5"/1.0"/1.5"** scheme from F1.
 ## Recommendation
 
 - **Retire Prompt B.** It cannot be implemented as written.
-- **Fold this into A2.** When the two `buildTranscriptParagraphs` / DOCX builders are consolidated into one shared intermediate model with thin DOM + DOCX renderers, this document is the delta list the single renderer must satisfy: the F1 tab scheme + margin (pending Miah), F6 em-dash preservation, and F8 Certification-only line numbering.
-- **Do not consolidate before the corpus exists (Prompt E).** Merging two formatters that disagree on three ratified points is exactly the change you cannot make safely without golden before/after fixtures.
+- **Fold this into A2.** When the two `buildTranscriptParagraphs` / DOCX builders are consolidated into one shared intermediate model with thin DOM + DOCX renderers, this document is the delta list the single renderer must satisfy: the F1 tab scheme + margin (pending Miah), F6-amended `--` rendering (ADR-0011), and F8 Certification-only line numbering.
+- **Do not consolidate before the corpus exists (Prompt E).** Merging two formatters that disagree on ratified points is exactly the change you cannot make safely without golden before/after fixtures.
