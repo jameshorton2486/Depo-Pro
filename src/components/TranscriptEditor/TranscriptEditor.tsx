@@ -431,12 +431,15 @@ export function TranscriptEditor({ readOnly }: Props) {
         <TranscriptProcessingMenu document={state.document} />
       </div>
       <div className="transcript-page-area">
-        {/* Document caption. In the Canonical Baseline the transcript is NOT
-            certified and carries no court-reporter framing — show a neutral
-            baseline header instead of the certification title. */}
+        {/* Document caption. The Workspace is a working draft and must NOT be
+            labeled "CERTIFIED" before certification (ADR-0012 / OQ-5). The
+            certified title belongs to the certification/export render path.
+            The Canonical Baseline shows a read-only baseline header.
+            NOTE: "WORKING DRAFT — NOT CERTIFIED" is a placeholder pending
+            Miah's confirmed wording (a one-string swap when she confirms). */}
         <div className="transcript-header">
           <p className="transcript-header-title">
-            {isCanonical ? "CANONICAL BASELINE — READ-ONLY" : "CERTIFIED TRANSCRIPT OF DEPOSITION"}
+            {isCanonical ? "CANONICAL BASELINE — READ-ONLY" : "WORKING DRAFT — NOT CERTIFIED"}
           </p>
           {state.document && (
             <p className="transcript-header-meta">
