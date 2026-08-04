@@ -1,7 +1,7 @@
 import { getSupabaseClient } from "../lib/supabase";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { ORGANIZATION_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
-import { canonicalValue } from "../lib/canonical/FieldResult";
+import { canonicalValue, provenanceMap } from "../lib/canonical/FieldResult";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   createMockFirm,
@@ -15,17 +15,24 @@ import { decideFirmUpsert, type DirectoryMergeConflict } from "../lib/directory/
 import { normalizeFirmInsert, normalizeFirmRow, normalizeFirmUpdate, type Firm, type FirmInsert, type FirmUpdate } from "../types/firm";
 
 export function canonicalizeFirmFields<T extends FirmInsert | FirmUpdate>(value: T): T {
+  // Capture canonical fields (RAW-D) so raw + policy stamp persist as provenance.
+  const nameCf = "name" in value && value.name !== undefined
+    ? canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value.name) : null;
+  const mainPhoneCf = "main_phone" in value && value.main_phone !== undefined && value.main_phone.trim()
+    ? canonicalizePhoneNumber(value.main_phone) : null;
+  const faxCf = "fax" in value && value.fax !== undefined && value.fax.trim()
+    ? canonicalizePhoneNumber(value.fax) : null;
+  const provenance = provenanceMap({ name: nameCf, main_phone: mainPhoneCf, fax: faxCf });
   return {
     ...value,
-    ...("name" in value && value.name !== undefined
-      ? { name: canonicalValue(canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value.name))! }
-      : {}),
+    ...(nameCf ? { name: canonicalValue(nameCf)! } : {}),
     ...("main_phone" in value && value.main_phone !== undefined
-      ? { main_phone: value.main_phone.trim() ? canonicalValue(canonicalizePhoneNumber(value.main_phone))! : value.main_phone }
+      ? { main_phone: mainPhoneCf ? canonicalValue(mainPhoneCf)! : value.main_phone }
       : {}),
     ...("fax" in value && value.fax !== undefined
-      ? { fax: value.fax.trim() ? canonicalValue(canonicalizePhoneNumber(value.fax))! : value.fax }
+      ? { fax: faxCf ? canonicalValue(faxCf)! : value.fax }
       : {}),
+    ...(Object.keys(provenance).length > 0 ? { provenance } : {}),
   };
 }
 
@@ -102,7 +109,11 @@ export async function updateFirm(id: string, patch: FirmUpdate): Promise<Firm> {
     return updateMockFirm(id, canonicalPatch);
   }
   const client = await getSupabaseClient("updateFirm");
-  const normalized = normalizeFirmUpdate(canonicalPatch);
+  // Merge patched-field provenance into the existing map so unchanged fields keep theirs (RAW-D).
+  const payload: FirmUpdate = canonicalPatch.provenance
+    ? { ...canonicalPatch, provenance: { ...((await getFirm(id))?.provenance ?? {}), ...canonicalPatch.provenance } }
+    : canonicalPatch;
+  const normalized = normalizeFirmUpdate(payload);
   const { data, error } = await client
     .from("firms")
     .update(normalized)
