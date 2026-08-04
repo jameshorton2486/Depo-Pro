@@ -37,9 +37,10 @@ describe("formattingEngine", () => {
     expect(result.docx_paragraphs[0]?.text).toContain("(BY MR. BENTLEY)  What happened next?");
   });
 
-  it("formats parentheticals with four tabs", () => {
+  it("formats parentheticals with three tabs (1.5\", aligned with the speaker tab)", () => {
     const result = formatTranscriptBlocks([block({ block_type: "PN", text: "(Whereupon, a recess was taken at 1:00 p.m.)" })]);
-    expect(result.docx_paragraphs[0]?.text.startsWith("\t\t\t\t")).toBe(true);
+    expect(result.docx_paragraphs[0]?.text.startsWith("\t\t\t(")).toBe(true);
+    expect(result.docx_paragraphs[0]?.text.startsWith("\t\t\t\t")).toBe(false);
   });
 
   it("flags speaker paragraphs that are not aligned to the speaker tab", () => {

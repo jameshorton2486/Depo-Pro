@@ -12,7 +12,7 @@ export const DEFAULT_GEOMETRY_PROFILE: GeometryProfile = {
     qaLabelInches: 0.5,
     qaTextInches: 1.0,
     speakerInches: 1.5,
-    parentheticalInches: 2.0,
+    parentheticalInches: 1.5,
     centerInches: 3.25,
     continuationInches: 0,
   },

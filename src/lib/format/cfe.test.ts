@@ -606,7 +606,7 @@ describe("cfe spacing and serialization", () => {
     );
 
     expect(formatted.lines[0].geometry.tabs.speakerInches).toBe(1.5);
-    expect(formatted.lines[0].geometry.tabs.parentheticalInches).toBe(2.0);
+    expect(formatted.lines[0].geometry.tabs.parentheticalInches).toBe(1.5);
   });
 
   it("inserts interruption dashes for repeated single-letter stutters", () => {
