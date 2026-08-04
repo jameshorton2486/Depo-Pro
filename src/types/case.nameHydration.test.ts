@@ -31,4 +31,28 @@ describe("canonical name hydration", () => {
     expect(hydrated.participants[0]?.name.value).toBe("Anne-Marie O'Neal");
     expect(hydrated.participants[0]?.organization).toBe("eBay Legal");
   });
+
+  it("preserves stored raw provenance on hydration without re-deriving it (RAW-C)", () => {
+    const record = emptyCaseRecord("case_provenance_hydration", "2026-08-03T12:00:00.000Z");
+    // Stored wrapper: canonical value + the ORIGINAL raw from write time.
+    record.reporter.name = {
+      value: "Delia Garza",
+      source: "manual",
+      confirmed: false,
+      conflict: false,
+      confidence_score: null,
+      provenance: { rawInput: "DELIA GARZA", policyId: "intake.person_name", policyVersion: "1.0.0" },
+    };
+
+    const hydrated = normalizeCaseRecord(JSON.parse(JSON.stringify(record)) as unknown);
+
+    // Value stays canonical; raw provenance is preserved verbatim — NOT recomputed
+    // from the already-canonical stored value (that would record "Delia Garza" as raw).
+    expect(hydrated.reporter.name.value).toBe("Delia Garza");
+    expect(hydrated.reporter.name.provenance).toEqual({
+      rawInput: "DELIA GARZA",
+      policyId: "intake.person_name",
+      policyVersion: "1.0.0",
+    });
+  });
 });
