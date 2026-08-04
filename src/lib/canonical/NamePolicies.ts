@@ -2,6 +2,7 @@ import { formatCanonicalField } from "./CanonicalFormatter";
 import { FieldRegistry } from "./FieldRegistry";
 import type { FieldKind } from "./FieldKinds";
 import type { FieldPolicy } from "./FieldPolicy";
+import type { CanonicalField } from "./FieldResult";
 
 export const PERSON_NAME_POLICY_ID = "intake.person_name";
 export const ORGANIZATION_POLICY_ID = "intake.organization";
@@ -79,13 +80,23 @@ export const COURT_POLICY = policy(COURT_POLICY_ID, "court", (value) => {
 export function canonicalizeGovernedName(
   policyId: string,
   value: string | null | undefined,
-): string | null {
-  if (value == null || !value.trim()) return value ?? null;
+): CanonicalField | null {
+  if (value == null) return null;
+  // Blank input is a no-op: preserve it verbatim (matching prior behavior) while
+  // still carrying policy identity so raw/version stay available downstream.
+  if (!value.trim()) {
+    return { value, rawInput: value, policyId, policyVersion: NAME_POLICY_VERSION };
+  }
   const registry = new FieldRegistry();
   registry.register(PERSON_NAME_POLICY);
   registry.register(ORGANIZATION_POLICY);
   registry.register(COURT_POLICY);
   const result = formatCanonicalField(registry, policyId, value);
   if (!result.ok) throw new Error(`Name canonicalization failed: ${result.reason}`);
-  return result.value;
+  return {
+    value: result.value,
+    rawInput: result.rawInput,
+    policyId: result.policyId,
+    policyVersion: result.policyVersion,
+  };
 }

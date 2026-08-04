@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { canonicalValue } from "./FieldResult";
 import {
   COURT_POLICY_ID,
   NAME_POLICY_VERSION,
@@ -14,7 +15,7 @@ describe("governed name policies v1.0.0", () => {
     ["AVERY J. QUILL JR.", "Avery J. Quill Jr."],
     ["Avery McCloud", "Avery McCloud"], ["O'NEAL", "O'NEAL"], ["ANNE-MARIE VALE", "ANNE-MARIE VALE"],
   ])("canonicalizes or conservatively preserves person %j", (input, expected) => {
-    expect(canonicalizeGovernedName(PERSON_NAME_POLICY_ID, input)).toBe(expected);
+    expect(canonicalValue(canonicalizeGovernedName(PERSON_NAME_POLICY_ID, input))).toBe(expected);
   });
 
   it.each([
@@ -22,14 +23,14 @@ describe("governed name policies v1.0.0", () => {
     ["northstar hardware llc", "Northstar Hardware LLC"],
     ["eBay Legal", "eBay Legal"],
   ])("canonicalizes organization %j", (input, expected) => {
-    expect(canonicalizeGovernedName(ORGANIZATION_POLICY_ID, input)).toBe(expected);
+    expect(canonicalValue(canonicalizeGovernedName(ORGANIZATION_POLICY_ID, input))).toBe(expected);
   });
 
   it.each([
     ["UNITED STATES DISTRICT COURT FOR THE WESTERN DISTRICT OF TEXAS", "United States District Court for the Western District of Texas"],
     ["synthetic county court at law no. 2", "Synthetic County Court At Law No. 2"],
   ])("canonicalizes court %j without changing wording", (input, expected) => {
-    expect(canonicalizeGovernedName(COURT_POLICY_ID, input)).toBe(expected);
+    expect(canonicalValue(canonicalizeGovernedName(COURT_POLICY_ID, input))).toBe(expected);
   });
 
   it("locks every policy to version 1.0.0", () => {

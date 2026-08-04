@@ -1,6 +1,7 @@
 import { formatCanonicalField } from "./CanonicalFormatter";
 import { FieldRegistry } from "./FieldRegistry";
 import type { FieldPolicy } from "./FieldPolicy";
+import type { CanonicalField } from "./FieldResult";
 
 export const PHONE_NUMBER_POLICY_ID = "intake.phone_number";
 export const PHONE_NUMBER_POLICY_VERSION = "1.0.0";
@@ -60,7 +61,9 @@ export function createPhoneNumberRegistry(): FieldRegistry {
   return registry;
 }
 
-export function canonicalizePhoneNumber(rawInput: string | null | undefined): string | null {
+export function canonicalizePhoneNumber(
+  rawInput: string | null | undefined,
+): CanonicalField | null {
   if (rawInput == null || !rawInput.trim()) {
     return null;
   }
@@ -74,5 +77,10 @@ export function canonicalizePhoneNumber(rawInput: string | null | undefined): st
     throw new Error(`Phone Number canonicalization failed: ${result.reason}`);
   }
 
-  return result.value;
+  return {
+    value: result.value,
+    rawInput: result.rawInput,
+    policyId: result.policyId,
+    policyVersion: result.policyVersion,
+  };
 }

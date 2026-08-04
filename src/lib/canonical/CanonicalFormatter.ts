@@ -24,6 +24,7 @@ export function formatCanonicalField(
     return {
       ok: false,
       policyId,
+      policyVersion: policy.version,
       rawInput,
       reason: outcome.reason,
     };
@@ -32,6 +33,7 @@ export function formatCanonicalField(
   return {
     ok: true,
     policyId,
+    policyVersion: policy.version,
     rawInput,
     value: outcome.value,
   };

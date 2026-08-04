@@ -35,6 +35,7 @@ describe("Cause Number policy v1.0.0", () => {
     ).toEqual({
       ok: false,
       policyId: CAUSE_NUMBER_POLICY_ID,
+      policyVersion: CAUSE_NUMBER_POLICY_VERSION,
       rawInput: "   ",
       reason: "Cause number is empty",
     });

@@ -1,5 +1,6 @@
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
+import { canonicalValue } from "../lib/canonical/FieldResult";
 
 // UFM Case Data Model — UI-only types, not part of the API contract.
 // Field names match docs/architecture/UFM_DATA_DICTIONARY.md.
@@ -654,7 +655,7 @@ function normalizeNullableString(input: unknown, fallback: string | null = null)
 }
 
 function normalizePhoneValue(input: unknown, fallback: string | null = null): string | null {
-  return canonicalizePhoneNumber(normalizeNullableString(input, fallback));
+  return canonicalValue(canonicalizePhoneNumber(normalizeNullableString(input, fallback)));
 }
 
 function normalizePhoneField(
@@ -662,7 +663,7 @@ function normalizePhoneField(
   fallback = extractedEmpty<string | null>(null),
 ): ExtractedField<string | null> {
   const normalized = normalizeNullableStringField(input, fallback);
-  return { ...normalized, value: canonicalizePhoneNumber(normalized.value) };
+  return { ...normalized, value: canonicalValue(canonicalizePhoneNumber(normalized.value)) };
 }
 function normalizeGovernedField<T extends string | null>(
   input: unknown,
@@ -670,11 +671,11 @@ function normalizeGovernedField<T extends string | null>(
   policyId: string,
 ): ExtractedField<T> {
   const normalized = normalizeExtractedField(input, fallback, (value): value is T => typeof value === "string" || value === null);
-  return { ...normalized, value: canonicalizeGovernedName(policyId, normalized.value) as T };
+  return { ...normalized, value: canonicalValue(canonicalizeGovernedName(policyId, normalized.value)) as T };
 }
 
 function normalizeGovernedValue(input: unknown, policyId: string): string | null {
-  return canonicalizeGovernedName(policyId, normalizeNullableString(input));
+  return canonicalValue(canonicalizeGovernedName(policyId, normalizeNullableString(input)));
 }
 
 function normalizeStringArray<T>(value: unknown): T[] {

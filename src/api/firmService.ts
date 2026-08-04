@@ -1,6 +1,7 @@
 import { getSupabaseClient } from "../lib/supabase";
 import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
 import { ORGANIZATION_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
+import { canonicalValue } from "../lib/canonical/FieldResult";
 import { isMockMode } from "../lib/runtime/mode";
 import {
   createMockFirm,
@@ -17,13 +18,13 @@ export function canonicalizeFirmFields<T extends FirmInsert | FirmUpdate>(value:
   return {
     ...value,
     ...("name" in value && value.name !== undefined
-      ? { name: canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value.name)! }
+      ? { name: canonicalValue(canonicalizeGovernedName(ORGANIZATION_POLICY_ID, value.name))! }
       : {}),
     ...("main_phone" in value && value.main_phone !== undefined
-      ? { main_phone: value.main_phone.trim() ? canonicalizePhoneNumber(value.main_phone)! : value.main_phone }
+      ? { main_phone: value.main_phone.trim() ? canonicalValue(canonicalizePhoneNumber(value.main_phone))! : value.main_phone }
       : {}),
     ...("fax" in value && value.fax !== undefined
-      ? { fax: value.fax.trim() ? canonicalizePhoneNumber(value.fax)! : value.fax }
+      ? { fax: value.fax.trim() ? canonicalValue(canonicalizePhoneNumber(value.fax))! : value.fax }
       : {}),
   };
 }

@@ -123,6 +123,7 @@ describe("formatCanonicalField", () => {
     ).toEqual({
       ok: true,
       policyId: "caption.case_number",
+      policyVersion: "1.0.0-test",
       rawInput: " synthetic-001 ",
       value: "SYNTHETIC-001",
     });
@@ -140,6 +141,7 @@ describe("formatCanonicalField", () => {
     expect(formatCanonicalField(registry, "caption.case_number", "INVALID")).toEqual({
       ok: false,
       policyId: "caption.case_number",
+      policyVersion: "1.0.0-test",
       rawInput: "INVALID",
       reason: "Synthetic value rejected",
     });
