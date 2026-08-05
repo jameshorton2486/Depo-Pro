@@ -11,7 +11,11 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "stage:validate": "vitest run src/lib/stageS",
-    "env:audit": "node scripts/audit-env.mjs"
+    "env:audit": "node scripts/audit-env.mjs",
+    "docs:graph": "node scripts/generate-documentation-graph.mjs",
+    "docs:graph:check": "node scripts/generate-documentation-graph.mjs --check",
+    "docs:graph:test": "node --test tests/documentation-graph.test.mjs",
+    "docs:check": "node scripts/verify-documentation.mjs && node --test tests/documentation-graph.test.mjs && node scripts/generate-documentation-graph.mjs --check"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

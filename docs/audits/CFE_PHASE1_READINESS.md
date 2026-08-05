@@ -87,7 +87,7 @@ If further Phase 1 work is done, the safest insertion/refactor point is still [s
 
 - `classifyUtteranceParagraphs()` at [src/lib/format/cfe.ts:62](/C:/Users/james/Projects/Depo-Pro/src/lib/format/cfe.ts:62)
 - current logic is actually segmentation-by-speaker-runs, not full DP-012 paragraph authority
-- hard paragraph breaks inside testimony remain only partially representable per [ERROR_COVERAGE_MATRIX.md](/C:/Users/james/Projects/Depo-Pro/ERROR_COVERAGE_MATRIX.md:27)
+- hard paragraph breaks inside testimony remain only partially representable per [docs/audits/ERROR_COVERAGE_MATRIX.md](/C:/Users/james/Projects/Depo-Pro/docs/audits/ERROR_COVERAGE_MATRIX.md:27)
 
 ### Geometry
 
@@ -158,12 +158,12 @@ Basis:
 
 - `EditorDocument` already contains the input identity/timing fields CFE needs: [src/api/types.ts:36](/C:/Users/james/Projects/Depo-Pro/src/api/types.ts:36)
 - current CFE is a pure in-memory transform: [src/lib/format/cfe.ts:200](/C:/Users/james/Projects/Depo-Pro/src/lib/format/cfe.ts:200)
-- phase-0 and data-reality audits already concluded CFE Phase 1 can begin without schema work: [CFE_PHASE0_FINDINGS.md](/C:/Users/james/Projects/Depo-Pro/CFE_PHASE0_FINDINGS.md:62), [DATA_REALITY_FINDINGS.md](/C:/Users/james/Projects/Depo-Pro/DATA_REALITY_FINDINGS.md:27)
+- phase-0 and data-reality audits already concluded CFE Phase 1 can begin without schema work: [docs/audits/CFE_PHASE0_FINDINGS.md](/C:/Users/james/Projects/Depo-Pro/docs/audits/CFE_PHASE0_FINDINGS.md:62), [docs/audits/DATA_REALITY_FINDINGS.md](/C:/Users/james/Projects/Depo-Pro/docs/audits/DATA_REALITY_FINDINGS.md:27)
 
 The only known structural gap is hard paragraph-boundary representation for future AI/structuring work, which is out of Phase 1 scope:
 
-- [ERROR_COVERAGE_MATRIX.md:27](/C:/Users/james/Projects/Depo-Pro/ERROR_COVERAGE_MATRIX.md:27)
-- [CFE_PHASE0_FINDINGS.md:45](/C:/Users/james/Projects/Depo-Pro/CFE_PHASE0_FINDINGS.md:45)
+- [docs/audits/ERROR_COVERAGE_MATRIX.md:27](/C:/Users/james/Projects/Depo-Pro/docs/audits/ERROR_COVERAGE_MATRIX.md:27)
+- [docs/audits/CFE_PHASE0_FINDINGS.md:45](/C:/Users/james/Projects/Depo-Pro/docs/audits/CFE_PHASE0_FINDINGS.md:45)
 
 ## 8. Authority Compliance
 

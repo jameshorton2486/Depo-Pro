@@ -20,7 +20,7 @@ This is a reporter-authored notation, not transcribed testimony — and it MUST 
 
 `(Whereupon, a recess was taken at 10:42 a.m.)` is text nobody spoke. Structurally that is the **same operation** as the Python formatter's oath synthesis, which A3 deletes and forbids porting. The distinction that makes F12 legitimate — parentheticals are reporter-authored notations by convention — is only valid if it exists **in the data**. Three requirements make it real:
 
-1. **Marked as reporter-authored.** The parenthetical is stored as a reporter notation, NOT as an utterance carrying (or faking) Deepgram provenance. If it is stored as a normal `transcript_utterances` row, F12 has reintroduced the exact problem A3 exists to remove. (Cf. the boundary engine's `is_synthetic` synthetic utterances flagged in `CORRECTION_RECORDING_AUDIT.md` — a warning, not a pattern to copy.)
+1. **Marked as reporter-authored.** The parenthetical is stored as a reporter notation, NOT as an utterance carrying (or faking) Deepgram provenance. If it is stored as a normal `transcript_utterances` row, F12 has reintroduced the exact problem A3 exists to remove. (Cf. the boundary engine's `is_synthetic` synthetic utterances flagged in `docs/audits/CORRECTION_RECORDING_AUDIT.md` — a warning, not a pattern to copy.)
 2. **Timestamp traces to a verifiable source.**
 
    | Source | Reproducible? | Verdict |

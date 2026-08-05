@@ -23,7 +23,7 @@ Mode: read-only audit with command recommendations only
 | File | Class | Rationale |
 |---|---|---|
 | `AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md` | `ARCHIVE` | Audit artifact at repo root; preserve if needed, but relocate into `docs/audits/` before any commit. |
-| `CFE_PHASE0_FINDINGS.md` | `KEEP` | Referenced by later CFE readiness work; appears to be a real prerequisite audit. |
+| `docs/audits/CFE_PHASE0_FINDINGS.md` | `KEEP` | Referenced by later CFE readiness work; appears to be a real prerequisite audit. |
 | `Canonical Standards Folder/CHANGELOG_dp010_incorporation.md` | `ARCHIVE` | Historical standards changelog, not implementation authority. |
 | `Canonical Standards Folder/CHANGELOG_dp012_qa_review.md` | `ARCHIVE` | Historical standards changelog, not implementation authority. |
 | `Canonical Standards Folder/CHANGELOG_three_tab_paragraph_rule.md` | `ARCHIVE` | Historical standards changelog, not implementation authority. |
@@ -41,13 +41,13 @@ Mode: read-only audit with command recommendations only
 | `Canonical Standards Folder/abbreviation_registry.docx` | `ARCHIVE` | Authoring artifact; runtime uses JSON, not DOCX. |
 | `Canonical Standards Folder/abbreviation_registry.json` | `KEEP` | Runtime input for CFE and part of the approved authority hierarchy. This is the highest-risk untracked file. |
 | `DP-012_PUNCTUATION_RECONCILIATION_AND_GARBLE_FLAGS.md` | `DELETE` | Non-canonical duplicate path; current standards references point to the canonical standards folder version. |
-| `ERROR_COVERAGE_MATRIX.md` | `KEEP` | Referenced by later audits and useful for implementation boundaries. |
-| `GEOMETRY_AUTHORITY_RECONCILIATION.md` | `ARCHIVE` | Intermediate governance artifact; preserve in docs if wanted, but not as a root loose file. |
-| `KEYTERM_PIPELINE_FINDINGS.md` | `ARCHIVE` | Valid separate workstream artifact, but should live under `docs/audits/` if retained. |
+| `docs/audits/ERROR_COVERAGE_MATRIX.md` | `KEEP` | Referenced by later audits and useful for implementation boundaries. |
+| `docs/reconciliation/GEOMETRY_AUTHORITY_RECONCILIATION.md` | `ARCHIVE` | Intermediate governance artifact; preserve in docs if wanted, but not as a root loose file. |
+| `docs/audits/KEYTERM_PIPELINE_FINDINGS.md` | `ARCHIVE` | Valid separate workstream artifact, but should live under `docs/audits/` if retained. |
 | `PUNCTUATION_RECONCILIATION_AND_GARBLE_FLAGS.md` | `DELETE` | Duplicate/legacy naming variant of DP-012 material; keeping both invites citation drift. |
-| `SAVE_FAILURE_FINDINGS.md` | `ARCHIVE` | Investigation artifact; preserve only if needed, but move under `docs/audits/`. |
-| `STANDARDS_CONSISTENCY_AUDIT.md` | `ARCHIVE` | Intermediate standards audit artifact; keep only in audit docs, not as loose root file. |
-| `TRANSCRIPT_QUALITY_FINDINGS.md` | `ARCHIVE` | Investigation artifact; preserve only if needed, but move under `docs/audits/`. |
+| `docs/audits/SAVE_FAILURE_FINDINGS.md` | `ARCHIVE` | Investigation artifact; preserve only if needed, but move under `docs/audits/`. |
+| `docs/audits/STANDARDS_CONSISTENCY_AUDIT.md` | `ARCHIVE` | Intermediate standards audit artifact; keep only in audit docs, not as loose root file. |
+| `docs/audits/TRANSCRIPT_QUALITY_FINDINGS.md` | `ARCHIVE` | Investigation artifact; preserve only if needed, but move under `docs/audits/`. |
 | `docs/audits/CFE_FIDELITY_VALIDATION.md` | `KEEP` | Current read-only validation deliverable. |
 | `docs/audits/CFE_PHASE1_READINESS.md` | `KEEP` | Current readiness deliverable and referenced by implementation planning. |
 | `docs/audits/REPOSITORY_HEALTH_AUDIT_2026-06-23.md` | `KEEP` | Formal dated repository audit; belongs in `docs/audits/`. |
@@ -200,7 +200,7 @@ git commit -m "docs(standards): add active formatting authority sources"
 ### 5. Commit kept audit documents
 
 ```powershell
-git add docs/audits/CFE_PHASE1_READINESS.md docs/audits/CFE_FIDELITY_VALIDATION.md docs/audits/REPOSITORY_HEALTH_AUDIT_2026-06-23.md docs/audits/SPEAKER_SAVE_CONCURRENCY_AUDIT.md CFE_PHASE0_FINDINGS.md ERROR_COVERAGE_MATRIX.md
+git add docs/audits/CFE_PHASE1_READINESS.md docs/audits/CFE_FIDELITY_VALIDATION.md docs/audits/REPOSITORY_HEALTH_AUDIT_2026-06-23.md docs/audits/SPEAKER_SAVE_CONCURRENCY_AUDIT.md docs/audits/CFE_PHASE0_FINDINGS.md docs/audits/ERROR_COVERAGE_MATRIX.md
 git commit -m "docs(audits): add cfe readiness and fidelity reports"
 ```
 

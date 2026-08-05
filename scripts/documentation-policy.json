@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "allowedRootMarkdown": [
+    "AGENTS.md",
+    "ARCHITECTURE_DECISIONS.md",
+    "CANONICAL_STANDARDS_INDEX.md",
+    "CONTRACT_NOTES.md",
+    "NUMBERING_REGISTRY.md",
+    "README.md"
+  ],
+  "excludedPrefixes": [
+    ".agents/",
+    "docs/generated/",
+    "reference/wave8/"
+  ],
+  "metadataBaseline": "scripts/documentation-metadata-baseline.json",
+  "manifestPath": "docs/document-manifest.json",
+  "requiredMetadataFields": [
+    "authority_tier",
+    "status",
+    "owner",
+    "scope",
+    "supersedes",
+    "superseded_by",
+    "approved_by",
+    "version",
+    "effective_date",
+    "ratified_date",
+    "last_reviewed",
+    "next_review",
+    "ratification",
+    "implementation_status"
+  ],
+  "allowedTiers": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5",
+    "T6",
+    "T7"
+  ],
+  "allowedStatuses": [
+    "DRAFT",
+    "ACTIVE",
+    "SUPERSEDED",
+    "ARCHIVED",
+    "DEPRECATED"
+  ],
+  "allowedRatification": [
+    "NOT_REQUIRED",
+    "NONE",
+    "REVIEW",
+    "RATIFIED"
+  ],
+  "allowedImplementationStatuses": [
+    "NOT_APPLICABLE",
+    "NOT_STARTED",
+    "PARTIAL",
+    "IMPLEMENTED",
+    "VERIFIED"
+  ]
+}

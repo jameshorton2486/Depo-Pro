@@ -4,11 +4,11 @@ Copy everything below the line into Codex CLI from the root of the repository.
 
 ---
 
-Implement four small, surgical fixes identified by the intake audits (INTAKE_SCREEN_AUDIT.md, INTAKE_REAL_VS_MOCK_AUDIT.md). These are truth-and-wiring fixes only — NO new fields, NO UI redesign, NO new features beyond what is specified. Keep diffs minimal. `npm run build` must pass at the end. Report files changed per fix.
+Implement four small, surgical fixes identified by the intake audits (docs/audits/INTAKE_SCREEN_AUDIT.md, docs/audits/INTAKE_REAL_VS_MOCK_AUDIT.md). These are truth-and-wiring fixes only — NO new fields, NO UI redesign, NO new features beyond what is specified. Keep diffs minimal. `npm run build` must pass at the end. Report files changed per fix.
 
 ## Fix 1 — Wire ADD_ATTORNEY (broken empty-state add)
 
-Per INTAKE_SCREEN_AUDIT.md: the attorney picker's empty state routes to `handleSelect("attorney", ...)` (IntakeScreen.tsx ~556-592, ~697-702), but `handleSelect` has no `attorney` branch, so `ADD_ATTORNEY` is unreachable and selecting/creating an attorney from the empty state silently does nothing.
+Per docs/audits/INTAKE_SCREEN_AUDIT.md: the attorney picker's empty state routes to `handleSelect("attorney", ...)` (IntakeScreen.tsx ~556-592, ~697-702), but `handleSelect` has no `attorney` branch, so `ADD_ATTORNEY` is unreachable and selecting/creating an attorney from the empty state silently does nothing.
 
 - Add the `attorney` branch to `handleSelect`, mapping a selected/created Contact into the attorney shape the reducer expects (`name`, `firm` from organization, `email`, `phone`; `role`/`representing`/`bar_number` null/defaults consistent with existing UPDATE_ATTORNEY mapping at ~594-608) and dispatching `addAttorney`.
 - The existing "Create new" inline form flow must work for attorneys exactly as it does for interpreters/videographers (create contact → 201 → card appears → included in next save). If the create-new form is currently not offered for the attorney picker, enable it using the same component path — no new components.

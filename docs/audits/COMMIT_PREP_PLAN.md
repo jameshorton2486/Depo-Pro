@@ -36,18 +36,18 @@ Mode: read-only inventory with staging recommendations only
 | `docs/audits/STANDARDS_AUTHORITY_CLEANUP.md` | `KEEP` | Formal governance artifact that explains how the standards graph was repaired. |
 | `docs/audits/STANDARDS_FREEZE_REPORT.md` | `KEEP` | Final freeze evidence for the approved authority graph. |
 | `docs/audits/DP012_RATIFICATION_REVIEW.md` | `KEEP` | Owner-ratification support artifact for DP-012. |
-| `DATA_REALITY_FINDINGS.md` | `KEEP` | Important implementation-precondition audit referenced by later work. |
+| `docs/audits/DATA_REALITY_FINDINGS.md` | `KEEP` | Important implementation-precondition audit referenced by later work. |
 | `docs/audits/CFE_PHASE1_READINESS.md` | `KEEP` | Directly ties standards to the implementation seam. |
 | `docs/audits/CFE_PHASE1_VALIDATION.md` | `KEEP` | Core implementation validation artifact for commit `2a0f09b`. |
 | `docs/audits/CFE_FIDELITY_VALIDATION.md` | `KEEP` | Post-implementation fidelity check against available corpus. |
-| `CFE_PHASE0_FINDINGS.md` | `KEEP` | Foundational audit for the CFE workstream. |
-| `ERROR_COVERAGE_MATRIX.md` | `KEEP` | Important scope/coverage artifact referenced by readiness work. |
-| `GEOMETRY_AUTHORITY_RECONCILIATION.md` | `ARCHIVE` | Intermediate standards/governance artifact; preserve only if you want the historical trail. |
-| `STANDARDS_CONSISTENCY_AUDIT.md` | `ARCHIVE` | Intermediate standards audit superseded by later cleanup/freeze docs. |
+| `docs/audits/CFE_PHASE0_FINDINGS.md` | `KEEP` | Foundational audit for the CFE workstream. |
+| `docs/audits/ERROR_COVERAGE_MATRIX.md` | `KEEP` | Important scope/coverage artifact referenced by readiness work. |
+| `docs/reconciliation/GEOMETRY_AUTHORITY_RECONCILIATION.md` | `ARCHIVE` | Intermediate standards/governance artifact; preserve only if you want the historical trail. |
+| `docs/audits/STANDARDS_CONSISTENCY_AUDIT.md` | `ARCHIVE` | Intermediate standards audit superseded by later cleanup/freeze docs. |
 | `AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md` | `ARCHIVE` | Process/investigation artifact, not required for core standards traceability. |
-| `KEYTERM_PIPELINE_FINDINGS.md` | `ARCHIVE` | Separate workstream; preserve if needed, but not part of the standards minimum set. |
-| `SAVE_FAILURE_FINDINGS.md` | `ARCHIVE` | Investigation artifact outside the minimum standards/CFE traceability set. |
-| `TRANSCRIPT_QUALITY_FINDINGS.md` | `ARCHIVE` | Investigation artifact outside the minimum standards/CFE traceability set. |
+| `docs/audits/KEYTERM_PIPELINE_FINDINGS.md` | `ARCHIVE` | Separate workstream; preserve if needed, but not part of the standards minimum set. |
+| `docs/audits/SAVE_FAILURE_FINDINGS.md` | `ARCHIVE` | Investigation artifact outside the minimum standards/CFE traceability set. |
+| `docs/audits/TRANSCRIPT_QUALITY_FINDINGS.md` | `ARCHIVE` | Investigation artifact outside the minimum standards/CFE traceability set. |
 | `docs/audits/REPOSITORY_HEALTH_AUDIT_2026-06-23.md` | `KEEP` | Formal dated audit with repository-level findings. |
 | `docs/audits/SPEAKER_SAVE_CONCURRENCY_AUDIT.md` | `KEEP` | Formal technical audit in correct location. |
 | `docs/audits/GIT_HYGIENE_AUDIT.md` | `KEEP` | Immediate prerequisite for safe commit sequencing. |
@@ -75,7 +75,7 @@ Verdict: `NO`
 | `docs/audits/STANDARDS_FREEZE_REPORT.md` | `TRACKED` |
 | `docs/audits/DP012_RATIFICATION_REVIEW.md` | `TRACKED` |
 | `docs/audits/STANDARDS_AUTHORITY_CLEANUP.md` | `TRACKED` |
-| `DATA_REALITY_FINDINGS.md` | `TRACKED` |
+| `docs/audits/DATA_REALITY_FINDINGS.md` | `TRACKED` |
 
 ### Untracked governance dependencies
 
@@ -96,7 +96,7 @@ Verdict: `NO`
 | File | Classification | Rationale |
 |---|---|---|
 | `AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md` | `ARCHIVE` | Keep only if you want the investigation trail; should eventually live under `docs/audits/`. |
-| `CFE_PHASE0_FINDINGS.md` | `KEEP` | Foundational CFE artifact. |
+| `docs/audits/CFE_PHASE0_FINDINGS.md` | `KEEP` | Foundational CFE artifact. |
 | `Canonical Standards Folder/CHANGELOG_dp010_incorporation.md` | `ARCHIVE` | Historical changelog, not active authority. |
 | `Canonical Standards Folder/CHANGELOG_dp012_qa_review.md` | `ARCHIVE` | Historical changelog, not active authority. |
 | `Canonical Standards Folder/CHANGELOG_three_tab_paragraph_rule.md` | `ARCHIVE` | Historical changelog, not active authority. |
@@ -114,13 +114,13 @@ Verdict: `NO`
 | `Canonical Standards Folder/abbreviation_registry.docx` | `ARCHIVE` | Authoring artifact; runtime uses JSON. |
 | `Canonical Standards Folder/abbreviation_registry.json` | `KEEP` | Runtime dependency and approved authority data. |
 | `DP-012_PUNCTUATION_RECONCILIATION_AND_GARBLE_FLAGS.md` | `DELETE` | Duplicate non-canonical root copy. |
-| `ERROR_COVERAGE_MATRIX.md` | `KEEP` | Important scope/coverage artifact. |
-| `GEOMETRY_AUTHORITY_RECONCILIATION.md` | `ARCHIVE` | Intermediate governance artifact. |
-| `KEYTERM_PIPELINE_FINDINGS.md` | `ARCHIVE` | Separate workstream; preserve if wanted. |
+| `docs/audits/ERROR_COVERAGE_MATRIX.md` | `KEEP` | Important scope/coverage artifact. |
+| `docs/reconciliation/GEOMETRY_AUTHORITY_RECONCILIATION.md` | `ARCHIVE` | Intermediate governance artifact. |
+| `docs/audits/KEYTERM_PIPELINE_FINDINGS.md` | `ARCHIVE` | Separate workstream; preserve if wanted. |
 | `PUNCTUATION_RECONCILIATION_AND_GARBLE_FLAGS.md` | `DELETE` | Duplicate legacy naming variant. |
-| `SAVE_FAILURE_FINDINGS.md` | `ARCHIVE` | Investigation artifact. |
-| `STANDARDS_CONSISTENCY_AUDIT.md` | `ARCHIVE` | Intermediate standards artifact. |
-| `TRANSCRIPT_QUALITY_FINDINGS.md` | `ARCHIVE` | Investigation artifact. |
+| `docs/audits/SAVE_FAILURE_FINDINGS.md` | `ARCHIVE` | Investigation artifact. |
+| `docs/audits/STANDARDS_CONSISTENCY_AUDIT.md` | `ARCHIVE` | Intermediate standards artifact. |
+| `docs/audits/TRANSCRIPT_QUALITY_FINDINGS.md` | `ARCHIVE` | Investigation artifact. |
 | `docs/audits/CFE_FIDELITY_VALIDATION.md` | `KEEP` | Current formal audit deliverable. |
 | `docs/audits/CFE_PHASE1_READINESS.md` | `KEEP` | Current formal audit deliverable. |
 | `docs/audits/GIT_HYGIENE_AUDIT.md` | `KEEP` | Current formal audit deliverable. |
@@ -195,14 +195,14 @@ Exact files:
 - `docs/audits/CFE_PHASE1_READINESS.md`
 - `docs/audits/CFE_PHASE1_VALIDATION.md`
 - `docs/audits/CFE_FIDELITY_VALIDATION.md`
-- `CFE_PHASE0_FINDINGS.md`
-- `DATA_REALITY_FINDINGS.md`
-- `ERROR_COVERAGE_MATRIX.md`
+- `docs/audits/CFE_PHASE0_FINDINGS.md`
+- `docs/audits/DATA_REALITY_FINDINGS.md`
+- `docs/audits/ERROR_COVERAGE_MATRIX.md`
 
 Exact `git add` command:
 
 ```powershell
-git add docs/audits/STANDARDS_AUTHORITY_CLEANUP.md docs/audits/STANDARDS_FREEZE_REPORT.md docs/audits/DP012_RATIFICATION_REVIEW.md docs/audits/CFE_PHASE1_READINESS.md docs/audits/CFE_PHASE1_VALIDATION.md docs/audits/CFE_FIDELITY_VALIDATION.md CFE_PHASE0_FINDINGS.md DATA_REALITY_FINDINGS.md ERROR_COVERAGE_MATRIX.md
+git add docs/audits/STANDARDS_AUTHORITY_CLEANUP.md docs/audits/STANDARDS_FREEZE_REPORT.md docs/audits/DP012_RATIFICATION_REVIEW.md docs/audits/CFE_PHASE1_READINESS.md docs/audits/CFE_PHASE1_VALIDATION.md docs/audits/CFE_FIDELITY_VALIDATION.md docs/audits/CFE_PHASE0_FINDINGS.md docs/audits/DATA_REALITY_FINDINGS.md docs/audits/ERROR_COVERAGE_MATRIX.md
 ```
 
 Recommended commit message:

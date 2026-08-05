@@ -51,7 +51,7 @@ confirmed. Examples:
 - GitHub: repository connected; branches, pushes, and pulls all exercised and
   working — `Verified`.
 - Supabase: connected; auth, storage, RLS, and edge functions exercised, with
-  in-repo audits (`AUTH_RLS_AUDIT.md`) — `Verified`.
+  in-repo audits (`docs/audits/AUTH_RLS_AUDIT.md`) — `Verified`.
 - Vercel: not yet audited in-environment — `Unknown` until the W0.2A
   dashboard-side audit confirms deployment behavior.
 

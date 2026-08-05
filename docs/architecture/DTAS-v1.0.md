@@ -192,7 +192,7 @@ A cross-cutting concern — authentication, configuration, telemetry, logging, f
 
 This is the Law 1 and Law 8 intent — single ownership, single authority, no competing representations — applied to *runtime state propagation* rather than to the transcript model.
 
-**Worked example — authentication.** Authentication is owned by the auth gate and published as a reactive session store; the API layer reads a fresh token per request. An authentication event (token refresh, sign-in) therefore requires no reconstruction of the editor, the audio player, or the document model — those domains subscribe to what they need. Reconstructing the application root on every auth event violates this Principle. See [ADR-0007](./ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md).
+**Worked example — authentication.** Authentication is owned by the auth gate and published as a reactive session store; the API layer reads a fresh token per request. An authentication event (token refresh, sign-in) therefore requires no reconstruction of the editor, the audio player, or the document model — those domains subscribe to what they need. Reconstructing the application root on every auth event violates this Principle. See [ADR-0007](adr/ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md).
 
 **Domains this Principle governs (non-exhaustive):** authentication, configuration, feature flags, telemetry, logging, localization. Each publishes; none reconstructs its consumers.
 

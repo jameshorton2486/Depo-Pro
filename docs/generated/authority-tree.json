@@ -1,0 +1,169 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "source": "docs/document-manifest.json",
+  "source_sha256": "b60c8a9edf1df46e72582e9957c5c702339207a158d9eca05176ce717ab737f6",
+  "roots": [
+    "DOC-0001",
+    "DOC-0022",
+    "DOC-0062",
+    "DOC-0068",
+    "DOC-0071",
+    "DOC-0072"
+  ],
+  "documents": [
+    {
+      "id": "DOC-0001",
+      "title": "AGENTS.md — House Rules for Bolt / AI Agents",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "scopes": [
+        "agent-contributor-rules"
+      ],
+      "parents": [],
+      "children": []
+    },
+    {
+      "id": "DOC-0002",
+      "title": "Architecture Decisions",
+      "tier": "T2",
+      "status": "ACTIVE",
+      "scopes": [
+        "architecture-decision-registry"
+      ],
+      "parents": [
+        "DOC-0071"
+      ],
+      "children": []
+    },
+    {
+      "id": "DOC-0003",
+      "title": "Canonical Standards Index",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "scopes": [
+        "canonical-standards-navigation"
+      ],
+      "parents": [
+        "DOC-0071"
+      ],
+      "children": []
+    },
+    {
+      "id": "DOC-0004",
+      "title": "CONTRACT_NOTES — API Contract Deviations Log",
+      "tier": "T2",
+      "status": "ACTIVE",
+      "scopes": [
+        "frozen-api-contract-deviations"
+      ],
+      "parents": [
+        "DOC-0071"
+      ],
+      "children": []
+    },
+    {
+      "id": "DOC-0021",
+      "title": "Numbering Registry",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "scopes": [
+        "canonical-standard-numbering"
+      ],
+      "parents": [
+        "DOC-0071"
+      ],
+      "children": []
+    },
+    {
+      "id": "DOC-0022",
+      "title": "Depo-Pro",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "scopes": [
+        "repository-discovery"
+      ],
+      "parents": [],
+      "children": []
+    },
+    {
+      "id": "DOC-0039",
+      "title": "DATA FIELD REFERENCE",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "scopes": [
+        "data-field-source-ownership"
+      ],
+      "parents": [
+        "DOC-0071"
+      ],
+      "children": []
+    },
+    {
+      "id": "DOC-0040",
+      "title": "Depo-Pro Data Structures & JSON Schemas",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "scopes": [
+        "transcript-domain-data-shapes"
+      ],
+      "parents": [
+        "DOC-0071"
+      ],
+      "children": []
+    },
+    {
+      "id": "DOC-0062",
+      "title": "Document Authority Registry",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "scopes": [
+        "repository-documentation-governance"
+      ],
+      "parents": [],
+      "children": []
+    },
+    {
+      "id": "DOC-0068",
+      "title": "DEPO-PRO MASTER ARCHITECTURE DOCUMENT",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "scopes": [
+        "product-system-architecture"
+      ],
+      "parents": [],
+      "children": []
+    },
+    {
+      "id": "DOC-0071",
+      "title": "Project Authority Index",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "scopes": [
+        "repository-authority-navigation"
+      ],
+      "parents": [],
+      "children": [
+        "DOC-0002",
+        "DOC-0003",
+        "DOC-0004",
+        "DOC-0021",
+        "DOC-0039",
+        "DOC-0040"
+      ]
+    },
+    {
+      "id": "DOC-0072",
+      "title": "DEPO-PRO Project Charter",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "scopes": [
+        "project-mission-and-principles"
+      ],
+      "parents": [],
+      "children": []
+    }
+  ],
+  "unused_authority_scopes": []
+}
