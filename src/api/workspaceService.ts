@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import { api as contractApi, type PendingAISuggestion } from "./client";
 import { getSignedUrl } from "./fileService";
+import { resolveSpeakerDisplayName } from "../lib/transcript/resolveSpeakerDisplayName";
 import { isRealApiMode } from "../lib/runtime/mode";
 import {
   getLatestCompletedTranscriptJob,
@@ -108,7 +109,7 @@ function buildEditorDocumentFromSnapshot(
     duration: snapshot.job.duration_seconds ?? snapshot.job.duration ?? 0,
     speakers: snapshot.speakers.map((speaker) => ({
       speaker_id: speaker.speaker_id,
-      display_name: speaker.assigned_name || speaker.speaker_label || speaker.display_name,
+      display_name: resolveSpeakerDisplayName(speaker),
       deepgram_speaker: speaker.speaker_index ?? speaker.deepgram_speaker ?? null,
       role: mapSpeakerRole(speaker.speaker_role || speaker.role),
       ai_suggested: speakerResolutionById.get(speaker.speaker_id)?.ai_suggested ?? false,
