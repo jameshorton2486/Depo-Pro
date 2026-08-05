@@ -8,7 +8,9 @@ Every format value is sourced from a ratified decision and cited inline:
   F4 one space after an abbreviation
   F5 colloquy body on the label line; continuation wraps flush left (0")
   F6 stutters render with a spaced double hyphen: I -- I (ADR-0011)
-  F9 no generic labels; real names or role titles (THE VIDEOGRAPHER, etc.)
+  F7 objection spacing follows F3: "Objection.  Form." (two spaces)
+  F9 no generic labels; real names or role titles (THE REPORTER, etc.)
+  F17 inline resumption by-line: Q. (BY MR. NAME) after a colloquy interruption
 NOT applied: F8 line numbering (Certification only) -> disclosed in cover note.
 """
 from docx import Document
@@ -178,26 +180,30 @@ qa("A.", "Um, it was around 8:15 a.m., I think.")                # filler + F4 "
 qa("Q.", "Did you review the report before today?")
 qa("A.", "Yeah, I " + EMD + " I read it twice last night.")     # filler + F6 stutter "I -- I"
 
-# Colloquy 2/3 - objection (F7) + ruling; witness answer renders as A. (ADR-0014)
-colloquy("MR. RAO:", "Objection. Form.")                          # F7: "Objection. Form." two spaces
+# Objection sits between a question and its answer (clean ADR-0014 demo):
+# Q -> objection (F7) -> ruling -> witness answer renders as A., not THE WITNESS:
+qa("Q.", "And when did you first receive the report?")
+colloquy("MR. RAO:", "Objection.  Form.")                         # F7/F3: "Objection.  Form." two spaces
 colloquy("MR. CALDERON:", "You can answer.")
-qa("A.", "I don't recall the exact date.")                        # ADR-0014: answer to the pending Q -> A., not THE WITNESS:
+qa("A.", "I don't recall the exact date.")                        # ADR-0014: answer to the pending Q -> A.
 
-qa("Q.", "Tell me what happened next.")
+# F17 inline resumption by-line after the colloquy interruption (one space after MR., no colon)
+qa("Q.", "(BY MR. CALDERON)  Tell me what happened next.")        # F17 resumption + F6 false start below
 qa("A.", "We were " + EMD + " the meeting was moved to the second floor.")   # false start (F6 spaced --)
 
 qa("Q.", "Had you met the plaintiff before that day?")
 qa("A.", "I had had one prior meeting with her, uh, back in March.")   # legit repetition "had had" + filler
 
-# Colloquy 5 - THE REPORTER interjection (F9 role title)
+# Colloquy 5 - THE REPORTER interjection (F9 role title; corpus form, no "(continuing)")
 colloquy("THE REPORTER:", "Counsel, could you please spell that surname for the record?")
 
-qa("Q.", "What did you tell Mr. Calderon that morning?")          # F4 "Mr."
+# F17 resumption by-line after the reporter interjection
+qa("Q.", "(BY MR. CALDERON)  What did you tell Mr. Calderon that morning?")   # F17 resumption + F4 "Mr."
 qa("A.", "I told him that that report was accurate.")             # legit repetition "that that"
 
-# Colloquy 6 - long label AND wraps 3+ lines (F1 long label; F5 flush-left wrap)
+# Colloquy 6 - reporter interjection that wraps 3+ lines (F5 flush-left wrap)
 colloquy(
-    "THE COURT REPORTER (continuing):",
+    "THE REPORTER:",
     "I am sorry, Counsel, but I need everyone to speak one at a time.  "
     "When two people talk over each other, I cannot take down a clean "
     "record, and the transcript will show only a crosstalk notation "

@@ -19,9 +19,10 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 | **F5** | Body begins on the label line; continuation lines **wrap flush to the left margin (0")**. |
 | **F6** | Stutters and false starts render with a **spaced double hyphen**: `I -- I`, `We were -- the` (per **ADR-0011**, amending the original em-dash). |
 | **F7** | Objections follow F3: `Objection.  Form.` (two spaces). |
-| **F9** | No generic labels. Real names, or role titles — the sample shows **THE VIDEOGRAPHER**, **THE REPORTER**, and **THE COURT REPORTER (continuing)**. |
+| **F9** | No generic labels. Real names, or role titles — the sample shows **THE VIDEOGRAPHER** and **THE REPORTER** (matching your reference transcripts). |
 | **F11** | A witness answering the pending question — including right after an objection ruling — renders as **`A.`**, not `THE WITNESS:` (per **ADR-0014**). `THE WITNESS:` is reserved for genuine colloquy (witness speaking outside Q/A). |
 | **F12** | The videographer's off-the-record line produces the recess parenthetical **`(Whereupon, a recess was taken at 10:42 a.m.)`** — the time taken from the videographer's spoken time (per **ADR-0013**). |
+| **F17** | Questioning that resumes after a colloquy interruption renders as `Q.` + **`(BY MR. NAME)`** — parenthetical, no colon, **one** space after `MR.`. The sample shows this at the two points where questioning resumes (after the objection and after the reporter's interjection). |
 
 **Not applied, on purpose:** **F8** line numbering (25 numbered lines per page) is added **at Certification only**. This is a pre-certification sample, so it has **no line numbers**. Their absence is by design — please don't read it as a defect.
 
@@ -50,7 +51,7 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 
 ---
 
-## Please confirm (six points)
+## Please confirm (seven points)
 
 **1. Colloquy layout (F1–F5).** Does the colloquy speaker-label position, the two-space colon, and the flush-left wrapping match your standard?
 
@@ -75,6 +76,10 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 **6. Working-draft header wording (OQ-5).** Until a transcript is certified, the Workspace shows a **working-draft indicator** instead of "CERTIFIED TRANSCRIPT OF DEPOSITION" — a transcript must not be labeled certified while it is still an unproofread draft. The current placeholder is **"WORKING DRAFT — NOT CERTIFIED"**. Is that the wording you want, or do you have a preferred phrasing that matches Texas practice?
 
 > ☐ "WORKING DRAFT — NOT CERTIFIED" is fine ☐ Preferred wording: ______________________________
+
+**7. Reporter label + "(continuing)" (open in our spec).** Our spec leaves two things to you: whether the reporter's label reads **`THE REPORTER:`** or **`THE COURT REPORTER:`**, and whether a **`(continuing)`** marker is ever used when a speaker's block resumes. The sample uses **`THE REPORTER:`** with **no `(continuing)`**, which matches all four of your reference transcripts. Confirm, or tell us your preference.
+
+> ☐ `THE REPORTER:`, no `(continuing)` ☐ Prefer: ______________________________
 
 ---
 
