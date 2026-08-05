@@ -57,5 +57,3 @@ architecture, or runtime behavior.
 ## Validation
 
 Run `npm run docs:check` before committing documentation changes. See the [documentation validation runbook](operations/DOCUMENTATION_VALIDATION.md) for enforced rules and the legacy metadata baseline policy.
-
-

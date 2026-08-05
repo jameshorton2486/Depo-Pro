@@ -12,7 +12,7 @@ const manifestValidation=validateManifest(manifest);
 if(manifestValidation.errors.length){console.error('Manifest graph validation failed.');for(const error of manifestValidation.errors)console.error(`- ERROR: ${error}`);process.exit(1)}
 const docs=[...manifest.documents].sort((a,b)=>a.id.localeCompare(b.id));
 const byId=new Map(docs.map(d=>[d.id,d])), byPath=new Map(docs.map(d=>[d.path,d]));
-const hash=createHash('sha256').update(manifestText).digest('hex');
+const hash=createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
 const meta={generated:true,generated_on:manifest.generated_on,source:'docs/document-manifest.json',source_sha256:hash};
 const edge=(type,source,target)=>{if(!RELATIONSHIP_TYPES.includes(type))throw new Error(`Unsupported relationship type: ${type}`);return {type,source,target}};
 const unique=a=>[...new Set(a)].sort();
@@ -75,7 +75,8 @@ function previousManifest() {
     const commits=execFileSync('git',['log','--format=%H','--','docs/document-manifest.json'],{cwd:root,encoding:'utf8'}).trim().split(/\r?\n/).filter(Boolean);
     for(const commit of commits){
       const text=execFileSync('git',['show',`${commit}:docs/document-manifest.json`],{cwd:root,encoding:'utf8'});
-      if(createHash('sha256').update(text).digest('hex')!==hash)return {commit,manifest:JSON.parse(text)};
+      const candidate=JSON.parse(text);
+      if(JSON.stringify(candidate)!==JSON.stringify(manifest))return {commit,manifest:candidate};
     }
   } catch {}
   return {commit:null,manifest:{documents:[]}};
@@ -99,8 +100,8 @@ const listSection=items=>items.length?items.map(item=>`- ${item}`).join('\n'):'N
 const report=`<!-- GENERATED FILE. DO NOT EDIT. Run npm run docs:graph. -->
 # Documentation Dependency Report
 
-Source: \`docs/document-manifest.json\`  
-Manifest SHA-256: \`${hash}\`  
+Source: \`docs/document-manifest.json\`
+Manifest SHA-256: \`${hash}\`
 Generated: ${manifest.generated_on}
 
 ## Integrity
@@ -158,5 +159,3 @@ const hard=[orphanAuthorities,unreachable,multipleParents,governanceCycles,super
 if(hard.length){console.error('Documentation graph integrity failed.');for(const [name,values] of Object.entries(diagnostics))if(values.length)console.error(`- ${name}: ${reportValue(values)}`);process.exitCode=1}
 else if(check){const stale=[];for(const [name,expected] of outputs){try{if(await readFile(path.join(out,name),'utf8')!==expected)stale.push(name)}catch{stale.push(name)}}if(stale.length){console.error(`Generated documentation graph is stale or missing: ${stale.join(', ')}. Run npm run docs:graph.`);process.exitCode=1}else console.log(`Documentation graph check passed: ${docs.length} documents, ${edges.length} relationships, ${outputs.size} generated artifacts.`)}
 else{await mkdir(out,{recursive:true});for(const [name,content] of outputs)await writeFile(path.join(out,name),content,'utf8');console.log(`Generated ${outputs.size} documentation graph artifacts from ${docs.length} manifest records.`)}
-
-

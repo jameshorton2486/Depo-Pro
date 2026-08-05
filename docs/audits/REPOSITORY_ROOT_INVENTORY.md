@@ -1,11 +1,11 @@
 # Repository Root Inventory
 
-**Audit date:** 2026-08-03  
-**Branch:** `perf/lazy-load-stage-screens`  
-**HEAD:** `e1ad8d0460d38a1c37f42130333933350ce9def6`  
-**Upstream:** `origin/feature/stage3-workspace-core`  
-**Integration branch:** `feature/stage3-workspace-core` at `49d32c4eacfc6b2cf667b0d6a1050dacd90835b4`  
-**Remote default:** `origin/main`  
+**Audit date:** 2026-08-03
+**Branch:** `perf/lazy-load-stage-screens`
+**HEAD:** `e1ad8d0460d38a1c37f42130333933350ce9def6`
+**Upstream:** `origin/feature/stage3-workspace-core`
+**Integration branch:** `feature/stage3-workspace-core` at `49d32c4eacfc6b2cf667b0d6a1050dacd90835b4`
+**Remote default:** `origin/main`
 **Scope:** 122 root entries: 28 directories and 94 files.
 
 Git evidence uses `T@<commit>` for tracked items and `U` for untracked/ignored items. “Refs” describes the strongest observed dependency class. Recommendations are future actions only; this audit moved or deleted nothing.

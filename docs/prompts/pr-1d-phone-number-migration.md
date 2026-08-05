@@ -223,4 +223,3 @@ npm run build
 Return the architecture gate, complete phone-path inventory, exact files changed, policy/version lock, Behavioral Delta Report, completed Consumer Matrix, metadata/provenance evidence, duplicate-search evidence, focused/full verification, and regression checklist.
 
 Do not commit, push, open a PR, or merge unless separately authorized after architecture review.
-

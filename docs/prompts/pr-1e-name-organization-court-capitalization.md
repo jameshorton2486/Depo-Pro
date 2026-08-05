@@ -257,4 +257,3 @@ npm run build
 Return the architecture gate, complete field/writer inventory, exact files changed, three policy identities/version locks, Behavioral Delta Report, completed Consumer Matrix, uncertainty-handling evidence, metadata/provenance evidence, duplicate-search evidence, focused/full verification, and regression checklist.
 
 Do not commit, push, open a PR, or merge unless separately authorized after architecture review.
-

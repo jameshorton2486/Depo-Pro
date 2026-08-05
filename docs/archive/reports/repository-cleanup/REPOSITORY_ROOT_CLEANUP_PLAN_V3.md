@@ -49,8 +49,8 @@ Use [DOCUMENT_AUTHORITY_REGISTRY.md](../../../architecture/DOCUMENT_AUTHORITY_RE
 
 Ratify [PROJECT_AUTHORITY_INDEX.md](../../../architecture/PROJECT_AUTHORITY_INDEX.md) as the living authority table of contents after its initial constitutional routes are verified.
 
-**Gate:** registry vocabulary is ratified and cannot change without explicit change control.  
-**Rollback:** revert the registry/index documentation commit.  
+**Gate:** registry vocabulary is ratified and cannot change without explicit change control.
+**Rollback:** revert the registry/index documentation commit.
 **Risk:** classification inconsistency if the registry remains fluid.
 
 ## Phase 1 — Automated classification proposal
@@ -68,7 +68,7 @@ Default inference examples:
 
 Automation assigns a proposal and confidence only. It never ratifies, supersedes, archives, or moves T1–T3 documents.
 
-**Output:** machine-generated classification matrix with confidence and exception reason.  
+**Output:** machine-generated classification matrix with confidence and exception reason.
 **Gate:** all managed documents have a proposal or explicit inference failure.
 
 ## Phase 2 — Human exception review and authority freeze
@@ -105,7 +105,7 @@ Update `PROJECT_AUTHORITY_INDEX.md` to route into all four indexes. Perform a cl
 
 Move only indexed documents with frozen authority and known inbound references. Use `git mv`; update banners, indexes, knowledge graph, scripts, prompts, and links atomically. Do not change substantive conclusions during relocation.
 
-**Validation:** old-path search, documentation checks, typecheck, lint, tests, build.  
+**Validation:** old-path search, documentation checks, typecheck, lint, tests, build.
 **Rollback:** revert subsystem-focused move commits.
 
 ## Phase 5 — Archive reports and superseded knowledge

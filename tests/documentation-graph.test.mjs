@@ -24,4 +24,3 @@ test('rejects disconnected graphs caused by a closed component',()=>assert.match
 test('rejects missing owners',()=>assert.match(errors(manifest(document('A',{owner:''}))),/missing an owner/));
 test('rejects duplicate IDs',()=>assert.match(errors(manifest(document('A'),document('A'))),/Duplicate document ID/));
 test('rejects missing relationship targets',()=>assert.match(errors(manifest(document('A',{governed_by:['MISSING']}))),/missing governed_by target/));
-

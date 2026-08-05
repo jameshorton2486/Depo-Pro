@@ -46,8 +46,8 @@ For every managed document, record:
 
 Resolve duplicate active authorities before changing any path. Ratify the metadata banner schema and root-level Markdown policy.
 
-**Outputs:** authority registry, duplicate-authority decisions, approved banner schema, constitutional-root exceptions.  
-**Gate:** every proposed MOVE/ARCHIVE item has a tier and status; no scope has unexplained duplicate active authority.  
+**Outputs:** authority registry, duplicate-authority decisions, approved banner schema, constitutional-root exceptions.
+**Gate:** every proposed MOVE/ARCHIVE item has a tier and status; no scope has unexplained duplicate active authority.
 **Rollback:** revert the documentation-only authority commit.
 
 ## Phase 2 — Create indexes and knowledge graph
@@ -62,7 +62,7 @@ Create and populate using current paths:
 
 Perform a clean-clone discoverability walkthrough before relocation.
 
-**Gate:** contributors can navigate constitution -> architecture -> standards -> audits -> implementation -> tests -> CI without broad search.  
+**Gate:** contributors can navigate constitution -> architecture -> standards -> audits -> implementation -> tests -> CI without broad search.
 **Rollback:** revert the focused index commit.
 
 ## Phase 3 — Move active documents
@@ -71,7 +71,7 @@ Move only active documents whose authority, destination, index entry, and inboun
 
 No document moves merely because its filename says “audit” or “report,” or because it is old.
 
-**Validation:** old-path search, link validation, index validation, knowledge-graph validation, typecheck, lint, tests, build.  
+**Validation:** old-path search, link validation, index validation, knowledge-graph validation, typecheck, lint, tests, build.
 **Rollback:** revert each subsystem-focused move commit.
 
 ## Phase 4 — Archive reports and superseded knowledge
@@ -83,37 +83,37 @@ Revalidate every prior ARCHIVE candidate against frozen authority. Move only:
 
 Use the archive taxonomy `architecture`, `audits`, `reports`, `releases`, `migration`, `handoffs`, `deprecated`, and `experiments`. Add the replacement/authority relationship before moving.
 
-**Validation:** archive index, banner checks, supersession-target checks, no dangling links.  
-**Rollback:** revert the archive commit.  
+**Validation:** archive index, banner checks, supersession-target checks, no dangling links.
+**Rollback:** revert the archive commit.
 **Risk:** hiding live authority; mitigated by Phase 1 gate.
 
 ## Phase 5 — Relocate remediation evidence
 
 Move `ai_logs/` only after updating remediation script defaults, hash-chain paths, documentation, and index/knowledge-graph entries. Verify hash-chain semantics before and after relocation.
 
-**Validation:** PowerShell dry runs, exact old-path search, hash-chain verification.  
+**Validation:** PowerShell dry runs, exact old-path search, hash-chain verification.
 **Rollback:** revert the single relocation commit.
 
 ## Phase 6 — Remove generated/local artifacts
 
 After human confirmation, remove only the 11 untracked DELETE candidates documented in the inventory. Resolve every absolute target inside the repository and avoid broad globs. These are local cleanup operations, not tracked cleanup commits.
 
-**Validation:** Git status and the full local gate.  
+**Validation:** Git status and the full local gate.
 **Recovery:** rebuild, reinstall, relink, or restore retained local history using the original audit’s recovery table.
 
 ## Phase 7 — Standards documentation migration
 
 Freeze and index active standards. Add authority banners. Move only documentation whose active/deprecated status and dependencies are known. Do not move runtime JSON during this phase.
 
-**Validation:** standards-index uniqueness, authority/supersession checks, standards audits, link checks.  
+**Validation:** standards-index uniqueness, authority/supersession checks, standards audits, link checks.
 **Rollback:** revert the standards-document commit.
 
 ## Phase 8 — Runtime standards migration
 
 Move `abbreviation_registry.json` to a stable runtime-data location and update TypeScript imports, tests, build inputs, standards links, and knowledge-graph edges atomically. Retire `Canonical Standards Folder/` only after both documentation and runtime migrations pass.
 
-**Validation:** focused registry/CFE/editorial tests, typecheck, lint, full tests, build, link and index checks.  
-**Rollback:** revert the focused runtime migration.  
+**Validation:** focused registry/CFE/editorial tests, typecheck, lint, full tests, build, link and index checks.
+**Rollback:** revert the focused runtime migration.
 **Risk:** canonical formatting drift.
 
 ## Phase 9 — Documentation CI and final verification

@@ -317,6 +317,3 @@ The final verification report must explicitly confirm:
 - [ ] New isolated tests and the full test suite pass.
 - [ ] The Architecture Compliance Gate and Architecture Freeze Verification are satisfied.
 Do not commit, push, open a PR, or merge unless separately requested.
-
-
-

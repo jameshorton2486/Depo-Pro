@@ -33,8 +33,8 @@ This is a proposed, reversible implementation sequence. It authorizes no move, d
 - Confirm provenance/de-identification of DOCX/PDF samples under the locked Wave8 reference without modifying them.
 - Decide whether local AI histories have retention value before deletion.
 
-**Validation:** `git status --short`, `git check-ignore`, filename-only sensitive scan.  
-**Rollback:** no changes in this phase.  
+**Validation:** `git status --short`, `git check-ignore`, filename-only sensitive scan.
+**Rollback:** no changes in this phase.
 **Stop:** any real client data or credential exposure requires containment/privacy review.
 
 ## Phase 1 — Establish documentation indexes
@@ -45,8 +45,8 @@ This is a proposed, reversible implementation sequence. It authorizes no move, d
 - Create archive subdirectories only after approving the classification matrix.
 - Keep root authority documents in place.
 
-**Validation:** Markdown link checker or `rg`-based path audit.  
-**Rollback:** revert the documentation-only commit.  
+**Validation:** Markdown link checker or `rg`-based path audit.
+**Rollback:** revert the documentation-only commit.
 **Risk:** an archive without an index makes evidence less discoverable.
 
 ## Phase 2 — Move active audits and operational documents
@@ -61,16 +61,16 @@ Use the exact MOVE rows in `REPOSITORY_ROOT_INVENTORY.md`:
 
 Update all Markdown links, scripts, prompts, and absolute-path examples in the same commit. Do not change document conclusions while moving them.
 
-**Validation:** `rg` old filenames/paths, link check, `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`.  
-**Rollback:** revert the focused move/link commit.  
+**Validation:** `rg` old filenames/paths, link check, `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`.
+**Rollback:** revert the focused move/link commit.
 **Risk:** stale script paths and external bookmarks.
 
 ## Phase 3 — Archive completed and superseded evidence
 
 Move all ARCHIVE rows to the specified `docs/archive` subdirectories with `git mv`. Add an archive index that identifies the current authority for each superseded group. Preserve Git history and original filenames where collision-free.
 
-**Validation:** search old paths, verify archive index, run documentation link checks.  
-**Rollback:** revert the archive commit.  
+**Validation:** search old paths, verify archive index, run documentation link checks.
+**Rollback:** revert the archive commit.
 **Risk:** falsely presenting historical claims as current; mitigate with status banners/index metadata.
 
 ## Phase 4 — Relocate AI remediation logs
@@ -83,24 +83,24 @@ Move `ai_logs/` to `docs/audits/remediation/` only after updating:
 
 Verify that hash-chain semantics are path-independent or regenerate only through the documented, approved mechanism.
 
-**Validation:** PowerShell script dry runs, `rg -F 'ai_logs'`, hash-chain verification.  
-**Rollback:** revert the single relocation commit.  
+**Validation:** PowerShell script dry runs, `rg -F 'ai_logs'`, hash-chain verification.
+**Rollback:** revert the single relocation commit.
 **Risk:** breaking remediation provenance/history tooling.
 
 ## Phase 5 — Remove verified generated/local artifacts
 
 After human confirmation, remove only the 11 DELETE candidates listed in the inventory. Do not use broad recursive targets or globs. Resolve and verify each absolute path remains inside the repository. These are local cleanup actions and normally should not create a Git commit because the items are untracked/ignored.
 
-**Validation:** `git status --short`, `npm ci` if dependencies were removed, then full local gate.  
-**Rollback:** rebuild/reinstall/relink using the recovery methods in the cleanup audit; restore unique local histories from a user backup if retained.  
+**Validation:** `git status --short`, `npm ci` if dependencies were removed, then full local gate.
+**Rollback:** rebuild/reinstall/relink using the recovery methods in the cleanup audit; restore unique local histories from a user backup if retained.
 **Risk:** loss of unique diagnostics or local tool settings.
 
 ## Phase 6 — Dedicated standards-folder migration
 
 Treat this as architecture/runtime work, not simple cleanup. Split runtime registry data, active standards, and archived supporting documents; update imports and authority references atomically. Read AGENTS.md and master architecture again before starting.
 
-**Validation:** standards audits, registry/CFE/editorial tests, typecheck, lint, full tests, build, link checks.  
-**Rollback:** revert the entire focused migration.  
+**Validation:** standards audits, registry/CFE/editorial tests, typecheck, lint, full tests, build, link checks.
+**Rollback:** revert the entire focused migration.
 **Risk:** build failure or behavioral change in canonical formatting.
 
 ## Phase 7 — Final root verification

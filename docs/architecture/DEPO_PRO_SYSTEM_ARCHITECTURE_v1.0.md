@@ -402,8 +402,3 @@ Before changing this document to `ACTIVE` / `RATIFIED`:
 - Required `AGENTS.md` pre-read behavior is either preserved or changed through an explicitly approved amendment.
 
 Until then, this is a freeze candidate—not law.
-
-
-
-
-
