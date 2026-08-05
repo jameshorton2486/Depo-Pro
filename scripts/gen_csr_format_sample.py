@@ -7,7 +7,7 @@ Every format value is sourced from a ratified decision and cited inline:
   F3 two spaces after every sentence
   F4 one space after an abbreviation
   F5 colloquy body on the label line; continuation wraps flush left (0")
-  F6 stutters render with an em-dash: I -- I
+  F6 stutters render with a spaced double hyphen: I -- I (ADR-0011)
   F9 no generic labels; real names or role titles (THE VIDEOGRAPHER, etc.)
 NOT applied: F8 line numbering (Certification only) -> disclosed in cover note.
 """
@@ -17,7 +17,7 @@ from docx.enum.text import WD_TAB_ALIGNMENT, WD_LINE_SPACING, WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 
 SECT = "§"   # section symbol for the caption column
-EMD = "—"    # em-dash (F6 stutters, false starts)
+EMD = "--"   # spaced double hyphen (F6 stutters/false starts, ADR-0011)
 
 doc = Document()
 
@@ -178,13 +178,13 @@ qa("A.", "Um, it was around 8:15 a.m., I think.")                # filler + F4 "
 qa("Q.", "Did you review the report before today?")
 qa("A.", "Yeah, I " + EMD + " I read it twice last night.")     # filler + F6 stutter "I -- I"
 
-# Colloquy 2/3/4 - objection (F7), ruling, witness (F9 THE WITNESS)
+# Colloquy 2/3 - objection (F7) + ruling; witness answer renders as A. (ADR-0014)
 colloquy("MR. RAO:", "Objection. Form.")                          # F7: "Objection. Form." two spaces
 colloquy("MR. CALDERON:", "You can answer.")
-colloquy("THE WITNESS:", "I don't recall the exact date.")
+qa("A.", "I don't recall the exact date.")                        # ADR-0014: answer to the pending Q -> A., not THE WITNESS:
 
 qa("Q.", "Tell me what happened next.")
-qa("A.", "We were" + EMD + " the meeting was moved to the second floor.")   # false start
+qa("A.", "We were " + EMD + " the meeting was moved to the second floor.")   # false start (F6 spaced --)
 
 qa("Q.", "Had you met the plaintiff before that day?")
 qa("A.", "I had had one prior meeting with her, uh, back in March.")   # legit repetition "had had" + filler
@@ -209,7 +209,7 @@ qa("A.", "No, that's all I recall.")
 
 # Colloquy 7 - THE VIDEOGRAPHER off the record (F9 role title)
 colloquy("THE VIDEOGRAPHER:", "We are going off the record.  The time is 10:42 a.m.")
-paren("Recess taken.")
+paren("Whereupon, a recess was taken at 10:42 a.m.")              # ADR-0013: recess parenthetical; time from the videographer above
 
 # ---- Known limitations (kept out of the testimony body) ----
 doc.add_page_break()
@@ -235,8 +235,8 @@ note_head("1.  Stutter vs. legitimate repetition (scheduled for repair).")
 note_body(
     'The verbatim baseline (A9) preserves legitimate repetitions such as '
     '"had had" in the answer above.  The current stutter engine, however, would '
-    'wrongly render it as "had ' + EMD + ' had" ' + EMD + ' an em-dash stutter '
-    "(F6) that was never spoken.  This sample shows the CORRECT output; the "
+    'wrongly render it as "had -- had" -- a spaced double-hyphen stutter (F6, '
+    "ADR-0011) that was never spoken.  This sample shows the CORRECT output; the "
     "defect is disclosed here so it is not mistaken for the ratified format."
 )
 note_head("2.  No line numbering, by design.")

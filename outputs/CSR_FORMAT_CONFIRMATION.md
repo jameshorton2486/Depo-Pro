@@ -17,9 +17,11 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 | **F3** | **Two spaces** after the end of every sentence. |
 | **F4** | **One space** after an abbreviation (`Mr.`, `Dr.`, `U.S.`, `a.m.`). |
 | **F5** | Body begins on the label line; continuation lines **wrap flush to the left margin (0")**. |
-| **F6** | Stutters render with an em-dash: `I — I`. |
+| **F6** | Stutters and false starts render with a **spaced double hyphen**: `I -- I`, `We were -- the` (per **ADR-0011**, amending the original em-dash). |
 | **F7** | Objections follow F3: `Objection.  Form.` (two spaces). |
-| **F9** | No generic labels. Real names, or role titles — the sample shows **THE VIDEOGRAPHER**, **THE WITNESS**, **THE REPORTER**, and **THE COURT REPORTER (continuing)**. |
+| **F9** | No generic labels. Real names, or role titles — the sample shows **THE VIDEOGRAPHER**, **THE REPORTER**, and **THE COURT REPORTER (continuing)**. |
+| **F11** | A witness answering the pending question — including right after an objection ruling — renders as **`A.`**, not `THE WITNESS:` (per **ADR-0014**). `THE WITNESS:` is reserved for genuine colloquy (witness speaking outside Q/A). |
+| **F12** | The videographer's off-the-record line produces the recess parenthetical **`(Whereupon, a recess was taken at 10:42 a.m.)`** — the time taken from the videographer's spoken time (per **ADR-0013**). |
 
 **Not applied, on purpose:** **F8** line numbering (25 numbered lines per page) is added **at Certification only**. This is a pre-certification sample, so it has **no line numbers**. Their absence is by design — please don't read it as a defect.
 
@@ -34,7 +36,7 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
   |<------- 1.5" ------>|·····tab·····|·····tab·····|·····tab·····|
   |                     0"           0.5"          1.0"          1.5"
   |                     |                                        |
-  |                     |                          THE WITNESS:  I don't recall…
+  |                     |                          MR. RAO:  Objection.  Form.
   |                     |<--------------- 1.5" ----------------->|
   |                                                              |
   |<--------------------- 3.0" from paper edge ----------------->|
@@ -48,7 +50,7 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 
 ---
 
-## Please confirm (five points)
+## Please confirm (six points)
 
 **1. Colloquy layout (F1–F5).** Does the colloquy speaker-label position, the two-space colon, and the flush-left wrapping match your standard?
 
@@ -70,11 +72,15 @@ Every value in the sample comes from a ratified decision. Nothing here is a new 
 
 > ☐ Left margin should be 1.5" ☐ Other: _______________________ (measure from the printed page)
 
+**6. Working-draft header wording (OQ-5).** Until a transcript is certified, the Workspace shows a **working-draft indicator** instead of "CERTIFIED TRANSCRIPT OF DEPOSITION" — a transcript must not be labeled certified while it is still an unproofread draft. The current placeholder is **"WORKING DRAFT — NOT CERTIFIED"**. Is that the wording you want, or do you have a preferred phrasing that matches Texas practice?
+
+> ☐ "WORKING DRAFT — NOT CERTIFIED" is fine ☐ Preferred wording: ______________________________
+
 ---
 
 ## Known defects disclosed (so you don't waste time on them)
 
-1. **Stutter vs. legitimate repetition — scheduled for repair.** The verbatim baseline (A9) must preserve legitimate repetitions like **"had had"** exactly. The *current* stutter engine wrongly converts one such repetition into an em-dash stutter (`had — had`) that was never spoken. **The sample shows the CORRECT output**; this defect is called out on the sample's last page so it isn't mistaken for the ratified format. Fix is queued.
+1. **Stutter vs. legitimate repetition — scheduled for repair.** The verbatim baseline (A9) must preserve legitimate repetitions like **"had had"** exactly. The *current* stutter engine wrongly converts one such repetition into a double-hyphen stutter (`had -- had`) that was never spoken. **The sample shows the CORRECT output**; this defect is called out on the sample's last page so it isn't mistaken for the ratified format. Fix is queued.
 2. **No line numbering (F8).** Intentional for a pre-certification sample, as above.
 
 ---
@@ -85,4 +91,4 @@ Please **open the `.docx` in Word, print one page, and put a ruler on it** — c
 
 ---
 
-*Format values sourced from `docs/architecture/RATIFIED_DECISIONS.md` (F1–F10, A1–A10). Generated on branch `docs/csr-format-confirmation`. Sample built with a deterministic script; no AI model was called during rendering (A10).*
+*Format values sourced from `docs/architecture/RATIFIED_DECISIONS.md` (F1–F22, A1–A10). Generated on branch `docs/csr-format-confirmation`. Sample built with a deterministic script; no AI model was called during rendering (A10).*
