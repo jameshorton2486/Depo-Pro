@@ -435,11 +435,11 @@ export function TranscriptEditor({ readOnly }: Props) {
             labeled "CERTIFIED" before certification (ADR-0012 / OQ-5). The
             certified title belongs to the certification/export render path.
             The Canonical Baseline shows a read-only baseline header.
-            NOTE: "WORKING DRAFT — NOT CERTIFIED" is a placeholder pending
-            Miah's confirmed wording (a one-string swap when she confirms). */}
+            Pre-certification working-draft wording is "Initial Transcript"
+            (owner-decided 2026-08-05, resolving ADR-0012 / OQ-5). */}
         <div className="transcript-header">
           <p className="transcript-header-title">
-            {isCanonical ? "CANONICAL BASELINE — READ-ONLY" : "WORKING DRAFT — NOT CERTIFIED"}
+            {isCanonical ? "CANONICAL BASELINE — READ-ONLY" : "Initial Transcript"}
           </p>
           {state.document && (
             <p className="transcript-header-meta">

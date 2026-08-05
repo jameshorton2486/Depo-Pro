@@ -97,7 +97,7 @@ Silent, unrecorded mutation remains prohibited.
 - OQ-2: F5b retired (not a rule; no transcript evidence)
 - OQ-3: AI Review button → rename to "Run AI Review"; deterministic (P-A) and AI (P-B) pipelines stay separate
 - OQ-4: per-utterance line gutter in the Workspace → exempt editing aid (see F8); export must strip it
-- OQ-5: "CERTIFIED TRANSCRIPT" header removed from the Workspace → working-draft indicator (exact wording pending Miah)
+- OQ-5: "CERTIFIED TRANSCRIPT" header removed from the Workspace → working-draft indicator; wording **"Initial Transcript"** (owner-decided 2026-08-05)
 - OQ-6: standalone `BY MR./MS. NAME:` line → implement at 0" (see F15)
 
 Also corrected F6 (em-dash → `--`, catching up to ADR-0011) and folded F11, F13–F22 into this document as the single source of truth.
@@ -108,9 +108,9 @@ Also corrected F6 (em-dash → `--`, catching up to ADR-0011) and folded F11, F1
 
 ## Still Open
 
-- Working-draft header exact wording (OQ-5) — pending Miah's copy sign-off before code PR 3.
 - Miah to be informed that F6 was amended (em-dash → `--`) by the owner after she ratified it ([ADR-0011](adr/ADR-0011-stutter-double-hyphen.md)).
-- Still Miah's call (not yet ratified): `THE REPORTER:` vs `THE COURT REPORTER:`, and whether `(continuing)` parentheticals are used at all.
+- ~~Working-draft header exact wording (OQ-5)~~ — **resolved 2026-08-05: "Initial Transcript"** (owner-decided).
+- ~~`THE REPORTER:` vs `THE COURT REPORTER:` and whether `(continuing)` is used~~ — **resolved 2026-08-05: `THE REPORTER:`, no `(continuing)`** (owner-decided; matches all four reference transcripts).
 - F1 left-margin discrepancy: F1 states a 1.5" left margin, but `geometryProfile.leftMarginInches` is 1.25" (DP-011 §A2). Reconcile which is canonical.
 - Miah's confirmation of the A5 marking approach and the F10 dropdown behavior.
 - Additions to the abbreviation list (A10) — AI proposes, list is curated.
