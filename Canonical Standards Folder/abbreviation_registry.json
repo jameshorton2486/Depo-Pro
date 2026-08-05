@@ -1,6 +1,6 @@
 {
   "registry": "depo-pro-abbreviation-registry",
-  "version": "1.0",
+  "version": "1.1",
   "authority": "DP-010 (Sentence Boundary & Abbreviation Spacing)",
   "purpose": "Single source of truth for which trailing periods are ABBREVIATIONS (one space after) versus SENTENCE BOUNDARIES (two spaces after). Consumed by Workspace, Copy Transcript, DOCX export, PDF export, Stage S, and the AI Structuring Layer. Do NOT hardcode abbreviation lists per-module.",
   "rule": {
@@ -10,14 +10,14 @@
     "precedence": "If a token is in the registry, it is one space. Otherwise a trailing '.', '?', or '!' before a capital (or end of sentence) is a sentence boundary -> two spaces."
   },
   "one_space_tokens": {
-    "honorifics": ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Hon.", "Rev.", "Sr.", "Jr."],
+    "honorifics": ["Mr.", "Mrs.", "Ms.", "Dr.", "Prof.", "Hon.", "Rev.", "Sr.", "Jr.", "Supt."],
     "honorifics_caps": ["MR.", "MRS.", "MS.", "DR."],
     "credentials": ["M.D.", "Ph.D.", "D.O.", "D.C.", "J.D.", "R.N.", "P.A.", "Esq."],
-    "reference": ["No.", "Ex.", "Vol.", "Fig.", "p.", "pp."],
+    "reference": ["No.", "Ex.", "Exh.", "Vol.", "Fig.", "p.", "pp."],
     "time": ["a.m.", "p.m."],
-    "entity": ["Inc.", "Co.", "Corp.", "Ltd.", "L.P.", "L.L.C."],
+    "entity": ["Inc.", "Co.", "Corp.", "Ltd.", "L.P.", "L.L.C.", "Dept."],
     "latin_legal": ["vs.", "v.", "etc.", "et al.", "e.g.", "i.e."],
-    "geographic": ["St.", "Ave.", "Blvd.", "Rd.", "Mt."]
+    "geographic": ["St.", "Ave.", "Blvd.", "Rd.", "Mt.", "Hwy.", "Apt."]
   },
   "one_space_patterns": [
     { "name": "single_initial", "regex": "^[A-Z]\\.$", "desc": "single uppercase initial, e.g. J. R. C." },
@@ -30,6 +30,7 @@
   "notes": [
     "Miss takes no period and does not participate in period spacing.",
     "Running-text honorifics are mixed case (Ms. Vargas, Dr. Etminan); only the speaker-label designation is all caps (MR. ETMINAN:). Spacing is one space in both cases.",
-    "This is the ONLY abbreviation list. New abbreviations are added here, not in individual formatters."
+    "This is the ONLY abbreviation list. New abbreviations are added here, not in individual formatters.",
+    "v1.1 (2026-08-05): added Supt., Dept., Exh., Hwy., Apt. from CSR review (cover-note point #2, Miah). C.S.R., C.P.A., U.S., P.C., M.D., D.O. are already matched by the inner_dotted pattern; PLLC and Bates carry no trailing period and do not participate in period spacing; No. remains context-sensitive (see context_sensitive)."
   ]
 }
