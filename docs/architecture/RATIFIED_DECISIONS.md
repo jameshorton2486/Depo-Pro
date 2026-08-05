@@ -1,10 +1,10 @@
 # DEPO-PRO — Ratified Decisions
 
-**Date ratified:** 2026-08-03 (amended 2026-08-04 via ADR-0012)
+**Date ratified:** 2026-08-03 (amended 2026-08-04 via ADRs 0011–0014)
 **Format authority:** Miah (Certified Shorthand Reporter)
 **Architecture authority:** James (Owner)
 
-These decisions are binding on all implementation. They change only via a numbered ADR in `docs/architecture/`.
+These decisions are binding on all implementation. They change only via a numbered ADR in `docs/architecture/adr/`.
 
 ---
 
@@ -22,7 +22,7 @@ These decisions are binding on all implementation. They change only via a number
 
 **F5b — Retired.** The proposed rule that a new colloquy paragraph by the same speaker "holds" at the third tab (1.5") was not observed in any of the four reference depositions and has no basis: every same-speaker continuation is either a line wrap to 0" (F5) or a freshly-labeled new turn. Retired by ADR-0012 (OQ-2).
 
-**F6 — Stutter and interruption rendering.** Stutters, interrupted speech, and mid-sentence self-corrections render with a spaced double hyphen `--` (space, dash, dash, space), not an em-dash: `I -- I`, `but --`. Multiple occurrences in one sentence render identically. Amended from the original em-dash by ADR-0011 and confirmed across four produced transcripts.
+**F6 — Stutter and interruption rendering.** Stutters, interrupted speech, and mid-sentence self-corrections render with a spaced double hyphen `--` (space, dash, dash, space), not an em-dash: `I -- I`, `but --`. Multiple occurrences in one sentence render identically. Amended from the original em-dash by [ADR-0011](adr/ADR-0011-stutter-double-hyphen.md) and confirmed across four produced transcripts.
 
 **F7 — Objection spacing.** Follows F3. `Objection.  Form.` — two spaces after "Objection." ("Objection." is treated as a sentence.) The variant "Object to the form." is verbatim attorney speech, not a house format; F3 governs either way.
 
@@ -32,7 +32,9 @@ These decisions are binding on all implementation. They change only via a number
 
 **F10 — Paragraph speaker reassignment.** The reporter can select any paragraph and reassign its speaker from a dropdown listing the names and role titles associated with that transcript.
 
-**F11 — Witness answer format.** Following colloquy, a witness's answer to a question renders with the `A.` label, not `THE WITNESS:`. `THE WITNESS:` is used only when the witness speaks during attorney colloquy rather than answering a question. Confirmed across four produced depositions.
+**F11 — Witness answer format.** Following colloquy, a witness's answer to a question renders with the `A.` label, not `THE WITNESS:`. `THE WITNESS:` is used only when the witness speaks during attorney colloquy rather than answering a question. Confirmed across four produced depositions. Ratified by [ADR-0014](adr/ADR-0014-witness-answer-during-objection.md).
+
+**F12 — Recess parenthetical.** A videographer "off the record" announcement renders the canonical parenthetical `(Whereupon, a recess was taken at [time].)`. It is stored as a reporter-authored notation (not a Deepgram utterance), its timestamp traces to a verifiable source (the videographer's spoken time preferred; AI inference prohibited), and it is generated deterministically from persisted data. Added by [ADR-0013](adr/ADR-0013-recess-parenthetical.md); observes A3/A9.
 
 **F13 — Q./A. body wrapping.** Q./A. body continuation lines wrap flush to the left margin (0"), the same as colloquy (F5); only the first line carries the label/text indent. Amends the prior 1.0" wrap assumption.
 
@@ -100,11 +102,15 @@ Silent, unrecorded mutation remains prohibited.
 
 Also corrected F6 (em-dash → `--`, catching up to ADR-0011) and folded F11, F13–F22 into this document as the single source of truth.
 
+**ADR reconciliation (2026-08-04)** — added standalone ADR files ADR-0011 (stutter `--`), ADR-0013 (F12 recess parenthetical), and ADR-0014 (F11 witness-answer-during-objection — renumbered from the "ADR-0012" drafted in the superseded PR #68). All ADRs now live under `docs/architecture/adr/` (the path this document cites); the earlier root-level ADRs were moved there. Added F12. OQ-4's export gutter-strip condition was verified — see `docs/audits/OQ4_GUTTER_STRIP_VERIFICATION.md`.
+
 ---
 
 ## Still Open
 
 - Working-draft header exact wording (OQ-5) — pending Miah's copy sign-off before code PR 3.
-- Export pipeline must be verified to strip the Workspace editing-aid line gutter before any certified output (OQ-4 condition).
+- Miah to be informed that F6 was amended (em-dash → `--`) by the owner after she ratified it ([ADR-0011](adr/ADR-0011-stutter-double-hyphen.md)).
+- Still Miah's call (not yet ratified): `THE REPORTER:` vs `THE COURT REPORTER:`, and whether `(continuing)` parentheticals are used at all.
+- F1 left-margin discrepancy: F1 states a 1.5" left margin, but `geometryProfile.leftMarginInches` is 1.25" (DP-011 §A2). Reconcile which is canonical.
 - Miah's confirmation of the A5 marking approach and the F10 dropdown behavior.
 - Additions to the abbreviation list (A10) — AI proposes, list is curated.
