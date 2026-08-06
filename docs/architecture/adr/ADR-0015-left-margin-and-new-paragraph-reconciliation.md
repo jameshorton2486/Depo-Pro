@@ -1,5 +1,3 @@
-# ADR-0015 — Left-margin reconciliation and DP-011 new-paragraph correction
-
 ---
 authority_tier: T4
 status: ACTIVE
@@ -16,6 +14,8 @@ next_review: 2027-08-05
 ratification: RATIFIED
 implementation_status: VERIFIED
 ---
+
+# ADR-0015 — Left-margin reconciliation and DP-011 new-paragraph correction
 
 **Status:** Accepted
 **Date:** 2026-08-05
