@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "manifest_sha256": "9cc8195c912c5729127af14953f9200c1482437bf3ed2f5e6cf2765f42f9341e",
+  "graph_sha256": "7f88cb4e764cddeee74dbe6a0336292cec09cbd44d0df33cab01effdd1599b56",
+  "name": "standards",
+  "title": "Standards",
+  "document_count": 2,
+  "documents": [
+    {
+      "id": "DOC-0303",
+      "title": "Canonical Intake Field Governance",
+      "path": "docs/standards/CANONICAL_FIELD_GOVERNANCE.md",
+      "tier": "T3",
+      "status": "DRAFT",
+      "owner": "Intake",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0304",
+      "title": "Standards",
+      "path": "docs/standards/README.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    }
+  ]
+}

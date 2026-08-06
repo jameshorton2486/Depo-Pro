@@ -4,6 +4,7 @@
   "generated_on": "2026-08-05",
   "excluded_prefixes": [
     ".agents/",
+    "docs/archive/releases/",
     "docs/generated/",
     "reference/wave8/"
   ],

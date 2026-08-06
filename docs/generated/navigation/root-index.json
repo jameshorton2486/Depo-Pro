@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "manifest_sha256": "9cc8195c912c5729127af14953f9200c1482437bf3ed2f5e6cf2765f42f9341e",
+  "graph_sha256": "7f88cb4e764cddeee74dbe6a0336292cec09cbd44d0df33cab01effdd1599b56",
+  "name": "root",
+  "title": "Repository Documentation",
+  "document_count": 6,
+  "documents": [
+    {
+      "id": "DOC-0001",
+      "title": "AGENTS.md — House Rules for Bolt / AI Agents",
+      "path": "AGENTS.md",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0002",
+      "title": "Architecture Decisions",
+      "path": "ARCHITECTURE_DECISIONS.md",
+      "tier": "T2",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0003",
+      "title": "Canonical Standards Index",
+      "path": "CANONICAL_STANDARDS_INDEX.md",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0004",
+      "title": "CONTRACT_NOTES — API Contract Deviations Log",
+      "path": "CONTRACT_NOTES.md",
+      "tier": "T2",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0021",
+      "title": "Numbering Registry",
+      "path": "NUMBERING_REGISTRY.md",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0022",
+      "title": "Depo-Pro",
+      "path": "README.md",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Project",
+      "authoritative": true
+    }
+  ]
+}

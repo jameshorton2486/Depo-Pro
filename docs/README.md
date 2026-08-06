@@ -1,59 +1,45 @@
+<!-- GENERATED FILE. DO NOT EDIT. Run npm run docs:build. -->
 # Depo-Pro Documentation
 
-This directory contains the project’s architecture, standards, operational guidance,
-audit evidence, implementation prompts, and historical records.
+The [document manifest](document-manifest.json) is the canonical documentation inventory. Navigation, search, graphs, and health reports are deterministic build products.
 
-Before changing application code, read [AGENTS.md](../AGENTS.md) and the
-[Master Architecture](architecture/MASTER_ARCHITECTURE.md). When documents conflict,
-those governing documents define the applicable precedence. The ratified [Document Authority Registry](architecture/DOCUMENT_AUTHORITY_REGISTRY.md) and [Project Authority Index](architecture/PROJECT_AUTHORITY_INDEX.md) govern documentation status and navigation.
+Before changing application code, read [AGENTS.md](../AGENTS.md) and the [Master Architecture](architecture/MASTER_ARCHITECTURE.md).
 
-## Manifest
+## Documentation areas
 
-[`document-manifest.json`](document-manifest.json) is the single inventory of every managed project document. CI rejects unregistered, missing, duplicate, or orphaned entries.
+| Area | Documents | Generated index |
+| --- | ---: | --- |
+| Architecture | 46 | [architecture-index.json](generated/navigation/architecture-index.json) |
+| Standards | 2 | [standards-index.json](generated/navigation/standards-index.json) |
+| Audits | 132 | [audits-index.json](generated/navigation/audits-index.json) |
+| Reports | 30 | [reports-index.json](generated/navigation/reports-index.json) |
+| Operations | 7 | [operations-index.json](generated/navigation/operations-index.json) |
+| Archive | 44 | [archive-index.json](generated/navigation/archive-index.json) |
 
-## Generated artifacts
+## Authority documents
 
-The [generated documentation area](generated/) contains deterministic dependency and authority graphs derived from the manifest. Regenerate it with `npm run docs:graph`; never edit generated files by hand.
+| Document | ID | Tier | Status | Owner |
+| --- | --- | --- | --- | --- |
+| [AGENTS.md — House Rules for Bolt / AI Agents](../AGENTS.md) | DOC-0001 | T1 | ACTIVE | Architecture |
+| [Architecture Decisions](../ARCHITECTURE_DECISIONS.md) | DOC-0002 | T2 | ACTIVE | Architecture |
+| [Canonical Standards Index](../CANONICAL_STANDARDS_INDEX.md) | DOC-0003 | T3 | ACTIVE | Rendering |
+| [CONTRACT_NOTES — API Contract Deviations Log](../CONTRACT_NOTES.md) | DOC-0004 | T2 | ACTIVE | Architecture |
+| [Numbering Registry](../NUMBERING_REGISTRY.md) | DOC-0021 | T3 | ACTIVE | Rendering |
+| [Depo-Pro](../README.md) | DOC-0022 | T1 | ACTIVE | Project |
+| [DATA FIELD REFERENCE](DATA_FIELD_REFERENCE.md) | DOC-0039 | T3 | ACTIVE | Intake |
+| [Depo-Pro Data Structures & JSON Schemas](DATA_STRUCTURES_REFERENCE.md) | DOC-0040 | T3 | ACTIVE | Transcript |
+| [Document Authority Registry](architecture/DOCUMENT_AUTHORITY_REGISTRY.md) | DOC-0062 | T1 | ACTIVE | Architecture |
+| [DEPO-PRO MASTER ARCHITECTURE DOCUMENT](architecture/MASTER_ARCHITECTURE.md) | DOC-0068 | T1 | ACTIVE | Architecture |
+| [Project Authority Index](architecture/PROJECT_AUTHORITY_INDEX.md) | DOC-0071 | T1 | ACTIVE | Architecture |
+| [DEPO-PRO Project Charter](architecture/PROJECT_CHARTER.md) | DOC-0072 | T1 | ACTIVE | Project |
 
-## Documentation map
+## Generated discovery
 
-| Area | Purpose |
-|---|---|
-| [Architecture](architecture/) | Governing architecture, contracts, decisions, and implementation maps |
-| [AI transcript intelligence](atia/) | AI correction architecture, provider boundaries, and audit evidence |
-| [AI pipeline specifications](ai-pipeline-spec/) | Specifications for transcript-analysis engines and review workflows |
-| [Audits](audits/) | Point-in-time findings, validation evidence, and implementation assessments |
-| [Standards](standards/) | Ratified standards and clearly marked draft standard candidates |
-| [Operations](operations/) | Deployment, release, recovery, and production runbooks |
-| [Dashboard](dashboard/) | Release and transcript-quality status views |
-| [Benchmark](benchmark/) | Benchmark methodology and results |
-| [Prompts](prompts/) | Retained implementation and remediation prompts |
-| [Reconciliation](reconciliation/) | Branch and implementation reconciliation records |
-| [Archive](archive/) | Completed reports and historical handoffs retained for traceability |
+- [Documentation health](generated/documentation-health.md)
+- [Search index](generated/search-index.json)
+- [Document graph](generated/dependency-report.md)
+- [Mermaid authority graph](generated/document-graph.mmd)
 
-## Root-document policy
+## Build
 
-The repository root is reserved for documents needed at first contact or at fixed
-paths by project governance and tooling:
-
-- `README.md`
-- `AGENTS.md`
-- `ARCHITECTURE_DECISIONS.md`
-- `CONTRACT_NOTES.md`
-- `CANONICAL_STANDARDS_INDEX.md`
-- `NUMBERING_REGISTRY.md`
-
-New audits, reports, plans, and handoffs belong in the appropriate `docs/`
-subdirectory. Historical material should be archived rather than deleted when it
-provides useful engineering or decision evidence.
-
-## Document status
-
-Treat architecture and standards as authoritative only when their own status and
-the governing indexes identify them as current. Audit and archive documents are
-evidence from a particular point in time; they do not override current contracts,
-architecture, or runtime behavior.
-
-## Validation
-
-Run `npm run docs:check` before committing documentation changes. See the [documentation validation runbook](operations/DOCUMENTATION_VALIDATION.md) for enforced rules and the legacy metadata baseline policy.
+Run `npm run docs:build` after changing the manifest or authored documentation. CI runs `npm run docs:check` to reject stale generated outputs.

@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "manifest_sha256": "9cc8195c912c5729127af14953f9200c1482437bf3ed2f5e6cf2765f42f9341e",
+  "graph_sha256": "7f88cb4e764cddeee74dbe6a0336292cec09cbd44d0df33cab01effdd1599b56",
+  "name": "operations",
+  "title": "Operations",
+  "document_count": 7,
+  "documents": [
+    {
+      "id": "DOC-0278",
+      "title": "Depo-Pro — Deepgram Go-Live Checklist",
+      "path": "docs/operations/DEEPGRAM_GO_LIVE_CHECKLIST.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0279",
+      "title": "Documentation Validation",
+      "path": "docs/operations/DOCUMENTATION_VALIDATION.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0280",
+      "title": "Export Adapter Deployment",
+      "path": "docs/operations/EXPORT_ADAPTER_DEPLOYMENT.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0281",
+      "title": "Formatter Service Deployment",
+      "path": "docs/operations/FORMATTER_SERVICE_DEPLOYMENT.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0282",
+      "title": "GitHub Cleanup Plan",
+      "path": "docs/operations/GITHUB_CLEANUP_PLAN.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0283",
+      "title": "Release Candidate Operations Runbook",
+      "path": "docs/operations/RELEASE_CANDIDATE_RUNBOOK.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0284",
+      "title": "Transcript Finalize Worker Deployment",
+      "path": "docs/operations/TRANSCRIPT_FINALIZE_WORKER_DEPLOYMENT.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    }
+  ]
+}

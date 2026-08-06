@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { GRAPH_SCHEMA_VERSION, RELATIONSHIP_TYPES, validateManifest } from './documentation-graph-lib.mjs';
 import path from 'node:path';
@@ -8,6 +8,8 @@ import process from 'node:process';
 const root=process.cwd(), out=path.join(root,'docs/generated'), check=process.argv.includes('--check');
 const manifestText=await readFile(path.join(root,'docs/document-manifest.json'),'utf8');
 const manifest=JSON.parse(manifestText);
+const buildPolicy=JSON.parse(await readFile(path.join(root,'scripts/documentation-build-policy.json'),'utf8'));
+const generatedReadmes=new Set(buildPolicy.rendered_readmes??[]);
 const manifestValidation=validateManifest(manifest);
 if(manifestValidation.errors.length){console.error('Manifest graph validation failed.');for(const error of manifestValidation.errors)console.error(`- ERROR: ${error}`);process.exit(1)}
 const docs=[...manifest.documents].sort((a,b)=>a.id.localeCompare(b.id));
@@ -16,6 +18,7 @@ const hash=createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
 const meta={generated:true,generated_on:manifest.generated_on,source:'docs/document-manifest.json',source_sha256:hash};
 const edge=(type,source,target)=>{if(!RELATIONSHIP_TYPES.includes(type))throw new Error(`Unsupported relationship type: ${type}`);return {type,source,target}};
 const unique=a=>[...new Set(a)].sort();
+async function atomicWrite(target,content){const temporary=target+'.tmp-'+process.pid;await writeFile(temporary,content,'utf8');await rename(temporary,target)}
 
 function linkedIds(source,markdown){
   const raw=[];
@@ -42,7 +45,7 @@ function cycles(edges){
 const governance=docs.flatMap(d=>d.governed_by.map(id=>edge('GOVERNANCE',d.id,id)));
 const supersession=docs.flatMap(d=>d.supersedes.map(id=>edge('SUPERSESSION',d.id,id)));
 const references=[];
-for(const d of docs){const md=await readFile(path.join(root,d.path),'utf8');for(const id of linkedIds(d.path,md))if(id!==d.id)references.push(edge('REFERENCE',d.id,id))}
+for(const d of docs){const md=generatedReadmes.has(d.path)?'':await readFile(path.join(root,d.path),'utf8');for(const id of linkedIds(d.path,md))if(id!==d.id)references.push(edge('REFERENCE',d.id,id))}
 references.sort((a,b)=>`${a.source}:${a.target}`.localeCompare(`${b.source}:${b.target}`));
 const hierarchy=[];
 for(const d of docs){let dir=path.posix.dirname(d.path);while(dir!=='.'){const parent=byPath.get(`${dir}/README.md`);if(parent&&parent.id!==d.id){hierarchy.push(edge('HIERARCHY',d.id,parent.id));break}const next=path.posix.dirname(dir);if(next===dir)break;dir=next}}
@@ -158,4 +161,4 @@ ${authorities.map(d=>`| ${d.id} | ${d.tier} | ${d.status} | ${d.title.replaceAll
 const hard=[orphanAuthorities,unreachable,multipleParents,governanceCycles,supersessionCycles,missing].flat();
 if(hard.length){console.error('Documentation graph integrity failed.');for(const [name,values] of Object.entries(diagnostics))if(values.length)console.error(`- ${name}: ${reportValue(values)}`);process.exitCode=1}
 else if(check){const stale=[];for(const [name,expected] of outputs){try{if(await readFile(path.join(out,name),'utf8')!==expected)stale.push(name)}catch{stale.push(name)}}if(stale.length){console.error(`Generated documentation graph is stale or missing: ${stale.join(', ')}. Run npm run docs:graph.`);process.exitCode=1}else console.log(`Documentation graph check passed: ${docs.length} documents, ${edges.length} relationships, ${outputs.size} generated artifacts.`)}
-else{await mkdir(out,{recursive:true});for(const [name,content] of outputs)await writeFile(path.join(out,name),content,'utf8');console.log(`Generated ${outputs.size} documentation graph artifacts from ${docs.length} manifest records.`)}
+else{await mkdir(out,{recursive:true});for(const [name,content] of outputs)await atomicWrite(path.join(out,name),content);console.log(`Generated ${outputs.size} documentation graph artifacts from ${docs.length} manifest records.`)}

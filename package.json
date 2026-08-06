@@ -15,7 +15,10 @@
     "docs:graph": "node scripts/generate-documentation-graph.mjs",
     "docs:graph:check": "node scripts/generate-documentation-graph.mjs --check",
     "docs:graph:test": "node --test tests/documentation-graph.test.mjs",
-    "docs:check": "node scripts/verify-documentation.mjs && node --test tests/documentation-graph.test.mjs && node scripts/generate-documentation-graph.mjs --check"
+    "docs:generate": "node scripts/generate-documentation-graph.mjs && node scripts/generate-documentation-build.mjs",
+    "docs:build": "node scripts/verify-documentation.mjs && node scripts/generate-documentation-graph.mjs && node scripts/generate-documentation-build.mjs && node scripts/verify-documentation.mjs && node --test tests/documentation-graph.test.mjs tests/documentation-build.test.mjs && node scripts/generate-documentation-graph.mjs --check && node scripts/generate-documentation-build.mjs --check",
+    "docs:check": "node scripts/verify-documentation.mjs && node --test tests/documentation-graph.test.mjs tests/documentation-build.test.mjs && node scripts/generate-documentation-graph.mjs --check && node scripts/generate-documentation-build.mjs --check",
+    "docs:snapshot": "node scripts/create-documentation-release-snapshot.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

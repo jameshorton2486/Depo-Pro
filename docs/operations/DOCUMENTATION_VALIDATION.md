@@ -78,3 +78,28 @@ The formal graph contract is `scripts/documentation-graph-schema.json`. Generate
 The relationship vocabulary is `GOVERNANCE`, `SUPERSESSION`, `REFERENCE`, `HIERARCHY`, `REVIEW`, and `OWNERSHIP`. Run `npm run docs:graph:test` to exercise malformed-manifest fixtures covering cycles, duplicate authority, orphan and disconnected documents, multiple parents, missing owners, duplicate IDs, and missing targets.
 
 The generated Mermaid authority view is `docs/generated/document-graph.mmd`. `manifest-history.json` compares the current manifest with the latest committed manifest version whose content differs, keeping its result stable on both sides of a commit. On the initial manifest revision, the baseline is an empty inventory.
+
+## Documentation build system
+
+`npm run docs:build` is the normal author workflow. It validates the canonical manifest, regenerates the graph, navigation indexes, search index, health dashboard, and managed section README files, then verifies all outputs and regression tests.
+
+`npm run docs:check` is the non-mutating CI gate. It fails when any generated output is missing, stale, or manually edited. `npm run docs:generate` performs generation without the complete validation sequence.
+
+Phase 3 outputs are:
+
+- `docs/generated/navigation/*-index.json` for root, architecture, standards, audits, reports, operations, and archive discovery;
+- `docs/generated/search-index.json` for title, ID, ownership, authority, keyword, heading, path, and category queries;
+- `docs/generated/documentation-health.json` and `.md` for repository health;
+- generated `docs/README.md`, `docs/audits/README.md`, `docs/archive/README.md`, and `docs/standards/README.md` navigation.
+
+The generated README paths are excluded as graph-reference inputs, so navigation cannot create a graph dependency cycle.
+
+## Release snapshots
+
+After a release has an assigned identifier and `npm run docs:build` passes, run:
+
+```bash
+npm run docs:snapshot -- <release-id>
+```
+
+This creates an immutable bundle under `docs/archive/releases/<release-id>/` containing the manifest, graph, combined navigation, search index, health report, and a SHA-256 snapshot inventory. Existing snapshot directories are never overwritten.

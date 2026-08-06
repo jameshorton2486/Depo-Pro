@@ -10,6 +10,7 @@
   ],
   "excludedPrefixes": [
     ".agents/",
+    "docs/archive/releases/",
     "docs/generated/",
     "reference/wave8/"
   ],

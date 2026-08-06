@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "rendered_readmes": [
+    "docs/README.md",
+    "docs/audits/README.md",
+    "docs/archive/README.md",
+    "docs/standards/README.md"
+  ],
+  "navigation_groups": {
+    "root": { "title": "Repository Documentation", "prefixes": [], "categories": ["root"] },
+    "architecture": { "title": "Architecture", "prefixes": ["docs/architecture/"], "categories": [] },
+    "standards": { "title": "Standards", "prefixes": ["docs/standards/"], "categories": [] },
+    "audits": { "title": "Audits", "prefixes": ["docs/audits/"], "categories": [] },
+    "reports": { "title": "Reports", "prefixes": ["docs/archive/reports/"], "categories": [] },
+    "operations": { "title": "Operations", "prefixes": ["docs/operations/"], "categories": [] },
+    "archive": { "title": "Archive", "prefixes": ["docs/archive/"], "categories": [] }
+  }
+}

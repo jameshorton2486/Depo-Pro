@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "f7fcca4bf20b2db21865d15f70d5b7bf30d8a6c344c564f95daf2a74afd45032",
+  "source_sha256": "9cc8195c912c5729127af14953f9200c1482437bf3ed2f5e6cf2765f42f9341e",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -6279,31 +6279,6 @@
     },
     {
       "type": "REFERENCE",
-      "source": "DOC-0041",
-      "target": "DOC-0001"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0041",
-      "target": "DOC-0062"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0041",
-      "target": "DOC-0068"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0041",
-      "target": "DOC-0071"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0041",
-      "target": "DOC-0279"
-    },
-    {
-      "type": "REFERENCE",
       "source": "DOC-0061",
       "target": "DOC-0001"
     },
@@ -6654,11 +6629,6 @@
     },
     {
       "type": "REFERENCE",
-      "source": "DOC-0097",
-      "target": "DOC-0041"
-    },
-    {
-      "type": "REFERENCE",
       "source": "DOC-0099",
       "target": "DOC-0001"
     },
@@ -6851,21 +6821,6 @@
       "type": "REFERENCE",
       "source": "DOC-0145",
       "target": "DOC-0277"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0232",
-      "target": "DOC-0241"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0304",
-      "target": "DOC-0003"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0304",
-      "target": "DOC-0303"
     },
     {
       "type": "HIERARCHY",

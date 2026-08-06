@@ -1,13 +1,10 @@
+<!-- GENERATED FILE. DO NOT EDIT. Run npm run docs:build. -->
 # Standards
 
-This directory contains domain standards and candidates relocated from the repository
-root. A document is governing only when its metadata says `ACTIVE` and `RATIFIED`, or
-when the Project Authority Index identifies it as established authority.
+This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Current draft candidates:
+Managed documents: **1**
 
-- [Canonical Intake Field Governance](CANONICAL_FIELD_GOVERNANCE.md)
-
-The existing canonical formatting standards remain routed through
-[`CANONICAL_STANDARDS_INDEX.md`](../../CANONICAL_STANDARDS_INDEX.md) while the runtime
-registry and standards-document migration is completed.
+| Document | ID | Tier | Status | Owner |
+| --- | --- | --- | --- | --- |
+| [Canonical Intake Field Governance](CANONICAL_FIELD_GOVERNANCE.md) | DOC-0303 | T3 | DRAFT | Intake |
