@@ -49,9 +49,22 @@ describe("AIReviewBanner", () => {
     document.body.innerHTML = "";
   });
 
-  it("returns null when no pending or auto-applied suggestions exist", () => {
+  it("shows an idle call-to-action with the Run AI Review button when no suggestions exist yet", () => {
     const { container, cleanup } = renderBanner({
       jobId: "tr_123",
+      pendingCount: 0,
+      autoAppliedCount: 0,
+    });
+
+    expect(container.textContent).toContain("Run an AI review");
+    const button = container.querySelector("button");
+    expect(button?.textContent).toContain("Run AI Review");
+    cleanup();
+  });
+
+  it("returns null when idle and there is no job to review", () => {
+    const { container, cleanup } = renderBanner({
+      jobId: null,
       pendingCount: 0,
       autoAppliedCount: 0,
     });

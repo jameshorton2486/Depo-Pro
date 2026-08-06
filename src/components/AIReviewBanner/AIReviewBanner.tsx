@@ -17,7 +17,14 @@ export function AIReviewBanner({
 }: AIReviewBannerProps) {
   const [reReviewing, setReReviewing] = useState(false);
 
-  if (!isRunning && pendingCount === 0 && autoAppliedCount === 0) {
+  const hasResults = pendingCount > 0 || autoAppliedCount > 0;
+
+  // Idle with no job to act on: there is nothing to trigger, so render nothing.
+  // Previously this guard also fired whenever a fresh transcript had zero
+  // suggestions — which hid the only control that *generates* suggestions,
+  // making it unreachable by construction. The AI-review trigger must stay
+  // visible in the idle state so the reporter can start a review.
+  if (!isRunning && !hasResults && !jobId) {
     return null;
   }
 
@@ -25,12 +32,16 @@ export function AIReviewBanner({
     ? "AI review in progress"
     : pendingCount > 0
       ? "AI suggestions ready for review"
-      : "AI review applied high-confidence corrections";
+      : autoAppliedCount > 0
+        ? "AI review applied high-confidence corrections"
+        : "AI review";
   const detail = isRunning
     ? "Depo-Pro is evaluating flagged transcript tokens and speaker labels."
     : pendingCount > 0
       ? `${pendingCount} suggestion${pendingCount === 1 ? "" : "s"} need review. ${autoAppliedCount} auto-applied.`
-      : `${autoAppliedCount} high-confidence correction${autoAppliedCount === 1 ? "" : "s"} were auto-applied.`;
+      : autoAppliedCount > 0
+        ? `${autoAppliedCount} high-confidence correction${autoAppliedCount === 1 ? "" : "s"} were auto-applied.`
+        : "Run an AI review to surface suggested corrections and speaker labels for this transcript.";
 
   async function handleReReview() {
     if (!jobId) {
