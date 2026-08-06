@@ -5947,6 +5947,25 @@
         "DOC-0071"
       ],
       "supersedes": []
+    },
+    {
+      "id": "DOC-0314",
+      "title": "ADR-0015 — Left-margin reconciliation and DP-011 new-paragraph correction",
+      "path": "docs/architecture/adr/ADR-0015-left-margin-and-new-paragraph-reconciliation.md",
+      "category": "architecture",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "geometry-decision-evidence"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
     }
   ]
 }

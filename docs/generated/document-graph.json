@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "9cc8195c912c5729127af14953f9200c1482437bf3ed2f5e6cf2765f42f9341e",
+  "source_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4701,6 +4701,21 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0314",
+      "title": "ADR-0015 — Left-margin reconciliation and DP-011 new-paragraph correction",
+      "path": "docs/architecture/adr/ADR-0015-left-margin-and-new-paragraph-reconciliation.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "geometry-decision-evidence"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05"
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6263,6 +6278,11 @@
       "target": "DOC-0071"
     },
     {
+      "type": "GOVERNANCE",
+      "source": "DOC-0314",
+      "target": "DOC-0068"
+    },
+    {
       "type": "SUPERSESSION",
       "source": "DOC-0062",
       "target": "DOC-0098"
@@ -6276,6 +6296,11 @@
       "type": "SUPERSESSION",
       "source": "DOC-0241",
       "target": "DOC-0238"
+    },
+    {
+      "type": "REFERENCE",
+      "source": "DOC-0014",
+      "target": "DOC-0314"
     },
     {
       "type": "REFERENCE",
@@ -6611,6 +6636,11 @@
       "type": "REFERENCE",
       "source": "DOC-0074",
       "target": "DOC-0095"
+    },
+    {
+      "type": "REFERENCE",
+      "source": "DOC-0074",
+      "target": "DOC-0314"
     },
     {
       "type": "REFERENCE",
@@ -8188,6 +8218,11 @@
       "target": "DOC-0306"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0314",
+      "target": "DOC-0041"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -8230,6 +8265,11 @@
     {
       "type": "REVIEW",
       "source": "DOC-0303",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0314",
       "target": "DOC-0068"
     },
     {
@@ -9796,6 +9836,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0313",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0314",
+      "target": "OWNER:Rendering"
     }
   ],
   "owners": {
@@ -10119,7 +10164,8 @@
     ],
     "Rendering": [
       "DOC-0003",
-      "DOC-0021"
+      "DOC-0021",
+      "DOC-0314"
     ],
     "Transcript": [
       "DOC-0040"
