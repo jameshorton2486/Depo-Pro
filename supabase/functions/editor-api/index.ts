@@ -113,6 +113,7 @@ const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CASE_FILES_BUCKET = "case-files";
 const SIGNED_URL_TTL_SECONDS = 6 * 60 * 60; // 6h supports long review sessions without mid-session expiry.
 const WORD_PAGE_SIZE = 1000;
+const UTTERANCE_PAGE_SIZE = 1000;
 const CONFIDENCE_THRESHOLD = 0.70;
 
 Deno.serve(async (request) => {
@@ -318,18 +319,38 @@ async function loadUtterances(
   supabase: SupabaseClient<Database>,
   transcriptId: string,
 ): Promise<TranscriptUtteranceRow[]> {
-  const { data, error } = await supabase
-    .from("transcript_utterances")
-    .select("utterance_id, speaker_id, start_time, end_time, ordinal, utterance_index, excluded_from_output, exclusion_reason, is_synthetic, text")
-    .eq("transcript_id", transcriptId)
-    .order("utterance_index", { ascending: true })
-    .order("ordinal", { ascending: true });
+  // Paginate to defeat PostgREST's default 1000-row cap. Without this, transcripts
+  // with >1000 utterances were silently truncated to the first 1000 entries while
+  // all words still loaded, stitching later words onto the wrong utterances and
+  // producing garbled display text. Mirrors loadWords below.
+  const rows: TranscriptUtteranceRow[] = [];
+  let from = 0;
 
-  if (error) {
-    throw new HttpError(500, "failed to load utterances");
+  while (true) {
+    const to = from + UTTERANCE_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from("transcript_utterances")
+      .select("utterance_id, speaker_id, start_time, end_time, ordinal, utterance_index, excluded_from_output, exclusion_reason, is_synthetic, text")
+      .eq("transcript_id", transcriptId)
+      .order("utterance_index", { ascending: true })
+      .order("ordinal", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      throw new HttpError(500, "failed to load utterances");
+    }
+
+    const page = (data ?? []) as TranscriptUtteranceRow[];
+    rows.push(...page);
+
+    if (page.length < UTTERANCE_PAGE_SIZE) {
+      break;
+    }
+
+    from += UTTERANCE_PAGE_SIZE;
   }
 
-  return (data ?? []) as TranscriptUtteranceRow[];
+  return rows;
 }
 
 async function loadWords(
