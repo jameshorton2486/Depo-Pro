@@ -178,7 +178,7 @@ $steps = @(
     Label = "Prompt 1 speaker identity fix"
     Message = "fix(ai-review): read verified speaker identity from transcript_speakers"
     Paths = @(
-      "DATA_REALITY_FINDINGS.md",
+      "docs/audits/DATA_REALITY_FINDINGS.md",
       "src/lib/transcript/aiReview.test.ts"
     )
     ManualPatchTargets = @(
@@ -286,7 +286,7 @@ $steps = @(
     Paths = @(
       ".gitignore",
       "AGENTS.md",
-      "GITHUB_CLEANUP_PLAN.md",
+      "docs/operations/GITHUB_CLEANUP_PLAN.md",
       "scripts/fixtures/novak-buildright.txt",
       "scripts/extract-nod-smoke.mjs",
       "src/lib/format/__fixtures__/synthetic_deepgram_response.json",
