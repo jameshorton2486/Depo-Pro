@@ -182,13 +182,13 @@ The following gaps are what the TIE closes.
 The repo already contains dozens of audit and report documents. Many of these are directly relevant to this audit and should be cross-referenced by the implementation team:
 
 - `MASTER_ARCHITECTURE.md` — the governing architecture document
-- `DEEPGRAM_PIPELINE_REPORT.md`, `DEEPGRAM_WIRE_PARAMS_REPORT.md` — recognition baseline behavior
+- `docs/archive/reports/DEEPGRAM_PIPELINE_REPORT.md`, `docs/archive/reports/DEEPGRAM_WIRE_PARAMS_REPORT.md` — recognition baseline behavior
 - `W23B_CANONICAL_INTEGRITY.md` — the canonical gate this audit builds on
-- `KEYTERM_PIPELINE_FINDINGS.md`, `TRANSCRIPT_KEYTERM_AUDIT.md`, `KEYTERM_EXPANSION_NOTES.md` — the existing keyterm approach that becomes the seed for the proper name registry
-- `SPEAKER_REASSIGNMENT_FIX_REPORT.md` — speaker resolution, a core AI-responsibility area
-- `FORMATTER_OWNER_AUDIT.md`, `DEPO_EDITOR_BACKEND_AUDIT.md` — ownership audits that inform the provider abstraction
-- `TRANSCRIPT_QUALITY_FINDINGS.md`, `CASE_STYLE_TERMINOLOGY_FINDINGS.md` — quality baselines the TIE must not regress
-- `PROVIDER_MIGRATION_REPORT.md` — prior work on provider abstraction
+- `docs/audits/KEYTERM_PIPELINE_FINDINGS.md`, `docs/audits/TRANSCRIPT_KEYTERM_AUDIT.md`, `docs/archive/reports/KEYTERM_EXPANSION_NOTES.md` — the existing keyterm approach that becomes the seed for the proper name registry
+- `docs/archive/reports/SPEAKER_REASSIGNMENT_FIX_REPORT.md` — speaker resolution, a core AI-responsibility area
+- `docs/audits/FORMATTER_OWNER_AUDIT.md`, `docs/audits/DEPO_EDITOR_BACKEND_AUDIT.md` — ownership audits that inform the provider abstraction
+- `docs/audits/TRANSCRIPT_QUALITY_FINDINGS.md`, `docs/archive/audits/CASE_STYLE_TERMINOLOGY_FINDINGS.md` — quality baselines the TIE must not regress
+- `docs/archive/reports/PROVIDER_MIGRATION_REPORT.md` — prior work on provider abstraction
 - `DTAS-v1.0.md` (Deposition Transcript Analysis Spec) — the semantic spec the block engine implements
 - `W22-2A_STRUCTURED_TRANSCRIPT_CONTRACT.md` — the output contract downstream consumers rely on
 
@@ -607,7 +607,7 @@ Knowledge is scattered:
 - `JobConfig.confirmed_spellings` — case-specific confirmed name spellings, per-transcript.
 - Hardcoded lookups in `corrections.py` — universal proper noun corrections (`Doctor.` → `Dr.`), subpoena variants.
 - Embedded lists in `ai_tools.py` prompts — medical term corrections.
-- Keyterm-related documents (`KEYTERM_PIPELINE_FINDINGS.md`, `TRANSCRIPT_KEYTERM_AUDIT.md`, `KEYTERM_EXPANSION_NOTES.md`) — the ancestor of proper name registries.
+- Keyterm-related documents (`docs/audits/KEYTERM_PIPELINE_FINDINGS.md`, `docs/audits/TRANSCRIPT_KEYTERM_AUDIT.md`, `docs/archive/reports/KEYTERM_EXPANSION_NOTES.md`) — the ancestor of proper name registries.
 
 There is no notion of knowledge that improves over time or is scoped to a case as opposed to a transcript.
 
@@ -2124,13 +2124,13 @@ For implementers doing the migration, this appendix maps sections of the audit t
 
 ### 8.3 Existing audit documents to consult during implementation
 
-- Before touching Deepgram integration: `DEEPGRAM_PIPELINE_REPORT.md`, `DEEPGRAM_WIRE_PARAMS_REPORT.md`
+- Before touching Deepgram integration: `docs/archive/reports/DEEPGRAM_PIPELINE_REPORT.md`, `docs/archive/reports/DEEPGRAM_WIRE_PARAMS_REPORT.md`
 - Before touching canonical integrity: `W23B_CANONICAL_INTEGRITY.md`
-- Before touching keyterms/registries: `KEYTERM_PIPELINE_FINDINGS.md`, `TRANSCRIPT_KEYTERM_AUDIT.md`
-- Before touching speaker resolution: `SPEAKER_REASSIGNMENT_FIX_REPORT.md`, `STAGE_2_REPORTER_AUDIT.md`
-- Before touching formatter contracts: `FORMATTER_OWNER_AUDIT.md`, `W22-2A_STRUCTURED_TRANSCRIPT_CONTRACT.md`
-- Before touching UFM: `UFM_FIELD_AUDIT.md`, `INTAKE_UFM_GAP_ANALYSIS.md`
-- Before adding a new provider: `PROVIDER_MIGRATION_REPORT.md`
+- Before touching keyterms/registries: `docs/audits/KEYTERM_PIPELINE_FINDINGS.md`, `docs/audits/TRANSCRIPT_KEYTERM_AUDIT.md`
+- Before touching speaker resolution: `docs/archive/reports/SPEAKER_REASSIGNMENT_FIX_REPORT.md`, `docs/audits/STAGE_2_REPORTER_AUDIT.md`
+- Before touching formatter contracts: `docs/audits/FORMATTER_OWNER_AUDIT.md`, `W22-2A_STRUCTURED_TRANSCRIPT_CONTRACT.md`
+- Before touching UFM: `docs/audits/UFM_FIELD_AUDIT.md`, `docs/audits/INTAKE_UFM_GAP_ANALYSIS.md`
+- Before adding a new provider: `docs/archive/reports/PROVIDER_MIGRATION_REPORT.md`
 - Overall architecture reference: `docs/architecture/MASTER_ARCHITECTURE.md`
 
 ### 8.4 Files that do NOT change

@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "source": "docs/document-manifest.json",
+  "source_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
+  "edges": [
+    {
+      "type": "SUPERSESSION",
+      "source": "DOC-0062",
+      "target": "DOC-0098"
+    },
+    {
+      "type": "SUPERSESSION",
+      "source": "DOC-0071",
+      "target": "DOC-0099"
+    },
+    {
+      "type": "SUPERSESSION",
+      "source": "DOC-0241",
+      "target": "DOC-0238"
+    }
+  ],
+  "roots": [
+    "DOC-0062",
+    "DOC-0071",
+    "DOC-0241"
+  ],
+  "cycles": [],
+  "dead_chains": []
+}

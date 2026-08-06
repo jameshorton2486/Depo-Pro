@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "source": "docs/document-manifest.json",
+  "source_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
+  "compared_to_commit": "fd76974dfe9dd5b7ec128a29ce47e63923b845d7",
+  "added_documents": [
+    "DOC-0314"
+  ],
+  "removed_documents": [],
+  "authority_changes": [],
+  "owner_changes": [],
+  "supersession_changes": []
+}

@@ -537,7 +537,7 @@ transcript body.
 ### DOCUMENTATION PR — No code. Required first.
   1. Numbered ADR ratifying parenthetical position at 1.5″, retiring 1.0″/2.0″.
   2. Decisions on OQ-2 through OQ-6 recorded in RATIFIED_DECISIONS.md / ADRs.
-  3. Update FORMATTING_PIPELINE_MAP.md and FORMATTER_OWNER_AUDIT.md to reflect
+  3. Update docs/audits/FORMATTING_PIPELINE_MAP.md and docs/audits/FORMATTER_OWNER_AUDIT.md to reflect
      the two-pipeline reality; note geometry authority split; document
      editorialEngine.ts as DOCX/export path only.
   4. Record the four-stage transcript model as an architectural ADR.

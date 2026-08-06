@@ -1,6 +1,6 @@
 # DEPO-PRO — Ratified Decisions
 
-**Date ratified:** 2026-08-03 (amended 2026-08-04 via ADRs 0011–0014)
+**Date ratified:** 2026-08-03 (amended 2026-08-04 via ADRs 0011–0014; 2026-08-05 via ADR-0015)
 **Format authority:** Miah (Certified Shorthand Reporter)
 **Architecture authority:** James (Owner)
 
@@ -10,7 +10,7 @@ These decisions are binding on all implementation. They change only via a number
 
 ## CSR Format Decisions
 
-**F1 — Colloquy speaker label position.** The colloquy speaker label is preceded by three LEFT-aligned tab stops at 0.5", 1.0", and 1.5". The label therefore begins 1.5" from the left margin. With the standard 1.5" left margin this is 3.0" from the paper edge. The code constant is 1.5", not 3.0".
+**F1 — Colloquy speaker label position.** The colloquy speaker label is preceded by three LEFT-aligned tab stops at 0.5", 1.0", and 1.5". The label therefore begins 1.5" from the left text margin; the code constant is this 1.5" tab offset. The page left margin is **1.25" (1800 twips)**, DOCX-confirmed (DP-011 §A2). In certified boxed output the format box places text ~0.35" inside the page margin, so the label renders ~3.0–3.1" from the paper edge. Corrected by [ADR-0015](adr/ADR-0015-left-margin-and-new-paragraph-reconciliation.md): the earlier "1.5" page margin → 3.0"" arithmetic misattributed the page margin.
 
 **F2 — Colon spacing.** Two spaces between the colon following a speaker label and the body text that follows.
 
@@ -104,6 +104,8 @@ Also corrected F6 (em-dash → `--`, catching up to ADR-0011) and folded F11, F1
 
 **ADR reconciliation (2026-08-04)** — added standalone ADR files ADR-0011 (stutter `--`), ADR-0013 (F12 recess parenthetical), and ADR-0014 (F11 witness-answer-during-objection — renumbered from the "ADR-0012" drafted in the superseded PR #68). All ADRs now live under `docs/architecture/adr/` (the path this document cites); the earlier root-level ADRs were moved there. Added F12. OQ-4's export gutter-strip condition was verified — see `docs/audits/OQ4_GUTTER_STRIP_VERIFICATION.md`.
 
+**ADR-0015 (2026-08-05)** — reconciled the F1 left-margin discrepancy (page margin **1.25"**, DOCX-confirmed; F1 prose corrected; `geometryProfile` unchanged) and corrected DP-011's new-paragraph indent (**1.5" → 1.0"**) against ratified F14 and the reference corpus (answer-side new paragraph pixel-measured at 1.0" on Shaw p. 54). Miah to be informed of the F1 margin clarification.
+
 ---
 
 ## Still Open
@@ -111,6 +113,6 @@ Also corrected F6 (em-dash → `--`, catching up to ADR-0011) and folded F11, F1
 - Miah to be informed that F6 was amended (em-dash → `--`) by the owner after she ratified it ([ADR-0011](adr/ADR-0011-stutter-double-hyphen.md)).
 - ~~Working-draft header exact wording (OQ-5)~~ — **resolved 2026-08-05: "Working Transcript"** (Miah-confirmed).
 - ~~`THE REPORTER:` vs `THE COURT REPORTER:` and whether `(continuing)` is used~~ — **resolved 2026-08-05: `THE REPORTER:`, no `(continuing)`** (Miah-confirmed; matches all four reference transcripts).
-- F1 left-margin discrepancy: F1 states a 1.5" left margin, but `geometryProfile.leftMarginInches` is 1.25" (DP-011 §A2). Reconcile which is canonical.
+- ~~F1 left-margin discrepancy~~ — **resolved 2026-08-05 ([ADR-0015](adr/ADR-0015-left-margin-and-new-paragraph-reconciliation.md)): page margin is 1.25" (DOCX-confirmed); F1 prose corrected; `geometryProfile` already correct.** Miah to be informed of the clarification.
 - Miah's confirmation of the A5 marking approach and the F10 dropdown behavior.
 - Additions to the abbreviation list (A10) — AI proposes, list is curated.

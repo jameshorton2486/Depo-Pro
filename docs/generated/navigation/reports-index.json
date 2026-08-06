@@ -1,0 +1,282 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "manifest_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
+  "graph_sha256": "91708ae15ea97861b00c10f99b97ddd5800bd39f4f92e2717b8a0424f70a12c3",
+  "name": "reports",
+  "title": "Reports",
+  "document_count": 30,
+  "documents": [
+    {
+      "id": "DOC-0106",
+      "title": "Array Field Persist Fix Report",
+      "path": "docs/archive/reports/ARRAY_FIELD_PERSIST_FIX_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0107",
+      "title": "ATTORNEY KEYTERM VERIFICATION",
+      "path": "docs/archive/reports/ATTORNEY_KEYTERM_VERIFICATION.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0108",
+      "title": "AUDIO_READINESS_FIX_REPORT",
+      "path": "docs/archive/reports/AUDIO_READINESS_FIX_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0109",
+      "title": "Auth / RLS Report",
+      "path": "docs/archive/reports/AUTH_RLS_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0110",
+      "title": "Backend Wiring Report",
+      "path": "docs/archive/reports/BACKEND_WIRING_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0111",
+      "title": "Binding Confirm Report",
+      "path": "docs/archive/reports/BINDING_CONFIRM_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0112",
+      "title": "CERTIFICATION_EXPORT_REMEDIATION_REPORT",
+      "path": "docs/archive/reports/CERTIFICATION_EXPORT_REMEDIATION_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0113",
+      "title": "CONFIDENCE_PERSISTENCE_FIX_REPORT",
+      "path": "docs/archive/reports/CONFIDENCE_PERSISTENCE_FIX_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0114",
+      "title": "DEPO-PRO Deepgram Pipeline Report",
+      "path": "docs/archive/reports/DEEPGRAM_PIPELINE_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0115",
+      "title": "Deepgram Wire Params Report",
+      "path": "docs/archive/reports/DEEPGRAM_WIRE_PARAMS_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0116",
+      "title": "DURABLE_MOCK_PERSISTENCE_REPORT",
+      "path": "docs/archive/reports/DURABLE_MOCK_PERSISTENCE_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0117",
+      "title": "Editor Base URL Fix Report",
+      "path": "docs/archive/reports/EDITOR_BASE_URL_FIX_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0118",
+      "title": "FIND_WORD_AT_TIME_FIX_REPORT",
+      "path": "docs/archive/reports/FIND_WORD_AT_TIME_FIX_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0119",
+      "title": "GATE1_REMEDIATION_REPORT",
+      "path": "docs/archive/reports/GATE1_REMEDIATION_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0120",
+      "title": "Intake Real Report",
+      "path": "docs/archive/reports/INTAKE_REAL_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0121",
+      "title": "Intake Screen Ownership Report",
+      "path": "docs/archive/reports/INTAKE_SCREEN_OWNERSHIP_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0122",
+      "title": "Intake UI Fixes Report",
+      "path": "docs/archive/reports/INTAKE_UI_FIXES_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0123",
+      "title": "Keyterm Expansion Notes",
+      "path": "docs/archive/reports/KEYTERM_EXPANSION_NOTES.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0124",
+      "title": "MOUNT_CONTRACT_MIGRATION_REPORT",
+      "path": "docs/archive/reports/MOUNT_CONTRACT_MIGRATION_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0125",
+      "title": "Multi-file Build Report — 2026-06-10",
+      "path": "docs/archive/reports/MULTIFILE_BUILD_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0126",
+      "title": "PROVIDER_MIGRATION_REPORT",
+      "path": "docs/archive/reports/PROVIDER_MIGRATION_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0127",
+      "title": "Archived Reports",
+      "path": "docs/archive/reports/README.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0128",
+      "title": "SPEAKER_REASSIGNMENT_FIX_REPORT",
+      "path": "docs/archive/reports/SPEAKER_REASSIGNMENT_FIX_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0129",
+      "title": "Repository Root Cleanup Plan",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0130",
+      "title": "Repository Root Cleanup Plan V2 — Authority First",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN_V2.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0131",
+      "title": "Repository Root Cleanup Plan V3 — Registry Before Classification",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN_V3.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0132",
+      "title": "Repository Root Cleanup Plan V4 — Conflict Rules Before Ratification",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN_V4.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0133",
+      "title": "Proposed Repository Root Structure",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_PROPOSED_STRUCTURE.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0134",
+      "title": "Branch-State Report (Prompt F)",
+      "path": "docs/archive/reports/repository/BRANCH_STATE_REPORT.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0135",
+      "title": "Repository Branch Census",
+      "path": "docs/archive/reports/repository/REPOSITORY_BRANCH_CENSUS.md",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false
+    }
+  ]
+}

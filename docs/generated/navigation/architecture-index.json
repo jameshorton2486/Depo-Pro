@@ -1,0 +1,435 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "manifest_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
+  "graph_sha256": "91708ae15ea97861b00c10f99b97ddd5800bd39f4f92e2717b8a0424f70a12c3",
+  "name": "architecture",
+  "title": "Architecture",
+  "document_count": 47,
+  "documents": [
+    {
+      "id": "DOC-0051",
+      "title": "Architectural Drift Report",
+      "path": "docs/architecture/ARCHITECTURAL_DRIFT_REPORT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0052",
+      "title": "Audit Method and Evidence",
+      "path": "docs/architecture/AUDIT_METHOD_AND_EVIDENCE.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0053",
+      "title": "Canonical Formatting Architecture",
+      "path": "docs/architecture/CANONICAL_FORMATTING_ARCHITECTURE.md",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0054",
+      "title": "Case Storage Specification",
+      "path": "docs/architecture/CASE_STORAGE_SPEC.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0055",
+      "title": "Canonical Transcript Specification (CTS)",
+      "path": "docs/architecture/CTS-v1.0.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0056",
+      "title": "Current Implementation Map",
+      "path": "docs/architecture/CURRENT_IMPLEMENTATION_MAP.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0057",
+      "title": "Dead Code / Unwired Implementation Report",
+      "path": "docs/architecture/DEAD_CODE_REPORT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0058",
+      "title": "Depo-Pro Decision Matrix",
+      "path": "docs/architecture/DECISION_MATRIX.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0059",
+      "title": "Architecture Decision Record — Ownership Freeze",
+      "path": "docs/architecture/DECISION_RECORD.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0060",
+      "title": "Deepgram Keyterm Specification",
+      "path": "docs/architecture/DEEPGRAM_KEYTERM_SPEC.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0061",
+      "title": "DEPO-PRO System Architecture v1.0 — Freeze Candidate",
+      "path": "docs/architecture/DEPO_PRO_SYSTEM_ARCHITECTURE_v1.0.md",
+      "tier": "T1",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0062",
+      "title": "Document Authority Registry",
+      "path": "docs/architecture/DOCUMENT_AUTHORITY_REGISTRY.md",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0063",
+      "title": "Depo-Pro Transcript Architecture Standard (DTAS)",
+      "path": "docs/architecture/DTAS-v1.0.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0064",
+      "title": "Duplication Report",
+      "path": "docs/architecture/DUPLICATION_REPORT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0065",
+      "title": "Depo-Pro Engineering Standards",
+      "path": "docs/architecture/ENGINEERING_STANDARDS.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0066",
+      "title": "God Object Report",
+      "path": "docs/architecture/GOD_OBJECT_REPORT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0067",
+      "title": "Historical Prompt Status",
+      "path": "docs/architecture/HISTORICAL_PROMPT_STATUS.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0068",
+      "title": "DEPO-PRO MASTER ARCHITECTURE DOCUMENT",
+      "path": "docs/architecture/MASTER_ARCHITECTURE.md",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0069",
+      "title": "Multi-file Transcription Design — 2026-06-10",
+      "path": "docs/architecture/MULTIFILE_TRANSCRIPTION_DESIGN.md",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Deepgram",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0070",
+      "title": "Actual Pipeline Sequence",
+      "path": "docs/architecture/PIPELINE_SEQUENCE.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0071",
+      "title": "Project Authority Index",
+      "path": "docs/architecture/PROJECT_AUTHORITY_INDEX.md",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0072",
+      "title": "DEPO-PRO Project Charter",
+      "path": "docs/architecture/PROJECT_CHARTER.md",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Project",
+      "authoritative": true
+    },
+    {
+      "id": "DOC-0073",
+      "title": "Project Operating Standard",
+      "path": "docs/architecture/PROJECT_OPERATING_STANDARD.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0074",
+      "title": "DEPO-PRO — Ratified Decisions",
+      "path": "docs/architecture/RATIFIED_DECISIONS.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0075",
+      "title": "Recommended Next Implementation",
+      "path": "docs/architecture/RECOMMENDED_NEXT_IMPLEMENTATION.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0076",
+      "title": "Remaining Work Matrix",
+      "path": "docs/architecture/REMAINING_WORK_MATRIX.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0077",
+      "title": "Screen Flow",
+      "path": "docs/architecture/SCREEN_FLOW.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0078",
+      "title": "Single-Owner Audit",
+      "path": "docs/architecture/SINGLE_OWNER_AUDIT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0079",
+      "title": "Depo-Pro Transcript Pipeline Report",
+      "path": "docs/architecture/TRANSCRIPT_PIPELINE_REPORT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0080",
+      "title": "UFM Data Dictionary",
+      "path": "docs/architecture/UFM_DATA_DICTIONARY.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0081",
+      "title": "Texas UFM Data Requirements — DEPO-PRO Case Assembly",
+      "path": "docs/architecture/UFM_TEXAS_REQUIREMENTS.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0082",
+      "title": "Wave 0 Engineering Operations Standard",
+      "path": "docs/architecture/W0_ENGINEERING_OPERATIONS_STANDARD.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0083",
+      "title": "Wave 0 Canonical Status Vocabulary",
+      "path": "docs/architecture/W0_STATUS_VOCABULARY.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0084",
+      "title": "Wave 21 Recognition Quality Standard",
+      "path": "docs/architecture/W21_RECOGNITION_QUALITY_STANDARD.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0085",
+      "title": "DEPO-PRO STRUCTURED TRANSCRIPT CONTRACT",
+      "path": "docs/architecture/W22-2A_STRUCTURED_TRANSCRIPT_CONTRACT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0086",
+      "title": "Wave 23B — Canonical Integrity Expansion",
+      "path": "docs/architecture/W23B_CANONICAL_INTEGRITY.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0087",
+      "title": "Wave 23 — Historical Implementation Characterization",
+      "path": "docs/architecture/W23_CURRENT_IMPLEMENTATION_CHARACTERIZATION.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0088",
+      "title": "Wave 23 Region Model",
+      "path": "docs/architecture/W23_REGION_MODEL.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0089",
+      "title": "Wave 23A Reconciliation Summary",
+      "path": "docs/architecture/WAVE23A_RECONCILIATION_SUMMARY.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0090",
+      "title": "Wave 23B Next Targets",
+      "path": "docs/architecture/WAVE23B_NEXT_TARGETS.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0091",
+      "title": "ADR-0007 — Reactive Authentication Ownership",
+      "path": "docs/architecture/adr/ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0092",
+      "title": "ADR-0011 — Stutter rendering: double hyphen, not em-dash",
+      "path": "docs/architecture/adr/ADR-0011-stutter-double-hyphen.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0093",
+      "title": "ADR-0012 — Workspace Open Questions: Six Ratified Decisions",
+      "path": "docs/architecture/adr/ADR-0012_WORKSPACE_OPEN_QUESTIONS.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0094",
+      "title": "ADR-0013 — Recess parenthetical with provenance",
+      "path": "docs/architecture/adr/ADR-0013-recess-parenthetical.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0095",
+      "title": "ADR-0014 — Witness answers during objection colloquy render as `A.`",
+      "path": "docs/architecture/adr/ADR-0014-witness-answer-during-objection.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0096",
+      "title": "ADR-023C — Proceedings Event Contract",
+      "path": "docs/architecture/adr/ADR-023C_PROCEEDINGS_EVENT_CONTRACT.md",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0314",
+      "title": "ADR-0015 — Left-margin reconciliation and DP-011 new-paragraph correction",
+      "path": "docs/architecture/adr/ADR-0015-left-margin-and-new-paragraph-reconciliation.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false
+    }
+  ]
+}

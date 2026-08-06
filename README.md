@@ -68,6 +68,10 @@ Do not place service-role keys, Deepgram keys, Anthropic keys, client data, or s
 Run the complete local gate before opening or merging a pull request:
 
 ```bash
+npm run docs:check
+```
+
+```bash
 npm run typecheck
 npm run lint
 npm run test
@@ -93,8 +97,10 @@ Use mock mode for routine development. Do not run scripts that seed, migrate, tr
 - `src/lib/format/`: canonical formatting engine
 - `supabase/functions/`: Edge Functions
 - `supabase/migrations/`: database migrations and policies
+- `docs/README.md`: documentation index and document-placement policy
 - `docs/architecture/`: governing architecture
 - `docs/audits/`: audit evidence and decision records
+- `docs/archive/`: completed reports and historical handoffs
 - `reference/wave8/`: read-only normative reference; never import into runtime code or modify
 
 ## Contribution workflow

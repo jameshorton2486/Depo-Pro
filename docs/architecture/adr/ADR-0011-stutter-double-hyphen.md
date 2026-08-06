@@ -19,7 +19,7 @@ Note on the source of that review: it also cited spec sections and rule numbers 
 
 ## Consequences
 
-- `transcript_formatter/ufm_engine` already produces `--`; this is **no longer a deployed violation**. `COLLOQUY_RENDER_FINDINGS.md` (PR #67) must be corrected to remove F6 from its violation list.
+- `transcript_formatter/ufm_engine` already produces `--`; this is **no longer a deployed violation**. `docs/audits/COLLOQUY_RENDER_FINDINGS.md` (PR #67) must be corrected to remove F6 from its violation list.
 - The CSR sample in PR #50 was generated with em-dashes and must be regenerated with `--` before it reaches Miah.
 - **Miah should be informed** that a format decision she made has been amended by the owner.
 

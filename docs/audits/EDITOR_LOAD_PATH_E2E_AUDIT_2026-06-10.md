@@ -4,7 +4,7 @@
 
 Read-only end-to-end audit of the Stage 3 transcript load path, from app mount through `editor-api` fetch, to determine where `Failed to load transcript — TypeError: Failed to fetch` can still occur after successful transcript creation.
 
-This audit complements [EDITOR_LOAD_FAILURE_AUDIT.md](/C:/Users/james/projects/depo-pro/EDITOR_LOAD_FAILURE_AUDIT.md:1) by tracing the entire application path instead of only classifying the failure.
+This audit complements [docs/audits/EDITOR_LOAD_FAILURE_AUDIT.md](/C:/Users/james/projects/depo-pro/docs/audits/EDITOR_LOAD_FAILURE_AUDIT.md:1) by tracing the entire application path instead of only classifying the failure.
 
 ## Summary
 

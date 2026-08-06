@@ -298,7 +298,7 @@ Current audit evidence suggests this gate is promising, because the live data al
 
 Evidence source:
 
-- `DATA_REALITY_FINDINGS.md`
+- `docs/audits/DATA_REALITY_FINDINGS.md`
 
 But that still needs to be treated as the formal precondition for the A/B test, not as an implied assumption.
 

@@ -1,0 +1,1200 @@
+{
+  "schema_version": "1.0.0",
+  "generated": true,
+  "generated_on": "2026-08-05",
+  "manifest_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
+  "graph_sha256": "91708ae15ea97861b00c10f99b97ddd5800bd39f4f92e2717b8a0424f70a12c3",
+  "name": "audits",
+  "title": "Audits",
+  "document_count": 132,
+  "documents": [
+    {
+      "id": "DOC-0143",
+      "title": "Branch Audit",
+      "path": "docs/audits/2026-07-20-git-governance/BRANCH_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0144",
+      "title": "Branch Disposition",
+      "path": "docs/audits/2026-07-20-git-governance/BRANCH_DISPOSITION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0145",
+      "title": "Commit Assembly Plan",
+      "path": "docs/audits/2026-07-20-git-governance/COMMIT_ASSEMBLY_PLAN.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0146",
+      "title": "Commit Audit",
+      "path": "docs/audits/2026-07-20-git-governance/COMMIT_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0147",
+      "title": "Commit Classification",
+      "path": "docs/audits/2026-07-20-git-governance/COMMIT_CLASSIFICATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0148",
+      "title": "Documentation Audit",
+      "path": "docs/audits/2026-07-20-git-governance/DOCUMENTATION_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0149",
+      "title": "GitHub Audit",
+      "path": "docs/audits/2026-07-20-git-governance/GITHUB_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0150",
+      "title": "Pull Request Audit",
+      "path": "docs/audits/2026-07-20-git-governance/PULL_REQUEST_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0151",
+      "title": "Git Governance Audit — 2026-07-20",
+      "path": "docs/audits/2026-07-20-git-governance/README.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0152",
+      "title": "Release Engineering Audit",
+      "path": "docs/audits/2026-07-20-git-governance/RELEASE_ENGINEERING_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0153",
+      "title": "Repository Cleanup Plan",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_CLEANUP_PLAN.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0154",
+      "title": "Repository Recovery Log",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_RECOVERY_LOG.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0155",
+      "title": "Repository Recovery Plan",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_RECOVERY_PLAN.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0156",
+      "title": "Repository Stabilization Standard",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_STABILIZATION_STANDARD.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0157",
+      "title": "Repository Status",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_STATUS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0158",
+      "title": "Split Commit Proposals",
+      "path": "docs/audits/2026-07-20-git-governance/SPLIT_COMMIT_PROPOSALS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0159",
+      "title": "Stash Classification",
+      "path": "docs/audits/2026-07-20-git-governance/STASH_CLASSIFICATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0160",
+      "title": "Working Tree Analysis",
+      "path": "docs/audits/2026-07-20-git-governance/WORKING_TREE_ANALYSIS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0161",
+      "title": "Working Tree Classification",
+      "path": "docs/audits/2026-07-20-git-governance/WORKING_TREE_CLASSIFICATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0162",
+      "title": "Working Tree Partition",
+      "path": "docs/audits/2026-07-20-git-governance/WORKING_TREE_PARTITION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0163",
+      "title": "Worktree Audit",
+      "path": "docs/audits/2026-07-20-git-governance/WORKTREE_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0164",
+      "title": "Worktree Classification",
+      "path": "docs/audits/2026-07-20-git-governance/WORKTREE_CLASSIFICATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0165",
+      "title": "Abbreviation Registry Single-Source Audit",
+      "path": "docs/audits/ABBREVIATION_REGISTRY_SINGLE_SOURCE_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0166",
+      "title": "Abbreviation Registry Single-Source Remediation",
+      "path": "docs/audits/ABBREVIATION_REGISTRY_SINGLE_SOURCE_REMEDIATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0167",
+      "title": "Conflict / Provenance Atomicity — Characterization Audit",
+      "path": "docs/audits/ATOMICITY_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0168",
+      "title": "ATTORNEY UFM MAPPING TABLE",
+      "path": "docs/audits/ATTORNEY_UFM_MAPPING_TABLE.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0169",
+      "title": "Audit — Transcript Transformation Pipeline",
+      "path": "docs/audits/AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0170",
+      "title": "Auth / RLS Audit",
+      "path": "docs/audits/AUTH_RLS_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0171",
+      "title": "Canonical Standards Full Implementation Audit",
+      "path": "docs/audits/CANONICAL_STANDARDS_FULL_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0172",
+      "title": "Canonical Standards Implementation Audit",
+      "path": "docs/audits/CANONICAL_STANDARDS_IMPLEMENTATION_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0173",
+      "title": "CANON-RAW-001 — RAW-E: Exposure Assessment & Closure",
+      "path": "docs/audits/CANON_RAW_001_RAW_E_ASSESSMENT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0174",
+      "title": "CERTIFICATION_EXPORT_END_TO_END_AUDIT",
+      "path": "docs/audits/CERTIFICATION_EXPORT_END_TO_END_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0175",
+      "title": "Certification Lock Remediation",
+      "path": "docs/audits/CERTIFICATION_LOCK_REMEDIATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0176",
+      "title": "Certification Owner Audit",
+      "path": "docs/audits/CERTIFICATION_OWNER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0177",
+      "title": "CFE Fidelity Validation",
+      "path": "docs/audits/CFE_FIDELITY_VALIDATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0178",
+      "title": "CFE Phase 0 Findings",
+      "path": "docs/audits/CFE_PHASE0_FINDINGS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0179",
+      "title": "CFE Phase 1.1 Flag Classification Audit",
+      "path": "docs/audits/CFE_PHASE1_1_FLAG_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0180",
+      "title": "CFE Phase 1.1 Implementation Plan",
+      "path": "docs/audits/CFE_PHASE1_1_IMPLEMENTATION_PLAN.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0181",
+      "title": "CFE Phase 1.1 Validation",
+      "path": "docs/audits/CFE_PHASE1_1_VALIDATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0182",
+      "title": "CFE Phase 1 Readiness",
+      "path": "docs/audits/CFE_PHASE1_READINESS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0183",
+      "title": "CFE Phase 1 Validation",
+      "path": "docs/audits/CFE_PHASE1_VALIDATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0184",
+      "title": "Colloquy Rendering Findings (retires Prompt B → A2 evidence)",
+      "path": "docs/audits/COLLOQUY_RENDER_FINDINGS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0185",
+      "title": "Commit Preparation Plan",
+      "path": "docs/audits/COMMIT_PREP_PLAN.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0186",
+      "title": "Confirmation Flow Audit",
+      "path": "docs/audits/CONFIRMATION_FLOW_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0187",
+      "title": "Correction Recording & Marking Audit (Prompt A, Parts 1–2)",
+      "path": "docs/audits/CORRECTION_RECORDING_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0188",
+      "title": "Correction Surface Map",
+      "path": "docs/audits/CORRECTION_SURFACE_MAP.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0189",
+      "title": "Current Transcript Pipeline",
+      "path": "docs/audits/CURRENT_TRANSCRIPT_PIPELINE.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0190",
+      "title": "Data Reality Findings",
+      "path": "docs/audits/DATA_REALITY_FINDINGS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0191",
+      "title": "Decision Record — Unified Layer-2 Overlay deferred to post-freeze",
+      "path": "docs/audits/DECISION_RECORD_corrections_layer_deferral.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0192",
+      "title": "DEPO Editor Backend Audit",
+      "path": "docs/audits/DEPO_EDITOR_BACKEND_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0193",
+      "title": "DP-012 Alignment Report",
+      "path": "docs/audits/DP012_ALIGNMENT_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0194",
+      "title": "DP-012 Ratification Review",
+      "path": "docs/audits/DP012_RATIFICATION_REVIEW.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0195",
+      "title": "Duplicate Implementation Report",
+      "path": "docs/audits/DUPLICATE_IMPLEMENTATION_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0196",
+      "title": "AUDIT — Failed to load transcript: `TypeError: Failed to fetch`",
+      "path": "docs/audits/EDITOR_LOAD_FAILURE_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0197",
+      "title": "Editor Load Path E2E Audit — 2026-06-10",
+      "path": "docs/audits/EDITOR_LOAD_PATH_E2E_AUDIT_2026-06-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0198",
+      "title": "Error Coverage Matrix",
+      "path": "docs/audits/ERROR_COVERAGE_MATRIX.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0199",
+      "title": "Export Adapter Owner Audit",
+      "path": "docs/audits/EXPORT_ADAPTER_OWNER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0200",
+      "title": "Formatter Owner Audit",
+      "path": "docs/audits/FORMATTER_OWNER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0201",
+      "title": "Formatting Function Inventory",
+      "path": "docs/audits/FORMATTING_FUNCTION_INVENTORY.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0202",
+      "title": "Formatting Pipeline Map",
+      "path": "docs/audits/FORMATTING_PIPELINE_MAP.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0203",
+      "title": "Formatting Rule Application Audit",
+      "path": "docs/audits/FORMATTING_RULE_APPLICATION_AUDIT_2026-06-25.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0204",
+      "title": "G9 — depo_qa_fixer.py Inline Flag Audit",
+      "path": "docs/audits/G9_DEPO_QA_FIXER_INLINE_FLAG_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0205",
+      "title": "Git Hygiene Audit",
+      "path": "docs/audits/GIT_HYGIENE_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0206",
+      "title": "Implementation Gap Register",
+      "path": "docs/audits/IMPLEMENTATION_GAP_REGISTER.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0207",
+      "title": "Implementation Priority Matrix",
+      "path": "docs/audits/IMPLEMENTATION_PRIORITY_MATRIX.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0208",
+      "title": "Intake End-to-End Validation Audit",
+      "path": "docs/audits/INTAKE_END_TO_END_VALIDATION_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0209",
+      "title": "Intake Formatting Audit",
+      "path": "docs/audits/INTAKE_FORMATTING_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0210",
+      "title": "INTAKE LIFECYCLE INTEGRITY AUDIT",
+      "path": "docs/audits/INTAKE_LIFECYCLE_INTEGRITY_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0211",
+      "title": "Intake Real vs. Mock Audit",
+      "path": "docs/audits/INTAKE_REAL_VS_MOCK_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0212",
+      "title": "Intake Screen Audit",
+      "path": "docs/audits/INTAKE_SCREEN_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0213",
+      "title": "Intake UFM Gap Analysis",
+      "path": "docs/audits/INTAKE_UFM_GAP_ANALYSIS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0214",
+      "title": "Intake UI Audit",
+      "path": "docs/audits/INTAKE_UI_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0215",
+      "title": "KEYTERM PHASE 1 BASELINE",
+      "path": "docs/audits/KEYTERM_PHASE1_BASELINE.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0216",
+      "title": "KEYTERM PHASE 1 IMPLEMENTATION PLAN",
+      "path": "docs/audits/KEYTERM_PHASE1_IMPLEMENTATION_PLAN.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0217",
+      "title": "KEYTERM PHASE 1 VALIDATION",
+      "path": "docs/audits/KEYTERM_PHASE1_VALIDATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0218",
+      "title": "KEYTERM_PIPELINE_FINDINGS",
+      "path": "docs/audits/KEYTERM_PIPELINE_FINDINGS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0219",
+      "title": "Supabase Migration Audit",
+      "path": "docs/audits/MIGRATION_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0220",
+      "title": "Depo-Pro — Open Bug & Task Tracker",
+      "path": "docs/audits/OPEN_BUG_TASK_TRACKER_2026-06-24.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0221",
+      "title": "ADR-0012 OQ-4 — Export Gutter-Strip Verification",
+      "path": "docs/audits/OQ4_GUTTER_STRIP_VERIFICATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0222",
+      "title": "P1 Save Review Freshness Audit",
+      "path": "docs/audits/P1_SAVE_REVIEW_FRESHNESS_AUDIT_2026-06-24.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0223",
+      "title": "P2 — Speaker Tools Persistence Audit",
+      "path": "docs/audits/P2_SPEAKER_TOOLS_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0224",
+      "title": "P3 / P7 / P5 Verification Audit",
+      "path": "docs/audits/P3_P7_P5_VERIFICATION_2026-06-25.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0225",
+      "title": "P4 — Copy Transcript Audit",
+      "path": "docs/audits/P4_COPY_TRANSCRIPT_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0226",
+      "title": "Paragraph Structure Audit",
+      "path": "docs/audits/PARAGRAPH_STRUCTURE_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0227",
+      "title": "Participant Directory — Pre-Flight Audit",
+      "path": "docs/audits/PARTICIPANT_DIRECTORY_PREREQ_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0228",
+      "title": "Participant Field Matrix",
+      "path": "docs/audits/PARTICIPANT_FIELD_MATRIX.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0229",
+      "title": "PARTICIPANT_IMPLEMENTATION_AUDIT",
+      "path": "docs/audits/PARTICIPANT_IMPLEMENTATION_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0230",
+      "title": "Participant Modal Audit",
+      "path": "docs/audits/PARTICIPANT_MODAL_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0231",
+      "title": "RC Hardening Owner Audit",
+      "path": "docs/audits/RC_HARDENING_OWNER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0232",
+      "title": "Audit Index",
+      "path": "docs/audits/README.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0233",
+      "title": "REAL WORLD VALIDATION LOG",
+      "path": "docs/audits/REAL_WORLD_VALIDATION_LOG.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0234",
+      "title": "Formatting Regression Root Cause",
+      "path": "docs/audits/REGRESSION_ROOT_CAUSE.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0235",
+      "title": "Repository Audit and Remediation Report",
+      "path": "docs/audits/REPOSITORY_AUDIT_2026-07-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0236",
+      "title": "REPOSITORY HEALTH AUDIT",
+      "path": "docs/audits/REPOSITORY_HEALTH_AUDIT_2026-06-23.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0237",
+      "title": "Repository Root Cleanup Audit",
+      "path": "docs/audits/REPOSITORY_ROOT_CLEANUP_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0238",
+      "title": "Repository Root Inventory",
+      "path": "docs/audits/REPOSITORY_ROOT_INVENTORY.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0239",
+      "title": "Retranscription Feature Implementation",
+      "path": "docs/audits/RETRANSCRIPTION_FEATURE_IMPLEMENTATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0240",
+      "title": "Retranscription Feature Validation",
+      "path": "docs/audits/RETRANSCRIPTION_FEATURE_VALIDATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0241",
+      "title": "Root Document Disposition — 2026-08-05",
+      "path": "docs/audits/ROOT_DOCUMENT_DISPOSITION_2026-08-05.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0242",
+      "title": "SAVE_FAILURE_FINDINGS",
+      "path": "docs/audits/SAVE_FAILURE_FINDINGS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0243",
+      "title": "Speaker Save Concurrency Audit",
+      "path": "docs/audits/SPEAKER_SAVE_CONCURRENCY_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0244",
+      "title": "STAGE3 RELEASE READINESS AUDIT",
+      "path": "docs/audits/STAGE3_RELEASE_READINESS_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0245",
+      "title": "DEPO-PRO Final Runtime Acceptance Audit",
+      "path": "docs/audits/STAGE3_RUNTIME_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0246",
+      "title": "STAGE 1 5 FUNCTION AUDIT",
+      "path": "docs/audits/STAGE_1_5_FUNCTION_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0247",
+      "title": "Stage 2 Reporter Wiring Audit",
+      "path": "docs/audits/STAGE_2_REPORTER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0248",
+      "title": "STAGE 3 WITNESS AUDIT",
+      "path": "docs/audits/STAGE_3_WITNESS_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0249",
+      "title": "STAGE 4 INTERPRETER AUDIT",
+      "path": "docs/audits/STAGE_4_INTERPRETER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0250",
+      "title": "STAGE 5 VIDEOGRAPHER AUDIT",
+      "path": "docs/audits/STAGE_5_VIDEOGRAPHER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0251",
+      "title": "STANDARDS ACCURACY AUDIT",
+      "path": "docs/audits/STANDARDS_ACCURACY_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0252",
+      "title": "Standards Authority Cleanup",
+      "path": "docs/audits/STANDARDS_AUTHORITY_CLEANUP.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0253",
+      "title": "Standards Consistency Audit",
+      "path": "docs/audits/STANDARDS_CONSISTENCY_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0254",
+      "title": "Standards Folder Normalization",
+      "path": "docs/audits/STANDARDS_FOLDER_NORMALIZATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0255",
+      "title": "Standards Freeze Report",
+      "path": "docs/audits/STANDARDS_FREEZE_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0256",
+      "title": "Transcript Correction Readiness Audit",
+      "path": "docs/audits/TRANSCRIPT_CORRECTION_READINESS_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0257",
+      "title": "Transcript Creation Audit — 2026-06-10",
+      "path": "docs/audits/TRANSCRIPT_CREATION_AUDIT_2026-06-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0258",
+      "title": "TRANSCRIPT FIDELITY ROUND 2",
+      "path": "docs/audits/TRANSCRIPT_FIDELITY_ROUND2.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0259",
+      "title": "Transcript + Keyterm/UFM Audit",
+      "path": "docs/audits/TRANSCRIPT_KEYTERM_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0260",
+      "title": "Canonical Transcript Architecture Audit",
+      "path": "docs/audits/TRANSCRIPT_PIPELINE_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0261",
+      "title": "Transcript Post-Deepgram Modification Pipeline Audit",
+      "path": "docs/audits/TRANSCRIPT_POST_DEEPGRAM_MODIFICATION_PIPELINE_AUDIT_2026-07-28.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0262",
+      "title": "Transcript Quality Findings",
+      "path": "docs/audits/TRANSCRIPT_QUALITY_FINDINGS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0263",
+      "title": "Transcript Version Labels Plan",
+      "path": "docs/audits/TRANSCRIPT_VERSION_LABELS_PLAN.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0264",
+      "title": "Transcript Version Labels Validation",
+      "path": "docs/audits/TRANSCRIPT_VERSION_LABELS_VALIDATION.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0265",
+      "title": "UFM EXTRACTION EXPANSION REPORT",
+      "path": "docs/audits/UFM_EXTRACTION_EXPANSION_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0266",
+      "title": "UFM EXTRACTION GAP ANALYSIS",
+      "path": "docs/audits/UFM_EXTRACTION_GAP_ANALYSIS.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0267",
+      "title": "UFM Field Audit",
+      "path": "docs/audits/UFM_FIELD_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0268",
+      "title": "DEPO-PRO — WORKSPACE TRANSCRIPT PIPELINE AUDIT (MERGED)",
+      "path": "docs/audits/WORKSPACE_PIPELINE_AUDIT_MERGED_2026-08-04.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0269",
+      "title": "Export-Path Baseline",
+      "path": "docs/audits/rc/EXPORT_PATH_BASELINE.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0270",
+      "title": "Release Candidate Verification Report",
+      "path": "docs/audits/rc/RC_VERIFICATION_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0271",
+      "title": "Stage S — Validation & Repair Burden Measurement (PR #19)",
+      "path": "docs/audits/stage-s/README.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0272",
+      "title": "Repair Burden Report",
+      "path": "docs/audits/stage-s/REPAIR_BURDEN_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0273",
+      "title": "Stage S Owner Audit (PR #19)",
+      "path": "docs/audits/stage-s/STAGE_S_OWNER_AUDIT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0274",
+      "title": "Stage S Validation Report",
+      "path": "docs/audits/stage-s/STAGE_S_VALIDATION_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    }
+  ]
+}

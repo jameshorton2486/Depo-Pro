@@ -6,7 +6,7 @@ Copy everything below the line into Codex CLI from the root of the repository.
 
 ---
 
-Implement the CaseRecord model expansion required by Texas UFM transcript production, per `docs/architecture/UFM_TEXAS_REQUIREMENTS.md` and the gap findings in `INTAKE_SCREEN_AUDIT.md` / `INTAKE_SCREEN_OWNERSHIP_REPORT.md`. This phase is MODEL + REDUCER + REVIEW-SURFACE VISIBILITY only. The seven-section UI redesign is a later phase — do not build new screen sections. All payload changes are schema-free (JSONB `cases.payload`); no database migration.
+Implement the CaseRecord model expansion required by Texas UFM transcript production, per `docs/architecture/UFM_TEXAS_REQUIREMENTS.md` and the gap findings in `docs/audits/INTAKE_SCREEN_AUDIT.md` / `docs/archive/reports/INTAKE_SCREEN_OWNERSHIP_REPORT.md`. This phase is MODEL + REDUCER + REVIEW-SURFACE VISIBILITY only. The seven-section UI redesign is a later phase — do not build new screen sections. All payload changes are schema-free (JSONB `cases.payload`); no database migration.
 
 ## Scope rules
 

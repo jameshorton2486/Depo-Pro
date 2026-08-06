@@ -1,2 +1,8 @@
 docs/audits/stage-s/*.md text eol=lf
 docs/audits/stage-s/*.json text eol=lf
+docs/generated/** text eol=lf
+docs/archive/releases/** text eol=lf
+docs/README.md text eol=lf
+docs/audits/README.md text eol=lf
+docs/archive/README.md text eol=lf
+docs/standards/README.md text eol=lf

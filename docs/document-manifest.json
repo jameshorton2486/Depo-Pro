@@ -1,0 +1,5971 @@
+{
+  "schema_version": 1,
+  "layout_frozen": true,
+  "generated_on": "2026-08-05",
+  "excluded_prefixes": [
+    ".agents/",
+    "docs/archive/releases/",
+    "docs/generated/",
+    "reference/wave8/"
+  ],
+  "documents": [
+    {
+      "id": "DOC-0001",
+      "title": "AGENTS.md — House Rules for Bolt / AI Agents",
+      "path": "AGENTS.md",
+      "category": "root",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true,
+      "authority_scopes": [
+        "agent-contributor-rules"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0002",
+      "title": "Architecture Decisions",
+      "path": "ARCHITECTURE_DECISIONS.md",
+      "category": "root",
+      "tier": "T2",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true,
+      "authority_scopes": [
+        "architecture-decision-registry"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0003",
+      "title": "Canonical Standards Index",
+      "path": "CANONICAL_STANDARDS_INDEX.md",
+      "category": "root",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": true,
+      "authority_scopes": [
+        "canonical-standards-navigation"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0004",
+      "title": "CONTRACT_NOTES — API Contract Deviations Log",
+      "path": "CONTRACT_NOTES.md",
+      "category": "root",
+      "tier": "T2",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true,
+      "authority_scopes": [
+        "frozen-api-contract-deviations"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0005",
+      "title": "Canonical Editorial Policy — Depo-Pro",
+      "path": "Canonical Standards Folder/CANONICAL_EDITORIAL_POLICY.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/CANONICAL_EDITORIAL_POLICY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0006",
+      "title": "Changelog — DP-010 / DP-011 / Registry Incorporation Pass",
+      "path": "Canonical Standards Folder/CHANGELOG_dp010_incorporation.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/CHANGELOG_dp010_incorporation.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0007",
+      "title": "Changelog — QA-Review Incorporation Pass (DP-012)",
+      "path": "Canonical Standards Folder/CHANGELOG_dp012_qa_review.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/CHANGELOG_dp012_qa_review.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0008",
+      "title": "Changelog — Three-Tab Paragraph Rule Correction",
+      "path": "Canonical Standards Folder/CHANGELOG_three_tab_paragraph_rule.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/CHANGELOG_three_tab_paragraph_rule.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0009",
+      "title": "Depo-Pro — Transcript Formatter Rule Engine",
+      "path": "Canonical Standards Folder/DEPO_PRO_FORMATTER_RULE_ENGINE.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/DEPO_PRO_FORMATTER_RULE_ENGINE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0010",
+      "title": "Depo-Pro Transcript Formatter — Complete Build Specification",
+      "path": "Canonical Standards Folder/DEPO_PRO_FORMATTER_SPEC.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/DEPO_PRO_FORMATTER_SPEC.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0011",
+      "title": "Depo-Pro — Prompt Index & Implementation Guide",
+      "path": "Canonical Standards Folder/DEPO_PRO_PROMPT_INDEX_AND_IMPLEMENTATION.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/DEPO_PRO_PROMPT_INDEX_AND_IMPLEMENTATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0012",
+      "title": "DP-009 — Honorific and Abbreviation Spacing",
+      "path": "Canonical Standards Folder/DP-009_HONORIFIC_ABBREVIATION_SPACING.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/DP-009_HONORIFIC_ABBREVIATION_SPACING.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0013",
+      "title": "DP-010 — Sentence Boundary & Abbreviation Spacing",
+      "path": "Canonical Standards Folder/DP-010_SENTENCE_BOUNDARY_ABBREVIATION_SPACING.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/DP-010_SENTENCE_BOUNDARY_ABBREVIATION_SPACING.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0014",
+      "title": "DP-011 — Canonical Geometry Authority",
+      "path": "Canonical Standards Folder/DP-011_CANONICAL_GEOMETRY_AUTHORITY.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/DP-011_CANONICAL_GEOMETRY_AUTHORITY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0015",
+      "title": "DP-012 — Quotation Punctuation, Date Reconciliation & Inline Garble Flags",
+      "path": "Canonical Standards Folder/DP-012_PUNCTUATION_RECONCILIATION_AND_GARBLE_FLAGS.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/DP-012_PUNCTUATION_RECONCILIATION_AND_GARBLE_FLAGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0016",
+      "title": "Reference Pointer — Numbering Registry",
+      "path": "Canonical Standards Folder/NUMBERING_REGISTRY.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/NUMBERING_REGISTRY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0017",
+      "title": "PROMPT — AI Transcript Structuring Engine",
+      "path": "Canonical Standards Folder/PROMPT_AI_TRANSCRIPT_STRUCTURING_ENGINE.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/PROMPT_AI_TRANSCRIPT_STRUCTURING_ENGINE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0018",
+      "title": "Codex Prompt — Workspace Transcript DOCX: UFM Tab Stops + DP-010 Sentence-Boundary Spacing",
+      "path": "Canonical Standards Folder/PROMPT_WORKSPACE_DOCX_TAB_STOPS.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/PROMPT_WORKSPACE_DOCX_TAB_STOPS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0019",
+      "title": "TRANSCRIPT_GEOMETRY_STANDARD",
+      "path": "Canonical Standards Folder/TRANSCRIPT_GEOMETRY_STANDARD.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/TRANSCRIPT_GEOMETRY_STANDARD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0020",
+      "title": "WAVE-21 — Canonical Export Architecture",
+      "path": "Canonical Standards Folder/WAVE21_CANONICAL_EXPORT_ARCHITECTURE.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:Canonical Standards Folder/WAVE21_CANONICAL_EXPORT_ARCHITECTURE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0021",
+      "title": "Numbering Registry",
+      "path": "NUMBERING_REGISTRY.md",
+      "category": "root",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": true,
+      "authority_scopes": [
+        "canonical-standard-numbering"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0022",
+      "title": "Depo-Pro",
+      "path": "README.md",
+      "category": "root",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Project",
+      "authoritative": true,
+      "authority_scopes": [
+        "repository-discovery"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0023",
+      "title": "Extraction Integrity & Case Contamination Audit",
+      "path": "ai_logs/AUDIT_EXTRACTION_INTEGRITY.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/AUDIT_EXTRACTION_INTEGRITY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0024",
+      "title": "BOUNDARY LOG",
+      "path": "ai_logs/BOUNDARY_LOG.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/BOUNDARY_LOG.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0025",
+      "title": "PROMPT 2 Blocker Report",
+      "path": "ai_logs/PROMPT_2_BLOCKER_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_2_BLOCKER_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0026",
+      "title": "PROMPT 2 (v2) Report",
+      "path": "ai_logs/PROMPT_2_V2_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_2_V2_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0027",
+      "title": "PROMPT 3B REPORT — Conflict Rehydration From Provenance",
+      "path": "ai_logs/PROMPT_3B_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_3B_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0028",
+      "title": "PROMPT 3C REPORT",
+      "path": "ai_logs/PROMPT_3C_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_3C_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0029",
+      "title": "PROMPT 3 V2 — Case Lifecycle Report",
+      "path": "ai_logs/PROMPT_3_V2_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_3_V2_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0030",
+      "title": "PROMPT 4A REPORT",
+      "path": "ai_logs/PROMPT_4A_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_4A_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0031",
+      "title": "PROMPT 5B REPORT",
+      "path": "ai_logs/PROMPT_5B_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_5B_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0032",
+      "title": "PROMPT 5C REPORT",
+      "path": "ai_logs/PROMPT_5C_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_5C_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0033",
+      "title": "PROMPT 5 REPORT",
+      "path": "ai_logs/PROMPT_5_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/PROMPT_5_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0034",
+      "title": "WAVE8 ADOPTION REPORT",
+      "path": "ai_logs/WAVE8_ADOPTION_REPORT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/WAVE8_ADOPTION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0035",
+      "title": "WAVE8 ORIENTATION",
+      "path": "ai_logs/WAVE8_ORIENTATION.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/WAVE8_ORIENTATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0036",
+      "title": "Remediation hash chain",
+      "path": "ai_logs/remediation/HASH_CHAIN.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:ai_logs/remediation/HASH_CHAIN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0037",
+      "title": "Transcription benchmark corpus",
+      "path": "benchmark-corpus/README.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:benchmark-corpus/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0038",
+      "title": "Depo-Pro Component Specification",
+      "path": "docs/COMPONENT_SPECIFICATION.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/COMPONENT_SPECIFICATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0039",
+      "title": "DATA FIELD REFERENCE",
+      "path": "docs/DATA_FIELD_REFERENCE.md",
+      "category": "documentation",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "owner": "Intake",
+      "authoritative": true,
+      "authority_scopes": [
+        "data-field-source-ownership"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0040",
+      "title": "Depo-Pro Data Structures & JSON Schemas",
+      "path": "docs/DATA_STRUCTURES_REFERENCE.md",
+      "category": "documentation",
+      "tier": "T3",
+      "status": "ACTIVE",
+      "owner": "Transcript",
+      "authoritative": true,
+      "authority_scopes": [
+        "transcript-domain-data-shapes"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0041",
+      "title": "Depo-Pro Documentation",
+      "path": "docs/README.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0042",
+      "title": "Recovering a stalled transcript",
+      "path": "docs/RECOVER_TRANSCRIPT.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/RECOVER_TRANSCRIPT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0043",
+      "title": "WAVE8 PORT MAP — reference implementation → web app prompts",
+      "path": "docs/WAVE8_PORT_MAP.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/WAVE8_PORT_MAP.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0044",
+      "title": "ENGINE 1 — BOUNDARY ENGINE",
+      "path": "docs/ai-pipeline-spec/ENGINES_1_2_Boundary_Speaker.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/ai-pipeline-spec/ENGINES_1_2_Boundary_Speaker.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0045",
+      "title": "ENGINE 3 — STRUCTURE ENGINE",
+      "path": "docs/ai-pipeline-spec/ENGINES_3_4_Structure_Corrections.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/ai-pipeline-spec/ENGINES_3_4_Structure_Corrections.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0046",
+      "title": "ENGINE 4.5 — CORRECTION VALIDATION ENGINE",
+      "path": "docs/ai-pipeline-spec/ENGINES_45_5_VALIDATION_FORMATTING_MASTER.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/ai-pipeline-spec/ENGINES_45_5_VALIDATION_FORMATTING_MASTER.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0047",
+      "title": "ENGINE 0 — TRANSCRIPT INTEGRITY AUDIT",
+      "path": "docs/ai-pipeline-spec/ENGINE_0_Integrity_Audit.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/ai-pipeline-spec/ENGINE_0_Integrity_Audit.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0048",
+      "title": "WAVE 22 P5-B — CORRECTIONS PANEL: AI SUGGESTIONS UI",
+      "path": "docs/ai-pipeline-spec/WAVE22_P5B_CORRECTIONS_PANEL_UI.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/ai-pipeline-spec/WAVE22_P5B_CORRECTIONS_PANEL_UI.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0049",
+      "title": "WAVE 22 P5-C — REMAINING PROMPTS NEEDED",
+      "path": "docs/ai-pipeline-spec/WAVE22_P5C_REMAINING_PROMPTS.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/ai-pipeline-spec/WAVE22_P5C_REMAINING_PROMPTS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0050",
+      "title": "WAVE 22 P5 — AI PRE-REVIEW ENGINE",
+      "path": "docs/ai-pipeline-spec/WAVE22_P5_AI_PREREVIEW_ENGINE.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/ai-pipeline-spec/WAVE22_P5_AI_PREREVIEW_ENGINE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0051",
+      "title": "Architectural Drift Report",
+      "path": "docs/architecture/ARCHITECTURAL_DRIFT_REPORT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/ARCHITECTURAL_DRIFT_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0052",
+      "title": "Audit Method and Evidence",
+      "path": "docs/architecture/AUDIT_METHOD_AND_EVIDENCE.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/AUDIT_METHOD_AND_EVIDENCE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0053",
+      "title": "Canonical Formatting Architecture",
+      "path": "docs/architecture/CANONICAL_FORMATTING_ARCHITECTURE.md",
+      "category": "architecture",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "canonical-intake-formatting-architecture"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0054",
+      "title": "Case Storage Specification",
+      "path": "docs/architecture/CASE_STORAGE_SPEC.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/CASE_STORAGE_SPEC.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0055",
+      "title": "Canonical Transcript Specification (CTS)",
+      "path": "docs/architecture/CTS-v1.0.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/CTS-v1.0.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0056",
+      "title": "Current Implementation Map",
+      "path": "docs/architecture/CURRENT_IMPLEMENTATION_MAP.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/CURRENT_IMPLEMENTATION_MAP.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0057",
+      "title": "Dead Code / Unwired Implementation Report",
+      "path": "docs/architecture/DEAD_CODE_REPORT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/DEAD_CODE_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0058",
+      "title": "Depo-Pro Decision Matrix",
+      "path": "docs/architecture/DECISION_MATRIX.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/DECISION_MATRIX.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0059",
+      "title": "Architecture Decision Record — Ownership Freeze",
+      "path": "docs/architecture/DECISION_RECORD.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/DECISION_RECORD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0060",
+      "title": "Deepgram Keyterm Specification",
+      "path": "docs/architecture/DEEPGRAM_KEYTERM_SPEC.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/DEEPGRAM_KEYTERM_SPEC.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0061",
+      "title": "DEPO-PRO System Architecture v1.0 — Freeze Candidate",
+      "path": "docs/architecture/DEPO_PRO_SYSTEM_ARCHITECTURE_v1.0.md",
+      "category": "architecture",
+      "tier": "T1",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "system-architecture-navigation-and-implementation-baseline"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-03",
+      "governed_by": [],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0062",
+      "title": "Document Authority Registry",
+      "path": "docs/architecture/DOCUMENT_AUTHORITY_REGISTRY.md",
+      "category": "architecture",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true,
+      "authority_scopes": [
+        "repository-documentation-governance"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [],
+      "supersedes": [
+        "DOC-0098"
+      ]
+    },
+    {
+      "id": "DOC-0063",
+      "title": "Depo-Pro Transcript Architecture Standard (DTAS)",
+      "path": "docs/architecture/DTAS-v1.0.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/DTAS-v1.0.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0064",
+      "title": "Duplication Report",
+      "path": "docs/architecture/DUPLICATION_REPORT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/DUPLICATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0065",
+      "title": "Depo-Pro Engineering Standards",
+      "path": "docs/architecture/ENGINEERING_STANDARDS.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/ENGINEERING_STANDARDS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0066",
+      "title": "God Object Report",
+      "path": "docs/architecture/GOD_OBJECT_REPORT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/GOD_OBJECT_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0067",
+      "title": "Historical Prompt Status",
+      "path": "docs/architecture/HISTORICAL_PROMPT_STATUS.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/HISTORICAL_PROMPT_STATUS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0068",
+      "title": "DEPO-PRO MASTER ARCHITECTURE DOCUMENT",
+      "path": "docs/architecture/MASTER_ARCHITECTURE.md",
+      "category": "architecture",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true,
+      "authority_scopes": [
+        "product-system-architecture"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0069",
+      "title": "Multi-file Transcription Design — 2026-06-10",
+      "path": "docs/architecture/MULTIFILE_TRANSCRIPTION_DESIGN.md",
+      "category": "architecture",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Deepgram",
+      "authoritative": false,
+      "authority_scopes": [
+        "multi-file-transcription-design"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0070",
+      "title": "Actual Pipeline Sequence",
+      "path": "docs/architecture/PIPELINE_SEQUENCE.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/PIPELINE_SEQUENCE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0071",
+      "title": "Project Authority Index",
+      "path": "docs/architecture/PROJECT_AUTHORITY_INDEX.md",
+      "category": "architecture",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": true,
+      "authority_scopes": [
+        "repository-authority-navigation"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [],
+      "supersedes": [
+        "DOC-0099"
+      ]
+    },
+    {
+      "id": "DOC-0072",
+      "title": "DEPO-PRO Project Charter",
+      "path": "docs/architecture/PROJECT_CHARTER.md",
+      "category": "architecture",
+      "tier": "T1",
+      "status": "ACTIVE",
+      "owner": "Project",
+      "authoritative": true,
+      "authority_scopes": [
+        "project-mission-and-principles"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0073",
+      "title": "Project Operating Standard",
+      "path": "docs/architecture/PROJECT_OPERATING_STANDARD.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/PROJECT_OPERATING_STANDARD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0074",
+      "title": "DEPO-PRO — Ratified Decisions",
+      "path": "docs/architecture/RATIFIED_DECISIONS.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/RATIFIED_DECISIONS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0075",
+      "title": "Recommended Next Implementation",
+      "path": "docs/architecture/RECOMMENDED_NEXT_IMPLEMENTATION.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/RECOMMENDED_NEXT_IMPLEMENTATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0076",
+      "title": "Remaining Work Matrix",
+      "path": "docs/architecture/REMAINING_WORK_MATRIX.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/REMAINING_WORK_MATRIX.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0077",
+      "title": "Screen Flow",
+      "path": "docs/architecture/SCREEN_FLOW.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/SCREEN_FLOW.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0078",
+      "title": "Single-Owner Audit",
+      "path": "docs/architecture/SINGLE_OWNER_AUDIT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/SINGLE_OWNER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0079",
+      "title": "Depo-Pro Transcript Pipeline Report",
+      "path": "docs/architecture/TRANSCRIPT_PIPELINE_REPORT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/TRANSCRIPT_PIPELINE_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0080",
+      "title": "UFM Data Dictionary",
+      "path": "docs/architecture/UFM_DATA_DICTIONARY.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/UFM_DATA_DICTIONARY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0081",
+      "title": "Texas UFM Data Requirements — DEPO-PRO Case Assembly",
+      "path": "docs/architecture/UFM_TEXAS_REQUIREMENTS.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/UFM_TEXAS_REQUIREMENTS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0082",
+      "title": "Wave 0 Engineering Operations Standard",
+      "path": "docs/architecture/W0_ENGINEERING_OPERATIONS_STANDARD.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/W0_ENGINEERING_OPERATIONS_STANDARD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0083",
+      "title": "Wave 0 Canonical Status Vocabulary",
+      "path": "docs/architecture/W0_STATUS_VOCABULARY.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/W0_STATUS_VOCABULARY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0084",
+      "title": "Wave 21 Recognition Quality Standard",
+      "path": "docs/architecture/W21_RECOGNITION_QUALITY_STANDARD.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/W21_RECOGNITION_QUALITY_STANDARD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0085",
+      "title": "DEPO-PRO STRUCTURED TRANSCRIPT CONTRACT",
+      "path": "docs/architecture/W22-2A_STRUCTURED_TRANSCRIPT_CONTRACT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/W22-2A_STRUCTURED_TRANSCRIPT_CONTRACT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0086",
+      "title": "Wave 23B — Canonical Integrity Expansion",
+      "path": "docs/architecture/W23B_CANONICAL_INTEGRITY.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/W23B_CANONICAL_INTEGRITY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0087",
+      "title": "Wave 23 — Historical Implementation Characterization",
+      "path": "docs/architecture/W23_CURRENT_IMPLEMENTATION_CHARACTERIZATION.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/W23_CURRENT_IMPLEMENTATION_CHARACTERIZATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0088",
+      "title": "Wave 23 Region Model",
+      "path": "docs/architecture/W23_REGION_MODEL.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/W23_REGION_MODEL.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0089",
+      "title": "Wave 23A Reconciliation Summary",
+      "path": "docs/architecture/WAVE23A_RECONCILIATION_SUMMARY.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/WAVE23A_RECONCILIATION_SUMMARY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0090",
+      "title": "Wave 23B Next Targets",
+      "path": "docs/architecture/WAVE23B_NEXT_TARGETS.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/WAVE23B_NEXT_TARGETS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0091",
+      "title": "ADR-0007 — Reactive Authentication Ownership",
+      "path": "docs/architecture/adr/ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/adr/ADR-0007_REACTIVE_AUTHENTICATION_OWNERSHIP.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0092",
+      "title": "ADR-0011 — Stutter rendering: double hyphen, not em-dash",
+      "path": "docs/architecture/adr/ADR-0011-stutter-double-hyphen.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/adr/ADR-0011-stutter-double-hyphen.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0093",
+      "title": "ADR-0012 — Workspace Open Questions: Six Ratified Decisions",
+      "path": "docs/architecture/adr/ADR-0012_WORKSPACE_OPEN_QUESTIONS.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/adr/ADR-0012_WORKSPACE_OPEN_QUESTIONS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0094",
+      "title": "ADR-0013 — Recess parenthetical with provenance",
+      "path": "docs/architecture/adr/ADR-0013-recess-parenthetical.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/adr/ADR-0013-recess-parenthetical.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0095",
+      "title": "ADR-0014 — Witness answers during objection colloquy render as `A.`",
+      "path": "docs/architecture/adr/ADR-0014-witness-answer-during-objection.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/adr/ADR-0014-witness-answer-during-objection.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0096",
+      "title": "ADR-023C — Proceedings Event Contract",
+      "path": "docs/architecture/adr/ADR-023C_PROCEEDINGS_EVENT_CONTRACT.md",
+      "category": "architecture",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/architecture/adr/ADR-023C_PROCEEDINGS_EVENT_CONTRACT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0097",
+      "title": "Documentation Archive",
+      "path": "docs/archive/README.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0098",
+      "title": "Document Authority Registry",
+      "path": "docs/archive/architecture/DOCUMENT_AUTHORITY_REGISTRY_DRAFT_V1.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-documentation-governance-draft-v1"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0099",
+      "title": "Project Authority Index",
+      "path": "docs/archive/architecture/PROJECT_AUTHORITY_INDEX_DRAFT_V1.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-authority-navigation-draft-v1"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0100",
+      "title": "Archived Architecture and Governance",
+      "path": "docs/archive/architecture/README.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/architecture/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0101",
+      "title": "CASE STYLE TERMINOLOGY FINDINGS",
+      "path": "docs/archive/audits/CASE_STYLE_TERMINOLOGY_FINDINGS.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/audits/CASE_STYLE_TERMINOLOGY_FINDINGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0102",
+      "title": "Archived Audits",
+      "path": "docs/archive/audits/README.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/audits/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0103",
+      "title": "Repository Documentation Authority Model",
+      "path": "docs/archive/audits/REPOSITORY_DOCUMENTATION_AUTHORITY_MODEL.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-documentation-authority-model"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0104",
+      "title": "Depo-Pro — Session Handoff & Findings Report",
+      "path": "docs/archive/handoffs/DEPO_PRO_SESSION_HANDOFF_2026-06-24.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/handoffs/DEPO_PRO_SESSION_HANDOFF_2026-06-24.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0105",
+      "title": "Archived Handoffs",
+      "path": "docs/archive/handoffs/README.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/handoffs/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0106",
+      "title": "Array Field Persist Fix Report",
+      "path": "docs/archive/reports/ARRAY_FIELD_PERSIST_FIX_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/ARRAY_FIELD_PERSIST_FIX_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0107",
+      "title": "ATTORNEY KEYTERM VERIFICATION",
+      "path": "docs/archive/reports/ATTORNEY_KEYTERM_VERIFICATION.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/ATTORNEY_KEYTERM_VERIFICATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0108",
+      "title": "AUDIO_READINESS_FIX_REPORT",
+      "path": "docs/archive/reports/AUDIO_READINESS_FIX_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/AUDIO_READINESS_FIX_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0109",
+      "title": "Auth / RLS Report",
+      "path": "docs/archive/reports/AUTH_RLS_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/AUTH_RLS_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0110",
+      "title": "Backend Wiring Report",
+      "path": "docs/archive/reports/BACKEND_WIRING_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/BACKEND_WIRING_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0111",
+      "title": "Binding Confirm Report",
+      "path": "docs/archive/reports/BINDING_CONFIRM_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/BINDING_CONFIRM_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0112",
+      "title": "CERTIFICATION_EXPORT_REMEDIATION_REPORT",
+      "path": "docs/archive/reports/CERTIFICATION_EXPORT_REMEDIATION_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/CERTIFICATION_EXPORT_REMEDIATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0113",
+      "title": "CONFIDENCE_PERSISTENCE_FIX_REPORT",
+      "path": "docs/archive/reports/CONFIDENCE_PERSISTENCE_FIX_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/CONFIDENCE_PERSISTENCE_FIX_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0114",
+      "title": "DEPO-PRO Deepgram Pipeline Report",
+      "path": "docs/archive/reports/DEEPGRAM_PIPELINE_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/DEEPGRAM_PIPELINE_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0115",
+      "title": "Deepgram Wire Params Report",
+      "path": "docs/archive/reports/DEEPGRAM_WIRE_PARAMS_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/DEEPGRAM_WIRE_PARAMS_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0116",
+      "title": "DURABLE_MOCK_PERSISTENCE_REPORT",
+      "path": "docs/archive/reports/DURABLE_MOCK_PERSISTENCE_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/DURABLE_MOCK_PERSISTENCE_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0117",
+      "title": "Editor Base URL Fix Report",
+      "path": "docs/archive/reports/EDITOR_BASE_URL_FIX_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/EDITOR_BASE_URL_FIX_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0118",
+      "title": "FIND_WORD_AT_TIME_FIX_REPORT",
+      "path": "docs/archive/reports/FIND_WORD_AT_TIME_FIX_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/FIND_WORD_AT_TIME_FIX_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0119",
+      "title": "GATE1_REMEDIATION_REPORT",
+      "path": "docs/archive/reports/GATE1_REMEDIATION_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/GATE1_REMEDIATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0120",
+      "title": "Intake Real Report",
+      "path": "docs/archive/reports/INTAKE_REAL_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/INTAKE_REAL_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0121",
+      "title": "Intake Screen Ownership Report",
+      "path": "docs/archive/reports/INTAKE_SCREEN_OWNERSHIP_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/INTAKE_SCREEN_OWNERSHIP_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0122",
+      "title": "Intake UI Fixes Report",
+      "path": "docs/archive/reports/INTAKE_UI_FIXES_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/INTAKE_UI_FIXES_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0123",
+      "title": "Keyterm Expansion Notes",
+      "path": "docs/archive/reports/KEYTERM_EXPANSION_NOTES.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/KEYTERM_EXPANSION_NOTES.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0124",
+      "title": "MOUNT_CONTRACT_MIGRATION_REPORT",
+      "path": "docs/archive/reports/MOUNT_CONTRACT_MIGRATION_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/MOUNT_CONTRACT_MIGRATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0125",
+      "title": "Multi-file Build Report — 2026-06-10",
+      "path": "docs/archive/reports/MULTIFILE_BUILD_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/MULTIFILE_BUILD_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0126",
+      "title": "PROVIDER_MIGRATION_REPORT",
+      "path": "docs/archive/reports/PROVIDER_MIGRATION_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/PROVIDER_MIGRATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0127",
+      "title": "Archived Reports",
+      "path": "docs/archive/reports/README.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0128",
+      "title": "SPEAKER_REASSIGNMENT_FIX_REPORT",
+      "path": "docs/archive/reports/SPEAKER_REASSIGNMENT_FIX_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/SPEAKER_REASSIGNMENT_FIX_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0129",
+      "title": "Repository Root Cleanup Plan",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-root-cleanup-plan"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0130",
+      "title": "Repository Root Cleanup Plan V2 — Authority First",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN_V2.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-root-cleanup-plan-v2"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0131",
+      "title": "Repository Root Cleanup Plan V3 — Registry Before Classification",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN_V3.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-root-cleanup-plan-v3"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0132",
+      "title": "Repository Root Cleanup Plan V4 — Conflict Rules Before Ratification",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_CLEANUP_PLAN_V4.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-root-cleanup-plan-v4"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0133",
+      "title": "Proposed Repository Root Structure",
+      "path": "docs/archive/reports/repository-cleanup/REPOSITORY_ROOT_PROPOSED_STRUCTURE.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-root-proposed-structure"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0134",
+      "title": "Branch-State Report (Prompt F)",
+      "path": "docs/archive/reports/repository/BRANCH_STATE_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/repository/BRANCH_STATE_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0135",
+      "title": "Repository Branch Census",
+      "path": "docs/archive/reports/repository/REPOSITORY_BRANCH_CENSUS.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/reports/repository/REPOSITORY_BRANCH_CENSUS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0136",
+      "title": "BETA FREEZE STATUS",
+      "path": "docs/archive/status/BETA_FREEZE.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/status/BETA_FREEZE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0137",
+      "title": "DEPO-PRO — PRE-RELEASE-CANDIDATE CHECKLIST",
+      "path": "docs/archive/status/PRE_RC_CHECKLIST.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/status/PRE_RC_CHECKLIST.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0138",
+      "title": "Archived Status Records",
+      "path": "docs/archive/status/README.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/status/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0139",
+      "title": "STAGE 0 5 REPORT",
+      "path": "docs/archive/status/STAGE_0_5_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/status/STAGE_0_5_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0140",
+      "title": "STAGE 1 — ATTORNEY DIRECTORY — COMPLETION REPORT",
+      "path": "docs/archive/status/STAGE_1_COMPLETION_REPORT.md",
+      "category": "archive",
+      "tier": "T7",
+      "status": "ARCHIVED",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/archive/status/STAGE_1_COMPLETION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0141",
+      "title": "AI Transcript Intelligence Audit (ATIA)",
+      "path": "docs/atia/AI_TRANSCRIPT_INTELLIGENCE_AUDIT.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/atia/AI_TRANSCRIPT_INTELLIGENCE_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0142",
+      "title": "Bridge Gate — How to Read the Round-Trip Results",
+      "path": "docs/atia/bridge_gate_interpretation.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/atia/bridge_gate_interpretation.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0143",
+      "title": "Branch Audit",
+      "path": "docs/audits/2026-07-20-git-governance/BRANCH_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/BRANCH_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0144",
+      "title": "Branch Disposition",
+      "path": "docs/audits/2026-07-20-git-governance/BRANCH_DISPOSITION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/BRANCH_DISPOSITION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0145",
+      "title": "Commit Assembly Plan",
+      "path": "docs/audits/2026-07-20-git-governance/COMMIT_ASSEMBLY_PLAN.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/COMMIT_ASSEMBLY_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0146",
+      "title": "Commit Audit",
+      "path": "docs/audits/2026-07-20-git-governance/COMMIT_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/COMMIT_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0147",
+      "title": "Commit Classification",
+      "path": "docs/audits/2026-07-20-git-governance/COMMIT_CLASSIFICATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/COMMIT_CLASSIFICATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0148",
+      "title": "Documentation Audit",
+      "path": "docs/audits/2026-07-20-git-governance/DOCUMENTATION_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/DOCUMENTATION_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0149",
+      "title": "GitHub Audit",
+      "path": "docs/audits/2026-07-20-git-governance/GITHUB_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/GITHUB_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0150",
+      "title": "Pull Request Audit",
+      "path": "docs/audits/2026-07-20-git-governance/PULL_REQUEST_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/PULL_REQUEST_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0151",
+      "title": "Git Governance Audit — 2026-07-20",
+      "path": "docs/audits/2026-07-20-git-governance/README.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0152",
+      "title": "Release Engineering Audit",
+      "path": "docs/audits/2026-07-20-git-governance/RELEASE_ENGINEERING_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/RELEASE_ENGINEERING_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0153",
+      "title": "Repository Cleanup Plan",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_CLEANUP_PLAN.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/REPOSITORY_CLEANUP_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0154",
+      "title": "Repository Recovery Log",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_RECOVERY_LOG.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/REPOSITORY_RECOVERY_LOG.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0155",
+      "title": "Repository Recovery Plan",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_RECOVERY_PLAN.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/REPOSITORY_RECOVERY_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0156",
+      "title": "Repository Stabilization Standard",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_STABILIZATION_STANDARD.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/REPOSITORY_STABILIZATION_STANDARD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0157",
+      "title": "Repository Status",
+      "path": "docs/audits/2026-07-20-git-governance/REPOSITORY_STATUS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/REPOSITORY_STATUS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0158",
+      "title": "Split Commit Proposals",
+      "path": "docs/audits/2026-07-20-git-governance/SPLIT_COMMIT_PROPOSALS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/SPLIT_COMMIT_PROPOSALS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0159",
+      "title": "Stash Classification",
+      "path": "docs/audits/2026-07-20-git-governance/STASH_CLASSIFICATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/STASH_CLASSIFICATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0160",
+      "title": "Working Tree Analysis",
+      "path": "docs/audits/2026-07-20-git-governance/WORKING_TREE_ANALYSIS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/WORKING_TREE_ANALYSIS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0161",
+      "title": "Working Tree Classification",
+      "path": "docs/audits/2026-07-20-git-governance/WORKING_TREE_CLASSIFICATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/WORKING_TREE_CLASSIFICATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0162",
+      "title": "Working Tree Partition",
+      "path": "docs/audits/2026-07-20-git-governance/WORKING_TREE_PARTITION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/WORKING_TREE_PARTITION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0163",
+      "title": "Worktree Audit",
+      "path": "docs/audits/2026-07-20-git-governance/WORKTREE_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/WORKTREE_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0164",
+      "title": "Worktree Classification",
+      "path": "docs/audits/2026-07-20-git-governance/WORKTREE_CLASSIFICATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/2026-07-20-git-governance/WORKTREE_CLASSIFICATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0165",
+      "title": "Abbreviation Registry Single-Source Audit",
+      "path": "docs/audits/ABBREVIATION_REGISTRY_SINGLE_SOURCE_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/ABBREVIATION_REGISTRY_SINGLE_SOURCE_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0166",
+      "title": "Abbreviation Registry Single-Source Remediation",
+      "path": "docs/audits/ABBREVIATION_REGISTRY_SINGLE_SOURCE_REMEDIATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/ABBREVIATION_REGISTRY_SINGLE_SOURCE_REMEDIATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0167",
+      "title": "Conflict / Provenance Atomicity — Characterization Audit",
+      "path": "docs/audits/ATOMICITY_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/ATOMICITY_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0168",
+      "title": "ATTORNEY UFM MAPPING TABLE",
+      "path": "docs/audits/ATTORNEY_UFM_MAPPING_TABLE.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/ATTORNEY_UFM_MAPPING_TABLE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0169",
+      "title": "Audit — Transcript Transformation Pipeline",
+      "path": "docs/audits/AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AUDIT_TRANSCRIPT_TRANSFORM_PIPELINE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0170",
+      "title": "Auth / RLS Audit",
+      "path": "docs/audits/AUTH_RLS_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AUTH_RLS_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0171",
+      "title": "Canonical Standards Full Implementation Audit",
+      "path": "docs/audits/CANONICAL_STANDARDS_FULL_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CANONICAL_STANDARDS_FULL_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0172",
+      "title": "Canonical Standards Implementation Audit",
+      "path": "docs/audits/CANONICAL_STANDARDS_IMPLEMENTATION_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CANONICAL_STANDARDS_IMPLEMENTATION_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0173",
+      "title": "CANON-RAW-001 — RAW-E: Exposure Assessment & Closure",
+      "path": "docs/audits/CANON_RAW_001_RAW_E_ASSESSMENT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CANON_RAW_001_RAW_E_ASSESSMENT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0174",
+      "title": "CERTIFICATION_EXPORT_END_TO_END_AUDIT",
+      "path": "docs/audits/CERTIFICATION_EXPORT_END_TO_END_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFICATION_EXPORT_END_TO_END_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0175",
+      "title": "Certification Lock Remediation",
+      "path": "docs/audits/CERTIFICATION_LOCK_REMEDIATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFICATION_LOCK_REMEDIATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0176",
+      "title": "Certification Owner Audit",
+      "path": "docs/audits/CERTIFICATION_OWNER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFICATION_OWNER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0177",
+      "title": "CFE Fidelity Validation",
+      "path": "docs/audits/CFE_FIDELITY_VALIDATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CFE_FIDELITY_VALIDATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0178",
+      "title": "CFE Phase 0 Findings",
+      "path": "docs/audits/CFE_PHASE0_FINDINGS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CFE_PHASE0_FINDINGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0179",
+      "title": "CFE Phase 1.1 Flag Classification Audit",
+      "path": "docs/audits/CFE_PHASE1_1_FLAG_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CFE_PHASE1_1_FLAG_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0180",
+      "title": "CFE Phase 1.1 Implementation Plan",
+      "path": "docs/audits/CFE_PHASE1_1_IMPLEMENTATION_PLAN.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CFE_PHASE1_1_IMPLEMENTATION_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0181",
+      "title": "CFE Phase 1.1 Validation",
+      "path": "docs/audits/CFE_PHASE1_1_VALIDATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CFE_PHASE1_1_VALIDATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0182",
+      "title": "CFE Phase 1 Readiness",
+      "path": "docs/audits/CFE_PHASE1_READINESS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CFE_PHASE1_READINESS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0183",
+      "title": "CFE Phase 1 Validation",
+      "path": "docs/audits/CFE_PHASE1_VALIDATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CFE_PHASE1_VALIDATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0184",
+      "title": "Colloquy Rendering Findings (retires Prompt B → A2 evidence)",
+      "path": "docs/audits/COLLOQUY_RENDER_FINDINGS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/COLLOQUY_RENDER_FINDINGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0185",
+      "title": "Commit Preparation Plan",
+      "path": "docs/audits/COMMIT_PREP_PLAN.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/COMMIT_PREP_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0186",
+      "title": "Confirmation Flow Audit",
+      "path": "docs/audits/CONFIRMATION_FLOW_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CONFIRMATION_FLOW_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0187",
+      "title": "Correction Recording & Marking Audit (Prompt A, Parts 1–2)",
+      "path": "docs/audits/CORRECTION_RECORDING_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CORRECTION_RECORDING_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0188",
+      "title": "Correction Surface Map",
+      "path": "docs/audits/CORRECTION_SURFACE_MAP.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CORRECTION_SURFACE_MAP.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0189",
+      "title": "Current Transcript Pipeline",
+      "path": "docs/audits/CURRENT_TRANSCRIPT_PIPELINE.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CURRENT_TRANSCRIPT_PIPELINE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0190",
+      "title": "Data Reality Findings",
+      "path": "docs/audits/DATA_REALITY_FINDINGS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/DATA_REALITY_FINDINGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0191",
+      "title": "Decision Record — Unified Layer-2 Overlay deferred to post-freeze",
+      "path": "docs/audits/DECISION_RECORD_corrections_layer_deferral.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/DECISION_RECORD_corrections_layer_deferral.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0192",
+      "title": "DEPO Editor Backend Audit",
+      "path": "docs/audits/DEPO_EDITOR_BACKEND_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/DEPO_EDITOR_BACKEND_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0193",
+      "title": "DP-012 Alignment Report",
+      "path": "docs/audits/DP012_ALIGNMENT_REPORT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/DP012_ALIGNMENT_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0194",
+      "title": "DP-012 Ratification Review",
+      "path": "docs/audits/DP012_RATIFICATION_REVIEW.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/DP012_RATIFICATION_REVIEW.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0195",
+      "title": "Duplicate Implementation Report",
+      "path": "docs/audits/DUPLICATE_IMPLEMENTATION_REPORT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/DUPLICATE_IMPLEMENTATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0196",
+      "title": "AUDIT — Failed to load transcript: `TypeError: Failed to fetch`",
+      "path": "docs/audits/EDITOR_LOAD_FAILURE_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/EDITOR_LOAD_FAILURE_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0197",
+      "title": "Editor Load Path E2E Audit — 2026-06-10",
+      "path": "docs/audits/EDITOR_LOAD_PATH_E2E_AUDIT_2026-06-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/EDITOR_LOAD_PATH_E2E_AUDIT_2026-06-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0198",
+      "title": "Error Coverage Matrix",
+      "path": "docs/audits/ERROR_COVERAGE_MATRIX.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/ERROR_COVERAGE_MATRIX.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0199",
+      "title": "Export Adapter Owner Audit",
+      "path": "docs/audits/EXPORT_ADAPTER_OWNER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/EXPORT_ADAPTER_OWNER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0200",
+      "title": "Formatter Owner Audit",
+      "path": "docs/audits/FORMATTER_OWNER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/FORMATTER_OWNER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0201",
+      "title": "Formatting Function Inventory",
+      "path": "docs/audits/FORMATTING_FUNCTION_INVENTORY.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/FORMATTING_FUNCTION_INVENTORY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0202",
+      "title": "Formatting Pipeline Map",
+      "path": "docs/audits/FORMATTING_PIPELINE_MAP.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/FORMATTING_PIPELINE_MAP.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0203",
+      "title": "Formatting Rule Application Audit",
+      "path": "docs/audits/FORMATTING_RULE_APPLICATION_AUDIT_2026-06-25.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/FORMATTING_RULE_APPLICATION_AUDIT_2026-06-25.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0204",
+      "title": "G9 — depo_qa_fixer.py Inline Flag Audit",
+      "path": "docs/audits/G9_DEPO_QA_FIXER_INLINE_FLAG_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/G9_DEPO_QA_FIXER_INLINE_FLAG_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0205",
+      "title": "Git Hygiene Audit",
+      "path": "docs/audits/GIT_HYGIENE_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/GIT_HYGIENE_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0206",
+      "title": "Implementation Gap Register",
+      "path": "docs/audits/IMPLEMENTATION_GAP_REGISTER.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/IMPLEMENTATION_GAP_REGISTER.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0207",
+      "title": "Implementation Priority Matrix",
+      "path": "docs/audits/IMPLEMENTATION_PRIORITY_MATRIX.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/IMPLEMENTATION_PRIORITY_MATRIX.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0208",
+      "title": "Intake End-to-End Validation Audit",
+      "path": "docs/audits/INTAKE_END_TO_END_VALIDATION_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/INTAKE_END_TO_END_VALIDATION_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0209",
+      "title": "Intake Formatting Audit",
+      "path": "docs/audits/INTAKE_FORMATTING_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/INTAKE_FORMATTING_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0210",
+      "title": "INTAKE LIFECYCLE INTEGRITY AUDIT",
+      "path": "docs/audits/INTAKE_LIFECYCLE_INTEGRITY_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/INTAKE_LIFECYCLE_INTEGRITY_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0211",
+      "title": "Intake Real vs. Mock Audit",
+      "path": "docs/audits/INTAKE_REAL_VS_MOCK_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/INTAKE_REAL_VS_MOCK_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0212",
+      "title": "Intake Screen Audit",
+      "path": "docs/audits/INTAKE_SCREEN_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/INTAKE_SCREEN_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0213",
+      "title": "Intake UFM Gap Analysis",
+      "path": "docs/audits/INTAKE_UFM_GAP_ANALYSIS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/INTAKE_UFM_GAP_ANALYSIS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0214",
+      "title": "Intake UI Audit",
+      "path": "docs/audits/INTAKE_UI_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/INTAKE_UI_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0215",
+      "title": "KEYTERM PHASE 1 BASELINE",
+      "path": "docs/audits/KEYTERM_PHASE1_BASELINE.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/KEYTERM_PHASE1_BASELINE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0216",
+      "title": "KEYTERM PHASE 1 IMPLEMENTATION PLAN",
+      "path": "docs/audits/KEYTERM_PHASE1_IMPLEMENTATION_PLAN.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/KEYTERM_PHASE1_IMPLEMENTATION_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0217",
+      "title": "KEYTERM PHASE 1 VALIDATION",
+      "path": "docs/audits/KEYTERM_PHASE1_VALIDATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/KEYTERM_PHASE1_VALIDATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0218",
+      "title": "KEYTERM_PIPELINE_FINDINGS",
+      "path": "docs/audits/KEYTERM_PIPELINE_FINDINGS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/KEYTERM_PIPELINE_FINDINGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0219",
+      "title": "Supabase Migration Audit",
+      "path": "docs/audits/MIGRATION_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/MIGRATION_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0220",
+      "title": "Depo-Pro — Open Bug & Task Tracker",
+      "path": "docs/audits/OPEN_BUG_TASK_TRACKER_2026-06-24.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/OPEN_BUG_TASK_TRACKER_2026-06-24.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0221",
+      "title": "ADR-0012 OQ-4 — Export Gutter-Strip Verification",
+      "path": "docs/audits/OQ4_GUTTER_STRIP_VERIFICATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/OQ4_GUTTER_STRIP_VERIFICATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0222",
+      "title": "P1 Save Review Freshness Audit",
+      "path": "docs/audits/P1_SAVE_REVIEW_FRESHNESS_AUDIT_2026-06-24.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/P1_SAVE_REVIEW_FRESHNESS_AUDIT_2026-06-24.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0223",
+      "title": "P2 — Speaker Tools Persistence Audit",
+      "path": "docs/audits/P2_SPEAKER_TOOLS_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/P2_SPEAKER_TOOLS_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0224",
+      "title": "P3 / P7 / P5 Verification Audit",
+      "path": "docs/audits/P3_P7_P5_VERIFICATION_2026-06-25.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/P3_P7_P5_VERIFICATION_2026-06-25.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0225",
+      "title": "P4 — Copy Transcript Audit",
+      "path": "docs/audits/P4_COPY_TRANSCRIPT_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/P4_COPY_TRANSCRIPT_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0226",
+      "title": "Paragraph Structure Audit",
+      "path": "docs/audits/PARAGRAPH_STRUCTURE_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/PARAGRAPH_STRUCTURE_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0227",
+      "title": "Participant Directory — Pre-Flight Audit",
+      "path": "docs/audits/PARTICIPANT_DIRECTORY_PREREQ_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/PARTICIPANT_DIRECTORY_PREREQ_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0228",
+      "title": "Participant Field Matrix",
+      "path": "docs/audits/PARTICIPANT_FIELD_MATRIX.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/PARTICIPANT_FIELD_MATRIX.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0229",
+      "title": "PARTICIPANT_IMPLEMENTATION_AUDIT",
+      "path": "docs/audits/PARTICIPANT_IMPLEMENTATION_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/PARTICIPANT_IMPLEMENTATION_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0230",
+      "title": "Participant Modal Audit",
+      "path": "docs/audits/PARTICIPANT_MODAL_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/PARTICIPANT_MODAL_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0231",
+      "title": "RC Hardening Owner Audit",
+      "path": "docs/audits/RC_HARDENING_OWNER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/RC_HARDENING_OWNER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0232",
+      "title": "Audit Index",
+      "path": "docs/audits/README.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0233",
+      "title": "REAL WORLD VALIDATION LOG",
+      "path": "docs/audits/REAL_WORLD_VALIDATION_LOG.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/REAL_WORLD_VALIDATION_LOG.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0234",
+      "title": "Formatting Regression Root Cause",
+      "path": "docs/audits/REGRESSION_ROOT_CAUSE.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/REGRESSION_ROOT_CAUSE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0235",
+      "title": "Repository Audit and Remediation Report",
+      "path": "docs/audits/REPOSITORY_AUDIT_2026-07-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/REPOSITORY_AUDIT_2026-07-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0236",
+      "title": "REPOSITORY HEALTH AUDIT",
+      "path": "docs/audits/REPOSITORY_HEALTH_AUDIT_2026-06-23.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/REPOSITORY_HEALTH_AUDIT_2026-06-23.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0237",
+      "title": "Repository Root Cleanup Audit",
+      "path": "docs/audits/REPOSITORY_ROOT_CLEANUP_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/REPOSITORY_ROOT_CLEANUP_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0238",
+      "title": "Repository Root Inventory",
+      "path": "docs/audits/REPOSITORY_ROOT_INVENTORY.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/REPOSITORY_ROOT_INVENTORY.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0239",
+      "title": "Retranscription Feature Implementation",
+      "path": "docs/audits/RETRANSCRIPTION_FEATURE_IMPLEMENTATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/RETRANSCRIPTION_FEATURE_IMPLEMENTATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0240",
+      "title": "Retranscription Feature Validation",
+      "path": "docs/audits/RETRANSCRIPTION_FEATURE_VALIDATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/RETRANSCRIPTION_FEATURE_VALIDATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0241",
+      "title": "Root Document Disposition — 2026-08-05",
+      "path": "docs/audits/ROOT_DOCUMENT_DISPOSITION_2026-08-05.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "repository-root-markdown-classification"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": [
+        "DOC-0238"
+      ]
+    },
+    {
+      "id": "DOC-0242",
+      "title": "SAVE_FAILURE_FINDINGS",
+      "path": "docs/audits/SAVE_FAILURE_FINDINGS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/SAVE_FAILURE_FINDINGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0243",
+      "title": "Speaker Save Concurrency Audit",
+      "path": "docs/audits/SPEAKER_SAVE_CONCURRENCY_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/SPEAKER_SAVE_CONCURRENCY_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0244",
+      "title": "STAGE3 RELEASE READINESS AUDIT",
+      "path": "docs/audits/STAGE3_RELEASE_READINESS_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STAGE3_RELEASE_READINESS_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0245",
+      "title": "DEPO-PRO Final Runtime Acceptance Audit",
+      "path": "docs/audits/STAGE3_RUNTIME_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STAGE3_RUNTIME_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0246",
+      "title": "STAGE 1 5 FUNCTION AUDIT",
+      "path": "docs/audits/STAGE_1_5_FUNCTION_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STAGE_1_5_FUNCTION_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0247",
+      "title": "Stage 2 Reporter Wiring Audit",
+      "path": "docs/audits/STAGE_2_REPORTER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STAGE_2_REPORTER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0248",
+      "title": "STAGE 3 WITNESS AUDIT",
+      "path": "docs/audits/STAGE_3_WITNESS_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STAGE_3_WITNESS_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0249",
+      "title": "STAGE 4 INTERPRETER AUDIT",
+      "path": "docs/audits/STAGE_4_INTERPRETER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STAGE_4_INTERPRETER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0250",
+      "title": "STAGE 5 VIDEOGRAPHER AUDIT",
+      "path": "docs/audits/STAGE_5_VIDEOGRAPHER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STAGE_5_VIDEOGRAPHER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0251",
+      "title": "STANDARDS ACCURACY AUDIT",
+      "path": "docs/audits/STANDARDS_ACCURACY_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STANDARDS_ACCURACY_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0252",
+      "title": "Standards Authority Cleanup",
+      "path": "docs/audits/STANDARDS_AUTHORITY_CLEANUP.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STANDARDS_AUTHORITY_CLEANUP.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0253",
+      "title": "Standards Consistency Audit",
+      "path": "docs/audits/STANDARDS_CONSISTENCY_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STANDARDS_CONSISTENCY_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0254",
+      "title": "Standards Folder Normalization",
+      "path": "docs/audits/STANDARDS_FOLDER_NORMALIZATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STANDARDS_FOLDER_NORMALIZATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0255",
+      "title": "Standards Freeze Report",
+      "path": "docs/audits/STANDARDS_FREEZE_REPORT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/STANDARDS_FREEZE_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0256",
+      "title": "Transcript Correction Readiness Audit",
+      "path": "docs/audits/TRANSCRIPT_CORRECTION_READINESS_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_CORRECTION_READINESS_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0257",
+      "title": "Transcript Creation Audit — 2026-06-10",
+      "path": "docs/audits/TRANSCRIPT_CREATION_AUDIT_2026-06-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_CREATION_AUDIT_2026-06-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0258",
+      "title": "TRANSCRIPT FIDELITY ROUND 2",
+      "path": "docs/audits/TRANSCRIPT_FIDELITY_ROUND2.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_FIDELITY_ROUND2.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0259",
+      "title": "Transcript + Keyterm/UFM Audit",
+      "path": "docs/audits/TRANSCRIPT_KEYTERM_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_KEYTERM_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0260",
+      "title": "Canonical Transcript Architecture Audit",
+      "path": "docs/audits/TRANSCRIPT_PIPELINE_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_PIPELINE_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0261",
+      "title": "Transcript Post-Deepgram Modification Pipeline Audit",
+      "path": "docs/audits/TRANSCRIPT_POST_DEEPGRAM_MODIFICATION_PIPELINE_AUDIT_2026-07-28.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_POST_DEEPGRAM_MODIFICATION_PIPELINE_AUDIT_2026-07-28.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0262",
+      "title": "Transcript Quality Findings",
+      "path": "docs/audits/TRANSCRIPT_QUALITY_FINDINGS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_QUALITY_FINDINGS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0263",
+      "title": "Transcript Version Labels Plan",
+      "path": "docs/audits/TRANSCRIPT_VERSION_LABELS_PLAN.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_VERSION_LABELS_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0264",
+      "title": "Transcript Version Labels Validation",
+      "path": "docs/audits/TRANSCRIPT_VERSION_LABELS_VALIDATION.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_VERSION_LABELS_VALIDATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0265",
+      "title": "UFM EXTRACTION EXPANSION REPORT",
+      "path": "docs/audits/UFM_EXTRACTION_EXPANSION_REPORT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/UFM_EXTRACTION_EXPANSION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0266",
+      "title": "UFM EXTRACTION GAP ANALYSIS",
+      "path": "docs/audits/UFM_EXTRACTION_GAP_ANALYSIS.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/UFM_EXTRACTION_GAP_ANALYSIS.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0267",
+      "title": "UFM Field Audit",
+      "path": "docs/audits/UFM_FIELD_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/UFM_FIELD_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0268",
+      "title": "DEPO-PRO — WORKSPACE TRANSCRIPT PIPELINE AUDIT (MERGED)",
+      "path": "docs/audits/WORKSPACE_PIPELINE_AUDIT_MERGED_2026-08-04.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/WORKSPACE_PIPELINE_AUDIT_MERGED_2026-08-04.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0269",
+      "title": "Export-Path Baseline",
+      "path": "docs/audits/rc/EXPORT_PATH_BASELINE.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/rc/EXPORT_PATH_BASELINE.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0270",
+      "title": "Release Candidate Verification Report",
+      "path": "docs/audits/rc/RC_VERIFICATION_REPORT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/rc/RC_VERIFICATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0271",
+      "title": "Stage S — Validation & Repair Burden Measurement (PR #19)",
+      "path": "docs/audits/stage-s/README.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/stage-s/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0272",
+      "title": "Repair Burden Report",
+      "path": "docs/audits/stage-s/REPAIR_BURDEN_REPORT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/stage-s/REPAIR_BURDEN_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0273",
+      "title": "Stage S Owner Audit (PR #19)",
+      "path": "docs/audits/stage-s/STAGE_S_OWNER_AUDIT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/stage-s/STAGE_S_OWNER_AUDIT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0274",
+      "title": "Stage S Validation Report",
+      "path": "docs/audits/stage-s/STAGE_S_VALIDATION_REPORT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/stage-s/STAGE_S_VALIDATION_REPORT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0275",
+      "title": "Deepgram Transcription Benchmark",
+      "path": "docs/benchmark/DEEPGRAM_BENCHMARK.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/benchmark/DEEPGRAM_BENCHMARK.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0276",
+      "title": "Release Dashboard",
+      "path": "docs/dashboard/RELEASE_DASHBOARD.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/dashboard/RELEASE_DASHBOARD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0277",
+      "title": "Transcript Quality Scorecard",
+      "path": "docs/dashboard/TRANSCRIPT_QUALITY_SCORECARD.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/dashboard/TRANSCRIPT_QUALITY_SCORECARD.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0278",
+      "title": "Depo-Pro — Deepgram Go-Live Checklist",
+      "path": "docs/operations/DEEPGRAM_GO_LIVE_CHECKLIST.md",
+      "category": "operations",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/operations/DEEPGRAM_GO_LIVE_CHECKLIST.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0279",
+      "title": "Documentation Validation",
+      "path": "docs/operations/DOCUMENTATION_VALIDATION.md",
+      "category": "operations",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "documentation-validation-operations"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0280",
+      "title": "Export Adapter Deployment",
+      "path": "docs/operations/EXPORT_ADAPTER_DEPLOYMENT.md",
+      "category": "operations",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/operations/EXPORT_ADAPTER_DEPLOYMENT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0281",
+      "title": "Formatter Service Deployment",
+      "path": "docs/operations/FORMATTER_SERVICE_DEPLOYMENT.md",
+      "category": "operations",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/operations/FORMATTER_SERVICE_DEPLOYMENT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0282",
+      "title": "GitHub Cleanup Plan",
+      "path": "docs/operations/GITHUB_CLEANUP_PLAN.md",
+      "category": "operations",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/operations/GITHUB_CLEANUP_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0283",
+      "title": "Release Candidate Operations Runbook",
+      "path": "docs/operations/RELEASE_CANDIDATE_RUNBOOK.md",
+      "category": "operations",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/operations/RELEASE_CANDIDATE_RUNBOOK.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0284",
+      "title": "Transcript Finalize Worker Deployment",
+      "path": "docs/operations/TRANSCRIPT_FINALIZE_WORKER_DEPLOYMENT.md",
+      "category": "operations",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/operations/TRANSCRIPT_FINALIZE_WORKER_DEPLOYMENT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0285",
+      "title": "PROMPT 1 — Fix `speaker_resolution_current` schema/read mismatch",
+      "path": "docs/prompts/codex-remediation-prompt-01.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-01.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0286",
+      "title": "PROMPT 2 — Wire up the component test runner so `.test.tsx` files actually execute",
+      "path": "docs/prompts/codex-remediation-prompt-02.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-02.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0287",
+      "title": "PROMPT 3 — Close the AI auto-apply audit-trail gap",
+      "path": "docs/prompts/codex-remediation-prompt-03.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-03.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0288",
+      "title": "PROMPT 4 — Clear the ESLint errors blocking `npm run lint`",
+      "path": "docs/prompts/codex-remediation-prompt-04.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-04.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0289",
+      "title": "PROMPT 5 — Reconcile Anthropic model IDs and make the healthcheck test the real model",
+      "path": "docs/prompts/codex-remediation-prompt-05.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-05.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0290",
+      "title": "PROMPT 6 — Stop `extract-nod` from returning HTTP 200 on errors",
+      "path": "docs/prompts/codex-remediation-prompt-06.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-06.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0291",
+      "title": "PROMPT 7 — Owner-scope RLS on the transcript family and `speaker_resolution_current`",
+      "path": "docs/prompts/codex-remediation-prompt-07.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-07.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0292",
+      "title": "PROMPT 8 — Remove real deposition PII from the repo",
+      "path": "docs/prompts/codex-remediation-prompt-08.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-08.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0293",
+      "title": "PROMPT 9 — Implement real DOCX/PDF export or explicitly gate it",
+      "path": "docs/prompts/codex-remediation-prompt-09.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-09.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0294",
+      "title": "PROMPT 10 — Debt sweep",
+      "path": "docs/prompts/codex-remediation-prompt-10.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex-remediation-prompt-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0295",
+      "title": "Codex CLI Prompt — Phase 0: Truth & Wiring Fixes (Intake)",
+      "path": "docs/prompts/codex_phase0_truth_and_wiring_fixes_prompt.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex_phase0_truth_and_wiring_fixes_prompt.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0296",
+      "title": "Codex CLI Prompt — Phase 1: CaseRecord Expansion (Texas UFM Fields)",
+      "path": "docs/prompts/codex_phase1_caserecord_expansion_prompt.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/codex_phase1_caserecord_expansion_prompt.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0297",
+      "title": "PR-1A — Install the Canonical Registry",
+      "path": "docs/prompts/pr-1a-install-canonical-registry.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/pr-1a-install-canonical-registry.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0298",
+      "title": "PR-1C — Migrate `caption.case_number` to the Canonical Registry",
+      "path": "docs/prompts/pr-1c-cause-number-migration.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/pr-1c-cause-number-migration.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0299",
+      "title": "PR-1D — Canonical Phone Number Migration",
+      "path": "docs/prompts/pr-1d-phone-number-migration.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/pr-1d-phone-number-migration.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0300",
+      "title": "PR-1E — Canonical Name, Organization, and Court Capitalization",
+      "path": "docs/prompts/pr-1e-name-organization-court-capitalization.md",
+      "category": "prompts",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/prompts/pr-1e-name-organization-court-capitalization.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0301",
+      "title": "Geometry Authority Reconciliation — DP-011 vs the legacy specs",
+      "path": "docs/reconciliation/GEOMETRY_AUTHORITY_RECONCILIATION.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/reconciliation/GEOMETRY_AUTHORITY_RECONCILIATION.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0302",
+      "title": "Reconciliation Matrix — `main` ↔ `feature/stage3-workspace-core`",
+      "path": "docs/reconciliation/main_vs_integration_matrix.md",
+      "category": "documentation",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/reconciliation/main_vs_integration_matrix.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0303",
+      "title": "Canonical Intake Field Governance",
+      "path": "docs/standards/CANONICAL_FIELD_GOVERNANCE.md",
+      "category": "standards",
+      "tier": "T3",
+      "status": "DRAFT",
+      "owner": "Intake",
+      "authoritative": false,
+      "authority_scopes": [
+        "canonical-intake-field-governance"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0304",
+      "title": "Standards",
+      "path": "docs/standards/README.md",
+      "category": "standards",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/standards/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0305",
+      "title": "Verify Persistence",
+      "path": "scripts/verify-persistence.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:scripts/verify-persistence.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0306",
+      "title": "Depo-Pro Tools",
+      "path": "transcript_formatter/README.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0307",
+      "title": "Documentation",
+      "path": "transcript_formatter/docs/README.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/docs/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0308",
+      "title": "Format Transcript Repo-Safe Plan",
+      "path": "transcript_formatter/docs/plans/FORMAT_TRANSCRIPT_REPO_SAFE_PLAN.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/docs/plans/FORMAT_TRANSCRIPT_REPO_SAFE_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0309",
+      "title": "Spec Engine Rewrite Repo Plan",
+      "path": "transcript_formatter/docs/plans/SPEC_ENGINE_REWRITE_REPO_PLAN.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/docs/plans/SPEC_ENGINE_REWRITE_REPO_PLAN.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0310",
+      "title": "CLAUDE CODE SPEC ENGINE REWRITE REPO SAFE PROMPT",
+      "path": "transcript_formatter/docs/prompts/CLAUDE_CODE_SPEC_ENGINE_REWRITE_REPO_SAFE_PROMPT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/docs/prompts/CLAUDE_CODE_SPEC_ENGINE_REWRITE_REPO_SAFE_PROMPT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0311",
+      "title": "FORMAT TRANSCRIPT REPO SAFE PROMPT",
+      "path": "transcript_formatter/docs/prompts/FORMAT_TRANSCRIPT_REPO_SAFE_PROMPT.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/docs/prompts/FORMAT_TRANSCRIPT_REPO_SAFE_PROMPT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0312",
+      "title": "Role",
+      "path": "transcript_formatter/prompts/bridge/full_review.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/prompts/bridge/full_review.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0313",
+      "title": "Golden Transcript Tests",
+      "path": "transcript_formatter/spec_engine/tests/golden/README.md",
+      "category": "component",
+      "tier": "UNCLASSIFIED",
+      "status": "LEGACY",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:transcript_formatter/spec_engine/tests/golden/README.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0314",
+      "title": "ADR-0015 — Left-margin reconciliation and DP-011 new-paragraph correction",
+      "path": "docs/architecture/adr/ADR-0015-left-margin-and-new-paragraph-reconciliation.md",
+      "category": "architecture",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "geometry-decision-evidence"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-05",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    }
+  ]
+}
