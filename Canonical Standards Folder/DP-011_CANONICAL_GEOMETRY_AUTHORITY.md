@@ -40,16 +40,17 @@ Directive standing instruction: **always use UFM standards.** The UFM mandates a
 |---------|----------|-------|-----------|
 | `Q.` / `A.` designation | 0.5″ | 720 | DP-009/010/012; DOCX-confirmed |
 | Q/A text | 1.0″ | 1440 | DP-009/010/012; DOCX-confirmed |
-| Speaker label / new-paragraph first line | 1.5″ | 2160 | DP-012 §7; DOCX-confirmed |
+| Speaker label (colloquy) | 1.5″ | 2160 | F1/F20; DOCX-confirmed |
 | Parenthetical (full canonical wording) | 2.0″ | 2880 | DP-012 §7 (UFM §2.11/§9.2/§16.5) |
 | Centered furniture (caption, section headers) | center | 4680 | UFM; DOCX-confirmed (4680 = 9360 ÷ 2 = center of the 6.5″ box) |
 
 - **wave8 `profile.py:61` `(360,900,1440,2160,2880)` is OVERRULED** (Q./A. at 0.25″/0.625″ contradicts three records; also vestigial — `engine.py:135` converts, no writer applies).
 - **The Etminan DOCX omits the 2880 stop** and lets 4 tabs carry parentheticals to the center tab (4680). Per UFM/DP-012 §7, parentheticals belong at **2.0″/2880**; the DOCX behavior is a working-copy deviation and is not adopted.
 - **Corroboration of the 6.5″ box:** the DOCX's center tab sits at **4680 = exactly half of a 9360-twip (6.5″) box**, proving a 6.5″-box intent even though its right-margin setting (1.0″) contradicts it. This independently supports the 0.75″/6.5″ lock.
+- **New-paragraph first line (same Q/A speaker) = 1.0″/1440** (the Q/A text column), NOT Tab 3. A new paragraph inside an ongoing question or answer begins at the text column and its continuation wraps to 0″. Per ratified **F14** and corpus measurement ([ADR-0015](/docs/architecture/adr/ADR-0015-left-margin-and-new-paragraph-reconciliation.md); Shaw p. 54, answer-side new paragraph pixel-measured at 1.0″). Corrects an earlier 1.5″/Tab-3 figure.
 
 ### A4. Continuation — LOCKED: Return-To-Margin
-Wrapped lines return to the **left margin (0″)** via explicit tab stops + `left_indent = 0` + literal tabs. **Never** a negative `first_line_indent`. The term **"hanging indent" is retired.** A hard paragraph break in long testimony starts at **Tab 3 (1.5″/2160)**; a soft wrap returns to 0″ and is not a new paragraph. *(DP-009/DP-010/DP-012 §7.)*
+Wrapped lines return to the **left margin (0″)** via explicit tab stops + `left_indent = 0` + literal tabs. **Never** a negative `first_line_indent`. The term **"hanging indent" is retired.** A hard paragraph break by the same Q/A speaker starts at the **text column (1.0″/1440, per F14 / ADR-0015)**; a soft wrap returns to 0″ and is not a new paragraph. *(DP-009/DP-010/DP-012 §7.)*
 
 ### A5. Spacing (governed by DP-010; referenced, not redefined)
 One space after registry abbreviations/honorifics; two spaces after sentence-ending `.`/`?`/`!`, after a sentence-ender inside a closing quote (spaces follow the quote), and after a speaker-label colon. `abbreviation_registry.json` is the sole source. **DP-011 governs placement; DP-010 governs spacing.**
