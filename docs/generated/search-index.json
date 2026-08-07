@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
-  "graph_sha256": "91708ae15ea97861b00c10f99b97ddd5800bd39f4f92e2717b8a0424f70a12c3",
-  "document_count": 314,
+  "manifest_sha256": "63b63c21707c28e5ff2d85ef99e3e5f8c4f8a93322bb16beff74a89ffbe2aec6",
+  "graph_sha256": "1ff427d7e3c187df60551a751afe94bc6daf26714f3d4b38cd310ab420ec4c39",
+  "document_count": 315,
   "documents": [
     {
       "id": "DOC-0001",
@@ -32620,6 +32620,104 @@
         {
           "level": 2,
           "text": "Consequences"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0315",
+      "title": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)",
+      "path": "docs/architecture/adr/ADR-0016-format-and-correct-transcript-button.md",
+      "category": "architecture",
+      "owner": "Workspace",
+      "authority": false,
+      "tier": "T4",
+      "status": "ACTIVE",
+      "keywords": [
+        "adr",
+        "adr-0016",
+        "alternatives",
+        "architecture",
+        "authorized",
+        "behavior",
+        "button",
+        "change",
+        "code",
+        "commits",
+        "consequences",
+        "considered",
+        "context",
+        "correct",
+        "decision",
+        "deliberately",
+        "evidence",
+        "follow-ups",
+        "format",
+        "implementation",
+        "new",
+        "non-goals",
+        "non-reactive",
+        "not",
+        "only",
+        "option",
+        "p-a",
+        "plan",
+        "push",
+        "read-only",
+        "reload",
+        "save",
+        "specification",
+        "trace",
+        "transcript",
+        "verified",
+        "via",
+        "why",
+        "workspace",
+        "workspace-format-trigger"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)"
+        },
+        {
+          "level": 2,
+          "text": "Context"
+        },
+        {
+          "level": 3,
+          "text": "Evidence (verified code trace, read-only)"
+        },
+        {
+          "level": 3,
+          "text": "Why P-A is deliberately non-reactive"
+        },
+        {
+          "level": 2,
+          "text": "Decision"
+        },
+        {
+          "level": 3,
+          "text": "Behavior specification"
+        },
+        {
+          "level": 3,
+          "text": "Non-goals"
+        },
+        {
+          "level": 2,
+          "text": "Consequences"
+        },
+        {
+          "level": 2,
+          "text": "Alternatives considered"
+        },
+        {
+          "level": 2,
+          "text": "Implementation plan (authorized by this ADR — new commits only, no push)"
+        },
+        {
+          "level": 2,
+          "text": "Follow-ups (not in this change)"
         }
       ]
     }

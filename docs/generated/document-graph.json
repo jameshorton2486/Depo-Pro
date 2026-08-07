@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
+  "source_sha256": "63b63c21707c28e5ff2d85ef99e3e5f8c4f8a93322bb16beff74a89ffbe2aec6",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4716,6 +4716,21 @@
       "last_reviewed": "2026-08-05"
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0315",
+      "title": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)",
+      "path": "docs/architecture/adr/ADR-0016-format-and-correct-transcript-button.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
+      "authoritative": false,
+      "authority_scopes": [
+        "workspace-format-trigger"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-06"
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -4744,6 +4759,11 @@
       "entity_type": "OWNER",
       "id": "OWNER:Transcript",
       "name": "Transcript"
+    },
+    {
+      "entity_type": "OWNER",
+      "id": "OWNER:Workspace",
+      "name": "Workspace"
     }
   ],
   "edges": [
@@ -6280,6 +6300,11 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0314",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0315",
       "target": "DOC-0068"
     },
     {
@@ -8223,6 +8248,11 @@
       "target": "DOC-0041"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0315",
+      "target": "DOC-0041"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -8270,6 +8300,11 @@
     {
       "type": "REVIEW",
       "source": "DOC-0314",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0315",
       "target": "DOC-0068"
     },
     {
@@ -9841,6 +9876,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0314",
       "target": "OWNER:Rendering"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0315",
+      "target": "OWNER:Workspace"
     }
   ],
   "owners": {
@@ -10169,6 +10209,9 @@
     ],
     "Transcript": [
       "DOC-0040"
+    ],
+    "Workspace": [
+      "DOC-0315"
     ]
   },
   "integrity": {

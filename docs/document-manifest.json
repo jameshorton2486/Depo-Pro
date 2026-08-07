@@ -5966,6 +5966,25 @@
         "DOC-0068"
       ],
       "supersedes": []
+    },
+    {
+      "id": "DOC-0315",
+      "title": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)",
+      "path": "docs/architecture/adr/ADR-0016-format-and-correct-transcript-button.md",
+      "category": "architecture",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
+      "authoritative": false,
+      "authority_scopes": [
+        "workspace-format-trigger"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-06",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
     }
   ]
 }

@@ -95,7 +95,7 @@ Silent, unrecorded mutation remains prohibited.
 
 - OQ-1: parenthetical indent → 1.5" (see F20)
 - OQ-2: F5b retired (not a rule; no transcript evidence)
-- OQ-3: AI Review button → rename to "Run AI Review"; deterministic (P-A) and AI (P-B) pipelines stay separate
+- OQ-3: AI Review button → rename to "Run AI Review"; deterministic (P-A) and AI (P-B) pipelines stay separate. **Amended by ADR-0016 (2026-08-06):** a "Format and Correct Transcript" button now spans both pipelines via a confirmed save → reload → AI-review sequence (Option C). The rename stands; the pipelines remain separate in code (this is a UI entry point, not a merge).
 - OQ-4: per-utterance line gutter in the Workspace → exempt editing aid (see F8); export must strip it
 - OQ-5: "CERTIFIED TRANSCRIPT" header removed from the Workspace → working-draft indicator; wording **"Working Transcript"** (Miah-confirmed 2026-08-05)
 - OQ-6: standalone `BY MR./MS. NAME:` line → implement at 0" (see F15)
