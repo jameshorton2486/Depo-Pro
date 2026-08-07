@@ -255,7 +255,7 @@ interface ContextValue {
     source: "suggestion-accept" | "suggestion-edit",
     suggestion_id: string
   ) => void;
-  saveNow: () => Promise<void>;
+  saveNow: () => Promise<boolean>;
   updateSpeakers: (speakers: Speaker[]) => void;
   setTranscriptVersion: (updatedAt: string | null) => void;
   setSpeakerMapConfirmed: (confirmed: boolean, pipelineState?: string | null) => void;
@@ -375,12 +375,17 @@ export function DocumentProvider({
     []
   );
 
-  const saveNow = useCallback(async () => {
-    if (state.saving || !state.dirty || !state.document) return;
+  // Returns true on success (including the no-op case where there is nothing to
+  // save), false when the save request errored. Callers that gate a follow-on
+  // action on persisted corrections (e.g. the Format-and-Correct save→reload
+  // sequence) must check this before proceeding — a failed save must never be
+  // followed by a reload, which would discard the unsaved corrections.
+  const saveNow = useCallback(async (): Promise<boolean> => {
+    if (state.saving || !state.dirty || !state.document) return true;
     const changes = Object.entries(state.workingTexts).map(
       ([utterance_id, working_text]) => ({ utterance_id, working_text })
     );
-    if (changes.length === 0) return;
+    if (changes.length === 0) return true;
     const savedSeq = state.editSeq;
     dispatch({ type: "SAVE_START" });
     try {
@@ -388,8 +393,10 @@ export function DocumentProvider({
         lastKnownUpdatedAt: state.jobUpdatedAt,
       });
       dispatch({ type: "SAVE_OK", savedSeq, updatedAt: result.updatedAt });
+      return true;
     } catch (e) {
       dispatch({ type: "SAVE_ERR", error: String(e) });
+      return false;
     }
   }, [jobId, state.dirty, state.document, state.editSeq, state.jobUpdatedAt, state.saving, state.workingTexts]);
 
