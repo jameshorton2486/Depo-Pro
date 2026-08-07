@@ -36,6 +36,22 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Guard edge-reachable imports carry file extensions
+        # transcribe-start bundles src/types/case.ts + src/lib/canonical/* through
+        # the Supabase Deno bundler, which (unlike Vite/tsc) cannot resolve
+        # extensionless relative imports. This has broken the edge deploy before
+        # (regression f291b49). Fail if any creep back into these edge-reachable
+        # shared modules. NOTE: scoped to the known bridge; a graph-complete guard
+        # over every edge-reachable src file is a tracked follow-up.
+        run: |
+          # Only the bundled modules matter — *.test.ts is never pulled into the function.
+          if grep -rnE "from ['\"]\.\.?/[^'\"]*['\"]" --include="*.ts" --exclude="*.test.ts" \
+               src/lib/canonical src/types/case.ts \
+             | grep -vE "\.(ts|tsx|js|json|css)['\"]"; then
+            echo "::error::extensionless relative import in an edge-reachable module — Supabase Deno bundling will fail. Add the .ts extension."
+            exit 1
+          fi
+
       - name: Lint
         run: npm run lint
 
