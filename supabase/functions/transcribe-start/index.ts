@@ -222,7 +222,20 @@ Deno.serve(async (request) => {
 
     const callbackUrl = buildCallbackUrl(createdJob.id, callbackToken);
 
-    const requestPath = firstAudio.duration_seconds > AUTO_CHUNK_THRESHOLD_SECONDS
+    // Auto-chunking is DISABLED. Virtual chunks set ?start/?end on the Deepgram
+    // request URL to trim the audio, but Deepgram has no start/end trim params —
+    // it ignored them and transcribed the FULL recording for every chunk, so the
+    // merge interleaved N identical full transcripts into a garbled canonical
+    // transcript (confirmed: every chunk's Deepgram response had
+    // metadata.duration == the full file). Deepgram callback mode (used
+    // unconditionally below) already handles long files without an Edge Function
+    // timeout, so single-file submission is correct. Do NOT re-enable this flag
+    // without a real audio-splitting implementation (physical chunk files +
+    // start-offset merge); the current path corrupts every transcript over the
+    // auto-chunk threshold.
+    const AUTO_CHUNK_ENABLED = false;
+
+    const requestPath = AUTO_CHUNK_ENABLED && firstAudio.duration_seconds > AUTO_CHUNK_THRESHOLD_SECONDS
       ? await submitAutoChunkedJob({
           supabase,
           job: createdJob,
