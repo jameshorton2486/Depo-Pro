@@ -32734,7 +32734,7 @@
         "adr",
         "adr-0017",
         "along",
-        "applies",
+        "application",
         "architecture",
         "before",
         "body",
@@ -32742,18 +32742,15 @@
         "code",
         "consequences",
         "context",
-        "correct",
         "correction",
         "decision",
         "decisions",
         "export",
         "f19",
-        "fabrication",
         "first",
-        "format",
-        "formatted",
         "formatting",
         "items",
+        "model",
         "not",
         "open",
         "oq-4",
@@ -32766,10 +32763,8 @@
         "restating",
         "scope",
         "surface",
-        "top",
         "transcript",
         "ufm-formatted",
-        "view",
         "workspace",
         "workspace-first-render-formatting"
       ],
@@ -32800,11 +32795,7 @@
         },
         {
           "level": 3,
-          "text": "Decision 4 — \"Format and Correct the Transcript\" applies correction on top of the formatted view"
-        },
-        {
-          "level": 3,
-          "text": "Decision 5 — No fabrication"
+          "text": "Decision 4 — Correction application model"
         },
         {
           "level": 2,

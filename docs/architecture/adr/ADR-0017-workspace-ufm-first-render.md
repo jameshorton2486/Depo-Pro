@@ -6,7 +6,7 @@ scope: workspace-first-render-formatting
 supersedes: null
 superseded_by: null
 approved_by: PENDING
-version: 0.1.0
+version: 0.2.0
 effective_date: null
 ratified_date: null
 last_reviewed: 2026-08-07
@@ -77,20 +77,31 @@ per-utterance editing gutter is the sole exempt line-number affordance (OQ-4 / F
 Geometry (tab stops, margins, wrap) is owned by ADR-0015 / `geometryProfile.ts` and is **not**
 re-specified here.
 
-### Decision 4 — "Format and Correct the Transcript" applies correction on top of the formatted view
-The button (ADR-0016) applies **AI-assisted correction** — speaker mapping, STT-error flags, structural
-corrections — delivered as **reviewable `CorrectionObject`s** the reporter accepts/edits/rejects. It does
-**not** trigger formatting; formatting already happened on first render (Decision 2). Relationship to
-ADR-0016: 0016's confirmed save → reload sequence still persists corrections and re-renders the
-(already-formatted) view; the shift here is conceptual — **formatting is no longer button-gated**. The
-exact button mechanics (whether corrections apply in place vs. via reload) are a Part 2 detail.
+### Decision 4 — Correction application model
+AI corrections are **applied automatically** to Layer 2 (the working transcript), **not** surfaced as
+pending suggestions. Every applied change is recorded (`original_word` immutable, `corrected_word`,
+rule ID, confidence, `source_utterances` back-reference) and **visibly marked** in the Workspace with the
+original viewable on inspection. Per A5, the reporter's full read-through at Certification is the human
+decision covering the applied set; there is **no per-change approval gate**. (This revises the earlier
+suggestion-only framing; ADR-0016's button is the trigger that runs this correction pass.)
 
-### Decision 5 — No fabrication
-The formatting pipeline must never invent testimony. Unrecoverable content renders as `[inaudible]`.
-**No templated oath insertion** (e.g. a synthesized `THE WITNESS: I do.`), **no "reconstructed from
-context" dropped words.** Proceedings/oath render only if actually spoken and audible. (The Python
-desktop `spec_engine/classifier.py:421` still fabricates the oath response; it must never enter the web
-pipeline. Canonical governance: content SHALL NOT be fabricated.)
+**4a — Scope of correction.** In scope: speaker identification and merge; STT misrecognition (proper
+nouns, homophones, domain terms); proceedings and off-record structure; Q/A segmentation, objections,
+exhibit markers; assembly at export.
+
+**4b — Fabrication boundary (inherited, not new).** The engine corrects words that are in the audio and
+were misrecognized. It does **not** author words that are absent from the audio. Specifically prohibited:
+templated insertion of expected-but-unverified content (oath responses, stipulations, standard colloquy),
+and reconstruction of dropped or unintelligible speech from context. Unrecoverable audio renders
+`[inaudible]`; ambiguous-but-present audio renders the best transcription plus `[VERIFY: ...]`. This
+restates Rules 7, 9, and 21 and the standing fabrication prohibition; it is **not** a new constraint
+introduced by this ADR. (Implementation guard: the Python desktop `spec_engine/classifier.py:421` oath
+synthesis violates 4b and must never enter the web pipeline.)
+
+**4c — Rationale.** A misrecognized word corrected wrongly is an error a reporter catches on read-through
+against the audio. An **invented** word has no audio to check it against — it reads as clean testimony and
+survives certification undetected. The two failure modes are not symmetric, which is why the boundary
+sits at "present in audio" rather than at a confidence threshold.
 
 ## Consequences
 
@@ -99,7 +110,7 @@ pipeline. Canonical governance: content SHALL NOT be fabricated.)
   should *read* it, rather than re-infer at render time. (Part 2 wires this.)
 - Export becomes a pure renderer of the approved working transcript (Decision 1) — no divergence between
   what the reporter approved and what certifies.
-- ADR-0016's button semantics are preserved but re-scoped to correction (Decision 4).
+- ADR-0016's button runs the Decision 4 correction pass (auto-apply + record + visibly mark), not a suggestion queue.
 
 ## Open items (resolve before/along with Part 2)
 
