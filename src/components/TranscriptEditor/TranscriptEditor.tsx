@@ -17,7 +17,7 @@ import { useEditorContext } from "../../context/EditorContext";
 import { useIntake } from "../../context/useIntake";
 import { createConfidencePlugin } from "../../extensions/ConfidencePlugin";
 import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
-import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
+import { FormatCorrectBanner } from "../FormatCorrectBanner/FormatCorrectBanner";
 import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
 import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
 import { TranscriptProcessingMenu } from "./TranscriptProcessingMenu";
@@ -107,7 +107,7 @@ export function diffUtteranceTextSnapshots(
 }
 
 export function TranscriptEditor({ readOnly }: Props) {
-  const { state, editUtterance, setActive, confirmStructure, keepRawLabels } = useDocument();
+  const { state, editUtterance, setActive } = useDocument();
   const audio = useAudio();
   const { setEditor, showInterpreterLayer, languageMap } = useEditorContext();
   const { record } = useIntake();
@@ -414,11 +414,8 @@ export function TranscriptEditor({ readOnly }: Props) {
       className="flex-1 min-h-0 overflow-y-auto transcript-scroll bg-transcript-bg"
       data-show-interpreter={showInterpreterLayer ? "true" : "false"}
     >
-      {!isCanonical && !state.structureConfirmed && (
-        <StructureReviewBanner
-          onConfirm={confirmStructure}
-          onDismiss={keepRawLabels}
-        />
+      {!isCanonical && (
+        <FormatCorrectBanner jobId={state.document?.job_id ?? state.jobId} />
       )}
       {!isCanonical && (
         <AIReviewBanner
