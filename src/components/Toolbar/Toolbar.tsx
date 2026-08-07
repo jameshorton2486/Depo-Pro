@@ -104,7 +104,7 @@ export function Toolbar({ jobId, onSave }: Props) {
           title="Download a raw, UNFORMATTED transcript draft (a quick text dump, not a real DOCX). This is not the formatted, corrected, or certified transcript — produce that from the Export screen after review."
         >
           <FileType size={14} />
-          Raw draft
+          Raw draft (unformatted)
         </button>
 
         <button
