@@ -1,8 +1,8 @@
-import { formatCanonicalField } from "./CanonicalFormatter";
-import { FieldRegistry } from "./FieldRegistry";
-import type { FieldKind } from "./FieldKinds";
-import type { FieldPolicy } from "./FieldPolicy";
-import type { CanonicalField } from "./FieldResult";
+import { formatCanonicalField } from "./CanonicalFormatter.ts";
+import { FieldRegistry } from "./FieldRegistry.ts";
+import type { FieldKind } from "./FieldKinds.ts";
+import type { FieldPolicy } from "./FieldPolicy.ts";
+import type { CanonicalField } from "./FieldResult.ts";
 
 export const PERSON_NAME_POLICY_ID = "intake.person_name";
 export const ORGANIZATION_POLICY_ID = "intake.organization";

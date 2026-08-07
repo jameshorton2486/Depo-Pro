@@ -1,5 +1,5 @@
-import { FieldRegistry } from "./FieldRegistry";
-import type { FieldPolicy } from "./FieldPolicy";
+import { FieldRegistry } from "./FieldRegistry.ts";
+import type { FieldPolicy } from "./FieldPolicy.ts";
 
 export const CAUSE_NUMBER_POLICY_ID = "caption.case_number";
 export const CAUSE_NUMBER_POLICY_VERSION = "1.0.0";

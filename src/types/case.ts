@@ -1,6 +1,6 @@
-import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy";
-import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies";
-import { canonicalValue, type FieldProvenanceStamp } from "../lib/canonical/FieldResult";
+import { canonicalizePhoneNumber } from "../lib/canonical/PhoneNumberPolicy.ts";
+import { COURT_POLICY_ID, ORGANIZATION_POLICY_ID, PERSON_NAME_POLICY_ID, canonicalizeGovernedName } from "../lib/canonical/NamePolicies.ts";
+import { canonicalValue, type FieldProvenanceStamp } from "../lib/canonical/FieldResult.ts";
 
 // UFM Case Data Model — UI-only types, not part of the API contract.
 // Field names match docs/architecture/UFM_DATA_DICTIONARY.md.

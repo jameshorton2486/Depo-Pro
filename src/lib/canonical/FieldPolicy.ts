@@ -1,5 +1,5 @@
-import type { FieldKind } from "./FieldKinds";
-import type { FieldPolicyOutcome } from "./FieldResult";
+import type { FieldKind } from "./FieldKinds.ts";
+import type { FieldPolicyOutcome } from "./FieldResult.ts";
 
 export interface FieldValidationIssue {
   readonly code: string;
