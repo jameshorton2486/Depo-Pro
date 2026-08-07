@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "63b63c21707c28e5ff2d85ef99e3e5f8c4f8a93322bb16beff74a89ffbe2aec6",
+  "source_sha256": "bc888fa4c5b7759440eedc90be99e06bfc4501a8f5c45d555367723f1c06ad52",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4731,6 +4731,21 @@
       "last_reviewed": "2026-08-06"
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0316",
+      "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
+      "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",
+      "tier": "T4",
+      "status": "DRAFT",
+      "owner": "Workspace",
+      "authoritative": false,
+      "authority_scopes": [
+        "workspace-first-render-formatting"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-07"
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6305,6 +6320,11 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0315",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0316",
       "target": "DOC-0068"
     },
     {
@@ -8253,6 +8273,11 @@
       "target": "DOC-0041"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0316",
+      "target": "DOC-0041"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -8305,6 +8330,11 @@
     {
       "type": "REVIEW",
       "source": "DOC-0315",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0316",
       "target": "DOC-0068"
     },
     {
@@ -9881,6 +9911,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0315",
       "target": "OWNER:Workspace"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0316",
+      "target": "OWNER:Workspace"
     }
   ],
   "owners": {
@@ -10211,7 +10246,8 @@
       "DOC-0040"
     ],
     "Workspace": [
-      "DOC-0315"
+      "DOC-0315",
+      "DOC-0316"
     ]
   },
   "integrity": {
