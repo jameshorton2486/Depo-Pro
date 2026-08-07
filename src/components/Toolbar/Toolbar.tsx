@@ -94,17 +94,17 @@ export function Toolbar({ jobId, onSave }: Props) {
         <button
           onClick={() =>
             downloadBlob(
-              `${jobId}-transcript.doc`,
+              `${jobId}-raw-draft.doc`,
               "application/msword;charset=utf-8",
-              buildWordTranscriptHtml(`${jobId} Transcript`, transcriptText),
+              buildWordTranscriptHtml(`${jobId} Raw Draft (unformatted)`, transcriptText),
             )
           }
           disabled={!state.document}
           className="flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1.5 text-sm text-slate-300 hover:bg-slate-800 disabled:cursor-default disabled:opacity-40"
-          title="Download the full formatted transcript as a Word-compatible document"
+          title="Download a raw, UNFORMATTED transcript draft (a quick text dump, not a real DOCX). This is not the formatted, corrected, or certified transcript — produce that from the Export screen after review."
         >
           <FileType size={14} />
-          Word
+          Raw draft
         </button>
 
         <button
