@@ -12,7 +12,7 @@ ratified_date: 2026-08-06
 last_reviewed: 2026-08-06
 next_review: 2027-08-06
 ratification: RATIFIED
-implementation_status: NOT_STARTED
+implementation_status: IMPLEMENTED
 ---
 
 # ADR-0016 — "Format and Correct Transcript" button (Option C via save + reload)
