@@ -29,6 +29,8 @@
 import { describe, expect, it } from "vitest";
 
 import type { EditorDocument } from "../../api/types";
+import { emptyCaseRecord } from "../../types/case";
+import { buildCanonicalExportRenderModel } from "../export/exportAdapter";
 import { abbreviationRegistry } from "./abbreviationRegistry";
 import { cfe } from "./cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./geometryProfile";
@@ -173,5 +175,40 @@ describe("cfe verbatim guard (C1)", () => {
     expect(w5?.raw_text).toBe("the");
     // ...and the guard still passes, because it strips the permitted dash.
     expect(() => assertWordsVerbatim(verbatim)).not.toThrow();
+  });
+});
+
+// C1b — the export path is where the worst A11 failure would land: a wrong
+// surname substituted after an honorific goes into the DOCX the reporter signs
+// her CSR number to, and it looks like a name rather than a bug. This exercises
+// stored raw_text -> the render text runs the DOCX is built from, end to end
+// through buildCanonicalExportRenderModel.
+const EXPORT_FIXTURE = makeDoc([
+  { word_id: "w1", text: "Mr." },
+  { word_id: "w2", text: "Peterson" },
+  { word_id: "w3", text: "examined" },
+  { word_id: "w4", text: "K." },
+  { word_id: "w5", text: "the" },
+  { word_id: "w6", text: "metastructures" },
+  { word_id: "w7", text: "today." },
+]);
+
+describe("export render model verbatim (C1b)", () => {
+  it("never substitutes a source word into the certified DOCX render text", () => {
+    const record = emptyCaseRecord("case-verbatim", "2026-07-22T00:00:00.000Z");
+    const model = buildCanonicalExportRenderModel(EXPORT_FIXTURE, record);
+    const renderText = model.lines.map((line) => line.content).join("\n");
+
+    // Raw words survive into the DOCX text runs...
+    expect(renderText).toContain("Peterson");
+    expect(renderText).toContain("K.");
+    expect(renderText).toContain("metastructures");
+
+    // ...and none of the correction-registry substitutions leak into the
+    // artifact the reporter certifies. "Bentley" is the most dangerous: it is a
+    // real, plausible surname the audio never contained.
+    expect(renderText).not.toContain("Bentley");
+    expect(renderText).not.toContain("Okay.");
+    expect(renderText).not.toContain("ligamentous structures");
   });
 });

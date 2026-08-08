@@ -589,7 +589,10 @@ function advanceRenderState(descriptor: WorkspaceParagraphDescriptor, state: Ren
 
 export function buildWorkspaceParagraphs(document: EditorDocument, record?: CaseRecord | null): Map<string, WorkspaceParagraphDescriptor> {
   const displayDocument = buildDisplayDocument(document, record);
-  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  // A11 / C1b: verbatim render — no correction-registry word substitution.
+  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
+    applyLexicalCorrections: false,
+  });
   const descriptors = new Map<string, WorkspaceParagraphDescriptor>();
   let state: RenderState = {
     inExamination: false,
@@ -650,7 +653,10 @@ export function buildTranscriptParagraphs(
   mode: TextMode = "display",
 ): TranscriptParagraph[] {
   const displayDocument = buildDisplayDocument(document, record);
-  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  // A11 / C1b: verbatim render — no correction-registry word substitution.
+  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
+    applyLexicalCorrections: false,
+  });
   const paragraphs: TranscriptParagraph[] = [];
   let state: RenderState = {
     inExamination: false,
