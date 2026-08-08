@@ -2,7 +2,7 @@
 # Documentation Dependency Report
 
 Source: `docs/document-manifest.json`
-Manifest SHA-256: `bc888fa4c5b7759440eedc90be99e06bfc4501a8f5c45d555367723f1c06ad52`
+Manifest SHA-256: `81270e4f413d725699bef9936bd2d4bc6b40f79735161bad706597472f49a580`
 Generated: 2026-08-05
 
 ## Integrity

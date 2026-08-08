@@ -5992,7 +5992,7 @@
       "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",
       "category": "architecture",
       "tier": "T4",
-      "status": "DRAFT",
+      "status": "ACTIVE",
       "owner": "Workspace",
       "authoritative": false,
       "authority_scopes": [

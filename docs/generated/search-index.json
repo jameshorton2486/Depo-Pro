@@ -2,8 +2,8 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "bc888fa4c5b7759440eedc90be99e06bfc4501a8f5c45d555367723f1c06ad52",
-  "graph_sha256": "33b309d213918b517e93f9ae218981be822fca23f4b2e16cfe2e45d8354be302",
+  "manifest_sha256": "81270e4f413d725699bef9936bd2d4bc6b40f79735161bad706597472f49a580",
+  "graph_sha256": "f34891a75fea4d6d19de4ee172304e9da87ec6f0391e6fbe2494613334ee7d5d",
   "document_count": 316,
   "documents": [
     {
@@ -32729,7 +32729,7 @@
       "owner": "Workspace",
       "authority": false,
       "tier": "T4",
-      "status": "DRAFT",
+      "status": "ACTIVE",
       "keywords": [
         "adr",
         "adr-0017",

@@ -1,23 +1,23 @@
 ---
 authority_tier: T4
-status: DRAFT
+status: ACTIVE
 owner: Workspace
 scope: workspace-first-render-formatting
 supersedes: null
 superseded_by: null
-approved_by: PENDING
-version: 0.2.0
-effective_date: null
-ratified_date: null
+approved_by: James
+version: 1.0.0
+effective_date: 2026-08-07
+ratified_date: 2026-08-07
 last_reviewed: 2026-08-07
-next_review: 2026-08-07
-ratification: REVIEW
+next_review: 2027-08-07
+ratification: RATIFIED
 implementation_status: NOT_STARTED
 ---
 
 # ADR-0017 — Workspace UFM-formatted first render (transcript body)
 
-**Status:** Proposed (draft — owner to ratify; ratification gates the Part 2 code PR)
+**Status:** Ratified 2026-08-07 (owner: James). The Part 2 code PR remains gated on the verified clean re-transcription.
 **Date:** 2026-08-07
 **Deciders:** James (owner, architecture); Miah (format authority — visual conventions)
 **Relates to:** ADR-0016 (Format and Correct button — Option C); ADR-0012 F19 / OQ-4 / OQ-5 / OQ-6;

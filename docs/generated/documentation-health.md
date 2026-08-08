@@ -7,8 +7,8 @@
 | --- | ---: |
 | Managed documents | 316 |
 | Authority documents | 12 |
-| Active documents | 169 |
-| Draft documents | 5 |
+| Active documents | 170 |
+| Draft documents | 4 |
 | Archived documents | 44 |
 | Relationships | 1028 |
 | Governance cycles | 0 |
