@@ -87,6 +87,8 @@ Silent, unrecorded mutation remains prohibited.
 
 **A10 — Deterministic rendering.** The abbreviation list and all formatting rules are stored as versioned data. Rendering never calls an AI model. AI may propose additions to the abbreviation list; the list is data, and its version is stamped on certified output.
 
+**A11 — No fabrication of the spoken record.** No AI subsystem may author words into the testimonial record that are not present in its source input. Corrections may only replace content the source contains — misrecognized audio, or a value present in a supplied document. Unrecoverable or unverifiable content is flagged for human resolution, never reconstructed, templated, or inferred. This governs testimony, colloquy, and any speaker-attributed text. It does not govern structural apparatus (captions, appearance pages, indices, certificate pages, formatting parentheticals), which are generated from case metadata and carry no speaker attribution. Correction-engine scope and remedies: [ADR-0017](adr/ADR-0017-workspace-ufm-first-render.md) §4b. Established by ADR-0017 (2026-08-07). Complements A3 (Python oath synthesis deleted, not ported) and A9 (immutable baseline).
+
 ---
 
 ## Recent Amendments

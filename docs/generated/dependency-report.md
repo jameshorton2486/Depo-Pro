@@ -27,10 +27,10 @@ None
 | --- | ---: |
 | Documents | 316 |
 | Authorities | 12 |
-| Relationships | 1027 |
+| Relationships | 1028 |
 | Governance | 309 |
 | Supersession | 3 |
-| References | 111 |
+| References | 112 |
 | Hierarchy | 276 |
 | Review dependencies | 12 |
 | Ownership | 316 |

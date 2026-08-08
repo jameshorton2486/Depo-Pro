@@ -93,10 +93,13 @@ exhibit markers; assembly at export.
 were misrecognized. It does **not** author words that are absent from the audio. Specifically prohibited:
 templated insertion of expected-but-unverified content (oath responses, stipulations, standard colloquy),
 and reconstruction of dropped or unintelligible speech from context. Unrecoverable audio renders
-`[inaudible]`; ambiguous-but-present audio renders the best transcription plus `[VERIFY: ...]`. This
-restates Rules 7, 9, and 21 and the standing fabrication prohibition; it is **not** a new constraint
-introduced by this ADR. (Implementation guard: the Python desktop `spec_engine/classifier.py:421` oath
-synthesis violates 4b and must never enter the web pipeline.)
+`[inaudible]`; ambiguous-but-present audio renders the best transcription plus `[VERIFY: ...]`. This is
+the correction-engine application of platform invariant **A11** (RATIFIED_DECISIONS — no fabrication of
+the spoken record); the same concepts are implemented in
+`docs/ai-pipeline-spec/ENGINES_3_4_Structure_Corrections.md` (implementation reference, not authority).
+It is **not** a new constraint introduced by this ADR. (Implementation guard: the Python desktop
+`spec_engine/classifier.py` oath-synthesis branch — the `OATH_RE` handler — violates A11 / §4b and must
+never enter the web pipeline; A3 already bars porting it.)
 
 **4c — Rationale.** A misrecognized word corrected wrongly is an error a reporter catches on read-through
 against the audio. An **invented** word has no audio to check it against — it reads as clean testimony and
