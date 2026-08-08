@@ -581,26 +581,53 @@ function getNextVisibleToken(tokens: string[], index: number): string | undefine
 function normalizeDisplayToken(
   word: EditorDocument["words"][number],
   index: number,
-  words: EditorDocument["words"][number][]
+  words: EditorDocument["words"][number][],
+  applyLexicalCorrections: boolean
 ): string {
   let text = word.text;
   const previousToken = words[index - 1]?.text;
   const nextToken = words[index + 1]?.text;
 
+  // Typographic normalization of the SAME lexeme (interruption dash, quoted
+  // question mark, numeral style) is formatting, not correction, so it runs on
+  // every render including the verbatim first render.
   text = normalizeInterruptingDash(text, nextToken);
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
-  text = normalizeSlashDate(text);
-  text = applyDeterministicTokenCorrection(text, previousToken, nextToken);
+
+  // A11 / ADR-0017 verbatim floor: date reshaping and ASR-garble token
+  // substitution come from the correction registry — they replace a source
+  // word with a DIFFERENT word (e.g. "Peterson" → "Bentley", "K." → "Okay.").
+  // That is correction, not formatting, so the first-render (verbatim) path
+  // skips it. Word correction is the separate, recorded A5/A11 engine.
+  if (applyLexicalCorrections) {
+    text = normalizeSlashDate(text);
+    text = applyDeterministicTokenCorrection(text, previousToken, nextToken);
+  }
 
   return text;
+}
+
+export interface CfeOptions {
+  /**
+   * When false, cfe applies NO lexical word substitution: every source word's
+   * character sequence is preserved verbatim (A11 — no fabrication of the
+   * spoken record). Whitespace/geometry, the F6 interruption dash (inserted
+   * between preserved words), and inline flags are still applied. Defaults to
+   * true to preserve the behavior of the export and download callers; the
+   * Workspace first-render path passes false so the reporter is never shown
+   * words the audio did not contain. See ADR-0017 and RATIFIED_DECISIONS A11.
+   */
+  applyLexicalCorrections?: boolean;
 }
 
 export function cfe(
   doc: EditorDocument,
   geometry: GeometryProfile,
-  registry: AbbreviationRegistry
+  registry: AbbreviationRegistry,
+  options?: CfeOptions
 ): FormattedDocument {
+  const applyLexicalCorrections = options?.applyLexicalCorrections ?? true;
   const wordById = new Map(doc.words.map((word) => [word.word_id, word]));
   const speakerById = new Map(doc.speakers.map((speaker) => [speaker.speaker_id, speaker]));
   const speakerRoles = new Map(doc.speakers.map((speaker) => [speaker.speaker_id, speaker.role]));
@@ -639,10 +666,16 @@ export function cfe(
       ];
 
       let flagNumber = 0;
-      const displayTexts = sourceWords.map((word, index) => normalizeDisplayToken(word, index, sourceWords));
+      const displayTexts = sourceWords.map((word, index) =>
+        normalizeDisplayToken(word, index, sourceWords, applyLexicalCorrections));
 
       const stutterAdjustedDisplayTexts = applyDeterministicStutterDashes(displayTexts);
-      const correctedDisplayTexts = applyPhraseCorrections(stutterAdjustedDisplayTexts);
+      // Phrase-level ASR-garble substitution is lexical correction, not
+      // formatting; skip it in the verbatim path (A11). The F6 interruption
+      // dash above is a structural insertion between preserved words and stays.
+      const correctedDisplayTexts = applyLexicalCorrections
+        ? applyPhraseCorrections(stutterAdjustedDisplayTexts)
+        : stutterAdjustedDisplayTexts;
 
       const formattedWords = sourceWords.map((word, index) => {
         const ambiguousFlag = findAmbiguousFlag(correctedDisplayTexts[index], word.raw_text, word.text);
