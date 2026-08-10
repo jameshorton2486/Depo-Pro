@@ -53,12 +53,23 @@ describe("qaFixer", () => {
     ]);
   });
 
-  it("normalizes standalone K. artifacts to Okay.", () => {
-    const result = applyQaFixer([
-      makeParagraph({ kind: "COLLOQUY", label: UNIDENTIFIED_SPEAKER, text: " K. And in this case" }),
+  it("preserves 'K.' verbatim — the deterministic K. -> Okay. rule was removed (§14/§57)", () => {
+    const standalone = applyQaFixer([
+      makeParagraph({ kind: "COLLOQUY", label: UNIDENTIFIED_SPEAKER, text: "K. And in this case" }),
     ]);
+    expect(standalone[0]?.text).toBe("K. And in this case");
+    expect(standalone[0]?.text).not.toContain("Okay");
 
-    expect(result[0]?.text).toBe("Okay.  And in this case");
+    // Legitimate "K." must never be corrupted: exhibit letters and middle initials.
+    const exhibit = applyQaFixer([
+      makeParagraph({ kind: "COLLOQUY", label: "MR. BENTLEY", text: "Exhibit K." }),
+    ]);
+    expect(exhibit[0]?.text).toBe("Exhibit K.");
+
+    const initial = applyQaFixer([
+      makeParagraph({ kind: "COLLOQUY", label: "MR. BENTLEY", text: "John K. Smith signed it." }),
+    ]);
+    expect(initial[0]?.text).toBe("John K. Smith signed it.");
   });
 
   it("never fabricates an objecting attorney; unknown objector stays unattributed (§14/§57)", () => {

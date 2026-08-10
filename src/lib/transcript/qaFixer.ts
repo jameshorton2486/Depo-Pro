@@ -3,13 +3,12 @@ import { UNIDENTIFIED_SPEAKER } from "./resolveSpeakerDisplayName";
 
 const SHORT_ANSWER_PATTERN = /^(Yes\.|No\.|Correct\.|I did\.|I do\.|I have\.|I don't\.)\s*/i;
 const OBJECTION_PATTERN = /\bObjection\.\s*(?:Form\.|Foundation\.)?/i;
-// correctionRegistry.ts owns the deterministic rule inventory; this remains
-// here because it is paragraph-structural rather than token-serial.
-// CHARACTERIZED (Phase G, pending Human Gate): K. -> Okay. is contextual, not
-// certain — it misfires on legitimate "K." (exhibit letters, middle initials).
-// Provisional disposition REMOVE/MIGRATE to the controlled correction pipeline;
-// left unchanged pending an explicit decision.
-const K_PATTERN = /(^|\s)K\.(\s|$)/g;
+// NOTE (Phase G): a deterministic "K." -> "Okay." normalization was removed
+// from here. Deciding whether an isolated "K." means "Okay" is contextual
+// transcription correction — it corrupted legitimate "K." (exhibit letters,
+// middle initials like "John K. Smith") — and belongs in the controlled
+// AI/human correction pipeline, never a deterministic certified-output fixer.
+// "K." is preserved as established transcript text.
 // An objection embedded in a questioner's turn was never separately diarized, so
 // the objecting attorney's identity is unavailable at this layer. Depo-Pro must
 // never fabricate who objected (§14/§57): mark the extracted objection with the
@@ -18,10 +17,6 @@ const K_PATTERN = /(^|\s)K\.(\s|$)/g;
 // diarizes the objector into its own turn — qaFixer must NOT resolve speaker
 // identity itself (it is a retirement candidate, not an attribution owner).
 const UNATTRIBUTED_OBJECTION_LABEL = UNIDENTIFIED_SPEAKER;
-
-function normalizeParagraphArtifacts(text: string): string {
-  return text.replace(K_PATTERN, (_match, leading: string, trailing: string) => `${leading}Okay.${trailing ? "  " : ""}`);
-}
 
 function cloneParagraph(
   paragraph: TranscriptParagraph,
@@ -36,7 +31,7 @@ function cloneParagraph(
     ...paragraph,
     kind,
     label,
-    text: normalizeParagraphArtifacts(text.trim()),
+    text: text.trim(),
     leadingText,
     words,
     sourceLines: [...(paragraph.sourceLines ?? [])],
