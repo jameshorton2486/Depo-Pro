@@ -32925,7 +32925,7 @@
       "status": "ACTIVE",
       "keywords": [
         "2026-08-10",
-        "ai-review",
+        "architectural",
         "architecture",
         "audits",
         "autonomous",
@@ -32933,22 +32933,27 @@
         "benchmark",
         "blockers",
         "capability",
-        "census",
+        "characterization",
         "clean-input",
         "complexity",
-        "defect",
         "deferred",
+        "deliverables",
         "depo-pro",
-        "diagnosis",
+        "disposition",
         "docs",
-        "graph",
+        "implementation",
+        "justification",
         "matrix",
-        "necessity",
         "operations",
+        "phase",
+        "progress",
+        "qafixer",
+        "reduction",
         "report",
-        "responsibility",
         "safety",
+        "scorecard",
         "simplification",
+        "test",
         "working"
       ],
       "headings": [
@@ -32970,15 +32975,19 @@
         },
         {
           "level": 2,
-          "text": "Clean-input defect and necessity matrix"
+          "text": "Characterization deliverables"
         },
         {
           "level": 2,
-          "text": "AI-review diagnosis"
+          "text": "Phase G implementation progress (2026-08-10)"
         },
         {
           "level": 2,
-          "text": "Responsibility graph and complexity census"
+          "text": "Architectural reduction scorecard (§41)"
+        },
+        {
+          "level": 2,
+          "text": "qaFixer disposition — Complexity Justification Test (§15)"
         },
         {
           "level": 2,
