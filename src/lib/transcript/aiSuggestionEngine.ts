@@ -258,13 +258,18 @@ export async function generateAISuggestions(
 }
 
 export function buildSuggestionCaseRecord(record: CaseRecord | null | undefined): AISuggestionInput["caseRecord"] {
+  // Reporter identity must come from canonical case data only (§14/§57). An
+  // absent reporter yields an empty string (missing) — never a fabricated
+  // benchmark default.
+  const reporterName = record?.reporter?.name?.value ?? "";
+  const reporterCert = record?.reporter?.cert_number?.value ?? "";
   return {
     causeNumber: record?.caption?.case_number?.value ?? "",
     caseStyle: record?.caption?.case_style?.value ?? "",
     witnessName: record?.witnesses?.[0]?.name.value ?? "",
     examiningAttorney: record?.attorneys?.[0]?.name.value ?? "",
     opposingCounsel: record?.attorneys?.[1]?.name.value ?? "",
-    reporterName: "Miah Bardot, CSR No. 12129",
+    reporterName: [reporterName, reporterCert ? `CSR No. ${reporterCert}` : ""].filter(Boolean).join(", "),
     caseType: "",
     jurisdiction: record?.caption?.county?.value ?? "",
   };

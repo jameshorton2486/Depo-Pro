@@ -312,19 +312,25 @@ type BridgeCasePayload = {
   caption?: { case_number?: unknown; case_style?: unknown; county?: unknown };
   witnesses?: Array<{ name?: unknown }>;
   attorneys?: Array<{ name?: unknown }>;
+  reporter?: { name?: unknown; cert_number?: unknown };
 };
 
 function bridgeCaseFromPayload(payload: Record<string, unknown> | null): BridgeReviewContext["case"] {
   const p = (payload ?? {}) as BridgeCasePayload;
   const cap = p.caption ?? {};
   const val = (v: unknown) => (v && typeof v === "object" && "value" in (v as object) ? String((v as { value: unknown }).value ?? "") : String(v ?? ""));
+  // Reporter identity must come from canonical case data only (§14/§57). An
+  // absent reporter yields an empty string (missing) — never a fabricated
+  // benchmark default.
+  const reporterName = val(p.reporter?.name);
+  const reporterCert = val(p.reporter?.cert_number);
   return {
     causeNumber: val(cap.case_number),
     caseStyle: val(cap.case_style),
     witnessName: val(p.witnesses?.[0]?.name),
     examiningAttorney: val(p.attorneys?.[0]?.name),
     opposingCounsel: val(p.attorneys?.[1]?.name),
-    reporterName: "Miah Bardot, CSR No. 12129",
+    reporterName: [reporterName, reporterCert ? `CSR No. ${reporterCert}` : ""].filter(Boolean).join(", "),
     jurisdiction: val(cap.county),
   };
 }
