@@ -284,7 +284,7 @@ describe("auditCanonicalTranscript", () => {
     expect(result.failures).toEqual([]);
     expect(result.warnings.some((warning) => warning.includes("Similar adjacent canonical span"))).toBe(true);
   });
-  it("warns when a single-source transcript exceeds the auto-chunk threshold", () => {
+  it("accepts a long single-source transcript when production auto-chunking is disabled", () => {
     const normalized = buildNormalized();
     const result = auditCanonicalTranscript({
       normalized,
@@ -300,7 +300,29 @@ describe("auditCanonicalTranscript", () => {
       }],
     });
 
+    expect(result.warnings.some((warning) => warning.includes("Single-source finalize exceeded auto-chunk threshold"))).toBe(false);
+    expect(result.metrics.exceeded_auto_chunk_threshold).toBe(false);
+  });
+
+  it("preserves the long single-source warning for explicit auto-chunk opt-in", () => {
+    const normalized = buildNormalized();
+    const result = auditCanonicalTranscript({
+      normalized,
+      autoChunkingEnabled: true,
+      segments: [{
+        source_audio_id: "audio_0",
+        source_index: 0,
+        source_filename: "source.mp3",
+        mime_type: "audio/mpeg",
+        storage_path: "cases/demo/source.mp3",
+        media_url: null,
+        start_offset_seconds: 0,
+        duration_seconds: 5000,
+      }],
+    });
+
     expect(result.warnings.some((warning) => warning.includes("Single-source finalize exceeded auto-chunk threshold"))).toBe(true);
+    expect(result.metrics.exceeded_auto_chunk_threshold).toBe(true);
   });
 
   it("fails a zero-word transcript instead of passing it as complete", () => {

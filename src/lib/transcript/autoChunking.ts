@@ -1,6 +1,14 @@
+export const AUTO_CHUNKING_ENABLED = false;
 export const AUTO_CHUNK_THRESHOLD_SECONDS = 4500;
 export const TARGET_CHUNK_DURATION_SECONDS = 3600;
 export const CHUNK_OVERLAP_SECONDS = 60;
+
+export function shouldAutoChunk(
+  durationSeconds: number,
+  enabled = AUTO_CHUNKING_ENABLED,
+): boolean {
+  return enabled && durationSeconds > AUTO_CHUNK_THRESHOLD_SECONDS;
+}
 
 export interface AudioChunkableSource {
   audio_id: string;

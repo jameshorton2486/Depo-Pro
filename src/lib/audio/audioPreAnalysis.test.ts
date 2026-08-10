@@ -33,14 +33,25 @@ describe("buildAudioPreAnalysisReport", () => {
     expect(report.gate_action).toBe("block");
   });
 
-  it("recommends chunking for files over 75 minutes", () => {
+  it("routes files over 75 minutes through single-file callback transcription", () => {
     const report = buildAudioPreAnalysisReport(buildAudio({
       duration_seconds: 5000,
     }));
 
     expect(report.risks.some((risk) => risk.code === "LONG_FILE")).toBe(true);
-    expect(report.chunking_recommended).toBe(true);
-    expect(report.chunk_count_estimate).toBe(2);
+    expect(report.risks.find((risk) => risk.code === "LONG_FILE")?.recommendation).toContain("Verify transcript completeness");
+    expect(report.chunking_recommended).toBe(false);
+    expect(report.chunk_count_estimate).toBeNull();
+    expect(report.chunking_reason).toBeNull();
+  });
+
+  it("does not promise auto-chunking for files over two hours", () => {
+    const report = buildAudioPreAnalysisReport(buildAudio({ duration_seconds: 8838 }));
+    const risk = report.risks.find((candidate) => candidate.code === "VERY_LONG_FILE");
+
+    expect(risk?.recommendation).toContain("Single-file callback transcription");
+    expect(risk?.recommendation).not.toContain("Auto-chunking");
+    expect(report.chunking_recommended).toBe(false);
   });
 
   it("blocks on unsupported formats", () => {

@@ -10,7 +10,7 @@ import { assertCaseAudioIntegrity } from "../../../src/lib/keyterms/caseAudioInt
 import { buildAutoSeedKeytermPlan } from "../../../src/lib/keyterms/autoSeedKeyterms.ts";
 import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
 import {
-  AUTO_CHUNK_THRESHOLD_SECONDS,
+  shouldAutoChunk,
   buildAutoChunkManifest,
   type AutoChunkRequestMetadata,
   type SequentialTranscriptSource,
@@ -222,7 +222,7 @@ Deno.serve(async (request) => {
 
     const callbackUrl = buildCallbackUrl(createdJob.id, callbackToken);
 
-    const requestPath = firstAudio.duration_seconds > AUTO_CHUNK_THRESHOLD_SECONDS
+    const requestPath = shouldAutoChunk(firstAudio.duration_seconds)
       ? await submitAutoChunkedJob({
           supabase,
           job: createdJob,
