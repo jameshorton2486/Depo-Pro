@@ -87,7 +87,21 @@ Evidence supports **TypeScript (`correctionObject.ts`) as the surviving producti
 - Ladder: focused (16) + full suite (930) pass; typecheck + changed-file lint clean; build OK.
 
 ## Remaining harvest / gates (not done here)
-- **Bridge/provider prompt** `transcript_formatter/prompts/bridge/full_review.md` — **not a mechanical relocate.** Characterized 2026-08-10: the `.md` is a 128-line design document (`# Role` structure + ATIA-STATUS header); the *runtime* prompt is `BRIDGE_SYSTEM_PROMPT` (~21 condensed lines, `aiCorrectionBridge.ts:78-99`). Both tagged `bridge/full_review@v1` but they are **divergent representations** — relocating the `.md` as-is would enshrine a design doc that no longer matches what executes. Requires a reconciliation decision (is the `.md` still the spec, or has the runtime TS become canonical?) before relocation + de-dangling the `aiCorrectionBridge.ts:10-12` comment. Open harvest item; the runtime prompt already lives in the surviving `src/` domain, so retirement of the `.md` loses no executing behavior.
+- **Bridge/provider prompt — RECONCILED (2026-08-10).** The `.md` (128-line design doc) and the runtime `BRIDGE_SYSTEM_PROMPT` were **not identical**: the runtime was a faithful but *lossy* condensation of the design doc. A semantic requirement-by-requirement comparison classified each instruction; the runtime was **not** blessed canonical merely because it executes. Outcome below. `BRIDGE_SYSTEM_PROMPT` (in the surviving `src/` domain) is now the **single governed prompt source** — the Deno Edge runtime sends it directly, so it cannot drift from a file; `@v1`→`@v2` recovered the lost requirements; a content-invariant test (`aiCorrectionBridgePrompt.test.ts`) guards them; the provenance comment no longer points into `transcript_formatter/`; the `.md` is retained as historical evidence until the DOC-0326 deletion gate.
+
+  | Requirement | Classification | Disposition |
+  |---|---|---|
+  | Editor-not-formatter, JSON-only, four v1 kinds, verbatim floor, never-invent-name, no-generic-reason | present in both | kept |
+  | **Out-of-scope specialties** (objections/examination/off-record/inconsistency) "do not emit" | MD-only, still-required (schema HAS these types; "only four kinds" left them emittable) | **recovered into @v2** |
+  | **Precision over recall** ("a wrong correction costs more than a missed one") | MD-only, still-required | **recovered into @v2** |
+  | **Confidence calibration** (below 0.5 = low-confidence requiring explicit accept; use the band, don't withhold) | MD-only, still-required | **recovered into @v2** |
+  | **Medical ambiguity** (two valid terms → lower confidence, explain both) | MD-only, still-required | **recovered into @v2** |
+  | qa_split trigger ("one block contains Q and its answer"); "use case record + opening statements" | equivalent, differently worded | folded in |
+  | Numbers: MD's "unless completely unambiguous → contextual_number (out of scope v1) → leave alone" | equivalent (nets to runtime's "leave numbers alone") | kept runtime's cleaner form |
+  | Input-schema block (input payload shape) | implementation detail, not a prompt requirement | not in the system prompt (correct) |
+  | `reporter_preferences` in the input doc | MD-only, not wired (`BridgeReviewContext` lacks it) | left out; future TIE item |
+  | `"Yugaldi":"Ugalde"` example in the input doc | case-specific example (cosmetic, in the retiring `.md` only) | not migrated |
+  | Contradictions | none found | — |
 - **Python deletion** stays behind the DOC-0326 four-part gate. The schema copy + `correction_object.py` + `test_correction_object.py` go with it.
 - The **shared-laxity** items above are a future convergence decision, not a freeze-time change.
 
