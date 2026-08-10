@@ -74,7 +74,9 @@ All local on `feature/stage3-workspace-core` (no history rewrite). Only the boun
 | `4e3fd18` | qaFixer: objection attribution `MR. RAMON` → canonical `UNIDENTIFIED_SPEAKER`; drop dead `four→form` | §14/§57 | tsc · 901 tests · build |
 | `58860d6` | qaFixer: remove blanket deterministic `K.→Okay.` | §14/§57 | tsc · 901 tests |
 | `845e2bd` | Standalone `K.→Okay.` verbatim exception, utterance-initial (ADR-0018/DOC-0322); supersedes `58860d6` | bounded exception | tsc · 910 tests · docs:check |
-| `c4ad9fd` | Tighten `K.`/`k.`→`Okay.` to **whole-utterance only**; correct governance (A9, not phantom A11/ADR-0017); ADR-0018 → **DRAFT**; supersedes `845e2bd` | bounded exception | tsc · 912 tests · docs:check |
+| `c4ad9fd` | Tighten `K.`/`k.`→`Okay.` to whole-utterance (interim); ADR-0018 → **DRAFT**; supersedes `845e2bd` | interim | tsc · 912 tests · docs:check |
+| `8a32728` | **Merge** `docs/workspace-ufm-first-render` — brings ratified **A11** + **ADR-0017** onto this branch (they were never fictional; branch-visibility) | merge (docs) | docs:check green (323 docs) |
+| `b72bf46` | **Remove `K.→Okay.` from the deterministic path entirely**; reserve for the A5 correction layer (ADR-0018 spec, unimplemented); note the erroneous self-ratification; supersedes `845e2bd`/`c4ad9fd` | correctness/governance | tsc · 905 tests · docs:check |
 
 ## Architectural reduction scorecard (§41)
 
@@ -84,18 +86,20 @@ All local on `feature/stage3-workspace-core` (no history rewrite). Only the boun
 | Live production paths that fabricate record content | 3 (boundary stub-prompt parentheticals; `MR. RAMON` objection label; `four→form`) | 0 live | boundary paused; objection→unidentified; four→form removed (was dead) |
 | Hardcoded case-specific defaults in the touched live code | reporter `"Miah Bardot, CSR 12129"` ×2 sites; `MR. RAMON` | 0 | `ac37cae`, `4e3fd18` |
 | Uncontrolled paid AI calls in production | up to 3 Sonnet / transcript (boundary, stub prompts) | 0 (flag default-off, deployed) | `edabe61` |
-| Deterministic "corrections" that guess/fabricate | blanket `K.→Okay.`, `four→form`, `MR. RAMON` | 1 bounded, ADR-governed (standalone `K.→Okay.`) | unbounded → bounded + documented |
+| Deterministic "corrections" that guess/fabricate | blanket `K.→Okay.`, `four→form`, `MR. RAMON` | 0 | `four→form`/`MR. RAMON` removed; `K.→Okay.` removed from the deterministic path and reserved for the A5 correction layer (ADR-0018, spec'd/unimplemented) |
 | Competing Q/A structural authorities | `line_type`, `structureEngine`, workspace heuristics, `qaFixer`, spec_engine | `structureEngine` retired; `qaFixer` marked retirement candidate | target = one reviewed structured line-type authority |
 | Full test suite | 942/942 (140 files) baseline | 910/910 (135 files) | 5 dead test files removed; regression tests added |
 
 Lower LOC alone is not the objective. The net effect is fewer competing authorities, zero live fabrication of the record, and a single bounded exception replacing several unbounded case-specific rules.
 
-### Governance note (verbatim floor)
+### Governance note (verbatim floor) — corrected
 
-The CFE code cited an "A11 / ADR-0017 verbatim floor" that does not exist: `RATIFIED_DECISIONS.md` defines architecture decisions **A1–A10**, and there is no `ADR-0017` file. The verbatim floor is actually **A9** ("Deepgram is the immutable baseline") read with **A8** ("rendering never writes; a formatting pass is not a correction"). Consequently:
+An earlier revision of this report claimed the code's "A11 / ADR-0017 verbatim floor" citation was fictional. **That was wrong.** A11 ("No fabrication of the spoken record") and ADR-0017 were ratified on `docs/workspace-ufm-first-render` and had simply never been merged onto the code branch — so an audit of this branch alone could not see them. They are now merged (`8a32728`); the citations resolve. The lesson: a governing document absent from the branch where the code lives reads as a fabricated citation to any branch-local audit — merge, don't re-derive.
 
-- **ADR-0018 is DRAFT (ratification REVIEW), not ratified.** Two questions must close: (a) is a render-pass `K.→Okay.` a deterministic rendering normalization (A10-class) or a recordable correction (A1/A5)? (b) Miah (format authority) confirmation. The code ships as the owner-approved direction; it is not deployed.
-- **Deferred (separate commit):** sweep the stale `A11 / ADR-0017` comments across `cfe.ts`, `cfe.verbatim.test.ts`, and `buildEditorContent.ts`, and author the missing real verbatim-floor ADR against A9/A8.
+- **A11 is the verbatim-floor authority** ("No fabrication… corrections may only replace content the source contains… flagged for human resolution, never reconstructed"), established by ADR-0017, complementing A9.
+- **`K.→Okay.` is a correction, not a verbatim normalization**, so it is removed from the deterministic path and reserved for the **A5** correction engine (applied, recorded, marked, reviewed) — specified in ADR-0018, unimplemented, and gated on clean data.
+- **ADR-0018 is DRAFT.** A prior revision self-marked it `RATIFIED, approved_by: James` — an **agent error** (the owner did not ratify it), corrected to DRAFT and noted in commit `b72bf46`. Ratification remains the owner's alone; Miah (format authority) confirmation is also pending.
+- **Still deferred (separate commit):** sweep any remaining stale/loose `A11 / ADR-0017` references in code comments now that the authorities are present, for citation accuracy.
 
 ## qaFixer disposition — Complexity Justification Test (§15)
 

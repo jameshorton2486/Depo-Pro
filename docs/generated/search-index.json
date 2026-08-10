@@ -32936,6 +32936,7 @@
         "characterization",
         "clean-input",
         "complexity",
+        "corrected",
         "deferred",
         "deliverables",
         "depo-pro",
@@ -32991,7 +32992,7 @@
         },
         {
           "level": 3,
-          "text": "Governance note (verbatim floor)"
+          "text": "Governance note (verbatim floor) — corrected"
         },
         {
           "level": 2,
