@@ -90,6 +90,7 @@ type RouteMatch =
   | { kind: "working"; jobId: string }
   | { kind: "review"; jobId: string }
   | { kind: "speakers"; jobId: string }
+  | { kind: "structure"; jobId: string }
   | { kind: "suggestions"; jobId: string }
   | { kind: "resolveSuggestion"; jobId: string; suggestionId: string }
   | { kind: "aiSuggestions"; jobId: string }
@@ -172,6 +173,8 @@ Deno.serve(async (request) => {
         return request.method === "POST"
           ? handlePostSpeaker(context)
           : handlePutSpeakers(context);
+      case "structure":
+        return handlePutStructure(context);
       case "suggestions":
         return handleGetSuggestions(context);
       case "resolveSuggestion":
@@ -211,6 +214,7 @@ function requiresUnlockedTranscript(match: RouteMatch): boolean {
   return match.kind === "working"
     || match.kind === "review"
     || match.kind === "speakers"
+    || match.kind === "structure"
     || match.kind === "resolveSuggestion"
     || match.kind === "aiSuggestionAction"
     || match.kind === "aiSuggestionAcceptAll"
@@ -694,6 +698,90 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
   return respondJson(200, { ok: true });
 }
 
+// DOC-0325 / D1+D3 — persist reviewed structural decisions (line_type + review_status).
+// Mirrors the F10 speaker-reassignment write path: owner-scoped via the RLS-bound client,
+// atomic per utterance, audit-logged. The reporter is the authority here, so a review write
+// deliberately overwrites any prior value. (The invariant that a *proposal/fallback* must not
+// overwrite a CONFIRMED/OVERRIDDEN decision is enforced in the render/build layer, Wave 4.)
+// This endpoint sets ONLY line_type + line_type_review_status; confidence/reason are proposal
+// fields written at classification time, never by a human review write.
+const REVIEWED_LINE_TYPES = new Set(["Q", "A", "SP", "PN", "HEADER", "UNKNOWN"]);
+const REVIEWED_STATUSES = new Set(["CONFIRMED", "OVERRIDDEN"]);
+
+interface StructureDecision {
+  utterance_id: string;
+  line_type: string;
+  review_status: string;
+}
+
+function validateStructurePayload(value: unknown): { decisions: StructureDecision[] } {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+  const payload = value as Record<string, unknown>;
+  if (!Array.isArray(payload.decisions)) {
+    throw new HttpError(400, "bad payload");
+  }
+  const decisions = payload.decisions.map((decision) => {
+    if (!decision || typeof decision !== "object") {
+      throw new HttpError(400, "bad payload");
+    }
+    const candidate = decision as Record<string, unknown>;
+    if (
+      typeof candidate.utterance_id !== "string"
+      || typeof candidate.line_type !== "string"
+      || typeof candidate.review_status !== "string"
+      || !REVIEWED_LINE_TYPES.has(candidate.line_type)
+      || !REVIEWED_STATUSES.has(candidate.review_status)
+    ) {
+      throw new HttpError(400, "bad payload");
+    }
+    return {
+      utterance_id: candidate.utterance_id,
+      line_type: candidate.line_type,
+      review_status: candidate.review_status,
+    };
+  });
+  return { decisions };
+}
+
+async function handlePutStructure(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateStructurePayload(body);
+  const transcriptId = context.transcript.transcript_id;
+
+  for (const decision of payload.decisions) {
+    const updateResult = await context.supabase
+      .from("transcript_utterances")
+      .update({
+        line_type: decision.line_type,
+        line_type_review_status: decision.review_status,
+        // A prior manual reassignment flag stays truthful: an OVERRIDDEN structural decision
+        // is a manual reassignment of structure.
+        manually_reassigned: decision.review_status === "OVERRIDDEN",
+      })
+      .eq("transcript_id", transcriptId)
+      .eq("utterance_id", decision.utterance_id);
+
+    if (updateResult.error) {
+      throw new HttpError(500, "failed to save structure");
+    }
+
+    await appendAuditRows(context, [{
+      utterance_id: decision.utterance_id,
+      word_id: null,
+      source: "workspace",
+      action: "assign_line_type",
+      old_text: "structure review",
+      new_text: `${decision.line_type}:${decision.review_status}`,
+      before_text: "structure review",
+      after_text: `${decision.line_type}:${decision.review_status}`,
+    }]);
+  }
+
+  return respondJson(200, { ok: true });
+}
+
 async function handlePostSpeaker(context: RouteContext): Promise<Response> {
   const body = await parseJsonBody(context.request);
   const payload = validateAddSpeakerPayload(body);
@@ -885,7 +973,7 @@ type AuditInsertRow = {
   utterance_id: string | null;
   word_id: string | null;
   source: string;
-  action: "assign_speaker" | "ai_suggestion_accepted" | "ai_suggestion_rejected";
+  action: "assign_speaker" | "assign_line_type" | "ai_suggestion_accepted" | "ai_suggestion_rejected";
   old_text: string | null;
   new_text: string | null;
   before_text: string | null;
@@ -1439,6 +1527,10 @@ function matchRoute(request: Request): RouteMatch | null {
     && routeParts[1] === "speakers"
   ) {
     return { kind: "speakers", jobId: routeParts[0] };
+  }
+
+  if (routeParts.length === 2 && request.method === "PUT" && routeParts[1] === "structure") {
+    return { kind: "structure", jobId: routeParts[0] };
   }
 
   if (routeParts.length === 2 && request.method === "GET" && routeParts[1] === "suggestions") {
