@@ -32941,12 +32941,18 @@
         "deliverables",
         "depo-pro",
         "disposition",
+        "doc-0325",
         "docs",
         "floor",
+        "freeze-limited",
         "governance",
         "implementation",
         "justification",
+        "landed",
+        "line",
+        "local",
         "matrix",
+        "migration",
         "note",
         "operations",
         "phase",
@@ -32958,7 +32964,9 @@
         "scorecard",
         "simplification",
         "test",
+        "type",
         "verbatim",
+        "waves",
         "working"
       ],
       "headings": [
@@ -33001,6 +33009,10 @@
         {
           "level": 2,
           "text": "Blockers and deferred operations"
+        },
+        {
+          "level": 2,
+          "text": "line_type migration (DOC-0325) — freeze-limited local waves landed"
         }
       ]
     },
@@ -33433,15 +33445,21 @@
         "deployment",
         "docs",
         "every",
+        "exact",
         "existing",
         "export",
         "fix",
+        "freeze",
+        "freeze-limited",
         "gate",
         "grounding",
+        "here",
         "human",
+        "implementation",
         "inspection",
         "keeprawlabels",
         "line",
+        "local",
         "locally",
         "migration",
         "mode",
@@ -33458,6 +33476,7 @@
         "qafixer",
         "raw-evidence",
         "read",
+        "remaining",
         "remove",
         "representation",
         "retirement",
@@ -33468,6 +33487,8 @@
         "schema",
         "sequence",
         "state",
+        "status",
+        "stop",
         "strategy",
         "structural",
         "structure",
@@ -33478,7 +33499,9 @@
         "transcripts",
         "txt",
         "type",
+        "under",
         "unknown",
+        "waves",
         "working",
         "workspace",
         "write"
@@ -33567,6 +33590,14 @@
         {
           "level": 2,
           "text": "Notes"
+        },
+        {
+          "level": 2,
+          "text": "Implementation status (freeze-limited local waves)"
+        },
+        {
+          "level": 3,
+          "text": "Exact remaining gate (STOP here under freeze)"
         }
       ]
     }

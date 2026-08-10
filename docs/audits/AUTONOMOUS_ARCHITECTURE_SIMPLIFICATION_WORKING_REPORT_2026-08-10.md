@@ -115,3 +115,19 @@ An earlier revision of this report claimed the code's "A11 / ADR-0017 verbatim f
 - The earlier "repository editor / windows sandbox `helper_unknown_error`" blocker was **disproven** by filesystem evidence (edits landed; commits succeeded). It is not treated as a real blocker; see the false-editor-sandbox memory. Repository edits proceed normally.
 - Deferred behavioral waves under BETA_FREEZE: G2 (transport/trigger de-dup), G3 (ai-review consolidation), G5 (paragraph/speaker-owner consolidation). Python `transcript_formatter/` retirement remains a separate Human Gate (harvest rule tables + `.docx` templates first).
 
+## line_type migration (DOC-0325) — freeze-limited local waves landed
+
+Owner accepted DOC-0325 (commit `f819251`) and authorized the locally-reversible implementation.
+Under BETA_FREEZE (non-active, default-off only; precedent `edabe61`), Waves 1–4 landed as inert
+scaffolding — migration file **not applied**, endpoint **not deployed**, `PERSISTED_LINE_TYPE_ENABLED=false`:
+
+- `4e54613` Wave 1 — review-contract migration file + `database.ts` structure columns + canonical review/proposal types.
+- `082e7da` Wave 2 — pure `structuralProposal` derivation (`{line_type, confidence, reason}`); live classifiers untouched.
+- `58647f1` Wave 3 — editor-api `PUT /:jobId/structure` review-persistence endpoint (undeployed; `deno check` clean bar the shared Database-stub pattern).
+- `d7e390b` Wave 4 (core) — default-off migration flag + `shouldProposeStructure` review-lock invariant + `selectReviewCandidates`.
+
+**Stopped at the freeze gate.** Deferred as activation (owner review before proceeding): the parallel
+converged render builder, Wave 5 Workspace review UI + provider-evidence view, `keepRawLabels` removal,
+`qaFixer` retirement, and the post-convergence parity/regression suite. Full detail + Human Gates in
+DOC-0325 "Implementation status".
+

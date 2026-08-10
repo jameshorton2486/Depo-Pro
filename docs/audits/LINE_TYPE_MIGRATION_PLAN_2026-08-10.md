@@ -14,7 +14,7 @@ ratified_date: null
 last_reviewed: 2026-08-10
 next_review: 2027-08-10
 ratification: NOT_REQUIRED
-implementation_status: NOT_STARTED
+implementation_status: PARTIAL
 ---
 
 Date: 2026-08-10 · Planning artifact (no code changes, no migration executed). Follows the C2a decision analysis (DOC-0324) with owner decisions **D1–D7 approved** and the invariant **D7 ratified**:
@@ -148,3 +148,42 @@ Additive, on `transcript_utterances`:
 - **Clean baseline:** treat `tr_1786372056908_hyjqv3` (1,757 utt / 13,952 words) as the identified clean-baseline candidate (documented across DOC-0318/0320/0321 and referenced in production Cloud Run logs). If independent confirmation is wanted before implementation, verify that record **directly from read-only DB evidence** (source_index 0, no `_multifile_manifest`, utt count > ~1,000, coherent utt0) — **do not retranscribe**.
 - **ADR-0018 / K.→Okay.** stays DRAFT and A5-reserved; it is **not** part of this migration. Its acceptance examples remain captured in ADR-0018.
 - The whole sequence is behavioral and touches certified output → gated by BETA_FREEZE beyond the local planning/coding steps.
+
+---
+
+## Implementation status (freeze-limited local waves)
+
+Owner authorized the **locally-reversible** implementation (not production migration/deploy).
+The BETA_FREEZE posture (working report §116: behavioral waves deferred; precedent `edabe61`:
+default-off non-active code permitted as in-freeze safety) bounds this to **non-active,
+default-off scaffolding + types + persistence code + invariants + tests + docs**. Landed:
+
+| Wave | Commit | Content | Active? |
+|------|--------|---------|---------|
+| 1 | `4e54613` | Migration file `20260810180000_line_type_review_contract.sql` (line_type_confidence / line_type_reason / line_type_review_status + enum guards + manually_reassigned→OVERRIDDEN backfill); `database.ts` structure columns typed (Row/Insert/Update); canonical `LineTypeReviewStatus`/`StructuralProposal` types + `normalizeReviewStatus`/`isReviewLocked`. | No — migration **not applied**; types inert. |
+| 2 | `082e7da` | `structuralProposal.ts` — pure `{line_type, confidence, reason}` derivation (D2); live classifiers untouched. | No — additive module, unconsumed. |
+| 3 | `58647f1` | editor-api `PUT /:jobId/structure` review-persistence endpoint (F10-style, owner-scoped, audit-logged, `assign_line_type`). | No — **not deployed**; no client caller yet. |
+| 4 | `d7e390b` | `lineTypeMigration.ts` — default-off `PERSISTED_LINE_TYPE_ENABLED=false`; `shouldProposeStructure` (proposal never overwrites CONFIRMED/OVERRIDDEN); `selectReviewCandidates`. | No — flag off; helpers unconsumed. |
+
+Two DOC-0325-vs-code reconciliations were made and documented in the migration file: (a) `line_type`
+value space uses the **short codes** `Q|A|SP|PN|HEADER|UNKNOWN` that `normalizePersistedLineType`
+already binds to (not §1's long names); (b) `ai_suggested_line_type` is **aliased** as the proposal,
+not renamed (the deployed ai-review function writes it). A third: `database.ts` was already missing the
+existing `20260627220500` structure columns — now typed.
+
+### Exact remaining gate (STOP here under freeze)
+
+The **render-path convergence is deferred** — it is behavioral and changes certified output. NOT built:
+- The parallel **converged paragraph/structure builder** (collapsing `workspacePresentation` +
+  `transcriptParagraphs` onto one persisted-`line_type` spine). Correctness is unverifiable without
+  flipping `PERSISTED_LINE_TYPE_ENABLED`, i.e. activation.
+- **Wave 5** Workspace structural-review UI + "View Provider Evidence" surface, and the
+  **`keepRawLabels` removal** from normal mode.
+- **`qaFixer`** retirement (still `RETIRE-VIA-MIGRATION`; sole runtime consumer `workspacePresentation.ts:743`).
+- The full **parity/TXT-JSON convergence/long-transcript regression** suite (§16), which asserts the
+  post-convergence invariant and therefore needs the convergence to exist.
+
+**Human Gates unchanged and untouched:** apply migration to prod; write/backfill prod `line_type`;
+deploy edge functions / Cloud Run / front-end; flip `PERSISTED_LINE_TYPE_ENABLED`; anything on
+certified/locked transcripts. Thomas not retranscribed; `tr_1786372056908_hyjqv3` remains the
+read-only-verifiable clean-baseline candidate.
