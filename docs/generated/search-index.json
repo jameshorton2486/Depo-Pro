@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "45f7e6b5a55cd280d0a67a2c607b7e5c9522577ad35056e42605423e5426b8df",
-  "graph_sha256": "80c6d075d57b39dc0b1710f4ee94642b894b4be1eac0c0b9b915c6e3e07253fb",
-  "document_count": 322,
+  "manifest_sha256": "c0317ea709a56b9bb578635075ba5a0e0ab76c4c58457b6eddfe355547e2fc08",
+  "graph_sha256": "9c02a291db480ad990009864637aea94ddbe503f478573c93acf4103889cc189",
+  "document_count": 323,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33250,6 +33250,96 @@
         {
           "level": 2,
           "text": "Implementation (completed; not deployed)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0323",
+      "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
+      "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",
+      "category": "architecture",
+      "owner": "Workspace",
+      "authority": false,
+      "tier": "T4",
+      "status": "ACTIVE",
+      "keywords": [
+        "adr",
+        "adr-0017",
+        "along",
+        "application",
+        "architecture",
+        "before",
+        "body",
+        "boundary",
+        "code",
+        "consequences",
+        "context",
+        "correction",
+        "decision",
+        "decisions",
+        "export",
+        "f19",
+        "first",
+        "formatting",
+        "items",
+        "model",
+        "not",
+        "open",
+        "oq-4",
+        "oq-5",
+        "oq-6",
+        "part",
+        "ratified",
+        "render",
+        "resolve",
+        "restating",
+        "scope",
+        "surface",
+        "transcript",
+        "ufm-formatted",
+        "workspace",
+        "workspace-first-render-formatting"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "ADR-0017 — Workspace UFM-formatted first render (transcript body)"
+        },
+        {
+          "level": 2,
+          "text": "Context"
+        },
+        {
+          "level": 2,
+          "text": "Decisions"
+        },
+        {
+          "level": 3,
+          "text": "Decision 1 — The Workspace is the formatting surface, not the export"
+        },
+        {
+          "level": 3,
+          "text": "Decision 2 — First render is UFM-formatted"
+        },
+        {
+          "level": 3,
+          "text": "Decision 3 — F19 scope (restating ratified F19 / OQ-4 / OQ-5 / OQ-6)"
+        },
+        {
+          "level": 3,
+          "text": "Decision 4 — Correction application model"
+        },
+        {
+          "level": 2,
+          "text": "Consequences"
+        },
+        {
+          "level": 2,
+          "text": "Open items (resolve before/along with Part 2)"
+        },
+        {
+          "level": 2,
+          "text": "Part 2 boundary (no code in this ADR)"
         }
       ]
     }

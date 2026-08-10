@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "45f7e6b5a55cd280d0a67a2c607b7e5c9522577ad35056e42605423e5426b8df",
+  "source_sha256": "c0317ea709a56b9bb578635075ba5a0e0ab76c4c58457b6eddfe355547e2fc08",
   "roots": [
     "DOC-0001",
     "DOC-0022",
@@ -1588,6 +1588,11 @@
       "type": "GOVERNANCE",
       "source": "DOC-0322",
       "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0323",
+      "target": "DOC-0068"
     }
   ],
   "reachable_documents": [
@@ -1912,7 +1917,8 @@
     "DOC-0319",
     "DOC-0320",
     "DOC-0321",
-    "DOC-0322"
+    "DOC-0322",
+    "DOC-0323"
   ],
   "diagnostics": {
     "orphan_authorities": [],

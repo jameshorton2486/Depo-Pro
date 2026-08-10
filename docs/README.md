@@ -9,7 +9,7 @@ Before changing application code, read [AGENTS.md](../AGENTS.md) and the [Master
 
 | Area | Documents | Generated index |
 | --- | ---: | --- |
-| Architecture | 50 | [architecture-index.json](generated/navigation/architecture-index.json) |
+| Architecture | 51 | [architecture-index.json](generated/navigation/architecture-index.json) |
 | Standards | 2 | [standards-index.json](generated/navigation/standards-index.json) |
 | Audits | 137 | [audits-index.json](generated/navigation/audits-index.json) |
 | Reports | 30 | [reports-index.json](generated/navigation/reports-index.json) |

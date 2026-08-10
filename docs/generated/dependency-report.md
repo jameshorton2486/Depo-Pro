@@ -2,7 +2,7 @@
 # Documentation Dependency Report
 
 Source: `docs/document-manifest.json`
-Manifest SHA-256: `45f7e6b5a55cd280d0a67a2c607b7e5c9522577ad35056e42605423e5426b8df`
+Manifest SHA-256: `c0317ea709a56b9bb578635075ba5a0e0ab76c4c58457b6eddfe355547e2fc08`
 Generated: 2026-08-05
 
 ## Integrity
@@ -25,15 +25,15 @@ None
 
 | Metric | Count |
 | --- | ---: |
-| Documents | 322 |
+| Documents | 323 |
 | Authorities | 12 |
-| Relationships | 1047 |
-| Governance | 315 |
+| Relationships | 1052 |
+| Governance | 316 |
 | Supersession | 3 |
-| References | 112 |
-| Hierarchy | 282 |
-| Review dependencies | 13 |
-| Ownership | 322 |
+| References | 113 |
+| Hierarchy | 283 |
+| Review dependencies | 14 |
+| Ownership | 323 |
 | Owners | 7 |
 
 ## Ownership
@@ -46,7 +46,7 @@ None
 | Project | 2 |
 | Rendering | 4 |
 | Transcript | 1 |
-| Workspace | 1 |
+| Workspace | 2 |
 
 ## Authority Inventory
 
