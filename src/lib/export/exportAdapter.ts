@@ -117,7 +117,7 @@ export function buildCanonicalExportRenderModel(
   // A11 / C1b: this render model produces the certified DOCX the reporter signs
   // her CSR number to. It must be verbatim — no correction-registry word
   // substitution (which could silently swap a real surname into testimony).
-  // Word correction is the separate, recorded A5/A11 engine, not this render.
+  // Word correction is the separate, recorded A5 correction engine, not this render.
   const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
     applyLexicalCorrections: false,
   });

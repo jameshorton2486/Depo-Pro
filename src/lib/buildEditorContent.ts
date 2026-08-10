@@ -240,7 +240,7 @@ export function buildEditorContent(
     // correction pass. Disable lexical word substitution so the reporter is
     // never shown ASR-garble "corrections" (e.g. a witness named "Peterson"
     // silently rewritten to "Bentley") the audio did not contain. Word
-    // correction is the separate, recorded A5/A11 engine — not this render.
+    // correction is the separate, recorded A5 correction engine — not this render.
     const formatted = cfe(displayDoc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
       applyLexicalCorrections: false,
     });
