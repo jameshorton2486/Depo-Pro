@@ -1,10 +1,15 @@
 // TypeScript side of the CorrectionObject contract (ATIA §4.8, D8.1).
 //
-// The JSON Schema at transcript_formatter/schema/correction_object.schema.json is
-// the single source of truth. This module mirrors it for the frontend + the
-// ai-review Edge Function; the Python service mirrors the same schema in
-// services/tie/correction_object.py. Keep the three in sync — the per-type rules
-// below are the schema's change.allOf branches.
+// Contract of record: the co-located JSON Schema
+// src/lib/transcript/correction_object.schema.json (surviving governed home,
+// relocated from the retiring Python transcript_formatter/schema/ per DOC-0327).
+// This module is the SURVIVING PRODUCTION AUTHORITY — the only CorrectionObject
+// definition on a live path (frontend + ai-review Edge Function). The schema is
+// kept in lockstep by a drift test (correctionObjectSchema.test.ts) that fails if
+// the enums/required diverge, so the two are mechanically synchronized rather than
+// independently authored. The Python validator (services/tie/correction_object.py)
+// derives from the same schema and retires with transcript_formatter/.
+// The per-type rules below are the schema's change.allOf branches.
 //
 // A CorrectionObject is one proposed change against the immutable Deepgram
 // baseline: produced by an AI (bridge/specialty) prompt or a deterministic rule,
@@ -94,6 +99,31 @@ export interface CorrectionReview {
   final_value?: Record<string, unknown> | null;
 }
 
+export type SupportingEvidenceKind =
+  | "registry_entry"
+  | "deepgram_confidence"
+  | "prior_transcript_correction"
+  | "glossary_entry"
+  | "speaker_pattern_match"
+  | "phonetic_similarity_score";
+
+export interface CorrectionSupportingEvidence {
+  kind: SupportingEvidenceKind;
+  id?: string;
+  value?: string | number;
+  case_id?: string;
+}
+
+export interface CorrectionDownstream {
+  applied_to_working_transcript?: boolean;
+  applied_at?: string | null;
+  reverted_at?: string | null;
+  // Set when review.state is accepted/edited but applied_to_working_transcript is
+  // false: accepted, apply deferred (e.g. qa_split awaiting the structural apply
+  // engine). Workspace shows "accepted — apply pending" rather than a silent no-op.
+  pending_reason?: string | null;
+}
+
 export interface CorrectionObject {
   id: string;
   transcript_id: string;
@@ -107,13 +137,9 @@ export interface CorrectionObject {
   confidence: number;
   confidence_source?: string;
   provenance: CorrectionProvenance;
-  supporting_evidence?: unknown[];
+  supporting_evidence?: CorrectionSupportingEvidence[];
   review: CorrectionReview;
-  downstream: {
-    applied_to_working_transcript?: boolean;
-    applied_at?: string | null;
-    reverted_at?: string | null;
-  };
+  downstream: CorrectionDownstream;
 }
 
 const SPECIALTIES = new Set<string>([
@@ -181,6 +207,7 @@ export function collectCorrectionErrors(data: unknown): string[] {
   errors.push(...changeErrors(c.change));
   errors.push(...provenanceErrors(c.provenance));
   errors.push(...reviewErrors(c.review));
+  errors.push(...downstreamErrors(c.downstream));
   return errors;
 }
 
@@ -236,6 +263,14 @@ function reviewErrors(review: unknown): string[] {
   if (!review || typeof review !== "object") return ["review must be an object"];
   const r = review as Record<string, unknown>;
   if (!REVIEW_STATES.has(r.state as string)) return [`review.state invalid: ${String(r.state)}`];
+  return [];
+}
+
+// downstream is a schema-required object (the Python validator enforces it via the
+// schema's `required` list). TS previously skipped it, so a payload missing
+// downstream passed TS but failed Python/schema — this closes that divergence.
+function downstreamErrors(downstream: unknown): string[] {
+  if (!downstream || typeof downstream !== "object") return ["downstream must be an object"];
   return [];
 }
 

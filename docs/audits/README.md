@@ -3,7 +3,7 @@
 
 This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Managed documents: **139**
+Managed documents: **140**
 
 | Document | ID | Tier | Status | Owner |
 | --- | --- | --- | --- | --- |
@@ -146,3 +146,4 @@ Managed documents: **139**
 | [C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence](C2A_DECISION_ANALYSIS_2026-08-10.md) | DOC-0324 | T5 | ACTIVE | Architecture |
 | [line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable](LINE_TYPE_MIGRATION_PLAN_2026-08-10.md) | DOC-0325 | T5 | ACTIVE | Architecture |
 | [Python transcript_formatter/ characterization — pre-retirement inventory](TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md) | DOC-0326 | T5 | ACTIVE | Architecture |
+| [CorrectionObject three-way drift audit — canonical authority + sync](CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md) | DOC-0327 | T5 | ACTIVE | Architecture |

@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "6d5dfc9d13303ac3fdf00eaadd371692d72f96eceabee2a79100acefb58eeb26",
-  "graph_sha256": "3d120ee35080d841c9fb2ccc78cb7c758ba8711bf4b8081a0359e4604456a50c",
-  "document_count": 326,
+  "manifest_sha256": "b8973171a6cf6a4fffa185e94b4b60e73a0ffe94ca5f563c24fd83172752ee80",
+  "graph_sha256": "02ec5c77d9dab61114288dc749a88c7b2b9c8b19f1c2d36943df70bb9f9a1f51",
+  "document_count": 327,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33743,6 +33743,96 @@
         {
           "level": 2,
           "text": "Recommended pre-retirement sequence (all freeze-safe, read-only or additive)"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0327",
+      "title": "CorrectionObject three-way drift audit — canonical authority + sync",
+      "path": "docs/audits/CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "activation",
+        "applied",
+        "architecture",
+        "audit",
+        "audits",
+        "authority",
+        "canonical",
+        "commit",
+        "compatibility",
+        "contract-vs-validator",
+        "correctionobject",
+        "determination",
+        "docs",
+        "done",
+        "drift",
+        "drifts",
+        "edges",
+        "field-by-field",
+        "found",
+        "freeze-safe",
+        "gates",
+        "genuine",
+        "harvest",
+        "here",
+        "laxity",
+        "matrix",
+        "not",
+        "notes",
+        "outlier",
+        "pre-fix",
+        "remaining",
+        "remediation",
+        "representations",
+        "shared",
+        "sync",
+        "their",
+        "three",
+        "three-way",
+        "ts-vs-python"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "CorrectionObject three-way drift audit — canonical authority + sync"
+        },
+        {
+          "level": 2,
+          "text": "The three representations + their edges"
+        },
+        {
+          "level": 2,
+          "text": "Field-by-field compatibility matrix (pre-fix)"
+        },
+        {
+          "level": 3,
+          "text": "Genuine drifts found (TS the outlier)"
+        },
+        {
+          "level": 3,
+          "text": "Shared laxity (contract-vs-validator, NOT a TS-vs-Python drift)"
+        },
+        {
+          "level": 2,
+          "text": "Canonical authority — determination"
+        },
+        {
+          "level": 2,
+          "text": "Remediation applied (this commit — freeze-safe, no activation)"
+        },
+        {
+          "level": 2,
+          "text": "Remaining harvest / gates (not done here)"
         },
         {
           "level": 2,
