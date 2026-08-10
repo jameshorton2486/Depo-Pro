@@ -73,7 +73,8 @@ All local on `feature/stage3-workspace-core` (no history rewrite). Only the boun
 | `ac37cae` | Reporter identity from canonical data (remove hardcoded `"Miah Bardot, CSR No. 12129"`) | §14/§57, Risk C | tsc · 899 tests · deno +0 · build |
 | `4e3fd18` | qaFixer: objection attribution `MR. RAMON` → canonical `UNIDENTIFIED_SPEAKER`; drop dead `four→form` | §14/§57 | tsc · 901 tests · build |
 | `58860d6` | qaFixer: remove blanket deterministic `K.→Okay.` | §14/§57 | tsc · 901 tests |
-| `845e2bd` | Standalone `K.→Okay.` as **bounded** verbatim exception (ADR-0018/DOC-0322); supersedes `58860d6` | ratified exception | tsc · 910 tests · docs:check |
+| `845e2bd` | Standalone `K.→Okay.` verbatim exception, utterance-initial (ADR-0018/DOC-0322); supersedes `58860d6` | bounded exception | tsc · 910 tests · docs:check |
+| `c4ad9fd` | Tighten `K.`/`k.`→`Okay.` to **whole-utterance only**; correct governance (A9, not phantom A11/ADR-0017); ADR-0018 → **DRAFT**; supersedes `845e2bd` | bounded exception | tsc · 912 tests · docs:check |
 
 ## Architectural reduction scorecard (§41)
 
@@ -87,7 +88,14 @@ All local on `feature/stage3-workspace-core` (no history rewrite). Only the boun
 | Competing Q/A structural authorities | `line_type`, `structureEngine`, workspace heuristics, `qaFixer`, spec_engine | `structureEngine` retired; `qaFixer` marked retirement candidate | target = one reviewed structured line-type authority |
 | Full test suite | 942/942 (140 files) baseline | 910/910 (135 files) | 5 dead test files removed; regression tests added |
 
-Lower LOC alone is not the objective. The net effect is fewer competing authorities, zero live fabrication of the record, and a single governed bounded exception replacing several unbounded case-specific rules.
+Lower LOC alone is not the objective. The net effect is fewer competing authorities, zero live fabrication of the record, and a single bounded exception replacing several unbounded case-specific rules.
+
+### Governance note (verbatim floor)
+
+The CFE code cited an "A11 / ADR-0017 verbatim floor" that does not exist: `RATIFIED_DECISIONS.md` defines architecture decisions **A1–A10**, and there is no `ADR-0017` file. The verbatim floor is actually **A9** ("Deepgram is the immutable baseline") read with **A8** ("rendering never writes; a formatting pass is not a correction"). Consequently:
+
+- **ADR-0018 is DRAFT (ratification REVIEW), not ratified.** Two questions must close: (a) is a render-pass `K.→Okay.` a deterministic rendering normalization (A10-class) or a recordable correction (A1/A5)? (b) Miah (format authority) confirmation. The code ships as the owner-approved direction; it is not deployed.
+- **Deferred (separate commit):** sweep the stale `A11 / ADR-0017` comments across `cfe.ts`, `cfe.verbatim.test.ts`, and `buildEditorContent.ts`, and author the missing real verbatim-floor ADR against A9/A8.
 
 ## qaFixer disposition — Complexity Justification Test (§15)
 

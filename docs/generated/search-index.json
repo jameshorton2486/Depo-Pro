@@ -32941,9 +32941,12 @@
         "depo-pro",
         "disposition",
         "docs",
+        "floor",
+        "governance",
         "implementation",
         "justification",
         "matrix",
+        "note",
         "operations",
         "phase",
         "progress",
@@ -32954,6 +32957,7 @@
         "scorecard",
         "simplification",
         "test",
+        "verbatim",
         "working"
       ],
       "headings": [
@@ -32984,6 +32988,10 @@
         {
           "level": 2,
           "text": "Architectural reduction scorecard (§41)"
+        },
+        {
+          "level": 3,
+          "text": "Governance note (verbatim floor)"
         },
         {
           "level": 2,
