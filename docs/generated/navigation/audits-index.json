@@ -2,11 +2,11 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770",
-  "graph_sha256": "b5b0ddcbabd546f785d8dd12d42a56c33ebe354f06b3c67166c613e3c7303299",
+  "manifest_sha256": "6d5dfc9d13303ac3fdf00eaadd371692d72f96eceabee2a79100acefb58eeb26",
+  "graph_sha256": "3d120ee35080d841c9fb2ccc78cb7c758ba8711bf4b8081a0359e4604456a50c",
   "name": "audits",
   "title": "Audits",
-  "document_count": 139,
+  "document_count": 140,
   "documents": [
     {
       "id": "DOC-0143",
@@ -1254,6 +1254,15 @@
       "id": "DOC-0325",
       "title": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable",
       "path": "docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0326",
+      "title": "Python transcript_formatter/ characterization — pre-retirement inventory",
+      "path": "docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md",
       "tier": "T5",
       "status": "ACTIVE",
       "owner": "Architecture",

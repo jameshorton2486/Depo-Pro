@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770",
-  "graph_sha256": "b5b0ddcbabd546f785d8dd12d42a56c33ebe354f06b3c67166c613e3c7303299",
-  "document_count": 325,
+  "manifest_sha256": "6d5dfc9d13303ac3fdf00eaadd371692d72f96eceabee2a79100acefb58eeb26",
+  "graph_sha256": "3d120ee35080d841c9fb2ccc78cb7c758ba8711bf4b8081a0359e4604456a50c",
+  "document_count": 326,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33598,6 +33598,145 @@
         {
           "level": 3,
           "text": "Exact remaining gate (STOP here under freeze)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0326",
+      "title": "Python transcript_formatter/ characterization — pre-retirement inventory",
+      "path": "docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "above",
+        "additive",
+        "all",
+        "already",
+        "any",
+        "architecture",
+        "assets",
+        "audits",
+        "before",
+        "behavior",
+        "but",
+        "capabilities",
+        "case-specific",
+        "certified-output",
+        "characterization",
+        "checklist",
+        "cloud",
+        "core",
+        "correction",
+        "correctionobject",
+        "cost",
+        "dead",
+        "delete",
+        "deletion",
+        "deterministic",
+        "docs",
+        "engine",
+        "executable",
+        "exposure",
+        "fabrication",
+        "formatter",
+        "four-part",
+        "freeze-safe",
+        "gate",
+        "generic",
+        "harvest",
+        "hazards",
+        "inventory",
+        "list",
+        "live",
+        "met",
+        "morson",
+        "must",
+        "not",
+        "notes",
+        "pre-retirement",
+        "preserve",
+        "production",
+        "python",
+        "python-only",
+        "read-only",
+        "recommended",
+        "relative",
+        "replicates",
+        "rule",
+        "rules",
+        "run",
+        "safe",
+        "schema-of-record",
+        "see",
+        "sequence",
+        "single-source-of-truth",
+        "spec",
+        "status",
+        "survive",
+        "tables",
+        "tests",
+        "transcript",
+        "ufm",
+        "verdict",
+        "what",
+        "yet"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Python transcript_formatter/ characterization — pre-retirement inventory"
+        },
+        {
+          "level": 2,
+          "text": "Verdict — DEAD relative to production, but NOT yet safe to delete"
+        },
+        {
+          "level": 2,
+          "text": "Live vs. Python — what the Cloud Run `formatter_core` already replicates"
+        },
+        {
+          "level": 2,
+          "text": "Harvest checklist — preserve BEFORE any deletion"
+        },
+        {
+          "level": 3,
+          "text": "A. Deterministic rule tables (the Morson/UFM correction engine)"
+        },
+        {
+          "level": 3,
+          "text": "B. Certified-output capabilities (see Python-only list above) + UFM assets"
+        },
+        {
+          "level": 3,
+          "text": "C. The CorrectionObject schema-of-record (already the TS single-source-of-truth)"
+        },
+        {
+          "level": 3,
+          "text": "D. Executable behavior spec (tests to harvest)"
+        },
+        {
+          "level": 2,
+          "text": "Hazards — case-specific / fabrication rules that must NOT survive as generic behavior"
+        },
+        {
+          "level": 2,
+          "text": "Cost exposure"
+        },
+        {
+          "level": 2,
+          "text": "Four-part deletion gate — status: NOT MET"
+        },
+        {
+          "level": 2,
+          "text": "Recommended pre-retirement sequence (all freeze-safe, read-only or additive)"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
         }
       ]
     }

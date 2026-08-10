@@ -3,10 +3,10 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770",
-  "compared_to_commit": "1da7f86cd06171f42b6e04dd011085335a3324ae",
+  "source_sha256": "6d5dfc9d13303ac3fdf00eaadd371692d72f96eceabee2a79100acefb58eeb26",
+  "compared_to_commit": "f81925110459e3594bef77680601a5fecbce054d",
   "added_documents": [
-    "DOC-0325"
+    "DOC-0326"
   ],
   "removed_documents": [],
   "authority_changes": [],

@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770",
+  "source_sha256": "6d5dfc9d13303ac3fdf00eaadd371692d72f96eceabee2a79100acefb58eeb26",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4881,6 +4881,21 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0326",
+      "title": "Python transcript_formatter/ characterization — pre-retirement inventory",
+      "path": "docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6505,6 +6520,11 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0325",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0326",
       "target": "DOC-0071"
     },
     {
@@ -8508,6 +8528,11 @@
       "target": "DOC-0232"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0326",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -10201,6 +10226,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0325",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0326",
+      "target": "OWNER:Architecture"
     }
   ],
   "owners": {
@@ -10517,7 +10547,8 @@
       "DOC-0320",
       "DOC-0321",
       "DOC-0324",
-      "DOC-0325"
+      "DOC-0325",
+      "DOC-0326"
     ],
     "Deepgram": [
       "DOC-0069"

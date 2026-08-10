@@ -2,7 +2,7 @@
 # Documentation Dependency Report
 
 Source: `docs/document-manifest.json`
-Manifest SHA-256: `ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770`
+Manifest SHA-256: `6d5dfc9d13303ac3fdf00eaadd371692d72f96eceabee2a79100acefb58eeb26`
 Generated: 2026-08-05
 
 ## Integrity
@@ -25,22 +25,22 @@ None
 
 | Metric | Count |
 | --- | ---: |
-| Documents | 325 |
+| Documents | 326 |
 | Authorities | 12 |
-| Relationships | 1057 |
-| Governance | 318 |
+| Relationships | 1060 |
+| Governance | 319 |
 | Supersession | 3 |
 | References | 112 |
-| Hierarchy | 285 |
+| Hierarchy | 286 |
 | Review dependencies | 14 |
-| Ownership | 325 |
+| Ownership | 326 |
 | Owners | 7 |
 
 ## Ownership
 
 | Owner | Documents |
 | --- | ---: |
-| Architecture | 313 |
+| Architecture | 314 |
 | Deepgram | 1 |
 | Intake | 2 |
 | Project | 2 |
