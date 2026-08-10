@@ -176,6 +176,13 @@ export const MAX_FINALIZE_ATTEMPTS = 5;
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+// Boundary detection is PAUSED pending an architecture decision (Phase G). As
+// shipped it ran claude-sonnet-4-6 on stub/placeholder system prompts in the
+// finalize path, letting an unprompted model author synthetic parentheticals
+// and exclusion flags near the testimonial record — an A11 exposure, not just
+// a cost leak. This is a reversible pause (flag, not deletion): re-enable ONLY
+// with real, ratified prompts by setting BOUNDARY_ENGINE_ENABLED=true.
+const boundaryEngineEnabled = Deno.env.get("BOUNDARY_ENGINE_ENABLED") === "true";
 
 type JobPatch = Partial<
   Pick<
@@ -659,6 +666,12 @@ async function runBoundaryEngine(
   supabase: SupabaseClient<Database>,
   job: TranscriptionJobRecord,
 ): Promise<void> {
+  if (!boundaryEngineEnabled) {
+    console.warn("[transcript-finalize] boundary engine paused pending architecture decision; set BOUNDARY_ENGINE_ENABLED=true only with real prompts", {
+      transcriptId: job.transcript_id,
+    });
+    return;
+  }
   if (!anthropicApiKey) {
     console.warn("[transcript-finalize] boundary engine skipped: missing ANTHROPIC_API_KEY", {
       transcriptId: job.transcript_id,
