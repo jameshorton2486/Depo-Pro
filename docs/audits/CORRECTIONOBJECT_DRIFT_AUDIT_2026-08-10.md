@@ -87,7 +87,7 @@ Evidence supports **TypeScript (`correctionObject.ts`) as the surviving producti
 - Ladder: focused (16) + full suite (930) pass; typecheck + changed-file lint clean; build OK.
 
 ## Remaining harvest / gates (not done here)
-- **Bridge/provider prompt** `transcript_formatter/prompts/bridge/full_review.md` (referenced by `aiCorrectionBridge.ts:10-12`, text embedded/versioned in the TS) — relocate to a surviving governed home before that comment is de-dangled and before Python retirement. Separate harvest item.
+- **Bridge/provider prompt** `transcript_formatter/prompts/bridge/full_review.md` — **not a mechanical relocate.** Characterized 2026-08-10: the `.md` is a 128-line design document (`# Role` structure + ATIA-STATUS header); the *runtime* prompt is `BRIDGE_SYSTEM_PROMPT` (~21 condensed lines, `aiCorrectionBridge.ts:78-99`). Both tagged `bridge/full_review@v1` but they are **divergent representations** — relocating the `.md` as-is would enshrine a design doc that no longer matches what executes. Requires a reconciliation decision (is the `.md` still the spec, or has the runtime TS become canonical?) before relocation + de-dangling the `aiCorrectionBridge.ts:10-12` comment. Open harvest item; the runtime prompt already lives in the surviving `src/` domain, so retirement of the `.md` loses no executing behavior.
 - **Python deletion** stays behind the DOC-0326 four-part gate. The schema copy + `correction_object.py` + `test_correction_object.py` go with it.
 - The **shared-laxity** items above are a future convergence decision, not a freeze-time change.
 
