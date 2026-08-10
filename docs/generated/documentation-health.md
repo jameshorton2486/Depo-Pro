@@ -7,10 +7,10 @@
 | --- | ---: |
 | Managed documents | 322 |
 | Authority documents | 12 |
-| Active documents | 175 |
-| Draft documents | 5 |
+| Active documents | 174 |
+| Draft documents | 6 |
 | Archived documents | 44 |
-| Relationships | 1046 |
+| Relationships | 1047 |
 | Governance cycles | 0 |
 | Supersession cycles | 0 |
 | Duplicate authority scopes | 0 |

@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "22bf6fe3fdd32aff3a5a1863d8c4ff696403a38075bd2b44f52327a678c17a6c",
+  "source_sha256": "45f7e6b5a55cd280d0a67a2c607b7e5c9522577ad35056e42605423e5426b8df",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4823,10 +4823,10 @@
     {
       "entity_type": "DOCUMENT",
       "id": "DOC-0322",
-      "title": "ADR-0018 — Standalone \"K.\" → \"Okay.\" bounded verbatim exception",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" bounded verbatim exception",
       "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
       "tier": "T4",
-      "status": "ACTIVE",
+      "status": "DRAFT",
       "owner": "Rendering",
       "authoritative": false,
       "authority_scopes": [
@@ -7016,6 +7016,11 @@
       "type": "REFERENCE",
       "source": "DOC-0145",
       "target": "DOC-0277"
+    },
+    {
+      "type": "REFERENCE",
+      "source": "DOC-0322",
+      "target": "DOC-0074"
     },
     {
       "type": "HIERARCHY",

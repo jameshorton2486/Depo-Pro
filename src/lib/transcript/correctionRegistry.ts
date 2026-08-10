@@ -49,17 +49,30 @@ export interface StutterRule {
 export const INTERRUPTION_DASH = " -- ";
 
 export const DETERMINISTIC_TOKEN_CORRECTIONS: DeterministicCorrection[] = [
+  // ADR-0018 (DRAFT): a spoken utterance transcribed as a bare "K." / "k." is a
+  // recognized ASR artifact for "Okay." and canonicalizes even inside the
+  // verbatim floor (A9). Bounded to a WHOLE standalone utterance: the token must
+  // be the SOLE token of its segment — requiresPrecedingPattern AND
+  // requiresFollowingPattern both /^$/ (no word before or after it). It
+  // deliberately does NOT fire on longer utterances ("K. Smith testified.",
+  // "K. And then I left."), exhibit letters ("Exhibit K."), name initials
+  // ("John K. Smith", "Mr. K. Smith"), or "Section K." — those ambiguous cases
+  // go to the AI/human correction pipeline. Do NOT broaden without amending
+  // ADR-0018; a positional-only rule corrupts identifiers.
   {
-    // ADR-0018: a standalone, utterance-initial "K." is a recognized ASR artifact
-    // for the spoken "Okay." and canonicalizes even inside the verbatim floor.
-    // requiresPrecedingPattern /^$/ bounds it to utterance start ONLY, so exhibit
-    // letters ("Exhibit K."), name initials ("John K. Smith", "Mr. K. Smith"),
-    // and any other mid-utterance "K." are preserved verbatim. Do NOT broaden
-    // this without amending ADR-0018 — a blanket "K." rule corrupts identifiers.
     match: "K.",
     replacement: "Okay.",
-    reason: "Standalone spoken 'K.' is a recognized ASR artifact for 'Okay.' (ADR-0018 verbatim exception)",
+    reason: "Standalone spoken 'K.' is a recognized ASR artifact for 'Okay.' (ADR-0018)",
     requiresPrecedingPattern: /^$/,
+    requiresFollowingPattern: /^$/,
+    verbatimException: true,
+  },
+  {
+    match: "k.",
+    replacement: "Okay.",
+    reason: "Standalone spoken 'k.' is a recognized ASR artifact for 'Okay.' (ADR-0018)",
+    requiresPrecedingPattern: /^$/,
+    requiresFollowingPattern: /^$/,
     verbatimException: true,
   },
   {

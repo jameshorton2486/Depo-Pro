@@ -603,14 +603,15 @@ function normalizeDisplayToken(
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
 
-  // Verbatim floor (A9 / the ADR-0017 verbatim policy): date reshaping and
+  // Verbatim floor (A8 "rendering never writes; a formatting pass is not a
+  // correction" + A9 "Deepgram is the immutable baseline"): date reshaping and
   // ASR-garble token substitution replace a source word with a DIFFERENT word
   // (e.g. "Peterson" → "Bentley"). That is correction, not formatting, so the
-  // first-render (verbatim) path skips it. The ONE ratified exception is the
-  // narrowly-bounded standalone "K." → "Okay." artifact (ADR-0018;
+  // first-render (verbatim) path skips it. The one exception is the bounded
+  // standalone "K." / "k." → "Okay." artifact (ADR-0018, DRAFT;
   // verbatimException in correctionRegistry), which runs on every render
-  // including verbatim and is bounded to utterance-initial "K." so exhibit
-  // letters and name initials are never touched.
+  // including verbatim and is bounded to a whole standalone utterance so
+  // exhibit letters and name initials are never touched.
   if (applyLexicalCorrections) {
     text = normalizeSlashDate(text);
   }

@@ -2,8 +2,8 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "22bf6fe3fdd32aff3a5a1863d8c4ff696403a38075bd2b44f52327a678c17a6c",
-  "graph_sha256": "f733f28373bda66da664fc8720be4d25b1eb0c95f322eab3de80b595ddbb3861",
+  "manifest_sha256": "45f7e6b5a55cd280d0a67a2c607b7e5c9522577ad35056e42605423e5426b8df",
+  "graph_sha256": "80c6d075d57b39dc0b1710f4ee94642b894b4be1eac0c0b9b915c6e3e07253fb",
   "document_count": 322,
   "documents": [
     {
@@ -33175,48 +33175,45 @@
     },
     {
       "id": "DOC-0322",
-      "title": "ADR-0018 — Standalone \"K.\" → \"Okay.\" bounded verbatim exception",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" bounded verbatim exception",
       "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
       "category": "architecture",
       "owner": "Rendering",
       "authority": false,
       "tier": "T4",
-      "status": "ACTIVE",
+      "status": "DRAFT",
       "keywords": [
-        "accepted",
-        "adr",
         "adr-0018",
         "alternatives",
         "architecture",
         "boundary",
         "bounded",
-        "commit",
         "completed",
         "consequences",
         "considered",
         "context",
         "decision",
-        "deploy",
+        "deployed",
         "exception",
+        "governance",
         "implementation",
-        "limitation",
-        "narrowest",
-        "new",
+        "not",
         "okay",
-        "push",
-        "reliable",
+        "only",
+        "open",
+        "proposed",
+        "questions",
+        "ratification",
         "rendering",
-        "residual",
-        "signal",
         "standalone",
-        "under",
         "verbatim",
-        "verbatim-standalone-k-okay-exception"
+        "verbatim-standalone-k-okay-exception",
+        "whole-utterance"
       ],
       "headings": [
         {
           "level": 1,
-          "text": "ADR-0018 — Standalone \"K.\" → \"Okay.\" bounded verbatim exception"
+          "text": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" bounded verbatim exception"
         },
         {
           "level": 2,
@@ -33224,15 +33221,15 @@
         },
         {
           "level": 2,
-          "text": "Decision"
+          "text": "Decision (proposed)"
         },
         {
           "level": 3,
-          "text": "Boundary (narrowest reliable signal)"
+          "text": "Boundary (whole-utterance only)"
         },
         {
-          "level": 3,
-          "text": "Residual limitation (accepted)"
+          "level": 2,
+          "text": "Governance — open questions for ratification"
         },
         {
           "level": 2,
@@ -33244,7 +33241,7 @@
         },
         {
           "level": 2,
-          "text": "Implementation (completed under this ADR — new commit, no push, no deploy)"
+          "text": "Implementation (completed; not deployed)"
         }
       ]
     }

@@ -89,9 +89,9 @@ function assertWordsVerbatim(formatted: FormattedDocument): void {
       // preserved words, appending " --" to the first of a repeated pair.
       const rendered = word.text.replace(/\s*--\s*$/, "");
       // Permitted correction: the ADR-0018 bounded exception canonicalizes a
-      // standalone (utterance-initial) "K." to "Okay." on every render. This is
-      // a ratified exception to the verbatim floor, not a fabrication.
-      if (rendered === "Okay." && word.raw_text === "K.") {
+      // whole standalone "K." / "k." utterance to "Okay." on every render. This
+      // is a bounded exception to the verbatim floor, not a fabrication.
+      if (rendered === "Okay." && (word.raw_text === "K." || word.raw_text === "k.")) {
         continue;
       }
       if (rendered !== word.raw_text) {
@@ -219,37 +219,53 @@ describe("export render model verbatim (C1b)", () => {
   });
 });
 
-// ADR-0018 — a standalone (utterance-initial) "K." is a recognized ASR artifact
-// for the spoken "Okay." and is the ONE bounded correction permitted inside the
-// verbatim floor. Bounded to utterance start so exhibit letters and name
-// initials are never touched.
-describe("ADR-0018 — standalone K. -> Okay. bounded verbatim exception", () => {
+// ADR-0018 (DRAFT) — a WHOLE standalone utterance transcribed as "K." / "k." is
+// a recognized ASR artifact for the spoken "Okay." and is the one bounded
+// correction permitted inside the verbatim floor. Bounded to a sole-token
+// utterance, so longer utterances, exhibit letters, and name initials are never
+// touched; those ambiguous cases go to the AI/human correction pipeline.
+describe("ADR-0018 — standalone K./k. -> Okay. bounded verbatim exception", () => {
   const render = (doc: EditorDocument, applyLexicalCorrections: boolean) => {
     const formatted = cfe(doc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, { applyLexicalCorrections });
     return new Map(formatted.lines.flatMap((line) => line.words).map((word) => [word.word_id, word]));
   };
 
-  it("normalizes a standalone utterance-initial K. to Okay. in the verbatim render", () => {
+  it("normalizes a whole standalone 'K.' utterance to 'Okay.' (verbatim render)", () => {
     expect(render(makeDoc([{ word_id: "w1", text: "K." }]), false).get("w1")?.text).toBe("Okay.");
   });
 
-  it("normalizes a leading K. that opens a multi-word utterance", () => {
-    const byId = render(makeDoc([
-      { word_id: "w1", text: "K." },
-      { word_id: "w2", text: "And" },
-      { word_id: "w3", text: "then." },
-    ]), false);
-    expect(byId.get("w1")?.text).toBe("Okay.");
+  it("normalizes a whole standalone lowercase 'k.' utterance to 'Okay.'", () => {
+    expect(render(makeDoc([{ word_id: "w1", text: "k." }]), false).get("w1")?.text).toBe("Okay.");
   });
 
   it("applies in the corrected render too", () => {
     expect(render(makeDoc([{ word_id: "w1", text: "K." }]), true).get("w1")?.text).toBe("Okay.");
   });
 
-  it("preserves 'Exhibit K.' (letter designation for a thing) in both renders", () => {
+  it("does NOT convert a leading 'K.' in a longer utterance ('K. And then...') — defers to correction pipeline", () => {
+    const byId = render(makeDoc([
+      { word_id: "w1", text: "K." },
+      { word_id: "w2", text: "And" },
+      { word_id: "w3", text: "then." },
+    ]), false);
+    expect(byId.get("w1")?.text).toBe("K.");
+  });
+
+  it("does NOT convert a sentence-initial name initial ('K. Smith testified.')", () => {
+    const byId = render(makeDoc([
+      { word_id: "w1", text: "K." },
+      { word_id: "w2", text: "Smith" },
+      { word_id: "w3", text: "testified." },
+    ]), false);
+    expect(byId.get("w1")?.text).toBe("K.");
+  });
+
+  it("preserves 'Exhibit K.' and 'Section K.' (letter designations) in both renders", () => {
     for (const gated of [false, true]) {
-      const byId = render(makeDoc([{ word_id: "e1", text: "Exhibit" }, { word_id: "k1", text: "K." }]), gated);
-      expect(byId.get("k1")?.text).toBe("K.");
+      const exhibit = render(makeDoc([{ word_id: "e1", text: "Exhibit" }, { word_id: "k1", text: "K." }]), gated);
+      expect(exhibit.get("k1")?.text).toBe("K.");
+      const section = render(makeDoc([{ word_id: "s1", text: "Section" }, { word_id: "k1", text: "K." }]), gated);
+      expect(section.get("k1")?.text).toBe("K.");
     }
   });
 
@@ -266,7 +282,7 @@ describe("ADR-0018 — standalone K. -> Okay. bounded verbatim exception", () =>
     }
   });
 
-  it("leaves a bare 'K' without a period unchanged (rule is scoped to the 'K.' token)", () => {
+  it("leaves a bare 'K' without a period unchanged (rule is scoped to the 'K.'/'k.' token)", () => {
     expect(render(makeDoc([{ word_id: "w1", text: "K" }]), false).get("w1")?.text).toBe("K");
   });
 
