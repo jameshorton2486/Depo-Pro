@@ -5,12 +5,12 @@
 
 | Metric | Count |
 | --- | ---: |
-| Managed documents | 315 |
+| Managed documents | 320 |
 | Authority documents | 12 |
-| Active documents | 169 |
-| Draft documents | 4 |
+| Active documents | 173 |
+| Draft documents | 5 |
 | Archived documents | 44 |
-| Relationships | 1023 |
+| Relationships | 1039 |
 | Governance cycles | 0 |
 | Supersession cycles | 0 |
 | Duplicate authority scopes | 0 |

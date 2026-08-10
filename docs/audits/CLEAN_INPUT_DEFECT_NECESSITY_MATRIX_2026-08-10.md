@@ -1,5 +1,22 @@
 # Clean-Input Defect and Necessity Matrix
 
+---
+authority_tier: T5
+status: ACTIVE
+owner: Architecture
+scope: clean-input-defect-necessity
+supersedes: null
+superseded_by: null
+approved_by: null
+version: null
+effective_date: 2026-08-10
+ratified_date: null
+last_reviewed: 2026-08-10
+next_review: 2027-08-10
+ratification: NOT_REQUIRED
+implementation_status: PARTIAL
+---
+
 Date: 2026-08-10  
 Benchmark transcript: `tr_1786372056908_hyjqv3`  
 Status: Baseline assessment

@@ -2,11 +2,11 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "63b63c21707c28e5ff2d85ef99e3e5f8c4f8a93322bb16beff74a89ffbe2aec6",
-  "graph_sha256": "1ff427d7e3c187df60551a751afe94bc6daf26714f3d4b38cd310ab420ec4c39",
+  "manifest_sha256": "a6873b0c711c85c65fceaaa18659915501cc4d734556dd92a386a59e6c55291d",
+  "graph_sha256": "828215a9d3f5e2ca38dd375337b8ed4938d37ac5c1756aba653bca71c36307ac",
   "name": "audits",
   "title": "Audits",
-  "document_count": 132,
+  "document_count": 136,
   "documents": [
     {
       "id": "DOC-0143",
@@ -1191,6 +1191,42 @@
       "id": "DOC-0274",
       "title": "Stage S Validation Report",
       "path": "docs/audits/stage-s/STAGE_S_VALIDATION_REPORT.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0317",
+      "title": "AI-Review HTTP 500 Root-Cause Report",
+      "path": "docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0318",
+      "title": "Depo-Pro Autonomous Architecture Simplification Working Report",
+      "path": "docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0319",
+      "title": "Canonical Authority Matrix",
+      "path": "docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0320",
+      "title": "Clean-Input Defect and Necessity Matrix",
+      "path": "docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md",
       "tier": "T5",
       "status": "ACTIVE",
       "owner": "Architecture",

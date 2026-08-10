@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "63b63c21707c28e5ff2d85ef99e3e5f8c4f8a93322bb16beff74a89ffbe2aec6",
-  "graph_sha256": "1ff427d7e3c187df60551a751afe94bc6daf26714f3d4b38cd310ab420ec4c39",
-  "document_count": 315,
+  "manifest_sha256": "a6873b0c711c85c65fceaaa18659915501cc4d734556dd92a386a59e6c55291d",
+  "graph_sha256": "828215a9d3f5e2ca38dd375337b8ed4938d37ac5c1756aba653bca71c36307ac",
+  "document_count": 320,
   "documents": [
     {
       "id": "DOC-0001",
@@ -32718,6 +32718,352 @@
         {
           "level": 2,
           "text": "Follow-ups (not in this change)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0316",
+      "title": "Depo-Pro Target Simplified Architecture",
+      "path": "docs/architecture/TARGET_SIMPLIFIED_ARCHITECTURE.md",
+      "category": "architecture",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T2",
+      "status": "DRAFT",
+      "keywords": [
+        "adapters",
+        "architectural",
+        "architecture",
+        "boundaries",
+        "boundary",
+        "canonical",
+        "certification",
+        "compatibility",
+        "current",
+        "decisions",
+        "dependency",
+        "depo-pro",
+        "elimination",
+        "evidence",
+        "finalization",
+        "gate",
+        "human",
+        "intake",
+        "intelligence",
+        "map",
+        "migration",
+        "model",
+        "one",
+        "proposal-only",
+        "public",
+        "pure",
+        "ratification",
+        "reissue",
+        "rendering",
+        "requirements",
+        "requiring",
+        "reviewed",
+        "rules",
+        "sentence",
+        "simplified",
+        "stage",
+        "structure",
+        "target",
+        "target-simplified-system-architecture",
+        "transcribe-once",
+        "transcript",
+        "working"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Depo-Pro Target Simplified Architecture"
+        },
+        {
+          "level": 2,
+          "text": "Architectural sentence"
+        },
+        {
+          "level": 2,
+          "text": "Stage boundaries"
+        },
+        {
+          "level": 2,
+          "text": "Current architecture"
+        },
+        {
+          "level": 2,
+          "text": "Target architecture"
+        },
+        {
+          "level": 3,
+          "text": "1. Canonical Intake boundary"
+        },
+        {
+          "level": 3,
+          "text": "2. Transcribe-once evidence boundary"
+        },
+        {
+          "level": 3,
+          "text": "3. Proposal-only intelligence boundary"
+        },
+        {
+          "level": 3,
+          "text": "4. One Working Transcript boundary"
+        },
+        {
+          "level": 3,
+          "text": "5. Reviewed structure boundary"
+        },
+        {
+          "level": 3,
+          "text": "6. One finalization model"
+        },
+        {
+          "level": 3,
+          "text": "7. Certification and reissue"
+        },
+        {
+          "level": 3,
+          "text": "8. Pure rendering adapters"
+        },
+        {
+          "level": 2,
+          "text": "Public boundaries"
+        },
+        {
+          "level": 2,
+          "text": "Dependency rules"
+        },
+        {
+          "level": 2,
+          "text": "Elimination map"
+        },
+        {
+          "level": 2,
+          "text": "Migration map"
+        },
+        {
+          "level": 2,
+          "text": "Compatibility requirements"
+        },
+        {
+          "level": 2,
+          "text": "Decisions requiring ratification or a Human Gate"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0317",
+      "title": "AI-Review HTTP 500 Root-Cause Report",
+      "path": "docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "500",
+        "additional",
+        "ai-review",
+        "architectural",
+        "architecture",
+        "audits",
+        "cause",
+        "characterization",
+        "classification",
+        "defects",
+        "diagnostic",
+        "dimensions",
+        "disposition",
+        "docs",
+        "exposed",
+        "finding",
+        "http",
+        "report",
+        "required",
+        "review",
+        "root",
+        "root-cause"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "AI-Review HTTP 500 Root-Cause Report"
+        },
+        {
+          "level": 2,
+          "text": "Finding"
+        },
+        {
+          "level": 2,
+          "text": "Required diagnostic dimensions"
+        },
+        {
+          "level": 2,
+          "text": "Additional defects exposed by characterization"
+        },
+        {
+          "level": 2,
+          "text": "Classification"
+        },
+        {
+          "level": 2,
+          "text": "Architectural disposition"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0318",
+      "title": "Depo-Pro Autonomous Architecture Simplification Working Report",
+      "path": "docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "ai-review",
+        "architecture",
+        "audits",
+        "autonomous",
+        "baseline",
+        "benchmark",
+        "blockers",
+        "capability",
+        "census",
+        "clean-input",
+        "complexity",
+        "defect",
+        "deferred",
+        "depo-pro",
+        "diagnosis",
+        "docs",
+        "graph",
+        "matrix",
+        "necessity",
+        "operations",
+        "report",
+        "responsibility",
+        "safety",
+        "simplification",
+        "working"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Depo-Pro Autonomous Architecture Simplification Working Report"
+        },
+        {
+          "level": 2,
+          "text": "Capability matrix"
+        },
+        {
+          "level": 2,
+          "text": "Safety baseline"
+        },
+        {
+          "level": 2,
+          "text": "Clean-input benchmark"
+        },
+        {
+          "level": 2,
+          "text": "Clean-input defect and necessity matrix"
+        },
+        {
+          "level": 2,
+          "text": "AI-review diagnosis"
+        },
+        {
+          "level": 2,
+          "text": "Responsibility graph and complexity census"
+        },
+        {
+          "level": 2,
+          "text": "Blockers and deferred operations"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0319",
+      "title": "Canonical Authority Matrix",
+      "path": "docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "architecture",
+        "audits",
+        "authority",
+        "canonical",
+        "consolidation",
+        "decisions",
+        "deferred",
+        "docs",
+        "highest-value",
+        "matrix",
+        "order"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Canonical Authority Matrix"
+        },
+        {
+          "level": 2,
+          "text": "Matrix"
+        },
+        {
+          "level": 2,
+          "text": "Highest-value consolidation order"
+        },
+        {
+          "level": 2,
+          "text": "Deferred decisions"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0320",
+      "title": "Clean-Input Defect and Necessity Matrix",
+      "path": "docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "architecture",
+        "audits",
+        "benchmark",
+        "clean",
+        "clean-input",
+        "conclusion",
+        "defect",
+        "docs",
+        "facts",
+        "input",
+        "matrix",
+        "necessity"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Clean-Input Defect and Necessity Matrix"
+        },
+        {
+          "level": 2,
+          "text": "Benchmark facts"
+        },
+        {
+          "level": 2,
+          "text": "Conclusion"
         }
       ]
     }

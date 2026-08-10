@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "63b63c21707c28e5ff2d85ef99e3e5f8c4f8a93322bb16beff74a89ffbe2aec6",
+  "source_sha256": "a6873b0c711c85c65fceaaa18659915501cc4d734556dd92a386a59e6c55291d",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4731,6 +4731,81 @@
       "last_reviewed": "2026-08-06"
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0316",
+      "title": "Depo-Pro Target Simplified Architecture",
+      "path": "docs/architecture/TARGET_SIMPLIFIED_ARCHITECTURE.md",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "target-simplified-system-architecture"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-10"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0317",
+      "title": "AI-Review HTTP 500 Root-Cause Report",
+      "path": "docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0318",
+      "title": "Depo-Pro Autonomous Architecture Simplification Working Report",
+      "path": "docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0319",
+      "title": "Canonical Authority Matrix",
+      "path": "docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0320",
+      "title": "Clean-Input Defect and Necessity Matrix",
+      "path": "docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6306,6 +6381,31 @@
       "type": "GOVERNANCE",
       "source": "DOC-0315",
       "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0316",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0317",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0318",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0319",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0320",
+      "target": "DOC-0071"
     },
     {
       "type": "SUPERSESSION",
@@ -8253,6 +8353,31 @@
       "target": "DOC-0041"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0316",
+      "target": "DOC-0041"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0317",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0318",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0319",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0320",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -8305,6 +8430,11 @@
     {
       "type": "REVIEW",
       "source": "DOC-0315",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0316",
       "target": "DOC-0068"
     },
     {
@@ -9881,6 +10011,31 @@
       "type": "OWNERSHIP",
       "source": "DOC-0315",
       "target": "OWNER:Workspace"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0316",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0317",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0318",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0319",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0320",
+      "target": "OWNER:Architecture"
     }
   ],
   "owners": {
@@ -10189,7 +10344,12 @@
       "DOC-0310",
       "DOC-0311",
       "DOC-0312",
-      "DOC-0313"
+      "DOC-0313",
+      "DOC-0316",
+      "DOC-0317",
+      "DOC-0318",
+      "DOC-0319",
+      "DOC-0320"
     ],
     "Deepgram": [
       "DOC-0069"

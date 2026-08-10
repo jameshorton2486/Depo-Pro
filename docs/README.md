@@ -9,9 +9,9 @@ Before changing application code, read [AGENTS.md](../AGENTS.md) and the [Master
 
 | Area | Documents | Generated index |
 | --- | ---: | --- |
-| Architecture | 48 | [architecture-index.json](generated/navigation/architecture-index.json) |
+| Architecture | 49 | [architecture-index.json](generated/navigation/architecture-index.json) |
 | Standards | 2 | [standards-index.json](generated/navigation/standards-index.json) |
-| Audits | 132 | [audits-index.json](generated/navigation/audits-index.json) |
+| Audits | 136 | [audits-index.json](generated/navigation/audits-index.json) |
 | Reports | 30 | [reports-index.json](generated/navigation/reports-index.json) |
 | Operations | 7 | [operations-index.json](generated/navigation/operations-index.json) |
 | Archive | 44 | [archive-index.json](generated/navigation/archive-index.json) |

@@ -2,11 +2,11 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "63b63c21707c28e5ff2d85ef99e3e5f8c4f8a93322bb16beff74a89ffbe2aec6",
-  "graph_sha256": "1ff427d7e3c187df60551a751afe94bc6daf26714f3d4b38cd310ab420ec4c39",
+  "manifest_sha256": "a6873b0c711c85c65fceaaa18659915501cc4d734556dd92a386a59e6c55291d",
+  "graph_sha256": "828215a9d3f5e2ca38dd375337b8ed4938d37ac5c1756aba653bca71c36307ac",
   "name": "architecture",
   "title": "Architecture",
-  "document_count": 48,
+  "document_count": 49,
   "documents": [
     {
       "id": "DOC-0051",
@@ -438,6 +438,15 @@
       "tier": "T4",
       "status": "ACTIVE",
       "owner": "Workspace",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0316",
+      "title": "Depo-Pro Target Simplified Architecture",
+      "path": "docs/architecture/TARGET_SIMPLIFIED_ARCHITECTURE.md",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Architecture",
       "authoritative": false
     }
   ]

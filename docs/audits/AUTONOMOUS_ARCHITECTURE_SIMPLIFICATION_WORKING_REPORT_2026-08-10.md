@@ -1,5 +1,22 @@
 # Depo-Pro Autonomous Architecture Simplification Working Report
 
+---
+authority_tier: T5
+status: ACTIVE
+owner: Architecture
+scope: autonomous-simplification-working-report
+supersedes: null
+superseded_by: null
+approved_by: null
+version: null
+effective_date: 2026-08-10
+ratified_date: null
+last_reviewed: 2026-08-10
+next_review: 2027-08-10
+ratification: NOT_REQUIRED
+implementation_status: PARTIAL
+---
+
 Date: 2026-08-10  
 Branch: `feature/stage3-workspace-core`  
 Baseline HEAD: `25b600010d0653277c0e0f4f7623aa5b03f88737`  

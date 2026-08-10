@@ -1,5 +1,22 @@
 # AI-Review HTTP 500 Root-Cause Report
 
+---
+authority_tier: T5
+status: ACTIVE
+owner: Architecture
+scope: ai-review-http-500-root-cause
+supersedes: null
+superseded_by: null
+approved_by: null
+version: null
+effective_date: 2026-08-10
+ratified_date: null
+last_reviewed: 2026-08-10
+next_review: 2027-08-10
+ratification: NOT_REQUIRED
+implementation_status: PARTIAL
+---
+
 Date: 2026-08-10  
 Transcript: `tr_1786372056908_hyjqv3`  
 Deployed function: `ai-review`, version 10

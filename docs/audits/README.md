@@ -3,7 +3,7 @@
 
 This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Managed documents: **131**
+Managed documents: **135**
 
 | Document | ID | Tier | Status | Owner |
 | --- | --- | --- | --- | --- |
@@ -138,3 +138,7 @@ Managed documents: **131**
 | [Repair Burden Report](stage-s/REPAIR_BURDEN_REPORT.md) | DOC-0272 | T5 | ACTIVE | Architecture |
 | [Stage S Owner Audit (PR #19)](stage-s/STAGE_S_OWNER_AUDIT.md) | DOC-0273 | T5 | ACTIVE | Architecture |
 | [Stage S Validation Report](stage-s/STAGE_S_VALIDATION_REPORT.md) | DOC-0274 | T5 | ACTIVE | Architecture |
+| [AI-Review HTTP 500 Root-Cause Report](AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md) | DOC-0317 | T5 | ACTIVE | Architecture |
+| [Depo-Pro Autonomous Architecture Simplification Working Report](AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md) | DOC-0318 | T5 | ACTIVE | Architecture |
+| [Canonical Authority Matrix](CANONICAL_AUTHORITY_MATRIX_2026-08-10.md) | DOC-0319 | T5 | ACTIVE | Architecture |
+| [Clean-Input Defect and Necessity Matrix](CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md) | DOC-0320 | T5 | ACTIVE | Architecture |
