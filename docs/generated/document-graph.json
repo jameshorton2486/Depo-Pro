@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "2ddd823a0abbe3c52eef7240f7c27ce7dbec30ee93157731e5a0bbf902e5da3d",
+  "source_sha256": "8995b252e2a49c22e40ce9ba37c3468678c9067e6404a8108c2676f291438a90",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4851,6 +4851,21 @@
       "last_reviewed": "2026-08-07"
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0324",
+      "title": "C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence",
+      "path": "docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6466,6 +6481,11 @@
       "type": "GOVERNANCE",
       "source": "DOC-0323",
       "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0324",
+      "target": "DOC-0071"
     },
     {
       "type": "SUPERSESSION",
@@ -8458,6 +8478,11 @@
       "target": "DOC-0041"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0324",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -10141,6 +10166,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0323",
       "target": "OWNER:Workspace"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0324",
+      "target": "OWNER:Architecture"
     }
   ],
   "owners": {
@@ -10455,7 +10485,8 @@
       "DOC-0318",
       "DOC-0319",
       "DOC-0320",
-      "DOC-0321"
+      "DOC-0321",
+      "DOC-0324"
     ],
     "Deepgram": [
       "DOC-0069"

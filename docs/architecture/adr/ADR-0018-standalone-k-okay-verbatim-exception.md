@@ -6,7 +6,7 @@ scope: verbatim-standalone-k-okay-exception
 supersedes: null
 superseded_by: null
 approved_by: null
-version: 0.3.0
+version: 0.4.0
 effective_date: null
 ratified_date: null
 last_reviewed: 2026-08-10
@@ -56,11 +56,22 @@ This also dissolves the residual worry: `K. Smith testified.` is never silently 
 
 ### Matcher specification (for the future A5 rule)
 
-Normalize utterance-initial `K.` / `k.` → `Okay.` when it represents the spoken discourse word "Okay." Preserve literal K uses associated with a name, named entity, exhibit/section designation, identifier, or other person/place/thing.
+Normalize **utterance-initial** `K.` / `k.` → `Okay.` when it is the spoken discourse word "Okay." — **including when followed by more speech**. Do NOT restrict to a sole-token utterance: real deposition evidence shows the common case is `K.` opening a full sentence. Preserve literal K uses associated with a name, exhibit/section designation, or identifier.
 
-- **Accepted** (utterance-initial discourse "Okay."): the five real examples above.
-- **Preserved** (literal K): `John K. Smith`, `Mr. K. Smith`, `Exhibit K.`, `Section K.`, `Company K.`, and any mid-utterance `K.`
-- **Residual ambiguity:** a sentence-initial single-letter name initial before a surname (`K. Smith testified.`) is indistinguishable from the discourse "Okay." without canonical entity context. No such context exists at the render layer (entityRegistry was retired as dead). In the A5 layer this is safe: the correction is a *marked proposal the reporter reviews*, not a silent change. Do not build a proper-name detection subsystem for this exception; document the residual and rely on human review.
+**Acceptance set (must convert):**
+- `K.` → `Okay.`
+- `K. So, go ahead.` → `Okay. So, go ahead.`
+- `K. Anything else?` → `Okay. Anything else?`
+- `K. Time is 06:04PM. We're off the record.` → `Okay. Time is 06:04PM. We're off the record.`
+
+**Exclusion set (must NOT convert):**
+- `John K. Smith`, `Mr. K. Smith` — not utterance-initial; `K.` is a middle initial (a preceding token).
+- `Exhibit K.`, `Section K.`, `Company K.` — not utterance-initial; `K.` is a designation (a preceding noun).
+- Any `K.` preceded by an honorific or a capitalized given name.
+
+**Discriminator + failure mode (stated plainly).** Utterance-initial position admits both the discourse "Okay." and a sentence-initial single-letter *name initial*. The available signal is **what follows**: a capitalized token that is not a sentence-start word reads as a surname (→ preserve); a lowercase word or discourse marker reads as the discourse "Okay." (→ convert). This is a **heuristic with a known failure mode** — `K. Smith testified.` is genuinely ambiguous and the rule may occasionally misfire (e.g. `K. Smith Industries told me`). That ambiguity is exactly why the rule lives in **A5**: a misfire is a *marked proposal the reporter reverts in one click* at read-through, not a silent verbatim mutation. Do NOT build a proper-name detection subsystem for this exception.
+
+**Cleaner signal to evaluate against the data (before finalizing).** `K. Time is …` reads as a reporter/videographer **on-record time announcement**, not witness speech. Speakers already carry a role (THE REPORTER / THE VIDEOGRAPHER via `resolveSpeakerDisplayName`), so if these utterances are speaker-attributed to the reporter/videographer — a known utterance shape — that attribution may be a more reliable trigger than the capitalization heuristic. Verify against the clean benchmark fixture before ratifying the matcher.
 
 ## Consequences
 

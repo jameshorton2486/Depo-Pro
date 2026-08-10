@@ -6120,6 +6120,25 @@
       "supersedes": []
     },
     {
+      "id": "DOC-0324",
+      "title": "C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence",
+      "path": "docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
       "id": "DOC-0323",
       "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
       "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",

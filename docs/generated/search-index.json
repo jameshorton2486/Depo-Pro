@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "2ddd823a0abbe3c52eef7240f7c27ce7dbec30ee93157731e5a0bbf902e5da3d",
-  "graph_sha256": "12e90ca29d6b056d0c4223cd44db963dc6c82517539dbbd70c969ba0abcf2cc7",
-  "document_count": 323,
+  "manifest_sha256": "8995b252e2a49c22e40ce9ba37c3468678c9067e6404a8108c2676f291438a90",
+  "graph_sha256": "2ce11a541514c9ffdd0d683f288d3fdc55f0cebfd6e8609299d6e55561d10bae",
+  "document_count": 324,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33332,6 +33332,74 @@
         {
           "level": 2,
           "text": "Part 2 boundary (no code in this ADR)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0324",
+      "title": "C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence",
+      "path": "docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "analysis",
+        "architecture",
+        "are",
+        "audits",
+        "c2a",
+        "confirmstructure",
+        "cross-cutting",
+        "decision",
+        "divergence",
+        "docs",
+        "export",
+        "finding",
+        "first",
+        "headline",
+        "highest-consequence",
+        "keeprawlabels",
+        "migration",
+        "once",
+        "recommended",
+        "risks",
+        "see",
+        "sequence",
+        "settled",
+        "structureconfirmed",
+        "workspace"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "C2a Decision Analysis — confirmStructure, keepRawLabels, and the export/workspace divergence"
+        },
+        {
+          "level": 2,
+          "text": "0. Headline — the highest-consequence finding first"
+        },
+        {
+          "level": 2,
+          "text": "1. `confirmStructure` / `structureConfirmed`"
+        },
+        {
+          "level": 2,
+          "text": "2. `keepRawLabels`"
+        },
+        {
+          "level": 2,
+          "text": "3. Export/workspace divergence (see §0)"
+        },
+        {
+          "level": 2,
+          "text": "Recommended migration sequence (once D1–D7 are settled)"
+        },
+        {
+          "level": 2,
+          "text": "Cross-cutting risks"
         }
       ]
     }
