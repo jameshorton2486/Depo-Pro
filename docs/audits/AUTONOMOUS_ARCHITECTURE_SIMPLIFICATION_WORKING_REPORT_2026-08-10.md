@@ -92,6 +92,31 @@ All local on `feature/stage3-workspace-core` (no history rewrite). Only the boun
 
 Lower LOC alone is not the objective. The net effect is fewer competing authorities, zero live fabrication of the record, and a single bounded exception replacing several unbounded case-specific rules.
 
+### LOC + module measurement (§41, read-only git)
+
+Baseline = `478cf7e` (`36dee53^`, the tree state immediately before the first reduction commit, Wave G1) → HEAD `7e86870`. Linear ancestor, so directly measurable. Whole diff: **66 files, +3255 / −2175**. Split by domain (`git diff --numstat`):
+
+| Domain | Added | Removed | Net | Note |
+|---|---|---|---|---|
+| **Production code** (`src/` excl. tests) | 772 | 1,555 | **−783** | net production shrinkage despite adding the whole line_type foundation |
+| Tests (`src/**/*.test.*`) | 386 | 547 | −161 | 5 dead test files removed; new invariant/drift tests added |
+| `supabase/` (functions + migrations) | 168 | 2 | +166 | line_type migration file + editor-api structure endpoint (non-active) |
+| Docs (excl. generated) | 901 | 10 | +891 | governance: DOC-0324..0327 + working report |
+| Generated docs | 1,028 | 61 | +967 | graph/build regeneration (mechanical) |
+
+**Modules:** production TS modules removed **5** (`correctionEngines`, `correctionValidator`, `entityRegistry`, `formattingEngine`, `structureEngine` — Wave G1), added **3** (`structuralProposal.ts`, `lineTypeMigration.ts`, relocated `correction_object.schema.json`). Net −2 live modules while *adding* the persisted-structure authority the app was missing.
+
+**Engines / authorities / AI paths (before → current):** dead/duplicate TS correction+reconstruction engines **5 → 0**; competing Q/A structural authorities **5 → 3** (`structureEngine` retired; `qaFixer` marked retire-via-migration; target = 1 reviewed `line_type`); CorrectionObject definitions **3 hand-synced → 2 mechanically drift-tested** (schema+TS; Python retires with its subsystem — DOC-0327); live record-fabricating paths **3 → 0**.
+
+**Five largest remaining deletion opportunities (by LOC, all gated):**
+1. **Python `transcript_formatter/` — 21,909 LOC / 113 files.** By far the largest. Dead relative to prod but gated behind the DOC-0326 four-part harvest gate (rule tables, certified pages, schema, prompts).
+2. **`ai-review` legacy word-suggestion path — ~540 LOC** (`supabase/functions/ai-review/index.ts`). Phase-G Wave G3 retires the legacy path once the CorrectionObject bridge is the single authority with a live reader.
+3. **`aiSuggestionEngine.ts` — 276 LOC.** Duplicate Anthropic transport, dead behind the ai-review 500 (Wave G2/G3).
+4. **`qaFixer.ts` — 281 LOC.** RETIRE-VIA-MIGRATION once persisted `line_type` owns Q/A structure (DOC-0325 activation).
+5. **`keepRawLabels` / `structureConfirmed` render branches.** Removed at line_type activation (DOC-0325 Wave 5+), collapsing the two render-time classifiers.
+
+Headline: production code has already **shrunk ~783 LOC net** while the missing structural authority was *added*; the dominant remaining reduction (~22k Python LOC + ~1.1k dead TS AI-path LOC) is staged behind harvest/activation gates, not blocked.
+
 ### Governance note (verbatim floor) — corrected
 
 An earlier revision of this report claimed the code's "A11 / ADR-0017 verbatim floor" citation was fictional. **That was wrong.** A11 ("No fabrication of the spoken record") and ADR-0017 were ratified on `docs/workspace-ufm-first-render` and had simply never been merged onto the code branch — so an audit of this branch alone could not see them. They are now merged (`8a32728`); the citations resolve. The lesson: a governing document absent from the branch where the code lives reads as a fabricated citation to any branch-local audit — merge, don't re-derive.

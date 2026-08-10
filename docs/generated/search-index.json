@@ -32947,14 +32947,18 @@
         "floor",
         "formatter",
         "freeze-limited",
+        "git",
         "governance",
         "implementation",
         "justification",
         "landed",
         "line",
+        "loc",
         "local",
         "matrix",
+        "measurement",
         "migration",
+        "module",
         "note",
         "operations",
         "phase",
@@ -32962,6 +32966,7 @@
         "progress",
         "python",
         "qafixer",
+        "read-only",
         "reduction",
         "report",
         "retirement",
@@ -33003,6 +33008,10 @@
         {
           "level": 2,
           "text": "Architectural reduction scorecard (§41)"
+        },
+        {
+          "level": 3,
+          "text": "LOC + module measurement (§41, read-only git)"
         },
         {
           "level": 3,
