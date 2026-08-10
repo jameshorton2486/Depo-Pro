@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEntityRegistry } from "./entityRegistry";
 import { buildStructuredTranscriptGeometryLayout } from "./geometryEngine";
 import { buildStructuredTranscriptPackage } from "./structuredTranscriptPackage";
 import { buildUnifiedRenderModel, renderTxt, renderWorkspace, validateRenderParity } from "./unifiedRendering";
@@ -77,7 +76,7 @@ describe("unifiedRendering", () => {
     const model = buildUnifiedRenderModel({
       transcriptPackage,
       geometry: buildStructuredTranscriptGeometryLayout(transcriptPackage),
-      entityRegistry: buildEntityRegistry(null),
+      entityRegistry: null,
     });
 
     expect(renderWorkspace(model).lines.map((line) => line.content)).toEqual(renderTxt(model).lineContents);

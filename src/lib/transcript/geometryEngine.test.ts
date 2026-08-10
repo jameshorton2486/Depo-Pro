@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
 import { buildGeometryLayout, buildStructuredTranscriptGeometryLayout, checkGeometry, renderBlock } from "./geometryEngine";
 import { buildStructuredTranscriptPackage } from "./structuredTranscriptPackage";
-import type { ValidationBlock } from "./correctionValidator";
+import type { ValidationBlock } from "./geometryEngine";
 
 function block(overrides: Partial<ValidationBlock>): ValidationBlock {
   return {

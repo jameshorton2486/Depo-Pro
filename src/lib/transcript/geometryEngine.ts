@@ -1,7 +1,18 @@
 import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
 import type { GeometryProfile } from "../format/types";
-import type { ValidationBlock } from "./correctionValidator";
 import type { StructuredTranscriptPackage } from "./structuredTranscriptPackage";
+
+// Relocated from the retired correctionValidator engine (Phase G, Wave G1);
+// geometryEngine is now the sole consumer of this shape.
+export interface ValidationBlock {
+  utterance_index: number;
+  utterance_id: string;
+  block_type: "Q" | "A" | "SP" | "PN" | "HEADER";
+  speaker_id: string;
+  display_name: string;
+  role?: "ATTORNEY" | "WITNESS" | "REPORTER" | "VIDEOGRAPHER" | "INTERPRETER" | "OTHER" | "UNKNOWN";
+  text: string;
+}
 
 export interface FormattedParagraph {
   kind: ValidationBlock["block_type"] | "BY_LINE";

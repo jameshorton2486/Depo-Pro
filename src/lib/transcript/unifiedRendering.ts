@@ -1,7 +1,31 @@
-import type { EntityRegistry } from "./entityRegistry";
 import type { GeometryLayoutLine, GeometryLayoutModel } from "./geometryEngine";
 import type { StructuredTranscriptPackage } from "./structuredTranscriptPackage";
 import type { TranscriptParagraph, TranscriptParagraphKind } from "./transcriptParagraphTypes";
+
+// Relocated from the retired entityRegistry engine (Phase G, Wave G1); every
+// production caller passes `entityRegistry: null`, and this render input is the
+// sole surviving consumer of the shape.
+export interface EntityRegistryEntry {
+  canonical: string;
+  normalized: string;
+  aliases: string[];
+  category:
+    | "witness"
+    | "attorney"
+    | "law_firm"
+    | "party"
+    | "reporter"
+    | "videographer"
+    | "employer"
+    | "court"
+    | "case";
+}
+
+export interface EntityRegistry {
+  entries: EntityRegistryEntry[];
+  canonicalMap: Map<string, EntityRegistryEntry>;
+  aliasMap: Map<string, EntityRegistryEntry>;
+}
 
 export interface UnifiedRenderModelInput {
   transcriptPackage: StructuredTranscriptPackage;
