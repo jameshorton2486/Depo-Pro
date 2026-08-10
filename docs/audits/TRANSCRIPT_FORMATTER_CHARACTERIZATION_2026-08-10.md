@@ -48,6 +48,16 @@ The live export path is TS `exportAdapter.ts` → Cloud Run `formatter_service/w
 
 Two coexisting geometry regimes were observed (spec_engine double-spaced, margins 1.25/0.75/1.0/1.0 vs ufm_engine exact-28pt, margins 1.75/0.5/0.75/0.75); `formatter_core` follows the spec_engine/DP-011 geometry. Which is canonical is **unproven** — resolve at harvest.
 
+### The certified-pages question — ANSWERED (2026-08-10): a live gap, not redundancy
+
+DOC-0326 flagged "confirm the Python-only certified pages are present-or-intentionally-dropped in the live pipeline." Answered by read-only trace of every live render path:
+
+- **ADR-0017 Decision 3 (ratified) REQUIRES them:** "Not in the Workspace body (generated at export from Intake metadata): **caption page, appearances page, certificate page, errata/signature page**, the certified 25-line format box, and line numbers."
+- **No live path generates them.** `formatter_core.export_render_model_to_docx` (the only live renderer, via `formatter_service/worker.py`) emits the **transcript body + page header/footer only** — `case_style`/`cause_number`/`reporter_csr`/`certified_date` appear solely in the running header (`docx_exporter.py:55,358`), never as assembled pages. `transcript_finalize_service/` is a Deno orchestrator (no assembly). Live TS only **classifies** these regions (`depositionRegionEngine` CERTIFICATE/CHANGES-AND-SIGNATURE regexes) and **gates** on certification lock (`exportAdapter.ts`) — it never builds the pages. The Intake DATA exists (`ufm_metadata.appearances`, `time_used` "post-record certificate field"), but nothing renders it into pages.
+- **Therefore** the Python `spec_engine/pages/*` + `ufm_engine` templates are the **sole existing implementation of an ADR-0017-required capability the live pipeline currently lacks** — reference implementation of an *unbuilt* live feature, **not** dead-redundant code.
+
+**Deletion-gate consequence (sharpens the gate):** the certified front/back-matter portion of `transcript_formatter/` is **NOT safely deletable as redundant.** Before it can go, either (a) the caption/appearances/certificate/errata assembly must be **re-homed into the live export** (`formatter_core`/TS render model), or (b) the product must explicitly accept body-only certified output and ADR-0017 Decision 3 be revised. **This is a product/engineering Human Gate** — the highest-consequence open question for the retirement. (By contrast, the body render + line geometry + PDF conversion ARE replicated in `formatter_core` and are safely redundant.)
+
 ## Harvest checklist — preserve BEFORE any deletion
 
 ### A. Deterministic rule tables (the Morson/UFM correction engine)

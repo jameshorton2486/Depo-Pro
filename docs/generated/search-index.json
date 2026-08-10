@@ -33635,6 +33635,7 @@
         "additive",
         "all",
         "already",
+        "answered",
         "any",
         "architecture",
         "assets",
@@ -33645,6 +33646,7 @@
         "capabilities",
         "case-specific",
         "certified-output",
+        "certified-pages",
         "characterization",
         "checklist",
         "cloud",
@@ -33664,6 +33666,7 @@
         "formatter",
         "four-part",
         "freeze-safe",
+        "gap",
         "gate",
         "generic",
         "harvest",
@@ -33681,8 +33684,10 @@
         "production",
         "python",
         "python-only",
+        "question",
         "read-only",
         "recommended",
+        "redundancy",
         "relative",
         "replicates",
         "rule",
@@ -33716,6 +33721,10 @@
         {
           "level": 2,
           "text": "Live vs. Python — what the Cloud Run `formatter_core` already replicates"
+        },
+        {
+          "level": 3,
+          "text": "The certified-pages question — ANSWERED (2026-08-10): a live gap, not redundancy"
         },
         {
           "level": 2,
