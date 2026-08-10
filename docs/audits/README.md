@@ -3,7 +3,7 @@
 
 This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Managed documents: **137**
+Managed documents: **138**
 
 | Document | ID | Tier | Status | Owner |
 | --- | --- | --- | --- | --- |
@@ -144,3 +144,4 @@ Managed documents: **137**
 | [Clean-Input Defect and Necessity Matrix](CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md) | DOC-0320 | T5 | ACTIVE | Architecture |
 | [AI Pipeline Inventory and Simplification Map (Phase G)](AI_PIPELINE_INVENTORY_2026-08-10.md) | DOC-0321 | T5 | ACTIVE | Architecture |
 | [C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence](C2A_DECISION_ANALYSIS_2026-08-10.md) | DOC-0324 | T5 | ACTIVE | Architecture |
+| [line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable](LINE_TYPE_MIGRATION_PLAN_2026-08-10.md) | DOC-0325 | T5 | ACTIVE | Architecture |

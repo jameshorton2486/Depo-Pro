@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "8995b252e2a49c22e40ce9ba37c3468678c9067e6404a8108c2676f291438a90",
-  "graph_sha256": "2ce11a541514c9ffdd0d683f288d3fdc55f0cebfd6e8609299d6e55561d10bae",
-  "document_count": 324,
+  "manifest_sha256": "ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770",
+  "graph_sha256": "b5b0ddcbabd546f785d8dd12d42a56c33ebe354f06b3c67166c613e3c7303299",
+  "document_count": 325,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33400,6 +33400,173 @@
         {
           "level": 2,
           "text": "Cross-cutting risks"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0325",
+      "title": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable",
+      "path": "docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "architecture",
+        "audits",
+        "backfill",
+        "canonical",
+        "changes",
+        "classifier",
+        "compatibility",
+        "confidence",
+        "confirmation",
+        "consumer",
+        "convergence",
+        "core",
+        "current",
+        "database",
+        "defect",
+        "deliverable",
+        "deployment",
+        "docs",
+        "every",
+        "existing",
+        "export",
+        "fix",
+        "gate",
+        "grounding",
+        "human",
+        "inspection",
+        "keeprawlabels",
+        "line",
+        "locally",
+        "migration",
+        "mode",
+        "normal",
+        "notes",
+        "one",
+        "package-json",
+        "path",
+        "persisted",
+        "persistence",
+        "phase",
+        "plan",
+        "proposal",
+        "qafixer",
+        "raw-evidence",
+        "read",
+        "remove",
+        "representation",
+        "retirement",
+        "reversible",
+        "review",
+        "reviewed",
+        "rollback",
+        "schema",
+        "sequence",
+        "state",
+        "strategy",
+        "structural",
+        "structure",
+        "structureconfirmed",
+        "surface",
+        "tests",
+        "transcript",
+        "transcripts",
+        "txt",
+        "type",
+        "unknown",
+        "working",
+        "workspace",
+        "write"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable"
+        },
+        {
+          "level": 2,
+          "text": "Current state (grounding)"
+        },
+        {
+          "level": 2,
+          "text": "1. Canonical `line_type` representation"
+        },
+        {
+          "level": 2,
+          "text": "2. Structural proposal + confidence representation (D2)"
+        },
+        {
+          "level": 2,
+          "text": "3. Human review / confirmation state (D1)"
+        },
+        {
+          "level": 2,
+          "text": "4. Working Transcript persistence (D3)"
+        },
+        {
+          "level": 2,
+          "text": "5. Workspace read/write path (D1/D3)"
+        },
+        {
+          "level": 2,
+          "text": "6. Migration from `structureConfirmed` (D1)"
+        },
+        {
+          "level": 2,
+          "text": "7. Remove `keepRawLabels` as a normal transcript mode (D4)"
+        },
+        {
+          "level": 2,
+          "text": "8. Raw-evidence inspection surface (D5)"
+        },
+        {
+          "level": 2,
+          "text": "9. Workspace/export classifier convergence (D7 — the core defect fix)"
+        },
+        {
+          "level": 2,
+          "text": "10. TXT / package-JSON convergence (D6)"
+        },
+        {
+          "level": 2,
+          "text": "11. `qaFixer` consumer migration and retirement (§15 of Phase G)"
+        },
+        {
+          "level": 2,
+          "text": "12. Compatibility with existing UNKNOWN transcripts (§12)"
+        },
+        {
+          "level": 2,
+          "text": "13. Schema / database changes"
+        },
+        {
+          "level": 2,
+          "text": "14. Backfill strategy"
+        },
+        {
+          "level": 2,
+          "text": "15. Rollback"
+        },
+        {
+          "level": 2,
+          "text": "16. Tests"
+        },
+        {
+          "level": 2,
+          "text": "17. Deployment sequence"
+        },
+        {
+          "level": 2,
+          "text": "Locally reversible vs. Human Gate"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
         }
       ]
     }

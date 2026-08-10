@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "8995b252e2a49c22e40ce9ba37c3468678c9067e6404a8108c2676f291438a90",
+  "source_sha256": "ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4866,6 +4866,21 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0325",
+      "title": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable",
+      "path": "docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6485,6 +6500,11 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0324",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0325",
       "target": "DOC-0071"
     },
     {
@@ -8483,6 +8503,11 @@
       "target": "DOC-0232"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0325",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -10171,6 +10196,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0324",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0325",
+      "target": "OWNER:Architecture"
     }
   ],
   "owners": {
@@ -10486,7 +10516,8 @@
       "DOC-0319",
       "DOC-0320",
       "DOC-0321",
-      "DOC-0324"
+      "DOC-0324",
+      "DOC-0325"
     ],
     "Deepgram": [
       "DOC-0069"

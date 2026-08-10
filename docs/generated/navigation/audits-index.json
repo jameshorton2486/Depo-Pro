@@ -2,11 +2,11 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "8995b252e2a49c22e40ce9ba37c3468678c9067e6404a8108c2676f291438a90",
-  "graph_sha256": "2ce11a541514c9ffdd0d683f288d3fdc55f0cebfd6e8609299d6e55561d10bae",
+  "manifest_sha256": "ea3e85a53b68eb4bbf2cba7a27896fddc1e041b98f9b07bf5b5611ef93d74770",
+  "graph_sha256": "b5b0ddcbabd546f785d8dd12d42a56c33ebe354f06b3c67166c613e3c7303299",
   "name": "audits",
   "title": "Audits",
-  "document_count": 138,
+  "document_count": 139,
   "documents": [
     {
       "id": "DOC-0143",
@@ -1245,6 +1245,15 @@
       "id": "DOC-0324",
       "title": "C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence",
       "path": "docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0325",
+      "title": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable",
+      "path": "docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md",
       "tier": "T5",
       "status": "ACTIVE",
       "owner": "Architecture",

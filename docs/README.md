@@ -11,7 +11,7 @@ Before changing application code, read [AGENTS.md](../AGENTS.md) and the [Master
 | --- | ---: | --- |
 | Architecture | 51 | [architecture-index.json](generated/navigation/architecture-index.json) |
 | Standards | 2 | [standards-index.json](generated/navigation/standards-index.json) |
-| Audits | 138 | [audits-index.json](generated/navigation/audits-index.json) |
+| Audits | 139 | [audits-index.json](generated/navigation/audits-index.json) |
 | Reports | 30 | [reports-index.json](generated/navigation/reports-index.json) |
 | Operations | 7 | [operations-index.json](generated/navigation/operations-index.json) |
 | Archive | 44 | [archive-index.json](generated/navigation/archive-index.json) |
