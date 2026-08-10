@@ -1,22 +1,26 @@
 import type { TranscriptParagraph } from "./workspacePresentation";
+import { UNIDENTIFIED_SPEAKER } from "./resolveSpeakerDisplayName";
 
 const SHORT_ANSWER_PATTERN = /^(Yes\.|No\.|Correct\.|I did\.|I do\.|I have\.|I don't\.)\s*/i;
 const OBJECTION_PATTERN = /\bObjection\.\s*(?:Form\.|Foundation\.)?/i;
 // correctionRegistry.ts owns the deterministic rule inventory; this remains
 // here because it is paragraph-structural rather than token-serial.
+// CHARACTERIZED (Phase G, pending Human Gate): K. -> Okay. is contextual, not
+// certain — it misfires on legitimate "K." (exhibit letters, middle initials).
+// Provisional disposition REMOVE/MIGRATE to the controlled correction pipeline;
+// left unchanged pending an explicit decision.
 const K_PATTERN = /(^|\s)K\.(\s|$)/g;
-const DEFAULT_OBJECTION_LABEL = "MR. RAMON";
+// An objection embedded in a questioner's turn was never separately diarized, so
+// the objecting attorney's identity is unavailable at this layer. Depo-Pro must
+// never fabricate who objected (§14/§57): mark the extracted objection with the
+// canonical "unidentified" marker from the speaker-resolution authority. Real
+// attribution must come from an upstream speaker-resolution migration that
+// diarizes the objector into its own turn — qaFixer must NOT resolve speaker
+// identity itself (it is a retirement candidate, not an attribution owner).
+const UNATTRIBUTED_OBJECTION_LABEL = UNIDENTIFIED_SPEAKER;
 
 function normalizeParagraphArtifacts(text: string): string {
   return text.replace(K_PATTERN, (_match, leading: string, trailing: string) => `${leading}Okay.${trailing ? "  " : ""}`);
-}
-
-// Note: general phrase corrections are in correctionRegistry.ts.
-// This function handles objection-specific structural normalization only.
-function normalizeObjectionText(text: string): string {
-  return text
-    .replace(/\bFour\b/g, "Form")
-    .replace(/\bfour\b/g, "form");
 }
 
 function cloneParagraph(
@@ -162,7 +166,10 @@ function splitEmbeddedObjections(paragraph: TranscriptParagraph): TranscriptPara
   }
 
   const before = paragraph.text.slice(0, match.index).trim();
-  const objectionText = normalizeObjectionText(match[0].trim());
+  // Objection text is preserved verbatim. Deciding whether the reporter said
+  // "four" vs "form" is contextual lexical correction (evidence-dependent) that
+  // belongs to the AI/human correction pipeline, never a deterministic fixer.
+  const objectionText = match[0].trim();
   const after = paragraph.text.slice(match.index + match[0].length).trim();
   const result: TranscriptParagraph[] = [];
 
@@ -173,7 +180,7 @@ function splitEmbeddedObjections(paragraph: TranscriptParagraph): TranscriptPara
   result.push(sliceParagraph(
     paragraph,
     "COLLOQUY",
-    DEFAULT_OBJECTION_LABEL,
+    UNATTRIBUTED_OBJECTION_LABEL,
     match.index,
     match.index + match[0].length,
   ));

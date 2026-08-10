@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { TranscriptParagraph } from "./workspacePresentation";
 import type { FormattedWord } from "../format/types";
 import { applyQaFixer } from "./qaFixer";
+import { UNIDENTIFIED_SPEAKER } from "./resolveSpeakerDisplayName";
 
 function makeParagraph(overrides: Partial<TranscriptParagraph> = {}): TranscriptParagraph {
   return {
@@ -48,16 +49,39 @@ describe("qaFixer", () => {
 
     expect(result).toEqual([
       expect.objectContaining({ kind: "Q", text: "And you reviewed it in this case?" }),
-      expect.objectContaining({ kind: "COLLOQUY", text: "Objection.  Form.", label: "MR. RAMON" }),
+      expect.objectContaining({ kind: "COLLOQUY", text: "Objection.  Form.", label: UNIDENTIFIED_SPEAKER }),
     ]);
   });
 
   it("normalizes standalone K. artifacts to Okay.", () => {
     const result = applyQaFixer([
-      makeParagraph({ kind: "COLLOQUY", label: "MR. RAMON", text: " K. And in this case" }),
+      makeParagraph({ kind: "COLLOQUY", label: UNIDENTIFIED_SPEAKER, text: " K. And in this case" }),
     ]);
 
     expect(result[0]?.text).toBe("Okay.  And in this case");
+  });
+
+  it("never fabricates an objecting attorney; unknown objector stays unattributed (§14/§57)", () => {
+    const result = applyQaFixer([
+      makeParagraph({ text: "And you reviewed it in this case?  Objection.  Form." }),
+    ]);
+    const colloquy = result.find((paragraph) => paragraph.kind === "COLLOQUY");
+    // Unknown objector -> canonical unidentified marker, never a fabricated person.
+    expect(colloquy?.label).toBe(UNIDENTIFIED_SPEAKER);
+    expect(colloquy?.label).not.toBe("MR. RAMON");
+    expect(colloquy?.label).not.toMatch(/^(MR|MS|MRS)\./);
+    // Objection content preserved verbatim.
+    expect(colloquy?.text).toBe("Objection.  Form.");
+  });
+
+  it("preserves a legitimate 'four' — no deterministic four->form substitution", () => {
+    const result = applyQaFixer([
+      makeParagraph({ text: "Were there four exhibits?  Objection.  Form." }),
+    ]);
+    const joined = result.map((paragraph) => paragraph.text).join(" ");
+    expect(joined).toContain("four");
+    expect(joined).not.toContain("form exhibits");
+    expect(joined).toContain("Objection.  Form.");
   });
 
   it("preserves source ids on split children", () => {
