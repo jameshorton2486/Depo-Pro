@@ -32942,8 +32942,10 @@
         "depo-pro",
         "disposition",
         "doc-0325",
+        "doc-0326",
         "docs",
         "floor",
+        "formatter",
         "freeze-limited",
         "governance",
         "implementation",
@@ -32956,14 +32958,18 @@
         "note",
         "operations",
         "phase",
+        "prep",
         "progress",
+        "python",
         "qafixer",
         "reduction",
         "report",
+        "retirement",
         "safety",
         "scorecard",
         "simplification",
         "test",
+        "transcript",
         "type",
         "verbatim",
         "waves",
@@ -33013,6 +33019,10 @@
         {
           "level": 2,
           "text": "line_type migration (DOC-0325) — freeze-limited local waves landed"
+        },
+        {
+          "level": 2,
+          "text": "Python transcript_formatter/ characterization (DOC-0326) — retirement prep"
         }
       ]
     },

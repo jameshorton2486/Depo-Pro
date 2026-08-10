@@ -131,3 +131,14 @@ converged render builder, Wave 5 Workspace review UI + provider-evidence view, `
 `qaFixer` retirement, and the post-convergence parity/regression suite. Full detail + Human Gates in
 DOC-0325 "Implementation status".
 
+## Python transcript_formatter/ characterization (DOC-0326) — retirement prep
+
+`13b8151` — read-only inventory (4 parallel sweeps) grounding the retirement Human Gate. Verdict: **DEAD
+relative to production** (standalone Windows CustomTkinter GUI, 113 tracked files; Cloud Run uses a
+separate `formatter_core`; only two TS provenance comments reference it) but **NOT yet safe to delete** —
+Morson/UFM rule tables, the Python-only certified-output pages (title/caption/appearances/indexes/
+certification/changes-signature/post-record retroactive) with no `formatter_core` counterpart, the 10 UFM
+templates, and the CorrectionObject schema-of-record (mirrored by `correctionObject.ts`) must be harvested
+first, and case-specific/fabrication hazards scrubbed. Four-part deletion gate: **NOT MET**. Independently
+confirms the 3-way CorrectionObject sync hazard also noted in DOC-0321. Deletion remains a Human Gate.
+
