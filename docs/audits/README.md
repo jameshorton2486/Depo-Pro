@@ -3,7 +3,7 @@
 
 This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Managed documents: **135**
+Managed documents: **136**
 
 | Document | ID | Tier | Status | Owner |
 | --- | --- | --- | --- | --- |
@@ -142,3 +142,4 @@ Managed documents: **135**
 | [Depo-Pro Autonomous Architecture Simplification Working Report](AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md) | DOC-0318 | T5 | ACTIVE | Architecture |
 | [Canonical Authority Matrix](CANONICAL_AUTHORITY_MATRIX_2026-08-10.md) | DOC-0319 | T5 | ACTIVE | Architecture |
 | [Clean-Input Defect and Necessity Matrix](CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md) | DOC-0320 | T5 | ACTIVE | Architecture |
+| [AI Pipeline Inventory and Simplification Map (Phase G)](AI_PIPELINE_INVENTORY_2026-08-10.md) | DOC-0321 | T5 | ACTIVE | Architecture |

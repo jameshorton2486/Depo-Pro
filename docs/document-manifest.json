@@ -6080,6 +6080,25 @@
         "DOC-0071"
       ],
       "supersedes": []
+    },
+    {
+      "id": "DOC-0321",
+      "title": "AI Pipeline Inventory and Simplification Map (Phase G)",
+      "path": "docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
     }
   ]
 }

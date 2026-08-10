@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "a6873b0c711c85c65fceaaa18659915501cc4d734556dd92a386a59e6c55291d",
-  "graph_sha256": "828215a9d3f5e2ca38dd375337b8ed4938d37ac5c1756aba653bca71c36307ac",
-  "document_count": 320,
+  "manifest_sha256": "5ef49e814c5be7a5dd18b71b176e859839553a0b98c44acbe95b0305ed43248e",
+  "graph_sha256": "2612e0e967cf5db8afec06dfc881ad91ad0f764172f958a53e49810236fa409e",
+  "document_count": 321,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33064,6 +33064,103 @@
         {
           "level": 2,
           "text": "Conclusion"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0321",
+      "title": "AI Pipeline Inventory and Simplification Map (Phase G)",
+      "path": "docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "action",
+        "architecture",
+        "audits",
+        "autonomously",
+        "complexity",
+        "conclusion",
+        "controlling",
+        "correction",
+        "docs",
+        "elimination",
+        "engines",
+        "entirely",
+        "executive",
+        "formatter",
+        "gate",
+        "human",
+        "inventory",
+        "invocation",
+        "items",
+        "justification",
+        "live",
+        "map",
+        "models",
+        "not",
+        "only",
+        "ordered",
+        "phase",
+        "pipeline",
+        "plan",
+        "preserved",
+        "product",
+        "prompts",
+        "python",
+        "reconstruction",
+        "runtime",
+        "safety",
+        "simplification",
+        "slice",
+        "summary",
+        "surface",
+        "transcript",
+        "unwired"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "AI Pipeline Inventory and Simplification Map (Phase G)"
+        },
+        {
+          "level": 2,
+          "text": "Executive conclusion"
+        },
+        {
+          "level": 2,
+          "text": "Controlling architecture preserved"
+        },
+        {
+          "level": 2,
+          "text": "Slice A — AI invocation surface (live)"
+        },
+        {
+          "level": 2,
+          "text": "Slice B — TS correction/reconstruction engines"
+        },
+        {
+          "level": 2,
+          "text": "Slice C+D — Python `transcript_formatter/` (entirely unwired from the product)"
+        },
+        {
+          "level": 2,
+          "text": "Slice E — Prompts & models (live runtime only)"
+        },
+        {
+          "level": 2,
+          "text": "Elimination map (Phase G plan, ordered by safety)"
+        },
+        {
+          "level": 2,
+          "text": "Human Gate items (do not action autonomously)"
+        },
+        {
+          "level": 2,
+          "text": "Complexity Justification summary (§15)"
         }
       ]
     }
