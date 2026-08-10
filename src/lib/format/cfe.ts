@@ -475,10 +475,18 @@ function findAmbiguousFlag(...candidates: Array<string | undefined>): (typeof AM
 function applyDeterministicTokenCorrection(
   token: string,
   previousToken: string | undefined,
-  nextToken: string | undefined
+  nextToken: string | undefined,
+  options?: { includeGated?: boolean }
 ): string {
+  const includeGated = options?.includeGated ?? true;
   for (const correction of DETERMINISTIC_TOKEN_CORRECTIONS) {
     if (token !== correction.match) {
+      continue;
+    }
+    // Verbatim floor: outside the corrected render, only approved bounded
+    // exceptions (ADR-0018, e.g. standalone "K." -> "Okay.") may run; all other
+    // registry corrections are withheld.
+    if (!includeGated && !correction.verbatimException) {
       continue;
     }
     if (
@@ -595,15 +603,20 @@ function normalizeDisplayToken(
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
 
-  // A11 / ADR-0017 verbatim floor: date reshaping and ASR-garble token
-  // substitution come from the correction registry — they replace a source
-  // word with a DIFFERENT word (e.g. "Peterson" → "Bentley", "K." → "Okay.").
-  // That is correction, not formatting, so the first-render (verbatim) path
-  // skips it. Word correction is the separate, recorded A5/A11 engine.
+  // Verbatim floor (A9 / the ADR-0017 verbatim policy): date reshaping and
+  // ASR-garble token substitution replace a source word with a DIFFERENT word
+  // (e.g. "Peterson" → "Bentley"). That is correction, not formatting, so the
+  // first-render (verbatim) path skips it. The ONE ratified exception is the
+  // narrowly-bounded standalone "K." → "Okay." artifact (ADR-0018;
+  // verbatimException in correctionRegistry), which runs on every render
+  // including verbatim and is bounded to utterance-initial "K." so exhibit
+  // letters and name initials are never touched.
   if (applyLexicalCorrections) {
     text = normalizeSlashDate(text);
-    text = applyDeterministicTokenCorrection(text, previousToken, nextToken);
   }
+  text = applyDeterministicTokenCorrection(text, previousToken, nextToken, {
+    includeGated: applyLexicalCorrections,
+  });
 
   return text;
 }

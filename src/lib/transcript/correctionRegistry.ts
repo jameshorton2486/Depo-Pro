@@ -11,6 +11,14 @@ export interface DeterministicCorrection {
   reason: string;
   requiresPrecedingPattern?: RegExp;
   requiresFollowingPattern?: RegExp;
+  /**
+   * When true, this correction is an APPROVED bounded exception to the verbatim
+   * floor (A9 / the ADR-0017 verbatim policy) and is applied even in the
+   * first-render (verbatim) path — not gated behind applyLexicalCorrections.
+   * Reserve strictly for narrowly-bounded, recognized ASR artifacts ratified by
+   * a numbered ADR (see ADR-0018 for the standalone "K." -> "Okay." exception).
+   */
+  verbatimException?: boolean;
 }
 
 export interface AmbiguousFlag {
@@ -42,9 +50,17 @@ export const INTERRUPTION_DASH = " -- ";
 
 export const DETERMINISTIC_TOKEN_CORRECTIONS: DeterministicCorrection[] = [
   {
+    // ADR-0018: a standalone, utterance-initial "K." is a recognized ASR artifact
+    // for the spoken "Okay." and canonicalizes even inside the verbatim floor.
+    // requiresPrecedingPattern /^$/ bounds it to utterance start ONLY, so exhibit
+    // letters ("Exhibit K."), name initials ("John K. Smith", "Mr. K. Smith"),
+    // and any other mid-utterance "K." are preserved verbatim. Do NOT broaden
+    // this without amending ADR-0018 — a blanket "K." rule corrupts identifiers.
     match: "K.",
     replacement: "Okay.",
-    reason: "ASR garble of 'Okay.' — standalone K. is not a legal abbreviation",
+    reason: "Standalone spoken 'K.' is a recognized ASR artifact for 'Okay.' (ADR-0018 verbatim exception)",
+    requiresPrecedingPattern: /^$/,
+    verbatimException: true,
   },
   {
     match: "C572224L",

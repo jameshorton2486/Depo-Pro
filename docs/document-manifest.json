@@ -6099,6 +6099,25 @@
         "DOC-0071"
       ],
       "supersedes": []
+    },
+    {
+      "id": "DOC-0322",
+      "title": "ADR-0018 — Standalone \"K.\" → \"Okay.\" bounded verbatim exception",
+      "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
+      "category": "architecture",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "verbatim-standalone-k-okay-exception"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-10",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
     }
   ]
 }

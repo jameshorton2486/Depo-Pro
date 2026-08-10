@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "5ef49e814c5be7a5dd18b71b176e859839553a0b98c44acbe95b0305ed43248e",
-  "graph_sha256": "2612e0e967cf5db8afec06dfc881ad91ad0f764172f958a53e49810236fa409e",
-  "document_count": 321,
+  "manifest_sha256": "22bf6fe3fdd32aff3a5a1863d8c4ff696403a38075bd2b44f52327a678c17a6c",
+  "graph_sha256": "f733f28373bda66da664fc8720be4d25b1eb0c95f322eab3de80b595ddbb3861",
+  "document_count": 322,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33161,6 +33161,81 @@
         {
           "level": 2,
           "text": "Complexity Justification summary (§15)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0322",
+      "title": "ADR-0018 — Standalone \"K.\" → \"Okay.\" bounded verbatim exception",
+      "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
+      "category": "architecture",
+      "owner": "Rendering",
+      "authority": false,
+      "tier": "T4",
+      "status": "ACTIVE",
+      "keywords": [
+        "accepted",
+        "adr",
+        "adr-0018",
+        "alternatives",
+        "architecture",
+        "boundary",
+        "bounded",
+        "commit",
+        "completed",
+        "consequences",
+        "considered",
+        "context",
+        "decision",
+        "deploy",
+        "exception",
+        "implementation",
+        "limitation",
+        "narrowest",
+        "new",
+        "okay",
+        "push",
+        "reliable",
+        "rendering",
+        "residual",
+        "signal",
+        "standalone",
+        "under",
+        "verbatim",
+        "verbatim-standalone-k-okay-exception"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "ADR-0018 — Standalone \"K.\" → \"Okay.\" bounded verbatim exception"
+        },
+        {
+          "level": 2,
+          "text": "Context"
+        },
+        {
+          "level": 2,
+          "text": "Decision"
+        },
+        {
+          "level": 3,
+          "text": "Boundary (narrowest reliable signal)"
+        },
+        {
+          "level": 3,
+          "text": "Residual limitation (accepted)"
+        },
+        {
+          "level": 2,
+          "text": "Consequences"
+        },
+        {
+          "level": 2,
+          "text": "Alternatives considered"
+        },
+        {
+          "level": 2,
+          "text": "Implementation (completed under this ADR — new commit, no push, no deploy)"
         }
       ]
     }

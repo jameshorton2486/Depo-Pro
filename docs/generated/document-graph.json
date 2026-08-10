@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "5ef49e814c5be7a5dd18b71b176e859839553a0b98c44acbe95b0305ed43248e",
+  "source_sha256": "22bf6fe3fdd32aff3a5a1863d8c4ff696403a38075bd2b44f52327a678c17a6c",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4821,6 +4821,21 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0322",
+      "title": "ADR-0018 — Standalone \"K.\" → \"Okay.\" bounded verbatim exception",
+      "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "verbatim-standalone-k-okay-exception"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-10"
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6426,6 +6441,11 @@
       "type": "GOVERNANCE",
       "source": "DOC-0321",
       "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0322",
+      "target": "DOC-0068"
     },
     {
       "type": "SUPERSESSION",
@@ -8403,6 +8423,11 @@
       "target": "DOC-0232"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0322",
+      "target": "DOC-0041"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -8460,6 +8485,11 @@
     {
       "type": "REVIEW",
       "source": "DOC-0316",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0322",
       "target": "DOC-0068"
     },
     {
@@ -10066,6 +10096,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0321",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0322",
+      "target": "OWNER:Rendering"
     }
   ],
   "owners": {
@@ -10396,7 +10431,8 @@
     "Rendering": [
       "DOC-0003",
       "DOC-0021",
-      "DOC-0314"
+      "DOC-0314",
+      "DOC-0322"
     ],
     "Transcript": [
       "DOC-0040"
