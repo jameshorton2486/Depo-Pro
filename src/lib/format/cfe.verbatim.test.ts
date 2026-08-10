@@ -88,12 +88,6 @@ function assertWordsVerbatim(formatted: FormattedDocument): void {
       // Permitted addition: the F6 interruption dash is inserted BETWEEN
       // preserved words, appending " --" to the first of a repeated pair.
       const rendered = word.text.replace(/\s*--\s*$/, "");
-      // Permitted correction: the ADR-0018 bounded exception canonicalizes a
-      // whole standalone "K." / "k." utterance to "Okay." on every render. This
-      // is a bounded exception to the verbatim floor, not a fabrication.
-      if (rendered === "Okay." && (word.raw_text === "K." || word.raw_text === "k.")) {
-        continue;
-      }
       if (rendered !== word.raw_text) {
         violations.push(
           `  word #${wordIndex} (word_id=${word.word_id}): ` +
@@ -161,7 +155,7 @@ describe("cfe verbatim guard (C1)", () => {
     );
 
     expect(byId.get("w2")).toBe("Peterson"); // NOT "Bentley"
-    expect(byId.get("w4")).toBe("K."); // mid-utterance K. stays verbatim; the ADR-0018 exception is utterance-initial only
+    expect(byId.get("w4")).toBe("K."); // NOT "Okay." — K.->Okay. is a correction (A11/C1) gated out of verbatim; reserved for A5 (ADR-0018)
     expect(byId.get("w7")).toBe("metastructures"); // NOT "ligamentous structures"
     expect(byId.get("w9")).toBe("C572224L"); // NOT "C-5722-24-L"
     expect(byId.get("w10")).toBe("what"); // phrase swap not applied
@@ -219,89 +213,43 @@ describe("export render model verbatim (C1b)", () => {
   });
 });
 
-// ADR-0018 (DRAFT) — a WHOLE standalone utterance transcribed as "K." / "k." is
-// a recognized ASR artifact for the spoken "Okay." and is the one bounded
-// correction permitted inside the verbatim floor. Bounded to a sole-token
-// utterance, so longer utterances, exhibit letters, and name initials are never
-// touched; those ambiguous cases go to the AI/human correction pipeline.
-describe("ADR-0018 — standalone K./k. -> Okay. bounded verbatim exception", () => {
-  const render = (doc: EditorDocument, applyLexicalCorrections: boolean) => {
+// ADR-0018 (DRAFT): "K." -> "Okay." (a standalone spoken "'kay" misheard by
+// Deepgram) is a CORRECTION — it replaces one word with a DIFFERENT word — not a
+// same-lexeme typographic normalization. Per A11 (no fabrication of the spoken
+// record) and the C1 verbatim guard it is gated out of the first render, and it
+// is NOT applied in the deterministic token-correction path either. It is
+// reserved for the A5 correction layer (applied, recorded, visibly marked,
+// reviewed at certification) — specified but unimplemented. These tests pin that
+// the deterministic path leaves "K." untouched in EVERY render.
+describe("ADR-0018 (DRAFT) — K.->Okay. reserved for the A5 correction layer, not the deterministic path", () => {
+  const textById = (doc: EditorDocument, applyLexicalCorrections: boolean) => {
     const formatted = cfe(doc, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, { applyLexicalCorrections });
-    return new Map(formatted.lines.flatMap((line) => line.words).map((word) => [word.word_id, word]));
+    return new Map(formatted.lines.flatMap((line) => line.words).map((word) => [word.word_id, word.text]));
   };
 
-  it("normalizes a whole standalone 'K.' utterance to 'Okay.' (verbatim render)", () => {
-    expect(render(makeDoc([{ word_id: "w1", text: "K." }]), false).get("w1")?.text).toBe("Okay.");
+  it("does NOT convert a standalone 'K.' in the verbatim render", () => {
+    expect(textById(makeDoc([{ word_id: "w1", text: "K." }]), false).get("w1")).toBe("K.");
   });
 
-  it("normalizes a whole standalone lowercase 'k.' utterance to 'Okay.'", () => {
-    expect(render(makeDoc([{ word_id: "w1", text: "k." }]), false).get("w1")?.text).toBe("Okay.");
+  it("does NOT convert a standalone 'K.' in the corrected render either (reserved for A5)", () => {
+    expect(textById(makeDoc([{ word_id: "w1", text: "K." }]), true).get("w1")).toBe("K.");
   });
 
-  it("applies in the corrected render too", () => {
-    expect(render(makeDoc([{ word_id: "w1", text: "K." }]), true).get("w1")?.text).toBe("Okay.");
-  });
-
-  it("does NOT convert a leading 'K.' in a longer utterance ('K. And then...') — defers to correction pipeline", () => {
-    const byId = render(makeDoc([
-      { word_id: "w1", text: "K." },
-      { word_id: "w2", text: "And" },
-      { word_id: "w3", text: "then." },
-    ]), false);
-    expect(byId.get("w1")?.text).toBe("K.");
-  });
-
-  it("does NOT convert a sentence-initial name initial ('K. Smith testified.')", () => {
-    const byId = render(makeDoc([
-      { word_id: "w1", text: "K." },
-      { word_id: "w2", text: "Smith" },
-      { word_id: "w3", text: "testified." },
-    ]), false);
-    expect(byId.get("w1")?.text).toBe("K.");
-  });
-
-  it("preserves 'Exhibit K.' and 'Section K.' (letter designations) in both renders", () => {
+  it("leaves literal K uses untouched — 'Exhibit K.', 'John K. Smith'", () => {
     for (const gated of [false, true]) {
-      const exhibit = render(makeDoc([{ word_id: "e1", text: "Exhibit" }, { word_id: "k1", text: "K." }]), gated);
-      expect(exhibit.get("k1")?.text).toBe("K.");
-      const section = render(makeDoc([{ word_id: "s1", text: "Section" }, { word_id: "k1", text: "K." }]), gated);
-      expect(section.get("k1")?.text).toBe("K.");
-    }
-  });
-
-  it("preserves name initials — 'John K. Smith' and 'Mr. K. Smith'", () => {
-    for (const gated of [false, true]) {
-      const john = render(makeDoc([
+      expect(textById(makeDoc([{ word_id: "e", text: "Exhibit" }, { word_id: "k", text: "K." }]), gated).get("k")).toBe("K.");
+      const initials = textById(makeDoc([
         { word_id: "j", text: "John" }, { word_id: "k", text: "K." }, { word_id: "s", text: "Smith" },
       ]), gated);
-      expect(john.get("k")?.text).toBe("K.");
-      const mr = render(makeDoc([
-        { word_id: "m", text: "Mr." }, { word_id: "k", text: "K." }, { word_id: "s", text: "Smith" },
-      ]), gated);
-      expect(mr.get("k")?.text).toBe("K.");
+      expect(initials.get("k")).toBe("K.");
     }
   });
 
-  it("leaves a bare 'K' without a period unchanged (rule is scoped to the 'K.'/'k.' token)", () => {
-    expect(render(makeDoc([{ word_id: "w1", text: "K" }]), false).get("w1")?.text).toBe("K");
-  });
-
-  it("is idempotent — an already-normalized 'Okay.' is unchanged", () => {
-    expect(render(makeDoc([{ word_id: "w1", text: "Okay." }]), false).get("w1")?.text).toBe("Okay.");
-  });
-
-  it("preserves raw_text (Deepgram evidence); only the presentation layer normalizes", () => {
-    const doc = makeDoc([{ word_id: "w1", text: "K." }]);
-    const byId = render(doc, false);
-    expect(byId.get("w1")?.text).toBe("Okay.");     // render canonicalizes
-    expect(byId.get("w1")?.raw_text).toBe("K.");    // ...raw evidence in the render model is untouched
-    expect(doc.words[0].raw_text).toBe("K.");        // ...and the source document is not mutated
-  });
-
-  it("reaches the certified export render (approved to appear in the DOCX)", () => {
+  it("never fabricates 'Okay.' from a 'K.' in the certified export render", () => {
     const record = emptyCaseRecord("case-k", "2026-07-22T00:00:00.000Z");
     const model = buildCanonicalExportRenderModel(makeDoc([{ word_id: "w1", text: "K." }]), record);
     const renderText = model.lines.map((line) => line.content).join("\n");
-    expect(renderText).toContain("Okay.");
+    expect(renderText).toContain("K.");
+    expect(renderText).not.toContain("Okay.");
   });
 });

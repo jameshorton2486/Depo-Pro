@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "c0317ea709a56b9bb578635075ba5a0e0ab76c4c58457b6eddfe355547e2fc08",
+  "source_sha256": "2ddd823a0abbe3c52eef7240f7c27ce7dbec30ee93157731e5a0bbf902e5da3d",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4823,7 +4823,7 @@
     {
       "entity_type": "DOCUMENT",
       "id": "DOC-0322",
-      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" bounded verbatim exception",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)",
       "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
       "tier": "T4",
       "status": "DRAFT",
@@ -7041,11 +7041,6 @@
       "type": "REFERENCE",
       "source": "DOC-0145",
       "target": "DOC-0277"
-    },
-    {
-      "type": "REFERENCE",
-      "source": "DOC-0322",
-      "target": "DOC-0074"
     },
     {
       "type": "HIERARCHY",

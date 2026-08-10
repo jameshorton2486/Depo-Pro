@@ -6102,7 +6102,7 @@
     },
     {
       "id": "DOC-0322",
-      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" bounded verbatim exception",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)",
       "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
       "category": "architecture",
       "tier": "T4",

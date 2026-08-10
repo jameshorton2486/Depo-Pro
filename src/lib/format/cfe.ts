@@ -475,18 +475,10 @@ function findAmbiguousFlag(...candidates: Array<string | undefined>): (typeof AM
 function applyDeterministicTokenCorrection(
   token: string,
   previousToken: string | undefined,
-  nextToken: string | undefined,
-  options?: { includeGated?: boolean }
+  nextToken: string | undefined
 ): string {
-  const includeGated = options?.includeGated ?? true;
   for (const correction of DETERMINISTIC_TOKEN_CORRECTIONS) {
     if (token !== correction.match) {
-      continue;
-    }
-    // Verbatim floor: outside the corrected render, only approved bounded
-    // exceptions (ADR-0018, e.g. standalone "K." -> "Okay.") may run; all other
-    // registry corrections are withheld.
-    if (!includeGated && !correction.verbatimException) {
       continue;
     }
     if (
@@ -603,21 +595,18 @@ function normalizeDisplayToken(
   text = normalizeQuotedQuestionMark(text, nextToken);
   text = normalizeNumberWord(text, previousToken, nextToken);
 
-  // Verbatim floor (A8 "rendering never writes; a formatting pass is not a
-  // correction" + A9 "Deepgram is the immutable baseline"): date reshaping and
+  // Verbatim floor (A11 "no fabrication of the spoken record"; A9 "Deepgram is
+  // the immutable baseline"; ADR-0017 / the C1 guard): date reshaping and
   // ASR-garble token substitution replace a source word with a DIFFERENT word
-  // (e.g. "Peterson" → "Bentley"). That is correction, not formatting, so the
-  // first-render (verbatim) path skips it. The one exception is the bounded
-  // standalone "K." / "k." → "Okay." artifact (ADR-0018, DRAFT;
-  // verbatimException in correctionRegistry), which runs on every render
-  // including verbatim and is bounded to a whole standalone utterance so
-  // exhibit letters and name initials are never touched.
+  // (e.g. "Peterson" → "Bentley", "K." → "Okay."). That is correction, not
+  // formatting, so the first-render (verbatim) path skips it. Word correction is
+  // the separate, recorded A5 engine — including the standalone "K." → "Okay."
+  // artifact, which is specified but unimplemented (ADR-0018, DRAFT) and is
+  // deliberately NOT applied deterministically here.
   if (applyLexicalCorrections) {
     text = normalizeSlashDate(text);
+    text = applyDeterministicTokenCorrection(text, previousToken, nextToken);
   }
-  text = applyDeterministicTokenCorrection(text, previousToken, nextToken, {
-    includeGated: applyLexicalCorrections,
-  });
 
   return text;
 }

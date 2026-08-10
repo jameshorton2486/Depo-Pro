@@ -6,85 +6,75 @@ scope: verbatim-standalone-k-okay-exception
 supersedes: null
 superseded_by: null
 approved_by: null
-version: 0.2.0
+version: 0.3.0
 effective_date: null
 ratified_date: null
 last_reviewed: 2026-08-10
 next_review: 2027-08-10
 ratification: REVIEW
-implementation_status: IMPLEMENTED
+implementation_status: NOT_STARTED
 ---
 
-# ADR-0018 — Standalone "K." / "k." → "Okay." bounded verbatim exception
+# ADR-0018 — Standalone "K." / "k." → "Okay." correction (specified for the A5 layer)
 
-**Status:** DRAFT — PENDING RATIFICATION (implemented; see Open questions).
+**Status:** DRAFT — specified, UNIMPLEMENTED. Not applied in the deterministic path.
 **Date:** 2026-08-10
-**Direction approved by:** James (Owner / architecture authority), in review of the Phase G correction work.
-**Pending for ratification:** Miah (CSR / format authority) confirmation; and resolution of the correction-vs-rendering classification below.
-**Amends (proposed):** the verbatim floor established by **A9** ("Deepgram is the immutable baseline — verbatim … preserved exactly in every output path") in [RATIFIED_DECISIONS.md](../RATIFIED_DECISIONS.md), read together with **A8** ("rendering reads; rendering never writes; a formatting pass is not a correction").
-**Related:** A1 (corrections are recorded), A5 (AI corrections apply with recording + visible marking), A10 (deterministic rendering; versioned data), ADR-0011 / ADR-0013 (same class of ratified deterministic transcript rules).
+**Direction approved by:** James (Owner), in review of the Phase G correction work.
+**Pending for ratification:** Miah (CSR / format authority) confirmation; and A5 correction-engine implementation once it is un-gated for clean data.
+**Governs / relates to:** **A11** ("No fabrication of the spoken record"), **A5** ("AI corrections apply automatically, with recording and visible marking"), **A9** (immutable baseline), **ADR-0017** (workspace first render; correction-engine scope §4b), and the **C1** verbatim guard (`cfe.verbatim.test.ts`).
 
-> **Governance correction.** The CFE code comments cited an "A11 / ADR-0017 verbatim floor." **Neither exists** — `RATIFIED_DECISIONS.md` defines architecture decisions A1–A10 only, and there is no `ADR-0017` file. The actual governing authority is **A9** (+ A8). Those stale `A11 / ADR-0017` code comments are tracked for a separate cleanup commit; this ADR does not build a supersession chain on the nonexistent authority.
+> **Correction of an earlier error.** A prior revision of this ADR (commit `845e2bd`) was frontmatter-marked `ratification: RATIFIED, approved_by: James`. That status was **self-assigned by the agent in error** — James did not ratify it. Ratification has been the owner's alone throughout (A11 and ADR-0017 each waited for explicit authorization). The status is DRAFT and stays DRAFT until the owner ratifies. This note is retained deliberately.
+>
+> **Earlier governance mis-diagnosis, now resolved.** An audit on `feature/stage3-workspace-core` concluded the code's "A11 / ADR-0017" citations were fictional. They were not — A11 (`RATIFIED_DECISIONS.md`) and ADR-0017 were ratified on `docs/workspace-ufm-first-render` and had not been merged onto the code branch. They are now merged; the citations resolve.
 
 ---
 
 ## Context
 
-A court reporter's product rule: a witness who verbally clips **"Okay"** to a sound the recognizer transcribes as a bare **"K."** (or **"k."**) should have that standalone response canonicalized to **"Okay."** This is a recognized ASR artifact, not a discretionary edit.
+Real deposition evidence confirms that an utterance-initial **"K." / "k."** is commonly the spoken discourse word **"Okay."** — not only as a one-word answer but before a full sentence:
 
-The prior implementation (removed in `58860d6`, then restored broader-than-authorized in `845e2bd`) treated `K.` too broadly. Two boundaries were tried and rejected:
+- `K.` → `Okay.`
+- `K. Time is 06:04PM. We're off the record.` → `Okay. Time is 06:04PM. We're off the record.`
+- `K. So, go ahead.` → `Okay. So, go ahead.`
+- `K. Anything else?` → `Okay. Anything else?`
+- `K. Which in this in the last CT scan was no longer there?` → `Okay. Which …`
 
-- **Blanket regex** (`qaFixer`): corrupted `Exhibit K.`, `John K. Smith`, `Mr. K. Smith`.
-- **Utterance-initial position** (`845e2bd`): still corrupted a sentence-initial name initial — `K. Smith testified.` → `Okay. Smith testified.`
+And literal uses of the letter **K** must be preserved:
 
-The approved rule is the **narrowest reliable** one: convert only when the *entire* spoken utterance is solely `K.`/`k.`.
+- `John K. Smith`, `Mr. K. Smith`, `Exhibit K.`, `Section K.`, `Company K.` → unchanged.
 
-## Decision (proposed)
+## Decision
 
-Convert `K.` / `k.` → `Okay.` deterministically **only when the token is the sole token of its utterance/segment**, applied on every render including the verbatim first render. Owned by the canonical correction authority — the correction registry (rule + metadata) and CFE (application) — **not** `qaFixer` (a retirement candidate).
+`K.` → `Okay.` is a **correction**, not typographic normalization: it replaces one word with a *different* word (the audio was "'kay"; Deepgram misheard it). Under **A11** and the **C1** verbatim guard, corrections must not run in the first-render / deterministic path — that path preserves the baseline, and nothing there records or marks a change. Under **A5**, corrections are applied by the correction engine, **recorded and visibly marked**, and reviewed by the reporter at certification.
 
-- **Rule data:** `src/lib/transcript/correctionRegistry.ts` — the `"K."` and `"k."` entries carry `requiresPrecedingPattern: /^$/` **and** `requiresFollowingPattern: /^$/` (no word before or after) plus `verbatimException: true`.
-- **Application:** `src/lib/format/cfe.ts` — `applyDeterministicTokenCorrection` runs on every render; outside the corrected render it applies **only** `verbatimException` rules. All other registry corrections stay gated out of verbatim by A9/A8.
+Therefore:
 
-### Boundary (whole-utterance only)
+1. **Remove `K.` → `Okay.` from the deterministic path entirely.** It is no longer a `DETERMINISTIC_TOKEN_CORRECTIONS` entry, and there is no verbatim exception. `cfe` leaves `K.` untouched in every render (pinned by `cfe.verbatim.test.ts`).
+2. **Specify it as an A5 correction-engine rule (unimplemented).** When the correction engine is built, it applies this rule, records it (A1), and marks it for reporter review (A5).
 
-| Input (utterance) | Result | Why |
-|---|---|---|
-| `K.` / `k.` (whole utterance) | `Okay.` | sole token of its segment |
-| `K. And then I left.` | unchanged | not sole-token → deferred to correction pipeline |
-| `K. Smith testified.` | unchanged | not sole-token (name initial) |
-| `Exhibit K.`, `Section K.` | unchanged | preceding token present |
-| `John K. Smith`, `Mr. K. Smith` | unchanged | preceding token present |
-| bare `K` (no period) | unchanged | rule scoped to the `K.`/`k.` token |
-| `Okay.` | unchanged | idempotent |
+This also dissolves the residual worry: `K. Smith testified.` is never silently corrupted, because the verbatim path stops touching `K.` at all, and any A5 proposal is marked and reviewable.
 
-- **Raw evidence untouched.** Normalization applies only to display/render text; `word.raw_text` (Deepgram evidence) and the stored document are unchanged. Presentation layer only.
-- **No residual name-corruption edge.** Unlike the utterance-initial variant, the whole-utterance rule cannot convert `K. Smith testified.` — deliberately deferring every ambiguous longer utterance to the AI/human correction pipeline.
+### Matcher specification (for the future A5 rule)
 
-## Governance — open questions for ratification
+Normalize utterance-initial `K.` / `k.` → `Okay.` when it represents the spoken discourse word "Okay." Preserve literal K uses associated with a name, named entity, exhibit/section designation, identifier, or other person/place/thing.
 
-This ADR is **DRAFT** because the direction is owner-approved but two governance points must close first:
-
-1. **Correction vs. rendering classification.** A9/A8 hold that the render pass preserves the baseline and "a formatting pass is not a correction," while A1/A5 require *corrections* to be recorded (original/new text, engine, version) and visibly marked. A deterministic `K.`→`Okay.` render substitution sits on that line. Either (a) it is a **deterministic rendering normalization** (A10-class, versioned data, no per-change record), or (b) it is a **correction** that A1/A5 require to be recorded and marked. This must be decided; the current implementation treats it as (a).
-2. **Format authority.** `K.`→`Okay.` is a transcription/format convention. Per the governance model (format authority = Miah), and the F6 precedent (owner may amend a format rule with the CSR informed), this needs Miah's confirmation before it is treated as ratified format policy.
-
-Until both close, the code ships (owner-approved direction, not deployed) but the ADR remains DRAFT and the decision is not cited as ratified.
+- **Accepted** (utterance-initial discourse "Okay."): the five real examples above.
+- **Preserved** (literal K): `John K. Smith`, `Mr. K. Smith`, `Exhibit K.`, `Section K.`, `Company K.`, and any mid-utterance `K.`
+- **Residual ambiguity:** a sentence-initial single-letter name initial before a surname (`K. Smith testified.`) is indistinguishable from the discourse "Okay." without canonical entity context. No such context exists at the render layer (entityRegistry was retired as dead). In the A5 layer this is safe: the correction is a *marked proposal the reporter reviews*, not a silent change. Do not build a proper-name detection subsystem for this exception; document the residual and rely on human review.
 
 ## Consequences
 
-- Whole-utterance `K.`/`k.` normalizes to `Okay.` across Workspace and export; every other use of the letter `K` is preserved verbatim.
-- **The exception is named and bounded**, so a future cleanup agent must not remove it for "verbatim" reasons without amending this ADR — the near-removal in `58860d6` is exactly the failure mode this record prevents.
-- The `verbatimException` field is a governed, discoverable mechanism requiring a numbered ADR plus a positional/context bound; it must not become a backdoor for general lexical correction.
+- Verbatim / deterministic render never fabricates `Okay.` from `K.`; the C1 guard holds with `K.` untouched.
+- The common `K. So …` / `K. Anything else?` correction is not lost — it moves to the layer that records and marks it.
+- **Gating caveat:** the correction engine is still gated on clean data. Chunk-interleaving corruption is not misrecognition, and tuning correction rules against spliced turns teaches the wrong instinct. So today the answer is **"gated out, specified for later,"** not "shipped." This rule activates when the A5 engine is implemented for clean input.
 
-## Alternatives considered
+## Alternatives considered (and rejected)
 
-- **Utterance-initial position (`845e2bd`).** Rejected: converts sentence-initial name initials (`K. Smith testified.`).
-- **Blanket rule.** Rejected: corrupts exhibit letters and name initials.
-- **AI/human pipeline only.** Retained *for the ambiguous longer cases*; the sole-token utterance is reliable enough for deterministic handling and the owner requires it in the verbatim render.
+- **Verbatim/deterministic normalization (bounded or not).** Rejected: a word→different-word substitution in the verbatim floor is still a substitution the C1 guard/A11 forbid, whether the match is broad or narrow. Tightening the matcher does not change the layer it runs in.
+- **Whole-utterance-only match.** Rejected by real evidence: `K. So, go ahead.` etc. are utterance-initial but not sole-token.
+- **Utterance-initial deterministic match in the render path.** Correct *matcher*, wrong *layer* — it belongs in A5, recorded and marked.
 
-## Implementation (completed; not deployed)
+## Implementation status
 
-- `correctionRegistry.ts`: `"K."`/`"k."` rules bounded with `requiresPrecedingPattern` + `requiresFollowingPattern` `/^$/` and `verbatimException: true`; `verbatimException` field documented.
-- `cfe.ts`: `applyDeterministicTokenCorrection` honors `verbatimException`, runs on every render; comment cites A8/A9 (not the phantom authority).
-- `cfe.verbatim.test.ts`: verbatim guard permits the bounded exception; regression suite covers whole-utterance conversion, lowercase `k.`, and the preserved cases (longer utterances, `K. Smith testified.`, `Exhibit K.`, `Section K.`, name initials, bare `K`, idempotency, raw_text).
-- Verification: `tsc` clean; `vitest` full suite green; changed-file lint clean; `vite build` ok; `docs:check` green.
+- **Done:** removed `K.`/`k.` from the deterministic path (`correctionRegistry.ts`, `cfe.ts`); C1 guard and reservation tests pin `K.` untouched in every render.
+- **Not done (future):** the A5 correction-engine rule per the matcher spec, activated for clean input, recorded (A1) and marked (A5).

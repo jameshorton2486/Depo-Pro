@@ -11,14 +11,6 @@ export interface DeterministicCorrection {
   reason: string;
   requiresPrecedingPattern?: RegExp;
   requiresFollowingPattern?: RegExp;
-  /**
-   * When true, this correction is an APPROVED bounded exception to the verbatim
-   * floor (A9 / the ADR-0017 verbatim policy) and is applied even in the
-   * first-render (verbatim) path — not gated behind applyLexicalCorrections.
-   * Reserve strictly for narrowly-bounded, recognized ASR artifacts ratified by
-   * a numbered ADR (see ADR-0018 for the standalone "K." -> "Okay." exception).
-   */
-  verbatimException?: boolean;
 }
 
 export interface AmbiguousFlag {
@@ -49,32 +41,13 @@ export interface StutterRule {
 export const INTERRUPTION_DASH = " -- ";
 
 export const DETERMINISTIC_TOKEN_CORRECTIONS: DeterministicCorrection[] = [
-  // ADR-0018 (DRAFT): a spoken utterance transcribed as a bare "K." / "k." is a
-  // recognized ASR artifact for "Okay." and canonicalizes even inside the
-  // verbatim floor (A9). Bounded to a WHOLE standalone utterance: the token must
-  // be the SOLE token of its segment — requiresPrecedingPattern AND
-  // requiresFollowingPattern both /^$/ (no word before or after it). It
-  // deliberately does NOT fire on longer utterances ("K. Smith testified.",
-  // "K. And then I left."), exhibit letters ("Exhibit K."), name initials
-  // ("John K. Smith", "Mr. K. Smith"), or "Section K." — those ambiguous cases
-  // go to the AI/human correction pipeline. Do NOT broaden without amending
-  // ADR-0018; a positional-only rule corrupts identifiers.
-  {
-    match: "K.",
-    replacement: "Okay.",
-    reason: "Standalone spoken 'K.' is a recognized ASR artifact for 'Okay.' (ADR-0018)",
-    requiresPrecedingPattern: /^$/,
-    requiresFollowingPattern: /^$/,
-    verbatimException: true,
-  },
-  {
-    match: "k.",
-    replacement: "Okay.",
-    reason: "Standalone spoken 'k.' is a recognized ASR artifact for 'Okay.' (ADR-0018)",
-    requiresPrecedingPattern: /^$/,
-    requiresFollowingPattern: /^$/,
-    verbatimException: true,
-  },
+  // NOTE: "K." -> "Okay." (a standalone spoken "'kay" misheard by Deepgram) is a
+  // CORRECTION — it replaces one word with a DIFFERENT word — not a same-lexeme
+  // rendering normalization. Per A11 (no fabrication of the spoken record) and
+  // the C1 verbatim guard it is gated out of the first render, and it is NOT
+  // kept here as a deterministic token correction either. It is reserved for the
+  // A5 correction layer (applied, recorded, visibly marked, reviewed at
+  // certification) — specified but unimplemented. See ADR-0018 (DRAFT).
   {
     match: "C572224L",
     replacement: "C-5722-24-L",

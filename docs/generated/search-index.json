@@ -2,8 +2,8 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "c0317ea709a56b9bb578635075ba5a0e0ab76c4c58457b6eddfe355547e2fc08",
-  "graph_sha256": "9c02a291db480ad990009864637aea94ddbe503f478573c93acf4103889cc189",
+  "manifest_sha256": "2ddd823a0abbe3c52eef7240f7c27ce7dbec30ee93157731e5a0bbf902e5da3d",
+  "graph_sha256": "12e90ca29d6b056d0c4223cd44db963dc6c82517539dbbd70c969ba0abcf2cc7",
   "document_count": 323,
   "documents": [
     {
@@ -33183,7 +33183,7 @@
     },
     {
       "id": "DOC-0322",
-      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" bounded verbatim exception",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)",
       "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
       "category": "architecture",
       "owner": "Rendering",
@@ -33194,34 +33194,29 @@
         "adr-0018",
         "alternatives",
         "architecture",
-        "boundary",
-        "bounded",
-        "completed",
         "consequences",
         "considered",
         "context",
+        "correction",
         "decision",
-        "deployed",
-        "exception",
-        "governance",
+        "future",
         "implementation",
-        "not",
+        "layer",
+        "matcher",
         "okay",
-        "only",
-        "open",
-        "proposed",
-        "questions",
-        "ratification",
+        "rejected",
         "rendering",
+        "rule",
+        "specification",
+        "specified",
         "standalone",
-        "verbatim",
-        "verbatim-standalone-k-okay-exception",
-        "whole-utterance"
+        "status",
+        "verbatim-standalone-k-okay-exception"
       ],
       "headings": [
         {
           "level": 1,
-          "text": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" bounded verbatim exception"
+          "text": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)"
         },
         {
           "level": 2,
@@ -33229,15 +33224,11 @@
         },
         {
           "level": 2,
-          "text": "Decision (proposed)"
+          "text": "Decision"
         },
         {
           "level": 3,
-          "text": "Boundary (whole-utterance only)"
-        },
-        {
-          "level": 2,
-          "text": "Governance — open questions for ratification"
+          "text": "Matcher specification (for the future A5 rule)"
         },
         {
           "level": 2,
@@ -33245,11 +33236,11 @@
         },
         {
           "level": 2,
-          "text": "Alternatives considered"
+          "text": "Alternatives considered (and rejected)"
         },
         {
           "level": 2,
-          "text": "Implementation (completed; not deployed)"
+          "text": "Implementation status"
         }
       ]
     },
