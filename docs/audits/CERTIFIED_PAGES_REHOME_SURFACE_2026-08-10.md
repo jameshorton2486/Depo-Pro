@@ -27,6 +27,8 @@ Two required pages depend on final page/line numbers: the **witness/exhibit inde
 
 **Therefore the first re-home step is an enabler, independent of any single page:** promote the pagination that `docx_exporter` already computes into a **queryable render-model output** — per logical line `(page, line)`, plus the page where each examination section and exhibit mark begins. This is a pure data-exposure of a computation that already runs. Without it, indexes and errata cannot be built anywhere.
 
+**Contract established (inert, 2026-08-10):** the data contract for that output now exists as [paginationContract.ts](../../src/lib/export/paginationContract.ts) — `PageLineRef`, `PaginatedLine` (page/line + paragraph/utterance identity + continuation flag), `SectionAnchor`, `ExhibitAnchor`, `PaginationMap`, plus pure read-side helpers (`lookupParagraphRef`/`lookupUtteranceRef` for errata/index resolution, `compareRefs`, `formatPageLine`) with unit tests. This is **inert/default-off**: nothing in the live path produces or consumes it. The **producer** — which must reproduce the renderer's wrap-then-chunk logic and match its page breaks exactly (a rendering-parity concern) — is deliberately NOT built; it is the activation step, gated with the rest of the re-home. Fixing the shape + read-side now lets it be reviewed and tested ahead of the build, exactly as the line_type foundation was staged.
+
 ## Re-home mapping — per required page
 
 Legend: **Data status** = required values already in the TS `CaseRecord`/`ufm_metadata` (✅), partial/derivable (⚠️), genuinely absent (❌).
