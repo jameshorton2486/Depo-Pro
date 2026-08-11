@@ -290,6 +290,23 @@ export async function finalizeTranscriptJob(
     error: null,
   });
 
+  // Enforce one-transcript-per-case: a freshly completed transcript supersedes
+  // any prior transcripts for this case. This is what makes retranscription an
+  // overwrite (and is a no-op for a case's first transcription). Runs only AFTER
+  // the new transcript is COMPLETE so a failed re-run can never leave the case
+  // with zero transcripts. Best-effort — the new transcript is already COMPLETE
+  // and must not be failed if pruning throws; certified transcripts are skipped
+  // inside pruneSupersededTranscripts.
+  try {
+    await pruneSupersededTranscripts(supabase, job.case_id, job.transcript_id);
+  } catch (pruneError) {
+    console.error("[transcript-finalize] superseded-transcript prune failed", {
+      jobId: job.id,
+      caseId: job.case_id,
+      message: pruneError instanceof Error ? pruneError.message : String(pruneError),
+    });
+  }
+
   // Best-effort enrichment: the transcript is already COMPLETE and must not be
   // flipped to `failed` if boundary detection or AI review throws.
   try {
@@ -1136,6 +1153,104 @@ export async function cleanupTranscript(
   await supabase.from("transcript_speakers").delete().eq("transcript_id", transcriptId);
   await supabase.from("transcript_audit_log").delete().eq("transcript_id", transcriptId);
   await supabase.from("transcripts").delete().eq("transcript_id", transcriptId);
+}
+
+/**
+ * True when the case owns a certification with a certification_date set — an
+ * official, locked transcript that the DB's `reject_certified_transcript_mutation`
+ * trigger refuses to delete. Deletion callers must check this first so a certified
+ * record is never partially deleted.
+ */
+export async function isCaseCertificationLocked(
+  supabase: SupabaseClient<Database>,
+  caseId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("case_certifications")
+    .select("certification_date")
+    .eq("case_id", caseId)
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  return Boolean((data as { certification_date?: string | null } | null)?.certification_date);
+}
+
+/**
+ * Fully removes ONE transcript version. Requires a SERVICE-ROLE client — there is
+ * no RLS delete policy on transcripts / audit / corrections.
+ *
+ * Deleting the `transcripts` row cascades (ON DELETE CASCADE) to every child
+ * table: transcript_words, transcript_utterances, transcript_speakers,
+ * transcript_audit_log, transcript_review_state, transcript_suggestions,
+ * speaker_resolution_current, corrections, correction_runs, correction_decisions.
+ * The separate `transcription_jobs` ledger row has NO foreign key to transcripts,
+ * so it is not cascaded and must be deleted explicitly (its transcript_id is
+ * UNIQUE, so a lingering row would also block reuse of that id).
+ *
+ * Refuses to touch a certified case (the DB trigger would reject it and could
+ * leave a partially-deleted version).
+ */
+export async function deleteTranscriptVersion(
+  supabase: SupabaseClient<Database>,
+  caseId: string,
+  transcriptId: string,
+): Promise<void> {
+  if (await isCaseCertificationLocked(supabase, caseId)) {
+    throw new Error(
+      `Refusing to delete transcript ${transcriptId}: case ${caseId} is certified (locked).`,
+    );
+  }
+
+  const { error: transcriptError } = await supabase
+    .from("transcripts")
+    .delete()
+    .eq("transcript_id", transcriptId);
+  if (transcriptError) {
+    throw transcriptError;
+  }
+
+  const { error: jobError } = await supabase
+    .from("transcription_jobs")
+    .delete()
+    .eq("transcript_id", transcriptId);
+  if (jobError) {
+    throw jobError;
+  }
+}
+
+/**
+ * Deletes every transcript for `caseId` except `keepTranscriptId`, enforcing
+ * one-transcript-per-case. A superseded transcript that is certification-locked
+ * is skipped (left intact) and logged rather than deleted — retranscription is
+ * blocked for certified cases upstream, so this is defensive only.
+ */
+export async function pruneSupersededTranscripts(
+  supabase: SupabaseClient<Database>,
+  caseId: string,
+  keepTranscriptId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("transcripts")
+    .select("transcript_id")
+    .eq("case_id", caseId)
+    .neq("transcript_id", keepTranscriptId);
+  if (error) {
+    throw error;
+  }
+
+  const superseded = (data ?? []) as Array<{ transcript_id: string }>;
+  for (const row of superseded) {
+    try {
+      await deleteTranscriptVersion(supabase, caseId, row.transcript_id);
+    } catch (deleteError) {
+      console.error("[transcript-finalize] skipped superseded transcript", {
+        caseId,
+        transcriptId: row.transcript_id,
+        message: deleteError instanceof Error ? deleteError.message : String(deleteError),
+      });
+    }
+  }
 }
 
 export function detectMediaKind(mimeType: string): "audio" | "video" {

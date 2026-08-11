@@ -14,6 +14,7 @@ interface TranscriptHistoryPanelProps {
   onOpenWorkspace: () => void;
   onRetranscribe: () => void;
   disabled?: boolean;
+  certified?: boolean;
 }
 
 function formatTimestamp(value: string) {
@@ -28,6 +29,7 @@ export function TranscriptHistoryPanel({
   onOpenWorkspace,
   onRetranscribe,
   disabled = false,
+  certified = false,
 }: TranscriptHistoryPanelProps) {
   const orderedTranscripts = sortTranscriptsByCreatedAt(transcripts);
   const versionLabels = buildTranscriptVersionLabels(orderedTranscripts);
@@ -45,7 +47,7 @@ export function TranscriptHistoryPanel({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">Transcript Already Exists</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Existing transcripts stay intact. Choose one to open in Workspace or create a new transcript using the current pipeline.
+            Open this transcript in Workspace, or retranscribe to replace it. Each case keeps a single transcript, so retranscription overwrites the current one.
           </p>
         </div>
       </div>
@@ -113,7 +115,7 @@ export function TranscriptHistoryPanel({
           type="button"
           data-testid="transcript-history-retranscribe"
           onClick={onRetranscribe}
-          disabled={disabled}
+          disabled={disabled || certified}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
           <RotateCcw size={14} />
@@ -123,7 +125,9 @@ export function TranscriptHistoryPanel({
 
       <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
         <FileAudio2 size={13} />
-        A retranscription creates a new transcript and preserves all prior transcripts.
+        {certified
+          ? "This case is certified. Decertify it before retranscribing — retranscription replaces the certified transcript."
+          : "Retranscription replaces the current transcript once the new one completes, so the case keeps a single transcript."}
       </div>
     </section>
   );

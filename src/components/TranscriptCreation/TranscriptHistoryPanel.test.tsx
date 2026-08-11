@@ -140,6 +140,24 @@ describe("TranscriptHistoryPanel", () => {
     expect(onRetranscribe).toHaveBeenCalledTimes(1);
   });
 
+  it("disables retranscribe and shows a decertify message when the case is certified", () => {
+    const onRetranscribe = vi.fn();
+
+    const tree = TranscriptHistoryPanel({
+      audioFilename: "etminan.mp3",
+      transcripts,
+      selectedTranscriptId: "tr_original",
+      onSelectTranscript: vi.fn(),
+      onOpenWorkspace: vi.fn(),
+      onRetranscribe,
+      certified: true,
+    });
+
+    const retranscribeButton = findByTestId(tree, "transcript-history-retranscribe");
+    expect(retranscribeButton.props.disabled).toBe(true);
+    expect(collectText(tree)).toContain("certified");
+  });
+
   it("falls back to the oldest transcript as original even when input order is newest first", () => {
     const tree = TranscriptHistoryPanel({
       audioFilename: "etminan.mp3",

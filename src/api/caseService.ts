@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../lib/supabase";
+import { isMockMode } from "../lib/runtime/mode";
 import { normalizeCaseRecord } from "../lib/normalizeCaseRecord";
 import { emptyCaseRecord, type CaseRecord } from "../types/case";
 
@@ -279,4 +280,29 @@ export async function listRecentCases(limit = 25): Promise<CaseBrowserSummary[]>
       certified: indicator.certified,
     };
   });
+}
+
+/**
+ * True when the case has a certification with a certification_date set — i.e. an
+ * official, locked transcript. Retranscription (which replaces the transcript)
+ * is blocked while this is true; the reporter must decertify first. Mirrors the
+ * `certified = Boolean(certification_date)` rule used by the case browser.
+ */
+export async function isCaseCertified(caseId: string): Promise<boolean> {
+  if (isMockMode()) {
+    return false;
+  }
+
+  const client = await getSupabaseClient("isCaseCertified");
+  const { data, error } = await client
+    .from("case_certifications")
+    .select("certification_date")
+    .eq("case_id", caseId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean((data as { certification_date?: string | null } | null)?.certification_date);
 }
