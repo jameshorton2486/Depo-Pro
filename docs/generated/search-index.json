@@ -33493,6 +33493,7 @@
         "docs",
         "every",
         "exact",
+        "exception",
         "existing",
         "export",
         "final",
@@ -33500,12 +33501,14 @@
         "fix",
         "freeze",
         "freeze-limited",
+        "frozen",
         "gate",
         "grounding",
         "here",
         "human",
         "implementation",
         "inspection",
+        "integration",
         "keeprawlabels",
         "line",
         "local",
@@ -33522,6 +33525,7 @@
         "persistence",
         "phase",
         "plan",
+        "production",
         "proposal",
         "qafixer",
         "raw-evidence",
@@ -33537,9 +33541,11 @@
         "revised",
         "rollback",
         "schema",
+        "scoped",
         "sequence",
         "state",
         "status",
+        "still",
         "stop",
         "strategy",
         "structural",
@@ -33654,6 +33660,10 @@
         {
           "level": 2,
           "text": "Implementation status (freeze-limited local waves)"
+        },
+        {
+          "level": 3,
+          "text": "LOCAL integration (scoped freeze exception — production still frozen)"
         },
         {
           "level": 3,

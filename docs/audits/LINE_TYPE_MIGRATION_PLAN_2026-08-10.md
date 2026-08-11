@@ -185,6 +185,19 @@ default-off scaffolding + types + persistence code + invariants + tests + docs**
 | 3 | `58647f1` | editor-api `PUT /:jobId/structure` review-persistence endpoint (F10-style, owner-scoped, audit-logged, `assign_line_type`). | No — **not deployed**; no client caller yet. |
 | 4 | `d7e390b` | `lineTypeMigration.ts` — default-off `PERSISTED_LINE_TYPE_ENABLED=false`; `shouldProposeStructure` (proposal never overwrites CONFIRMED/OVERRIDDEN); `selectReviewCandidates`. | No — flag off; helpers unconsumed. |
 
+### LOCAL integration (scoped freeze exception — production still frozen)
+
+| Wave | Commit | Content | Live? |
+|---|---|---|---|
+| resolver | `bd294d9` | `resolveStructuralKind` (persisted line_type → paragraph kind). | flag-off no-op |
+| overlay | `c21797d` | `applyReviewedStructure` — converged paragraph overlay (builder-agnostic, generic over the two paragraph types). | flag-off no-op |
+| Wave A | `a260fca` | Seam: overlay wired into both `workspacePresentation` + `exportAdapter`; flag-off byte-identical (proven `toEqual`), flag-on convergence tested. | flag-off no-op |
+| §11 | `1cf86b9` | Final `qaFixer` behavior matrix — overlay re-kinds but can't **split**; split belongs to upstream structural-apply. Retirement gate above. | doc |
+| engine | `69784e6`/`2c5f13f` | `applyStructuralCorrections` (qa_split) — the split owner; splits utterances at the reviewed boundary into Q+A with persisted CONFIRMED line_type; pure, raw evidence preserved. Loop proven: engine → overlay → Q/A. | inert |
+| Step 1 | `7886c13` | `deriveWorkingTranscript` load-time projection wired into **both** `buildEditorContent` + `buildCanonicalExportRenderModel` via the SAME pure function → parity by construction. Idempotent (apply-twice==once), reopen-deterministic, states (pending/rejected never apply). | flag-off no-op |
+
+**Step 1 status:** the accept→apply→converge chain exists and is composition-proven — `qa_split CorrectionObject (accepted)` → `deriveWorkingTranscript` (idempotent split) → persisted `line_type` → `applyReviewedStructure` → both builders. `qaFixer`'s split now has a surviving owner (gate item #1). **Remaining to complete Step 1:** (a) frontend `DocumentContext` hookup to fetch corrections at load and pass them (+ a test-visible `enabled` override so flag-on is exercised through the real entry points); (b) full mixed-document Workspace==export render parity harness (needs the export certification harness); (c) autosave/reopen round-trip through the UI; (d) `qaFixer` retirement once (a)–(c) are green + the objection split lands. Still flag-off; no live caller passes corrections; production frozen.
+
 Two DOC-0325-vs-code reconciliations were made and documented in the migration file: (a) `line_type`
 value space uses the **short codes** `Q|A|SP|PN|HEADER|UNKNOWN` that `normalizePersistedLineType`
 already binds to (not §1's long names); (b) `ai_suggested_line_type` is **aliased** as the proposal,
