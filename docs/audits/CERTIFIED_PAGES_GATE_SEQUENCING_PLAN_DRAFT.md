@@ -444,4 +444,34 @@ Recommendation (Human decision required):
 - **C-full:** apply all 7 (idempotent re-apply reconciles finalizing+watchdog history) — simpler history, but re-runs live-object DDL.
 
 ### M.1 Verdict
-**GATE 1A NOT READY — new blocker: production schema/history drift.** finalizing + watchdog are applied out-of-band and unrecorded; the clean "additive catch-up" premise no longer holds unmodified. Requires a Human decision (C-scoped vs C-full) and acknowledgment of the pre-existing drift before the execution runbook is finalized. corrections / canon_raw_b/d / line_type(1A) / working_text remain genuinely absent, additive, and inert — the safe core of any catch-up.
+**GATE 1A NOT READY — new blocker: production schema/history drift.** finalizing + watchdog are applied out-of-band and unrecorded; the clean "additive catch-up" premise no longer holds unmodified. Requires a Human decision (C-scoped vs C-full) and acknowledgment of the pre-existing drift before the execution runbook is finalized. corrections / canon_raw_b/d / line_type(1A) / working_text remain genuinely absent — the core of any catch-up.
+
+## N. C-SCOPED decision — Gate 0R reconciliation + final Gate 1A package (2026-08-11, read-only)
+**C-scoped is selected.** Gate 1A applies only the five genuinely-absent migrations; finalizing + watchdog are reconciled via history-repair (Gate 0R), not re-run; Gate 1B stays excluded.
+
+### N.1 Equivalence matrices — ALL EXACT (fail-closed NOT triggered)
+finalizing: `finalize_started_at` (timestamptz null) EXACT; `finalize_attempts` (int NOT NULL default 0) EXACT; status CHECK EXACT (canonical `= ANY(ARRAY…)`); `case_active_idx` partial-unique EXACT. watchdog: `watchdog_attempts` EXACT; `fail_stale_transcription_jobs` SECURITY DEFINER + `search_path=public` EXACT; `service_role` EXECUTE grant EXACT; pg_cron+pg_net EXACT; cron `fail-stale */10 → fn('60 min')` EXACT; `transcribe-watchdog */5` pg_net EXACT. Live schema faithfully matches the files → repair-as-applied is truthful.
+
+### N.2 Gate 0R — Migration History Reconciliation (REQUIRED before Gate 1A)
+Mechanism: `supabase migration repair 20260724120000 20260724130000 --status applied --linked` — the official CLI mechanism to record versions as applied WITHOUT running their SQL. Precondition: N.1 EXACT (proven); both versions absent pre-repair; `schema_migrations` snapshot + fresh backup. Reversibility: `migration repair … --status reverted` → **R2** (reversible, no application-table change) but a production history write requiring explicit authorization. Verify: post-repair both versions present; zero application objects changed (no SQL ran); objects still match N.1. Authorization: *"I authorize the Depo-Pro Gate 0R migration-history reconciliation: record 20260724120000 and 20260724130000 as applied via migration repair, without re-running their SQL."*
+
+### N.3 Resulting sequential state
+After Gate 0R: `schema_migrations` max = `20260724130000`; next pending starts at `20260729120000`. After Gate 1A (5 applied, Gate 1B withheld): max = `20260811120000`; only `20260812090000` pending. History contiguous, no gaps.
+
+### N.4 Gate 1A C-scoped set (exactly 5) + exclusions
+Authorized: `20260729120000` corrections, `20260804230000` canon_raw_b, `20260804233000` canon_raw_d, `20260810180000` line_type (1A), `20260811120000` working_text. Excluded: finalizing + watchdog (Gate 0R), Gate 1B (`20260812090000`). Guarded by `src/lib/db/gate1aScopedSet.test.ts` (pins the set; fails on any new/unexpected pending version or reintroduction of an excluded one).
+
+### N.5 CRITICAL — the five are NOT dormant: deployed code is AHEAD of schema
+The DEPLOYED edge functions already reference objects the five create, which are ABSENT in the DB: `editor-api` calls `rpc('editor_apply_working_word_changes')` (working_text) and writes `line_type_review_status` (line_type 1A); `ai-review` + `editor-api` read/write `corrections`/`correction_runs`/`correction_decisions` (corrections). So those deployed paths are currently unsatisfied. Applying the five **catches schema up to deployed code**, ACTIVATING: correction persistence, working-text word-change save, and line_type decision persistence. This is arguably the correct reconciliation but is an OPERATIONAL ACTIVATION, not a dormant install — it must be acknowledged. (line_type USE stays gated by `PERSISTED_LINE_TYPE_ENABLED=false`; only decision PERSISTENCE is enabled — pre-Gate-2 / pre-PONR, since persisted decisions do not shape output until the flag flips.) Prereqs present: `set_updated_at()`, `gen_random_uuid`, `transcripts`/`cases`.
+
+### N.6 Gate 1B withholding mechanism (git-safe)
+Run the Gate 1A push from an ISOLATED ephemeral workdir; never mutate the tracked migration tree. Copy `supabase/` (config + `.temp` link + migrations MINUS `20260812090000`) to a temp dir; `supabase db push --workdir <temp> --dry-run` → expect exactly the five; then (authorized) `--workdir <temp>` to apply; discard the temp dir. The authoritative worktree (and Gate 1B) are untouched throughout → no shared-worktree/concurrent-agent commit risk. Gate 1B stays pending in the authoritative tree.
+
+### N.7 Execution package (prepared — NOT executed)
+PREFLIGHT (read-only) → BACKUP CONFIRM → GATE 0R [separate auth] → RE-READ HISTORY → ISOLATE 1B (temp workdir) → DRY RUN (expect 5) → HUMAN GATE 1A AUTH → PUSH [not now] → POST-VERIFY (history advances through `20260811120000`; `20260812090000` absent; expected objects exist; no `OVERRIDDEN` backfill; flag off; certified default-off; app healthy) → DISCARD temp → VERIFY Gate 1B pending → FREEZE RE-CLOSE.
+
+### N.8 Backup evidence (no overclaim)
+BACKUP EXISTS: managed daily backups (verify tier/PITR in dashboard). RESTORE PATH: documented (dashboard restore). RESTORE TESTED: **not** established (cannot rehearse against production). Require a fresh backup immediately before Gate 0R and before Gate 1A.
+
+### N.9 Verdict
+**GATE 0R READY FOR HUMAN AUTHORIZATION** — a clean, proven-equivalent history reconciliation (N.1). The Gate 1A C-scoped set is pinned and dependency-clean, but applying it **activates deployed-but-unsatisfied code paths** (N.5) — authorize Gate 0R first, then acknowledge the deployed-code activation before Gate 1A.

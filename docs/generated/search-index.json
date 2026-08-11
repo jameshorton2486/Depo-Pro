@@ -34261,10 +34261,13 @@
         "added",
         "additive",
         "after",
+        "ahead",
+        "all",
         "appendix",
         "application",
         "architecture",
         "archival",
+        "are",
         "audit",
         "audits",
         "authoritative",
@@ -34272,22 +34275,27 @@
         "authorization",
         "backfill",
         "backup",
+        "before",
         "behavior",
         "behind",
         "both",
         "bundle",
+        "c-scoped",
         "certified",
         "classification",
         "clean",
         "cleanup",
         "cli",
+        "code",
         "compatibility",
         "consolidation",
         "corrected",
         "critical",
         "dag",
+        "decision",
         "deletion-readiness",
         "dependency",
+        "deployed",
         "deployment",
         "depo-pro",
         "deterministic",
@@ -34297,17 +34305,26 @@
         "drift",
         "easy",
         "eight",
+        "equivalence",
+        "evidence",
         "exact",
+        "exactly",
+        "exclusions",
         "executable",
+        "executed",
         "execution",
         "exit",
+        "fail-closed",
+        "final",
         "finding",
+        "five",
         "fixed",
         "forced",
         "four",
         "freeze",
         "gate",
         "gates",
+        "git-safe",
         "harvest",
         "history",
         "human",
@@ -34323,7 +34340,9 @@
         "main",
         "make",
         "map",
+        "matrices",
         "mechanism",
+        "migration",
         "migration-history",
         "migrations",
         "minimum-vs-correctness",
@@ -34334,6 +34353,7 @@
         "one-page",
         "options",
         "order",
+        "overclaim",
         "package",
         "pages",
         "pending-migration",
@@ -34343,6 +34363,7 @@
         "post-activation",
         "pre-gate",
         "preflight",
+        "prepared",
         "prerequisite",
         "prerequisites",
         "preview",
@@ -34350,10 +34371,13 @@
         "program-wide",
         "python",
         "read-only",
+        "reconciliation",
         "refinements",
+        "required",
         "resolution",
         "restore",
         "result",
+        "resulting",
         "retains",
         "retirement",
         "retirement-phase",
@@ -34367,6 +34391,8 @@
         "sentences",
         "sequence",
         "sequencing",
+        "sequential",
+        "set",
         "split",
         "stage",
         "state",
@@ -34376,11 +34402,13 @@
         "supabase",
         "template",
         "timestamp",
+        "triggered",
         "type",
         "ufm",
         "validation",
         "verdict",
-        "verification"
+        "verification",
+        "withholding"
       ],
       "headings": [
         {
@@ -34534,6 +34562,46 @@
         {
           "level": 3,
           "text": "M.1 Verdict"
+        },
+        {
+          "level": 2,
+          "text": "N. C-SCOPED decision — Gate 0R reconciliation + final Gate 1A package (2026-08-11, read-only)"
+        },
+        {
+          "level": 3,
+          "text": "N.1 Equivalence matrices — ALL EXACT (fail-closed NOT triggered)"
+        },
+        {
+          "level": 3,
+          "text": "N.2 Gate 0R — Migration History Reconciliation (REQUIRED before Gate 1A)"
+        },
+        {
+          "level": 3,
+          "text": "N.3 Resulting sequential state"
+        },
+        {
+          "level": 3,
+          "text": "N.4 Gate 1A C-scoped set (exactly 5) + exclusions"
+        },
+        {
+          "level": 3,
+          "text": "N.5 CRITICAL — the five are NOT dormant: deployed code is AHEAD of schema"
+        },
+        {
+          "level": 3,
+          "text": "N.6 Gate 1B withholding mechanism (git-safe)"
+        },
+        {
+          "level": 3,
+          "text": "N.7 Execution package (prepared — NOT executed)"
+        },
+        {
+          "level": 3,
+          "text": "N.8 Backup evidence (no overclaim)"
+        },
+        {
+          "level": 3,
+          "text": "N.9 Verdict"
         }
       ]
     }
