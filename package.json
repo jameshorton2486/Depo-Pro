@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "verify:edge": "node scripts/verify-edge-functions.mjs",
+    "verify:edge:update": "node scripts/verify-edge-functions.mjs --update",
     "stage:validate": "vitest run src/lib/stageS",
     "env:audit": "node scripts/audit-env.mjs",
     "docs:graph": "node scripts/generate-documentation-graph.mjs",

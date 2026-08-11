@@ -1,0 +1,76 @@
+{
+  "ai-review": {
+    "count": 13,
+    "signatures": [
+      "TS2339: Property 'data' does not exist on type 'never'.",
+      "TS2339: Property 'payload' does not exist on type 'never'.",
+      "TS2345: Argument of type '{ ai_review_meta: { completed: boolean; mode: string; prompt_version: string; model: string; transcript_revision: string; completed_at: string; suggestions_count: number; rejected_co",
+      "TS2345: Argument of type '{ ai_review_meta: { completed: boolean; prompt_version: string; model: string; transcript_revision: string; completed_at: string; suggestions_count: number; auto_applied_count: numbe",
+      "TS2345: Argument of type '{ ai_review_meta: { completed: boolean; prompt_version: string; transcript_revision: string; failed_at: string; }; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ ai_suggested_line_type: \"Q\" | \"A\" | \"COLLOQUY\" | \"PARENTHETICAL\"; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ ai_suggestion: string; ai_suggestion_reason: string; ai_confidence: number; ai_suggestion_status: \"pending\" | \"accepted\"; working_text?: string | null | undefined; }' is not assign",
+      "TS2345: Argument of type '{ id: string; run_id: string; transcript_id: string; case_id: string; specialty: CorrectionSpecialty; prompt_version: string; context_hash: string; location: CorrectionLocation; ... ",
+      "TS2345: Argument of type '{ proposed_display_name: string; proposed_role: \"REPORTER\" | \"WITNESS\" | \"ATTORNEY\" | \"INTERPRETER\" | \"VIDEOGRAPHER\"; ai_suggested: boolean; }' is not assignable to parameter of type",
+      "TS2353: Object literal may only specify known properties, and 'transcript_id' does not exist in type 'never[]'."
+    ]
+  },
+  "anthropic-healthcheck": {
+    "count": 0,
+    "signatures": []
+  },
+  "editor-api": {
+    "count": 24,
+    "signatures": [
+      "TS2339: Property 'certification_date' does not exist on type 'never'.",
+      "TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ ai_review_meta: null; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ ai_suggested: boolean; verified: boolean; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ ai_suggestion: null; ai_suggestion_reason: null; ai_confidence: null; ai_suggestion_status: null; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ ai_suggestion_status: string; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ display_name: string; assigned_name: string; speaker_label: string; role: string | null; speaker_role: string | null; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ line_type: string; line_type_review_status: string; manually_reassigned: boolean; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ p_transcript_id: string; p_case_id: string; p_job_id: string; p_changes: WorkingChange[]; }' is not assignable to parameter of type 'undefined'.",
+      "TS2345: Argument of type '{ p_transcript_id: string; p_case_id: string; p_job_id: string; p_suggestion_id: string; p_action: \"accept\" | \"reject\" | \"edit\"; p_edited_text: string | null; }' is not assignable to",
+      "TS2345: Argument of type '{ review: { state: string; decided_at: string; decision_note: string | null; final_value: Record<string, unknown> | null; }; downstream: { applied_to_working_transcript: boolean; app",
+      "TS2345: Argument of type '{ reviewed: boolean; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ speaker_id: string; speaker_label: string; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ speaker_id: string; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ speaker_map_confirmed: boolean; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ working_text: string | null; text: string; edited: boolean; ai_suggestion_status: string; }' is not assignable to parameter of type 'never'.",
+      "TS2345: Argument of type '{ working_text: string | null; text: string; edited: boolean; }' is not assignable to parameter of type 'never'.",
+      "TS2352: Conversion of type 'Record<string, unknown>' to type 'SaveWorkingPayload' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to",
+      "TS2769: No overload matches this call."
+    ]
+  },
+  "export-adapter": {
+    "count": 0,
+    "signatures": []
+  },
+  "export-adapter-relay": {
+    "count": 0,
+    "signatures": []
+  },
+  "extract-nod": {
+    "count": 0,
+    "signatures": []
+  },
+  "recover-transcript": {
+    "count": 0,
+    "signatures": []
+  },
+  "transcribe-callback": {
+    "count": 0,
+    "signatures": []
+  },
+  "transcribe-start": {
+    "count": 2,
+    "signatures": [
+      "TS2345: Argument of type 'Partial<Pick<TranscriptionJobRecord, \"error\" | \"source_index\" | \"status\" | \"source_audio_id\" | \"request_path\" | \"response_path\">>' is not assignable to parameter of type 'never'.",
+      "TS2769: No overload matches this call."
+    ]
+  },
+  "transcribe-watchdog": {
+    "count": 0,
+    "signatures": []
+  }
+}
