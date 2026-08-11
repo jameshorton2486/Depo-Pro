@@ -23,21 +23,22 @@ function refOf(line: FormattedLine): PageLineRef {
 }
 
 /**
- * Reconstruct the visible text of a line. `body` is the spoken/printed content
- * (from `words`, honoring each token's trailing space); `full` prepends the line
- * prefix (e.g. a "Q."/"A." label or a "BY" lead) so anchored header/by-line patterns
- * can match the whole line. Exhibit detection uses `body` only, so a Q/A prefix can
- * never contaminate it.
+ * The printed CONTENT of a line: the joined `words` (honoring each token's trailing
+ * space), whitespace-normalized. Section headers, BY-lines and exhibit statements are
+ * all matched against this — never against `prefix_text`, which carries the "Q."/"A."
+ * or speaker label and would defeat the anchored header patterns. Falls back to
+ * `prefix_text` only for a generated line that has no words.
  */
-function textParts(line: FormattedLine): { body: string; full: string } {
+function lineBody(line: FormattedLine): string {
   const body = (line.words ?? [])
     .map((w) => `${w.text}${w.trailing_space ?? ""}`)
     .join("")
     .replace(/\s+/g, " ")
     .trim();
-  const prefix = (line.prefix_text ?? "").replace(/\s+/g, " ").trim();
-  const full = prefix.length > 0 ? `${prefix} ${body}`.trim() : body;
-  return { body, full };
+  if (body.length > 0) {
+    return body;
+  }
+  return (line.prefix_text ?? "").replace(/\s+/g, " ").trim();
 }
 
 // Examination-header patterns, most specific first. Each maps a header line to the
@@ -84,15 +85,14 @@ export function detectSectionAnchors(formatted: FormattedDocument | null | undef
   const anchors: SectionAnchor[] = [];
 
   for (let i = 0; i < lines.length; i += 1) {
-    const { full } = textParts(lines[i]);
-    const kind = classifySectionHeader(full);
+    const kind = classifySectionHeader(lineBody(lines[i]));
     if (!kind) {
       continue;
     }
 
     let examinerLabel: string | null = null;
     for (let j = i + 1; j <= i + EXAMINER_LOOKAHEAD && j < lines.length; j += 1) {
-      const ahead = textParts(lines[j]).full;
+      const ahead = lineBody(lines[j]);
       const examiner = examinerFromByLine(ahead);
       if (examiner) {
         examinerLabel = examiner;
@@ -157,7 +157,7 @@ export function detectExhibitAnchors(formatted: FormattedDocument | null | undef
   const anchors: ExhibitAnchor[] = [];
 
   for (const line of lines) {
-    const { body } = textParts(line);
+    const body = lineBody(line);
     if (body.length === 0 || !/\bexhibit\b/i.test(body)) {
       continue;
     }
