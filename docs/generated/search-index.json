@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "b8973171a6cf6a4fffa185e94b4b60e73a0ffe94ca5f563c24fd83172752ee80",
-  "graph_sha256": "02ec5c77d9dab61114288dc749a88c7b2b9c8b19f1c2d36943df70bb9f9a1f51",
-  "document_count": 327,
+  "manifest_sha256": "ecb6c4085400aedc830cb32db6ec55e7acaad6c38cf25dc190f71b1058043498",
+  "graph_sha256": "620c91b3f740abe992a3c6e62b3a51e40835c9d511973f70031c0b7e03361832",
+  "document_count": 328,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33851,6 +33851,123 @@
         {
           "level": 2,
           "text": "Remaining harvest / gates (not done here)"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0328",
+      "title": "Certified-pages re-home surface — front/back matter into the live pipeline",
+      "path": "docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "activation",
+        "additions",
+        "adr-0017",
+        "all",
+        "architectural",
+        "architecture",
+        "audits",
+        "back",
+        "behavioral",
+        "boundary",
+        "certified",
+        "certified-pages",
+        "characterization",
+        "concern",
+        "consolidated",
+        "content",
+        "correction",
+        "docs",
+        "enabler",
+        "enabling",
+        "first-class",
+        "freeze",
+        "freeze-safe",
+        "front",
+        "gate",
+        "gates",
+        "human",
+        "indexes",
+        "intake",
+        "live",
+        "mapping",
+        "matter",
+        "metadata",
+        "need",
+        "not",
+        "notes",
+        "only",
+        "output",
+        "page",
+        "pages",
+        "pagination",
+        "per",
+        "pipeline",
+        "post-record",
+        "prerequisite",
+        "re-home",
+        "recommended",
+        "rehome",
+        "render",
+        "render-model",
+        "required",
+        "sequence",
+        "single",
+        "substitution",
+        "surface",
+        "target",
+        "transcript",
+        "ufm"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Certified-pages re-home surface — mapping the ADR-0017 front/back matter into the live pipeline"
+        },
+        {
+          "level": 2,
+          "text": "The single enabling prerequisite — pagination as first-class render-model output"
+        },
+        {
+          "level": 2,
+          "text": "Re-home mapping — per required page"
+        },
+        {
+          "level": 3,
+          "text": "Front matter (from Intake/UFM metadata; no transcript content)"
+        },
+        {
+          "level": 3,
+          "text": "Back matter"
+        },
+        {
+          "level": 3,
+          "text": "Indexes (need the pagination enabler)"
+        },
+        {
+          "level": 2,
+          "text": "Architectural boundary — the post-record substitution is a correction concern, NOT a render concern"
+        },
+        {
+          "level": 2,
+          "text": "Consolidated required target additions"
+        },
+        {
+          "level": 2,
+          "text": "Recommended sequence (all behavioral → activation is a Human Gate; only characterization is freeze-safe)"
+        },
+        {
+          "level": 2,
+          "text": "Freeze / Human Gates"
         },
         {
           "level": 2,

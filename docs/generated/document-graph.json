@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "b8973171a6cf6a4fffa185e94b4b60e73a0ffe94ca5f563c24fd83172752ee80",
+  "source_sha256": "ecb6c4085400aedc830cb32db6ec55e7acaad6c38cf25dc190f71b1058043498",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4911,6 +4911,21 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0328",
+      "title": "Certified-pages re-home surface — front/back matter into the live pipeline",
+      "path": "docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6545,6 +6560,11 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0327",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0328",
       "target": "DOC-0071"
     },
     {
@@ -8558,6 +8578,11 @@
       "target": "DOC-0232"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0328",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -10261,6 +10286,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0327",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0328",
+      "target": "OWNER:Architecture"
     }
   ],
   "owners": {
@@ -10579,7 +10609,8 @@
       "DOC-0324",
       "DOC-0325",
       "DOC-0326",
-      "DOC-0327"
+      "DOC-0327",
+      "DOC-0328"
     ],
     "Deepgram": [
       "DOC-0069"
