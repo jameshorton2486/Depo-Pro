@@ -563,9 +563,11 @@ def build_certificate_and_signature_lines(data: Mapping[str, object]) -> list[li
         paginate_lines(
             certificate_lines(
                 reporter,
-                reporter_firm=data.get("reporterFirm"),
-                reporter_address=data.get("reporterAddress"),
-                reporter_phone=data.get("reporterPhone"),
+                # Reporter firm/address are transported on the certificate object; a
+                # top-level override is still honored for callers that pass one.
+                reporter_firm=reporter.get("reporterFirm") or data.get("reporterFirm"),
+                reporter_address=reporter.get("reporterAddress") or data.get("reporterAddress"),
+                reporter_phone=reporter.get("reporterPhone") or data.get("reporterPhone"),
                 waiver=data.get("signatureWaived", True),
             )
         )

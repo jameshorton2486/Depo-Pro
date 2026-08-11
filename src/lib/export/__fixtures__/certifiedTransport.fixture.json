@@ -201,6 +201,8 @@
       "csrLicense": "CSR-9999",
       "firmRegistration": "FIRM-123",
       "csrCertExpiration": "12/31/2027",
+      "reporterFirm": null,
+      "reporterAddress": null,
       "deponent": "JANE DOE",
       "caption": "JANE DOE vs. ACME CORP.",
       "causeNumber": "2026-CI-01234"

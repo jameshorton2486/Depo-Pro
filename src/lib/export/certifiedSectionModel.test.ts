@@ -89,6 +89,23 @@ describe("buildCertifiedSections", () => {
     });
   });
 
+  it("transports reporter firm/address and notary identity (P2, no fabrication)", () => {
+    const withLegal = envelope();
+    (withLegal.ufm_metadata as Record<string, unknown>).reporter_firm = "Bexar Reporting LLC";
+    (withLegal.ufm_metadata as Record<string, unknown>).reporter_address = "500 Court St, San Antonio, Texas";
+    (withLegal.ufm_metadata as Record<string, unknown>).notary_name = "A. Notary";
+    (withLegal.ufm_metadata as Record<string, unknown>).notary_county = "Bexar";
+    const sections = buildCertifiedSections(model(withLegal));
+    expect(sections.reporterCertificate.reporterFirm).toBe("Bexar Reporting LLC");
+    expect(sections.reporterCertificate.reporterAddress).toBe("500 Court St, San Antonio, Texas");
+    expect(sections.notary).toEqual({ name: "A. Notary", county: "Bexar", identificationMethod: null });
+
+    // Absent -> null, never fabricated.
+    const bare = buildCertifiedSections(model(envelope()));
+    expect(bare.reporterCertificate.reporterFirm).toBeNull();
+    expect(bare.notary).toEqual({ name: null, county: null, identificationMethod: null });
+  });
+
   it("passes the finalized indexes through unchanged", () => {
     const sections = buildCertifiedSections(model(envelope()));
     expect(sections.examinationIndex).toEqual([{ kind: "EXAMINATION", examinerLabel: "MR. SMITH", page: 2 }]);

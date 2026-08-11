@@ -61,9 +61,19 @@ export interface ReporterCertificateSection {
   csrLicense: string | null;
   firmRegistration: string | null;
   csrCertExpiration: string | null;
+  reporterFirm: string | null;
+  reporterAddress: string | null;
   deponent: string | null;
   caption: string | null;
   causeNumber: string | null;
+}
+
+/** Notary jurat fields for the changes-&-signature page. */
+export interface NotaryBlock {
+  name: string | null;
+  county: string | null;
+  /** How the witness was identified; genuinely absent from the canonical envelope today. */
+  identificationMethod: string | null;
 }
 
 /** The full certified non-body assembly. */
@@ -76,6 +86,7 @@ export interface CertifiedFrontBackMatter {
   errata: ErrataRow[];
   /** Errata change requests whose location was not found in the pagination map. */
   unresolvedErrata: ErrataChangeRequest[];
+  notary: NotaryBlock;
 }
 
 function str(value: unknown): string | null {
@@ -135,9 +146,19 @@ function buildReporterCertificate(envelope: UfmMetadataEnvelope | null): Reporte
     csrLicense: str(metaField(envelope, "csr_license")),
     firmRegistration: str(metaField(envelope, "firm_registration")),
     csrCertExpiration: str(metaField(envelope, "csr_cert_expiration")),
+    reporterFirm: str(metaField(envelope, "reporter_firm")),
+    reporterAddress: str(metaField(envelope, "reporter_address")),
     deponent: str(metaField(envelope, "deponent")),
     caption: str(metaField(envelope, "caption")),
     causeNumber: str(metaField(envelope, "cause_number")),
+  };
+}
+
+function buildNotary(envelope: UfmMetadataEnvelope | null): NotaryBlock {
+  return {
+    name: str(metaField(envelope, "notary_name")),
+    county: str(metaField(envelope, "notary_county")),
+    identificationMethod: null,
   };
 }
 
@@ -164,5 +185,6 @@ export function buildCertifiedSections(
     exhibitIndex: model.exhibitIndex,
     errata: errata.rows,
     unresolvedErrata: errata.unresolved,
+    notary: buildNotary(model.metadata),
   };
 }

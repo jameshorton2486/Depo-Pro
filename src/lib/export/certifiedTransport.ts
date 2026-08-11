@@ -69,9 +69,11 @@ export function buildCertifiedTransport(input: {
       errata: sections.errata,
       witnessName: input.witnessName ?? sections.caption.deponent,
       depoDate: input.depoDate ?? sections.caption.depositionDate,
-      notaryCounty: notary?.notaryCounty ?? null,
-      notaryName: notary?.notaryName ?? null,
-      identificationMethod: notary?.identificationMethod ?? null,
+      // Notary jurat fields come from the transported envelope (sections.notary); an
+      // explicit `notary` override wins when provided. Never fabricated.
+      notaryCounty: notary?.notaryCounty ?? sections.notary.county,
+      notaryName: notary?.notaryName ?? sections.notary.name,
+      identificationMethod: notary?.identificationMethod ?? sections.notary.identificationMethod,
     },
   };
 }

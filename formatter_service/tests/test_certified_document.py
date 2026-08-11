@@ -13,6 +13,7 @@ from formatter_core.certified_sections import (
     CERTIFIED_DOCUMENT_ORDER,
     CertifiedMetadataError,
     appearances_lines,
+    build_certificate_and_signature_lines,
     caption_lines,
     certificate_lines,
     render_certified_document_to_docx,
@@ -120,6 +121,23 @@ def test_certificate_fails_explicitly_on_missing_reporter_identity() -> None:
         certificate_lines({"reporterName": "MARY REPORTER"})  # no CSR
     with pytest.raises(CertifiedMetadataError):
         certificate_lines({"csrLicense": "CSR-9999"})  # no name
+
+
+def test_certificate_renders_transported_firm_and_address() -> None:
+    # P2: reporter firm/address are transported on the certificate object and rendered.
+    reporter = dict(REPORTER)
+    reporter["reporterFirm"] = "Bexar Reporting LLC"
+    reporter["reporterAddress"] = "500 Court St, San Antonio, Texas"
+    data = _certified_data()
+    data["reporterCertificate"] = reporter
+    data["notaryName"] = "A. Notary"
+    data["notaryCounty"] = "Bexar"
+
+    flat = [line for page in build_certificate_and_signature_lines(data) for line in page]
+    assert "  Bexar Reporting LLC" in flat
+    assert "  500 Court St, San Antonio, Texas" in flat
+    assert "  Before me, A. Notary, on this day personally" in flat
+    assert "  COUNTY OF Bexar    )" in flat
 
 
 def test_complete_document_assembly_order_and_body(tmp_path) -> None:

@@ -33,6 +33,10 @@ type UfmFieldKey =
   | "csr_license"
   | "firm_registration"
   | "csr_cert_expiration"
+  | "reporter_firm"
+  | "reporter_address"
+  | "notary_name"
+  | "notary_county"
   | "custodial_attorney"
   | "requesting_party"
   | "appearances"
@@ -550,6 +554,13 @@ export function buildUfmMetadata(args: {
       normalizeValue(effectiveReporterProfile?.firm_registration_number) ?? normalizeValue(record.reporter.firm_registration_number.value),
     csr_cert_expiration:
       normalizeValue(effectiveReporterProfile?.csr_cert_expiration) ?? normalizeValue(record.reporter.license_expiration.value),
+    // Reporter firm name + address and notary identity already live on the CaseRecord;
+    // they were simply never transported. Emitting them completes the certificate and the
+    // notary jurat toward EXACT parity — no value is fabricated (null when absent).
+    reporter_firm: normalizeValue(record.reporter.firm.value),
+    reporter_address: normalizeValue(record.reporter.firm_address.value),
+    notary_name: normalizeValue(record.reporter.notary_name),
+    notary_county: normalizeValue(record.session.location_county.value),
     custodial_attorney: normalizeValue(custodialAttorneyField?.value),
     requesting_party: normalizeValue(requestingPartyField?.value),
     appearances: buildAppearances(record, directoryContacts),
