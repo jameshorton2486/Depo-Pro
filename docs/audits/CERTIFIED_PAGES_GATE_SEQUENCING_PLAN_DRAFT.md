@@ -484,3 +484,13 @@ Human-authorized and executed. **This is the program's first production mutation
 - **Rollback (still available, unused):** `supabase migration repair 20260724120000 20260724130000 --status reverted` (R2; reverses only the two ledger rows).
 - **Resulting ledger:** applied through watchdog (`20260724130000`). **Pending (6):** `20260729120000` corrections → `20260804230000` canon_raw_b → `20260804233000` canon_raw_d → `20260810180000` line_type (Gate 1A) → `20260811120000` working_text → `20260812090000` Gate 1B backfill.
 - Gate 1A NOT executed; PONR NOT approached. Freeze re-closed.
+
+## P. GATE 1A — EXECUTED 2026-08-11 (Additive Production Schema Catch-Up, C-scoped)
+Human-authorized (exact five, Gate 1B excluded) and executed. Application-schema DDL only; NO row-data backfill.
+- **Preflight (read-only):** 38 applied, max `20260724130000`; all five target objects absent; backup evidence — WAL-G managed backups enabled, 8 backups, latest `2026-08-11T12:25Z` (BACKUP EXISTS; RESTORE PATH = dashboard; RESTORE TESTED not established; PITR off).
+- **Mechanism:** isolated ephemeral workdir built from the split migrations (Gate 1B `20260812090000` withheld) + the main worktree's working IPv4-pooler link; the authoritative tree never modified. `db push --dry-run` showed **exactly** the five (Gate 1B absent) → then `db push --linked --yes`.
+- **Applied (5):** `20260729120000` corrections, `20260804230000` canon_raw_b, `20260804233000` canon_raw_d, `20260810180000` line_type (DDL-only), `20260811120000` working_text. (`drop constraint if exists` NOTICEs on fresh apply are expected.)
+- **Post-execution verification (read-only):** 43 applied, max `20260811120000`; **Gate 1B `20260812090000` ABSENT**; objects present — corrections tables (3), canon_raw_b cols (3), canon_raw_d cols (2), line_type cols (3) + both constraints, working_text RPC (1); **Gate 1B backfill did NOT run — 0 `OVERRIDDEN` rows; all 13,169 utterances `UNREVIEWED`** (additive column default, not the backfill); `PERSISTED_LINE_TYPE_ENABLED` false; certified default-off. Evidence: `docs/audits/gate0r-evidence/schema_migrations_after_gate1a.json`.
+- **Operational note (per §N.5):** these bring schema into alignment with already-deployed code, making correction-persistence, working-text-save, and line_type-decision-persistence paths functional. This does NOT make persisted line_type the transcript structural authority — that remains Gate 2 (PONR).
+- **Rollback:** additive → reversible by dropping the new objects; managed backup available.
+- **Resulting pending (1):** `20260812090000` Gate 1B backfill. Temp workdir discarded; authoritative tree retains Gate 1B, clean. Gate 1B NOT executed; Gate 2 / PONR NOT approached. Freeze re-closed.

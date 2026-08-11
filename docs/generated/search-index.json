@@ -34281,6 +34281,7 @@
         "both",
         "bundle",
         "c-scoped",
+        "catch-up",
         "certified",
         "classification",
         "clean",
@@ -34607,6 +34608,10 @@
         {
           "level": 2,
           "text": "O. GATE 0R — EXECUTED 2026-08-11 (migration-history reconciliation ONLY)"
+        },
+        {
+          "level": 2,
+          "text": "P. GATE 1A — EXECUTED 2026-08-11 (Additive Production Schema Catch-Up, C-scoped)"
         }
       ]
     }
