@@ -90,8 +90,28 @@ The classifier's output contract gains explicit uncertainty. Proposal fields on 
 
 ## 11. `qaFixer` consumer migration and retirement (§15 of Phase G)
 
-- Sole runtime consumer: `workspacePresentation.ts:743` (`applyQaFixer`). Its responsibilities (Q/A split, embedded-objection split, consecutive re-merge) move to: **proposals** at classification time (persisted as `line_type` after review), not render-time heuristics.
-- Sequence: (1) proposal generation covers the split/merge cases qaFixer handled; (2) persisted reviewed `line_type` supplies structure to the converged builder; (3) confirm Q/A parity on the clean baseline; (4) remove the `applyQaFixer` call; (5) retire `qaFixer` + tests through the four-part deletion gate. Its objection-attribution (already `UNIDENTIFIED_SPEAKER`) and any residual structural logic are captured as proposals, not silent transforms.
+- Sole runtime consumer: `workspacePresentation.ts:743` (`applyQaFixer`), now wrapped by the shared-builder seam (Wave A, `a260fca`): `applyReviewedStructure(applyQaFixer(paragraphs), document)`.
+
+### Final behavior matrix (2026-08-10) — the retirement-blocking finding
+
+**`applyReviewedStructure` does NOT replace `qaFixer`.** The overlay only *re-kinds* an existing paragraph; `qaFixer`'s core job is to *split one paragraph into several*. That split is a structural change to the Working Transcript, and it belongs upstream in the **CorrectionObject structural-apply** domain — not in a render-time overlay.
+
+| # | `qaFixer` behavior | Trigger | Transform | Changes | Replaced by `applyReviewedStructure`? | Canonical owner | Migration dependency | Gate |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Short-answer **Q/A split** | Q paragraph containing `?` + `SHORT_ANSWER_PATTERN` (Yes./No./Correct./I did./I do./I have./I don't.) | 1 Q para → Q + A (+ recursive trailing Q) | **structure (paragraph count)** | **NO** — overlay changes kind, never splits | CorrectionObject `qa_split` (structural change, applied to the Working Transcript **upstream** of paragraph building) | a **qa_split structural-apply engine** (memory: `structural_apply_engine_v2`, not built) | NOT MET |
+| 2 | **Embedded-objection split** | Q paragraph matching `OBJECTION_PATTERN` (`Objection. (Form.\|Foundation.)?`) | 1 Q → Q + COLLOQUY(objection, verbatim, `UNIDENTIFIED_SPEAKER`) + Q | **structure + attribution marker** | **NO** — split not covered | CorrectionObject `objection_attribution` + an upstream speaker-resolution migration (qaFixer must NOT resolve identity) | objection structural-apply + speaker diarization migration | NOT MET |
+| 3 | **Consecutive re-merge** | adjacent paragraphs, same `kind` + same `label` (not SECTION_HEADER/BY_LINE) | merge into one | presentation | Partially — the builder's own `canMergeParagraphs`/`mergeParagraph` already merges during construction | the paragraph builder (or converged builder) | none (builder already merges); becomes redundant once splits move upstream | can retire with #1/#2 |
+| 4 | Non-Q passthrough | any non-Q paragraph | clone unchanged | none | n/a | n/a | none | trivial |
+
+**Behavior `applyReviewedStructure` does not cover (explicit):** paragraph **splitting** (#1, #2). The overlay re-labels a paragraph's kind from persisted reviewed `line_type`; it cannot turn one paragraph into two. Do NOT copy the split logic into the structural overlay — that would rebuild a render-time classifier. The split is a *reviewed structural correction* applied to the Working Transcript.
+
+### Revised retirement sequence + gate
+1. Build the **CorrectionObject structural-apply** path (qa_split, objection split) that mutates the Working Transcript upstream, so each utterance is one structural unit before paragraph building (a reviewed decision, recorded/markable — A5).
+2. Persisted reviewed `line_type` + `applyReviewedStructure` supply the per-paragraph kind; the builder's own merge covers presentation (#3).
+3. Q/A + objection parity on the clean baseline (structure identical to today's `qaFixer` output, but reviewed rather than heuristic).
+4. Remove the `applyQaFixer` call; retire `qaFixer` + tests via the four-part deletion gate.
+
+**Deletion-gate status: NOT locally satisfiable under the current authorization.** Retirement depends on the structural-apply engine (a separate build) + a speaker-resolution migration. Until those exist, **`qaFixer` stays in place behind the compatibility path** (do not force deletion). The Wave A seam already positions the overlay to run *after* `qaFixer`, so activation converges kinds without yet removing the split.
 
 ## 12. Compatibility with existing UNKNOWN transcripts (§12)
 

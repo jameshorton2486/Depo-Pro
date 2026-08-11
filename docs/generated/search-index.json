@@ -33475,6 +33475,7 @@
         "architecture",
         "audits",
         "backfill",
+        "behavior",
         "canonical",
         "changes",
         "classifier",
@@ -33494,6 +33495,8 @@
         "exact",
         "existing",
         "export",
+        "final",
+        "finding",
         "fix",
         "freeze",
         "freeze-limited",
@@ -33507,6 +33510,7 @@
         "line",
         "local",
         "locally",
+        "matrix",
         "migration",
         "mode",
         "normal",
@@ -33526,9 +33530,11 @@
         "remove",
         "representation",
         "retirement",
+        "retirement-blocking",
         "reversible",
         "review",
         "reviewed",
+        "revised",
         "rollback",
         "schema",
         "sequence",
@@ -33604,6 +33610,14 @@
         {
           "level": 2,
           "text": "11. `qaFixer` consumer migration and retirement (§15 of Phase G)"
+        },
+        {
+          "level": 3,
+          "text": "Final behavior matrix (2026-08-10) — the retirement-blocking finding"
+        },
+        {
+          "level": 3,
+          "text": "Revised retirement sequence + gate"
         },
         {
           "level": 2,
