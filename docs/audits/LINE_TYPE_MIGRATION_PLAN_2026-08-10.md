@@ -287,13 +287,19 @@ is never re-split), evidence-immutable, accepted/edited-only. Covered by a 14-ca
 round-trip. This resolves the original gaps **G2** (split-boundary representation) and **G3** (objector
 `speaker_id` resolution).
 
-**Still open — G1 (no producer).** Nothing yet *emits* `objection_split` corrections: the AI bridge
-still excludes objections, and no deterministic detector proposes them. So the objection split has an
-**apply owner** but no **producer**. Completing the objection migration (and thus enabling qaFixer's
-objection responsibility to be retired) needs a producer — per the owner's guidance, a deterministic
-**boundary** detector that proposes evidence-supported objection spans and **never decides speaker
-identity** (attribution stays human/unresolved). Even with a producer, retiring qaFixer additionally
-requires the flag-on correction path to be the **live render authority** — the activation Human Gate.
+**G1 (producer) — IMPLEMENTED.** `objectionDetector.ts` (`detectObjectionSplitProposals`) is the
+deterministic producer: it scans immutable evidence for an **explicit, word-bounded** objection — a
+standalone `Objection.` token (period required for precision; the common noun in "no objection to that"
+is not matched), optionally extended across `Form.`/`Foundation.` — and emits `objection_split`
+CorrectionObject **proposals** (`review.state="pending"`). It is embedded-only (a standalone objection
+turn is left alone), never mutates the transcript, and **never decides speaker identity** (no
+`objector_speaker_id` — attribution stays separate/unresolved). Proposal identity is deterministic
+(a stable id derived from the evidence span; no `Date`/`Math.random`). The complete loop is proven
+(`objectionDetector.test.ts`): detect → ACCEPT → `applyStructuralCorrections` → derived `SP` objection
+unit with the unidentified objector; PENDING/REJECT change nothing. The production **invocation point**
+(when a run auto-generates + persists these proposals) is an activation wiring concern, like the rest of
+the flag-gated path. Even with the producer, retiring qaFixer additionally requires the flag-on
+correction path to be the **live render authority** — the activation Human Gate.
 
 **Original characterization (retained for the record).** Two representations existed, and neither could
 carry the objection split as a reviewed correction:
