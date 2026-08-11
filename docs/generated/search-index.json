@@ -34351,6 +34351,7 @@
         "obsolete-artifact",
         "one",
         "one-page",
+        "only",
         "options",
         "order",
         "overclaim",
@@ -34602,6 +34603,10 @@
         {
           "level": 3,
           "text": "N.9 Verdict"
+        },
+        {
+          "level": 2,
+          "text": "O. GATE 0R — EXECUTED 2026-08-11 (migration-history reconciliation ONLY)"
         }
       ]
     }

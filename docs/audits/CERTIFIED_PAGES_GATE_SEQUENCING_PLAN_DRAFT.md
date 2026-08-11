@@ -475,3 +475,12 @@ BACKUP EXISTS: managed daily backups (verify tier/PITR in dashboard). RESTORE PA
 
 ### N.9 Verdict
 **GATE 0R READY FOR HUMAN AUTHORIZATION** — a clean, proven-equivalent history reconciliation (N.1). The Gate 1A C-scoped set is pinned and dependency-clean, but applying it **activates deployed-but-unsatisfied code paths** (N.5) — authorize Gate 0R first, then acknowledge the deployed-code activation before Gate 1A.
+
+## O. GATE 0R — EXECUTED 2026-08-11 (migration-history reconciliation ONLY)
+Human-authorized and executed. **This is the program's first production mutation; it changed only the Supabase migration ledger, no application schema/data.**
+- **Command:** `supabase migration repair 20260724120000 20260724130000 --status applied --linked` (CLI connected via the management access token; no DB password used or handled). SQL of the two migrations was NOT executed.
+- **Pre-repair (recovery evidence):** 36 applied, max `20260722024834`; both targets absent; equivalence matrices re-verified EXACT (§N.1); watchdog fn md5 `412c540c48f2e4fea018afe4a201709a`, both cron jobs present.
+- **Post-repair verification (read-only):** 38 applied, max `20260724130000`; both targets now present; **recovery diff added exactly `20260724120000` + `20260724130000`, removed none**; watchdog fn md5 UNCHANGED; both cron jobs UNCHANGED; `transcription_jobs` columns UNCHANGED; all five Gate 1A objects still ABSENT (no Gate 1A/1B SQL ran); no application data changed; `PERSISTED_LINE_TYPE_ENABLED` false; certified default-off.
+- **Rollback (still available, unused):** `supabase migration repair 20260724120000 20260724130000 --status reverted` (R2; reverses only the two ledger rows).
+- **Resulting ledger:** applied through watchdog (`20260724130000`). **Pending (6):** `20260729120000` corrections → `20260804230000` canon_raw_b → `20260804233000` canon_raw_d → `20260810180000` line_type (Gate 1A) → `20260811120000` working_text → `20260812090000` Gate 1B backfill.
+- Gate 1A NOT executed; PONR NOT approached. Freeze re-closed.
