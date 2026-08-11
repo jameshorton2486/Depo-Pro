@@ -94,28 +94,42 @@ Lower LOC alone is not the objective. The net effect is fewer competing authorit
 
 ### LOC + module measurement (§41, read-only git)
 
-Baseline = `478cf7e` (`36dee53^`, the tree state immediately before the first reduction commit, Wave G1) → HEAD `7e86870`. Linear ancestor, so directly measurable. Whole diff: **66 files, +3255 / −2175**. Split by domain (`git diff --numstat`):
+Baseline = `478cf7e` (`36dee53^`, immediately before the first reduction commit, Wave G1). Recompute from Git as HEAD moves — the numbers are a checkpoint, not permanent facts. **Distinguish gross-removed from replacement-added from net from test/doc/scaffolding added; added tests/docs/inert-scaffolding are NOT bloat.** Snapshot at HEAD `bd294d9`.
+
+**Delta baseline → HEAD** (`git diff --numstat`):
 
 | Domain | Added | Removed | Net | Note |
 |---|---|---|---|---|
-| **Production code** (`src/` excl. tests) | 772 | 1,555 | **−783** | net production shrinkage despite adding the whole line_type foundation |
-| Tests (`src/**/*.test.*`) | 386 | 547 | −161 | 5 dead test files removed; new invariant/drift tests added |
-| `supabase/` (functions + migrations) | 168 | 2 | +166 | line_type migration file + editor-api structure endpoint (non-active) |
-| Docs (excl. generated) | 901 | 10 | +891 | governance: DOC-0324..0327 + working report |
-| Generated docs | 1,028 | 61 | +967 | graph/build regeneration (mechanical) |
+| **Production TS** (`src/` excl. tests) | 921 | 1,563 | **−642** | net shrinkage *while adding* the line_type foundation, CorrectionObject contract, pagination contract. Net moved −783 → −642 as ~140 lines of inert replacement scaffolding landed (expected, not bloat). |
+| Src tests | 577 | 547 | +30 | 5 dead test files removed; new invariant/drift/contract tests added (net roughly flat) |
+| `supabase/` (functions + migrations) | 245 | 3 | +242 | line_type migration file + editor-api structure endpoint + edge type-honesty (all non-active/undeployed) |
+| `scripts/` + CI | 121 | 0 | +121 | permanent Edge Function deno-check gate (tooling, not product) |
+| Docs (excl. generated) | 1,099 | 10 | +1,089 | governance: DOC-0324..0328 + scorecard + branch audit |
 
-**Modules:** production TS modules removed **5** (`correctionEngines`, `correctionValidator`, `entityRegistry`, `formattingEngine`, `structureEngine` — Wave G1), added **3** (`structuralProposal.ts`, `lineTypeMigration.ts`, relocated `correction_object.schema.json`). Net −2 live modules while *adding* the persisted-structure authority the app was missing.
+**Current production snapshot (tracked LOC):**
 
-**Engines / authorities / AI paths (before → current):** dead/duplicate TS correction+reconstruction engines **5 → 0**; competing Q/A structural authorities **5 → 3** (`structureEngine` retired; `qaFixer` marked retire-via-migration; target = 1 reviewed `line_type`); CorrectionObject definitions **3 hand-synced → 2 mechanically drift-tested** (schema+TS; Python retires with its subsystem — DOC-0327); live record-fabricating paths **3 → 0**.
+| Domain | Files | LOC | | Domain | Files | LOC |
+|---|---|---|---|---|---|---|
+| TS/TSX production (`src/`, excl. tests) | 224 | 46,592 | | Python `transcript_formatter/` (dead-rel-prod) | 89 py | 21,909 |
+| Src tests | 141 | 21,473 | | Cloud Run `formatter_service`+`formatter_core` | — | 1,935 |
+| Edge Functions (`supabase/functions`) | 16 | 7,100 | | Migrations | 42 | — |
+| Governed docs | 328 | — | | Dependencies | 16 + 19 dev | — |
 
-**Five largest remaining deletion opportunities (by LOC, all gated):**
-1. **Python `transcript_formatter/` — 21,909 LOC / 113 files.** By far the largest. Dead relative to prod but gated behind the DOC-0326 four-part harvest gate (rule tables, certified pages, schema, prompts).
-2. **`ai-review` legacy word-suggestion path — ~540 LOC** (`supabase/functions/ai-review/index.ts`). Phase-G Wave G3 retires the legacy path once the CorrectionObject bridge is the single authority with a live reader.
-3. **`aiSuggestionEngine.ts` — 276 LOC.** Duplicate Anthropic transport, dead behind the ai-review 500 (Wave G2/G3).
-4. **`qaFixer.ts` — 281 LOC.** RETIRE-VIA-MIGRATION once persisted `line_type` owns Q/A structure (DOC-0325 activation).
-5. **`keepRawLabels` / `structureConfirmed` render branches.** Removed at line_type activation (DOC-0325 Wave 5+), collapsing the two render-time classifiers.
+**Production domain LOC (src, excl. tests):** transcript `src/lib/transcript` 6,414 · rendering/export `src/lib/export`+`src/lib/format` 1,397 · UFM `src/lib/ufm` 779 · Workspace `TranscriptEditor`+`CorrectionsPanel` 1,643 · components total 14,547.
 
-Headline: production code has already **shrunk ~783 LOC net** while the missing structural authority was *added*; the dominant remaining reduction (~22k Python LOC + ~1.1k dead TS AI-path LOC) is staged behind harvest/activation gates, not blocked.
+**Modules:** removed **5** (`correctionEngines`, `correctionValidator`, `entityRegistry`, `formattingEngine`, `structureEngine` — Wave G1); added **3** inert (`structuralProposal.ts`, `lineTypeMigration.ts`, `paginationContract.ts`) + relocated `correction_object.schema.json` + the edge gate script. Net −2 live modules while adding the persisted-structure authority the app was missing.
+
+**Engines / authorities / paths (before → current):** dead/duplicate TS correction+reconstruction engines **5 → 0**; competing Q/A structural authorities **5 → 3** (target = 1 reviewed `line_type`); CorrectionObject definitions **3 hand-synced → 2 mechanically drift-tested**; live record-fabricating paths **3 → 0**; Edge Function type verification **none → permanent CI gate**; pagination authorities **(discarded, none queryable) → 1 inert contract**.
+
+**Five largest remaining deletion/consolidation opportunities:**
+
+1. **Python `transcript_formatter/`** — ~21,909 LOC / 89 py (113 tracked). *Responsibility:* certified-page builders, rule tables, UFM, templates, CorrectionObject/schema history, prompts, fixtures. *Reachability:* dead vs current prod execution (DOC-0326). *Must survive:* the certified front/back-matter builders (ADR-0017) — reference implementation of a live-absent capability. *Surviving owner:* live `formatter_core`/TS render model after re-home. *Prerequisite:* pagination producer + certified-page re-home (DOC-0328). *Gate:* four-part, NOT MET. *Human Gate:* deletion + the certified-pages product build.
+2. **Cloud Run + `transcript_formatter` PDF/geometry duplication** — the body render+geometry+PDF ARE replicated in `formatter_core` (safely redundant); only the structural pages are the gap. *Reachability:* `formatter_core` live. *Prerequisite:* confirm re-home parity. *Gate:* partial.
+3. **`ai-review` legacy word-suggestion path** — ~540 LOC (`supabase/functions/ai-review`). *Responsibility:* legacy per-word suggestions. *Reachability:* reachable but 500s pre-AI; output orphaned (DOC-0321). *Must survive:* nothing unique (CorrectionObject bridge owns it). *Surviving owner:* bridge path. *Prerequisite:* wire a live `corrections` reader (Wave G3). *Gate:* deferred under freeze. *Human Gate:* deploy.
+4. **`qaFixer.ts`** — 281 LOC. *Responsibility:* render-time Q/A split + re-merge. *Reachability:* 1 live consumer (`workspacePresentation.ts:743`). *Must survive:* Q/A structural split (→ reviewed `line_type`). *Surviving owner:* persisted `line_type` + converged builder. *Prerequisite:* `line_type` activation + parity. *Gate:* RETIRE-VIA-MIGRATION, NOT MET. *Human Gate:* flag flip.
+5. **`aiSuggestionEngine.ts` (276 LOC) + `keepRawLabels`/`structureConfirmed` branches** — *Reachability:* aiSuggestionEngine dead behind the ai-review 500; keepRawLabels/structureConfirmed live render branches. *Must survive:* structure-review capability (→ Workspace review affordance). *Prerequisite:* line_type activation. *Gate:* deferred. *Human Gate:* activation + deploy.
+
+Headline: production TS has **shrunk ~642 LOC net** while the missing structural authority, the CorrectionObject contract, and the pagination contract were *added*; the dominant remaining reduction (~21.9k Python LOC + ~1.1k dead TS AI-path LOC) is staged behind harvest/activation gates — required capability first, deletion second.
 
 ### Governance note (verbatim floor) — corrected
 
