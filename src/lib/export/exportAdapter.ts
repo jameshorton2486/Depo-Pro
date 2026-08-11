@@ -22,6 +22,7 @@ import {
   type ExportJob,
   type ExportServiceRequest,
 } from "./exportServiceContract";
+import type { CertifiedTransportSections } from "./certifiedTransport";
 
 export class ExportEligibilityError extends Error {
   constructor(message = "Persisted certification is required before export.") {
@@ -47,6 +48,9 @@ export interface StartExportInput {
   renderModel: UnifiedRenderModel;
   formats: readonly ExportArtifactFormat[];
   idempotencyKey: string;
+  // Optional / default-off certified section data; forwarded to the formatter so the
+  // exact application request can carry the complete certified document.
+  certified?: CertifiedTransportSections;
 }
 
 export class ExportAdapter {

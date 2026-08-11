@@ -16,6 +16,7 @@ import { buildCanonicalExportRenderModel } from "./exportAdapter";
 import { buildFinalizedTranscriptModel } from "./finalizedTranscriptModel";
 import { buildCertifiedSections } from "./certifiedSectionModel";
 import { buildCertifiedTransport, CERTIFIED_TRANSPORT_VERSION } from "./certifiedTransport";
+import { buildExportServiceRequest, validateExportServiceRequest } from "./exportServiceContract";
 
 const RECORD = () => emptyCaseRecord("case-xr", "2026-07-22T00:00:00.000Z");
 
@@ -120,6 +121,22 @@ describe("certified transport (cross-runtime output proof, producer half)", () =
     expect(payload.certified.exhibitIndex.map((e) => e.exhibit_number)).toContain("1");
     expect(payload.certified.errata).toHaveLength(1);
     expect(payload.certified.errata[0].page).toBeGreaterThanOrEqual(1);
+  });
+
+  it("carries the certified sections through the real ExportServiceRequest (app seam)", () => {
+    const request = buildExportServiceRequest({
+      renderModel,
+      formats: ["DOCX"],
+      idempotencyKey: "req-cert-001",
+      certified: payload.certified,
+    });
+    expect(request.certified).toBe(payload.certified);
+    expect(() => validateExportServiceRequest(request)).not.toThrow();
+
+    // Default-off: omitting certified yields a request without the field (byte-path unchanged).
+    const plain = buildExportServiceRequest({ renderModel, formats: ["DOCX"], idempotencyKey: "req-plain" });
+    expect(plain.certified).toBeUndefined();
+    expect(() => validateExportServiceRequest(plain)).not.toThrow();
   });
 
   it("matches the committed cross-runtime fixture consumed by the Python renderer", async () => {

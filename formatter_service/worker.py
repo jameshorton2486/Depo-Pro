@@ -120,7 +120,16 @@ def process_formatter_task(
             formats = task.request["formats"]
             assert isinstance(render_model, dict)
             assert isinstance(formats, list)
-            artifacts = format_render_model(render_model, formats, work_directory / task.job_id)
+            # Certified section data is optional/default-off: when present the worker
+            # produces the COMPLETE certified document; when absent, the body-only
+            # transcript exactly as before (the call is byte-identical to the prior path).
+            certified = task.request.get("certified")
+            assert certified is None or isinstance(certified, dict)
+            output_dir = work_directory / task.job_id
+            if certified is None:
+                artifacts = format_render_model(render_model, formats, output_dir)
+            else:
+                artifacts = format_render_model(render_model, formats, output_dir, certified=certified)
             heartbeat.ensure_active()
             completed_at = now or _utc_now()
             expires_at = completed_at + timedelta(seconds=url_ttl_seconds)

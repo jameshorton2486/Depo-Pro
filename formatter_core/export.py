@@ -10,8 +10,15 @@ def format_render_model(
     render_model: Mapping[str, object],
     formats: Sequence[str],
     output_directory: Path,
+    certified: Mapping[str, object] | None = None,
 ) -> dict[str, Path]:
-    """Create requested artifacts without reinterpreting rendered transcript content."""
+    """Create requested artifacts without reinterpreting rendered transcript content.
+
+    When `certified` is provided, the DOCX is the COMPLETE certified document
+    (front matter -> numbered body -> certificate + changes/signature); the body is
+    still rendered by the one surviving body renderer. When it is absent (the default),
+    behavior is byte-identical to before — a body-only transcript — so the wiring is
+    backward-compatible / default-off."""
     _validate_render_model(render_model)
 
     requested = set(formats)
@@ -21,9 +28,14 @@ def format_render_model(
     output_directory.mkdir(parents=True, exist_ok=True)
     document_path = output_directory / "transcript.docx"
 
-    from .docx_exporter import export_render_model_to_docx
+    if certified is not None:
+        from .certified_sections import render_certified_document_to_docx
 
-    export_render_model_to_docx(render_model, str(document_path))
+        render_certified_document_to_docx(render_model, certified, str(document_path))
+    else:
+        from .docx_exporter import export_render_model_to_docx
+
+        export_render_model_to_docx(render_model, str(document_path))
     artifacts: dict[str, Path] = {}
     if "DOCX" in requested:
         artifacts["DOCX"] = document_path

@@ -1,4 +1,5 @@
 import type { UnifiedRenderModel } from "../transcript/unifiedRendering";
+import type { CertifiedTransportSections } from "./certifiedTransport";
 
 export const EXPORT_SERVICE_CONTRACT_VERSION = "2026-07-21";
 
@@ -11,6 +12,11 @@ export interface ExportServiceRequest {
   renderModel: UnifiedRenderModel;
   formats: ExportArtifactFormat[];
   idempotencyKey: string;
+  // Optional / default-off. When present, the formatter renders the COMPLETE certified
+  // document (front matter + body + certificate/errata); when absent, the body-only
+  // transcript exactly as before. Additive to the contract — existing requests are
+  // unchanged, so no version bump is required.
+  certified?: CertifiedTransportSections;
 }
 
 export type ExportArtifact =
@@ -39,6 +45,7 @@ export function buildExportServiceRequest(input: {
   renderModel: UnifiedRenderModel;
   formats: readonly ExportArtifactFormat[];
   idempotencyKey: string;
+  certified?: CertifiedTransportSections;
 }): ExportServiceRequest {
   const request: ExportServiceRequest = {
     contractVersion: EXPORT_SERVICE_CONTRACT_VERSION,
@@ -46,6 +53,7 @@ export function buildExportServiceRequest(input: {
     renderModel: input.renderModel,
     formats: [...input.formats],
     idempotencyKey: input.idempotencyKey,
+    ...(input.certified ? { certified: input.certified } : {}),
   };
 
   validateExportServiceRequest(request);

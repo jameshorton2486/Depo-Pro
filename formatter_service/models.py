@@ -46,6 +46,12 @@ def validate_formatter_task(payload: object) -> FormatterTask:
     if not isinstance(idempotency_key, str) or not idempotency_key.strip():
         raise ValueError("export request requires an idempotency key")
 
+    # Optional/default-off certified section data. When present it must be an object
+    # (the renderer reads its fields); its detailed shape is validated by the renderer.
+    certified = request.get("certified")
+    if certified is not None and not isinstance(certified, dict):
+        raise ValueError("export request certified section data must be an object")
+
     return FormatterTask(
         job_id=job_id,
         transcript_id=transcript_id,
