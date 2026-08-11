@@ -1,5 +1,9 @@
--- DOC-0325 line_type migration — Wave 1 (schema scaffolding).
--- NOT applied to production by this local implementation: applying is a Human Gate (§17 step 2).
+-- DOC-0325 line_type migration — Wave 1 (schema scaffolding). GATE 1A: strictly additive
+-- dormant schema/DDL only. The deterministic legacy-state backfill that used to live here was
+-- split out to a separate migration so Gate 1A (schema) and Gate 1B (data) can be authorized
+-- and applied independently per DOC-0331 — see 20260812090000_line_type_review_backfill.sql.
+-- NOT applied to production by this local implementation: applying is a Human Gate (DOC-0331
+-- Gate 1A). This file contains ZERO row-mutating DML.
 --
 -- Adds the reviewed-structure contract on transcript_utterances so that one persisted,
 -- reviewed structural authority can be shared by Workspace, UFM, certification and every
@@ -46,10 +50,7 @@ alter table public.transcript_utterances
 alter table public.transcript_utterances
   validate constraint transcript_utterances_line_type_check;
 
--- Backfill review state from the legacy manually_reassigned flag: a prior manual reassignment
--- is a human override of structure, so it maps to OVERRIDDEN. Non-destructive; only touches the
--- new review-status column, never line_type itself.
-update public.transcript_utterances
-  set line_type_review_status = 'OVERRIDDEN'
-  where manually_reassigned = true
-    and line_type_review_status = 'UNREVIEWED';
+-- GATE 1B (deterministic legacy-state backfill of line_type_review_status from
+-- manually_reassigned) has been moved to 20260812090000_line_type_review_backfill.sql so it
+-- carries its own Human authorization. This Gate 1A migration installs dormant schema only and
+-- performs NO row mutation.
