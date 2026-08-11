@@ -220,9 +220,13 @@ export function buildEditorContent(
     // accepted qa_split corrections before rendering — the SAME projection export uses, so
     // Workspace and export structure cannot diverge. Callers pass the original DB document.
     corrections?: CorrectionObject[];
+    // Test-visible / local override for the projection gate. Undefined → the shipped
+    // PERSISTED_LINE_TYPE_ENABLED default (off in production). Lets the real entry point be
+    // exercised end-to-end with the structural path ON without flipping the production flag.
+    persistedLineTypeEnabled?: boolean;
   }
 ): JSONContent {
-  const workingDoc = deriveWorkingTranscript(doc, options?.corrections);
+  const workingDoc = deriveWorkingTranscript(doc, options?.corrections, options?.persistedLineTypeEnabled);
   const visibleDoc = {
     ...workingDoc,
     utterances: workingDoc.utterances.filter((utterance) => {

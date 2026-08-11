@@ -147,8 +147,13 @@ export function TranscriptEditor({ readOnly }: Props) {
       structureConfirmed: state.structureConfirmed,
       keepRawLabels: state.keepRawLabels,
       record,
+      // DOC-0325 Step 1: reviewed structural corrections + the session projection
+      // gate. Flag off → deriveWorkingTranscript is a no-op and corrections is [],
+      // so this is byte-identical to the pre-Step-1 render.
+      corrections: state.corrections,
+      persistedLineTypeEnabled: state.persistedLineTypeEnabled,
     }) : null),
-    [languageMap, record, state.document, state.keepRawLabels, state.structureConfirmed]
+    [languageMap, record, state.document, state.keepRawLabels, state.structureConfirmed, state.corrections, state.persistedLineTypeEnabled]
   );
 
   const wordTimings = useMemo(

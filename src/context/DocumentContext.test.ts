@@ -217,6 +217,46 @@ describe("documentReducer save sequencing", () => {
     expect(state.correctionReport?.job_id).toBe("case_test_001");
   });
 
+  // DOC-0325 Step 1 (Wave 1) — reviewed CorrectionObjects in DocumentContext.
+  it("defaults persistedLineTypeEnabled to the shipped flag (off in production)", () => {
+    const state = createInitialDocumentState("case_test_001");
+    expect(state.persistedLineTypeEnabled).toBe(false);
+    expect(state.corrections).toEqual([]);
+  });
+
+  it("honors an explicit persistedLineTypeEnabled override (test/local harness)", () => {
+    const state = createInitialDocumentState("case_test_001", true);
+    expect(state.persistedLineTypeEnabled).toBe(true);
+  });
+
+  it("stores reviewed corrections when dispatched", () => {
+    let state = createInitialDocumentState("case_test_001", true);
+    state = documentReducer(state, {
+      type: "SET_CORRECTIONS",
+      corrections: [{ id: "corr_x", review: { state: "accepted" } }] as never,
+    });
+    expect(state.corrections).toHaveLength(1);
+  });
+
+  it("clears stale corrections on reload so reopen re-derives from the DB document", () => {
+    let state = createInitialDocumentState("case_test_001", true);
+    state = documentReducer(state, {
+      type: "SET_CORRECTIONS",
+      corrections: [{ id: "corr_x", review: { state: "accepted" } }] as never,
+    });
+    expect(state.corrections).toHaveLength(1);
+
+    state = documentReducer(state, {
+      type: "LOAD_OK",
+      doc: buildDocument(),
+      updatedAt: "2026-06-05T00:00:02.000Z",
+      speakerMapConfirmed: false,
+      pipelineState: null,
+      audioSegments: [],
+    });
+    expect(state.corrections).toEqual([]);
+  });
+
   it("sets keepRawLabels when raw labels are explicitly kept", () => {
     let state = createInitialDocumentState("case_test_001");
     state = documentReducer(state, { type: "KEEP_RAW_LABELS" });

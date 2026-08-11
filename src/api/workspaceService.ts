@@ -804,6 +804,21 @@ export const workspaceApi = {
 
     return [];
   },
+  // DOC-0325 Step 1 — reviewed CorrectionObjects for the Working Transcript
+  // projection. Only called when PERSISTED_LINE_TYPE_ENABLED is on (see
+  // DocumentContext), so with the flag off no workspace load hits this route.
+  getCorrections: async (jobId: string, state?: Parameters<typeof contractApi.getCorrections>[1]) => {
+    if (USE_MOCK_WORKSPACE) {
+      return contractApi.getCorrections(jobId, state);
+    }
+
+    if (isRealApiMode()) {
+      const target = await requireFreshTranscript(jobId);
+      return contractApi.getCorrections(target.transcript_id, state);
+    }
+
+    return [];
+  },
   resolveSuggestion: async (jobId: string, id: string, body: Parameters<typeof contractApi.resolveSuggestion>[2]) => {
     if (USE_MOCK_WORKSPACE) {
       return contractApi.resolveSuggestion(jobId, id, body);

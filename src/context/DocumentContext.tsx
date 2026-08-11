@@ -17,6 +17,8 @@ import type { ChangeLogEntry, ChangeSource } from "../types";
 import { workspaceApi, type WorkspaceAudioSegment } from "../api/workspaceService";
 import type { CorrectionReport } from "../lib/transcript/correctionOrchestrator";
 import { buildCorrectionReport } from "../lib/transcript/correctionOrchestrator";
+import type { CorrectionObject } from "../lib/transcript/correctionObject";
+import { PERSISTED_LINE_TYPE_ENABLED } from "../lib/transcript/lineTypeMigration";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -40,6 +42,13 @@ interface State {
   jobId: string;
   document: EditorDocument | null;
   correctionReport: CorrectionReport | null;
+  // DOC-0325 Step 1: reviewed CorrectionObjects (accepted qa_splits etc.) that the
+  // Working Transcript projection applies. Empty unless persistedLineTypeEnabled.
+  corrections: CorrectionObject[];
+  // Effective projection gate for this session. Defaults to the shipped
+  // PERSISTED_LINE_TYPE_ENABLED (off in production); a test/local harness may
+  // pass DocumentProvider persistedLineTypeEnabled to exercise the ON path.
+  persistedLineTypeEnabled: boolean;
   loading: boolean;
   error: string | null;
   dirty: boolean;
@@ -65,6 +74,7 @@ type Action =
   | { type: "LOAD_START" }
   | { type: "LOAD_OK"; doc: EditorDocument; updatedAt: string | null; speakerMapConfirmed: boolean; pipelineState: string | null; audioSegments: WorkspaceAudioSegment[] }
   | { type: "SET_CORRECTION_REPORT"; report: CorrectionReport }
+  | { type: "SET_CORRECTIONS"; corrections: CorrectionObject[] }
   | { type: "LOAD_ERR"; error: string }
   | { type: "UPDATE_MEDIA_URL"; mediaUrl: string; segmentIndex: number }
   | { type: "SET_ACTIVE"; id: UtteranceId | null }
@@ -107,6 +117,9 @@ export function documentReducer(state: State, action: Action): State {
         document: action.doc,
         wordMap: buildWordMap(action.doc),
         workingTexts: {},
+        // Reload re-derives from the immutable DB document; drop stale corrections
+        // until the flag-gated re-fetch repopulates them (reopen determinism).
+        corrections: [],
         dirty: false,
         changeLog: [],
         editSeq: 0,
@@ -121,6 +134,9 @@ export function documentReducer(state: State, action: Action): State {
 
     case "SET_CORRECTION_REPORT":
       return { ...state, correctionReport: action.report };
+
+    case "SET_CORRECTIONS":
+      return { ...state, corrections: action.corrections };
 
     case "LOAD_ERR":
       return { ...state, loading: false, error: action.error };
@@ -269,11 +285,16 @@ interface ContextValue {
 
 const Ctx = createContext<ContextValue | null>(null);
 
-export function createInitialDocumentState(jobId: string): State {
+export function createInitialDocumentState(
+  jobId: string,
+  persistedLineTypeEnabled: boolean = PERSISTED_LINE_TYPE_ENABLED,
+): State {
   return {
     jobId,
     document: null,
     correctionReport: null,
+    corrections: [],
+    persistedLineTypeEnabled,
     loading: false,
     error: null,
     dirty: false,
@@ -299,11 +320,19 @@ export function createInitialDocumentState(jobId: string): State {
 export function DocumentProvider({
   jobId,
   children,
+  persistedLineTypeEnabled = PERSISTED_LINE_TYPE_ENABLED,
 }: {
   jobId: string;
   children: React.ReactNode;
+  // Test/local override for the Working Transcript projection gate. Production
+  // omits it → the shipped PERSISTED_LINE_TYPE_ENABLED (off) applies, so no
+  // corrections fetch and no structural apply on the everyday load path.
+  persistedLineTypeEnabled?: boolean;
 }) {
-  const [state, dispatch] = useReducer(documentReducer, createInitialDocumentState(jobId));
+  const [state, dispatch] = useReducer(
+    documentReducer,
+    createInitialDocumentState(jobId, persistedLineTypeEnabled),
+  );
 
   const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -323,10 +352,24 @@ export function DocumentProvider({
         type: "SET_CORRECTION_REPORT",
         report: buildCorrectionReport(loaded.document, null),
       });
+      // DOC-0325 Step 1: with the projection ON, hydrate reviewed CorrectionObjects
+      // so deriveWorkingTranscript can apply accepted qa_splits at render. Flag OFF
+      // (production default) skips the fetch entirely — the /corrections route ships
+      // with activation, so the everyday load path is unchanged and makes no new call.
+      if (persistedLineTypeEnabled) {
+        try {
+          const corrections = await workspaceApi.getCorrections(jobId);
+          dispatch({ type: "SET_CORRECTIONS", corrections });
+        } catch (err) {
+          // Corrections are additive to the editor; a fetch failure must not block
+          // the transcript from loading. The projection just stays a no-op.
+          console.error("DocumentContext: failed to load corrections", err);
+        }
+      }
     } catch (e) {
       dispatch({ type: "LOAD_ERR", error: String(e) });
     }
-  }, [jobId]);
+  }, [jobId, persistedLineTypeEnabled]);
 
   const setActive = useCallback((id: UtteranceId | null) => {
     dispatch({ type: "SET_ACTIVE", id });
