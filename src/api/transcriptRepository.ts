@@ -284,6 +284,37 @@ export async function getLatestCompletedTranscriptJob(caseId: string): Promise<T
   return (data as TranscriptJobRow | null) ?? null;
 }
 
+// PostgREST caps an unranged select at this many rows by default; we page in this size to
+// retrieve the full set. Mirrors the editor-api loader's UTTERANCE/WORD_PAGE_SIZE.
+export const TRANSCRIPT_ROW_PAGE_SIZE = 1000;
+
+/**
+ * Fetch every row of a query by paging with `.range(from, to)` until a short page arrives,
+ * defeating PostgREST's default max-rows cap. Pure over the injected page runner: throws on
+ * the first page error; returns the concatenated rows in query order.
+ */
+export async function fetchAllRowsPaginated(
+  runPage: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>,
+  pageSize: number = TRANSCRIPT_ROW_PAGE_SIZE,
+): Promise<unknown[]> {
+  const rows: unknown[] = [];
+  let from = 0;
+  for (;;) {
+    const to = from + pageSize - 1;
+    const { data, error } = await runPage(from, to);
+    if (error) {
+      throw error;
+    }
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < pageSize) {
+      break;
+    }
+    from += pageSize;
+  }
+  return rows;
+}
+
 export async function loadTranscriptSnapshot(jobId: string): Promise<{
   job: TranscriptJobRow;
   speakers: TranscriptSpeakerRow[];
@@ -298,7 +329,7 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
 
   const client = await getSupabaseClient("loadTranscriptSnapshot");
   const transcriptClient = getTranscriptClient(client);
-  const [speakersResult, speakerResolutionsResult, utterancesResult, wordsResult] = await Promise.all([
+  const [speakersResult, speakerResolutionsResult] = await Promise.all([
     transcriptClient
       .from("transcript_speakers")
       .select("*")
@@ -308,37 +339,43 @@ export async function loadTranscriptSnapshot(jobId: string): Promise<{
       .from("speaker_resolution_current")
       .select("*")
       .eq("transcript_id", job.transcript_id),
-    transcriptClient
-      .from("transcript_utterances")
-      .select("*")
-      .eq("job_id", jobId)
-      .order("utterance_index", { ascending: true }),
-    transcriptClient
-      .from("transcript_words")
-      .select("*")
-      .eq("job_id", jobId)
-      .order("word_index", { ascending: true }),
   ]);
 
   if (speakersResult.error) {
     throw speakersResult.error;
   }
-  if (utterancesResult.error) {
-    throw utterancesResult.error;
-  }
   if (speakerResolutionsResult.error) {
     throw speakerResolutionsResult.error;
   }
-  if (wordsResult.error) {
-    throw wordsResult.error;
-  }
+
+  // Utterances and words are range-paginated (mirrors the editor-api loader): an unranged
+  // select is capped at PostgREST's default max-rows, which silently truncated transcripts
+  // with >1000 rows and stitched later words onto the wrong utterances. This loader is the
+  // legacy/fallback path (production routes through the paginated editor-api), so pagination
+  // here closes the residual truncation risk regardless of deployed configuration.
+  const utterances = (await fetchAllRowsPaginated((from, to) =>
+    transcriptClient
+      .from("transcript_utterances")
+      .select("*")
+      .eq("job_id", jobId)
+      .order("utterance_index", { ascending: true })
+      .range(from, to),
+  )) as unknown as TranscriptUtteranceRow[];
+  const words = (await fetchAllRowsPaginated((from, to) =>
+    transcriptClient
+      .from("transcript_words")
+      .select("*")
+      .eq("job_id", jobId)
+      .order("word_index", { ascending: true })
+      .range(from, to),
+  )) as unknown as TranscriptWordRow[];
 
   return {
     job,
     speakers: (speakersResult.data ?? []) as unknown as TranscriptSpeakerRow[],
     speakerResolutions: (speakerResolutionsResult.data ?? []) as unknown as SpeakerResolutionRow[],
-    utterances: (utterancesResult.data ?? []) as unknown as TranscriptUtteranceRow[],
-    words: (wordsResult.data ?? []) as unknown as TranscriptWordRow[],
+    utterances,
+    words,
   };
 }
 
