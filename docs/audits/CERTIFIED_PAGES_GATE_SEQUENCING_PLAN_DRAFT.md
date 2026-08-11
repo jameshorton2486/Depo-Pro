@@ -376,3 +376,38 @@ deployment, push, merge, `main` change, deletion, or PONR crossing performed in 
 plan. The next decision is the Human authorization of Gate 0 (see §G), which is entirely
 local/pre-production and authorizes none of: migration, deployment, production data change,
 line_type activation, or PONR crossing.
+
+## K. Gate 1A/1B execution appendix (added 2026-08-11 after Gate 0 + STATE A resolution)
+
+### K.1 Migration-history finding (read-only)
+Established via authenticated read-only Management API query of `supabase_migrations.schema_migrations`:
+- Only relevant Supabase environment: project **Depo-Pro** (ref `lqxiuwlwzkofdfitxuqe`, West US / Oregon). No staging/dev project exists in the account.
+- 36 migrations recorded; **max applied version `20260722024834`**. Version `20260810180000` is **NOT present** (nor `20260811120000`).
+- **Classification: STATE A — UNAPPLIED EVERYWHERE RELEVANT.**
+- **Corollary (migration-behind caveat):** production is **4 migrations behind** the repo (`20260804230000` canon_raw_b, `20260804233000` canon_raw_d, `20260810180000` line_type, `20260811120000` working_text). A `supabase db push` for Gate 1A would also apply the two canon_raw migrations and working_text — **outside the line_type gate scope**. The operator must review/accept those pending migrations, or apply the Gate 1A DDL in isolation by another means, at Gate 1A execution time.
+
+### K.2 Split result (local, STATE A)
+- **Gate 1A** = `supabase/migrations/20260810180000_line_type_review_contract.sql` — additive DDL + constraints only; **zero DML**.
+- **Gate 1B** = `supabase/migrations/20260812090000_line_type_review_backfill.sql` — the deterministic, idempotent backfill `UPDATE` only.
+- Guarded by `src/lib/db/lineTypeMigrationGateSplit.test.ts` (1A no DML; 1B single backfill, no schema changes; 1B ordered after 1A; consistent table/column). Neither migration applied anywhere.
+
+### K.3 Gate 1A preflight (read-only)
+Before: confirm project `lqxiuwlwzkofdfitxuqe`; `select version from supabase_migrations.schema_migrations where version='20260810180000';` → expect empty; `select to_regclass('public.transcript_utterances');` → not null; the 3 target columns absent in `information_schema.columns`; `select count(*) from public.transcript_utterances;` (row-count fingerprint).
+After: the 3 columns present (review_status not null default `'UNREVIEWED'`); both check constraints present in `pg_constraint`; **no Gate 1B mutation** — `select count(*) from public.transcript_utterances where line_type_review_status='OVERRIDDEN';` → expect **0**; row count unchanged; `PERSISTED_LINE_TYPE_ENABLED` still false.
+
+### K.4 Gate 1B preview + verification (read-only)
+Preview (after 1A, before 1B): expected-change count `select count(*) from public.transcript_utterances where manually_reassigned=true and line_type_review_status='UNREVIEWED';`; already-OVERRIDDEN count → expect 0.
+Post-backfill: OVERRIDDEN count == preview expected-change count; idempotency — the preview-eligible query returns 0; non-`manually_reassigned` rows remain `'UNREVIEWED'`; `line_type` untouched.
+
+### K.5 Backup / restore
+Managed daily backups (+ PITR on paid tiers) — verify tier/PITR in the dashboard before each gate. Gate 1A (additive) columns are droppable; still take a pre-op backup. Gate 1B (data mutation): **mandatory verified backup immediately before**; "restorable" means confirming a recovery point just before the `UPDATE`, not merely that a backup exists. Rehearse restore on a non-prod clone if available; never rehearse destructive restore against production.
+
+### K.6 Rollback refinements
+- Gate 1A: DEFAULT = leave additive dormant columns installed, flags off, diagnose. Drop only on a demonstrated schema problem with a separately verified-safe drop.
+- Gate 1B: **least-destructive recovery is recomputation, not restore** — `manually_reassigned` is preserved and the transform is deterministic, so the pre-backfill state is exactly reconstructable (`set line_type_review_status='UNREVIEWED' where manually_reassigned=true and line_type_review_status='OVERRIDDEN'`), valid while no reviewer has set OVERRIDDEN through the app (requires the flag + endpoint, both off). Backup restore is the fallback.
+
+### K.7 Application compatibility (both exit states)
+Gate 1A exit (columns exist, default `UNREVIEWED`/null, backfill not run, flag off): readers (`isReviewLocked`, `line_type_confidence ?? 1`, optional typed fields) handle the defaults; the projection is inert (`PERSISTED_LINE_TYPE_ENABLED=false`); no code assumes the backfill ran. Gate 1B exit (backfill done, flag off): production behavior still governed by the legacy authority until Gate 2 — the LAST CLEAN ABANDONMENT POINT. Validated by the existing full suite (flag-off is the tested state).
+
+### K.8 Is Gate 1A now independently executable?
+**YES (locally).** The Gate 1A migration is DDL-only and separable from Gate 1B. The remaining execution-time gates are Human/operator actions: the migration-behind review (K.1), a verified production backup (K.5), and the Gate 1A authorization sentence (§G). No production action taken here.
