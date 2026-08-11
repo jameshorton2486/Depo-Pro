@@ -127,12 +127,12 @@ describe("applyStructuralCorrections — qa_split", () => {
     expect(r.skipped[0].reason).toContain("last word");
   });
 
-  it("skips non-qa_split corrections", () => {
+  it("skips corrections that are not a supported structural split", () => {
     const c = qaSplit();
     (c.change as { type: string }).type = "proper_name_correction";
     const r = applyStructuralCorrections(doc(), [c]);
     expect(r.applied).toBe(0);
-    expect(r.skipped[0].reason).toContain("not a qa_split");
+    expect(r.skipped[0].reason).toContain("not a supported structural split");
   });
 
   it("applies only the first split per utterance in one pass", () => {

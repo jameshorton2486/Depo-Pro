@@ -1804,6 +1804,7 @@ async function handleDecideCorrection(context: RouteContext, correctionId: strin
 const STRUCTURAL_DEFER_REASON = "structural_apply_engine_v2";
 const DEFERRED_STRUCTURAL_TYPES = new Set([
   "qa_split",
+  "objection_split",
   "examination_section_change",
   "off_record_boundary_mark",
   "objection_attribution",

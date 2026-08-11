@@ -19,7 +19,7 @@ const TS_SPECIALTIES = [
 ];
 const TS_CHANGE_TYPES = [
   "proper_name_correction", "medical_term_correction", "speaker_reassignment", "qa_split",
-  "objection_attribution", "examination_section_change", "off_record_boundary_mark",
+  "objection_split", "objection_attribution", "examination_section_change", "off_record_boundary_mark",
   "inconsistency_flag", "contextual_number_flag",
 ];
 const TS_REASON_KINDS = [

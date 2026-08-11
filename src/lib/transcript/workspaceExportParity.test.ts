@@ -180,6 +180,50 @@ describe("Workspace == export structural parity (DOC-0325 Wave 2)", () => {
     const wsIds = ws.map((w) => w.wordId).sort();
     expect(wsIds).toEqual(exIds);
   });
+
+  // Objection extraction (Wave 4) with a KNOWN objector (resolved speaker) — both
+  // paths must certify the same words in the same units. Unresolved-objector parity
+  // introduces the derived UNIDENTIFIED speaker (a generic-speaker shape) and is
+  // covered by the engine's unit tests; see the deferred-matrix note above.
+  function objectionDoc(): EditorDocument {
+    return {
+      job_id: "job-parity-obj", media_url: "http://example.test/a.wav", duration: 30,
+      speakers: [
+        { speaker_id: "spk-atty", display_name: "MR. SMITH", deepgram_speaker: 0, role: "ATTORNEY" },
+        { speaker_id: "spk-def", display_name: "MS. JONES", deepgram_speaker: 1, role: "ATTORNEY" },
+      ],
+      utterances: [
+        { utterance_id: "o1", speaker_id: "spk-atty", start_time: 0, end_time: 6, word_ids: ["o1", "o2", "o3", "o4", "o5", "o6"] },
+      ],
+      words: [
+        word("o1", "You", "o1", "spk-atty", 0), word("o2", "understand?", "o1", "spk-atty", 1),
+        word("o3", "Objection.", "o1", "spk-atty", 2), word("o4", "Form.", "o1", "spk-atty", 3),
+        word("o5", "Go", "o1", "spk-atty", 4), word("o6", "ahead.", "o1", "spk-atty", 5),
+      ],
+    } as unknown as EditorDocument;
+  }
+  function objectionCorrection(): CorrectionObject {
+    return {
+      id: "corr_01HXA92NVXZM3K4T7B2R9WQPDO",
+      transcript_id: "job-parity-obj", case_id: "case-parity", specialty: "objection_attribution", prompt_version: "v1",
+      location: { paragraph_id: "o1", start_word_id: "o3", end_word_id: "o4" },
+      change: { type: "objection_split", structural_change: { objection_start_word_id: "o3", objection_end_word_id: "o4", objector_speaker_id: "spk-def" } },
+      reason: "Objection embedded in the attorney question turn.",
+      reason_kind: "structural_boundary", confidence: 0.9,
+      provenance: { source: "ai", provider: "anthropic", generated_at: "2026-08-10T00:00:00Z" },
+      review: { state: "accepted" },
+      downstream: { applied_to_working_transcript: false },
+    } as CorrectionObject;
+  }
+
+  it("flag ON + accepted objection split (known objector): both paths certify the same units", () => {
+    const ws = body(extractWorkspaceSpine(buildEditorContent(objectionDoc(), {
+      corrections: [objectionCorrection()], persistedLineTypeEnabled: true, structureConfirmed: true, record: RECORD(),
+    })));
+    const ex = body(extractExportSpine(buildCanonicalExportRenderModel(objectionDoc(), RECORD(), [objectionCorrection()], true)));
+    expect(ws).toEqual(ex);
+    expect(ex.map((w) => w.wordId).sort()).toEqual(["o1", "o2", "o3", "o4", "o5", "o6"]);
+  });
 });
 
 // DEFERRED MATRIX ROWS (Wave 6/7 dependency). This harness proves the qa_split

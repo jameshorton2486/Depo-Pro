@@ -104,6 +104,7 @@
             "medical_term_correction",
             "speaker_reassignment",
             "qa_split",
+            "objection_split",
             "objection_attribution",
             "examination_section_change",
             "off_record_boundary_mark",
@@ -122,7 +123,7 @@
         },
         "structural_change": {
           "type": "object",
-          "description": "For non-text corrections. Shape varies by type:\n- speaker_reassignment: {new_speaker_id, new_speaker_role}\n- qa_split: {split_after_word_id, new_q_paragraph_speaker_id, new_a_paragraph_speaker_id}\n- objection_attribution: {new_attorney_name, new_speaker_role}\n- examination_section_change: {new_section: 'DIRECT'|'CROSS'|'REDIRECT'|'RECROSS'|'FURTHER_...'}\n- off_record_boundary_mark: {boundary: 'start'|'end', recess_time_note}"
+          "description": "For non-text corrections. Shape varies by type:\n- speaker_reassignment: {new_speaker_id, new_speaker_role}\n- qa_split: {split_after_word_id, new_q_paragraph_speaker_id, new_a_paragraph_speaker_id}\n- objection_split: {objection_start_word_id, objection_end_word_id, objector_speaker_id?} — extraction boundary only; objector_speaker_id is OPTIONAL attribution (omit = unidentified, never fabricated)\n- objection_attribution: {new_attorney_name, new_speaker_role}\n- examination_section_change: {new_section: 'DIRECT'|'CROSS'|'REDIRECT'|'RECROSS'|'FURTHER_...'}\n- off_record_boundary_mark: {boundary: 'start'|'end', recess_time_note}"
         }
       },
       "allOf": [
@@ -149,6 +150,7 @@
                 "enum": [
                   "speaker_reassignment",
                   "qa_split",
+                  "objection_split",
                   "objection_attribution",
                   "examination_section_change",
                   "off_record_boundary_mark"

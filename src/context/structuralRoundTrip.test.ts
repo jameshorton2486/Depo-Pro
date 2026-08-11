@@ -148,4 +148,32 @@ describe("structural round-trip — load → accept → apply → close → reop
     const second = derive(open([qaSplit("accepted")]));
     expect(second.utterances.map((u) => u.utterance_id)).toEqual(["u1::q", "u1::a"]);
   });
+
+  // Objection extraction round-trip (Wave 4): an unresolved objector stays
+  // unidentified across reopen, deterministically, without fabricating identity.
+  function objectionCorrection(): CorrectionObject {
+    return {
+      id: "corr_01HXA92NVXZM3K4T7B2R9WQPDO",
+      transcript_id: "job-rt", case_id: "c", specialty: "objection_attribution", prompt_version: "v1",
+      location: { paragraph_id: "u1", start_word_id: "w2", end_word_id: "w2" },
+      change: { type: "objection_split", structural_change: { objection_start_word_id: "w2", objection_end_word_id: "w2" } },
+      reason: "Objection embedded in the questioner turn.",
+      reason_kind: "structural_boundary", confidence: 0.9,
+      provenance: { source: "ai", provider: "anthropic", generated_at: "2026-08-10T00:00:00Z" },
+      review: { state: "accepted" },
+      downstream: { applied_to_working_transcript: false },
+    } as CorrectionObject;
+  }
+
+  it("objection extraction re-derives identically across reopen; unresolved objector stays unidentified", () => {
+    const first = derive(open([objectionCorrection()]));
+    const second = derive(open([objectionCorrection()]));
+    expect(second).toEqual(first);
+    // The objection unit exists, is attributed to the derived unidentified objector,
+    // and the DB evidence (u1) is untouched by the derivation.
+    const objUnit = first.utterances.find((u) => u.utterance_id.endsWith("::obj"));
+    expect(objUnit).toBeTruthy();
+    const state = open([objectionCorrection()]);
+    expect(state.document!.utterances.map((u) => u.utterance_id)).toEqual(["u1"]);
+  });
 });

@@ -33,6 +33,13 @@ export type CorrectionChangeType =
   | "medical_term_correction"
   | "speaker_reassignment"
   | "qa_split"
+  // Structural EXTRACTION of an embedded objection into its own unit (DOC-0325
+  // Wave 4 / Decision B). Deliberately SEPARATE from objection_attribution: this
+  // type owns only the split boundary (the objection word span); attribution
+  // (which attorney objected) is a distinct concern that may be resolved or left
+  // unidentified. structural_change: {objection_start_word_id, objection_end_word_id,
+  // objector_speaker_id?}. Never carries a fabricated speaker.
+  | "objection_split"
   | "objection_attribution"
   | "examination_section_change"
   | "off_record_boundary_mark"
@@ -62,6 +69,7 @@ export const TEXT_CHANGE_TYPES: ReadonlySet<CorrectionChangeType> = new Set([
 export const STRUCTURAL_CHANGE_TYPES: ReadonlySet<CorrectionChangeType> = new Set([
   "speaker_reassignment",
   "qa_split",
+  "objection_split",
   "objection_attribution",
   "examination_section_change",
   "off_record_boundary_mark",
