@@ -20,6 +20,7 @@ import { abbreviationRegistry } from "../format/abbreviationRegistry";
 import { buildDisplayDocument } from "../transcript/workspacePresentation";
 import { deriveWorkingTranscript } from "../transcript/structuralApply";
 import type { PaginatedLine, PaginationMap } from "./paginationContract";
+import { detectExhibitAnchors, detectSectionAnchors } from "./anchorDetector";
 
 // Stable per-paragraph id for the map. FormattedLine identifies its paragraph by a
 // render-stable `paragraph_index`; we expose it as a string paragraph_id so index /
@@ -61,11 +62,12 @@ export function buildPaginationMap(
     linesPerPage: profile.linesPerPage,
     firstNumberedPage,
     lines,
-    // Section / exhibit anchors are added by dedicated detectors in a follow-on
-    // (they consume the same lines + the region/exhibit sources); an empty list is
-    // a valid map for the paragraph/utterance errata + index refs that need it now.
-    sections: [],
-    exhibits: [],
+    // Section / exhibit anchors are derived from the SAME rendered lines (dedicated
+    // conservative detectors), so their (page, line) coordinates match the body by
+    // construction. A transcript with no examination headers / exhibit actions
+    // yields empty lists — still a valid map for the paragraph/utterance refs.
+    sections: detectSectionAnchors(formatted),
+    exhibits: detectExhibitAnchors(formatted),
   };
 }
 
