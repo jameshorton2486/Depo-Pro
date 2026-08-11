@@ -33472,11 +33472,14 @@
       "status": "ACTIVE",
       "keywords": [
         "2026-08-10",
+        "activation",
         "apply",
         "architecture",
         "audits",
         "backfill",
         "behavior",
+        "behaviors",
+        "blocked",
         "canonical",
         "changes",
         "classifier",
@@ -33490,6 +33493,7 @@
         "database",
         "decision",
         "defect",
+        "deletion",
         "deliverable",
         "deployment",
         "derived-unit",
@@ -33504,6 +33508,7 @@
         "final",
         "finding",
         "fix",
+        "four-part",
         "freeze",
         "freeze-limited",
         "frozen",
@@ -33526,6 +33531,7 @@
         "notes",
         "objection",
         "one",
+        "only",
         "open",
         "package-json",
         "path",
@@ -33539,10 +33545,12 @@
         "qafixer",
         "raw-evidence",
         "read",
+        "ready",
         "remaining",
         "remove",
         "representation",
         "resolved",
+        "result",
         "retirement",
         "retirement-blocking",
         "reversible",
@@ -33686,6 +33694,10 @@
         {
           "level": 3,
           "text": "Wave 4 — embedded objection structural apply (RESOLVED via Decision B; producer still open)"
+        },
+        {
+          "level": 4,
+          "text": "qaFixer four-part deletion gate — RESULT (behaviors ready; blocked only on activation)"
         },
         {
           "level": 3,

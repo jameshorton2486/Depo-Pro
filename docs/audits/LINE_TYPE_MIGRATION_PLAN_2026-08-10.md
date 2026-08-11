@@ -340,14 +340,29 @@ necessarily guess or fabricate speaker identity — both forbidden by the Wave-4
 exact dependency and continue"), Wave 4 is recorded as **blocked on a correction-contract decision**.
 
 **Cascade to Wave 5 (`qaFixer` retirement) — UPDATED.** After Decision B, `qaFixer`'s objection split
-now has an **apply owner** (the `objection_split` engine), closing G2/G3. Retirement still cannot pass
-the four-part gate, for two remaining reasons: (i) **no producer** (G1) emits `objection_split`, so
-retiring qaFixer's regex would drop objection splitting entirely until a detector exists; and (ii)
-`qaFixer` is still the **live render authority** while the flag is off (sole runtime consumer
-`workspacePresentation.ts:743`) — flipping to the correction path is the **activation Human Gate**.
-Waves 6–7 (`structureConfirmed`/`keepRawLabels` retirement) likewise depend on the flag-on canonical
-structure being the live authority. So the remaining gates are: an objection **producer** (local,
-authorized) and **activation** (Human Gate).
+now has an **apply owner** (the `objection_split` engine), closing G2/G3. Waves 6–7
+(`structureConfirmed`/`keepRawLabels` retirement) likewise depend on the flag-on canonical
+structure being the live authority.
+
+#### qaFixer four-part deletion gate — RESULT (behaviors ready; blocked only on activation)
+
+Full behavior matrix of `applyQaFixer` (`qaFixer.ts`):
+
+| # | Behavior | Disposition |
+|---|----------|-------------|
+| B1 | Embedded **objection extraction** (`splitEmbeddedObjections`, regex → Q/unidentified-colloquy/Q) | **MIGRATED** — `objection_split` apply engine + `objectionDetector` producer (G1). |
+| B2 | **Short-answer Q/A split** (`splitShortAnswerParagraph`, "Q? A." → Q + A) | apply **MIGRATED** (qa_split engine); the automatic render-time split is **INTENTIONALLY REMOVED** in favor of *reviewed* qa_split (producer = the AI bridge, which explicitly emits qa_split when "one speaker block contains both a question and its answer"). A deterministic short-answer producer is optional (precision-first), not required. |
+| B3 | `remergeConsecutive` (re-join same-kind/label paragraphs qaFixer itself over-split) | **INTENTIONAL REMOVAL (obsolete)** — the structural apply splits only at *reviewed* boundaries, so there is no over-split to re-merge in the converged path. |
+
+**Zero UNRESOLVED behaviors** — every legitimate responsibility is migrated or intentionally retired.
+The gate fails on exactly ONE part: **(4) runtime-consumer count is non-zero**. `applyQaFixer` is called
+at render time by `workspacePresentation.ts:748`, unconditionally, while `PERSISTED_LINE_TYPE_ENABLED`
+is off — so it is still the **live structural authority**. Removing that call changes flag-off (i.e.
+production) render behavior, which the freeze forbids; it becomes a no-op only once the flag is on and
+the structural-apply path is the live authority. **Therefore `qaFixer` retirement is ACTIVATION-READY
+but not executable locally** — do not force deletion. Executable step at activation: flip the flag,
+confirm parity, delete the `workspacePresentation.ts:748` call + `applyQaFixer` + `qaFixer.ts`, keep
+the replacement-behavior tests, drop `qaFixer.test.ts`.
 
 ### Exact remaining gate (STOP here under freeze)
 
