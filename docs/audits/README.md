@@ -3,7 +3,7 @@
 
 This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Managed documents: **141**
+Managed documents: **142**
 
 | Document | ID | Tier | Status | Owner |
 | --- | --- | --- | --- | --- |
@@ -148,3 +148,4 @@ Managed documents: **141**
 | [Python transcript_formatter/ characterization — pre-retirement inventory](TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md) | DOC-0326 | T5 | ACTIVE | Architecture |
 | [CorrectionObject three-way drift audit — canonical authority + sync](CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md) | DOC-0327 | T5 | ACTIVE | Architecture |
 | [Certified-pages re-home surface — front/back matter into the live pipeline](CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md) | DOC-0328 | T5 | ACTIVE | Architecture |
+| [Security review — freeze-safe pass (secret exposure, edge auth)](SECURITY_REVIEW_2026-08-10.md) | DOC-0329 | T5 | ACTIVE | Architecture |

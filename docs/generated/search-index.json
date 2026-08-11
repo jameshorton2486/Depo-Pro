@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "ecb6c4085400aedc830cb32db6ec55e7acaad6c38cf25dc190f71b1058043498",
-  "graph_sha256": "620c91b3f740abe992a3c6e62b3a51e40835c9d511973f70031c0b7e03361832",
-  "document_count": 328,
+  "manifest_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
+  "graph_sha256": "f2780d99ab1b8b58bd2cb92ccaad450498ce8a5f9b134ca0fcdaeb90d2952f39",
+  "document_count": 329,
   "documents": [
     {
       "id": "DOC-0001",
@@ -33995,6 +33995,76 @@
         {
           "level": 2,
           "text": "Freeze / Human Gates"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0329",
+      "title": "Security review — freeze-safe pass (secret exposure, edge auth)",
+      "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "active",
+        "architecture",
+        "audits",
+        "auth",
+        "clean",
+        "covered",
+        "deeper-review",
+        "docs",
+        "edge",
+        "exposure",
+        "freeze-safe",
+        "function",
+        "future",
+        "gate",
+        "here",
+        "high-signal",
+        "hygiene",
+        "items",
+        "not",
+        "notes",
+        "pass",
+        "posture",
+        "production-readiness",
+        "result",
+        "review",
+        "rls",
+        "scope",
+        "secret",
+        "security",
+        "sound",
+        "vulnerabilities"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Security review — freeze-safe pass (secret exposure, edge auth)"
+        },
+        {
+          "level": 2,
+          "text": "Result — clean on the high-signal items"
+        },
+        {
+          "level": 2,
+          "text": "Edge Function auth / RLS posture (sound)"
+        },
+        {
+          "level": 2,
+          "text": "Notes (hygiene / deeper-review items — not active vulnerabilities)"
+        },
+        {
+          "level": 2,
+          "text": "Scope not covered here (future production-readiness security gate)"
         },
         {
           "level": 2,

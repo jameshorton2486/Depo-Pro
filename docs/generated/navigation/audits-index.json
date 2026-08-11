@@ -2,11 +2,11 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "ecb6c4085400aedc830cb32db6ec55e7acaad6c38cf25dc190f71b1058043498",
-  "graph_sha256": "620c91b3f740abe992a3c6e62b3a51e40835c9d511973f70031c0b7e03361832",
+  "manifest_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
+  "graph_sha256": "f2780d99ab1b8b58bd2cb92ccaad450498ce8a5f9b134ca0fcdaeb90d2952f39",
   "name": "audits",
   "title": "Audits",
-  "document_count": 142,
+  "document_count": 143,
   "documents": [
     {
       "id": "DOC-0143",
@@ -1281,6 +1281,15 @@
       "id": "DOC-0328",
       "title": "Certified-pages re-home surface — front/back matter into the live pipeline",
       "path": "docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0329",
+      "title": "Security review — freeze-safe pass (secret exposure, edge auth)",
+      "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
       "tier": "T5",
       "status": "ACTIVE",
       "owner": "Architecture",

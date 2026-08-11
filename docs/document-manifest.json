@@ -6120,6 +6120,25 @@
       "supersedes": []
     },
     {
+      "id": "DOC-0329",
+      "title": "Security review — freeze-safe pass (secret exposure, edge auth)",
+      "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/SECURITY_REVIEW_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
       "id": "DOC-0328",
       "title": "Certified-pages re-home surface — front/back matter into the live pipeline",
       "path": "docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md",

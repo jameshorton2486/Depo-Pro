@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "ecb6c4085400aedc830cb32db6ec55e7acaad6c38cf25dc190f71b1058043498",
+  "source_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4926,6 +4926,21 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0329",
+      "title": "Security review — freeze-safe pass (secret exposure, edge auth)",
+      "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/SECURITY_REVIEW_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6565,6 +6580,11 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0328",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0329",
       "target": "DOC-0071"
     },
     {
@@ -8583,6 +8603,11 @@
       "target": "DOC-0232"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0329",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -10291,6 +10316,11 @@
       "type": "OWNERSHIP",
       "source": "DOC-0328",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0329",
+      "target": "OWNER:Architecture"
     }
   ],
   "owners": {
@@ -10610,7 +10640,8 @@
       "DOC-0325",
       "DOC-0326",
       "DOC-0327",
-      "DOC-0328"
+      "DOC-0328",
+      "DOC-0329"
     ],
     "Deepgram": [
       "DOC-0069"
