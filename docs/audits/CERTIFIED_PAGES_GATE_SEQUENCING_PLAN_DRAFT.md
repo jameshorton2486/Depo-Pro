@@ -494,3 +494,14 @@ Human-authorized (exact five, Gate 1B excluded) and executed. Application-schema
 - **Operational note (per §N.5):** these bring schema into alignment with already-deployed code, making correction-persistence, working-text-save, and line_type-decision-persistence paths functional. This does NOT make persisted line_type the transcript structural authority — that remains Gate 2 (PONR).
 - **Rollback:** additive → reversible by dropping the new objects; managed backup available.
 - **Resulting pending (1):** `20260812090000` Gate 1B backfill. Temp workdir discarded; authoritative tree retains Gate 1B, clean. Gate 1B NOT executed; Gate 2 / PONR NOT approached. Freeze re-closed.
+
+## Q. GATE 1B — EXECUTED 2026-08-11 (deterministic legacy-state backfill; LAST CLEAN ABANDONMENT POINT)
+Human-authorized and executed. R3-recoverable data operation, but a **no-op against current data** and still **pre-PONR**.
+- **Read-only preview:** history max `20260811120000`, only `20260812090000` pending; both columns present; backup fresh (WAL-G, latest `2026-08-11T12:25Z`). Counts: total 13,169; `manually_reassigned=true` **0**; currently `OVERRIDDEN` 0; **expected-to-change 0**; 0 null/invalid/violating status. All assumptions held (empty valid set, not a misfit) -> proceed.
+- **Mechanism:** isolated ephemeral workdir (all migrations incl. Gate 1B) + main worktree pooler link; authoritative tree never modified. `db push --dry-run` showed exactly `20260812090000` -> `db push --linked --yes`.
+- **Post-execution (read-only):** 44 applied, max `20260812090000`, Gate 1B recorded; **no other migration ran**; **changed rows = 0** (= preview); 13,169 utterances unchanged; **0 `OVERRIDDEN`, all 13,169 `UNREVIEWED`**; `manually_reassigned=true` still 0 (legacy source preserved); **idempotency: 0 remaining**; affected-set md5 identical; raw transcript evidence untouched; `PERSISTED_LINE_TYPE_ENABLED` false; certified default-off. Evidence: `docs/audits/gate0r-evidence/schema_migrations_after_gate1b.json`.
+- **Rollback:** not needed (0 rows changed); would be recompute-from-`manually_reassigned` (R3-recoverable), backup available.
+- **Resulting state:** migration ledger COMPLETE (0 pending). **LAST CLEAN ABANDONMENT POINT reached:** schema current + deterministic backfill applied + `line_type` still OFF. Temp discarded; authoritative tree clean. Gate 2 / PONR NOT approached.
+
+### Q.1 Gate 2 Stage A precondition status
+Satisfied: schema current (line_type columns + constraints present), ledger complete, backfill applied, `PERSISTED_LINE_TYPE_ENABLED=false`, certified default-off, fresh backup. Gate 2 remains a distinct, separately-authorized gate; **Stage B is the program PONR** (first new human-reviewed structural decision not losslessly representable by legacy `qaFixer`).

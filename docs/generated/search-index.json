@@ -34364,6 +34364,7 @@
         "ponr",
         "post-activation",
         "pre-gate",
+        "precondition",
         "preflight",
         "prepared",
         "prerequisite",
@@ -34612,6 +34613,14 @@
         {
           "level": 2,
           "text": "P. GATE 1A — EXECUTED 2026-08-11 (Additive Production Schema Catch-Up, C-scoped)"
+        },
+        {
+          "level": 2,
+          "text": "Q. GATE 1B — EXECUTED 2026-08-11 (deterministic legacy-state backfill; LAST CLEAN ABANDONMENT POINT)"
+        },
+        {
+          "level": 3,
+          "text": "Q.1 Gate 2 Stage A precondition status"
         }
       ]
     }
