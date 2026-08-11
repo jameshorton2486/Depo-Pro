@@ -137,6 +137,54 @@ function advanceState(
   };
 }
 
+/** Where an examination section begins, from the structural paragraph authority. */
+export interface ExaminationSectionStart {
+  kind: ExaminationKind;
+  /** Examining attorney label (normalized), when the section opens on a Q line. */
+  examinerLabel: string | null;
+  /** The utterance that opens the section — a real rendered line whose coordinate the map carries. */
+  utteranceId: string;
+}
+
+/**
+ * Detect examination-section boundaries from the SAME structural state machine that
+ * synthesizes the SECTION_HEADER/BY_LINE paragraphs (buildTranscriptParagraphs), rather
+ * than from rendered header text. This is why the certified witness index can be built
+ * even though the "EXAMINATION"/"BY ..." lines are generated at the paragraph layer and
+ * never appear as utterances in the cfe stream: each section start is keyed to the real
+ * utterance that opens it, whose (page, line) the PaginationMap already holds. Pure and
+ * deterministic; it introduces no new heuristic — it reuses descriptorForLine/advanceState.
+ */
+export function detectExaminationSections(
+  lines: ParagraphProductionLine[] | null | undefined,
+): ExaminationSectionStart[] {
+  if (!lines) {
+    return [];
+  }
+  const starts: ExaminationSectionStart[] = [];
+  let state: ExaminationState = { kind: null, examinerLabel: null, examinerSpeakerId: null, lastWasColloquy: false };
+
+  for (const input of lines) {
+    if (input.region !== "TESTIMONY") {
+      continue;
+    }
+    const descriptor = descriptorForLine(input, state);
+    if (descriptor.heading) {
+      const kind = examinationHeading(descriptor.heading);
+      if (kind) {
+        starts.push({
+          kind,
+          examinerLabel: descriptor.mode === "Q" ? normalizeSpeakerLabel(descriptor.label) : null,
+          utteranceId: input.line.utterance_id,
+        });
+      }
+    }
+    state = advanceState(descriptor, state, input.line.speaker_id);
+  }
+
+  return starts;
+}
+
 export function buildTranscriptParagraphs(lines: ParagraphProductionLine[] | null | undefined): TranscriptParagraph[] {
   if (!lines) {
     return [];

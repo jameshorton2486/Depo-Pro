@@ -205,7 +205,13 @@
       "caption": "JANE DOE vs. ACME CORP.",
       "causeNumber": "2026-CI-01234"
     },
-    "examinationIndex": [],
+    "examinationIndex": [
+      {
+        "kind": "EXAMINATION",
+        "examinerLabel": "MR. SMITH",
+        "page": 1
+      }
+    ],
     "exhibitIndex": [
       {
         "exhibit_number": "1",

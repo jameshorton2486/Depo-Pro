@@ -63,10 +63,12 @@ describe("buildFinalizedTranscriptModel", () => {
     expect(off.lineTypeAuthority).toEqual({ persistedLineTypeApplied: false, reviewedCorrectionCount: 0 });
   });
 
-  it("carries the transcript id and empty index rows for a header-less transcript", () => {
+  it("derives the examination index structurally (P1) and no exhibits for a Q/A transcript", () => {
     const model = buildFinalizedTranscriptModel(plainDoc(8), RECORD());
     expect(model.transcriptId).toBe("final");
-    expect(model.examinationIndex).toEqual([]);
+    // Header-less Q/A now yields the synthesized EXAMINATION section (structural authority).
+    expect(model.examinationIndex).toEqual([{ kind: "EXAMINATION", examinerLabel: "MR. SMITH", page: 1 }]);
+    // No exhibit parentheticals -> empty exhibit index.
     expect(model.exhibitIndex).toEqual([]);
   });
 

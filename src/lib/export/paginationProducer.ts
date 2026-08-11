@@ -17,9 +17,14 @@ import type { FormattedDocument, GeometryProfile } from "../format/types";
 import { cfe } from "../format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "../format/geometryProfile";
 import { abbreviationRegistry } from "../format/abbreviationRegistry";
+import { serializeFormattedLineClean } from "../format/serialize";
 import { buildDisplayDocument } from "../transcript/workspacePresentation";
+import { classifyDepositionRegions } from "../transcript/depositionRegionEngine";
+import { asStructuredUtterance, normalizePersistedLineType } from "../transcript/structuredTranscript";
+import { detectExaminationSections, type ParagraphProductionLine } from "../transcript/transcriptParagraphs";
 import { deriveWorkingTranscript } from "../transcript/structuralApply";
-import type { PaginatedLine, PaginationMap } from "./paginationContract";
+import type { PaginatedLine, PaginationMap, SectionAnchor } from "./paginationContract";
+import { lookupUtteranceRef } from "./paginationContract";
 import { detectExhibitAnchors, detectSectionAnchors } from "./anchorDetector";
 
 // Stable per-paragraph id for the map. FormattedLine identifies its paragraph by a
@@ -88,5 +93,62 @@ export function buildCanonicalPaginationMap(
   const workingDocument = deriveWorkingTranscript(document, corrections, persistedLineTypeEnabled);
   const displayDocument = buildDisplayDocument(workingDocument, record);
   const formatted = cfe(displayDocument, profile, abbreviationRegistry, { applyLexicalCorrections: false });
-  return buildPaginationMap(formatted, profile);
+  const map = buildPaginationMap(formatted, profile);
+
+  // Examination sections come from the structural paragraph authority (the same state
+  // machine that generates the SECTION_HEADER/BY_LINE paragraphs), NOT from rendered
+  // header text — the certified "EXAMINATION"/"BY ..." lines are generated at the
+  // paragraph layer and never appear as cfe utterance lines for the text detector to
+  // see. Each section's coordinate is resolved from the ONE map by its opening utterance.
+  const structuralSections = examinationSectionAnchors(formatted, displayDocument, map);
+  return { ...map, sections: mergeSectionAnchors(structuralSections, map.sections) };
+}
+
+/**
+ * Build the ParagraphProductionLine[] (region + persisted line_type + speaker label per
+ * rendered line) that the structural detector consumes, mirroring the deterministic
+ * derivation buildCanonicalExportRenderModel uses, then resolve each detected examination
+ * section start to its certified (page, line) via the map.
+ */
+function examinationSectionAnchors(
+  formatted: FormattedDocument,
+  displayDocument: EditorDocument,
+  map: PaginationMap,
+): SectionAnchor[] {
+  const utteranceById = new Map(displayDocument.utterances.map((utterance) => [utterance.utterance_id, asStructuredUtterance(utterance)]));
+  const regionByUtteranceId = classifyDepositionRegions(
+    formatted.lines.map((line) => ({
+      utteranceId: line.utterance_id,
+      text: serializeFormattedLineClean(line),
+      persistedLineType: normalizePersistedLineType(utteranceById.get(line.utterance_id)?.line_type),
+      role: line.role,
+    })),
+  );
+  const productionLines: ParagraphProductionLine[] = formatted.lines.map((line) => ({
+    line,
+    text: line.words.map((word) => `${word.text}${word.trailing_space}`).join("").trim(),
+    region: regionByUtteranceId.get(line.utterance_id) ?? "CAPTION",
+    persistedLineType: normalizePersistedLineType(utteranceById.get(line.utterance_id)?.line_type),
+    speakerLabel: line.speaker_label,
+  }));
+
+  const anchors: SectionAnchor[] = [];
+  for (const start of detectExaminationSections(productionLines)) {
+    const ref = lookupUtteranceRef(map, start.utteranceId);
+    if (ref) {
+      anchors.push({ kind: start.kind, examinerLabel: start.examinerLabel, start: ref });
+    }
+  }
+  return anchors;
+}
+
+/** Structural examination anchors win; add any text-detected section not already present at the same (kind, page). */
+function mergeSectionAnchors(primary: SectionAnchor[], secondary: SectionAnchor[]): SectionAnchor[] {
+  const merged = [...primary];
+  for (const anchor of secondary) {
+    if (!merged.some((existing) => existing.kind === anchor.kind && existing.start.page === anchor.start.page)) {
+      merged.push(anchor);
+    }
+  }
+  return merged;
 }
