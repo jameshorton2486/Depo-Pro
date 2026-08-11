@@ -197,7 +197,8 @@ default-off scaffolding + types + persistence code + invariants + tests + docs**
 | Step 1 | `7886c13` | `deriveWorkingTranscript` load-time projection wired into **both** `buildEditorContent` + `buildCanonicalExportRenderModel` via the SAME pure function → parity by construction. Idempotent (apply-twice==once), reopen-deterministic, states (pending/rejected never apply). | flag-off no-op |
 | Wave 1 | `f7b959a` | Frontend hookup: `client.getCorrections`/`workspaceApi.getCorrections` (GET `/:jobId/corrections`); `DocumentContext` fetches reviewed corrections at load **only when the projection gate is on** and threads them (+ the gate) through `TranscriptEditor` → `buildEditorContent`. `DocumentProvider` gains a test/local `persistedLineTypeEnabled` override; `buildEditorContent` forwards it to the projection `enabled`. Proven at the real entry point: accepted qa_split splits Q+A; pending/rejected never apply; idempotent; flag-off byte-identical (no fetch, `toEqual` unchanged). | flag-off no-op |
 | Wave 2 | `7b26b0c` | Real Workspace==export parity harness (`workspaceExportParity.test.ts`). Symmetric `persistedLineTypeEnabled` override added to `buildCanonicalExportRenderModel`. Compares a per-word `{word_id, kind}` structural spine (granularity-independent) extracted from **both real builders**. Proves, by running both (not by construction): flag-off identical; flag-on accepted qa_split splits the same words into the same units in both; rejected/pending never apply in either; every source word certified exactly once (no drops/dupes). | flag-off no-op |
-| Wave 3 | _(this commit)_ | Structural round-trip (`structuralRoundTrip.test.ts`) driving the **real DocumentContext reducer** through load→accept→derive→close→reopen. Proves: identical reviewed structure re-derived across reopen (deterministic, no double split, stable `u1::q`/`u1::a` ids); split units carry CONFIRMED status that `shouldProposeStructure` protects from later proposals; DB document (raw Deepgram evidence) never mutated by derivation; provenance preserved across reopen; rejected stays rejected; accepted persists. | flag-off no-op |
+| Wave 3 | `1fbd6f2` | Structural round-trip (`structuralRoundTrip.test.ts`) driving the **real DocumentContext reducer** through load→accept→derive→close→reopen. Proves: identical reviewed structure re-derived across reopen (deterministic, no double split, stable `u1::q`/`u1::a` ids); split units carry CONFIRMED status that `shouldProposeStructure` protects from later proposals; DB document (raw Deepgram evidence) never mutated by derivation; provenance preserved across reopen; rejected stays rejected; accepted persists. | flag-off no-op |
+| Wave 4 | **BLOCKED** — see §Wave-4 below | Embedded objection structural apply. Characterization complete; implementation blocked on a correction-contract decision (no producer, no split-boundary representation, no objector speaker_id resolution). NOT implemented — would require fabricating contract + guessing speaker identity, both forbidden. | n/a |
 
 **Step 1 status:** the accept→apply→converge chain exists and is composition-proven — `qa_split CorrectionObject (accepted)` → `deriveWorkingTranscript` (idempotent split) → persisted `line_type` → `applyReviewedStructure` → both builders. `qaFixer`'s split now has a surviving owner (gate item #1). Item (a) is now **done** (Wave 1): the real Workspace load path (`DocumentContext` → `TranscriptEditor` → `buildEditorContent`) hydrates reviewed corrections and runs the projection when the gate is on, with a `DocumentProvider persistedLineTypeEnabled` override for end-to-end flag-on exercise. Crucially the corrections fetch is **gated on the flag**, so with `PERSISTED_LINE_TYPE_ENABLED=false` production makes no new `/corrections` call (the endpoint ships at activation) and the everyday load path is byte-identical. Item (b) is now **partly done** (Wave 2): a real parity harness runs both real builders and proves the qa_split certification invariant is identical across Workspace and export for resolved speakers (accepted/rejected/pending). The FULL mixed-matrix parity (examination headers, parentheticals, generic/unresolved speakers in mixed context) is **gated on the Wave 6/7 render-path convergence** — the two structure builders are still distinct code and were observed to diverge for some content/speaker shapes independent of qa_split; the harness's extractors are already shaped to assert those rows once convergence collapses the builders. Item (c) is now **done at the state-machine level** (Wave 3): the structural round-trip is deterministic and immutable across close/reopen through the real reducer. **Remaining to complete Step 1:** (b-rest) mixed-matrix parity after convergence; (d) `qaFixer` retirement once (b)–(c) are green + the objection split lands. Still flag-off; production frozen.
 
@@ -208,6 +209,55 @@ value space uses the **short codes** `Q|A|SP|PN|HEADER|UNKNOWN` that `normalizeP
 already binds to (not §1's long names); (b) `ai_suggested_line_type` is **aliased** as the proposal,
 not renamed (the deployed ai-review function writes it). A third: `database.ts` was already missing the
 existing `20260627220500` structure columns — now typed.
+
+### Wave 4 — embedded objection structural apply (BLOCKED on a correction-contract decision)
+
+**Characterization (complete).** Two representations exist today, and neither can carry the objection
+split as a reviewed correction:
+
+1. **`qaFixer` (the current owner, render-time, regex).** `splitEmbeddedObjections`
+   (`src/lib/transcript/qaFixer.ts`) matches `OBJECTION_PATTERN` (`/\bObjection\.\s*(?:Form\.|Foundation\.)?/i`)
+   in a Q paragraph's **text**, and slices it into `[before Q] + [objection COLLOQUY] + [after Q]`
+   (recursively). The objection text is preserved verbatim; the objection unit is labeled
+   `UNIDENTIFIED_SPEAKER` (`"UNIDENTIFIED SPEAKER"`) — it **never fabricates** who objected (§14/§57).
+   This is a deterministic, render-time, text-pattern operation — not a reviewed decision.
+2. **`objection_attribution` CorrectionObject (the intended future owner).** The schema defines
+   `specialty:"objection_attribution"`, `change.type:"objection_attribution"`, `structural_change:
+   {new_attorney_name, new_speaker_role}`.
+
+**The exact contract gap (3 parts) — why the split cannot be migrated to the structural-apply engine yet:**
+
+- **(G1) No producer.** The only live CorrectionObject generator — the AI correction bridge
+  (`aiCorrectionBridge.ts`) — **explicitly excludes** objections: *"objections … OUT OF SCOPE for the
+  bridge; do not emit it."* Nothing (AI or deterministic) currently emits an `objection_attribution`
+  correction, so the engine would have no input to apply.
+- **(G2) No split-boundary representation.** `objection_attribution.structural_change` encodes
+  **attribution** (`new_attorney_name`, `new_speaker_role`), not the objection **word span** to split
+  at. `qaFixer` finds the span by regex over text; a reviewed correction must instead carry the span
+  explicitly (e.g. objection `start_word_id`/`end_word_id`, or a defined use of `location`'s
+  start/end). Undefined today.
+- **(G3) No objector `speaker_id` resolution.** The engine reassigns words to `speaker_id`s;
+  `structural_change` gives a display **name** string, not a `speaker_id`. Known objector → which
+  `speaker_id`? (Match an existing speaker by name — may not exist; **creating** one is fabrication,
+  forbidden.) Unknown objector → there is **no unidentified `speaker_id`** in the document model, only
+  `qaFixer`'s display **label** `"UNIDENTIFIED SPEAKER"`. Setting the objection unit's speaker to the
+  questioner (the only other option) would **mis-attribute** the objection — exactly what "must NOT
+  guess speaker identity / fabricate an attorney" forbids.
+
+**Decision: do NOT implement a speculative engine.** Each of G1–G3 is a contract/product decision
+(ADR-level). Inventing them inside the engine would fabricate a representation and, for G3,
+necessarily guess or fabricate speaker identity — both forbidden by the Wave-4 constraints and by
+§14/§57. Per the standing directive ("if a legitimate dependency remains, do not force; document the
+exact dependency and continue"), Wave 4 is recorded as **blocked on a correction-contract decision**.
+
+**Cascade to Wave 5 (`qaFixer` retirement).** `qaFixer`'s objection-split responsibility therefore has
+**no surviving owner**. Combined with `qaFixer` still being the live render authority while the flag is
+off (sole runtime consumer `workspacePresentation.ts:743`), the four-part deletion gate **cannot pass**:
+a legitimate responsibility (objection split) is unmigrated, and the runtime-consumer count is nonzero.
+`qaFixer` is **not** retire-able now — consistent with the §11 retirement-blocking finding. Waves 6–7
+(`structureConfirmed`/`keepRawLabels` retirement) likewise depend on the flag-on canonical structure
+being the live authority — the **activation Human Gate**. Waves 4–7 are thus all gated on either a
+product/contract decision (4) or the activation/convergence Human Gates (5–7): the defined STOP condition.
 
 ### Exact remaining gate (STOP here under freeze)
 

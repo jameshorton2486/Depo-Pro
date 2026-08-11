@@ -33472,10 +33472,12 @@
       "status": "ACTIVE",
       "keywords": [
         "2026-08-10",
+        "apply",
         "architecture",
         "audits",
         "backfill",
         "behavior",
+        "blocked",
         "canonical",
         "changes",
         "classifier",
@@ -33485,12 +33487,15 @@
         "consumer",
         "convergence",
         "core",
+        "correction-contract",
         "current",
         "database",
+        "decision",
         "defect",
         "deliverable",
         "deployment",
         "docs",
+        "embedded",
         "every",
         "exact",
         "exception",
@@ -33518,6 +33523,7 @@
         "mode",
         "normal",
         "notes",
+        "objection",
         "one",
         "package-json",
         "path",
@@ -33559,6 +33565,7 @@
         "type",
         "under",
         "unknown",
+        "wave",
         "waves",
         "working",
         "workspace",
@@ -33664,6 +33671,10 @@
         {
           "level": 3,
           "text": "LOCAL integration (scoped freeze exception — production still frozen)"
+        },
+        {
+          "level": 3,
+          "text": "Wave 4 — embedded objection structural apply (BLOCKED on a correction-contract decision)"
         },
         {
           "level": 3,
