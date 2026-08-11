@@ -80,5 +80,27 @@ Enabler (pagination) → metadata transport → render-model section model + ren
 ## Freeze / Human Gates
 This document is characterization only. The build is **behavioral** (new render output, schema/`case.ts` additions, `formatter_core` changes, deployment) → **gated by BETA_FREEZE**; each step lands as default-off/non-active scaffolding + tests until an activation Human Gate, exactly as the line_type migration is staged ([[line-type-migration-doc0325]]). Nothing here is implemented or deleted. The Python remains the reference implementation until its replacement is tested and proven (DOC-0326 four-part gate).
 
+## Implementation status — pagination producer (the enabler) — DONE (local, inert)
+
+The enabler (#1) is implemented: `src/lib/export/paginationProducer.ts`.
+- `buildPaginationMap(formatted, profile)` — pure — extracts the `PaginationMap` (the inert
+  `paginationContract.ts` shape) from a `cfe` `FormattedDocument`: each post-wrap `FormattedLine`'s
+  `(page_number, page_line_number)` becomes a `PageLineRef`; consecutive same-`paragraph_index` lines are
+  wrapped continuations; empty `utterance_id` → null (generated line). **No second paginator** — it reads
+  the coordinates the certified body render already computes and discards (the cardinal rule).
+- `buildCanonicalPaginationMap(document, record, corrections?, enabled?)` — runs the EXACT body pipeline
+  `buildCanonicalExportRenderModel` uses (`deriveWorkingTranscript` → `buildDisplayDocument` → verbatim
+  `cfe`) then extracts the map, so page breaks match the certified body by construction (same
+  deterministic `cfe` call).
+- Tests (`paginationProducer.test.ts`, 8): valid coordinates, multi-page span, `line ≤ linesPerPage`,
+  determinism, monotonic advance, wrapped-continuation detection, and the `lookupUtteranceRef` /
+  `lookupParagraphRef` / `formatPageLine` errata+index citations.
+
+Still inert/local: no live path produces a `PaginationMap` yet, and `sections`/`exhibits` anchors are
+empty (they need the `depositionRegionEngine` fine-section extension + exhibit-marker detection, target
+addition #5 — the next unit). The TS-vs-Python wrap-parity concern below is moot for the map itself: it
+extracts from the TS render that IS the certified body, so it matches that body exactly; Python parity is
+a separate body-render-vs-reference question.
+
 ## Notes
 `ufm_engine`'s `fig18` appearances template currently renders **blank** (no code populates its fixed 2-counsel/3-present slots) — the data-driven `caption.py` appearances path is the better re-home source; the fixed-slot template should not be carried forward. Unproven items flagged by the sweeps: no dedicated tests for `write_cert_exhibits`/`post_record`; TS-vs-Python line-wrap parity (must match to guarantee identical page breaks if pagination is computed TS-side). Relates to DOC-0326, ADR-0017, [[correct-and-format-workspace-architecture]].
