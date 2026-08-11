@@ -16,6 +16,13 @@ export interface Word {
   confidence: number;        // 0.0–1.0
   reviewed: boolean;
   edited: boolean;           // text !== raw_text
+  // Legacy per-word AI-suggestion channel (ai-review word-suggestion path). Produced by
+  // editor-api mapWordRow and consumed by the Workspace (workspaceService, TranscriptEditor,
+  // buildEditorContent), which previously re-declared these locally because the canonical Word
+  // omitted them. Declared here so the shape is honest end to end. Slated for retirement with
+  // the legacy word-suggestion path (Phase-G Wave G3 / CorrectionObject migration).
+  ai_suggestion?: string | null;
+  ai_suggestion_status?: string | null;
 }
 
 export interface Utterance {

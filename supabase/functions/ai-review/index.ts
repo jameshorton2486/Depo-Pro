@@ -338,7 +338,7 @@ function bridgeCaseFromPayload(payload: Record<string, unknown> | null): BridgeR
 // Shape of a prior accepted correction row (corrections: specialty, change, reason).
 type AcceptedCorrectionRow = {
   specialty?: unknown;
-  change?: { before?: unknown; after?: unknown } | null;
+  change?: { before?: string; after?: string } | null;
   reason?: unknown;
 };
 
