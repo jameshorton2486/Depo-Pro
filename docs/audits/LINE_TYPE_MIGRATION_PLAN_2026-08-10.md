@@ -202,7 +202,42 @@ default-off scaffolding + types + persistence code + invariants + tests + docs**
 
 **Step 1 status:** the accept→apply→converge chain exists and is composition-proven — `qa_split CorrectionObject (accepted)` → `deriveWorkingTranscript` (idempotent split) → persisted `line_type` → `applyReviewedStructure` → both builders. `qaFixer`'s split now has a surviving owner (gate item #1). Item (a) is now **done** (Wave 1): the real Workspace load path (`DocumentContext` → `TranscriptEditor` → `buildEditorContent`) hydrates reviewed corrections and runs the projection when the gate is on, with a `DocumentProvider persistedLineTypeEnabled` override for end-to-end flag-on exercise. Crucially the corrections fetch is **gated on the flag**, so with `PERSISTED_LINE_TYPE_ENABLED=false` production makes no new `/corrections` call (the endpoint ships at activation) and the everyday load path is byte-identical. Item (b) is now **partly done** (Wave 2): a real parity harness runs both real builders and proves the qa_split certification invariant is identical across Workspace and export for resolved speakers (accepted/rejected/pending). The FULL mixed-matrix parity (examination headers, parentheticals, generic/unresolved speakers in mixed context) is **gated on the Wave 6/7 render-path convergence** — the two structure builders are still distinct code and were observed to diverge for some content/speaker shapes independent of qa_split; the harness's extractors are already shaped to assert those rows once convergence collapses the builders. Item (c) is now **done at the state-machine level** (Wave 3): the structural round-trip is deterministic and immutable across close/reopen through the real reducer. **Remaining to complete Step 1:** (b-rest) mixed-matrix parity after convergence; (d) `qaFixer` retirement once (b)–(c) are green + the objection split lands. Still flag-off; production frozen.
 
-**ACTIVATION OPEN QUESTION (Wave 3 finding — working-text edits on derived-split utterances).** Because the split is *derived* (not persisted to the DB), a flag-on Workspace renders the split utterances with derived ids (`u1::q`, `u1::a`). If a reporter edits the text of a split half, `editUtterance` keys `workingTexts` by the derived id and `saveWorking` would POST `{utterance_id: "u1::q", …}` — but the DB `transcript_utterances` only has `u1`, so the working-text save has no matching row and would orphan. The pure structural round-trip (accept→reopen→identical structure) is proven; the *text-edit-on-a-derived-unit* round-trip is NOT yet solved and must be resolved before activation. Two candidate resolutions for the Human Gate: (i) **persist the split** at accept time (the structural apply writes real utterance rows), so derived ids become real DB ids; or (ii) **map derived ids back** to `(source utterance, word range)` on save so working text lands on the underlying words. This is production-frozen either way — it only matters once `PERSISTED_LINE_TYPE_ENABLED` flips.
+### Decision A — derived-unit edit persistence (characterized; design settled, implementation pending)
+
+**Owner's Decision A:** persist derived-unit edits via an explicit Working Transcript **overlay** — never
+mutate raw evidence, never fabricate a provider utterance row for a derived unit.
+
+**Characterization (how working text persists today).** Working-text edits already persist as an
+**overlay at the WORD level**: `transcript_words.working_text` (added in
+`20260605222208_transcript_persistence_v2.sql`) holds the human edit *separately* from the immutable
+`raw_text`, keyed by the stable `word_id`. The save RPC `editor_apply_working_changes`
+(`20260606113000`) takes `{utterance_id, working_text}`, **looks up the words by `utterance_id`**
+(`where utterance_id = …`), splits the new text into tokens, and writes each token to its word's
+`working_text` (null when it equals `raw_text`). So the overlay the owner's decision calls for **already
+exists** — at the word level, keyed by stable `word_id`, with raw evidence untouched. No new overlay
+table is needed for text edits.
+
+**The exact gap.** A derived split reassigns `utterance_id`/`speaker_id` only in the **derived** doc;
+the DB word row keeps its `word_id` **and** its original `utterance_id` (`u1`). When a reporter edits a
+derived unit (`u1::obj`), the client would POST `{utterance_id: "u1::obj", …}`, and the RPC's
+`where utterance_id = 'u1::obj'` matches **no rows** → the edit orphans. The failure is purely the
+**utterance-id-based word lookup**, not the storage model.
+
+**Settled design (owner option ii — map derived ids back to source words).** Because the client builds
+the derived doc, it already knows each derived unit's underlying `word_ids`. Resolve by making the save
+path **word-scoped** for derived units: the client sends the derived unit's `word_ids` (or emits
+word-level `{word_id, working_text}` changes), and a new RPC variant distributes tokens across exactly
+those words by `word_id` (no `transcript_utterances` row write for a derived id). This keeps raw
+evidence immutable, needs **no** fabricated utterance rows, and reuses the existing per-word overlay.
+
+**Implementation plan (NEXT unit — best with fresh context; touches a production RPC via a new UNAPPLIED
+migration).** (1) New unapplied migration adding a word-scoped apply RPC (or a `word_ids`/word-level
+change shape on the existing one); (2) `database.ts` types; (3) editor-api `handlePutWorking` accepts
+word-scoped changes; (4) client `saveNow`/`SaveWorkingPayload` sends the derived unit's word_ids under
+the flag; (5) round-trip tests: edit a derived `u1::obj` → autosave → reopen → the edit lands on the
+underlying words, raw_text unchanged, structure re-derived. Production-frozen: migration not applied,
+flag stays off. Until then the derived-unit **text-edit** round-trip is the one unproven Step-1 item
+(the derived-unit **structural** round-trip is proven, Wave 3).
 
 Two DOC-0325-vs-code reconciliations were made and documented in the migration file: (a) `line_type`
 value space uses the **short codes** `Q|A|SP|PN|HEADER|UNKNOWN` that `normalizePersistedLineType`

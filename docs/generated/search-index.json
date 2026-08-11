@@ -33479,6 +33479,7 @@
         "behavior",
         "canonical",
         "changes",
+        "characterized",
         "classifier",
         "compatibility",
         "confidence",
@@ -33492,7 +33493,10 @@
         "defect",
         "deliverable",
         "deployment",
+        "derived-unit",
+        "design",
         "docs",
+        "edit",
         "embedded",
         "every",
         "exact",
@@ -33526,6 +33530,7 @@
         "open",
         "package-json",
         "path",
+        "pending",
         "persisted",
         "persistence",
         "phase",
@@ -33550,6 +33555,7 @@
         "schema",
         "scoped",
         "sequence",
+        "settled",
         "state",
         "status",
         "still",
@@ -33673,6 +33679,10 @@
         {
           "level": 3,
           "text": "LOCAL integration (scoped freeze exception — production still frozen)"
+        },
+        {
+          "level": 3,
+          "text": "Decision A — derived-unit edit persistence (characterized; design settled, implementation pending)"
         },
         {
           "level": 3,
