@@ -34284,6 +34284,7 @@
         "compatibility",
         "consolidation",
         "corrected",
+        "critical",
         "dag",
         "deletion-readiness",
         "dependency",
@@ -34293,6 +34294,7 @@
         "docs",
         "dormant",
         "draft",
+        "drift",
         "easy",
         "eight",
         "exact",
@@ -34307,6 +34309,7 @@
         "gate",
         "gates",
         "harvest",
+        "history",
         "human",
         "implementation",
         "independently",
@@ -34523,6 +34526,14 @@
         {
           "level": 3,
           "text": "L.6 Verdict"
+        },
+        {
+          "level": 2,
+          "text": "M. CRITICAL — production schema/history DRIFT (read-only, 2026-08-11)"
+        },
+        {
+          "level": 3,
+          "text": "M.1 Verdict"
         }
       ]
     }
