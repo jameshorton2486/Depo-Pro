@@ -3,6 +3,8 @@ import type { EditorDocument, Word } from "../../api/types";
 import type { CorrectionObject } from "./correctionObject";
 import { asStructuredUtterance } from "./structuredTranscript";
 import { applyStructuralCorrections } from "./structuralApply";
+import { applyReviewedStructure } from "./lineTypeMigration";
+import type { TranscriptParagraph } from "./transcriptParagraphTypes";
 
 function word(id: string, text: string, uttId: string, t: number): Word {
   return {
@@ -144,5 +146,22 @@ describe("applyStructuralCorrections — qa_split", () => {
     delete (c.change.structural_change as Record<string, unknown>).new_q_paragraph_speaker_id;
     const { document } = applyStructuralCorrections(doc(), [c]);
     expect(document.utterances[1].speaker_id).toBe("spk-0"); // original utterance speaker
+  });
+});
+
+describe("structural-apply → applyReviewedStructure (loop closes: qaFixer split has an owner)", () => {
+  const para = (kind: string, uttIds: string[]): TranscriptParagraph =>
+    ({ kind, sourceUtteranceIds: uttIds, region: "TESTIMONY", label: "", speakerLabel: "", text: "",
+       speakerId: null, leadingText: "", mode: "display", words: [], sourceLines: [], sourceWordIds: [] } as unknown as TranscriptParagraph);
+
+  it("split utterances feed persisted Q/A kinds to the overlay WITHOUT a render-time split", () => {
+    // Before: one utterance u1 held an inline Q+A. After structural-apply it is two utterances,
+    // each with a persisted reviewed line_type. Paragraphs built 1:1 over the split utterances,
+    // run through applyReviewedStructure (flag on), get Q then A — the same structure qaFixer used
+    // to produce by splitting at render time, now owned upstream by the reviewed correction.
+    const { document } = applyStructuralCorrections(doc(), [qaSplit()]);
+    const paragraphs = [para("COLLOQUY", ["u1::q"]), para("COLLOQUY", ["u1::a"])];
+    const converged = applyReviewedStructure(paragraphs, document, true);
+    expect(converged.map((p) => p.kind)).toEqual(["Q", "A"]);
   });
 });
