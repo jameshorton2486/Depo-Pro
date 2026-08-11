@@ -34265,20 +34265,26 @@
         "application",
         "architecture",
         "archival",
+        "audit",
         "audits",
         "authoritative",
         "authority",
         "authorization",
         "backfill",
         "backup",
+        "behavior",
+        "behind",
         "both",
         "bundle",
         "certified",
         "classification",
         "clean",
         "cleanup",
+        "cli",
         "compatibility",
         "consolidation",
+        "corrected",
+        "dag",
         "deletion-readiness",
         "dependency",
         "deployment",
@@ -34288,6 +34294,7 @@
         "dormant",
         "draft",
         "easy",
+        "eight",
         "exact",
         "executable",
         "execution",
@@ -34295,6 +34302,7 @@
         "finding",
         "fixed",
         "forced",
+        "four",
         "freeze",
         "gate",
         "gates",
@@ -34303,6 +34311,7 @@
         "implementation",
         "independently",
         "kill",
+        "lag",
         "last",
         "legacy-state",
         "lift",
@@ -34311,13 +34320,20 @@
         "main",
         "make",
         "map",
+        "mechanism",
         "migration-history",
+        "migrations",
+        "minimum-vs-correctness",
         "not",
         "now",
         "obsolete-artifact",
         "one",
         "one-page",
+        "options",
+        "order",
+        "package",
         "pages",
+        "pending-migration",
         "plan",
         "point",
         "ponr",
@@ -34354,10 +34370,13 @@
         "states",
         "status",
         "structural",
+        "supabase",
         "template",
+        "timestamp",
         "type",
         "ufm",
         "validation",
+        "verdict",
         "verification"
       ],
       "headings": [
@@ -34476,6 +34495,34 @@
         {
           "level": 3,
           "text": "K.8 Is Gate 1A now independently executable?"
+        },
+        {
+          "level": 2,
+          "text": "L. Gate 1A execution package — pending-migration audit (added 2026-08-11)"
+        },
+        {
+          "level": 3,
+          "text": "L.1 Corrected lag — production is EIGHT migrations behind (not four)"
+        },
+        {
+          "level": 3,
+          "text": "L.2 Dependency DAG (not timestamp order)"
+        },
+        {
+          "level": 3,
+          "text": "L.3 CLI behavior (supabase 2.75.0)"
+        },
+        {
+          "level": 3,
+          "text": "L.4 Mechanism options"
+        },
+        {
+          "level": 3,
+          "text": "L.5 Minimum-vs-correctness finding (§10)"
+        },
+        {
+          "level": 3,
+          "text": "L.6 Verdict"
         }
       ]
     }

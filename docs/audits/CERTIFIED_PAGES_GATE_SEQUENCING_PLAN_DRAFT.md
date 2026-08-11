@@ -411,3 +411,23 @@ Gate 1A exit (columns exist, default `UNREVIEWED`/null, backfill not run, flag o
 
 ### K.8 Is Gate 1A now independently executable?
 **YES (locally).** The Gate 1A migration is DDL-only and separable from Gate 1B. The remaining execution-time gates are Human/operator actions: the migration-behind review (K.1), a verified production backup (K.5), and the Gate 1A authorization sentence (§G). No production action taken here.
+
+## L. Gate 1A execution package — pending-migration audit (added 2026-08-11)
+
+### L.1 Corrected lag — production is EIGHT migrations behind (not four)
+Full read-only diff of `schema_migrations` (36 applied, contiguous, no gaps, no orphans) vs repo (44). Production max = `20260722024834`. Pending, in order: (1) `20260724120000` transcription_job_finalizing [finalize worker, additive DDL, R2]; (2) `20260724130000` transcription_watchdog [additive DDL + create fn whose UPDATE is fn-body only, R2]; (3) `20260729120000` corrections [corrections/TIE, additive tables/indexes/triggers/RLS, R2]; (4) `20260804230000` canon_raw_b_provenance_columns [CANON-RAW, additive nullable columns, R2]; (5) `20260804233000` canon_raw_d_directory_provenance [CANON-RAW, additive nullable JSONB, R2]; (6) `20260810180000` line_type_review_contract [**Gate 1A**, additive DDL + constraints, zero DML, R2]; (7) `20260811120000` working_text_word_scoped_rpc [editor working-text, additive create fn with fn-body DML only, R2]; (8) `20260812090000` line_type_review_backfill [**Gate 1B**, apply-time UPDATE, R3-recoverable]. Guarded by `src/lib/db/pendingMigrationApplyTimeDml.test.ts`: only Gate 1B mutates rows at apply time; the other seven are additive (their UPDATE/INSERT live inside `$$` function bodies).
+
+### L.2 Dependency DAG (not timestamp order)
+`6 Gate 1A -> 8 Gate 1B` is the only REQUIRED edge (1B needs the `line_type_review_status` column). Everything else is ORDER-ONLY / INDEPENDENT (finalizing/watchdog touch `transcription_jobs`; corrections adds new tables; canon_raw_b/d touch `field_provenance`/`contacts`+`firms`; working_text is an RPC on `transcript_words`). Gate 1A depends only on the pre-existing `line_type` column (`20260627220500`, already applied) — NO dependency on any unapplied migration.
+
+### L.3 CLI behavior (supabase 2.75.0)
+`supabase db push --linked` / `migration up --linked` apply ALL pending versions not on the remote history table, in version order (require the DB password). `--dry-run` previews. There is NO `--target` / selective-single-migration flag. A normal push applies all 8 — deploying five unrelated workstreams + working_text, then executing Gate 1B's DML. Unacceptable for a narrow Gate 1A.
+
+### L.4 Mechanism options
+A. Normal `db push` — applies all 8. REJECTED. B. Out-of-band Gate 1A DDL via authenticated SQL (idempotent `add column if not exists`) — installs ONLY line_type schema, but `schema_migrations` won't record `20260810180000` → schema-vs-history divergence needing documented reconciliation (a later full push re-runs the idempotent DDL and records it); that history write is part of Gate 1A. C. Scoped `db push` excluding Gate 1B (hold back `20260812090000`, push 1–7, restore for a later Gate 1B) — keeps migration history perfectly correct, but DEPLOYS the five unrelated additive workstreams + working_text (all additive/idempotent/dormant until their code deploys). D. Supported selective apply — NONE.
+
+### L.5 Minimum-vs-correctness finding (§10)
+The Gate 1A minimum (line_type dormant schema ONLY) is achievable via B but not while preserving migration-history correctness; C preserves history correctness but does not achieve the minimum. No mechanism achieves both — surfaced, not silently broadened; the choice is a Human decision.
+
+### L.6 Verdict
+**GATE 1A NOT READY — blocker: deployment-mechanism / scope decision.** Gate 1A is code-ready, DDL-only, dependency-clean and independently executable in principle; but production being 8 migrations behind across 4 unrelated workstreams means no mechanism installs the line_type-only schema while keeping `schema_migrations` truthful without a Human decision (accept the additive-backlog deploy via C, or out-of-band DDL + documented reconciliation via B). Recommended: C if the additive backlog is acceptable to deploy (cleanest history); B if strict line_type isolation is required.
