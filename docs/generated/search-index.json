@@ -34282,6 +34282,7 @@
         "bundle",
         "c-scoped",
         "canary",
+        "candidate",
         "catch-up",
         "certified",
         "classification",
@@ -34376,6 +34377,7 @@
         "program-wide",
         "projection",
         "python",
+        "qualifying",
         "read",
         "read-only",
         "reconciliation",
@@ -34396,6 +34398,7 @@
         "runtime",
         "schema",
         "scoped",
+        "selection",
         "sentences",
         "sequence",
         "sequencing",
@@ -34634,6 +34637,14 @@
         {
           "level": 3,
           "text": "R.1 Stage B prerequisites"
+        },
+        {
+          "level": 2,
+          "text": "S. GATE 2 STAGE B — PONR CANDIDATE SELECTION: NO QUALIFYING CANDIDATE (read-only, 2026-08-11)"
+        },
+        {
+          "level": 3,
+          "text": "S.1 Verdict"
         }
       ]
     }

@@ -520,3 +520,13 @@ Human-authorized (Stage A only). Read/projection canary via the NARROWEST revers
 
 ### R.1 Stage B prerequisites
 Satisfied for consideration: Stage A passed; projection proven correct + zero-write + reversible on real data; backup available. Stage B remains SEPARATELY authorized and is the **program-wide PONR** — the first new human-reviewed structural decision (`qa_split`/`objection_split`/override) persisted under the activated architecture, not losslessly representable by legacy `qaFixer`. It requires the dedicated PONR sentence plus pre-inspection of the exact first structural decision + its rollback/evidence procedure. NOT approached.
+
+## S. GATE 2 STAGE B — PONR CANDIDATE SELECTION: NO QUALIFYING CANDIDATE (read-only, 2026-08-11)
+Read-only search for the first Stage B structural decision. Ground truth unchanged (44 applied; 13,169 utterances all UNREVIEWED; 0 line_type; 0 corrections/decisions). No production write; NO Stage B authorization given.
+- **objection_split: 0 candidates.** 140 utterances contain "objection"; ALL are short standalone objections (0 embedded in longer testimony) — objections are already their own utterances, nothing to extract.
+- **qa_split: no qualifying candidate.** 51 utterances have a mid-utterance "?"; the smallest examined are legitimate single-speaker multi-question / self-correcting utterances ("what can we do? Do you have a ...", "... strike that question") — NOT merged question+answer errors.
+- **No word-level merge evidence:** 0 utterances have words spanning multiple speaker_ids — no objective diarization-merge to split anywhere in production.
+- **Speaker roles universally empty:** 0 of 39 speakers carry a role — any qa_split Q-vs-A speaker attribution would be inferred/fabricated (forbidden).
+
+### S.1 Verdict
+**STAGE B NOT READY FOR PONR AUTHORIZATION — no unambiguous, no-fabrication structural correction exists in current production data.** The transcripts are already well-structured (objections separate; no cross-speaker merges); the persisted-line_type authority has nothing on existing data it must represent that legacy cannot. The first reviewed structural decision must arise from GENUINE human reporter review of a specifically-identified transcript with human-resolved speaker attribution — NOT an AI-selected candidate. Do NOT cross the PONR on a manufactured or ambiguous example. Recommend deferring Stage B (and reconsidering whether line_type activation is warranted on current data at all) until a real, human-confirmed structural correction is identified.
