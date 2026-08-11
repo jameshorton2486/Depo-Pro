@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EditorDocument, Word } from "../../api/types";
 import type { CorrectionObject } from "./correctionObject";
 import { asStructuredUtterance } from "./structuredTranscript";
-import { applyStructuralCorrections } from "./structuralApply";
+import { applyStructuralCorrections, deriveWorkingTranscript } from "./structuralApply";
 import { applyReviewedStructure } from "./lineTypeMigration";
 import type { TranscriptParagraph } from "./transcriptParagraphTypes";
 
@@ -163,5 +163,54 @@ describe("structural-apply → applyReviewedStructure (loop closes: qaFixer spli
     const paragraphs = [para("COLLOQUY", ["u1::q"]), para("COLLOQUY", ["u1::a"])];
     const converged = applyReviewedStructure(paragraphs, document, true);
     expect(converged.map((p) => p.kind)).toEqual(["Q", "A"]);
+  });
+});
+
+describe("deriveWorkingTranscript — projection states + idempotency", () => {
+  const ids = (d: EditorDocument) => d.utterances.map((u) => u.utterance_id);
+
+  it("flag OFF returns the SAME document object (no-op)", () => {
+    const d = doc();
+    expect(deriveWorkingTranscript(d, [qaSplit()], false)).toBe(d);
+  });
+
+  it("empty/absent corrections return the document unchanged", () => {
+    const d = doc();
+    expect(deriveWorkingTranscript(d, [], true)).toBe(d);
+    expect(deriveWorkingTranscript(d, null, true)).toBe(d);
+  });
+
+  it("ACCEPTED / EDITED corrections shape the transcript; PENDING / REJECTED do not", () => {
+    expect(ids(deriveWorkingTranscript(doc(), [qaSplit({ state: "accepted" })], true))).toEqual(["u0", "u1::q", "u1::a", "u2"]);
+    expect(ids(deriveWorkingTranscript(doc(), [qaSplit({ state: "edited" })], true))).toEqual(["u0", "u1::q", "u1::a", "u2"]);
+    expect(ids(deriveWorkingTranscript(doc(), [qaSplit({ state: "pending" })], true))).toEqual(["u0", "u1", "u2"]);
+    expect(ids(deriveWorkingTranscript(doc(), [qaSplit({ state: "rejected" })], true))).toEqual(["u0", "u1", "u2"]);
+  });
+
+  it("is IDEMPOTENT under re-application: apply-again == same structure, NOT split-again", () => {
+    const once = deriveWorkingTranscript(doc(), [qaSplit()], true);
+    const twice = deriveWorkingTranscript(once, [qaSplit()], true); // re-applying same correction
+    expect(ids(twice)).toEqual(ids(once)); // no double split
+  });
+
+  it("reopen is DETERMINISTIC: re-deriving from the original gives identical structure", () => {
+    // Simulates close→reopen: the persisted corrections are re-applied to the immutable original.
+    const first = deriveWorkingTranscript(doc(), [qaSplit()], true);
+    const reopened = deriveWorkingTranscript(doc(), [qaSplit()], true);
+    expect(ids(reopened)).toEqual(ids(first));
+  });
+
+  it("only accepted corrections in a mixed set apply", () => {
+    const d = deriveWorkingTranscript(doc(), [qaSplit({ id: "corr_A", state: "rejected" })], true);
+    expect(ids(d)).toEqual(["u0", "u1", "u2"]); // the sole (rejected) correction did nothing
+  });
+
+  it("preserves provenance/evidence on split units (source word ids + confirmed review)", () => {
+    const d = deriveWorkingTranscript(doc(), [qaSplit()], true);
+    const q = asStructuredUtterance(d.utterances[1]);
+    expect(q.word_ids).toEqual(["w1", "w2"]); // traces to original source words
+    expect(q.line_type_review_status).toBe("CONFIRMED"); // reviewed decision provenance
+    // raw evidence: the underlying words keep their text/timestamps
+    expect(d.words.find((w) => w.word_id === "w1")!.text).toBe("You");
   });
 });

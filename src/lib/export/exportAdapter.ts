@@ -11,6 +11,8 @@ import { buildStructuredTranscriptGeometryLayout } from "../transcript/geometryE
 import { buildStructuredTranscriptPackage } from "../transcript/structuredTranscriptPackage";
 import { asStructuredUtterance, normalizePersistedLineType } from "../transcript/structuredTranscript";
 import { applyReviewedStructure } from "../transcript/lineTypeMigration";
+import { deriveWorkingTranscript } from "../transcript/structuralApply";
+import type { CorrectionObject } from "../transcript/correctionObject";
 import { buildTranscriptParagraphs } from "../transcript/transcriptParagraphs";
 import { buildDisplayDocument } from "../transcript/workspacePresentation";
 import { buildUnifiedRenderModel, type UnifiedRenderModel } from "../transcript/unifiedRendering";
@@ -113,8 +115,14 @@ function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
 export function buildCanonicalExportRenderModel(
   document: EditorDocument,
   record: CaseRecord,
+  // DOC-0325 Step 1: same reviewed structural corrections as Workspace. Behind the flag
+  // (default off → no-op), export derives the Working Transcript from the SAME projection
+  // (deriveWorkingTranscript) as buildEditorContent — so the reporter certifies exactly the
+  // structure she reviewed, identical to the Workspace view.
+  corrections?: CorrectionObject[],
 ): UnifiedRenderModel {
-  const displayDocument = buildDisplayDocument(document, record);
+  const workingDocument = deriveWorkingTranscript(document, corrections);
+  const displayDocument = buildDisplayDocument(workingDocument, record);
   // A11 / C1b: this render model produces the certified DOCX the reporter signs
   // her CSR number to. It must be verbatim — no correction-registry word
   // substitution (which could silently swap a real surname into testimony).

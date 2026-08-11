@@ -1,6 +1,7 @@
 import type { EditorDocument, Utterance, Word } from "../../api/types";
 import type { CorrectionObject } from "./correctionObject";
 import type { StructuredUtterance } from "./structuredTranscript";
+import { PERSISTED_LINE_TYPE_ENABLED } from "./lineTypeMigration";
 
 // DOC-0325 — structural-apply engine (the qaFixer-split replacement owner).
 //
@@ -149,4 +150,30 @@ export function applyStructuralCorrections(
     applied,
     skipped,
   };
+}
+
+/**
+ * Load-time Working Transcript projection (DOC-0325 Step 1). Derives the Working Transcript that
+ * BOTH Workspace and export consume, from the immutable original document + the reviewed
+ * structural corrections. This is the single apply seam — because it is one deterministic pure
+ * function of (original document, corrections), Workspace and export cannot diverge, and reopen
+ * re-derives the identical structure (idempotent). No DB mutation; raw evidence untouched.
+ *
+ * Decision-state semantics (mirrors the editor-api decide path): a qa_split is stored ACCEPTED
+ * but deferred (downstream.applied_to_working_transcript=false, pending_reason
+ * "structural_apply_engine_v2"); THIS is that engine. Only accepted/edited corrections shape the
+ * transcript; pending/rejected/superseded never do (applyStructuralCorrections enforces this).
+ *
+ * INERT: gated by PERSISTED_LINE_TYPE_ENABLED (default false → returns the document unchanged).
+ * Callers MUST pass the ORIGINAL (DB) document so the projection stays idempotent across reopen.
+ */
+export function deriveWorkingTranscript(
+  document: EditorDocument,
+  corrections: CorrectionObject[] | null | undefined,
+  enabled: boolean = PERSISTED_LINE_TYPE_ENABLED,
+): EditorDocument {
+  if (!enabled || !corrections || corrections.length === 0) {
+    return document;
+  }
+  return applyStructuralCorrections(document, corrections).document;
 }

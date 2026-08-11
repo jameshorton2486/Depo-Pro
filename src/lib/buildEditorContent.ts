@@ -7,6 +7,8 @@ import { cfe } from "./format/cfe";
 import { DEFAULT_GEOMETRY_PROFILE } from "./format/geometryProfile";
 import { ENABLE_DISPLAY_TURN_SEGMENTATION } from "./format/grouping";
 import { buildDisplayDocument, buildTranscriptParagraphs, resolveWordDisplay } from "./transcript/workspacePresentation";
+import { deriveWorkingTranscript } from "./transcript/structuralApply";
+import type { CorrectionObject } from "./transcript/correctionObject";
 import type { FormattedLineRole } from "./format/types";
 
 type OverlayWord = EditorDocument["words"][number] & {
@@ -213,11 +215,17 @@ export function buildEditorContent(
     structureConfirmed?: boolean;
     keepRawLabels?: boolean;
     record?: CaseRecord | null;
+    // DOC-0325 Step 1: reviewed structural corrections. Behind PERSISTED_LINE_TYPE_ENABLED
+    // (default off → no-op), the Working Transcript is derived from the immutable document +
+    // accepted qa_split corrections before rendering — the SAME projection export uses, so
+    // Workspace and export structure cannot diverge. Callers pass the original DB document.
+    corrections?: CorrectionObject[];
   }
 ): JSONContent {
+  const workingDoc = deriveWorkingTranscript(doc, options?.corrections);
   const visibleDoc = {
-    ...doc,
-    utterances: doc.utterances.filter((utterance) => {
+    ...workingDoc,
+    utterances: workingDoc.utterances.filter((utterance) => {
       const candidate = utterance as typeof utterance & { excluded_from_output?: boolean };
       return candidate.excluded_from_output !== true;
     }),
