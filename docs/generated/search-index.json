@@ -34281,6 +34281,7 @@
         "both",
         "bundle",
         "c-scoped",
+        "canary",
         "catch-up",
         "certified",
         "classification",
@@ -34292,6 +34293,7 @@
         "consolidation",
         "corrected",
         "critical",
+        "crossed",
         "dag",
         "decision",
         "deletion-readiness",
@@ -34372,7 +34374,9 @@
         "preview",
         "production",
         "program-wide",
+        "projection",
         "python",
+        "read",
         "read-only",
         "reconciliation",
         "refinements",
@@ -34385,6 +34389,7 @@
         "retirement",
         "retirement-phase",
         "return",
+        "reversible",
         "revised",
         "roadmap",
         "rollback",
@@ -34621,6 +34626,14 @@
         {
           "level": 3,
           "text": "Q.1 Gate 2 Stage A precondition status"
+        },
+        {
+          "level": 2,
+          "text": "R. GATE 2 STAGE A — EXECUTED 2026-08-11 (reversible read/projection canary; PONR NOT crossed)"
+        },
+        {
+          "level": 3,
+          "text": "R.1 Stage B prerequisites"
         }
       ]
     }
