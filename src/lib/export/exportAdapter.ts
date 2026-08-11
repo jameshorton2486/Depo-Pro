@@ -10,6 +10,7 @@ import { classifyDepositionRegions } from "../transcript/depositionRegionEngine"
 import { buildStructuredTranscriptGeometryLayout } from "../transcript/geometryEngine";
 import { buildStructuredTranscriptPackage } from "../transcript/structuredTranscriptPackage";
 import { asStructuredUtterance, normalizePersistedLineType } from "../transcript/structuredTranscript";
+import { applyReviewedStructure } from "../transcript/lineTypeMigration";
 import { buildTranscriptParagraphs } from "../transcript/transcriptParagraphs";
 import { buildDisplayDocument } from "../transcript/workspacePresentation";
 import { buildUnifiedRenderModel, type UnifiedRenderModel } from "../transcript/unifiedRendering";
@@ -128,15 +129,24 @@ export function buildCanonicalExportRenderModel(
     persistedLineType: normalizePersistedLineType(utteranceById.get(line.utterance_id)?.line_type),
     role: line.role,
   })));
-  const transcriptPackage = buildStructuredTranscriptPackage({
-    transcriptId: document.job_id,
-    paragraphs: buildTranscriptParagraphs(formatted.lines.map((line) => ({
+  // DOC-0325 shared-builder seam (export side). The overlay is flag-gated (default off →
+  // no-op), so certified output is byte-identical today. When the flag is on, export consumes
+  // the SAME persisted reviewed line_type authority as Workspace — the invariant that the
+  // reporter certifies exactly the structure she reviewed. Uses displayDocument (carries the
+  // persisted line_type) for the utterance→line_type lookup.
+  const exportParagraphs = applyReviewedStructure(
+    buildTranscriptParagraphs(formatted.lines.map((line) => ({
       line,
       text: line.words.map((word) => `${word.text}${word.trailing_space}`).join("").trim(),
       region: regionByUtteranceId.get(line.utterance_id) ?? "CAPTION",
       persistedLineType: normalizePersistedLineType(utteranceById.get(line.utterance_id)?.line_type),
       speakerLabel: line.speaker_label,
     }))),
+    displayDocument,
+  );
+  const transcriptPackage = buildStructuredTranscriptPackage({
+    transcriptId: document.job_id,
+    paragraphs: exportParagraphs,
     dialogue: [],
   });
   const renderModel = buildUnifiedRenderModel({

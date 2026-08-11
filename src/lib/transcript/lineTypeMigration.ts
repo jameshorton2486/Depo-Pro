@@ -78,11 +78,18 @@ export function resolveStructuralKind(
  * keeps its inferred kind (UNKNOWN compatibility), and because only CONFIRMED/OVERRIDDEN decisions
  * get persisted, inference can never overwrite a reviewed decision.
  */
-export function applyReviewedStructure(
-  paragraphs: TranscriptParagraph[],
+// Generic over the paragraph shape: the two live builders currently use DIFFERENT paragraph
+// types (workspacePresentation's local TranscriptParagraph vs transcriptParagraphTypes') — a
+// divergence a later wave reconciles. This overlay only reads `kind` + `sourceUtteranceIds` and
+// rewrites `kind`, and resolveStructuralKind only ever yields Q/A/COLLOQUY/PARENTHETICAL/
+// SECTION_HEADER (valid in both kind unions), so it can safely preserve whichever shape it gets.
+type StructuralParagraph = Pick<TranscriptParagraph, "kind" | "sourceUtteranceIds">;
+
+export function applyReviewedStructure<P extends StructuralParagraph>(
+  paragraphs: P[],
   document: EditorDocument | null | undefined,
   enabled: boolean = PERSISTED_LINE_TYPE_ENABLED,
-): TranscriptParagraph[] {
+): P[] {
   if (!enabled || !document) {
     return paragraphs;
   }
@@ -105,7 +112,7 @@ export function applyReviewedStructure(
       return paragraph;
     }
     const resolved = resolveStructuralKind(persistedUtt, paragraph.kind, enabled);
-    return resolved === paragraph.kind ? paragraph : { ...paragraph, kind: resolved };
+    return resolved === paragraph.kind ? paragraph : ({ ...paragraph, kind: resolved } as P);
   });
 }
 
