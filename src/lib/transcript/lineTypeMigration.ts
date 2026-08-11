@@ -6,7 +6,7 @@ import {
   type StructuredUtterance,
 } from "./structuredTranscript";
 import type { EditorDocument } from "../../api/types";
-import type { TranscriptParagraphKind } from "./transcriptParagraphTypes";
+import type { TranscriptParagraph, TranscriptParagraphKind } from "./transcriptParagraphTypes";
 
 /**
  * DOC-0325 / D7 — migration switch for the render-path convergence that makes persisted reviewed
@@ -62,6 +62,51 @@ export function resolveStructuralKind(
   }
   const persisted = normalizePersistedLineType(utterance.line_type);
   return persisted ? LINE_TYPE_TO_KIND[persisted] : inferredKind;
+}
+
+/**
+ * The converged structural overlay (DOC-0325 / D7). Given paragraphs already built by EITHER
+ * live builder (`workspacePresentation` or `transcriptParagraphs`) plus the document, it
+ * overrides each paragraph's inferred `kind` with the persisted reviewed line_type of its source
+ * utterance where one exists. It is builder-agnostic — the single point both Workspace and export
+ * will eventually consume so their structure is identical by construction — and the structural
+ * replacement for `applyQaFixer` (a same-shaped TranscriptParagraph[] overlay).
+ *
+ * INERT: with the flag off (shipped default) it returns the input unchanged, so the live render
+ * path is byte-identical. It never mutates text/words/source ids — only `kind` — so raw Deepgram
+ * evidence is untouched. It adds NO new classification: a paragraph with no persisted line_type
+ * keeps its inferred kind (UNKNOWN compatibility), and because only CONFIRMED/OVERRIDDEN decisions
+ * get persisted, inference can never overwrite a reviewed decision.
+ */
+export function applyReviewedStructure(
+  paragraphs: TranscriptParagraph[],
+  document: EditorDocument | null | undefined,
+  enabled: boolean = PERSISTED_LINE_TYPE_ENABLED,
+): TranscriptParagraph[] {
+  if (!enabled || !document) {
+    return paragraphs;
+  }
+  const byId = new Map<string, StructuredUtterance>(
+    document.utterances.map((u) => [u.utterance_id, asStructuredUtterance(u)]),
+  );
+  return paragraphs.map((paragraph) => {
+    // Representative utterance = the paragraph's first source utterance that carries a persisted
+    // structural code. None → keep the inferred kind (compatibility). Generated paragraphs
+    // (SECTION_HEADER / BY_LINE with no source utterance) fall through unchanged.
+    let persistedUtt: StructuredUtterance | null = null;
+    for (const id of paragraph.sourceUtteranceIds) {
+      const utt = byId.get(id);
+      if (utt && normalizePersistedLineType(utt.line_type)) {
+        persistedUtt = utt;
+        break;
+      }
+    }
+    if (!persistedUtt) {
+      return paragraph;
+    }
+    const resolved = resolveStructuralKind(persistedUtt, paragraph.kind, enabled);
+    return resolved === paragraph.kind ? paragraph : { ...paragraph, kind: resolved };
+  });
 }
 
 /**
