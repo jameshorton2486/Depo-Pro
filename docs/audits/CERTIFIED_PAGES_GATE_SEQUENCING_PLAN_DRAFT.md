@@ -1,0 +1,378 @@
+# Depo-Pro Production Gate Sequencing Plan — DRAFT
+
+---
+authority_tier: T5
+status: DRAFT
+owner: Architecture
+scope: production-gate-sequencing
+supersedes: null
+superseded_by: null
+approved_by: null
+version: null
+effective_date: 2026-08-11
+ratified_date: null
+last_reviewed: 2026-08-11
+next_review: 2027-08-11
+ratification: REVIEW
+implementation_status: NOT_APPLICABLE
+---
+
+DRAFT ONLY — planning authority, not an execution authorization. Engineering baseline
+`8cfe18e` → FINAL PRE-GATE MEASURED HEAD `1f081cd`. Production is frozen; nothing has been
+pushed, deployed, migrated, backfilled, or activated. This plan is Rev. 2 with two approved
+wording corrections (Gate 2 Stage B rollback; Gate 1A rollback). Ground truth used:
+`PERSISTED_LINE_TYPE_ENABLED = false`; `certified?` optional/default-off in
+`src/lib/export/exportServiceContract.ts` and `exportAdapter.ts`; migration
+`supabase/migrations/20260810180000_line_type_review_contract.sql` is additive DDL plus a
+deterministic `review_status` backfill from the legacy `manually_reassigned` flag;
+`isRealApiMode()` is the build-time `VITE_USE_REAL_API` env; the formatter ships as a
+stateless Cloud Run image (`cloudbuild.formatter.yaml` + `formatter_service/Dockerfile`).
+
+## A. R1–R4 classification
+R1 flag-reversible · R2 redeploy/code-revert-reversible · R3 data-restore-required · R4
+practically irreversible.
+
+| Operation | Class | Reasoning |
+|---|---|---|
+| Certified formatter image deploy | R2 | Stateless Cloud Run; revert = redeploy prior revision |
+| Flip `certified` on in export request | R1/R2 | Per-request field; revert = stop sending / redeploy |
+| line_type additive schema migration | R2 | `add column if not exists` nullable/defaulted; droppable, empty |
+| line_type review_status backfill | R3-RECOVERABLE | Restorable via backup or recompute from preserved `manually_reassigned` |
+| line_type activation flip + deploy | flip R1/R2; accrued structure R3 | Flip reverts by redeploy; new reviewer structure is the PONR |
+| Fallback-loader retirement | R2 | Code removal; gated on `isRealApiMode()` verification |
+| Python source deletion | R3 while archival bundle exists | Restorable from bundle; program avoids the R4 destruction event |
+| Make `main` authoritative | R2/R3 | Git-revertable while bundles exist |
+| Obsolete branch/tag deletion | R3 | Recoverable from the retained archival bundle |
+
+## B. Structural/certified dependency
+`persisted line_type → Working Transcript → FinalizedTranscriptModel → CFE →
+PaginationMap → certified transport → formatter worker → complete certified DOCX`.
+line_type activation (Gate 2) precedes certified activation (Gate 3); the stateless
+formatter image may be pre-staged in Gate 3 while `certified` stays default-off.
+
+## C. Point of No Easy Return
+- LAST CLEAN ABANDONMENT POINT: exit of Gate 1B — dormant additive schema installed and the
+  deterministic legacy backfill applied, both with a verified restore path; line_type still
+  inactive; every step R2 or R3-recoverable.
+- PROGRAM-WIDE POINT OF NO EASY RETURN: the first new human-reviewed structural decision
+  persisted under the activated line_type architecture that cannot be losslessly represented
+  by the legacy authority — concretely, the first persisted `objection_split` extraction or
+  reviewer line_type override (`CONFIRMED`/`OVERRIDDEN`) that render-time
+  `qaFixer`/`keepRawLabels` cannot reproduce. This occurs at Gate 2 Stage B, not at the flag
+  flip. Crossing requires the dedicated §G PONR sentence, obtained immediately before Stage B;
+  no gate approval implies it.
+
+## D. Pre-gate implementation prerequisites (R1/R2 local — not gate actions)
+| ID | Prerequisite | Class | Must complete before |
+|---|---|---|---|
+| P1 | Examination-index synthesized-header fix + regression | R2 | Gate 3 |
+| P2 | Legal-parity metadata (`case.ts` additions; caption/certificate → EXACT where required) | R2 | Gate 3 |
+| P3 | `loadTranscriptSnapshot`/`isRealApiMode()` production verification; retire fallback if reachable | R2 | Gate 2 |
+| P4 | Python reference/template/test harvest | R1 | Gate 5 (retirement phase; does NOT block Gates 1–3) |
+
+P1/P2/P3 land under Gate 0 and are verified before any production gate. P4 moves to the
+retirement phase and never blocks schema/activation/deployment.
+
+## E. Revised gate sequence
+```
+Gate 0   Scoped freeze lift + implement/verify P1, P2, P3
+Gate 1A  Dormant additive production schema (DDL only)            [R2]
+Gate 1B  Deterministic legacy-state backfill (review_status)     [R3-recoverable]  <- LAST CLEAN ABANDONMENT POINT
+Gate 2   Activate line_type + structural validation
+           Stage A  read/projection canary (pre-PONR, reversible)
+           PROGRAM-WIDE PONR authorization
+           Stage B  first new reviewed structural persistence     [PONR crossing]
+Gate 3   Deploy (R2) + enable certified output + prod validation
+   -- production soak --
+Gate 4A  Retire superseded runtime authorities + UFM consolidation
+P4       Python harvest / deletion-readiness gate
+Gate 4B  RC verification + make main authoritative                [R2/R3, bundle retained]
+Gate 5   Clean obsolete branches/worktrees/reference; RETAIN one archival bundle
+DONE
+```
+
+## F. Gates (fixed template)
+
+### GATE 0 — Scoped Freeze Lift + P1/P2/P3
+- Purpose: authorize RC development; implement and verify P1, P2, P3.
+- Freeze scope: RC branch only; production untouched.
+- Execution-time preconditions: `1f081cd` clean; full ladder green re-run.
+- Active authority before/after: unchanged.
+- Residual authorities remaining: all.
+- Dependencies: none.
+- Reversibility class: R1 (freeze re-closes).
+- Backup requirement: none.
+- Ordered actions: 1) re-verify ground truth; 2) land P1, P2 (R2) as reviewed PRs; 3) resolve
+  P3 — verify `isRealApiMode()` invariance with deployed-env evidence, or retire the unranged
+  fallback (R2); 4) re-run full ladder.
+- Verification after each action: ladder green; P1/P2 regression; P3 resolved.
+- Abort criteria: any of P1/P2/P3 not provable/resolvable locally.
+- Rollback trigger: ladder regression.
+- Rollback procedure: revert PR(s); freeze re-closes.
+- Local Point of No Easy Return: none.
+- Exit criteria: P1/P2/P3 complete + verified; nothing deployed.
+- Residual authorities killed: none.
+- Next gate unlocked: Gate 1A.
+
+### GATE 1A — Dormant Additive Production Schema
+- Purpose: install additive line_type DDL in production; no row mutation.
+- Freeze scope: migration (DDL) only; re-close after.
+- Execution-time preconditions: Gate 0 exit; migration reviewed as strictly additive; backup
+  verified restorable.
+- Active authority before/after: unchanged; new columns exist but unused (flag off).
+- Residual authorities remaining: all.
+- Dependencies: Gate 0.
+- Reversibility class: R2.
+- Backup requirement: verified backup.
+- Ordered actions: 1) backup + verify; 2) apply additive DDL; 3) verify columns
+  nullable/defaulted and zero existing rows rewritten.
+- Verification after each action: schema diff == migration DDL; row-level checksums unchanged;
+  app green with flag off.
+- Abort criteria: any non-additive effect; unexpected row change.
+- Rollback trigger: verification failure.
+- Rollback procedure: DEFAULT — leave the verified additive columns dormant with all consuming
+  flags off (additive unused columns are safe to retain and dropping them is unnecessary
+  schema churn). Drop the columns ONLY if the migration itself causes a demonstrated problem
+  AND the drop has been separately verified safe.
+- Local Point of No Easy Return: none.
+- Exit criteria: dormant columns present; no data mutated; flag off.
+- Residual authorities killed: none.
+- Next gate unlocked: Gate 1B.
+
+### GATE 1B — Deterministic Legacy-State Backfill — LAST CLEAN ABANDONMENT POINT
+- Purpose: set `line_type_review_status` from the legacy `manually_reassigned` flag
+  (deterministic, recreatable).
+- Freeze scope: the single UPDATE only; re-close after.
+- Execution-time preconditions: Gate 1A exit; count preview of affected rows; restore path
+  proven (backup restorable and recompute-from-`manually_reassigned` validated on a sample).
+- Active authority before/after: unchanged (flag still off); only review_status metadata set.
+- Residual authorities remaining: all.
+- Dependencies: Gate 1A.
+- Reversibility class: R3-RECOVERABLE.
+- Backup requirement: MANDATORY verified backup immediately before the UPDATE.
+- Ordered actions: 1) fresh backup + verify restore; 2) preview affected-row count; 3) run the
+  UPDATE; 4) verify affected rows == preview == count of legacy flag; 5) spot-check recompute
+  equivalence.
+- Verification after each action: affected-row parity; sampled rows recomputable from
+  `manually_reassigned`.
+- Abort criteria: count mismatch; recompute divergence; backup not restorable.
+- Rollback trigger: any verification failure.
+- Rollback procedure: restore backup, or recompute-revert from legacy flag.
+- Local Point of No Easy Return: none — this gate's exit is the LAST CLEAN ABANDONMENT POINT.
+- Exit criteria: backfill verified + recoverable; flag off; app green.
+- Residual authorities killed: none.
+- Next gate unlocked: Gate 2.
+
+### GATE 2 — line_type Activation & Structural Validation — PROGRAM-WIDE PONR (at Stage B)
+- Purpose: activate line_type; validate the structural chain in a two-stage canary; cross the
+  PONR only at Stage B.
+- Freeze scope: activation deploy + canary; re-close after.
+- Execution-time preconditions: Gate 1B exit; P3 resolved; rollback deploy staged; fresh backup.
+- Active authority before: `qaFixer`/`keepRawLabels`/body-only structure. After Stage B:
+  persisted line_type is the structural authority for new decisions.
+- Residual authorities remaining: `qaFixer`/`keepRawLabels` remain in code (retired Gate 4A).
+- Dependencies: Gate 1B; PONR authorization (immediately before Stage B).
+- Reversibility class: Stage A R1/R2 (flag off / redeploy); Stage B R3 — PONR.
+- Backup requirement: MANDATORY fresh backup before Stage A.
+- Ordered actions:
+  - Stage A (pre-PONR, read/projection): 1) enable the projection path (flag on) on a
+    controlled canary case without creating new reviewed structure; 2) validate
+    existing/backfilled line_type → Working → FinalizedTranscriptModel → CFE → PaginationMap on
+    production data; 3) confirm invariants (one paginator, coherent coordinates, no garble).
+  - PONR authorization: obtain the dedicated §G PONR sentence.
+  - Stage B (PONR crossing, persistence): 4) explicitly authorize and create the first new
+    reviewed structural decision (a persisted `objection_split`/override not representable by
+    legacy); 5) validate it round-trips through to certified coordinates; 6) monitor.
+- Verification after each action: Stage A green before any authorization; Stage B first-write
+  validated end-to-end.
+- Abort criteria: Stage A validation fails → flag off, redeploy, restore if needed (still
+  clean — pre-PONR). Stage B is not entered until Stage A green AND PONR authorized.
+- Rollback trigger: Stage A failure (clean rollback); Stage B failure (see procedure).
+- Rollback procedure: Stage A — flip off + redeploy (R2), clean. Stage B (post-PONR) — this is
+  NOT an automatic backup restore. Stop further structural writes immediately; preserve/export
+  the post-PONR structural decisions as recovery evidence; then determine whether forward
+  correction or data restoration is safer. A pre-Stage-B restore is a deliberate R3 recovery
+  operation that may discard reviewer-authored post-crossing structure, so it requires explicit
+  Human authorization rather than being an automatic rollback.
+- Local Point of No Easy Return: YES — Stage B (first non-legacy-representable persisted
+  structure).
+- Exit criteria: Stage A validated; PONR authorized; Stage B first-write validated; activation
+  confirmed.
+- Residual authorities killed: starts the retirement clock for `qaFixer`, `keepRawLabels`,
+  `structureConfirmed` path (removed Gate 4A).
+- Next gate unlocked: Gate 3.
+
+### GATE 3 — Certified Architecture Deployment & Validation
+- Purpose: deploy the certified formatter; validate the complete certified DOCX in production
+  against the now-live structure.
+- Freeze scope: formatter deploy + certified enablement; re-close after.
+- Execution-time preconditions: Gate 2 exit; P1 + P2 merged & verified; image built from
+  `1f081cd`+P1/P2.
+- Active authority before: body-only export. After: certified complete-document export
+  (body-only retained as fallback).
+- Residual authorities remaining: body-only path; Python `spec_engine/pages` (reference until
+  EXACT parity sign-off).
+- Dependencies: Gate 2; P1; P2.
+- Reversibility class: formatter deploy R2; certified enable R1/R2.
+- Backup requirement: none for image (stateless); optional artifact snapshot.
+- Ordered actions: 1) deploy formatter image with `certified` default-off (R2); 2) verify
+  body-only byte-unchanged; 3) enable `certified` on a canary export over line_type-active
+  data; 4) inspect DOCX for reviewed body + all sections + parity classification; 5) roll
+  enablement forward.
+- Verification after each action: default-off unchanged; canary DOCX passes application-path
+  assertions on prod data; parity met.
+- Abort criteria: certified defect / parity miss → disable field (R1), redeploy prior image (R2).
+- Rollback trigger: certified-output validation failure.
+- Rollback procedure: disable field / redeploy — no data restore.
+- Local Point of No Easy Return: none (R1/R2).
+- Exit criteria: certified DOCX validated in prod; body-only retained.
+- Residual authorities killed: enables retirement of body-only default + `spec_engine/pages`.
+- Next gate unlocked: production soak → Gate 4A.
+
+### GATE 4A — Post-Activation Runtime Retirement + UFM Consolidation
+- Purpose: after an agreed soak, remove now-dead runtime authorities and consolidate
+  UFM/finalization.
+- Freeze scope: retirement PRs on RC; re-close after.
+- Execution-time preconditions: Gates 2–3 validated in prod for the defined soak; full RC
+  ladder green.
+- Active authority before: legacy paths still present (dead). After: simplified RC.
+- Residual authorities remaining: Python reference (until P4/Gate 5); recovery bundles.
+- Dependencies: Gate 3 soak.
+- Reversibility class: R2.
+- Backup requirement: none (code; git-revertable).
+- Ordered actions: 1) remove `qaFixer`; 2) remove `keepRawLabels`; 3) retire
+  `structureConfirmed` compatibility behavior; 4) retire body-only default where appropriate;
+  5) consolidate UFM/finalization duplication; 6) run complete RC ladder.
+- Verification after each action: ladder green; behavior matches validated production.
+- Abort criteria: regression on any removal.
+- Rollback trigger: ladder/behavior regression.
+- Rollback procedure: revert the specific retirement PR + redeploy.
+- Local Point of No Easy Return: none.
+- Exit criteria: superseded runtime authorities removed; UFM consolidated; RC green.
+- Residual authorities killed: `qaFixer`, `keepRawLabels`, `structureConfirmed` path,
+  body-only default, UFM duplication.
+- Next gate unlocked: P4.
+
+### P4 — Python Harvest / Deletion-Readiness Gate (retirement-phase prerequisite)
+- Purpose: harvest all still-needed Python assets (fig17–28 templates, `spec_engine` test
+  corpus, format references) so nothing of value is lost at deletion.
+- Freeze scope: none (additive harvest into RC docs/fixtures; no deletion).
+- Execution-time preconditions: Gate 4A exit.
+- Active authority before/after: unchanged.
+- Residual authorities remaining: Python reference (still present; now harvested).
+- Dependencies: Gate 4A; DOC-0326 four-part gate criteria.
+- Reversibility class: R1 (additive harvest).
+- Backup requirement: none.
+- Ordered actions: 1) harvest templates/tests/format rules into governed RC locations; 2) map
+  each `transcript_formatter/` subdomain to REPLACED/REFERENCE/HARVESTED/DELETION-READY; 3)
+  confirm DOC-0326 gate satisfied for the certified-page subset.
+- Verification after each action: every certified-page behavior has a surviving harvested
+  asset/test; classification complete.
+- Abort criteria: any required asset unharvestable; DOC-0326 not satisfied.
+- Rollback trigger: n/a (additive).
+- Local Point of No Easy Return: none.
+- Exit criteria: harvest complete; deletion-readiness classification signed off.
+- Residual authorities killed: none (marks them deletion-ready).
+- Next gate unlocked: Gate 4B.
+
+### GATE 4B — RC Verification + Make `main` Authoritative
+- Purpose: after the simplified RC is green, reconcile history deliberately and make `main`
+  authoritative.
+- Freeze scope: merge/reconcile; re-close after.
+- Execution-time preconditions: Gate 4A + P4 complete; complete RC verification green.
+- Active authority before: RC branch authoritative. After: `main` authoritative.
+- Residual authorities remaining: recovery branches/bundles (retained through Gate 5).
+- Dependencies: Gate 4A; P4.
+- Reversibility class: R2/R3 (git-revertable while bundles exist).
+- Backup requirement: recovery bundle of pre-merge `main` + RC.
+- Ordered actions: 1) create recovery bundle; 2) reconcile unique `main` history deliberately;
+  3) integrate RC → `main`; 4) run complete verification on `main`; 5) make `main` authoritative.
+- Verification after each action: ladder green on `main`; no diff vs validated RC.
+- Abort criteria: post-merge regression.
+- Rollback trigger: regression on `main`.
+- Rollback procedure: revert merge / restore from bundle.
+- Local Point of No Easy Return: none (bundles preserve recovery).
+- Exit criteria: `main` authoritative + green; bundles retained.
+- Residual authorities killed: none (Git normalization only).
+- Next gate unlocked: Gate 5.
+
+### GATE 5 — Obsolete-Artifact Cleanup (retains one archival bundle — no forced R4)
+- Purpose: delete obsolete GitHub branches/worktrees/tags and the harvested Python reference,
+  while retaining one verified immutable archival recovery bundle offline.
+- Freeze scope: deletion operations only; re-close after.
+- Execution-time preconditions: Gate 4B stable for the defined period; P4 complete; DOC-0326
+  satisfied; deletion authorization.
+- Active authority before/after: unchanged (cleanup).
+- Residual authorities remaining: one archival recovery bundle, retained by policy.
+- Dependencies: Gate 4B; P4.
+- Reversibility class: R3 (restorable from the retained archival bundle). The program does NOT
+  require an R4 bundle-destruction event.
+- Backup requirement: one verified immutable archival bundle stored offline BEFORE any
+  deletion; retained (not destroyed).
+- Ordered actions: 1) create + verify the archival bundle offline; 2) delete replaced Python
+  `spec_engine/pages` + harvested reference (restorable from bundle); 3) delete obsolete remote
+  branches/worktrees/tags; 4) verify repo builds/tests green after each removal; 5) retain the
+  archival bundle per retention policy — no final-bundle-destruction step.
+- Verification after each action: archival bundle restorable before each deletion; green ladder
+  after each removal.
+- Abort criteria: harvest incomplete; bundle not restorable; any ladder failure.
+- Rollback trigger: failed verification.
+- Rollback procedure: restore from the retained archival bundle.
+- Local Point of No Easy Return: none — target end state keeps the archival bundle, so the R4
+  destruction point is never required for completion.
+- Exit criteria: GitHub clean; local worktrees clean; `main` authoritative; one archival
+  recovery bundle retained.
+- Residual authorities killed: Python reference implementation; obsolete branches/tags
+  (recoverable from the retained bundle).
+- Next gate unlocked: DONE.
+
+## G. Human authorization sentences (exact)
+- Gate 0: "I authorize the Depo-Pro scoped freeze lift for Gate 0 RC development and P1/P2/P3 prerequisites."
+- Gate 1A: "I authorize the Depo-Pro Gate 1A additive production schema migration."
+- Gate 1B: "I authorize the Depo-Pro Gate 1B deterministic legacy-state backfill, with verified backup and proven restore path."
+- Gate 2 (gate): "I authorize executing Depo-Pro Gate 2 line_type activation and the Stage A read/projection canary."
+- Gate 2 (PONR — mandatory, separate, immediately before Stage B): "I authorize crossing the Depo-Pro Program Point of No Easy Return and persisting the first new human-reviewed structural decision under the activated line_type architecture."
+- Gate 3: "I authorize the Depo-Pro Gate 3 certified formatter deployment and certified-output enablement."
+- Gate 4A: "I authorize the Depo-Pro Gate 4A retirement of superseded runtime authorities and UFM consolidation."
+- P4: "I authorize the Depo-Pro P4 Python harvest and deletion-readiness classification."
+- Gate 4B: "I authorize the Depo-Pro Gate 4B integration making `main` authoritative."
+- Gate 5: "I authorize the Depo-Pro Gate 5 obsolete-artifact cleanup, retaining one verified archival recovery bundle."
+
+No approval implies any other; each is re-verified at execution time; the PONR sentence is
+never implied by a gate approval.
+
+## H. Authority kill map (by gate)
+| Gate | Residual authorities killed |
+|---|---|
+| Gate 2 | (starts retirement clock — none removed yet) |
+| Gate 3 | enables body-only-default + `spec_engine/pages` retirement |
+| Gate 4A | `qaFixer`, `keepRawLabels`, `structureConfirmed` path, body-only default, UFM duplication |
+| Gate 5 | Python reference implementation, obsolete branches/tags |
+| (kept) | canonical PaginationMap, deriveWorkingTranscript, certification, buildUfmMetadata |
+
+## I. One-page execution roadmap
+```
+CURRENT STATE (1f081cd — built, app seam wired, output locally proven, frozen)
+  -> PRE-GATE: P1 exam-index . P2 legal metadata . P3 loader verify   [in Gate 0]
+  -> GATE 0   Scoped freeze lift + P1/P2/P3                            [R1]
+  -> GATE 1A  Dormant additive schema (DDL)                           [R2]
+  -> GATE 1B  Deterministic legacy backfill                           [R3-recov]  * LAST CLEAN ABANDONMENT POINT
+  -> GATE 2   Activate line_type
+               Stage A read/projection canary                         [R1/R2, pre-PONR]
+               ** PROGRAM-WIDE PONR authorization **
+               Stage B first new reviewed structural persistence      [R3 — PONR CROSSING]
+  -> GATE 3   Deploy (R2) + enable certified output + prod validation
+  -> -- soak --
+  -> GATE 4A  Retire qaFixer/keepRawLabels/body-only + UFM consolidation   [R2]
+  -> P4       Python harvest / deletion-readiness                     [R1]
+  -> GATE 4B  RC verification + make main authoritative               [R2/R3, bundle retained]
+  -> GATE 5   Clean obsolete branches/worktrees/reference; RETAIN archival bundle  [R3, no forced R4]
+  -> DONE
+```
+
+## J. Status
+DRAFT ONLY. No gate executed; no implementation, production, migration, backfill, activation,
+deployment, push, merge, `main` change, deletion, or PONR crossing performed in authoring this
+plan. The next decision is the Human authorization of Gate 0 (see §G), which is entirely
+local/pre-production and authorizes none of: migration, deployment, production data change,
+line_type activation, or PONR crossing.

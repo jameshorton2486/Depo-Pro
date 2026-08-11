@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
+  "source_sha256": "11d3cb6035b8f8aee91c11132759c9dc0c2419d18b0fb2fe34fce5eff208974e",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4941,6 +4941,36 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0330",
+      "title": "Certified-pages gate-seeding inventory — Section 41 recompute + authority stop-list",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEEDING_INVENTORY_2026-08-11.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFIED_PAGES_GATE_SEEDING_INVENTORY_2026-08-11.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-11"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0331",
+      "title": "Depo-Pro Production Gate Sequencing Plan — DRAFT",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEQUENCING_PLAN_DRAFT.md",
+      "tier": "T5",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFIED_PAGES_GATE_SEQUENCING_PLAN_DRAFT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-11"
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6585,6 +6615,16 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0329",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0330",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0331",
       "target": "DOC-0071"
     },
     {
@@ -8608,6 +8648,16 @@
       "target": "DOC-0232"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0330",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0331",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -10321,6 +10371,16 @@
       "type": "OWNERSHIP",
       "source": "DOC-0329",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0330",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0331",
+      "target": "OWNER:Architecture"
     }
   ],
   "owners": {
@@ -10641,7 +10701,9 @@
       "DOC-0326",
       "DOC-0327",
       "DOC-0328",
-      "DOC-0329"
+      "DOC-0329",
+      "DOC-0330",
+      "DOC-0331"
     ],
     "Deepgram": [
       "DOC-0069"

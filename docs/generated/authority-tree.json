@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
+  "source_sha256": "11d3cb6035b8f8aee91c11132759c9dc0c2419d18b0fb2fe34fce5eff208974e",
   "roots": [
     "DOC-0001",
     "DOC-0022",

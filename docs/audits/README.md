@@ -3,7 +3,7 @@
 
 This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Managed documents: **142**
+Managed documents: **144**
 
 | Document | ID | Tier | Status | Owner |
 | --- | --- | --- | --- | --- |
@@ -149,3 +149,5 @@ Managed documents: **142**
 | [CorrectionObject three-way drift audit — canonical authority + sync](CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md) | DOC-0327 | T5 | ACTIVE | Architecture |
 | [Certified-pages re-home surface — front/back matter into the live pipeline](CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md) | DOC-0328 | T5 | ACTIVE | Architecture |
 | [Security review — freeze-safe pass (secret exposure, edge auth)](SECURITY_REVIEW_2026-08-10.md) | DOC-0329 | T5 | ACTIVE | Architecture |
+| [Certified-pages gate-seeding inventory — Section 41 recompute + authority stop-list](CERTIFIED_PAGES_GATE_SEEDING_INVENTORY_2026-08-11.md) | DOC-0330 | T5 | ACTIVE | Architecture |
+| [Depo-Pro Production Gate Sequencing Plan — DRAFT](CERTIFIED_PAGES_GATE_SEQUENCING_PLAN_DRAFT.md) | DOC-0331 | T5 | DRAFT | Architecture |

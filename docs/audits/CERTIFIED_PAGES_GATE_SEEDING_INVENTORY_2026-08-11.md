@@ -7,10 +7,14 @@ owner: Architecture
 scope: certified-pages-gate-seeding
 supersedes: null
 superseded_by: null
+approved_by: null
+version: null
 effective_date: 2026-08-11
+ratified_date: null
 last_reviewed: 2026-08-11
+next_review: 2027-08-11
 ratification: NOT_REQUIRED
-implementation_status: ANALYSIS_ONLY
+implementation_status: NOT_APPLICABLE
 ---
 
 Measured at `codex/certified-pages` HEAD (this run), baseline `8cfe18e`. All figures are

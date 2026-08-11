@@ -2,11 +2,11 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
-  "graph_sha256": "f2780d99ab1b8b58bd2cb92ccaad450498ce8a5f9b134ca0fcdaeb90d2952f39",
+  "manifest_sha256": "11d3cb6035b8f8aee91c11132759c9dc0c2419d18b0fb2fe34fce5eff208974e",
+  "graph_sha256": "ca47cbfb45abd9924c59b9cbcd2af1fe68e70f42ea1cec80ecf171cd02e9ec59",
   "name": "audits",
   "title": "Audits",
-  "document_count": 143,
+  "document_count": 145,
   "documents": [
     {
       "id": "DOC-0143",
@@ -1292,6 +1292,24 @@
       "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
       "tier": "T5",
       "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0330",
+      "title": "Certified-pages gate-seeding inventory — Section 41 recompute + authority stop-list",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEEDING_INVENTORY_2026-08-11.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0331",
+      "title": "Depo-Pro Production Gate Sequencing Plan — DRAFT",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEQUENCING_PLAN_DRAFT.md",
+      "tier": "T5",
+      "status": "DRAFT",
       "owner": "Architecture",
       "authoritative": false
     }

@@ -6251,6 +6251,44 @@
         "DOC-0068"
       ],
       "supersedes": []
+    },
+    {
+      "id": "DOC-0330",
+      "title": "Certified-pages gate-seeding inventory — Section 41 recompute + authority stop-list",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEEDING_INVENTORY_2026-08-11.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFIED_PAGES_GATE_SEEDING_INVENTORY_2026-08-11.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-11",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0331",
+      "title": "Depo-Pro Production Gate Sequencing Plan — DRAFT",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEQUENCING_PLAN_DRAFT.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFIED_PAGES_GATE_SEQUENCING_PLAN_DRAFT.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-08-11",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
     }
   ]
 }

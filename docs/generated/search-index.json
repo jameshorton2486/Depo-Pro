@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
-  "graph_sha256": "f2780d99ab1b8b58bd2cb92ccaad450498ce8a5f9b134ca0fcdaeb90d2952f39",
-  "document_count": 329,
+  "manifest_sha256": "11d3cb6035b8f8aee91c11132759c9dc0c2419d18b0fb2fe34fce5eff208974e",
+  "graph_sha256": "ca47cbfb45abd9924c59b9cbcd2af1fe68e70f42ea1cec80ecf171cd02e9ec59",
+  "document_count": 331,
   "documents": [
     {
       "id": "DOC-0001",
@@ -34137,6 +34137,284 @@
         {
           "level": 2,
           "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0330",
+      "title": "Certified-pages gate-seeding inventory — Section 41 recompute + authority stop-list",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEEDING_INVENTORY_2026-08-11.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-11",
+        "909",
+        "actions",
+        "active",
+        "analysis",
+        "application-path",
+        "architecture",
+        "audits",
+        "authority",
+        "candidate",
+        "certified",
+        "certified-pages",
+        "classification",
+        "consolidation",
+        "deletion-readiness",
+        "docs",
+        "finalization",
+        "formatter",
+        "gate",
+        "gate-seeding",
+        "git-tracked",
+        "harvest",
+        "inventory",
+        "loadtranscriptsnapshot",
+        "loc",
+        "pages",
+        "ponr",
+        "preconditions",
+        "production",
+        "program-wide",
+        "python",
+        "readiness",
+        "recompute",
+        "recomputed",
+        "remaining",
+        "residual",
+        "scorecard",
+        "section",
+        "seed",
+        "seeding",
+        "sequencing",
+        "statement",
+        "status",
+        "stop-list",
+        "transcript",
+        "ufm"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Certified-pages gate-seeding inventory — Section 41 recompute + authority stop-list"
+        },
+        {
+          "level": 2,
+          "text": "1. Section 41 scorecard (recomputed, git-tracked)"
+        },
+        {
+          "level": 2,
+          "text": "2. Application-path status"
+        },
+        {
+          "level": 2,
+          "text": "3. Python harvest / deletion-readiness classification (`transcript_formatter/`, 21,909 LOC)"
+        },
+        {
+          "level": 2,
+          "text": "4. Active / residual authority stop-list (seed for Gate Sequencing)"
+        },
+        {
+          "level": 2,
+          "text": "5. `loadTranscriptSnapshot` classification"
+        },
+        {
+          "level": 2,
+          "text": "6. UFM / finalization consolidation (analysis)"
+        },
+        {
+          "level": 2,
+          "text": "7. R1–R4 classification of remaining production actions"
+        },
+        {
+          "level": 2,
+          "text": "8. Candidate program-wide PONR"
+        },
+        {
+          "level": 2,
+          "text": "9. Remaining Gate preconditions"
+        },
+        {
+          "level": 2,
+          "text": "10. Readiness statement"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0331",
+      "title": "Depo-Pro Production Gate Sequencing Plan — DRAFT",
+      "path": "docs/audits/CERTIFIED_PAGES_GATE_SEQUENCING_PLAN_DRAFT.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "DRAFT",
+      "keywords": [
+        "abandonment",
+        "actions",
+        "activation",
+        "additive",
+        "architecture",
+        "archival",
+        "audits",
+        "authoritative",
+        "authority",
+        "authorization",
+        "backfill",
+        "bundle",
+        "certified",
+        "classification",
+        "clean",
+        "cleanup",
+        "consolidation",
+        "deletion-readiness",
+        "dependency",
+        "deployment",
+        "depo-pro",
+        "deterministic",
+        "docs",
+        "dormant",
+        "draft",
+        "easy",
+        "exact",
+        "execution",
+        "fixed",
+        "forced",
+        "freeze",
+        "gate",
+        "gates",
+        "harvest",
+        "human",
+        "implementation",
+        "kill",
+        "last",
+        "legacy-state",
+        "lift",
+        "line",
+        "local",
+        "main",
+        "make",
+        "map",
+        "not",
+        "obsolete-artifact",
+        "one",
+        "one-page",
+        "pages",
+        "plan",
+        "point",
+        "ponr",
+        "post-activation",
+        "pre-gate",
+        "prerequisite",
+        "prerequisites",
+        "production",
+        "program-wide",
+        "python",
+        "retains",
+        "retirement",
+        "retirement-phase",
+        "return",
+        "revised",
+        "roadmap",
+        "runtime",
+        "schema",
+        "scoped",
+        "sentences",
+        "sequence",
+        "sequencing",
+        "stage",
+        "status",
+        "structural",
+        "template",
+        "type",
+        "ufm",
+        "validation",
+        "verification"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Depo-Pro Production Gate Sequencing Plan — DRAFT"
+        },
+        {
+          "level": 2,
+          "text": "A. R1–R4 classification"
+        },
+        {
+          "level": 2,
+          "text": "B. Structural/certified dependency"
+        },
+        {
+          "level": 2,
+          "text": "C. Point of No Easy Return"
+        },
+        {
+          "level": 2,
+          "text": "D. Pre-gate implementation prerequisites (R1/R2 local — not gate actions)"
+        },
+        {
+          "level": 2,
+          "text": "E. Revised gate sequence"
+        },
+        {
+          "level": 2,
+          "text": "F. Gates (fixed template)"
+        },
+        {
+          "level": 3,
+          "text": "GATE 0 — Scoped Freeze Lift + P1/P2/P3"
+        },
+        {
+          "level": 3,
+          "text": "GATE 1A — Dormant Additive Production Schema"
+        },
+        {
+          "level": 3,
+          "text": "GATE 1B — Deterministic Legacy-State Backfill — LAST CLEAN ABANDONMENT POINT"
+        },
+        {
+          "level": 3,
+          "text": "GATE 2 — line_type Activation & Structural Validation — PROGRAM-WIDE PONR (at Stage B)"
+        },
+        {
+          "level": 3,
+          "text": "GATE 3 — Certified Architecture Deployment & Validation"
+        },
+        {
+          "level": 3,
+          "text": "GATE 4A — Post-Activation Runtime Retirement + UFM Consolidation"
+        },
+        {
+          "level": 3,
+          "text": "P4 — Python Harvest / Deletion-Readiness Gate (retirement-phase prerequisite)"
+        },
+        {
+          "level": 3,
+          "text": "GATE 4B — RC Verification + Make `main` Authoritative"
+        },
+        {
+          "level": 3,
+          "text": "GATE 5 — Obsolete-Artifact Cleanup (retains one archival bundle — no forced R4)"
+        },
+        {
+          "level": 2,
+          "text": "G. Human authorization sentences (exact)"
+        },
+        {
+          "level": 2,
+          "text": "H. Authority kill map (by gate)"
+        },
+        {
+          "level": 2,
+          "text": "I. One-page execution roadmap"
+        },
+        {
+          "level": 2,
+          "text": "J. Status"
         }
       ]
     }
