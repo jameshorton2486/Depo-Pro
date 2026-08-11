@@ -120,8 +120,12 @@ export function buildCanonicalExportRenderModel(
   // (deriveWorkingTranscript) as buildEditorContent — so the reporter certifies exactly the
   // structure she reviewed, identical to the Workspace view.
   corrections?: CorrectionObject[],
+  // Test-visible / local override for the projection gate, symmetric with buildEditorContent's
+  // option. Undefined → the shipped PERSISTED_LINE_TYPE_ENABLED default (off in production).
+  // Lets the Workspace==export parity harness drive the flag-on structural path on both sides.
+  persistedLineTypeEnabled?: boolean,
 ): UnifiedRenderModel {
-  const workingDocument = deriveWorkingTranscript(document, corrections);
+  const workingDocument = deriveWorkingTranscript(document, corrections, persistedLineTypeEnabled);
   const displayDocument = buildDisplayDocument(workingDocument, record);
   // A11 / C1b: this render model produces the certified DOCX the reporter signs
   // her CSR number to. It must be verbatim — no correction-registry word
