@@ -30211,30 +30211,41 @@
       "tier": "T4",
       "status": "ACTIVE",
       "keywords": [
+        "2026-08-10",
         "any",
         "architecture",
         "audit",
         "before",
         "branch",
+        "branches",
+        "classification",
         "cleanup",
         "current",
         "docs",
         "external",
         "github",
         "later",
+        "local",
+        "main-normalization",
         "manually",
+        "means",
         "merged",
+        "notable",
         "note",
         "operations",
+        "origin",
         "pii",
         "plan",
+        "preparation",
         "purge",
+        "remote",
         "required",
         "retention",
         "safety",
         "sharing",
         "status",
-        "sync"
+        "sync",
+        "what"
       ],
       "headings": [
         {
@@ -30264,6 +30275,22 @@
         {
           "level": 2,
           "text": "Required PII Purge Before Any External Sharing"
+        },
+        {
+          "level": 2,
+          "text": "Branch classification audit — 2026-08-10 (main-normalization preparation)"
+        },
+        {
+          "level": 3,
+          "text": "Local branches"
+        },
+        {
+          "level": 3,
+          "text": "Remote (origin/*) — notable"
+        },
+        {
+          "level": 3,
+          "text": "What this means for main-normalization"
         }
       ]
     },
