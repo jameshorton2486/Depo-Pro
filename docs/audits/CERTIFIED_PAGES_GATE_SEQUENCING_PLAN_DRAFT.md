@@ -530,3 +530,28 @@ Read-only search for the first Stage B structural decision. Ground truth unchang
 
 ### S.1 Verdict
 **STAGE B NOT READY FOR PONR AUTHORIZATION — no unambiguous, no-fabrication structural correction exists in current production data.** The transcripts are already well-structured (objections separate; no cross-speaker merges); the persisted-line_type authority has nothing on existing data it must represent that legacy cannot. The first reviewed structural decision must arise from GENUINE human reporter review of a specifically-identified transcript with human-resolved speaker attribution — NOT an AI-selected candidate. Do NOT cross the PONR on a manufactured or ambiguous example. Recommend deferring Stage B (and reconsidering whether line_type activation is warranted on current data at all) until a real, human-confirmed structural correction is identified.
+
+## T. GATE 2A / 2B DECOUPLING ANALYSIS (2026-08-11)
+Stage-B candidate discovery is complete (§S, no candidate) and not repeated. Conclusions:
+
+### T.1 Flag-effect map + no-write proof
+`PERSISTED_LINE_TYPE_ENABLED` (build-time const, `src/lib/transcript/lineTypeMigration.ts`) is consumed ONLY by pure projection functions: `applyReviewedStructure`/`lineTypeToKind`, `deriveWorkingTranscript`, `buildDisplayDocument`/`buildTranscriptParagraphs`, `buildFinalizedTranscriptModel`, `buildCanonicalPaginationMap`/`exportAdapter`. Render pipeline: `applyReviewedStructure(applyQaFixer(paragraphs), document, enabled)` — qaFixer runs UNCONDITIONALLY (base inference); the overlay uses persisted line_type where present, else falls back to qaFixer's inferred kind. **Enabling the flag cannot write** — every flag-gated module is DB-write-free (guard test). The write path is the SEPARATE editor-api `PUT /structure` (`handlePutStructure`), which is NOT flag-gated and has NO frontend caller.
+
+### T.2 Durable regression evidence (`src/lib/export/gate2aDecoupling.test.ts`, committed)
+6 synthetic-fixture invariants: (1) zero-reviewed parity enabled===disabled (the durable Stage A result); (2) reviewed structure wins only when enabled; (3) reopen idempotency; (4) projection never mutates raw evidence; (5) reviewed structure reaches the export render model; (6) no-write invariant across all flag-gated modules.
+
+### T.3 Gate 2A deploy mechanics
+Build-time FRONTEND constant (no env override). Activation = edit `= false` -> `= true` + rebuild + redeploy the frontend (workspace + export projection). The editor-api Edge Function does NOT consume it (0 references) — unaffected. **R2** (redeploy-reversible). No DB/data change; no migration.
+
+### T.4 Revised gate split
+- **Gate 2A — Persisted line_type Projection Activation:** flip the frontend flag + redeploy. Projection-only, provably no writes, R2/reversible. On current data (0 persisted line_type) it is a NO-OP (output identical to legacy). Enables the persisted authority to be USED once reviewed structure exists.
+- **Gate 2B — First Human-Reviewed Structural Persistence / Program PONR:** a reviewer persists the first reviewed decision via `PUT /structure`. Requires editor-api deployed with `handlePutStructure`, a structural-review UI or deliberate API call, AND a genuine reporter-authored correction (none exists — §S). Separately authorized with the dedicated PONR sentence.
+
+### T.5 Does Gate 3 require Gate 2B? — NO
+Certified output consumes the FinalizedTranscriptModel, identical on current data whether the flag is on or off (T.2 #1). Gate 3 produces correct output regardless of reviewed-structure existence; it does NOT require any reviewed decision (Gate 2B). It benefits from Gate 2A for authority consistency but does not strictly require it for correctness. **Gate 3 is independent of Gate 2B.**
+
+### T.6 qaFixer retirement gating
+qaFixer runs UNCONDITIONALLY as the base inference; the reviewed overlay falls back to it for any UNREVIEWED utterance. Therefore qaFixer CANNOT be retired by Gate 2A NOR by a single Gate 2B decision — retiring it while unreviewed utterances exist would lose their Q/A structure. **qaFixer retirement requires full reviewed-structure coverage across live transcripts OR a replacement base-inference that reproduces it independently** — a much later concern, gated by neither Gate 2A nor Gate 2B alone.
+
+### T.7 Revised finish line
+Gate 2A projection activation (R2, no-op on current data) -> Gate 3 certified deployment + validation -> production soak -> (qaFixer retirement deferred to broad reviewed coverage) -> main normalization. Gate 2B / PONR waits indefinitely for the first genuine reporter-authored structural correction. The program can reach production certified output WITHOUT crossing the PONR.

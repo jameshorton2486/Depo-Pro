@@ -34263,6 +34263,7 @@
         "after",
         "ahead",
         "all",
+        "analysis",
         "appendix",
         "application",
         "architecture",
@@ -34290,6 +34291,7 @@
         "cleanup",
         "cli",
         "code",
+        "committed",
         "compatibility",
         "consolidation",
         "corrected",
@@ -34297,16 +34299,20 @@
         "crossed",
         "dag",
         "decision",
+        "decoupling",
         "deletion-readiness",
         "dependency",
+        "deploy",
         "deployed",
         "deployment",
         "depo-pro",
         "deterministic",
         "docs",
+        "does",
         "dormant",
         "draft",
         "drift",
+        "durable",
         "easy",
         "eight",
         "equivalence",
@@ -34318,16 +34324,21 @@
         "executed",
         "execution",
         "exit",
+        "export",
         "fail-closed",
         "final",
         "finding",
+        "finish",
         "five",
         "fixed",
+        "flag-effect",
         "forced",
         "four",
         "freeze",
         "gate",
+        "gate2adecoupling",
         "gates",
+        "gating",
         "git-safe",
         "harvest",
         "history",
@@ -34338,6 +34349,7 @@
         "lag",
         "last",
         "legacy-state",
+        "lib",
         "lift",
         "line",
         "local",
@@ -34345,11 +34357,13 @@
         "make",
         "map",
         "matrices",
+        "mechanics",
         "mechanism",
         "migration",
         "migration-history",
         "migrations",
         "minimum-vs-correctness",
+        "no-write",
         "not",
         "now",
         "obsolete-artifact",
@@ -34376,12 +34390,16 @@
         "production",
         "program-wide",
         "projection",
+        "proof",
         "python",
+        "qafixer",
         "qualifying",
         "read",
         "read-only",
         "reconciliation",
         "refinements",
+        "regression",
+        "require",
         "required",
         "resolution",
         "restore",
@@ -34405,6 +34423,7 @@
         "sequential",
         "set",
         "split",
+        "src",
         "stage",
         "state",
         "states",
@@ -34412,6 +34431,7 @@
         "structural",
         "supabase",
         "template",
+        "test",
         "timestamp",
         "triggered",
         "type",
@@ -34645,6 +34665,38 @@
         {
           "level": 3,
           "text": "S.1 Verdict"
+        },
+        {
+          "level": 2,
+          "text": "T. GATE 2A / 2B DECOUPLING ANALYSIS (2026-08-11)"
+        },
+        {
+          "level": 3,
+          "text": "T.1 Flag-effect map + no-write proof"
+        },
+        {
+          "level": 3,
+          "text": "T.2 Durable regression evidence (`src/lib/export/gate2aDecoupling.test.ts`, committed)"
+        },
+        {
+          "level": 3,
+          "text": "T.3 Gate 2A deploy mechanics"
+        },
+        {
+          "level": 3,
+          "text": "T.4 Revised gate split"
+        },
+        {
+          "level": 3,
+          "text": "T.5 Does Gate 3 require Gate 2B? — NO"
+        },
+        {
+          "level": 3,
+          "text": "T.6 qaFixer retirement gating"
+        },
+        {
+          "level": 3,
+          "text": "T.7 Revised finish line"
         }
       ]
     }
