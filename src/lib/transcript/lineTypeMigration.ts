@@ -1,9 +1,12 @@
 import {
   asStructuredUtterance,
   isReviewLocked,
+  normalizePersistedLineType,
+  type PersistedLineType,
   type StructuredUtterance,
 } from "./structuredTranscript";
 import type { EditorDocument } from "../../api/types";
+import type { TranscriptParagraphKind } from "./transcriptParagraphTypes";
 
 /**
  * DOC-0325 / D7 — migration switch for the render-path convergence that makes persisted reviewed
@@ -29,6 +32,36 @@ export const PERSISTED_LINE_TYPE_ENABLED = false;
  */
 export function shouldProposeStructure(utterance: StructuredUtterance): boolean {
   return !isReviewLocked(utterance.line_type_review_status);
+}
+
+/** Inverse of structuralProposal.MODE_TO_LINE_TYPE: persisted short code → paragraph kind. */
+export const LINE_TYPE_TO_KIND: Readonly<Record<PersistedLineType, TranscriptParagraphKind>> = {
+  Q: "Q",
+  A: "A",
+  SP: "COLLOQUY",
+  PN: "PARENTHETICAL",
+  HEADER: "SECTION_HEADER",
+};
+
+/**
+ * Resolve the structural kind a converged builder should use for an utterance (DOC-0325 / D7).
+ * INERT until `PERSISTED_LINE_TYPE_ENABLED` is flipped — with the flag off this returns the
+ * inferred kind verbatim, so the live render path is unchanged. With the flag on:
+ *  - a persisted (reviewed) line_type is the authority and wins over inference — the read-side
+ *    of "the reporter certifies exactly what she reviewed"; and because a CONFIRMED/OVERRIDDEN
+ *    decision is what got persisted, inference can never override it here;
+ *  - an UNKNOWN/absent line_type falls back to the inferred kind (migration compatibility).
+ */
+export function resolveStructuralKind(
+  utterance: StructuredUtterance,
+  inferredKind: TranscriptParagraphKind,
+  enabled: boolean = PERSISTED_LINE_TYPE_ENABLED,
+): TranscriptParagraphKind {
+  if (!enabled) {
+    return inferredKind;
+  }
+  const persisted = normalizePersistedLineType(utterance.line_type);
+  return persisted ? LINE_TYPE_TO_KIND[persisted] : inferredKind;
 }
 
 /**

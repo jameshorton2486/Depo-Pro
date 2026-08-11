@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { EditorDocument } from "../../api/types";
 import type { StructuredUtterance } from "./structuredTranscript";
 import {
+  LINE_TYPE_TO_KIND,
   PERSISTED_LINE_TYPE_ENABLED,
+  resolveStructuralKind,
   selectReviewCandidates,
   shouldProposeStructure,
 } from "./lineTypeMigration";
@@ -64,5 +66,50 @@ describe("selectReviewCandidates", () => {
   it("returns [] for null/empty documents", () => {
     expect(selectReviewCandidates(null)).toEqual([]);
     expect(selectReviewCandidates(doc([]))).toEqual([]);
+  });
+});
+
+describe("LINE_TYPE_TO_KIND", () => {
+  it("maps each persisted short code to its paragraph kind", () => {
+    expect(LINE_TYPE_TO_KIND).toEqual({
+      Q: "Q",
+      A: "A",
+      SP: "COLLOQUY",
+      PN: "PARENTHETICAL",
+      HEADER: "SECTION_HEADER",
+    });
+  });
+});
+
+describe("resolveStructuralKind (inert until flag on)", () => {
+  it("with flag OFF returns the inferred kind verbatim (live path unchanged)", () => {
+    const u = utt({ utterance_id: "u1", line_type: "A" });
+    // default (flag off) and explicit off both ignore the persisted value
+    expect(resolveStructuralKind(u, "COLLOQUY")).toBe("COLLOQUY");
+    expect(resolveStructuralKind(u, "COLLOQUY", false)).toBe("COLLOQUY");
+  });
+
+  it("with flag ON, a persisted reviewed line_type wins over inference", () => {
+    const u = utt({ utterance_id: "u2", line_type: "A", line_type_review_status: "CONFIRMED" });
+    expect(resolveStructuralKind(u, "COLLOQUY", true)).toBe("A");
+  });
+
+  it("with flag ON, UNKNOWN/absent line_type falls back to inference (compat)", () => {
+    expect(resolveStructuralKind(utt({ utterance_id: "u3", line_type: "UNKNOWN" }), "Q", true)).toBe("Q");
+    expect(resolveStructuralKind(utt({ utterance_id: "u4", line_type: null }), "Q", true)).toBe("Q");
+    expect(resolveStructuralKind(utt({ utterance_id: "u5" }), "PARENTHETICAL", true)).toBe("PARENTHETICAL");
+  });
+
+  it("maps every persisted code to the right kind when flag on", () => {
+    const cases: Array<[string, string]> = [
+      ["Q", "Q"], ["A", "A"], ["SP", "COLLOQUY"], ["PN", "PARENTHETICAL"], ["HEADER", "SECTION_HEADER"],
+    ];
+    for (const [code, kind] of cases) {
+      expect(resolveStructuralKind(utt({ utterance_id: `c_${code}`, line_type: code }), "COLLOQUY", true)).toBe(kind);
+    }
+  });
+
+  it("the shipped default flag is off, so production behavior is inference", () => {
+    expect(PERSISTED_LINE_TYPE_ENABLED).toBe(false);
   });
 });
