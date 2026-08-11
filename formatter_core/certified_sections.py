@@ -179,6 +179,206 @@ def signature_page_lines(
     ]
 
 
+class CertifiedMetadataError(ValueError):
+    """Raised when metadata required to certify a page is absent. The certificate must
+    fail explicitly rather than emit a fabricated reporter identity / CSR / signature."""
+
+
+_RULE = "─" * 60
+
+
+def _appearance_group_lines(appearances: Sequence[Mapping[str, object]]) -> list[str]:
+    """Group appearances the way the reference caption does: attorneys under
+    'FOR THE <party>:' by who they represent, everyone else under 'ALSO PRESENT:'."""
+    attorneys = [a for a in appearances if str(a.get("category") or "") == "attorney"]
+    others = [a for a in appearances if str(a.get("category") or "") != "attorney"]
+
+    lines: list[str] = []
+    order: list[str] = []
+    by_party: dict[str, list[Mapping[str, object]]] = {}
+    for attorney in attorneys:
+        party = str(attorney.get("representing") or "").strip() or "THE RECORD"
+        if party not in by_party:
+            by_party[party] = []
+            order.append(party)
+        by_party[party].append(attorney)
+
+    for party in order:
+        lines.append(f"  FOR THE {party.upper()}:")
+        for attorney in by_party[party]:
+            lines.append(f"    {attorney.get('name') or ''}")
+            if attorney.get("barNumber"):
+                lines.append(f"    State Bar No. {attorney.get('barNumber')}")
+            if attorney.get("firm"):
+                lines.append(f"    {attorney.get('firm')}")
+            if attorney.get("phone"):
+                lines.append(f"    {attorney.get('phone')}")
+            lines.append("")
+
+    present = [a for a in others if a.get("name")]
+    if present:
+        lines.append("  ALSO PRESENT:")
+        for entry in present:
+            lines.append(f"    {entry.get('name')}")
+        lines.append("")
+
+    return lines
+
+
+def appearances_lines(appearances: Sequence[Mapping[str, object]]) -> list[str]:
+    """Standalone A P P E A R A N C E S section content."""
+    return ["  A P P E A R A N C E S", ""] + _appearance_group_lines(appearances)
+
+
+def caption_lines(
+    caption: Mapping[str, object],
+    appearances: Sequence[Mapping[str, object]],
+) -> list[str]:
+    """Caption page content (Texas district-court style), LEGAL-FORMAT parity to the
+    reference caption.py. The canonical envelope carries a single case-style string plus
+    separate parties (not the reference's plaintiff_name/defendant_names[] split), and
+    lacks court_type / witness_title / subpoena_duces_tecum — those reference elements
+    are intentionally excluded rather than fabricated."""
+    court_heading = str(caption.get("court") or caption.get("jurisdictionType") or "").upper()
+    witness = str(caption.get("deponent") or "[WITNESS NAME]").upper()
+
+    lines = [
+        f"  IN THE {court_heading}".rstrip(),
+    ]
+    if caption.get("judicialDistrict"):
+        lines.append(f"  {str(caption.get('judicialDistrict')).upper()}")
+    if caption.get("county"):
+        lines.append(f"  {str(caption.get('county')).upper()} COUNTY, TEXAS")
+    lines += [
+        f"  {_RULE}",
+        f"  {caption.get('caption') or '[CASE STYLE]'}",
+        f"  Cause No. {caption.get('causeNumber') or '____________'}",
+        f"  {_RULE}",
+        f"  DEPOSITION OF {witness}",
+    ]
+    if caption.get("depositionDate"):
+        lines.append(f"  Taken on {caption.get('depositionDate')}")
+    lines += [f"  {_RULE}", "  A P P E A R A N C E S", ""]
+    lines += _appearance_group_lines(appearances)
+    lines += [f"  {_RULE}", "  PROCEEDINGS"]
+    return lines
+
+
+def title_page_lines(
+    caption: Mapping[str, object],
+    reporter: Mapping[str, object],
+) -> list[str]:
+    """Style/Title page content (UFM Fig03), LEGAL-FORMAT parity to title_page.py. Uses
+    the case-style string in place of the reference plaintiff/defendant split; the
+    videotaped flag is unknown in the canonical envelope so the neutral 'ORAL' label is
+    used (documented exclusion)."""
+    witness = str(caption.get("deponent") or "[WITNESS NAME]")
+    lines = [
+        f"  NO. {caption.get('causeNumber') or '____________'}",
+        "",
+        f"  {caption.get('caption') or '[CASE STYLE]'}",
+    ]
+    if caption.get("county"):
+        lines.append(f"  {str(caption.get('county')).upper()} COUNTY, TEXAS")
+    if caption.get("judicialDistrict"):
+        lines.append(f"  {caption.get('judicialDistrict')} JUDICIAL DISTRICT")
+    lines += [
+        f"  {_RULE}",
+        "  ORAL DEPOSITION OF",
+        f"  {witness.upper()}",
+        f"  {caption.get('depositionDate') or ''}".rstrip(),
+        f"  {_RULE}",
+        "",
+        f"  ORAL DEPOSITION OF {witness}, produced as a witness,",
+        "  duly sworn, was taken in the above-styled and numbered cause",
+    ]
+    span = _time_span(caption.get("startTime"), caption.get("endTime"))
+    if span:
+        lines.append(f"  {span}, before")
+    reporter_name = reporter.get("reporterName")
+    reporter_csr = reporter.get("csrLicense")
+    if reporter_name:
+        credential = f"{reporter_name}, {reporter_csr}" if reporter_csr else str(reporter_name)
+        lines.append(f"  {credential} in and for the State of Texas.")
+    return lines
+
+
+def _time_span(start: object, end: object) -> str:
+    start_s = str(start).strip() if start else ""
+    end_s = str(end).strip() if end else ""
+    if start_s and end_s:
+        return f"on the record from {start_s} to {end_s}"
+    return ""
+
+
+def certificate_lines(
+    certificate: Mapping[str, object],
+    *,
+    reporter_firm: str | None = None,
+    reporter_address: str | None = None,
+    reporter_phone: str | None = None,
+    waiver: bool = True,
+) -> list[str]:
+    """Reporter's CERTIFICATE content (Texas), reproducing certificate.py. Reporter
+    identity and CSR are certification facts: if either is missing this raises
+    CertifiedMetadataError rather than emit a blank/fabricated certificate. Reporter
+    firm/address/phone are absent from the canonical envelope and are optional here."""
+    reporter_name = certificate.get("reporterName")
+    reporter_csr = certificate.get("csrLicense")
+    if not reporter_name:
+        raise CertifiedMetadataError("certificate requires the reporter's name")
+    if not reporter_csr:
+        raise CertifiedMetadataError("certificate requires the reporter's CSR license number")
+
+    witness = str(certificate.get("deponent") or "the witness")
+    parties = str(certificate.get("caption") or "[parties]")
+    csr_str = f"State of Texas, {reporter_csr}"
+    if certificate.get("csrCertExpiration"):
+        csr_str += f"  (Exp. {certificate.get('csrCertExpiration')})"
+
+    lines = [
+        "  CERTIFICATE",
+        "",
+        f"  I, {reporter_name}, Certified Shorthand Reporter in and for",
+        "  the State of Texas, do hereby certify:",
+        "",
+        f"  That the witness, {witness}, was duly sworn by me, and",
+        "  that the transcript of the oral deposition is a true record of",
+        "  the testimony given by the witness;",
+        "",
+    ]
+    if waiver:
+        lines += [
+            "  That examination and signature of the witness to the",
+            "  deposition transcript was waived by the witness and the",
+            "  parties at the time of the deposition;",
+            "",
+        ]
+    lines += [
+        "  That the original deposition transcript was delivered in the",
+        f"  matter of {parties}.",
+        "",
+        "  That I am not a relative, employee, attorney, or counsel of",
+        "  any of the parties, nor am I a relative or employee of such",
+        "  attorney or counsel, nor am I financially interested in the action.",
+        "",
+        "",
+        "  ______________________________",
+        f"  {str(reporter_name).upper()}",
+        "  Certified Shorthand Reporter",
+        f"  {csr_str}",
+    ]
+    if certificate.get("firmRegistration"):
+        lines.append(f"  Firm Reg. No. {certificate.get('firmRegistration')}")
+    if reporter_firm:
+        lines.append(f"  {reporter_firm}")
+    if reporter_address:
+        lines.append(f"  {reporter_address}")
+    if reporter_phone:
+        lines.append(f"  {reporter_phone}")
+    return lines
+
+
 def paginate_lines(lines: Sequence[str]) -> list[list[str]]:
     """Split a flat list of strings into 25-line pages (mirrors the reference)."""
     if not lines:
@@ -316,6 +516,120 @@ def render_certified_back_matter_to_docx(sections: Mapping[str, object], output_
     local testing without the full document or any deployment)."""
     doc = Document()
     write_certified_back_matter(doc, sections)
+    destination = Path(output_path)
+    if destination.suffix.lower() != ".docx":
+        destination = destination.with_suffix(".docx")
+    doc.save(destination)
+    return str(destination)
+
+
+# The deterministic certified section order for a complete document. Front matter is
+# unnumbered; the numbered body sits between; certificate + changes/signature close it.
+CERTIFIED_DOCUMENT_ORDER = (
+    "title_page",
+    "caption",
+    "witness_index",
+    "exhibit_index",
+    "body",
+    "certificate",
+    "changes_signature",
+)
+
+
+def build_certified_front_matter_lines(data: Mapping[str, object]) -> list[list[str]]:
+    """Front-matter pages, in certified order: title page, caption/appearances, witness
+    index, exhibit index. Index pages are included only when they have rows."""
+    caption = data.get("caption") or {}
+    reporter = data.get("reporterCertificate") or {}
+    pages: list[list[str]] = []
+    pages.extend(paginate_lines(title_page_lines(caption, reporter)))
+    pages.extend(paginate_lines(caption_lines(caption, data.get("appearances") or [])))
+
+    examinations = data.get("examinationIndex") or []
+    if examinations:
+        pages.extend(paginate_lines(examination_index_lines(data.get("witnessName") or caption.get("deponent"), examinations)))
+    exhibits = data.get("exhibitIndex") or []
+    if exhibits:
+        pages.extend(paginate_lines(exhibit_index_lines(exhibits)))
+    return pages
+
+
+def build_certificate_and_signature_lines(data: Mapping[str, object]) -> list[list[str]]:
+    """Back-matter pages, in certified order: reporter certificate (REQUIRED — raises if
+    reporter identity/CSR is absent), then the changes grid + signature/notary page."""
+    reporter = data.get("reporterCertificate") or {}
+    pages: list[list[str]] = []
+    pages.extend(
+        paginate_lines(
+            certificate_lines(
+                reporter,
+                reporter_firm=data.get("reporterFirm"),
+                reporter_address=data.get("reporterAddress"),
+                reporter_phone=data.get("reporterPhone"),
+                waiver=data.get("signatureWaived", True),
+            )
+        )
+    )
+
+    witness_name = data.get("witnessName") or (data.get("caption") or {}).get("deponent")
+    errata = data.get("errata") or []
+    pages.append(changes_page_lines(witness_name, data.get("depoDate"), errata))
+    if len(errata) > CHANGE_ROWS_PAGE1:
+        overflow = [
+            "  CHANGES AND SIGNATURE (continued)",
+            "",
+            f"  {'PAGE':<8}{'LINE':<8}{'CHANGE':<30}REASON",
+            "",
+        ]
+        for row in errata[CHANGE_ROWS_PAGE1:]:
+            change_text = f"{row.get('from', '')} -> {row.get('to', '')}"[:29]
+            overflow.append(
+                f"  {_page_str(row.get('page')):<8}{_page_str(row.get('line')):<8}{change_text:<30}{row.get('reason', '')}"
+            )
+        pages.extend(paginate_lines(overflow))
+    pages.append(
+        signature_page_lines(
+            witness_name,
+            notary_county=data.get("notaryCounty"),
+            notary_name=data.get("notaryName"),
+            identification_method=data.get("identificationMethod"),
+        )
+    )
+    return pages
+
+
+def _write_pages(doc: Document, pages: Sequence[Sequence[str]], *, trailing_break: bool) -> None:
+    from docx.enum.text import WD_BREAK
+
+    for index, page_lines in enumerate(pages):
+        write_lined_page(doc, page_lines)
+        is_last = index == len(pages) - 1
+        if not is_last or trailing_break:
+            doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+
+
+def render_certified_document_to_docx(
+    render_model: Mapping[str, object],
+    certified_data: Mapping[str, object],
+    output_path: str,
+) -> str:
+    """Assemble ONE complete certified DOCX: front matter -> numbered body -> certificate
+    + changes/signature. The body is rendered by the surviving body renderer
+    (write_render_model_body) — no second transcript-rendering authority. Raises
+    CertifiedMetadataError if required reporter certification metadata is absent."""
+    from .docx_exporter import apply_body_geometry, write_render_model_body
+
+    doc = Document()
+    apply_body_geometry(doc, render_model["geometry"])
+
+    _write_pages(doc, build_certified_front_matter_lines(certified_data), trailing_break=True)
+    write_render_model_body(doc, render_model)
+
+    from docx.enum.text import WD_BREAK
+
+    doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+    _write_pages(doc, build_certificate_and_signature_lines(certified_data), trailing_break=False)
+
     destination = Path(output_path)
     if destination.suffix.lower() != ".docx":
         destination = destination.with_suffix(".docx")

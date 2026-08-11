@@ -379,7 +379,21 @@ class _PhysicalRenderLine:
     continuation: bool
 
 
-def export_render_model_to_docx(render_model: Mapping[str, object], output_path: str) -> str:
+def apply_body_geometry(doc: Document, geometry: Mapping[str, object]) -> None:
+    """Set US-Letter page size + the render model's margins on the document section."""
+    section = doc.sections[0]
+    section.page_width = _PAGE_W
+    section.page_height = _PAGE_H
+    section.left_margin = Inches(float(geometry["left_margin_inches"]))
+    section.right_margin = Inches(float(geometry["right_margin_inches"]))
+    section.top_margin = _M_TOP
+    section.bottom_margin = _M_BOTTOM
+
+
+def write_render_model_body(doc: Document, render_model: Mapping[str, object]) -> None:
+    """Write the numbered transcript body into an existing document (no section setup,
+    no save). This is the ONE body-rendering authority; the certified complete-document
+    assembly reuses it rather than re-implementing wrap/pagination."""
     geometry = render_model["geometry"]
     logical_lines = render_model["lines"]
     assert isinstance(geometry, dict)
@@ -388,15 +402,6 @@ def export_render_model_to_docx(render_model: Mapping[str, object], output_path:
     format_box_width = float(geometry["format_box_width_inches"])
     lines_per_page = int(geometry["lines_per_page"])
     physical_lines = _expand_render_lines(logical_lines, format_box_width)
-
-    doc = Document()
-    section = doc.sections[0]
-    section.page_width = _PAGE_W
-    section.page_height = _PAGE_H
-    section.left_margin = Inches(float(geometry["left_margin_inches"]))
-    section.right_margin = Inches(float(geometry["right_margin_inches"]))
-    section.top_margin = _M_TOP
-    section.bottom_margin = _M_BOTTOM
 
     for page_index in range(0, len(physical_lines), lines_per_page):
         page_lines = physical_lines[page_index : page_index + lines_per_page]
@@ -407,6 +412,12 @@ def export_render_model_to_docx(render_model: Mapping[str, object], output_path:
 
             page_break = doc.add_paragraph()
             page_break.add_run().add_break(WD_BREAK.PAGE)
+
+
+def export_render_model_to_docx(render_model: Mapping[str, object], output_path: str) -> str:
+    doc = Document()
+    apply_body_geometry(doc, render_model["geometry"])
+    write_render_model_body(doc, render_model)
 
     destination = Path(output_path)
     if destination.suffix.lower() != ".docx":
