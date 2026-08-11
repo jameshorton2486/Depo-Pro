@@ -33479,7 +33479,6 @@
         "behavior",
         "canonical",
         "changes",
-        "characterized",
         "classifier",
         "compatibility",
         "confidence",
@@ -33494,7 +33493,6 @@
         "deliverable",
         "deployment",
         "derived-unit",
-        "design",
         "docs",
         "edit",
         "embedded",
@@ -33514,6 +33512,7 @@
         "here",
         "human",
         "implementation",
+        "implemented",
         "inspection",
         "integration",
         "keeprawlabels",
@@ -33530,7 +33529,6 @@
         "open",
         "package-json",
         "path",
-        "pending",
         "persisted",
         "persistence",
         "phase",
@@ -33552,10 +33550,10 @@
         "reviewed",
         "revised",
         "rollback",
+        "save",
         "schema",
         "scoped",
         "sequence",
-        "settled",
         "state",
         "status",
         "still",
@@ -33575,6 +33573,7 @@
         "via",
         "wave",
         "waves",
+        "word-scoped",
         "working",
         "workspace",
         "write"
@@ -33682,7 +33681,7 @@
         },
         {
           "level": 3,
-          "text": "Decision A — derived-unit edit persistence (characterized; design settled, implementation pending)"
+          "text": "Decision A — derived-unit edit persistence (IMPLEMENTED — word-scoped save path)"
         },
         {
           "level": 3,

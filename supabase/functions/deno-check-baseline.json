@@ -19,7 +19,7 @@
     "signatures": []
   },
   "editor-api": {
-    "count": 24,
+    "count": 25,
     "signatures": [
       "TS2339: Property 'certification_date' does not exist on type 'never'.",
       "TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.",
@@ -29,7 +29,7 @@
       "TS2345: Argument of type '{ ai_suggestion_status: string; }' is not assignable to parameter of type 'never'.",
       "TS2345: Argument of type '{ display_name: string; assigned_name: string; speaker_label: string; role: string | null; speaker_role: string | null; }' is not assignable to parameter of type 'never'.",
       "TS2345: Argument of type '{ line_type: string; line_type_review_status: string; manually_reassigned: boolean; }' is not assignable to parameter of type 'never'.",
-      "TS2345: Argument of type '{ p_transcript_id: string; p_case_id: string; p_job_id: string; p_changes: WorkingChange[]; }' is not assignable to parameter of type 'undefined'.",
+      "TS2345: Argument of type '{ p_changes: WorkingChange[]; p_transcript_id: string; p_case_id: string; p_job_id: string; }' is not assignable to parameter of type 'undefined'.",
       "TS2345: Argument of type '{ p_transcript_id: string; p_case_id: string; p_job_id: string; p_suggestion_id: string; p_action: \"accept\" | \"reject\" | \"edit\"; p_edited_text: string | null; }' is not assignable to",
       "TS2345: Argument of type '{ review: { state: string; decided_at: string; decision_note: string | null; final_value: Record<string, unknown> | null; }; downstream: { applied_to_working_transcript: boolean; app",
       "TS2345: Argument of type '{ reviewed: boolean; }' is not assignable to parameter of type 'never'.",

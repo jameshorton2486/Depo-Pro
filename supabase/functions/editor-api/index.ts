@@ -503,26 +503,47 @@ async function handlePutWorking(context: RouteContext): Promise<Response> {
   const body = await parseJsonBody(context.request);
   const payload = validateSaveWorkingPayload(body);
 
-  const { data, error } = await context.supabase.rpc("editor_apply_working_changes", {
+  // DOC-0325 Decision A: changes carrying word_ids are DERIVED structural units
+  // (their utterance_id has no DB row) and persist by stable word_id via the
+  // word-scoped RPC; the rest use the existing utterance-scoped path unchanged.
+  const wordScoped = payload.changes.filter((c) => Array.isArray(c.word_ids) && c.word_ids.length > 0);
+  const utteranceScoped = payload.changes.filter((c) => !c.word_ids || c.word_ids.length === 0);
+
+  const scope = {
     p_transcript_id: context.transcript.transcript_id,
     p_case_id: context.transcript.case_id,
     p_job_id: context.transcript.job_id,
-    p_changes: payload.changes,
-  });
-
-  if (error) {
-    console.error("[editor-api] PUT working failed", {
-      route: "PUT /:jobId/working",
-      jobId: context.transcript.transcript_id,
-      message: error.message,
-    });
-    throw new HttpError(500, "failed to save working transcript");
-  }
-
-  const response: SaveWorkingResponse = {
-    saved: typeof data === "number" ? data : 0,
   };
 
+  let saved = 0;
+  if (utteranceScoped.length > 0) {
+    const { data, error } = await context.supabase.rpc("editor_apply_working_changes", {
+      ...scope,
+      p_changes: utteranceScoped,
+    });
+    if (error) {
+      console.error("[editor-api] PUT working failed", {
+        route: "PUT /:jobId/working", jobId: context.transcript.transcript_id, message: error.message,
+      });
+      throw new HttpError(500, "failed to save working transcript");
+    }
+    saved += typeof data === "number" ? data : 0;
+  }
+  if (wordScoped.length > 0) {
+    const { data, error } = await context.supabase.rpc("editor_apply_working_word_changes", {
+      ...scope,
+      p_changes: wordScoped,
+    });
+    if (error) {
+      console.error("[editor-api] PUT working (word-scoped) failed", {
+        route: "PUT /:jobId/working", jobId: context.transcript.transcript_id, message: error.message,
+      });
+      throw new HttpError(500, "failed to save working transcript");
+    }
+    saved += typeof data === "number" ? data : 0;
+  }
+
+  const response: SaveWorkingResponse = { saved };
   return respondJson(200, response);
 }
 
@@ -555,6 +576,12 @@ function validateSaveWorkingPayload(value: unknown): SaveWorkingPayload {
       || typeof candidate.working_text !== "string"
     ) {
       throw new HttpError(400, "bad payload");
+    }
+    // DOC-0325 Decision A: optional word_ids (derived-unit word-scoped save).
+    if (candidate.word_ids !== undefined) {
+      if (!Array.isArray(candidate.word_ids) || candidate.word_ids.some((w) => typeof w !== "string")) {
+        throw new HttpError(400, "bad payload");
+      }
     }
   }
 

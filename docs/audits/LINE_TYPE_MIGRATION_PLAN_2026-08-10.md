@@ -202,7 +202,30 @@ default-off scaffolding + types + persistence code + invariants + tests + docs**
 
 **Step 1 status:** the accept→apply→converge chain exists and is composition-proven — `qa_split CorrectionObject (accepted)` → `deriveWorkingTranscript` (idempotent split) → persisted `line_type` → `applyReviewedStructure` → both builders. `qaFixer`'s split now has a surviving owner (gate item #1). Item (a) is now **done** (Wave 1): the real Workspace load path (`DocumentContext` → `TranscriptEditor` → `buildEditorContent`) hydrates reviewed corrections and runs the projection when the gate is on, with a `DocumentProvider persistedLineTypeEnabled` override for end-to-end flag-on exercise. Crucially the corrections fetch is **gated on the flag**, so with `PERSISTED_LINE_TYPE_ENABLED=false` production makes no new `/corrections` call (the endpoint ships at activation) and the everyday load path is byte-identical. Item (b) is now **partly done** (Wave 2): a real parity harness runs both real builders and proves the qa_split certification invariant is identical across Workspace and export for resolved speakers (accepted/rejected/pending). The FULL mixed-matrix parity (examination headers, parentheticals, generic/unresolved speakers in mixed context) is **gated on the Wave 6/7 render-path convergence** — the two structure builders are still distinct code and were observed to diverge for some content/speaker shapes independent of qa_split; the harness's extractors are already shaped to assert those rows once convergence collapses the builders. Item (c) is now **done at the state-machine level** (Wave 3): the structural round-trip is deterministic and immutable across close/reopen through the real reducer. **Remaining to complete Step 1:** (b-rest) mixed-matrix parity after convergence; (d) `qaFixer` retirement once (b)–(c) are green + the objection split lands. Still flag-off; production frozen.
 
-### Decision A — derived-unit edit persistence (characterized; design settled, implementation pending)
+### Decision A — derived-unit edit persistence (IMPLEMENTED — word-scoped save path)
+
+**IMPLEMENTED** _(this commit)_. The word-scoped save path is built and flag-gated:
+- **Migration (new, UNAPPLIED)** `20260811120000_working_text_word_scoped_rpc.sql` — RPC
+  `editor_apply_working_word_changes` distributes `working_text` across an explicit ordered
+  `word_ids` list, resolving words by `word_id` scoped to the transcript (unknown/foreign ids dropped,
+  fail-safe). Writes only `transcript_words.working_text`; never `raw_text`, timestamps, confidence, or
+  `transcript_utterances`. Same token-distribution semantics as the proven `editor_apply_working_changes`.
+- **Contract:** `WorkingChange.word_ids?` (optional, reading order). **editor-api** validates it and
+  routes changes carrying `word_ids` to the new RPC, others to the existing RPC (production path
+  unchanged). **Client** `buildWorkingChanges` (extracted, pure, unit-tested) attaches each edited
+  unit's stable `word_ids` from the SAME `deriveWorkingTranscript` projection the editor rendered —
+  only when the flag is on; flag-off emits the historical payload byte-identically.
+- **Proof:** `documentContext.decisionA.test.ts` — a derived objection unit edit (`u1::obj`) resolves to
+  the real DB words `[w3, w4]` (which exist in the immutable document, so the RPC matches, no orphan);
+  `u1::pre` → `[w1, w2]`; flag-off emits no `word_ids`. The SQL RPC itself has no vitest coverage (no DB
+  in CI, same as the existing working RPC) — its correctness is by mirroring the proven RPC; a true
+  DB-integration round-trip is a deploy-time check.
+
+The remaining Step-1 gap (the derived-unit **text-edit** round-trip) is now closed at the client-contract
+level; the DB half activates with the migration + editor-api deploy (Human Gate). Original
+characterization retained below.
+
+
 
 **Owner's Decision A:** persist derived-unit edits via an explicit Working Transcript **overlay** — never
 mutate raw evidence, never fabricate a provider utterance row for a derived unit.

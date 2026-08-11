@@ -12,6 +12,7 @@ import type {
   UtteranceId,
   Word,
   Speaker,
+  WorkingChange,
 } from "../api/types";
 import type { ChangeLogEntry, ChangeSource } from "../types";
 import { workspaceApi, type WorkspaceAudioSegment } from "../api/workspaceService";
@@ -19,6 +20,7 @@ import type { CorrectionReport } from "../lib/transcript/correctionOrchestrator"
 import { buildCorrectionReport } from "../lib/transcript/correctionOrchestrator";
 import type { CorrectionObject } from "../lib/transcript/correctionObject";
 import { PERSISTED_LINE_TYPE_ENABLED } from "../lib/transcript/lineTypeMigration";
+import { deriveWorkingTranscript } from "../lib/transcript/structuralApply";
 
 let _changeIdSeq = 0;
 function nextChangeId(): string {
@@ -103,6 +105,34 @@ function buildWordMap(doc: EditorDocument): Record<string, Word> {
   const m: Record<string, Word> = {};
   for (const w of doc.words) m[w.word_id] = w;
   return m;
+}
+
+/**
+ * DOC-0325 Decision A — build the working-text save payload. With the projection
+ * OFF this is the historical `{utterance_id, working_text}[]`. With it ON, each
+ * change also carries the edited unit's stable `word_ids` (from the SAME
+ * deriveWorkingTranscript projection the editor rendered), so a DERIVED structural
+ * unit (u1::q / u1::obj — whose utterance_id has no DB row) persists by word_id
+ * onto the real transcript_words rows instead of orphaning on a utterance lookup.
+ * Pure + exported so the derived-id → word_id mapping is unit-testable without the
+ * React provider.
+ */
+export function buildWorkingChanges(
+  document: EditorDocument,
+  corrections: CorrectionObject[],
+  workingTexts: Record<UtteranceId, string>,
+  persistedLineTypeEnabled: boolean,
+): WorkingChange[] {
+  const changes: WorkingChange[] = Object.entries(workingTexts).map(
+    ([utterance_id, working_text]) => ({ utterance_id, working_text }),
+  );
+  if (!persistedLineTypeEnabled) return changes;
+  const workingDoc = deriveWorkingTranscript(document, corrections, persistedLineTypeEnabled);
+  const wordIdsByUtterance = new Map(workingDoc.utterances.map((u) => [u.utterance_id, u.word_ids]));
+  return changes.map((c) => {
+    const word_ids = wordIdsByUtterance.get(c.utterance_id);
+    return word_ids ? { ...c, word_ids } : c;
+  });
 }
 
 export function documentReducer(state: State, action: Action): State {
@@ -425,8 +455,8 @@ export function DocumentProvider({
   // followed by a reload, which would discard the unsaved corrections.
   const saveNow = useCallback(async (): Promise<boolean> => {
     if (state.saving || !state.dirty || !state.document) return true;
-    const changes = Object.entries(state.workingTexts).map(
-      ([utterance_id, working_text]) => ({ utterance_id, working_text })
+    const changes = buildWorkingChanges(
+      state.document, state.corrections, state.workingTexts, state.persistedLineTypeEnabled,
     );
     if (changes.length === 0) return true;
     const savedSeq = state.editSeq;
@@ -441,7 +471,7 @@ export function DocumentProvider({
       dispatch({ type: "SAVE_ERR", error: String(e) });
       return false;
     }
-  }, [jobId, state.dirty, state.document, state.editSeq, state.jobUpdatedAt, state.saving, state.workingTexts]);
+  }, [jobId, state.dirty, state.document, state.editSeq, state.jobUpdatedAt, state.saving, state.workingTexts, state.corrections, state.persistedLineTypeEnabled]);
 
   // Auto-save after 2 s of inactivity
   useEffect(() => {

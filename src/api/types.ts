@@ -78,6 +78,11 @@ export interface CertifyChecklist {
 export interface WorkingChange {
   utterance_id: UtteranceId;
   working_text: string;
+  // DOC-0325 Decision A: stable word_ids of the edited unit, in reading order.
+  // Present when the edited unit is a DERIVED structural unit (u1::q / u1::obj)
+  // whose utterance_id has no DB row — the save then persists by word_id instead
+  // of a utterance lookup. Absent → the existing utterance-scoped save path.
+  word_ids?: WordId[];
 }
 
 export interface SaveWorkingPayload {
