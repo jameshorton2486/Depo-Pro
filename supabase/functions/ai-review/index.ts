@@ -451,6 +451,32 @@ async function runBridgeReview(
   }
   const runId = (runInsert.data as { id: string }).id;
 
+  // Auto-apply corrections to the working transcript. Workflow decision (James):
+  // NO review panel — the AI applies its corrections to the WORKING layer and the
+  // court reporter reviews/edits the transcript body directly. raw_text is never
+  // touched, so every applied change is fully recoverable. Text corrections
+  // (punctuation, proper name, medical term) write working_text; speaker
+  // reassignments relabel the utterance's speaker. Structural paragraph/Q-A splits
+  // are deferred to the line_type apply engine and left pending.
+  const appliedAt = new Date().toISOString();
+  let appliedCount = 0;
+  for (const c of result.corrections) {
+    try {
+      if (await autoApplyBridgeCorrection(supabase, transcriptId, c)) {
+        c.review = { ...c.review, state: "accepted", decided_by: "ai_auto_apply", decided_at: appliedAt };
+        c.downstream = { ...c.downstream, applied_to_working_transcript: true, applied_at: appliedAt };
+        appliedCount += 1;
+      } else {
+        c.downstream = { ...c.downstream, pending_reason: "structural_apply_engine_v2" };
+      }
+    } catch (applyError) {
+      console.error("[ai-review] auto-apply failed", {
+        correction_id: c.id,
+        message: applyError instanceof Error ? applyError.message : String(applyError),
+      });
+    }
+  }
+
   if (result.corrections.length > 0) {
     const rows = result.corrections.map((c) => ({
       id: c.id,
@@ -490,6 +516,7 @@ async function runBridgeReview(
         transcript_revision: transcript.updated_at,
         completed_at: new Date().toISOString(),
         suggestions_count: result.corrections.length,
+        applied_count: appliedCount,
         rejected_count: result.rejected.length,
         tokens_used_in: result.tokensIn,
         tokens_used_out: result.tokensOut,
@@ -503,8 +530,134 @@ async function runBridgeReview(
     mode: "bridge",
     run_id: runId,
     corrections_count: result.corrections.length,
+    applied_count: appliedCount,
     rejected_count: result.rejected.length,
   });
+}
+
+// ── Auto-apply bridge corrections to the working transcript ──────────────────
+// Mirrors editor-api's applyTextCorrectionWorking / applySpeakerCorrection so the
+// bridge can apply without the review-panel round-trip. Service-role client.
+// Returns true if the correction changed the working transcript, false if it is
+// a deferred structural type (paragraph/qa split) or has nothing to apply.
+
+const AUTO_APPLY_TEXT_TYPES = new Set([
+  "proper_name_correction",
+  "medical_term_correction",
+  "punctuation_edit",
+  "contextual_number_flag",
+]);
+
+async function autoApplyBridgeCorrection(
+  supabase: ReturnType<typeof createClient<Database>>,
+  transcriptId: string,
+  correction: CorrectionObject,
+): Promise<boolean> {
+  const change = (correction.change ?? {}) as Record<string, unknown>;
+  const location = (correction.location ?? {}) as Record<string, unknown>;
+  const type = String(change.type ?? "");
+
+  if (AUTO_APPLY_TEXT_TYPES.has(type)) {
+    const after = typeof change.after === "string" ? change.after : "";
+    if (!after) return false;
+    return applyBridgeTextWorking(supabase, transcriptId, location, after);
+  }
+  if (type === "speaker_reassignment") {
+    const structural = (change.structural_change && typeof change.structural_change === "object")
+      ? change.structural_change as Record<string, unknown>
+      : {};
+    return applyBridgeSpeakerWorking(supabase, transcriptId, location, structural);
+  }
+  // paragraph_split / qa_split / other structural — deferred (line_type engine).
+  return false;
+}
+
+async function applyBridgeTextWorking(
+  supabase: ReturnType<typeof createClient<Database>>,
+  transcriptId: string,
+  location: Record<string, unknown>,
+  afterText: string,
+): Promise<boolean> {
+  const startId = String(location.start_word_id ?? "");
+  const endId = String(location.end_word_id ?? "");
+  if (!startId || !endId) return false;
+
+  const endpointRes = await supabase
+    .from("transcript_words")
+    .select("word_id, word_index")
+    .eq("transcript_id", transcriptId)
+    .in("word_id", [startId, endId]);
+  if (endpointRes.error) throw endpointRes.error;
+  const endpoints = (endpointRes.data ?? []) as Array<{ word_id: string; word_index: number }>;
+  const startIdx = endpoints.find((w) => w.word_id === startId)?.word_index;
+  const endIdx = endpoints.find((w) => w.word_id === endId)?.word_index;
+  if (startIdx == null || endIdx == null) return false;
+
+  const rangeRes = await supabase
+    .from("transcript_words")
+    .select("word_id, raw_text, word_index")
+    .eq("transcript_id", transcriptId)
+    .gte("word_index", Math.min(startIdx, endIdx))
+    .lte("word_index", Math.max(startIdx, endIdx))
+    .order("word_index", { ascending: true });
+  if (rangeRes.error) throw rangeRes.error;
+  const words = (rangeRes.data ?? []) as Array<{ word_id: string; raw_text: string }>;
+  if (words.length === 0) return false;
+
+  const tokens = afterText.trim().length > 0 ? afterText.trim().split(/\s+/) : [""];
+  for (let i = 0; i < words.length; i += 1) {
+    const word = words[i];
+    const nextText = i < words.length - 1 ? (tokens[i] ?? "") : tokens.slice(i).join(" ");
+    const workingText = nextText === word.raw_text ? null : nextText;
+    const upd = await supabase
+      .from("transcript_words")
+      .update({ working_text: workingText, text: workingText ?? word.raw_text, edited: Boolean(workingText) })
+      .eq("transcript_id", transcriptId)
+      .eq("word_id", word.word_id);
+    if (upd.error) throw upd.error;
+  }
+  return true;
+}
+
+async function applyBridgeSpeakerWorking(
+  supabase: ReturnType<typeof createClient<Database>>,
+  transcriptId: string,
+  location: Record<string, unknown>,
+  structural: Record<string, unknown>,
+): Promise<boolean> {
+  const utteranceId = String(location.paragraph_id ?? "");
+  if (!utteranceId) return false;
+
+  const uttRes = await supabase
+    .from("transcript_utterances")
+    .select("speaker_id")
+    .eq("transcript_id", transcriptId)
+    .eq("utterance_id", utteranceId)
+    .maybeSingle();
+  if (uttRes.error || !uttRes.data) return false;
+  const speakerId = String((uttRes.data as { speaker_id: string }).speaker_id);
+
+  const displayName = typeof structural.display_name === "string" ? structural.display_name.trim() : "";
+  const roleRaw = typeof structural.new_speaker_role === "string" ? structural.new_speaker_role.trim().toUpperCase() : "";
+  const update: Record<string, unknown> = {};
+  if (displayName) {
+    update.assigned_name = displayName;
+    update.display_name = displayName;
+    update.speaker_label = displayName;
+  }
+  if (roleRaw) {
+    update.role = roleRaw;
+    update.speaker_role = roleRaw;
+  }
+  if (Object.keys(update).length === 0) return false;
+
+  const speakerUpd = await supabase
+    .from("transcript_speakers")
+    .update(update)
+    .eq("transcript_id", transcriptId)
+    .eq("speaker_id", speakerId);
+  if (speakerUpd.error) throw speakerUpd.error;
+  return true;
 }
 
 function respondJson(status: number, body: unknown): Response {

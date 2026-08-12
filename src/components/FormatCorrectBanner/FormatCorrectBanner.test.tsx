@@ -122,7 +122,9 @@ describe("FormatCorrectBanner", () => {
     expect(confirmStructureMock).toHaveBeenCalledTimes(1);
     expect(keepRawLabelsMock).not.toHaveBeenCalled();
     expect(saveNowMock).toHaveBeenCalledTimes(1);
-    expect(loadDocumentMock).toHaveBeenCalledTimes(1);
+    // Reloads twice: the deterministic reformat reload, then again after the AI
+    // review lands so the auto-applied corrections are shown.
+    expect(loadDocumentMock).toHaveBeenCalledTimes(2);
     expect(triggerAIReviewMock).toHaveBeenCalledWith("tr_1");
 
     // save must precede reload, reload must precede AI review
@@ -174,7 +176,7 @@ describe("FormatCorrectBanner", () => {
     expect(keepRawLabelsMock).toHaveBeenCalledTimes(1);
     expect(confirmStructureMock).not.toHaveBeenCalled();
     expect(saveNowMock).toHaveBeenCalledTimes(1);
-    expect(loadDocumentMock).toHaveBeenCalledTimes(1);
+    expect(loadDocumentMock).toHaveBeenCalledTimes(2); // reformat reload + post-AI-review reload
     cleanup();
   });
 
@@ -191,7 +193,7 @@ describe("FormatCorrectBanner", () => {
     expect(confirmStructureMock).not.toHaveBeenCalled();
     expect(keepRawLabelsMock).not.toHaveBeenCalled();
     expect(saveNowMock).toHaveBeenCalledTimes(1);
-    expect(loadDocumentMock).toHaveBeenCalledTimes(1);
+    expect(loadDocumentMock).toHaveBeenCalledTimes(2); // reformat reload + post-AI-review reload
     cleanup();
   });
 });

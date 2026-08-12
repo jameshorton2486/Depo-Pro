@@ -22,6 +22,14 @@ describe("BRIDGE_SYSTEM_PROMPT invariants", () => {
     expect(p).toContain("word tokens must be identical");
   });
 
+  // Filler words are testimony — the highest-priority verbatim rule.
+  it("makes filler-word preservation an absolute, load-bearing constraint", () => {
+    expect(p).toContain("filler words are testimony");
+    expect(p).toContain("word count in equals word count out");
+    for (const filler of ["um", "uh-huh", "huh-uh", "you know"]) expect(p).toContain(filler);
+    expect(p).toContain('"yes"/"no"'); // never convert uh-huh/huh-uh to yes/no
+  });
+
   // @v3 speaker identification uses the four-tier evidence hierarchy.
   it("states the four-tier speaker-evidence hierarchy", () => {
     for (const t of ["tier 1", "tier 2", "tier 3", "tier 4"]) expect(p).toContain(t);
