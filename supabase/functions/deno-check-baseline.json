@@ -8,9 +8,9 @@
       "TS2345: Argument of type '{ ai_review_meta: { completed: boolean; prompt_version: string; model: string; transcript_revision: string; completed_at: string; suggestions_count: number; auto_applied_count: numbe",
       "TS2345: Argument of type '{ ai_review_meta: { completed: boolean; prompt_version: string; transcript_revision: string; failed_at: string; }; }' is not assignable to parameter of type 'never'.",
       "TS2345: Argument of type '{ ai_suggested_line_type: \"Q\" | \"A\" | \"COLLOQUY\" | \"PARENTHETICAL\"; }' is not assignable to parameter of type 'never'.",
-      "TS2345: Argument of type '{ ai_suggestion: string; ai_suggestion_reason: string; ai_confidence: number; ai_suggestion_status: \"accepted\" | \"pending\"; working_text?: string | null | undefined; }' is not assign",
+      "TS2345: Argument of type '{ ai_suggestion: string; ai_suggestion_reason: string; ai_confidence: number; ai_suggestion_status: \"pending\" | \"accepted\"; working_text?: string | null | undefined; }' is not assign",
       "TS2345: Argument of type '{ id: string; run_id: string; transcript_id: string; case_id: string; specialty: CorrectionSpecialty; prompt_version: string; context_hash: string; location: CorrectionLocation; ... ",
-      "TS2345: Argument of type '{ proposed_display_name: string; proposed_role: \"WITNESS\" | \"REPORTER\" | \"ATTORNEY\" | \"INTERPRETER\" | \"VIDEOGRAPHER\"; ai_suggested: boolean; }' is not assignable to parameter of type",
+      "TS2345: Argument of type '{ proposed_display_name: string; proposed_role: \"ATTORNEY\" | \"WITNESS\" | \"REPORTER\" | \"VIDEOGRAPHER\" | \"INTERPRETER\"; ai_suggested: boolean; }' is not assignable to parameter of type",
       "TS2353: Object literal may only specify known properties, and 'transcript_id' does not exist in type 'never[]'."
     ]
   },

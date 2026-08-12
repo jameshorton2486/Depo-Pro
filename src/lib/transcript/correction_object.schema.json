@@ -102,8 +102,10 @@
           "enum": [
             "proper_name_correction",
             "medical_term_correction",
+            "punctuation_edit",
             "speaker_reassignment",
             "qa_split",
+            "paragraph_split",
             "objection_split",
             "objection_attribution",
             "examination_section_change",
@@ -111,7 +113,7 @@
             "inconsistency_flag",
             "contextual_number_flag"
           ],
-          "description": "Determines which further fields are required. See per-type constraints in the audit document."
+          "description": "Determines which further fields are required. punctuation_edit is a text change (before/after, word tokens must be identical — punctuation/casing only). paragraph_split is structural. See per-type constraints in the audit document."
         },
         "before": {
           "type": "string",
@@ -134,6 +136,7 @@
                 "enum": [
                   "proper_name_correction",
                   "medical_term_correction",
+                  "punctuation_edit",
                   "contextual_number_flag"
                 ]
               }
@@ -150,6 +153,7 @@
                 "enum": [
                   "speaker_reassignment",
                   "qa_split",
+                  "paragraph_split",
                   "objection_split",
                   "objection_attribution",
                   "examination_section_change",

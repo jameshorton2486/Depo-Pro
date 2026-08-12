@@ -31,8 +31,18 @@ export type CorrectionSpecialty =
 export type CorrectionChangeType =
   | "proper_name_correction"
   | "medical_term_correction"
+  // Punctuation + capitalization restored on a word span. A TEXT change:
+  // before = the raw verbatim span, after = the same tokens with punctuation and
+  // capitalization only. The spoken WORDS are immutable — `after` must contain the
+  // identical word tokens as `before`; only punctuation/casing differ. Applied to
+  // the working layer (working_text); raw_text is never touched.
+  | "punctuation_edit"
   | "speaker_reassignment"
   | "qa_split"
+  // A paragraph boundary that is NOT a Q/A flip: a topic/exhibit/on-off-record
+  // shift, or a long-answer break. Structural — carries the split point, no words
+  // change. structural_change: {split_after_word_id, reason_detail?}.
+  | "paragraph_split"
   // Structural EXTRACTION of an embedded objection into its own unit (DOC-0325
   // Wave 4 / Decision B). Deliberately SEPARATE from objection_attribution: this
   // type owns only the split boundary (the objection word span); attribution
@@ -64,11 +74,13 @@ export type ProvenanceSource = "ai" | "deterministic" | "reporter";
 export const TEXT_CHANGE_TYPES: ReadonlySet<CorrectionChangeType> = new Set([
   "proper_name_correction",
   "medical_term_correction",
+  "punctuation_edit",
   "contextual_number_flag",
 ]);
 export const STRUCTURAL_CHANGE_TYPES: ReadonlySet<CorrectionChangeType> = new Set([
   "speaker_reassignment",
   "qa_split",
+  "paragraph_split",
   "objection_split",
   "objection_attribution",
   "examination_section_change",
@@ -156,6 +168,14 @@ const SPECIALTIES = new Set<string>([
   "inconsistency_flag", "contextual_number", "phonetic_disambiguation", "deterministic_rule",
 ]);
 const CHANGE_TYPES = new Set<string>([...TEXT_CHANGE_TYPES, ...STRUCTURAL_CHANGE_TYPES, "inconsistency_flag"]);
+
+// The spoken-word tokens of a string, lowercased, with standalone punctuation
+// (periods, commas, em/double dashes, ellipses, quotes) ignored. Intra-word
+// apostrophes and hyphens are preserved so "y'all" and "co-worker" stay one
+// token. Used to prove a punctuation_edit did not alter the words.
+export function wordTokens(text: string): string[] {
+  return (text.toLowerCase().match(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu) ?? []);
+}
 const REASON_KINDS = new Set<string>([
   "registry_match", "phonetic_similarity", "context_pattern", "prior_correction",
   "inconsistency_detected", "structural_boundary", "confidence_threshold",
@@ -247,6 +267,16 @@ function changeErrors(change: unknown): string[] {
 
   if (TEXT_CHANGE_TYPES.has(type as CorrectionChangeType)) {
     if (!hasBefore || !hasAfter) errs.push(`change.type '${type}' requires both 'before' and 'after'`);
+    // Verbatim guard: a punctuation_edit may ONLY add/change punctuation and
+    // capitalization. The spoken word tokens of `after` must be identical to
+    // `before` (ignoring case + standalone punctuation). This makes it
+    // structurally impossible for a "punctuation" correction to add, drop, or
+    // reword evidence — the change is rejected before it can ever be persisted.
+    if (type === "punctuation_edit" && hasBefore && hasAfter) {
+      if (wordTokens(String(ch.before)).join(" ") !== wordTokens(String(ch.after)).join(" ")) {
+        errs.push("change.type 'punctuation_edit' altered word tokens; only punctuation and capitalization may change");
+      }
+    }
   } else if (STRUCTURAL_CHANGE_TYPES.has(type as CorrectionChangeType)) {
     if (!hasStructural) errs.push(`change.type '${type}' requires 'structural_change'`);
     if (hasBefore || hasAfter) errs.push(`change.type '${type}' must not carry 'before'/'after' text`);

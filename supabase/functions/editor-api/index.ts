@@ -1735,7 +1735,7 @@ function validateDecidePayload(value: unknown): DecidePayload {
   };
 }
 
-const TEXT_CHANGE_TYPES = new Set(["proper_name_correction", "medical_term_correction", "contextual_number_flag"]);
+const TEXT_CHANGE_TYPES = new Set(["proper_name_correction", "medical_term_correction", "punctuation_edit", "contextual_number_flag"]);
 
 async function handleDecideCorrection(context: RouteContext, correctionId: string): Promise<Response> {
   const body = await parseJsonBody(context.request);
@@ -1831,6 +1831,7 @@ async function handleDecideCorrection(context: RouteContext, correctionId: strin
 const STRUCTURAL_DEFER_REASON = "structural_apply_engine_v2";
 const DEFERRED_STRUCTURAL_TYPES = new Set([
   "qa_split",
+  "paragraph_split",
   "objection_split",
   "examination_section_change",
   "off_record_boundary_mark",

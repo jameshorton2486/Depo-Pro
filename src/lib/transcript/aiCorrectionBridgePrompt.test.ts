@@ -11,8 +11,23 @@ import { BRIDGE_PROMPT_VERSION, BRIDGE_SYSTEM_PROMPT } from "./aiCorrectionBridg
 describe("BRIDGE_SYSTEM_PROMPT invariants", () => {
   const p = BRIDGE_SYSTEM_PROMPT.toLowerCase();
 
-  it("is versioned @v2 (reconciled)", () => {
-    expect(BRIDGE_PROMPT_VERSION).toBe("bridge/full_review@v2");
+  it("is versioned @v3 (speaker-evidence + paragraphing + punctuation)", () => {
+    expect(BRIDGE_PROMPT_VERSION).toBe("bridge/full_review@v3");
+  });
+
+  // @v3 puts the verbatim/word-immutability guardrail FIRST, before the tasks.
+  it("leads with the word-immutability guardrail", () => {
+    expect(p).toContain("never add, delete, reorder, or reword spoken words");
+    expect(p).toContain("the words are evidence");
+    expect(p).toContain("word tokens must be identical");
+  });
+
+  // @v3 speaker identification uses the four-tier evidence hierarchy.
+  it("states the four-tier speaker-evidence hierarchy", () => {
+    for (const t of ["tier 1", "tier 2", "tier 3", "tier 4"]) expect(p).toContain(t);
+    expect(p).toContain("four-tier evidence hierarchy");
+    expect(p).toContain("split speaker");
+    expect(p).toContain("merged speaker");
   });
 
   it("keeps the editor-not-formatter / no-rewrite contract", () => {
@@ -59,10 +74,12 @@ describe("BRIDGE_SYSTEM_PROMPT invariants", () => {
     expect(p).toContain("leave dollar amounts, dates, and numbers alone");
   });
 
-  it("scopes to exactly the four v1 correction kinds", () => {
+  it("scopes to the six in-scope correction kinds (adds paragraphing + punctuation)", () => {
     for (const kind of [
       "speaker_reassignment",
       "qa_split",
+      "paragraph_split",
+      "punctuation_edit",
       "proper_name_correction",
       "medical_term_correction",
     ]) {
