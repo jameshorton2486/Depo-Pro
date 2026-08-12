@@ -18,13 +18,13 @@
 // longer canonical. Prompt-content invariants are guarded by
 // aiCorrectionBridgePrompt.test.ts so a future condense cannot silently drop them.
 
-import type { EditorDocument } from "../../api/types";
-import { PRIMARY_MODEL } from "../aiModels";
+import type { EditorDocument } from "../../api/types.ts";
+import { PRIMARY_MODEL } from "../aiModels.ts";
 import {
   type CorrectionObject,
   collectCorrectionErrors,
   newCorrectionId,
-} from "./correctionObject";
+} from "./correctionObject.ts";
 
 // Bridge-specific transport: unlike the word-suggestion transport it returns
 // token usage + latency, so the Edge Function can persist run-level cost

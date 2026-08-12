@@ -1,5 +1,5 @@
-import type { CaseRecord } from "../../types/case";
-import { PRIMARY_MODEL } from "../aiModels";
+import type { CaseRecord } from "../../types/case.ts";
+import { PRIMARY_MODEL } from "../aiModels.ts";
 
 export interface AISuggestionInput {
   transcriptId: string;
