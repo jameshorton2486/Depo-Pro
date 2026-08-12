@@ -29,18 +29,18 @@ describe("transcriptVersionLabels", () => {
     ]);
   });
 
-  it("labels the oldest transcript as original and later runs incrementally", () => {
+  it("labels the newest transcript as the Deposition Transcript and older copies as superseded", () => {
     const labels = buildTranscriptVersionLabels(transcripts);
 
-    expect(labels.get("tr_1")).toBe("Original");
-    expect(labels.get("tr_2")).toBe("Retranscription 1");
-    expect(labels.get("tr_3")).toBe("Retranscription 2");
+    expect(labels.get("tr_1")).toBe("Deposition Transcript (superseded)");
+    expect(labels.get("tr_2")).toBe("Deposition Transcript (superseded)");
+    expect(labels.get("tr_3")).toBe("Deposition Transcript");
   });
 
-  it("supports a single transcript without numbering reruns", () => {
+  it("labels a single transcript as the Deposition Transcript", () => {
     const labels = buildTranscriptVersionLabels([transcripts[0]]);
 
-    expect(labels.get("tr_3")).toBe("Original");
+    expect(labels.get("tr_3")).toBe("Deposition Transcript");
   });
 
   it("normalizes transcript status values into user-facing badges", () => {

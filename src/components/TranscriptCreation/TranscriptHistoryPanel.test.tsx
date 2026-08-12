@@ -111,8 +111,8 @@ describe("TranscriptHistoryPanel", () => {
     expect(findByTestId(tree, "transcript-history-summary")).toBeTruthy();
     expect(findByTestId(tree, "transcript-history-option-tr_original")).toBeTruthy();
     expect(findByTestId(tree, "transcript-history-option-tr_newer")).toBeTruthy();
-    expect(collectText(tree)).toContain("Original");
-    expect(collectText(tree)).toContain("Retranscription 1");
+    expect(collectText(tree)).toContain("Deposition Transcript");
+    expect(collectText(tree)).toContain("Deposition Transcript (superseded)");
     expect(collectText(tree)).toContain("Current");
     expect(collectText(tree)).toContain("Complete");
   });
@@ -171,7 +171,8 @@ describe("TranscriptHistoryPanel", () => {
     const originalOption = findByTestId(tree, "transcript-history-option-tr_original");
     const rerunOption = findByTestId(tree, "transcript-history-option-tr_newer");
 
-    expect(collectText(originalOption)).toContain("Original");
-    expect(collectText(rerunOption)).toContain("Retranscription 1");
+    expect(collectText(originalOption)).toContain("Deposition Transcript (superseded)");
+    expect(collectText(rerunOption)).toContain("Deposition Transcript");
+    expect(collectText(rerunOption)).not.toContain("superseded");
   });
 });

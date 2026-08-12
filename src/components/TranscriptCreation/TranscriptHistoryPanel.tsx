@@ -45,9 +45,9 @@ export function TranscriptHistoryPanel({
           <History size={18} />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">Transcript Already Exists</p>
+          <p className="text-sm font-semibold text-slate-900">Deposition Transcript</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            Open this transcript in Workspace, or retranscribe to replace it. Each case keeps a single transcript, so retranscription overwrites the current one.
+            This case&rsquo;s Deposition Transcript. Open it in Workspace, or retranscribe to regenerate it from the audio &mdash; each case keeps a single Deposition Transcript, so retranscription replaces the current one.
           </p>
         </div>
       </div>
@@ -126,8 +126,8 @@ export function TranscriptHistoryPanel({
       <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">
         <FileAudio2 size={13} />
         {certified
-          ? "This case is certified. Decertify it before retranscribing — retranscription replaces the certified transcript."
-          : "Retranscription replaces the current transcript once the new one completes, so the case keeps a single transcript."}
+          ? "This case is certified. Decertify it before retranscribing — retranscription replaces the certified Deposition Transcript."
+          : "Retranscription replaces the Deposition Transcript once the new one completes, so the case keeps a single Deposition Transcript."}
       </div>
     </section>
   );

@@ -1,18 +1,25 @@
-// One-time consolidation: enforce one transcript per case by deleting the extra
-// transcripts left behind by the old (additive) retranscription behavior.
+// One-time consolidation: enforce a single "Deposition Transcript" per case.
 //
-// For every case that has more than one COMPLETED transcript, the NEWEST
-// completed transcript (by created_at) is kept and all other transcripts for
-// that case are removed. Deleting a `transcripts` row cascades to every child
-// table (words, utterances, speakers, audit, review_state, suggestions,
-// speaker_resolution_current, corrections, correction_runs, correction_decisions);
-// the un-linked `transcription_jobs` ledger row is deleted explicitly.
+// For every case that has at least one COMPLETED transcript, the NEWEST completed
+// transcript (by created_at) is kept as the case's Deposition Transcript and
+// EVERY OTHER transcript for that case is removed — this includes both completed
+// extras AND leftover non-completed job rows (failed / finalizing / queued /
+// processing) that clutter the "Transcript Jobs" list.
+//
+// Deleting a `transcripts` row cascades to every child table (words, utterances,
+// speakers, audit, review_state, suggestions, speaker_resolution_current,
+// corrections, correction_runs, correction_decisions); the un-linked
+// `transcription_jobs` ledger row is deleted explicitly (a failed job may have a
+// job row but no transcripts row — this still removes it).
 //
 // SAFETY:
 //   * Dry-run by DEFAULT — prints the plan and writes nothing. Pass --apply to delete.
-//   * Certified cases (case_certifications.certification_date set) are NEVER
-//     touched — they are reported and skipped. Their transcripts are locked
-//     official records protected by a DB trigger.
+//   * A case with NO completed transcript is skipped entirely (no keeper — we never
+//     delete a case down to nothing).
+//   * Certified cases (case_certifications.certification_date set) are NEVER touched —
+//     reported and skipped (locked official records protected by a DB trigger).
+//   * In-progress rows (queued/processing/finalizing) are flagged ⚠ in the dry-run so
+//     you can confirm they are stale before deleting one mid-flight.
 //   * Requires SUPABASE_SERVICE_ROLE_KEY (RLS has no delete policy on these tables).
 //
 // Usage:
@@ -24,6 +31,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const APPLY = process.argv.includes("--apply");
+const IN_PROGRESS = new Set(["queued", "processing", "finalizing"]);
 
 const envPath = path.join(process.cwd(), ".env");
 const env = parseEnv(await readFile(envPath, "utf8"));
@@ -43,62 +51,90 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 
 console.log(`\nprune-extra-transcripts — mode: ${APPLY ? "APPLY (deleting)" : "DRY-RUN (no writes)"}\n`);
 
-// 1. Load all completed transcripts.
-const { data: transcriptRows, error: transcriptError } = await supabase
+// 1. Completed transcripts — the only valid "keeper" candidates.
+const { data: completedRows, error: completedError } = await supabase
   .from("transcripts")
-  .select("transcript_id, case_id, status, created_at")
+  .select("transcript_id, case_id, created_at")
   .eq("status", "completed");
-if (transcriptError) throw transcriptError;
+if (completedError) throw completedError;
 
-// 2. Group by case and find cases with >1 completed transcript.
-const byCase = new Map();
-for (const row of transcriptRows ?? []) {
-  const list = byCase.get(row.case_id) ?? [];
+const completedByCase = new Map(); // case_id -> [{transcript_id, created_at}]
+const completedIds = new Set();
+for (const row of completedRows ?? []) {
+  completedIds.add(row.transcript_id);
+  const list = completedByCase.get(row.case_id) ?? [];
   list.push(row);
-  byCase.set(row.case_id, list);
+  completedByCase.set(row.case_id, list);
 }
 
-const multi = [...byCase.entries()].filter(([, list]) => list.length > 1);
-if (multi.length === 0) {
-  console.log("No case has more than one completed transcript. Nothing to do.");
+// 2. ALL transcription-job rows (any status) — the full set of transcript_ids per
+//    case, so we sweep failed/finalizing/queued leftovers, not just completed extras.
+const { data: jobRows, error: jobError } = await supabase
+  .from("transcription_jobs")
+  .select("transcript_id, case_id, status, created_at");
+if (jobError) throw jobError;
+
+const jobStatusByCase = new Map(); // case_id -> Map<transcript_id, status>
+for (const row of jobRows ?? []) {
+  const m = jobStatusByCase.get(row.case_id) ?? new Map();
+  if (!m.has(row.transcript_id)) m.set(row.transcript_id, row.status);
+  jobStatusByCase.set(row.case_id, m);
+}
+
+// 3. Plan: keep the newest completed transcript per case, delete every other
+//    transcript_id for that case (completed extras + non-completed job rows).
+const plans = [];
+for (const [caseId, completedList] of completedByCase) {
+  const keeper = [...completedList].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  const ids = new Set(completedList.map((r) => r.transcript_id));
+  for (const tid of jobStatusByCase.get(caseId)?.keys() ?? []) ids.add(tid);
+  ids.delete(keeper.transcript_id);
+  if (ids.size === 0) continue;
+  const toDelete = [...ids].map((tid) => ({
+    transcript_id: tid,
+    status: jobStatusByCase.get(caseId)?.get(tid) ?? (completedIds.has(tid) ? "completed" : "unknown"),
+  }));
+  plans.push({ caseId, keeper, toDelete });
+}
+
+if (plans.length === 0) {
+  console.log("Every case already has a single Deposition Transcript and no leftover jobs. Nothing to do.");
   process.exit(0);
 }
 
-// 3. Which of these cases are certified (locked)?
-const caseIds = multi.map(([caseId]) => caseId);
+// 4. Certified (locked) cases — skip.
 const { data: certRows, error: certError } = await supabase
   .from("case_certifications")
   .select("case_id, certification_date")
-  .in("case_id", caseIds);
+  .in("case_id", plans.map((p) => p.caseId));
 if (certError) throw certError;
 const certifiedCaseIds = new Set(
-  (certRows ?? []).filter((row) => Boolean(row.certification_date)).map((row) => row.case_id),
+  (certRows ?? []).filter((r) => Boolean(r.certification_date)).map((r) => r.case_id),
 );
 
 let casesPlanned = 0;
 let casesSkippedCertified = 0;
 let deletedCount = 0;
 let failedCount = 0;
+let wouldDelete = 0;
 
-for (const [caseId, list] of multi) {
-  const ordered = [...list].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-  const keeper = ordered[0];
-  const toDelete = ordered.slice(1);
-
+for (const { caseId, keeper, toDelete } of plans) {
   if (certifiedCaseIds.has(caseId)) {
     casesSkippedCertified += 1;
-    console.log(`SKIP  case ${caseId} — CERTIFIED (locked). ${list.length} transcripts left intact.`);
+    console.log(`SKIP  case ${caseId} — CERTIFIED (locked). ${toDelete.length + 1} transcripts/jobs left intact.`);
     continue;
   }
 
   casesPlanned += 1;
-  console.log(`CASE  ${caseId} — ${list.length} completed transcripts`);
-  console.log(`  KEEP   ${keeper.transcript_id}  (created ${keeper.created_at})`);
+  wouldDelete += toDelete.length;
+  console.log(`CASE  ${caseId}`);
+  console.log(`  KEEP   ${keeper.transcript_id}  (Deposition Transcript — completed, created ${keeper.created_at})`);
 
   for (const target of toDelete) {
     const counts = await childCounts(target.transcript_id);
+    const flag = IN_PROGRESS.has(target.status) ? " ⚠ in-progress — confirm it is stale" : "";
     console.log(
-      `  DELETE ${target.transcript_id}  (created ${target.created_at})  ` +
+      `  DELETE ${target.transcript_id}  [${target.status}]${flag}  ` +
         `words=${counts.words} utterances=${counts.utterances} speakers=${counts.speakers}`,
     );
 
@@ -118,20 +154,17 @@ for (const [caseId, list] of multi) {
 }
 
 console.log("\nSummary");
-console.log(`  cases with extras:        ${multi.length}`);
-console.log(`  cases planned:            ${casesPlanned}`);
-console.log(`  cases skipped (certified):${casesSkippedCertified}`);
+console.log(`  cases needing cleanup:     ${plans.length}`);
+console.log(`  cases planned:             ${casesPlanned}`);
+console.log(`  cases skipped (certified): ${casesSkippedCertified}`);
 if (APPLY) {
-  console.log(`  transcripts deleted:      ${deletedCount}`);
-  console.log(`  transcripts failed:       ${failedCount}`);
+  console.log(`  transcripts/jobs deleted:  ${deletedCount}`);
+  console.log(`  deletions failed:          ${failedCount}`);
   if (failedCount > 0) {
     process.exitCode = 1;
   }
 } else {
-  const wouldDelete = multi
-    .filter(([caseId]) => !certifiedCaseIds.has(caseId))
-    .reduce((sum, [, list]) => sum + (list.length - 1), 0);
-  console.log(`  transcripts that WOULD be deleted: ${wouldDelete}`);
+  console.log(`  transcripts/jobs that WOULD be deleted: ${wouldDelete}`);
   console.log("\nDry-run only. Re-run with --apply to perform the deletions.");
 }
 
@@ -150,7 +183,8 @@ async function childCounts(transcriptId) {
 
 // Mirrors deleteTranscriptVersion() in supabase/functions/_shared/transcriptFinalize.ts:
 // cascade delete of the transcripts row removes all child tables; the un-linked
-// transcription_jobs ledger row is removed explicitly.
+// transcription_jobs ledger row is removed explicitly (also covers failed jobs that
+// have a job row but no transcripts row).
 async function deleteTranscriptVersion(transcriptId) {
   const { error: transcriptDeleteError } = await supabase
     .from("transcripts")

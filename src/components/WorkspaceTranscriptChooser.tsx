@@ -35,9 +35,9 @@ export function WorkspaceTranscriptChooser({
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Transcript Selection</p>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">Choose which transcript to open</h1>
+          <h1 className="mt-2 text-2xl font-semibold text-slate-900">Choose which Deposition Transcript to open</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Multiple transcripts exist for this case. Select the original transcript or a retranscribed result explicitly; the Workspace will not choose one silently.
+            This case has more than one Deposition Transcript on file. The newest is the current Deposition Transcript; older copies are marked superseded. Select one to open — the Workspace will not choose silently.
           </p>
         </div>
       </div>
