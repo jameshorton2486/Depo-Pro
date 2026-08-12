@@ -12,7 +12,7 @@
  * `recover-transcript` function is a thin shell that executes the result.
  */
 
-import type { TranscriptionJobStatus } from "../transcriptionJobs";
+import type { TranscriptionJobStatus } from "../transcriptionJobs.ts";
 
 export type RecoveryDecision =
   | { kind: "recover" }

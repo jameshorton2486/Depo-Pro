@@ -1,4 +1,4 @@
-import type { CaseRecord, DeepgramKeyterm } from "../../types/case";
+import type { CaseRecord, DeepgramKeyterm } from "../../types/case.ts";
 
 const AUTO_SEED_LIMIT = 20;
 const AUTO_SEED_SOURCE = "Case Record";

@@ -1,4 +1,4 @@
-import type { FieldPolicy } from "./FieldPolicy";
+import type { FieldPolicy } from "./FieldPolicy.ts";
 
 export class DuplicateFieldPolicyError extends Error {
   constructor(policyId: string) {
