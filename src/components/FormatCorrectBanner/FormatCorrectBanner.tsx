@@ -7,28 +7,6 @@ interface FormatCorrectBannerProps {
   jobId?: string | null;
 }
 
-// The AI review runs asynchronously server-side and auto-applies its corrections
-// to the working transcript. Poll until they land (corrections appear) so the
-// reload shows the corrected text. Checks first, then waits — so a run that has
-// already completed returns immediately. Bounded; a clean run producing zero
-// corrections simply times out and reloads unchanged.
-async function waitForAiReviewApplied(
-  jobId: string,
-  { attempts = 20, intervalMs = 3000 }: { attempts?: number; intervalMs?: number } = {},
-): Promise<void> {
-  const getCorrections = (workspaceApi as { getCorrections?: (id: string) => Promise<unknown> }).getCorrections;
-  if (typeof getCorrections !== "function") return;
-  for (let i = 0; i < attempts; i += 1) {
-    try {
-      const corrections = await getCorrections(jobId);
-      if (Array.isArray(corrections) && corrections.length > 0) return;
-    } catch {
-      // transient — keep polling
-    }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-}
-
 // ADR-0016 — the single "Format and Correct Transcript" entry point.
 // A confirmed press runs the deterministic pipeline (P-A) over the reporter's
 // corrected text via save → reload, then triggers an AI review (P-B). The
@@ -65,18 +43,21 @@ export function FormatCorrectBanner({ jobId }: FormatCorrectBannerProps) {
 
       await loadDocument();
 
-      // AI review is best-effort: a failure must not undo the completed
-      // format + reload. Surface it non-fatally. The AI runs asynchronously and
+      // The AI review is invoked directly and SYNCHRONOUSLY: it runs the model,
       // auto-applies its corrections (speaker labels, punctuation, terms) to the
-      // WORKING transcript, so once it lands we reload to show the corrected text
-      // — the reporter then reviews/edits the body directly (no review panel).
+      // WORKING transcript, and only then returns. So we reload to show the
+      // corrected text, and the reporter reviews/edits the body directly (no panel).
+      // A failure is NOT swallowed — it surfaces a visible error with the real
+      // message (the format + reload above already completed and are preserved).
       if (jobId) {
         try {
           await workspaceApi.triggerAIReview(jobId);
-          await waitForAiReviewApplied(jobId);
           await loadDocument();
         } catch (aiError) {
-          console.error("[FormatCorrectBanner] AI review trigger failed", aiError);
+          const message = aiError instanceof Error ? aiError.message : String(aiError);
+          console.error("[FormatCorrectBanner] AI review failed", aiError);
+          setError(`AI review failed: ${message}`);
+          return; // keep the dialog open so the error is visible
         }
       }
 

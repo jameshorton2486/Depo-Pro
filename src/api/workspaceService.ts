@@ -871,17 +871,30 @@ export const workspaceApi = {
 
     return contractApi.acceptAllAISuggestions(jobId);
   },
+  // Invokes the ai-review Edge Function DIRECTLY and synchronously. Previously this
+  // POSTed to editor-api's /:id/ai-review route, which fire-and-forget POSTed to
+  // ai-review server-to-server — a hop that silently never landed (ai-review had 0
+  // invocations). Invoking directly (a) guarantees the function runs, (b) waits for
+  // it to finish generating + auto-applying corrections so the caller can reload and
+  // see them, and (c) surfaces the real error instead of swallowing it.
   triggerAIReview: async (jobId: string): Promise<{ status: string }> => {
     if (USE_MOCK_WORKSPACE) {
       return contractApi.triggerAIReview(jobId, { force: true });
     }
 
-    if (isRealApiMode()) {
-      const target = await requireFreshTranscript(jobId);
-      return contractApi.triggerAIReview(target.transcript_id, { force: true });
+    const transcriptId = isRealApiMode() ? (await requireFreshTranscript(jobId)).transcript_id : jobId;
+    const client = await getSupabaseClient("triggerAIReview");
+    console.info("[triggerAIReview] invoking ai-review", { transcriptId });
+    const { data, error } = await client.functions.invoke("ai-review", {
+      body: { transcript_id: transcriptId, force_rerun: true },
+    });
+    if (error) {
+      console.error("[triggerAIReview] ai-review invocation failed", { transcriptId, error });
+      throw new Error(`AI review failed: ${error.message ?? String(error)}`);
     }
-
-    return contractApi.triggerAIReview(jobId, { force: true });
+    console.info("[triggerAIReview] ai-review completed", { transcriptId, data });
+    const result = (data ?? {}) as Record<string, unknown>;
+    return { status: result.completed ? "completed" : String(result.status ?? "completed") };
   },
   getExhibits: async (jobId: string): Promise<Exhibit[]> => {
     if (USE_MOCK_WORKSPACE) {

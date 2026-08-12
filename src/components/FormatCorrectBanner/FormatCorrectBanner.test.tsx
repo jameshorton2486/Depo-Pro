@@ -151,7 +151,7 @@ describe("FormatCorrectBanner", () => {
     cleanup();
   });
 
-  it("treats a failed AI review as non-fatal (format + reload still complete)", async () => {
+  it("surfaces a visible error when the AI review fails (format + reload preserved, not swallowed)", async () => {
     triggerAIReviewMock.mockRejectedValue(new Error("bridge unset"));
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { container, cleanup } = renderBanner();
@@ -159,10 +159,14 @@ describe("FormatCorrectBanner", () => {
     act(() => {});
     await clickAsync(container, "format-correct-confirm");
 
+    // The deterministic format + reload still completed before the AI ran.
     expect(saveNowMock).toHaveBeenCalledTimes(1);
     expect(loadDocumentMock).toHaveBeenCalledTimes(1);
-    // dialog closed → the sequence completed without throwing
-    expect(container.querySelector('[data-testid="format-correct-dialog"]')).toBeNull();
+    // The failure is NOT swallowed: the dialog stays open and shows the real message.
+    const errorEl = container.querySelector('[data-testid="format-correct-error"]');
+    expect(errorEl).not.toBeNull();
+    expect(errorEl?.textContent).toContain("bridge unset");
+    expect(container.querySelector('[data-testid="format-correct-dialog"]')).not.toBeNull();
     errorSpy.mockRestore();
     cleanup();
   });
