@@ -89,3 +89,9 @@ otp_expiry = 3600
 
 [analytics]
 enabled = false
+
+# This function validates user JWTs inside the handler and validates Stripe
+# webhooks with Stripe's signing secret. Platform JWT verification must be off
+# so Stripe can reach the webhook endpoint without a Supabase bearer token.
+[functions.licensing]
+verify_jwt = false

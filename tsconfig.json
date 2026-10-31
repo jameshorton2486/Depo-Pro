@@ -41,6 +41,7 @@
     "src",
     "scripts",
     "tests",
+    "supabase/functions",
     "archive",
     "work_files",
     "lib/_future",
