@@ -6,6 +6,8 @@ export type SiteRoute =
   | "help"
   | "privacy"
   | "terms"
+  | "live"
+  | "account"
   | "workspace";
 
 const ROUTES: Readonly<Record<string, SiteRoute>> = {
@@ -16,6 +18,8 @@ const ROUTES: Readonly<Record<string, SiteRoute>> = {
   "/help": "help",
   "/privacy": "privacy",
   "/terms": "terms",
+  "/live": "live",
+  "/account": "account",
   "/app": "workspace",
 };
 

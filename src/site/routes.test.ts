@@ -10,6 +10,8 @@ describe("resolveSiteRoute", () => {
     expect(resolveSiteRoute("/help")).toBe("help");
     expect(resolveSiteRoute("/privacy")).toBe("privacy");
     expect(resolveSiteRoute("/terms")).toBe("terms");
+    expect(resolveSiteRoute("/live")).toBe("live");
+    expect(resolveSiteRoute("/account")).toBe("account");
     expect(resolveSiteRoute("/app")).toBe("workspace");
   });
 
