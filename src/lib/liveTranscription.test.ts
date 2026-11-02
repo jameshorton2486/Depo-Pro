@@ -39,7 +39,7 @@ describe("browser live transcription", () => {
   it("asks Deepgram to finalize and waits for the socket close", async () => {
     const sent: string[] = [];
     const listeners = new Map<string, () => void>();
-    const fake = { readyState: WebSocket.OPEN, send: (value: string) => sent.push(value), close: () => listeners.get("close")?.(), addEventListener: (name: string, fn: () => void) => listeners.set(name, fn) } as unknown as WebSocket;
+    const fake = { readyState: 1, send: (value: string) => sent.push(value), close: () => listeners.get("close")?.(), addEventListener: (name: string, fn: () => void) => listeners.set(name, fn) } as unknown as WebSocket;
     const pending = finalizeTranscriptionSocket(fake, 50);
     expect(sent).toEqual([JSON.stringify({ type: "CloseStream" })]);
     listeners.get("close")?.();
