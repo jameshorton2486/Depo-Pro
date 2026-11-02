@@ -5966,6 +5966,25 @@
         "DOC-0068"
       ],
       "supersedes": []
+    },
+    {
+      "id": "DOC-0315",
+      "title": "CSR Format Confirmation — Cover Note",
+      "path": "outputs/CSR_FORMAT_CONFIRMATION.md",
+      "category": "output",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "csr-format-visual-confirmation"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-11-02",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
     }
   ]
 }

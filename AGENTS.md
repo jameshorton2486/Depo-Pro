@@ -31,7 +31,7 @@ active AI transcript-editing work belongs in **`transcript_formatter/services/ti
 
 - **Runtime**: Vite + React 18 + TypeScript. No Next.js, no SSR.
 - **Styling**: Tailwind CSS only. No external component libraries, no UI theme packages.
-- **Editor core**: TipTap v2 on ProseMirror.
+- **Editor core**: TipTap v3 on ProseMirror.
 - **Audio**: wavesurfer.js v7.
 - **Real-time collaboration**: Yjs is **deferred**. Do not add it unless explicitly instructed.
 - **Audit trail v1**: Plain append-only client-side change log. No Yjs or CRDT in v1.
@@ -40,8 +40,10 @@ active AI transcript-editing work belongs in **`transcript_formatter/services/ti
 
 ## Architecture
 
-1. **Embedded widget — not a website.** The app mounts into a single DOM node identified
-   by `config.mountSelector`. No hard-coded routes. No `<BrowserRouter>`.
+1. **Website plus embeddable workspace.** The public website owns informational and
+   account routes while the deposition workspace remains available through the stable
+   `mountEditor(config)` API. Route selection stays in the website shell; the editor
+   itself must not depend on a router.
 2. **Single network module.** All `fetch()` calls live in `src/api/client.ts`. No other
    file may call `fetch()` directly.
 3. **Mocks in dev.** In `import.meta.env.DEV`, MSW intercepts all API calls and serves

@@ -1,12 +1,13 @@
 import { createRoot, type Root } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import "./index.css";
-import { DepoEditor } from "./components/DepoEditor";
 import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
 import { isMockMode, isRealApiMode } from "./lib/runtime/mode";
 import { initializeSupabaseSession, supabase } from "./lib/supabase";
 import { resolveEditorApiBaseUrl } from "./lib/runtime/editorApiUrl";
+import { SiteApp } from "./site/SiteApp";
+import { resolveSiteRoute } from "./site/routes";
 
 declare global {
   interface Window {
@@ -51,7 +52,8 @@ function buildMountedConfig(config: DepoEditorConfig, session: Session | null): 
   };
 }
 
-function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session | null) {
+async function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session | null) {
+  const { DepoEditor } = await import("./components/DepoEditor");
   const mountedConfig = buildMountedConfig(config, session);
   const el = document.querySelector(mountedConfig.mountSelector);
   if (!el) {
@@ -123,7 +125,7 @@ export async function mountEditor(config: DepoEditorConfig) {
   // Always mount in real mode without a session so AuthGate can render the
   // sign-in UI. Hard-navigating to /login?redirectTo=... loops on this SPA and
   // eventually triggers HTTP 431 (request header fields too large).
-  renderEditor(config, resolvedApiBaseUrl, session);
+  await renderEditor(config, resolvedApiBaseUrl, session);
   subscribeToAuthChanges();
 }
 
@@ -137,4 +139,18 @@ window.mountEditor = async (config: DepoEditorConfig) => {
 const cfg = window.DEPO_EDITOR_CONFIG;
 if (cfg) {
   startMocks().then(() => mountEditor(cfg));
+} else {
+  const route = resolveSiteRoute(window.location.pathname);
+  if (route === "workspace") {
+    startMocks().then(() => mountEditor({
+      apiBaseUrl: isMockMode() ? "/mock" : (import.meta.env.VITE_EDITOR_API_BASE_URL ?? ""),
+      mountSelector: "#depo-editor-root",
+      readOnly: false,
+    }));
+  } else {
+    const element = document.querySelector("#depo-editor-root");
+    if (element) {
+      createRoot(element).render(<SiteApp route={route} />);
+    }
+  }
 }
