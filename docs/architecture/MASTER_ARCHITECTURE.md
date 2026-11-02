@@ -3,6 +3,21 @@ Version 1.0 — Official System Architecture and Development Blueprint
 
 ---
 
+## 2026-11-02 Product Expansion Decision
+
+Depo-Pro is now both a public website and an authenticated deposition workspace. The
+existing seven-stage editor remains the authoritative transcript workflow and retains
+its embeddable `mountEditor(config)` entry point. Public information, pricing, checkout,
+help, privacy, and terms pages live in a separate website shell. `/app` enters the
+workspace. This decision supersedes earlier embedded-widget-only constraints without
+changing transcript data integrity, stage ownership, or API contract rules.
+
+The separate `Depo-Pro-Live` repository remains the Windows capture application. It
+shares licensing and transcription contracts with this website but is not copied into
+the web repository.
+
+---
+
 ## PURPOSE
 
 This document serves as the official architectural authority for DEPO-PRO.
