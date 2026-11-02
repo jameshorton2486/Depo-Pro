@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { browserFingerprint, licensingApi } from "../lib/licensingApi";
-import { listRecordings, persistChunk, recordingBlob } from "../lib/browserRecordingStore";
+import { listRecordings, loadLatestTranscript, persistChunk, persistTranscript, recordingBlob } from "../lib/browserRecordingStore";
 import { supabase } from "../lib/supabase";
-import { deepgramListenUrl, parseLiveTranscript, reconnectDelay } from "../lib/liveTranscription";
+import { deepgramListenUrl, finalizeTranscriptionSocket, parseLiveTranscript, reconnectDelay, waitForRecorderStop } from "../lib/liveTranscription";
+import { createCaptureIdentity, observeStorageOperation } from "../lib/liveCaptureSession";
 
 type Line = { speaker: number; text: string; final: boolean };
 
@@ -12,12 +13,12 @@ export function LiveCapturePage() {
   const [recording, setRecording] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [savedSessions, setSavedSessions] = useState<Array<{ sessionId: string; createdAt: number; chunks: number }>>([]);
-  const recorder = useRef<MediaRecorder | null>(null);
+  const localRecorder = useRef<MediaRecorder | null>(null);
+  const cloudRecorder = useRef<MediaRecorder | null>(null);
   const socket = useRef<WebSocket | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const sessionId = useRef<string>(crypto.randomUUID());
   const licenseSessionId = useRef<string | null>(null);
-  const segment = useRef(0);
   const startedAt = useRef(0);
   const heartbeat = useRef<number | null>(null);
   const recordingActive = useRef(false);
@@ -27,30 +28,54 @@ export function LiveCapturePage() {
   const cloudGeneration = useRef(0);
   const reconnectAttempt = useRef(0);
   const reconnectTimer = useRef<number | null>(null);
+  const persistence = useRef(new Set<Promise<void>>());
+  const cloudSends = useRef(new Set<Promise<void>>());
+  const storageFailed = useRef(false);
 
   useEffect(() => {
     supabase?.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)));
-    listRecordings().then(setSavedSessions).catch(() => undefined);
+    listRecordings().then(setSavedSessions).catch(() => setStatus("Saved-recording storage is unavailable in this browser."));
+    loadLatestTranscript().then(saved => saved && setLines(saved.lines)).catch(() => setStatus("Saved transcript recovery is unavailable in this browser."));
     return () => {
       if (heartbeat.current) window.clearInterval(heartbeat.current);
       if (reconnectTimer.current) window.clearTimeout(reconnectTimer.current);
     };
   }, []);
 
-  function beginRecorder(mimeType: string) {
+  function trackPersistence(operation: Promise<void>) {
+    const observed = observeStorageOperation(operation, message => {
+      storageFailed.current = true;
+      setStatus(message);
+    });
+    persistence.current.add(observed);
+    observed.catch(() => undefined).finally(() => persistence.current.delete(observed));
+  }
+
+  function beginLocalRecorder(mimeType: string) {
     if (!stream.current) return;
-    const generation = cloudGeneration.current;
-    const localSegment = segment.current++;
     let localSequence = 0;
     const next = new MediaRecorder(stream.current, { mimeType });
-    recorder.current = next;
-    next.ondataavailable = async (event) => {
+    localRecorder.current = next;
+    next.ondataavailable = (event) => {
       if (!event.data.size) return;
-      await persistChunk({ sessionId: sessionId.current, segment: localSegment, sequence: localSequence++, mimeType, createdAt: Date.now(), data: event.data });
-      if (generation !== cloudGeneration.current) return;
-      const bytes = await event.data.arrayBuffer();
-      if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(bytes);
-      else pendingCloud.current.push(bytes);
+      trackPersistence(persistChunk({ sessionId: sessionId.current, segment: 0, sequence: localSequence++, mimeType, createdAt: Date.now(), data: event.data }));
+    };
+    next.start(1000);
+  }
+
+  function beginCloudRecorder(mimeType: string) {
+    if (!stream.current) return;
+    const generation = cloudGeneration.current;
+    const next = new MediaRecorder(stream.current, { mimeType });
+    cloudRecorder.current = next;
+    next.ondataavailable = event => {
+      if (!event.data.size || generation !== cloudGeneration.current) return;
+      const operation = event.data.arrayBuffer().then(bytes => {
+        if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(bytes);
+        else pendingCloud.current.push(bytes);
+      });
+      cloudSends.current.add(operation);
+      operation.then(() => cloudSends.current.delete(operation), () => cloudSends.current.delete(operation));
     };
     next.start(1000);
   }
@@ -58,8 +83,8 @@ export function LiveCapturePage() {
   function rotateRecorderForReconnect() {
     cloudGeneration.current += 1;
     pendingCloud.current = [];
-    if (recorder.current?.state !== "inactive") recorder.current?.stop();
-    beginRecorder(mimeTypeRef.current);
+    if (cloudRecorder.current?.state !== "inactive") cloudRecorder.current?.stop();
+    beginCloudRecorder(mimeTypeRef.current);
   }
 
   function scheduleReconnect() {
@@ -94,9 +119,13 @@ export function LiveCapturePage() {
       setStatus("Local recording protected. Cloud transcription connected.");
     };
     ws.onmessage = (event) => {
-      const line = parseLiveTranscript(String(event.data));
-      if (!line) return;
-      setLines(previous => line.final ? [...previous.filter(existing => existing.final), line] : [...previous.filter(existing => existing.final), line]);
+      const incoming = parseLiveTranscript(String(event.data));
+      if (!incoming.length) return;
+      setLines(previous => {
+        const next = incoming[0]?.final ? [...previous.filter(existing => existing.final), ...incoming] : [...previous.filter(existing => existing.final), ...incoming];
+        if (incoming[0]?.final) trackPersistence(persistTranscript(sessionId.current, next.filter(line => line.final)));
+        return next;
+      });
     };
     ws.onerror = () => ws.close();
     ws.onclose = () => {
@@ -115,13 +144,19 @@ export function LiveCapturePage() {
       stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/webm";
       mimeTypeRef.current = mimeType;
-      sessionId.current = crypto.randomUUID();
-      segment.current = 0;
+      const identity = createCaptureIdentity();
+      sessionId.current = identity.recordingSessionId;
+      licenseSessionId.current = identity.licensingSessionId;
+      setLines(identity.lines);
       cloudGeneration.current = 0;
       pendingCloud.current = [];
+      persistence.current = new Set();
+      cloudSends.current = new Set();
+      storageFailed.current = false;
       stopping.current = false;
       recordingActive.current = true;
-      beginRecorder(mimeType);
+      beginLocalRecorder(mimeType);
+      if (signedIn) beginCloudRecorder(mimeType);
       startedAt.current = Date.now();
       setRecording(true);
       setStatus(signedIn ? "Recording locally; connecting cloud transcription…" : "Recording locally. Sign in to add cloud transcription.");
@@ -132,7 +167,7 @@ export function LiveCapturePage() {
         });
       }
     } catch (error) {
-      setStatus(`Cloud transcription unavailable. No audio was lost before this point. ${error instanceof Error ? error.message : ""}`);
+      setStatus(`Recording could not start. ${error instanceof Error ? error.message : "Microphone access failed."}`);
       stream.current?.getTracks().forEach(track => track.stop());
     }
   }
@@ -141,16 +176,22 @@ export function LiveCapturePage() {
     stopping.current = true;
     recordingActive.current = false;
     if (reconnectTimer.current) window.clearTimeout(reconnectTimer.current);
-    recorder.current?.stop();
+    await Promise.all([localRecorder.current && waitForRecorderStop(localRecorder.current), cloudRecorder.current && waitForRecorderStop(cloudRecorder.current)].filter(Boolean));
+    await Promise.allSettled([...persistence.current]);
+    await Promise.allSettled([...cloudSends.current]);
+    await finalizeTranscriptionSocket(socket.current);
+    await Promise.allSettled([...persistence.current]);
     stream.current?.getTracks().forEach(track => track.stop());
-    if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify({ type: "CloseStream" }));
-    socket.current?.close();
     if (heartbeat.current) window.clearInterval(heartbeat.current);
     const seconds = (Date.now() - startedAt.current) / 1000;
     if (licenseSessionId.current) await licensingApi.close(licenseSessionId.current, seconds).catch(() => undefined);
     setRecording(false);
     setSavedSessions(await listRecordings().catch(() => []));
-    setStatus("Recording stopped. Audio remains saved in this browser until you download or import it.");
+    licenseSessionId.current = null;
+    socket.current = null;
+    localRecorder.current = null;
+    cloudRecorder.current = null;
+    setStatus(storageFailed.current ? "Recording stopped, but browser storage reported a failure. Download and verify the available audio before closing this page." : "Recording stopped. Audio and final transcript remain saved in this browser until you download or import them.");
     stopping.current = false;
   }
 
