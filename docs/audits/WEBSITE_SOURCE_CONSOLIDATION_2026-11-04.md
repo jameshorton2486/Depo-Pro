@@ -1,5 +1,22 @@
 # Website source consolidation audit — 2026-11-04
 
+---
+authority_tier: T5
+status: ACTIVE
+owner: Architecture
+scope: website-source-consolidation
+supersedes: null
+superseded_by: null
+approved_by: null
+version: null
+effective_date: 2026-11-04
+ratified_date: null
+last_reviewed: 2026-11-04
+next_review: 2027-11-04
+ratification: NOT_REQUIRED
+implementation_status: PARTIAL
+---
+
 ## Repository boundary
 
 - `jameshorton2486/Depo-Pro` owns the combined public website and browser workspace.

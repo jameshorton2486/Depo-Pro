@@ -6234,6 +6234,44 @@
       "supersedes": []
     },
     {
+      "id": "DOC-0330",
+      "title": "Website source consolidation audit — 2026-11-04",
+      "path": "docs/audits/WEBSITE_SOURCE_CONSOLIDATION_2026-11-04.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "website-source-consolidation"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-11-04",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0331",
+      "title": "CSR Format Confirmation — Cover Note",
+      "path": "outputs/CSR_FORMAT_CONFIRMATION.md",
+      "category": "reports",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "csr-format-confirmation-sample"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-07-20",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
       "id": "DOC-0323",
       "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
       "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",

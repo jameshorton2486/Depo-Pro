@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
+  "source_sha256": "adbb8b7f7b3818a5477301fb13ced87f94b5a32ab7d74c5dc84bc26ce0d2f337",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4941,6 +4941,36 @@
       "last_reviewed": null
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0330",
+      "title": "Website source consolidation audit — 2026-11-04",
+      "path": "docs/audits/WEBSITE_SOURCE_CONSOLIDATION_2026-11-04.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "website-source-consolidation"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-11-04"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0331",
+      "title": "CSR Format Confirmation — Cover Note",
+      "path": "outputs/CSR_FORMAT_CONFIRMATION.md",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "csr-format-confirmation-sample"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-07-20"
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -6585,6 +6615,16 @@
     {
       "type": "GOVERNANCE",
       "source": "DOC-0329",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0330",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0331",
       "target": "DOC-0071"
     },
     {
@@ -8608,6 +8648,11 @@
       "target": "DOC-0232"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0330",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -8676,6 +8721,11 @@
       "type": "REVIEW",
       "source": "DOC-0323",
       "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0330",
+      "target": "DOC-0071"
     },
     {
       "type": "OWNERSHIP",
@@ -10321,6 +10371,16 @@
       "type": "OWNERSHIP",
       "source": "DOC-0329",
       "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0330",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0331",
+      "target": "OWNER:Rendering"
     }
   ],
   "owners": {
@@ -10641,7 +10701,8 @@
       "DOC-0326",
       "DOC-0327",
       "DOC-0328",
-      "DOC-0329"
+      "DOC-0329",
+      "DOC-0330"
     ],
     "Deepgram": [
       "DOC-0069"
@@ -10658,7 +10719,8 @@
       "DOC-0003",
       "DOC-0021",
       "DOC-0314",
-      "DOC-0322"
+      "DOC-0322",
+      "DOC-0331"
     ],
     "Transcript": [
       "DOC-0040"

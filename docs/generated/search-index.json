@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "eed63c1fec0b8597d238c6a1c63181d16065bb4b66b0960430e7dbe80709dfe9",
-  "graph_sha256": "f2780d99ab1b8b58bd2cb92ccaad450498ce8a5f9b134ca0fcdaeb90d2952f39",
-  "document_count": 329,
+  "manifest_sha256": "adbb8b7f7b3818a5477301fb13ced87f94b5a32ab7d74c5dc84bc26ce0d2f337",
+  "graph_sha256": "75db087317938e19ac6568cc8a5eca3b926b96117188e2fab1ef5ce10166d476",
+  "document_count": 331,
   "documents": [
     {
       "id": "DOC-0001",
@@ -7656,14 +7656,17 @@
       "tier": "T1",
       "status": "ACTIVE",
       "keywords": [
+        "2026-11-04",
         "architecture",
         "certification",
         "components",
         "creation",
+        "decision",
         "depo-pro",
         "development",
         "exhibits",
         "existing",
+        "expansion",
         "export",
         "human",
         "immediate",
@@ -7677,6 +7680,7 @@
         "philosophy",
         "policy",
         "priorities",
+        "product",
         "product-system-architecture",
         "project",
         "purpose",
@@ -7693,6 +7697,10 @@
         {
           "level": 1,
           "text": "DEPO-PRO MASTER ARCHITECTURE DOCUMENT"
+        },
+        {
+          "level": 2,
+          "text": "2026-11-04 Product Expansion Decision"
         },
         {
           "level": 2,
@@ -34137,6 +34145,145 @@
         {
           "level": 2,
           "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0330",
+      "title": "Website source consolidation audit — 2026-11-04",
+      "path": "docs/audits/WEBSITE_SOURCE_CONSOLIDATION_2026-11-04.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-11-04",
+        "ancestry",
+        "architecture",
+        "audit",
+        "audits",
+        "boundary",
+        "branch",
+        "consolidated",
+        "consolidation",
+        "depo-pro-website",
+        "frozen",
+        "integration",
+        "missing",
+        "remaining",
+        "repository",
+        "revision",
+        "source",
+        "still",
+        "unified",
+        "verification",
+        "web-platform",
+        "website",
+        "website-source-consolidation",
+        "work"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Website source consolidation audit — 2026-11-04"
+        },
+        {
+          "level": 2,
+          "text": "Repository boundary"
+        },
+        {
+          "level": 2,
+          "text": "Integration ancestry"
+        },
+        {
+          "level": 2,
+          "text": "Source A: unified web-platform branch"
+        },
+        {
+          "level": 2,
+          "text": "Source B: frozen `depo-pro-website` Revision 5"
+        },
+        {
+          "level": 2,
+          "text": "Still missing from the consolidated branch"
+        },
+        {
+          "level": 2,
+          "text": "Verification boundary"
+        },
+        {
+          "level": 2,
+          "text": "Remaining work"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0331",
+      "title": "CSR Format Confirmation — Cover Note",
+      "path": "outputs/CSR_FORMAT_CONFIRMATION.md",
+      "category": "reports",
+      "owner": "Rendering",
+      "authority": false,
+      "tier": "T6",
+      "status": "ACTIVE",
+      "keywords": [
+        "applies",
+        "can",
+        "colloquy",
+        "confirm",
+        "confirmation",
+        "cover",
+        "csr",
+        "csr-format-confirmation-sample",
+        "defects",
+        "disclosed",
+        "don",
+        "format",
+        "known",
+        "label",
+        "note",
+        "one",
+        "only",
+        "please",
+        "points",
+        "rendering",
+        "reports",
+        "sample",
+        "seven",
+        "sits",
+        "step",
+        "them",
+        "time",
+        "waste",
+        "what",
+        "where",
+        "you"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "CSR Format Confirmation — Cover Note"
+        },
+        {
+          "level": 2,
+          "text": "What the sample applies"
+        },
+        {
+          "level": 2,
+          "text": "Where the colloquy label sits (F1)"
+        },
+        {
+          "level": 2,
+          "text": "Please confirm (seven points)"
+        },
+        {
+          "level": 2,
+          "text": "Known defects disclosed (so you don't waste time on them)"
+        },
+        {
+          "level": 2,
+          "text": "One step only you can do"
         }
       ]
     }

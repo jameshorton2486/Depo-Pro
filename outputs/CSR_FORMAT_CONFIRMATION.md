@@ -1,5 +1,22 @@
 # CSR Format Confirmation — Cover Note
 
+---
+authority_tier: T6
+status: ACTIVE
+owner: Rendering
+scope: csr-format-confirmation-sample
+supersedes: null
+superseded_by: null
+approved_by: null
+version: null
+effective_date: 2026-07-20
+ratified_date: null
+last_reviewed: 2026-07-20
+next_review: null
+ratification: NOT_REQUIRED
+implementation_status: VERIFIED
+---
+
 **For:** Miah (Certified Shorthand Reporter), format authority
 **Sample:** `outputs/csr_format_sample.docx`
 **Purpose:** This document renders the **already-ratified** format so you can confirm it *looks* right on a real page. It is a visual confirmation of decisions already made in `docs/architecture/RATIFIED_DECISIONS.md` — it is **not** asking you to re-decide anything.
