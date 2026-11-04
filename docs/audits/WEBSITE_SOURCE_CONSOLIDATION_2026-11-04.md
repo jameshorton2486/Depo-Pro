@@ -94,10 +94,24 @@ These are content/design decisions, not blockers to preserving the functional we
 - Browser recovery tests cover final-chunk persistence, continuous reconstruction, consecutive-session isolation, newest-transcript recovery, storage-failure warnings, recorder finalization, cloud reconnect backoff, and audio-derived speaker turns.
 - Focused website/recovery tests, the complete test suite, TypeScript checking, and the production build passed before the draft PR.
 
+### Hosted CI result
+
+GitHub Actions run `41927096075`, job `126914211731`, passed on the draft branch at `1742325a`. That hosted Ubuntu CI job completed these repository gates: dependency installation, documentation validation, TypeScript checking, Deno type-checking of Edge Functions, ESLint, the Vitest suite (1,071 tests), and the Vite production build.
+
+This was hosted **build and automated-test verification**, not hosted application end-to-end verification. No deployed website endpoint was exercised by that workflow. The route and internal-link checks above ran against a local application instance, not a hosted preview or production deployment.
+
+The following release checks remain unresolved and were not represented by the passing GitHub Actions result:
+
+- real-browser microphone permission, MediaRecorder capture, and live WebSocket transcription against a disposable authorized account;
+- a Stripe test-mode payment failure followed by successful entitlement restoration/recovery;
+- installation, capture, export, and web-workspace import using a packaged Windows build of Depo-Pro-Live;
+- deployed preview endpoint and browser navigation checks in a disposable Supabase/Stripe test environment.
+
 ## Remaining work
 
 - Review the five optional Revision 5 content/design decisions listed above.
-- Configure and test a disposable Supabase/Stripe test environment before hosted E2E verification.
+- Configure and test a disposable Supabase/Stripe test environment, including deployed endpoint checks, real-browser microphone/WebSocket capture, and Stripe test-payment failure/restoration, before hosted E2E verification is considered complete.
+- Test a packaged Windows build through capture, export, and manual import into the browser workspace.
 - Complete legal/privacy review before publishing operative policies.
 - Review the inherited 81-commit development line separately from website commit `dd09171c`.
 - Resolve the existing architecture-rule exception in `src/lib/licensingApi.ts`, which currently performs licensing fetches outside `src/api/client.ts`, before final merge if strict single-network-module enforcement is required.

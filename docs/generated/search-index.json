@@ -34169,10 +34169,12 @@
         "consolidation",
         "depo-pro-website",
         "frozen",
+        "hosted",
         "integration",
         "missing",
         "remaining",
         "repository",
+        "result",
         "revision",
         "source",
         "still",
@@ -34211,6 +34213,10 @@
         {
           "level": 2,
           "text": "Verification boundary"
+        },
+        {
+          "level": 3,
+          "text": "Hosted CI result"
         },
         {
           "level": 2,
