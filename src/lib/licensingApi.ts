@@ -10,7 +10,8 @@ export type Entitlement = {
 };
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const { data } = await supabase!.auth.getSession();
+  if (!supabase) throw new Error("Account services are unavailable in this environment.");
+  const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Sign in before using cloud transcription.");
   const response = await fetch(`${functionUrl}${path}`, {
