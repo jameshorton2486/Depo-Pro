@@ -50,6 +50,22 @@ describe("correctionObject validator", () => {
     expect(collectCorrectionErrors(c).some((e) => e.includes("requires both 'before' and 'after'"))).toBe(true);
   });
 
+  it("accepts a punctuation_edit that only adds punctuation/casing (fillers preserved)", () => {
+    const c = validTextCorrection();
+    c.change = { type: "punctuation_edit", before: "no um i did not you know", after: "No, um, I did not, you know." };
+    c.reason = "Sentence boundaries and capitalization restored; fillers 'um' and 'you know' preserved verbatim.";
+    c.reason_kind = "rule_pattern";
+    expect(collectCorrectionErrors(c)).toEqual([]);
+  });
+
+  it("REJECTS a punctuation_edit that drops a filler word (verbatim guard)", () => {
+    const c = validTextCorrection();
+    c.change = { type: "punctuation_edit", before: "no um i did not you know", after: "No, I did not." };
+    c.reason = "This would silently strip the fillers 'um' and 'you know' from testimony.";
+    c.reason_kind = "rule_pattern";
+    expect(collectCorrectionErrors(c).some((e) => e.includes("altered word tokens"))).toBe(true);
+  });
+
   it("rejects a structural correction carrying before/after", () => {
     const c = validStructuralCorrection();
     (c.change as Record<string, unknown>).before = "x";

@@ -10,7 +10,7 @@ import { assertCaseAudioIntegrity } from "../../../src/lib/keyterms/caseAudioInt
 import { buildAutoSeedKeytermPlan } from "../../../src/lib/keyterms/autoSeedKeyterms.ts";
 import { normalizeCaseRecord } from "../../../src/lib/normalizeCaseRecord.ts";
 import {
-  AUTO_CHUNK_THRESHOLD_SECONDS,
+  shouldAutoChunk,
   buildAutoChunkManifest,
   type AutoChunkRequestMetadata,
   type SequentialTranscriptSource,
@@ -152,6 +152,14 @@ Deno.serve(async (request) => {
       return respondError(409, "active transcription job already exists for this case", corsHeaders);
     }
 
+    // Retranscription replaces the case's transcript, but a certified transcript
+    // is a locked official record. Block the overwrite at the source so a bypassed
+    // UI can never discard a certified transcript (the finalize prune also skips
+    // certified transcripts defensively).
+    if (sourceTranscriptId && await isCaseCertificationLocked(supabase, caseId)) {
+      return respondError(409, "case is certified; decertify before retranscribing", corsHeaders);
+    }
+
     const caseRow = await requireCase(supabase, caseId);
     const audioRows = await requireOrderedAudio(supabase, caseId);
     const firstAudio = audioRows[0];
@@ -222,7 +230,7 @@ Deno.serve(async (request) => {
 
     const callbackUrl = buildCallbackUrl(createdJob.id, callbackToken);
 
-    const requestPath = firstAudio.duration_seconds > AUTO_CHUNK_THRESHOLD_SECONDS
+    const requestPath = shouldAutoChunk(firstAudio.duration_seconds)
       ? await submitAutoChunkedJob({
           supabase,
           job: createdJob,
@@ -348,6 +356,23 @@ async function requireTranscriptForCase(
   }
 
   return data as TranscriptRow;
+}
+
+async function isCaseCertificationLocked(
+  supabase: SupabaseClient<Database>,
+  caseId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("case_certifications")
+    .select("certification_date")
+    .eq("case_id", caseId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean((data as { certification_date?: string | null } | null)?.certification_date);
 }
 
 async function findActiveJob(

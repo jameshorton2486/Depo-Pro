@@ -1,7 +1,7 @@
+import { AUTO_CHUNKING_ENABLED, AUTO_CHUNK_THRESHOLD_SECONDS } from "./autoChunking.ts";
 import type { MergedSourceSegment } from "./multifileMerge.ts";
 import type { NormalizedTranscriptData } from "./normalize.ts";
 
-const DEFAULT_AUTO_CHUNK_THRESHOLD_SECONDS = 4500;
 const DUPLICATE_SPAN_MIN_TOKENS = 8;
 const DUPLICATE_SPAN_SIMILARITY_THRESHOLD = 0.7;
 const TIMING_TOLERANCE_SECONDS = 0.05;
@@ -34,10 +34,16 @@ function computeTokenOverlap(left: string[], right: string[]): number {
 
 export function auditCanonicalTranscript(input: {
   normalized: NormalizedTranscriptData;
+  autoChunkingEnabled?: boolean;
   segments?: MergedSourceSegment[];
   autoChunkThresholdSeconds?: number;
 }): CanonicalIntegrityResult {
-  const { normalized, segments = [], autoChunkThresholdSeconds = DEFAULT_AUTO_CHUNK_THRESHOLD_SECONDS } = input;
+  const {
+    normalized,
+    segments = [],
+    autoChunkingEnabled = AUTO_CHUNKING_ENABLED,
+    autoChunkThresholdSeconds = AUTO_CHUNK_THRESHOLD_SECONDS,
+  } = input;
   const failures: string[] = [];
   const warnings: string[] = [];
   const wordsByUtterance = new Map<string, typeof normalized.words>();
@@ -199,7 +205,10 @@ export function auditCanonicalTranscript(input: {
   }
 
   const totalDurationSeconds = segments.reduce((max, segment) => Math.max(max, segment.start_offset_seconds + segment.duration_seconds), 0);
-  if (segments.length === 1 && totalDurationSeconds > autoChunkThresholdSeconds) {
+  const exceededAutoChunkThreshold = autoChunkingEnabled
+    && segments.length === 1
+    && totalDurationSeconds > autoChunkThresholdSeconds;
+  if (exceededAutoChunkThreshold) {
     warnings.push(
       `Single-source finalize exceeded auto-chunk threshold (${totalDurationSeconds.toFixed(1)}s > ${autoChunkThresholdSeconds}s).`,
     );
@@ -214,7 +223,7 @@ export function auditCanonicalTranscript(input: {
       word_count: normalized.words.length,
       segment_count: segments.length,
       total_duration_seconds: totalDurationSeconds,
-      exceeded_auto_chunk_threshold: segments.length === 1 && totalDurationSeconds > autoChunkThresholdSeconds,
+      exceeded_auto_chunk_threshold: exceededAutoChunkThreshold,
     },
   };
 }

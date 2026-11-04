@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   AUTO_CHUNK_THRESHOLD_SECONDS,
+  AUTO_CHUNKING_ENABLED,
   buildAutoChunkManifest,
   CHUNK_OVERLAP_SECONDS,
   manifestToSequentialSources,
   TARGET_CHUNK_DURATION_SECONDS,
+  shouldAutoChunk,
 } from "./autoChunking";
 
 describe("autoChunking", () => {
@@ -17,8 +19,16 @@ describe("autoChunking", () => {
     media_url: null,
   };
 
-  it("does not require chunking below the threshold", () => {
-    expect(4000).toBeLessThan(AUTO_CHUNK_THRESHOLD_SECONDS);
+  it("keeps production auto-chunking disabled for every duration", () => {
+    expect(AUTO_CHUNKING_ENABLED).toBe(false);
+    expect(shouldAutoChunk(4000)).toBe(false);
+    expect(shouldAutoChunk(4501)).toBe(false);
+    expect(shouldAutoChunk(Number.MAX_SAFE_INTEGER)).toBe(false);
+  });
+
+  it("preserves threshold routing for explicit non-production opt-in", () => {
+    expect(shouldAutoChunk(4500, true)).toBe(false);
+    expect(shouldAutoChunk(4501, true)).toBe(true);
   });
 
   it("builds the expected 3-chunk manifest for an 8838 second file", () => {
@@ -52,13 +62,10 @@ describe("autoChunking", () => {
     });
   });
 
-  // Tier 2 edge case — audio length routing. transcribe-start chunks only when
-  // duration_seconds > AUTO_CHUNK_THRESHOLD_SECONDS (strict). So a <30s clip and
-  // a 30-minute file are BOTH single physical sources, not chunked.
-  it("keeps short and 30-minute audio below the chunking threshold", () => {
+  it("retains the characterized chunking threshold", () => {
     expect(AUTO_CHUNK_THRESHOLD_SECONDS).toBe(4500);
-    expect(25).toBeLessThan(AUTO_CHUNK_THRESHOLD_SECONDS); // <30s clip
-    expect(1800).toBeLessThan(AUTO_CHUNK_THRESHOLD_SECONDS); // 30 minutes
+    expect(25).toBeLessThan(AUTO_CHUNK_THRESHOLD_SECONDS);
+    expect(1800).toBeLessThan(AUTO_CHUNK_THRESHOLD_SECONDS);
   });
 
   // Tier 2 edge case — very long audio, boundary of the chunker.

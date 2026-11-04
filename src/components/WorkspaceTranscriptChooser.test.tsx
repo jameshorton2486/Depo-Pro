@@ -128,8 +128,8 @@ describe("WorkspaceTranscriptChooser", () => {
 
     expect(isValidElement(tree)).toBe(true);
     expect(findByTestId(tree, "workspace-transcript-chooser")).toBeTruthy();
-    expect(collectText(tree)).toContain("Original");
-    expect(collectText(tree)).toContain("Retranscription 1");
+    expect(collectText(tree)).toContain("Deposition Transcript");
+    expect(collectText(tree)).toContain("Deposition Transcript (superseded)");
     expect(collectText(tree)).toContain("Complete");
 
     (findByTestId(tree, "workspace-transcript-option-tr_rerun").props.onClick as (() => void) | undefined)?.();

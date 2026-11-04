@@ -17,8 +17,7 @@ import { useEditorContext } from "../../context/EditorContext";
 import { useIntake } from "../../context/useIntake";
 import { createConfidencePlugin } from "../../extensions/ConfidencePlugin";
 import { createSuggestionPlugin } from "../../extensions/SuggestionPlugin";
-import { StructureReviewBanner } from "../StructureReviewBanner/StructureReviewBanner";
-import { AIReviewBanner } from "../AIReviewBanner/AIReviewBanner";
+import { FormatCorrectBanner } from "../FormatCorrectBanner/FormatCorrectBanner";
 import { UtteranceContextMenu } from "../UtteranceContextMenu/UtteranceContextMenu";
 import { TranscriptProcessingMenu } from "./TranscriptProcessingMenu";
 import { CanonicalBaselineView } from "./CanonicalBaselineView";
@@ -107,7 +106,7 @@ export function diffUtteranceTextSnapshots(
 }
 
 export function TranscriptEditor({ readOnly }: Props) {
-  const { state, editUtterance, setActive, confirmStructure, keepRawLabels } = useDocument();
+  const { state, editUtterance, setActive } = useDocument();
   const audio = useAudio();
   const { setEditor, showInterpreterLayer, languageMap } = useEditorContext();
   const { record } = useIntake();
@@ -147,38 +146,19 @@ export function TranscriptEditor({ readOnly }: Props) {
       structureConfirmed: state.structureConfirmed,
       keepRawLabels: state.keepRawLabels,
       record,
+      // DOC-0325 Step 1: reviewed structural corrections + the session projection
+      // gate. Flag off → deriveWorkingTranscript is a no-op and corrections is [],
+      // so this is byte-identical to the pre-Step-1 render.
+      corrections: state.corrections,
+      persistedLineTypeEnabled: state.persistedLineTypeEnabled,
     }) : null),
-    [languageMap, record, state.document, state.keepRawLabels, state.structureConfirmed]
+    [languageMap, record, state.document, state.keepRawLabels, state.structureConfirmed, state.corrections, state.persistedLineTypeEnabled]
   );
 
   const wordTimings = useMemo(
     () => buildWordTimings(state.document),
     [state.document]
   );
-  const aiReviewBannerState = useMemo(() => {
-    const words = (state.document?.words ?? []) as Array<{
-      ai_suggestion?: string | null;
-      ai_suggestion_status?: string | null;
-      text: string;
-      raw_text: string;
-    }>;
-
-    return words.reduce(
-      (totals, word) => {
-        if (!word.ai_suggestion) {
-          return totals;
-        }
-        if (word.ai_suggestion_status === "pending") {
-          totals.pendingCount += 1;
-        } else if (word.ai_suggestion_status === "accepted" && word.text !== word.raw_text) {
-          totals.autoAppliedCount += 1;
-        }
-        return totals;
-      },
-      { pendingCount: 0, autoAppliedCount: 0 },
-    );
-  }, [state.document]);
-
   const editor = useEditor({
     extensions: EXTENSIONS,
     editable: !readOnly,
@@ -414,18 +394,12 @@ export function TranscriptEditor({ readOnly }: Props) {
       className="flex-1 min-h-0 overflow-y-auto transcript-scroll bg-transcript-bg"
       data-show-interpreter={showInterpreterLayer ? "true" : "false"}
     >
-      {!isCanonical && !state.structureConfirmed && (
-        <StructureReviewBanner
-          onConfirm={confirmStructure}
-          onDismiss={keepRawLabels}
-        />
-      )}
+      {/* Single AI trigger: "Format and Correct Transcript" is the one entry point
+          — it invokes ai-review and auto-applies corrections. The former
+          "Run AI Review" card (AIReviewBanner) was a redundant second trigger to the
+          same path and has been removed. Results render in the right-rail tabs. */}
       {!isCanonical && (
-        <AIReviewBanner
-          jobId={state.document?.job_id ?? state.jobId}
-          pendingCount={aiReviewBannerState.pendingCount}
-          autoAppliedCount={aiReviewBannerState.autoAppliedCount}
-        />
+        <FormatCorrectBanner jobId={state.document?.job_id ?? state.jobId} />
       )}
       <div className="sticky top-0 z-20 flex items-center justify-end border-b border-slate-100 bg-transcript-bg/80 px-6 py-2 backdrop-blur">
         <TranscriptProcessingMenu document={state.document} />

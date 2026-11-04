@@ -16,13 +16,19 @@ export function sortTranscriptsByCreatedAt<T extends TranscriptVersionLike>(tran
   });
 }
 
+// A case has a single canonical "Deposition Transcript". When more than one
+// transcript still exists (e.g. before superseded copies are pruned), the newest
+// is the canonical Deposition Transcript and older copies are marked superseded so
+// they remain distinguishable in the chooser until cleaned up.
 export function buildTranscriptVersionLabels<T extends TranscriptVersionLike>(transcripts: readonly T[]): Map<string, string> {
   const labels = new Map<string, string>();
+  const ordered = sortTranscriptsByCreatedAt(transcripts);
 
-  sortTranscriptsByCreatedAt(transcripts).forEach((transcript, index) => {
+  ordered.forEach((transcript, index) => {
+    const isCanonical = index === ordered.length - 1;
     labels.set(
       transcript.transcript_id,
-      index === 0 ? "Original" : `Retranscription ${index}`,
+      isCanonical ? "Deposition Transcript" : "Deposition Transcript (superseded)",
     );
   });
 
@@ -33,7 +39,7 @@ export function getTranscriptVersionLabel<T extends TranscriptVersionLike>(
   transcripts: readonly T[],
   transcriptId: string,
 ): string {
-  return buildTranscriptVersionLabels(transcripts).get(transcriptId) ?? "Transcript";
+  return buildTranscriptVersionLabels(transcripts).get(transcriptId) ?? "Deposition Transcript";
 }
 
 export function formatTranscriptStatus(status: string): string {

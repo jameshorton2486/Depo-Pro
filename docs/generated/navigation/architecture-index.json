@@ -2,11 +2,11 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
-  "graph_sha256": "91708ae15ea97861b00c10f99b97ddd5800bd39f4f92e2717b8a0424f70a12c3",
+  "manifest_sha256": "adbb8b7f7b3818a5477301fb13ced87f94b5a32ab7d74c5dc84bc26ce0d2f337",
+  "graph_sha256": "75db087317938e19ac6568cc8a5eca3b926b96117188e2fab1ef5ce10166d476",
   "name": "architecture",
   "title": "Architecture",
-  "document_count": 47,
+  "document_count": 51,
   "documents": [
     {
       "id": "DOC-0051",
@@ -429,6 +429,42 @@
       "tier": "T4",
       "status": "ACTIVE",
       "owner": "Rendering",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0315",
+      "title": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)",
+      "path": "docs/architecture/adr/ADR-0016-format-and-correct-transcript-button.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0316",
+      "title": "Depo-Pro Target Simplified Architecture",
+      "path": "docs/architecture/TARGET_SIMPLIFIED_ARCHITECTURE.md",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0322",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)",
+      "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
+      "tier": "T4",
+      "status": "DRAFT",
+      "owner": "Rendering",
+      "authoritative": false
+    },
+    {
+      "id": "DOC-0323",
+      "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
+      "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
       "authoritative": false
     }
   ]

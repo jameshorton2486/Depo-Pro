@@ -19,3 +19,5 @@ verify_jwt = true
 
 [functions.export-adapter-relay]
 verify_jwt = false
+[functions.licensing]
+verify_jwt = false

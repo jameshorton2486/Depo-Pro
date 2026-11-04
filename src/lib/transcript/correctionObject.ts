@@ -1,10 +1,15 @@
 // TypeScript side of the CorrectionObject contract (ATIA §4.8, D8.1).
 //
-// The JSON Schema at transcript_formatter/schema/correction_object.schema.json is
-// the single source of truth. This module mirrors it for the frontend + the
-// ai-review Edge Function; the Python service mirrors the same schema in
-// services/tie/correction_object.py. Keep the three in sync — the per-type rules
-// below are the schema's change.allOf branches.
+// Contract of record: the co-located JSON Schema
+// src/lib/transcript/correction_object.schema.json (surviving governed home,
+// relocated from the retiring Python transcript_formatter/schema/ per DOC-0327).
+// This module is the SURVIVING PRODUCTION AUTHORITY — the only CorrectionObject
+// definition on a live path (frontend + ai-review Edge Function). The schema is
+// kept in lockstep by a drift test (correctionObjectSchema.test.ts) that fails if
+// the enums/required diverge, so the two are mechanically synchronized rather than
+// independently authored. The Python validator (services/tie/correction_object.py)
+// derives from the same schema and retires with transcript_formatter/.
+// The per-type rules below are the schema's change.allOf branches.
 //
 // A CorrectionObject is one proposed change against the immutable Deepgram
 // baseline: produced by an AI (bridge/specialty) prompt or a deterministic rule,
@@ -26,8 +31,25 @@ export type CorrectionSpecialty =
 export type CorrectionChangeType =
   | "proper_name_correction"
   | "medical_term_correction"
+  // Punctuation + capitalization restored on a word span. A TEXT change:
+  // before = the raw verbatim span, after = the same tokens with punctuation and
+  // capitalization only. The spoken WORDS are immutable — `after` must contain the
+  // identical word tokens as `before`; only punctuation/casing differ. Applied to
+  // the working layer (working_text); raw_text is never touched.
+  | "punctuation_edit"
   | "speaker_reassignment"
   | "qa_split"
+  // A paragraph boundary that is NOT a Q/A flip: a topic/exhibit/on-off-record
+  // shift, or a long-answer break. Structural — carries the split point, no words
+  // change. structural_change: {split_after_word_id, reason_detail?}.
+  | "paragraph_split"
+  // Structural EXTRACTION of an embedded objection into its own unit (DOC-0325
+  // Wave 4 / Decision B). Deliberately SEPARATE from objection_attribution: this
+  // type owns only the split boundary (the objection word span); attribution
+  // (which attorney objected) is a distinct concern that may be resolved or left
+  // unidentified. structural_change: {objection_start_word_id, objection_end_word_id,
+  // objector_speaker_id?}. Never carries a fabricated speaker.
+  | "objection_split"
   | "objection_attribution"
   | "examination_section_change"
   | "off_record_boundary_mark"
@@ -52,11 +74,14 @@ export type ProvenanceSource = "ai" | "deterministic" | "reporter";
 export const TEXT_CHANGE_TYPES: ReadonlySet<CorrectionChangeType> = new Set([
   "proper_name_correction",
   "medical_term_correction",
+  "punctuation_edit",
   "contextual_number_flag",
 ]);
 export const STRUCTURAL_CHANGE_TYPES: ReadonlySet<CorrectionChangeType> = new Set([
   "speaker_reassignment",
   "qa_split",
+  "paragraph_split",
+  "objection_split",
   "objection_attribution",
   "examination_section_change",
   "off_record_boundary_mark",
@@ -94,6 +119,31 @@ export interface CorrectionReview {
   final_value?: Record<string, unknown> | null;
 }
 
+export type SupportingEvidenceKind =
+  | "registry_entry"
+  | "deepgram_confidence"
+  | "prior_transcript_correction"
+  | "glossary_entry"
+  | "speaker_pattern_match"
+  | "phonetic_similarity_score";
+
+export interface CorrectionSupportingEvidence {
+  kind: SupportingEvidenceKind;
+  id?: string;
+  value?: string | number;
+  case_id?: string;
+}
+
+export interface CorrectionDownstream {
+  applied_to_working_transcript?: boolean;
+  applied_at?: string | null;
+  reverted_at?: string | null;
+  // Set when review.state is accepted/edited but applied_to_working_transcript is
+  // false: accepted, apply deferred (e.g. qa_split awaiting the structural apply
+  // engine). Workspace shows "accepted — apply pending" rather than a silent no-op.
+  pending_reason?: string | null;
+}
+
 export interface CorrectionObject {
   id: string;
   transcript_id: string;
@@ -107,13 +157,9 @@ export interface CorrectionObject {
   confidence: number;
   confidence_source?: string;
   provenance: CorrectionProvenance;
-  supporting_evidence?: unknown[];
+  supporting_evidence?: CorrectionSupportingEvidence[];
   review: CorrectionReview;
-  downstream: {
-    applied_to_working_transcript?: boolean;
-    applied_at?: string | null;
-    reverted_at?: string | null;
-  };
+  downstream: CorrectionDownstream;
 }
 
 const SPECIALTIES = new Set<string>([
@@ -122,6 +168,14 @@ const SPECIALTIES = new Set<string>([
   "inconsistency_flag", "contextual_number", "phonetic_disambiguation", "deterministic_rule",
 ]);
 const CHANGE_TYPES = new Set<string>([...TEXT_CHANGE_TYPES, ...STRUCTURAL_CHANGE_TYPES, "inconsistency_flag"]);
+
+// The spoken-word tokens of a string, lowercased, with standalone punctuation
+// (periods, commas, em/double dashes, ellipses, quotes) ignored. Intra-word
+// apostrophes and hyphens are preserved so "y'all" and "co-worker" stay one
+// token. Used to prove a punctuation_edit did not alter the words.
+export function wordTokens(text: string): string[] {
+  return (text.toLowerCase().match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) ?? []);
+}
 const REASON_KINDS = new Set<string>([
   "registry_match", "phonetic_similarity", "context_pattern", "prior_correction",
   "inconsistency_detected", "structural_boundary", "confidence_threshold",
@@ -181,6 +235,7 @@ export function collectCorrectionErrors(data: unknown): string[] {
   errors.push(...changeErrors(c.change));
   errors.push(...provenanceErrors(c.provenance));
   errors.push(...reviewErrors(c.review));
+  errors.push(...downstreamErrors(c.downstream));
   return errors;
 }
 
@@ -212,6 +267,16 @@ function changeErrors(change: unknown): string[] {
 
   if (TEXT_CHANGE_TYPES.has(type as CorrectionChangeType)) {
     if (!hasBefore || !hasAfter) errs.push(`change.type '${type}' requires both 'before' and 'after'`);
+    // Verbatim guard: a punctuation_edit may ONLY add/change punctuation and
+    // capitalization. The spoken word tokens of `after` must be identical to
+    // `before` (ignoring case + standalone punctuation). This makes it
+    // structurally impossible for a "punctuation" correction to add, drop, or
+    // reword evidence — the change is rejected before it can ever be persisted.
+    if (type === "punctuation_edit" && hasBefore && hasAfter) {
+      if (wordTokens(String(ch.before)).join(" ") !== wordTokens(String(ch.after)).join(" ")) {
+        errs.push("change.type 'punctuation_edit' altered word tokens; only punctuation and capitalization may change");
+      }
+    }
   } else if (STRUCTURAL_CHANGE_TYPES.has(type as CorrectionChangeType)) {
     if (!hasStructural) errs.push(`change.type '${type}' requires 'structural_change'`);
     if (hasBefore || hasAfter) errs.push(`change.type '${type}' must not carry 'before'/'after' text`);
@@ -236,6 +301,14 @@ function reviewErrors(review: unknown): string[] {
   if (!review || typeof review !== "object") return ["review must be an object"];
   const r = review as Record<string, unknown>;
   if (!REVIEW_STATES.has(r.state as string)) return [`review.state invalid: ${String(r.state)}`];
+  return [];
+}
+
+// downstream is a schema-required object (the Python validator enforces it via the
+// schema's `required` list). TS previously skipped it, so a payload missing
+// downstream passed TS but failed Python/schema — this closes that divergence.
+function downstreamErrors(downstream: unknown): string[] {
+  if (!downstream || typeof downstream !== "object") return ["downstream must be an object"];
   return [];
 }
 

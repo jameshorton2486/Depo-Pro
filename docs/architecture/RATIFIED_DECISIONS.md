@@ -87,6 +87,8 @@ Silent, unrecorded mutation remains prohibited.
 
 **A10 — Deterministic rendering.** The abbreviation list and all formatting rules are stored as versioned data. Rendering never calls an AI model. AI may propose additions to the abbreviation list; the list is data, and its version is stamped on certified output.
 
+**A11 — No fabrication of the spoken record.** No AI subsystem may author words into the testimonial record that are not present in its source input. Corrections may only replace content the source contains — misrecognized audio, or a value present in a supplied document. Unrecoverable or unverifiable content is flagged for human resolution, never reconstructed, templated, or inferred. This governs testimony, colloquy, and any speaker-attributed text. It does not govern structural apparatus (captions, appearance pages, indices, certificate pages, formatting parentheticals), which are generated from case metadata and carry no speaker attribution. Correction-engine scope and remedies: [ADR-0017](adr/ADR-0017-workspace-ufm-first-render.md) §4b. Established by ADR-0017 (2026-08-07). Complements A3 (Python oath synthesis deleted, not ported) and A9 (immutable baseline).
+
 ---
 
 ## Recent Amendments
@@ -95,7 +97,7 @@ Silent, unrecorded mutation remains prohibited.
 
 - OQ-1: parenthetical indent → 1.5" (see F20)
 - OQ-2: F5b retired (not a rule; no transcript evidence)
-- OQ-3: AI Review button → rename to "Run AI Review"; deterministic (P-A) and AI (P-B) pipelines stay separate
+- OQ-3: AI Review button → rename to "Run AI Review"; deterministic (P-A) and AI (P-B) pipelines stay separate. **Amended by ADR-0016 (2026-08-06):** a "Format and Correct Transcript" button now spans both pipelines via a confirmed save → reload → AI-review sequence (Option C). The rename stands; the pipelines remain separate in code (this is a UI entry point, not a merge).
 - OQ-4: per-utterance line gutter in the Workspace → exempt editing aid (see F8); export must strip it
 - OQ-5: "CERTIFIED TRANSCRIPT" header removed from the Workspace → working-draft indicator; wording **"Working Transcript"** (Miah-confirmed 2026-08-05)
 - OQ-6: standalone `BY MR./MS. NAME:` line → implement at 0" (see F15)

@@ -10,6 +10,9 @@ import { classifyDepositionRegions } from "../transcript/depositionRegionEngine"
 import { buildStructuredTranscriptGeometryLayout } from "../transcript/geometryEngine";
 import { buildStructuredTranscriptPackage } from "../transcript/structuredTranscriptPackage";
 import { asStructuredUtterance, normalizePersistedLineType } from "../transcript/structuredTranscript";
+import { applyReviewedStructure } from "../transcript/lineTypeMigration";
+import { deriveWorkingTranscript } from "../transcript/structuralApply";
+import type { CorrectionObject } from "../transcript/correctionObject";
 import { buildTranscriptParagraphs } from "../transcript/transcriptParagraphs";
 import { buildDisplayDocument } from "../transcript/workspacePresentation";
 import { buildUnifiedRenderModel, type UnifiedRenderModel } from "../transcript/unifiedRendering";
@@ -112,9 +115,25 @@ function delay(milliseconds: number, signal?: AbortSignal): Promise<void> {
 export function buildCanonicalExportRenderModel(
   document: EditorDocument,
   record: CaseRecord,
+  // DOC-0325 Step 1: same reviewed structural corrections as Workspace. Behind the flag
+  // (default off → no-op), export derives the Working Transcript from the SAME projection
+  // (deriveWorkingTranscript) as buildEditorContent — so the reporter certifies exactly the
+  // structure she reviewed, identical to the Workspace view.
+  corrections?: CorrectionObject[],
+  // Test-visible / local override for the projection gate, symmetric with buildEditorContent's
+  // option. Undefined → the shipped PERSISTED_LINE_TYPE_ENABLED default (off in production).
+  // Lets the Workspace==export parity harness drive the flag-on structural path on both sides.
+  persistedLineTypeEnabled?: boolean,
 ): UnifiedRenderModel {
-  const displayDocument = buildDisplayDocument(document, record);
-  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  const workingDocument = deriveWorkingTranscript(document, corrections, persistedLineTypeEnabled);
+  const displayDocument = buildDisplayDocument(workingDocument, record);
+  // A11 / C1b: this render model produces the certified DOCX the reporter signs
+  // her CSR number to. It must be verbatim — no correction-registry word
+  // substitution (which could silently swap a real surname into testimony).
+  // Word correction is the separate, recorded A5 correction engine, not this render.
+  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
+    applyLexicalCorrections: false,
+  });
   const utteranceById = new Map(displayDocument.utterances.map((utterance) => [utterance.utterance_id, asStructuredUtterance(utterance)]));
   const regionByUtteranceId = classifyDepositionRegions(formatted.lines.map((line) => ({
     utteranceId: line.utterance_id,
@@ -122,15 +141,24 @@ export function buildCanonicalExportRenderModel(
     persistedLineType: normalizePersistedLineType(utteranceById.get(line.utterance_id)?.line_type),
     role: line.role,
   })));
-  const transcriptPackage = buildStructuredTranscriptPackage({
-    transcriptId: document.job_id,
-    paragraphs: buildTranscriptParagraphs(formatted.lines.map((line) => ({
+  // DOC-0325 shared-builder seam (export side). The overlay is flag-gated (default off →
+  // no-op), so certified output is byte-identical today. When the flag is on, export consumes
+  // the SAME persisted reviewed line_type authority as Workspace — the invariant that the
+  // reporter certifies exactly the structure she reviewed. Uses displayDocument (carries the
+  // persisted line_type) for the utterance→line_type lookup.
+  const exportParagraphs = applyReviewedStructure(
+    buildTranscriptParagraphs(formatted.lines.map((line) => ({
       line,
       text: line.words.map((word) => `${word.text}${word.trailing_space}`).join("").trim(),
       region: regionByUtteranceId.get(line.utterance_id) ?? "CAPTION",
       persistedLineType: normalizePersistedLineType(utteranceById.get(line.utterance_id)?.line_type),
       speakerLabel: line.speaker_label,
     }))),
+    displayDocument,
+  );
+  const transcriptPackage = buildStructuredTranscriptPackage({
+    transcriptId: document.job_id,
+    paragraphs: exportParagraphs,
     dialogue: [],
   });
   const renderModel = buildUnifiedRenderModel({

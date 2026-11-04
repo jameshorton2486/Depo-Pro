@@ -3,7 +3,7 @@
   "generated": true,
   "generated_on": "2026-08-05",
   "source": "docs/document-manifest.json",
-  "source_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
+  "source_sha256": "adbb8b7f7b3818a5477301fb13ced87f94b5a32ab7d74c5dc84bc26ce0d2f337",
   "nodes": [
     {
       "entity_type": "DOCUMENT",
@@ -4716,6 +4716,261 @@
       "last_reviewed": "2026-08-05"
     },
     {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0315",
+      "title": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)",
+      "path": "docs/architecture/adr/ADR-0016-format-and-correct-transcript-button.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
+      "authoritative": false,
+      "authority_scopes": [
+        "workspace-format-trigger"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-06"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0316",
+      "title": "Depo-Pro Target Simplified Architecture",
+      "path": "docs/architecture/TARGET_SIMPLIFIED_ARCHITECTURE.md",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "target-simplified-system-architecture"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-10"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0317",
+      "title": "AI-Review HTTP 500 Root-Cause Report",
+      "path": "docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0318",
+      "title": "Depo-Pro Autonomous Architecture Simplification Working Report",
+      "path": "docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0319",
+      "title": "Canonical Authority Matrix",
+      "path": "docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0320",
+      "title": "Clean-Input Defect and Necessity Matrix",
+      "path": "docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0321",
+      "title": "AI Pipeline Inventory and Simplification Map (Phase G)",
+      "path": "docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0322",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)",
+      "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
+      "tier": "T4",
+      "status": "DRAFT",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "verbatim-standalone-k-okay-exception"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-10"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0323",
+      "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
+      "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
+      "authoritative": false,
+      "authority_scopes": [
+        "workspace-first-render-formatting"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-07"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0324",
+      "title": "C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence",
+      "path": "docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0325",
+      "title": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable",
+      "path": "docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0326",
+      "title": "Python transcript_formatter/ characterization — pre-retirement inventory",
+      "path": "docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0327",
+      "title": "CorrectionObject three-way drift audit — canonical authority + sync",
+      "path": "docs/audits/CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0328",
+      "title": "Certified-pages re-home surface — front/back matter into the live pipeline",
+      "path": "docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0329",
+      "title": "Security review — freeze-safe pass (secret exposure, edge auth)",
+      "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/SECURITY_REVIEW_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0330",
+      "title": "Website source consolidation audit — 2026-11-04",
+      "path": "docs/audits/WEBSITE_SOURCE_CONSOLIDATION_2026-11-04.md",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "website-source-consolidation"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-11-04"
+    },
+    {
+      "entity_type": "DOCUMENT",
+      "id": "DOC-0331",
+      "title": "CSR Format Confirmation — Cover Note",
+      "path": "outputs/CSR_FORMAT_CONFIRMATION.md",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "csr-format-confirmation-sample"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-07-20"
+    },
+    {
       "entity_type": "OWNER",
       "id": "OWNER:Architecture",
       "name": "Architecture"
@@ -4744,6 +4999,11 @@
       "entity_type": "OWNER",
       "id": "OWNER:Transcript",
       "name": "Transcript"
+    },
+    {
+      "entity_type": "OWNER",
+      "id": "OWNER:Workspace",
+      "name": "Workspace"
     }
   ],
   "edges": [
@@ -6283,6 +6543,91 @@
       "target": "DOC-0068"
     },
     {
+      "type": "GOVERNANCE",
+      "source": "DOC-0315",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0316",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0317",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0318",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0319",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0320",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0321",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0322",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0323",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0324",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0325",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0326",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0327",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0328",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0329",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0330",
+      "target": "DOC-0071"
+    },
+    {
+      "type": "GOVERNANCE",
+      "source": "DOC-0331",
+      "target": "DOC-0071"
+    },
+    {
       "type": "SUPERSESSION",
       "source": "DOC-0062",
       "target": "DOC-0098"
@@ -6641,6 +6986,11 @@
       "type": "REFERENCE",
       "source": "DOC-0074",
       "target": "DOC-0314"
+    },
+    {
+      "type": "REFERENCE",
+      "source": "DOC-0074",
+      "target": "DOC-0323"
     },
     {
       "type": "REFERENCE",
@@ -8223,6 +8573,86 @@
       "target": "DOC-0041"
     },
     {
+      "type": "HIERARCHY",
+      "source": "DOC-0315",
+      "target": "DOC-0041"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0316",
+      "target": "DOC-0041"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0317",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0318",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0319",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0320",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0321",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0322",
+      "target": "DOC-0041"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0323",
+      "target": "DOC-0041"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0324",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0325",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0326",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0327",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0328",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0329",
+      "target": "DOC-0232"
+    },
+    {
+      "type": "HIERARCHY",
+      "source": "DOC-0330",
+      "target": "DOC-0232"
+    },
+    {
       "type": "REVIEW",
       "source": "DOC-0002",
       "target": "DOC-0071"
@@ -8271,6 +8701,31 @@
       "type": "REVIEW",
       "source": "DOC-0314",
       "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0315",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0316",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0322",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0323",
+      "target": "DOC-0068"
+    },
+    {
+      "type": "REVIEW",
+      "source": "DOC-0330",
+      "target": "DOC-0071"
     },
     {
       "type": "OWNERSHIP",
@@ -9841,6 +10296,91 @@
       "type": "OWNERSHIP",
       "source": "DOC-0314",
       "target": "OWNER:Rendering"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0315",
+      "target": "OWNER:Workspace"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0316",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0317",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0318",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0319",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0320",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0321",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0322",
+      "target": "OWNER:Rendering"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0323",
+      "target": "OWNER:Workspace"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0324",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0325",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0326",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0327",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0328",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0329",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0330",
+      "target": "OWNER:Architecture"
+    },
+    {
+      "type": "OWNERSHIP",
+      "source": "DOC-0331",
+      "target": "OWNER:Rendering"
     }
   ],
   "owners": {
@@ -10149,7 +10689,20 @@
       "DOC-0310",
       "DOC-0311",
       "DOC-0312",
-      "DOC-0313"
+      "DOC-0313",
+      "DOC-0316",
+      "DOC-0317",
+      "DOC-0318",
+      "DOC-0319",
+      "DOC-0320",
+      "DOC-0321",
+      "DOC-0324",
+      "DOC-0325",
+      "DOC-0326",
+      "DOC-0327",
+      "DOC-0328",
+      "DOC-0329",
+      "DOC-0330"
     ],
     "Deepgram": [
       "DOC-0069"
@@ -10165,10 +10718,16 @@
     "Rendering": [
       "DOC-0003",
       "DOC-0021",
-      "DOC-0314"
+      "DOC-0314",
+      "DOC-0322",
+      "DOC-0331"
     ],
     "Transcript": [
       "DOC-0040"
+    ],
+    "Workspace": [
+      "DOC-0315",
+      "DOC-0323"
     ]
   },
   "integrity": {

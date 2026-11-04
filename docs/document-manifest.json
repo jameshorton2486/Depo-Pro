@@ -5966,6 +5966,329 @@
         "DOC-0068"
       ],
       "supersedes": []
+    },
+    {
+      "id": "DOC-0315",
+      "title": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)",
+      "path": "docs/architecture/adr/ADR-0016-format-and-correct-transcript-button.md",
+      "category": "architecture",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
+      "authoritative": false,
+      "authority_scopes": [
+        "workspace-format-trigger"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-06",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0316",
+      "title": "Depo-Pro Target Simplified Architecture",
+      "path": "docs/architecture/TARGET_SIMPLIFIED_ARCHITECTURE.md",
+      "category": "architecture",
+      "tier": "T2",
+      "status": "DRAFT",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "target-simplified-system-architecture"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-10",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0317",
+      "title": "AI-Review HTTP 500 Root-Cause Report",
+      "path": "docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0318",
+      "title": "Depo-Pro Autonomous Architecture Simplification Working Report",
+      "path": "docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0319",
+      "title": "Canonical Authority Matrix",
+      "path": "docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0320",
+      "title": "Clean-Input Defect and Necessity Matrix",
+      "path": "docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0321",
+      "title": "AI Pipeline Inventory and Simplification Map (Phase G)",
+      "path": "docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0322",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)",
+      "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
+      "category": "architecture",
+      "tier": "T4",
+      "status": "DRAFT",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "verbatim-standalone-k-okay-exception"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-10",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0329",
+      "title": "Security review — freeze-safe pass (secret exposure, edge auth)",
+      "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/SECURITY_REVIEW_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0328",
+      "title": "Certified-pages re-home surface — front/back matter into the live pipeline",
+      "path": "docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0327",
+      "title": "CorrectionObject three-way drift audit — canonical authority + sync",
+      "path": "docs/audits/CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0326",
+      "title": "Python transcript_formatter/ characterization — pre-retirement inventory",
+      "path": "docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0325",
+      "title": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable",
+      "path": "docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0324",
+      "title": "C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence",
+      "path": "docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "document:docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": null,
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0330",
+      "title": "Website source consolidation audit — 2026-11-04",
+      "path": "docs/audits/WEBSITE_SOURCE_CONSOLIDATION_2026-11-04.md",
+      "category": "audits",
+      "tier": "T5",
+      "status": "ACTIVE",
+      "owner": "Architecture",
+      "authoritative": false,
+      "authority_scopes": [
+        "website-source-consolidation"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-11-04",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0331",
+      "title": "CSR Format Confirmation — Cover Note",
+      "path": "outputs/CSR_FORMAT_CONFIRMATION.md",
+      "category": "reports",
+      "tier": "T6",
+      "status": "ACTIVE",
+      "owner": "Rendering",
+      "authoritative": false,
+      "authority_scopes": [
+        "csr-format-confirmation-sample"
+      ],
+      "review_cycle": "as-needed",
+      "last_reviewed": "2026-07-20",
+      "governed_by": [
+        "DOC-0071"
+      ],
+      "supersedes": []
+    },
+    {
+      "id": "DOC-0323",
+      "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
+      "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",
+      "category": "architecture",
+      "tier": "T4",
+      "status": "ACTIVE",
+      "owner": "Workspace",
+      "authoritative": false,
+      "authority_scopes": [
+        "workspace-first-render-formatting"
+      ],
+      "review_cycle": "annual",
+      "last_reviewed": "2026-08-07",
+      "governed_by": [
+        "DOC-0068"
+      ],
+      "supersedes": []
     }
   ]
 }

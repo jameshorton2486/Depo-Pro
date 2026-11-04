@@ -1,5 +1,35 @@
-import type { DialogueBlock } from "./structureEngine";
 import type { TranscriptParagraph } from "./transcriptParagraphTypes";
+
+// Relocated from the retired structureEngine (Phase G, Wave G1); this package's
+// (currently always-empty) `dialogue` field is the sole surviving consumer.
+export type StructureBlockType =
+  | "Q"
+  | "A"
+  | "SP"
+  | "PN"
+  | "HEADER"
+  | "NEEDS_SPLIT"
+  | "NEEDS_EXTRACT";
+
+export interface ClassifiedBlock {
+  utterance_index: number;
+  utterance_id: string;
+  block_type: StructureBlockType;
+  speaker_id: string;
+  display_name: string;
+  confidence: number;
+  text?: string;
+  split_point?: string;
+  objection_text?: string;
+  position?: "start" | "middle" | "end";
+  synthetic_flag?: string;
+}
+
+export interface DialogueBlock extends ClassifiedBlock {
+  dialogue_block_id: string;
+  source_utterance_ids: string[];
+  text: string;
+}
 
 export const STRUCTURED_TRANSCRIPT_PACKAGE_SCHEMA = "depo-pro/structured-transcript-package";
 export const STRUCTURED_TRANSCRIPT_PACKAGE_VERSION = 1 as const;

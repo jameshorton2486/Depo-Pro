@@ -14,7 +14,7 @@
  * is a thin I/O shell that executes whatever this returns. No side effects.
  */
 
-import type { TranscriptionJobStatus } from "../transcriptionJobs";
+import type { TranscriptionJobStatus } from "../transcriptionJobs.ts";
 
 export type WatchdogAction =
   | { kind: "resubmit_deepgram" }

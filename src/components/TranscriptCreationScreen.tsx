@@ -6,7 +6,7 @@ import { buildAudioPreAnalysisReport, type AudioPreAnalysisReport } from "../lib
 import type { TranscriptionJobRecord } from "../lib/transcriptionJobs";
 import { listCaseAudio } from "../api/fileService";
 import { listTranscriptionJobs, startTranscription } from "../api/transcriptionService";
-import { saveCase } from "../api/caseService";
+import { isCaseCertified, saveCase } from "../api/caseService";
 import { useIntake } from "../context/useIntake";
 import { useStage } from "../context/StageContext";
 import { buildDeepgramRequestFromStoredKeyterms } from "../lib/deepgram/buildDeepgramRequest";
@@ -38,6 +38,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [retranscribeConfirmOpen, setRetranscribeConfirmOpen] = useState(false);
   const [selectedTranscriptId, setSelectedTranscriptId] = useState<string | null>(null);
+  const [caseCertified, setCaseCertified] = useState(false);
   const [preAnalysisReport, setPreAnalysisReport] = useState<AudioPreAnalysisReport | null>(null);
   const [preAnalysisCountdown, setPreAnalysisCountdown] = useState<number | null>(null);
   const [preAnalysisConfirmChecked, setPreAnalysisConfirmChecked] = useState(false);
@@ -110,14 +111,16 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
       setLoading(true);
       setError(null);
       try {
-        const [audioRows, transcriptJobs] = await Promise.all([
+        const [audioRows, transcriptJobs, certified] = await Promise.all([
           listCaseAudio(caseId),
           listTranscriptionJobs(caseId),
+          isCaseCertified(caseId),
         ]);
 
         if (!cancelled) {
           setAudio(audioRows[0] ?? null);
           setJobs(transcriptJobs);
+          setCaseCertified(certified);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -280,6 +283,10 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
   }
 
   function handleTriggerRetranscription() {
+    if (caseCertified) {
+      setError("This case is certified. Decertify it before retranscribing — retranscription replaces the certified transcript.");
+      return;
+    }
     if (!selectedTranscriptId) {
       setError("Select a source transcript before retranscribing.");
       return;
@@ -473,6 +480,7 @@ export function TranscriptCreationScreen({ caseId }: { caseId: string }) {
                 onOpenWorkspace={() => void handleOpenWorkspace()}
                 onRetranscribe={handleTriggerRetranscription}
                 disabled={running || Boolean(audioIntegrityWarning)}
+                certified={caseCertified}
               />
             )}
           </section>

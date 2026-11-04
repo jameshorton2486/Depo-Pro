@@ -90,6 +90,7 @@ type RouteMatch =
   | { kind: "working"; jobId: string }
   | { kind: "review"; jobId: string }
   | { kind: "speakers"; jobId: string }
+  | { kind: "structure"; jobId: string }
   | { kind: "suggestions"; jobId: string }
   | { kind: "resolveSuggestion"; jobId: string; suggestionId: string }
   | { kind: "aiSuggestions"; jobId: string }
@@ -113,6 +114,7 @@ const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CASE_FILES_BUCKET = "case-files";
 const SIGNED_URL_TTL_SECONDS = 6 * 60 * 60; // 6h supports long review sessions without mid-session expiry.
 const WORD_PAGE_SIZE = 1000;
+const UTTERANCE_PAGE_SIZE = 1000;
 const CONFIDENCE_THRESHOLD = 0.70;
 
 Deno.serve(async (request) => {
@@ -171,6 +173,8 @@ Deno.serve(async (request) => {
         return request.method === "POST"
           ? handlePostSpeaker(context)
           : handlePutSpeakers(context);
+      case "structure":
+        return handlePutStructure(context);
       case "suggestions":
         return handleGetSuggestions(context);
       case "resolveSuggestion":
@@ -210,6 +214,7 @@ function requiresUnlockedTranscript(match: RouteMatch): boolean {
   return match.kind === "working"
     || match.kind === "review"
     || match.kind === "speakers"
+    || match.kind === "structure"
     || match.kind === "resolveSuggestion"
     || match.kind === "aiSuggestionAction"
     || match.kind === "aiSuggestionAcceptAll"
@@ -318,18 +323,38 @@ async function loadUtterances(
   supabase: SupabaseClient<Database>,
   transcriptId: string,
 ): Promise<TranscriptUtteranceRow[]> {
-  const { data, error } = await supabase
-    .from("transcript_utterances")
-    .select("utterance_id, speaker_id, start_time, end_time, ordinal, utterance_index, excluded_from_output, exclusion_reason, is_synthetic, text")
-    .eq("transcript_id", transcriptId)
-    .order("utterance_index", { ascending: true })
-    .order("ordinal", { ascending: true });
+  // Paginate to defeat PostgREST's default 1000-row cap. Without this, transcripts
+  // with >1000 utterances were silently truncated to the first 1000 entries while
+  // all words still loaded, stitching later words onto the wrong utterances and
+  // producing garbled display text. Mirrors loadWords below.
+  const rows: TranscriptUtteranceRow[] = [];
+  let from = 0;
 
-  if (error) {
-    throw new HttpError(500, "failed to load utterances");
+  while (true) {
+    const to = from + UTTERANCE_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from("transcript_utterances")
+      .select("utterance_id, speaker_id, start_time, end_time, ordinal, utterance_index, excluded_from_output, exclusion_reason, is_synthetic, text")
+      .eq("transcript_id", transcriptId)
+      .order("utterance_index", { ascending: true })
+      .order("ordinal", { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      throw new HttpError(500, "failed to load utterances");
+    }
+
+    const page = (data ?? []) as TranscriptUtteranceRow[];
+    rows.push(...page);
+
+    if (page.length < UTTERANCE_PAGE_SIZE) {
+      break;
+    }
+
+    from += UTTERANCE_PAGE_SIZE;
   }
 
-  return (data ?? []) as TranscriptUtteranceRow[];
+  return rows;
 }
 
 async function loadWords(
@@ -478,26 +503,47 @@ async function handlePutWorking(context: RouteContext): Promise<Response> {
   const body = await parseJsonBody(context.request);
   const payload = validateSaveWorkingPayload(body);
 
-  const { data, error } = await context.supabase.rpc("editor_apply_working_changes", {
+  // DOC-0325 Decision A: changes carrying word_ids are DERIVED structural units
+  // (their utterance_id has no DB row) and persist by stable word_id via the
+  // word-scoped RPC; the rest use the existing utterance-scoped path unchanged.
+  const wordScoped = payload.changes.filter((c) => Array.isArray(c.word_ids) && c.word_ids.length > 0);
+  const utteranceScoped = payload.changes.filter((c) => !c.word_ids || c.word_ids.length === 0);
+
+  const scope = {
     p_transcript_id: context.transcript.transcript_id,
     p_case_id: context.transcript.case_id,
     p_job_id: context.transcript.job_id,
-    p_changes: payload.changes,
-  });
-
-  if (error) {
-    console.error("[editor-api] PUT working failed", {
-      route: "PUT /:jobId/working",
-      jobId: context.transcript.transcript_id,
-      message: error.message,
-    });
-    throw new HttpError(500, "failed to save working transcript");
-  }
-
-  const response: SaveWorkingResponse = {
-    saved: typeof data === "number" ? data : 0,
   };
 
+  let saved = 0;
+  if (utteranceScoped.length > 0) {
+    const { data, error } = await context.supabase.rpc("editor_apply_working_changes", {
+      ...scope,
+      p_changes: utteranceScoped,
+    });
+    if (error) {
+      console.error("[editor-api] PUT working failed", {
+        route: "PUT /:jobId/working", jobId: context.transcript.transcript_id, message: error.message,
+      });
+      throw new HttpError(500, "failed to save working transcript");
+    }
+    saved += typeof data === "number" ? data : 0;
+  }
+  if (wordScoped.length > 0) {
+    const { data, error } = await context.supabase.rpc("editor_apply_working_word_changes", {
+      ...scope,
+      p_changes: wordScoped,
+    });
+    if (error) {
+      console.error("[editor-api] PUT working (word-scoped) failed", {
+        route: "PUT /:jobId/working", jobId: context.transcript.transcript_id, message: error.message,
+      });
+      throw new HttpError(500, "failed to save working transcript");
+    }
+    saved += typeof data === "number" ? data : 0;
+  }
+
+  const response: SaveWorkingResponse = { saved };
   return respondJson(200, response);
 }
 
@@ -530,6 +576,12 @@ function validateSaveWorkingPayload(value: unknown): SaveWorkingPayload {
       || typeof candidate.working_text !== "string"
     ) {
       throw new HttpError(400, "bad payload");
+    }
+    // DOC-0325 Decision A: optional word_ids (derived-unit word-scoped save).
+    if (candidate.word_ids !== undefined) {
+      if (!Array.isArray(candidate.word_ids) || candidate.word_ids.some((w) => typeof w !== "string")) {
+        throw new HttpError(400, "bad payload");
+      }
     }
   }
 
@@ -668,6 +720,90 @@ async function handlePutSpeakers(context: RouteContext): Promise<Response> {
 
   if (transcriptResult.error) {
     throw new HttpError(500, "failed to save speakers");
+  }
+
+  return respondJson(200, { ok: true });
+}
+
+// DOC-0325 / D1+D3 — persist reviewed structural decisions (line_type + review_status).
+// Mirrors the F10 speaker-reassignment write path: owner-scoped via the RLS-bound client,
+// atomic per utterance, audit-logged. The reporter is the authority here, so a review write
+// deliberately overwrites any prior value. (The invariant that a *proposal/fallback* must not
+// overwrite a CONFIRMED/OVERRIDDEN decision is enforced in the render/build layer, Wave 4.)
+// This endpoint sets ONLY line_type + line_type_review_status; confidence/reason are proposal
+// fields written at classification time, never by a human review write.
+const REVIEWED_LINE_TYPES = new Set(["Q", "A", "SP", "PN", "HEADER", "UNKNOWN"]);
+const REVIEWED_STATUSES = new Set(["CONFIRMED", "OVERRIDDEN"]);
+
+interface StructureDecision {
+  utterance_id: string;
+  line_type: string;
+  review_status: string;
+}
+
+function validateStructurePayload(value: unknown): { decisions: StructureDecision[] } {
+  if (!value || typeof value !== "object") {
+    throw new HttpError(400, "bad payload");
+  }
+  const payload = value as Record<string, unknown>;
+  if (!Array.isArray(payload.decisions)) {
+    throw new HttpError(400, "bad payload");
+  }
+  const decisions = payload.decisions.map((decision) => {
+    if (!decision || typeof decision !== "object") {
+      throw new HttpError(400, "bad payload");
+    }
+    const candidate = decision as Record<string, unknown>;
+    if (
+      typeof candidate.utterance_id !== "string"
+      || typeof candidate.line_type !== "string"
+      || typeof candidate.review_status !== "string"
+      || !REVIEWED_LINE_TYPES.has(candidate.line_type)
+      || !REVIEWED_STATUSES.has(candidate.review_status)
+    ) {
+      throw new HttpError(400, "bad payload");
+    }
+    return {
+      utterance_id: candidate.utterance_id,
+      line_type: candidate.line_type,
+      review_status: candidate.review_status,
+    };
+  });
+  return { decisions };
+}
+
+async function handlePutStructure(context: RouteContext): Promise<Response> {
+  const body = await parseJsonBody(context.request);
+  const payload = validateStructurePayload(body);
+  const transcriptId = context.transcript.transcript_id;
+
+  for (const decision of payload.decisions) {
+    const updateResult = await context.supabase
+      .from("transcript_utterances")
+      .update({
+        line_type: decision.line_type,
+        line_type_review_status: decision.review_status,
+        // A prior manual reassignment flag stays truthful: an OVERRIDDEN structural decision
+        // is a manual reassignment of structure.
+        manually_reassigned: decision.review_status === "OVERRIDDEN",
+      })
+      .eq("transcript_id", transcriptId)
+      .eq("utterance_id", decision.utterance_id);
+
+    if (updateResult.error) {
+      throw new HttpError(500, "failed to save structure");
+    }
+
+    await appendAuditRows(context, [{
+      utterance_id: decision.utterance_id,
+      word_id: null,
+      source: "workspace",
+      action: "assign_line_type",
+      old_text: "structure review",
+      new_text: `${decision.line_type}:${decision.review_status}`,
+      before_text: "structure review",
+      after_text: `${decision.line_type}:${decision.review_status}`,
+    }]);
   }
 
   return respondJson(200, { ok: true });
@@ -864,7 +1000,7 @@ type AuditInsertRow = {
   utterance_id: string | null;
   word_id: string | null;
   source: string;
-  action: "assign_speaker" | "ai_suggestion_accepted" | "ai_suggestion_rejected";
+  action: "assign_speaker" | "assign_line_type" | "ai_suggestion_accepted" | "ai_suggestion_rejected";
   old_text: string | null;
   new_text: string | null;
   before_text: string | null;
@@ -1420,6 +1556,10 @@ function matchRoute(request: Request): RouteMatch | null {
     return { kind: "speakers", jobId: routeParts[0] };
   }
 
+  if (routeParts.length === 2 && request.method === "PUT" && routeParts[1] === "structure") {
+    return { kind: "structure", jobId: routeParts[0] };
+  }
+
   if (routeParts.length === 2 && request.method === "GET" && routeParts[1] === "suggestions") {
     return { kind: "suggestions", jobId: routeParts[0] };
   }
@@ -1595,7 +1735,7 @@ function validateDecidePayload(value: unknown): DecidePayload {
   };
 }
 
-const TEXT_CHANGE_TYPES = new Set(["proper_name_correction", "medical_term_correction", "contextual_number_flag"]);
+const TEXT_CHANGE_TYPES = new Set(["proper_name_correction", "medical_term_correction", "punctuation_edit", "contextual_number_flag"]);
 
 async function handleDecideCorrection(context: RouteContext, correctionId: string): Promise<Response> {
   const body = await parseJsonBody(context.request);
@@ -1691,6 +1831,8 @@ async function handleDecideCorrection(context: RouteContext, correctionId: strin
 const STRUCTURAL_DEFER_REASON = "structural_apply_engine_v2";
 const DEFERRED_STRUCTURAL_TYPES = new Set([
   "qa_split",
+  "paragraph_split",
+  "objection_split",
   "examination_section_change",
   "off_record_boundary_mark",
   "objection_attribution",

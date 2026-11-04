@@ -1,4 +1,8 @@
-import { AUTO_CHUNK_THRESHOLD_SECONDS, TARGET_CHUNK_DURATION_SECONDS } from "../transcript/autoChunking";
+import {
+  AUTO_CHUNK_THRESHOLD_SECONDS,
+  shouldAutoChunk,
+  TARGET_CHUNK_DURATION_SECONDS,
+} from "../transcript/autoChunking";
 
 export interface AudioRisk {
   severity: "info" | "warning" | "critical";
@@ -81,7 +85,7 @@ function buildRisks(audio: AudioPreAnalysisInput, bitrateKbps: number | null): A
       code: "DURATION_UNKNOWN",
       title: "Duration unknown",
       description: "File duration could not be determined from metadata.",
-      recommendation: "Transcription will proceed but chunking cannot be applied automatically.",
+      recommendation: "Transcription will proceed through the standard single-file callback path.",
     });
   }
 
@@ -90,16 +94,16 @@ function buildRisks(audio: AudioPreAnalysisInput, bitrateKbps: number | null): A
       severity: "warning",
       code: "VERY_LONG_FILE",
       title: "Very long audio file",
-      description: "Files over 2 hours have higher risk of Deepgram timing errors.",
-      recommendation: "Auto-chunking will be applied. Consider splitting manually if quality is critical.",
+      description: "Files over 2 hours require additional transcript verification.",
+      recommendation: "Single-file callback transcription will be used. Verify timing continuity and transcript completeness after processing.",
     });
   } else if ((audio.duration_seconds ?? 0) > AUTO_CHUNK_THRESHOLD_SECONDS) {
     risks.push({
       severity: "info",
       code: "LONG_FILE",
       title: "Long audio file (>75 minutes)",
-      description: "Auto-chunking will be applied to improve transcription accuracy.",
-      recommendation: "Chunking is handled automatically. No action needed.",
+      description: "Long-form audio will use single-file callback transcription.",
+      recommendation: "No action is required before transcription. Verify transcript completeness after processing.",
     });
   }
 
@@ -118,7 +122,7 @@ function buildRisks(audio: AudioPreAnalysisInput, bitrateKbps: number | null): A
       severity: "warning",
       code: "LARGE_FILE_NO_DURATION",
       title: "Large file with unknown duration",
-      description: "File is over 500MB but duration is unknown — chunking cannot be auto-applied.",
+      description: "File is over 500MB but its duration is unknown.",
       recommendation: "Manually verify the file length before transcribing.",
     });
   }
@@ -208,7 +212,7 @@ export function buildAudioPreAnalysisReport(
   const estimatedBitrateKbps = estimateBitrateKbps(audio.file_size_bytes, audio.duration_seconds);
   const risks = buildRisks(audio, estimatedBitrateKbps);
   const gateAction = determineGateAction(risks);
-  const chunkingRecommended = (audio.duration_seconds ?? 0) > AUTO_CHUNK_THRESHOLD_SECONDS;
+  const chunkingRecommended = shouldAutoChunk(audio.duration_seconds ?? 0);
   const chunkCountEstimate = audio.duration_seconds != null && chunkingRecommended
     ? Math.ceil(audio.duration_seconds / TARGET_CHUNK_DURATION_SECONDS)
     : null;

@@ -1,5 +1,5 @@
-import type { FieldRegistry } from "./FieldRegistry";
-import type { FieldResult } from "./FieldResult";
+import type { FieldRegistry } from "./FieldRegistry.ts";
+import type { FieldResult } from "./FieldResult.ts";
 
 /** Executes an explicitly selected policy while preserving input and policy provenance. */
 export function formatCanonicalField(

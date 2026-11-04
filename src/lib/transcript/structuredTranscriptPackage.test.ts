@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildStructuredTranscriptPackage, validateStructuredTranscriptPackage } from "./structuredTranscriptPackage";
-import type { DialogueBlock } from "./structureEngine";
+import type { DialogueBlock } from "./structuredTranscriptPackage";
 import type { TranscriptParagraph } from "./transcriptParagraphTypes";
 
 const paragraph: TranscriptParagraph = {

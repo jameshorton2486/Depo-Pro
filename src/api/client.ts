@@ -14,6 +14,7 @@ import { isRealApiMode } from "../lib/runtime/mode";
 import { AuthRequiredError, getSupabaseAccessToken, supabase } from "../lib/supabase";
 import type { ExportAdapterTransport } from "../lib/export/exportAdapter";
 import type { ExportJob, ExportServiceRequest } from "../lib/export/exportServiceContract";
+import type { CorrectionObject, ReviewState } from "../lib/transcript/correctionObject";
 
 // Re-export all contract types so the rest of the app imports from one place.
 export type * from "./types";
@@ -175,6 +176,16 @@ export const api = {
 
   triggerAIReview: (jobId: string, body: { force: boolean }) =>
     request<{ status: string }>("POST", url(jobId, "ai-review"), body),
+
+  // DOC-0325 Step 1 — reviewed CorrectionObjects (the qa_split structural
+  // decisions the reporter accepted). GET /:jobId/corrections[?state=...].
+  // The Working Transcript projection (deriveWorkingTranscript) filters to
+  // accepted/edited itself, so callers typically fetch unfiltered.
+  getCorrections: (jobId: string, state?: ReviewState) =>
+    request<CorrectionObject[]>(
+      "GET",
+      url(jobId, state ? `corrections?state=${encodeURIComponent(state)}` : "corrections"),
+    ),
 
   getExhibits: (jobId: string) =>
     request<Exhibit[]>("GET", url(jobId, "exhibits")),

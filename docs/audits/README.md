@@ -3,7 +3,7 @@
 
 This index is generated from [the documentation manifest](../document-manifest.json). Do not edit it by hand.
 
-Managed documents: **131**
+Managed documents: **143**
 
 | Document | ID | Tier | Status | Owner |
 | --- | --- | --- | --- | --- |
@@ -138,3 +138,15 @@ Managed documents: **131**
 | [Repair Burden Report](stage-s/REPAIR_BURDEN_REPORT.md) | DOC-0272 | T5 | ACTIVE | Architecture |
 | [Stage S Owner Audit (PR #19)](stage-s/STAGE_S_OWNER_AUDIT.md) | DOC-0273 | T5 | ACTIVE | Architecture |
 | [Stage S Validation Report](stage-s/STAGE_S_VALIDATION_REPORT.md) | DOC-0274 | T5 | ACTIVE | Architecture |
+| [AI-Review HTTP 500 Root-Cause Report](AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md) | DOC-0317 | T5 | ACTIVE | Architecture |
+| [Depo-Pro Autonomous Architecture Simplification Working Report](AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md) | DOC-0318 | T5 | ACTIVE | Architecture |
+| [Canonical Authority Matrix](CANONICAL_AUTHORITY_MATRIX_2026-08-10.md) | DOC-0319 | T5 | ACTIVE | Architecture |
+| [Clean-Input Defect and Necessity Matrix](CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md) | DOC-0320 | T5 | ACTIVE | Architecture |
+| [AI Pipeline Inventory and Simplification Map (Phase G)](AI_PIPELINE_INVENTORY_2026-08-10.md) | DOC-0321 | T5 | ACTIVE | Architecture |
+| [C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence](C2A_DECISION_ANALYSIS_2026-08-10.md) | DOC-0324 | T5 | ACTIVE | Architecture |
+| [line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable](LINE_TYPE_MIGRATION_PLAN_2026-08-10.md) | DOC-0325 | T5 | ACTIVE | Architecture |
+| [Python transcript_formatter/ characterization — pre-retirement inventory](TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md) | DOC-0326 | T5 | ACTIVE | Architecture |
+| [CorrectionObject three-way drift audit — canonical authority + sync](CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md) | DOC-0327 | T5 | ACTIVE | Architecture |
+| [Certified-pages re-home surface — front/back matter into the live pipeline](CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md) | DOC-0328 | T5 | ACTIVE | Architecture |
+| [Security review — freeze-safe pass (secret exposure, edge auth)](SECURITY_REVIEW_2026-08-10.md) | DOC-0329 | T5 | ACTIVE | Architecture |
+| [Website source consolidation audit — 2026-11-04](WEBSITE_SOURCE_CONSOLIDATION_2026-11-04.md) | DOC-0330 | T5 | ACTIVE | Architecture |

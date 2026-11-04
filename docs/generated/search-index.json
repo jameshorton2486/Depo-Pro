@@ -2,9 +2,9 @@
   "schema_version": "1.0.0",
   "generated": true,
   "generated_on": "2026-08-05",
-  "manifest_sha256": "3e454624e599168aa2f9dcf3d65a330fed1ebd8ef10139e8ad20bda0b0827409",
-  "graph_sha256": "91708ae15ea97861b00c10f99b97ddd5800bd39f4f92e2717b8a0424f70a12c3",
-  "document_count": 314,
+  "manifest_sha256": "adbb8b7f7b3818a5477301fb13ced87f94b5a32ab7d74c5dc84bc26ce0d2f337",
+  "graph_sha256": "75db087317938e19ac6568cc8a5eca3b926b96117188e2fab1ef5ce10166d476",
+  "document_count": 331,
   "documents": [
     {
       "id": "DOC-0001",
@@ -7656,14 +7656,17 @@
       "tier": "T1",
       "status": "ACTIVE",
       "keywords": [
+        "2026-11-04",
         "architecture",
         "certification",
         "components",
         "creation",
+        "decision",
         "depo-pro",
         "development",
         "exhibits",
         "existing",
+        "expansion",
         "export",
         "human",
         "immediate",
@@ -7677,6 +7680,7 @@
         "philosophy",
         "policy",
         "priorities",
+        "product",
         "product-system-architecture",
         "project",
         "purpose",
@@ -7693,6 +7697,10 @@
         {
           "level": 1,
           "text": "DEPO-PRO MASTER ARCHITECTURE DOCUMENT"
+        },
+        {
+          "level": 2,
+          "text": "2026-11-04 Product Expansion Decision"
         },
         {
           "level": 2,
@@ -30211,30 +30219,41 @@
       "tier": "T4",
       "status": "ACTIVE",
       "keywords": [
+        "2026-08-10",
         "any",
         "architecture",
         "audit",
         "before",
         "branch",
+        "branches",
+        "classification",
         "cleanup",
         "current",
         "docs",
         "external",
         "github",
         "later",
+        "local",
+        "main-normalization",
         "manually",
+        "means",
         "merged",
+        "notable",
         "note",
         "operations",
+        "origin",
         "pii",
         "plan",
+        "preparation",
         "purge",
+        "remote",
         "required",
         "retention",
         "safety",
         "sharing",
         "status",
-        "sync"
+        "sync",
+        "what"
       ],
       "headings": [
         {
@@ -30264,6 +30283,22 @@
         {
           "level": 2,
           "text": "Required PII Purge Before Any External Sharing"
+        },
+        {
+          "level": 2,
+          "text": "Branch classification audit — 2026-08-10 (main-normalization preparation)"
+        },
+        {
+          "level": 3,
+          "text": "Local branches"
+        },
+        {
+          "level": 3,
+          "text": "Remote (origin/*) — notable"
+        },
+        {
+          "level": 3,
+          "text": "What this means for main-normalization"
         }
       ]
     },
@@ -32620,6 +32655,1641 @@
         {
           "level": 2,
           "text": "Consequences"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0315",
+      "title": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)",
+      "path": "docs/architecture/adr/ADR-0016-format-and-correct-transcript-button.md",
+      "category": "architecture",
+      "owner": "Workspace",
+      "authority": false,
+      "tier": "T4",
+      "status": "ACTIVE",
+      "keywords": [
+        "adr",
+        "adr-0016",
+        "alternatives",
+        "architecture",
+        "authorized",
+        "behavior",
+        "button",
+        "change",
+        "code",
+        "commits",
+        "consequences",
+        "considered",
+        "context",
+        "correct",
+        "decision",
+        "deliberately",
+        "evidence",
+        "follow-ups",
+        "format",
+        "implementation",
+        "new",
+        "non-goals",
+        "non-reactive",
+        "not",
+        "only",
+        "option",
+        "p-a",
+        "plan",
+        "push",
+        "read-only",
+        "reload",
+        "save",
+        "specification",
+        "trace",
+        "transcript",
+        "verified",
+        "via",
+        "why",
+        "workspace",
+        "workspace-format-trigger"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "ADR-0016 — \"Format and Correct Transcript\" button (Option C via save + reload)"
+        },
+        {
+          "level": 2,
+          "text": "Context"
+        },
+        {
+          "level": 3,
+          "text": "Evidence (verified code trace, read-only)"
+        },
+        {
+          "level": 3,
+          "text": "Why P-A is deliberately non-reactive"
+        },
+        {
+          "level": 2,
+          "text": "Decision"
+        },
+        {
+          "level": 3,
+          "text": "Behavior specification"
+        },
+        {
+          "level": 3,
+          "text": "Non-goals"
+        },
+        {
+          "level": 2,
+          "text": "Consequences"
+        },
+        {
+          "level": 2,
+          "text": "Alternatives considered"
+        },
+        {
+          "level": 2,
+          "text": "Implementation plan (authorized by this ADR — new commits only, no push)"
+        },
+        {
+          "level": 2,
+          "text": "Follow-ups (not in this change)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0316",
+      "title": "Depo-Pro Target Simplified Architecture",
+      "path": "docs/architecture/TARGET_SIMPLIFIED_ARCHITECTURE.md",
+      "category": "architecture",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T2",
+      "status": "DRAFT",
+      "keywords": [
+        "adapters",
+        "architectural",
+        "architecture",
+        "boundaries",
+        "boundary",
+        "canonical",
+        "certification",
+        "compatibility",
+        "current",
+        "decisions",
+        "dependency",
+        "depo-pro",
+        "elimination",
+        "evidence",
+        "finalization",
+        "gate",
+        "human",
+        "intake",
+        "intelligence",
+        "map",
+        "migration",
+        "model",
+        "one",
+        "proposal-only",
+        "public",
+        "pure",
+        "ratification",
+        "reissue",
+        "rendering",
+        "requirements",
+        "requiring",
+        "reviewed",
+        "rules",
+        "sentence",
+        "simplified",
+        "stage",
+        "structure",
+        "target",
+        "target-simplified-system-architecture",
+        "transcribe-once",
+        "transcript",
+        "working"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Depo-Pro Target Simplified Architecture"
+        },
+        {
+          "level": 2,
+          "text": "Architectural sentence"
+        },
+        {
+          "level": 2,
+          "text": "Stage boundaries"
+        },
+        {
+          "level": 2,
+          "text": "Current architecture"
+        },
+        {
+          "level": 2,
+          "text": "Target architecture"
+        },
+        {
+          "level": 3,
+          "text": "1. Canonical Intake boundary"
+        },
+        {
+          "level": 3,
+          "text": "2. Transcribe-once evidence boundary"
+        },
+        {
+          "level": 3,
+          "text": "3. Proposal-only intelligence boundary"
+        },
+        {
+          "level": 3,
+          "text": "4. One Working Transcript boundary"
+        },
+        {
+          "level": 3,
+          "text": "5. Reviewed structure boundary"
+        },
+        {
+          "level": 3,
+          "text": "6. One finalization model"
+        },
+        {
+          "level": 3,
+          "text": "7. Certification and reissue"
+        },
+        {
+          "level": 3,
+          "text": "8. Pure rendering adapters"
+        },
+        {
+          "level": 2,
+          "text": "Public boundaries"
+        },
+        {
+          "level": 2,
+          "text": "Dependency rules"
+        },
+        {
+          "level": 2,
+          "text": "Elimination map"
+        },
+        {
+          "level": 2,
+          "text": "Migration map"
+        },
+        {
+          "level": 2,
+          "text": "Compatibility requirements"
+        },
+        {
+          "level": 2,
+          "text": "Decisions requiring ratification or a Human Gate"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0317",
+      "title": "AI-Review HTTP 500 Root-Cause Report",
+      "path": "docs/audits/AI_REVIEW_HTTP_500_ROOT_CAUSE_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "500",
+        "additional",
+        "ai-review",
+        "architectural",
+        "architecture",
+        "audits",
+        "cause",
+        "characterization",
+        "classification",
+        "defects",
+        "diagnostic",
+        "dimensions",
+        "disposition",
+        "docs",
+        "exposed",
+        "finding",
+        "http",
+        "report",
+        "required",
+        "review",
+        "root",
+        "root-cause"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "AI-Review HTTP 500 Root-Cause Report"
+        },
+        {
+          "level": 2,
+          "text": "Finding"
+        },
+        {
+          "level": 2,
+          "text": "Required diagnostic dimensions"
+        },
+        {
+          "level": 2,
+          "text": "Additional defects exposed by characterization"
+        },
+        {
+          "level": 2,
+          "text": "Classification"
+        },
+        {
+          "level": 2,
+          "text": "Architectural disposition"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0318",
+      "title": "Depo-Pro Autonomous Architecture Simplification Working Report",
+      "path": "docs/audits/AUTONOMOUS_ARCHITECTURE_SIMPLIFICATION_WORKING_REPORT_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "architectural",
+        "architecture",
+        "audits",
+        "autonomous",
+        "baseline",
+        "benchmark",
+        "blockers",
+        "capability",
+        "characterization",
+        "clean-input",
+        "complexity",
+        "corrected",
+        "deferred",
+        "deliverables",
+        "depo-pro",
+        "disposition",
+        "doc-0325",
+        "doc-0326",
+        "docs",
+        "floor",
+        "formatter",
+        "freeze-limited",
+        "git",
+        "governance",
+        "implementation",
+        "justification",
+        "landed",
+        "line",
+        "loc",
+        "local",
+        "matrix",
+        "measurement",
+        "migration",
+        "module",
+        "note",
+        "operations",
+        "phase",
+        "prep",
+        "progress",
+        "python",
+        "qafixer",
+        "read-only",
+        "reduction",
+        "report",
+        "retirement",
+        "safety",
+        "scorecard",
+        "simplification",
+        "test",
+        "transcript",
+        "type",
+        "verbatim",
+        "waves",
+        "working"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Depo-Pro Autonomous Architecture Simplification Working Report"
+        },
+        {
+          "level": 2,
+          "text": "Capability matrix"
+        },
+        {
+          "level": 2,
+          "text": "Safety baseline"
+        },
+        {
+          "level": 2,
+          "text": "Clean-input benchmark"
+        },
+        {
+          "level": 2,
+          "text": "Characterization deliverables"
+        },
+        {
+          "level": 2,
+          "text": "Phase G implementation progress (2026-08-10)"
+        },
+        {
+          "level": 2,
+          "text": "Architectural reduction scorecard (§41)"
+        },
+        {
+          "level": 3,
+          "text": "LOC + module measurement (§41, read-only git)"
+        },
+        {
+          "level": 3,
+          "text": "Governance note (verbatim floor) — corrected"
+        },
+        {
+          "level": 2,
+          "text": "qaFixer disposition — Complexity Justification Test (§15)"
+        },
+        {
+          "level": 2,
+          "text": "Blockers and deferred operations"
+        },
+        {
+          "level": 2,
+          "text": "line_type migration (DOC-0325) — freeze-limited local waves landed"
+        },
+        {
+          "level": 2,
+          "text": "Python transcript_formatter/ characterization (DOC-0326) — retirement prep"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0319",
+      "title": "Canonical Authority Matrix",
+      "path": "docs/audits/CANONICAL_AUTHORITY_MATRIX_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "architecture",
+        "audits",
+        "authority",
+        "canonical",
+        "consolidation",
+        "decisions",
+        "deferred",
+        "docs",
+        "highest-value",
+        "matrix",
+        "order"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Canonical Authority Matrix"
+        },
+        {
+          "level": 2,
+          "text": "Matrix"
+        },
+        {
+          "level": 2,
+          "text": "Highest-value consolidation order"
+        },
+        {
+          "level": 2,
+          "text": "Deferred decisions"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0320",
+      "title": "Clean-Input Defect and Necessity Matrix",
+      "path": "docs/audits/CLEAN_INPUT_DEFECT_NECESSITY_MATRIX_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "architecture",
+        "audits",
+        "benchmark",
+        "clean",
+        "clean-input",
+        "conclusion",
+        "defect",
+        "docs",
+        "facts",
+        "input",
+        "matrix",
+        "necessity"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Clean-Input Defect and Necessity Matrix"
+        },
+        {
+          "level": 2,
+          "text": "Benchmark facts"
+        },
+        {
+          "level": 2,
+          "text": "Conclusion"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0321",
+      "title": "AI Pipeline Inventory and Simplification Map (Phase G)",
+      "path": "docs/audits/AI_PIPELINE_INVENTORY_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "action",
+        "architecture",
+        "audits",
+        "autonomously",
+        "complexity",
+        "conclusion",
+        "controlling",
+        "correction",
+        "docs",
+        "elimination",
+        "engines",
+        "entirely",
+        "executive",
+        "formatter",
+        "gate",
+        "human",
+        "inventory",
+        "invocation",
+        "items",
+        "justification",
+        "live",
+        "map",
+        "models",
+        "not",
+        "only",
+        "ordered",
+        "phase",
+        "pipeline",
+        "plan",
+        "preserved",
+        "product",
+        "prompts",
+        "python",
+        "reconstruction",
+        "runtime",
+        "safety",
+        "simplification",
+        "slice",
+        "summary",
+        "surface",
+        "transcript",
+        "unwired"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "AI Pipeline Inventory and Simplification Map (Phase G)"
+        },
+        {
+          "level": 2,
+          "text": "Executive conclusion"
+        },
+        {
+          "level": 2,
+          "text": "Controlling architecture preserved"
+        },
+        {
+          "level": 2,
+          "text": "Slice A — AI invocation surface (live)"
+        },
+        {
+          "level": 2,
+          "text": "Slice B — TS correction/reconstruction engines"
+        },
+        {
+          "level": 2,
+          "text": "Slice C+D — Python `transcript_formatter/` (entirely unwired from the product)"
+        },
+        {
+          "level": 2,
+          "text": "Slice E — Prompts & models (live runtime only)"
+        },
+        {
+          "level": 2,
+          "text": "Elimination map (Phase G plan, ordered by safety)"
+        },
+        {
+          "level": 2,
+          "text": "Human Gate items (do not action autonomously)"
+        },
+        {
+          "level": 2,
+          "text": "Complexity Justification summary (§15)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0322",
+      "title": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)",
+      "path": "docs/architecture/adr/ADR-0018-standalone-k-okay-verbatim-exception.md",
+      "category": "architecture",
+      "owner": "Rendering",
+      "authority": false,
+      "tier": "T4",
+      "status": "DRAFT",
+      "keywords": [
+        "adr-0018",
+        "alternatives",
+        "architecture",
+        "consequences",
+        "considered",
+        "context",
+        "correction",
+        "decision",
+        "future",
+        "implementation",
+        "layer",
+        "matcher",
+        "okay",
+        "rejected",
+        "rendering",
+        "rule",
+        "specification",
+        "specified",
+        "standalone",
+        "status",
+        "verbatim-standalone-k-okay-exception"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "ADR-0018 — Standalone \"K.\" / \"k.\" → \"Okay.\" correction (specified for the A5 layer)"
+        },
+        {
+          "level": 2,
+          "text": "Context"
+        },
+        {
+          "level": 2,
+          "text": "Decision"
+        },
+        {
+          "level": 3,
+          "text": "Matcher specification (for the future A5 rule)"
+        },
+        {
+          "level": 2,
+          "text": "Consequences"
+        },
+        {
+          "level": 2,
+          "text": "Alternatives considered (and rejected)"
+        },
+        {
+          "level": 2,
+          "text": "Implementation status"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0323",
+      "title": "ADR-0017 — Workspace UFM-formatted first render (transcript body)",
+      "path": "docs/architecture/adr/ADR-0017-workspace-ufm-first-render.md",
+      "category": "architecture",
+      "owner": "Workspace",
+      "authority": false,
+      "tier": "T4",
+      "status": "ACTIVE",
+      "keywords": [
+        "adr",
+        "adr-0017",
+        "along",
+        "application",
+        "architecture",
+        "before",
+        "body",
+        "boundary",
+        "code",
+        "consequences",
+        "context",
+        "correction",
+        "decision",
+        "decisions",
+        "export",
+        "f19",
+        "first",
+        "formatting",
+        "items",
+        "model",
+        "not",
+        "open",
+        "oq-4",
+        "oq-5",
+        "oq-6",
+        "part",
+        "ratified",
+        "render",
+        "resolve",
+        "restating",
+        "scope",
+        "surface",
+        "transcript",
+        "ufm-formatted",
+        "workspace",
+        "workspace-first-render-formatting"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "ADR-0017 — Workspace UFM-formatted first render (transcript body)"
+        },
+        {
+          "level": 2,
+          "text": "Context"
+        },
+        {
+          "level": 2,
+          "text": "Decisions"
+        },
+        {
+          "level": 3,
+          "text": "Decision 1 — The Workspace is the formatting surface, not the export"
+        },
+        {
+          "level": 3,
+          "text": "Decision 2 — First render is UFM-formatted"
+        },
+        {
+          "level": 3,
+          "text": "Decision 3 — F19 scope (restating ratified F19 / OQ-4 / OQ-5 / OQ-6)"
+        },
+        {
+          "level": 3,
+          "text": "Decision 4 — Correction application model"
+        },
+        {
+          "level": 2,
+          "text": "Consequences"
+        },
+        {
+          "level": 2,
+          "text": "Open items (resolve before/along with Part 2)"
+        },
+        {
+          "level": 2,
+          "text": "Part 2 boundary (no code in this ADR)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0324",
+      "title": "C2a Decision Analysis — confirmStructure, keepRawLabels, export/workspace divergence",
+      "path": "docs/audits/C2A_DECISION_ANALYSIS_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "analysis",
+        "architecture",
+        "are",
+        "audits",
+        "c2a",
+        "confirmstructure",
+        "cross-cutting",
+        "decision",
+        "divergence",
+        "docs",
+        "export",
+        "finding",
+        "first",
+        "headline",
+        "highest-consequence",
+        "keeprawlabels",
+        "migration",
+        "once",
+        "recommended",
+        "risks",
+        "see",
+        "sequence",
+        "settled",
+        "structureconfirmed",
+        "workspace"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "C2a Decision Analysis — confirmStructure, keepRawLabels, and the export/workspace divergence"
+        },
+        {
+          "level": 2,
+          "text": "0. Headline — the highest-consequence finding first"
+        },
+        {
+          "level": 2,
+          "text": "1. `confirmStructure` / `structureConfirmed`"
+        },
+        {
+          "level": 2,
+          "text": "2. `keepRawLabels`"
+        },
+        {
+          "level": 2,
+          "text": "3. Export/workspace divergence (see §0)"
+        },
+        {
+          "level": 2,
+          "text": "Recommended migration sequence (once D1–D7 are settled)"
+        },
+        {
+          "level": 2,
+          "text": "Cross-cutting risks"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0325",
+      "title": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable",
+      "path": "docs/audits/LINE_TYPE_MIGRATION_PLAN_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "activation",
+        "apply",
+        "architecture",
+        "audits",
+        "backfill",
+        "behavior",
+        "behaviors",
+        "blocked",
+        "canonical",
+        "changes",
+        "classifier",
+        "compatibility",
+        "confidence",
+        "confirmation",
+        "consumer",
+        "convergence",
+        "core",
+        "current",
+        "database",
+        "decision",
+        "defect",
+        "deletion",
+        "deliverable",
+        "deployment",
+        "derived-unit",
+        "docs",
+        "edit",
+        "embedded",
+        "every",
+        "exact",
+        "exception",
+        "existing",
+        "export",
+        "final",
+        "finding",
+        "fix",
+        "four-part",
+        "freeze",
+        "freeze-limited",
+        "frozen",
+        "gate",
+        "grounding",
+        "here",
+        "human",
+        "implementation",
+        "implemented",
+        "inspection",
+        "integration",
+        "keeprawlabels",
+        "line",
+        "local",
+        "locally",
+        "matrix",
+        "migration",
+        "mode",
+        "normal",
+        "notes",
+        "objection",
+        "one",
+        "only",
+        "open",
+        "package-json",
+        "path",
+        "persisted",
+        "persistence",
+        "phase",
+        "plan",
+        "producer",
+        "production",
+        "proposal",
+        "qafixer",
+        "raw-evidence",
+        "read",
+        "ready",
+        "remaining",
+        "remove",
+        "representation",
+        "resolved",
+        "result",
+        "retirement",
+        "retirement-blocking",
+        "reversible",
+        "review",
+        "reviewed",
+        "revised",
+        "rollback",
+        "save",
+        "schema",
+        "scoped",
+        "sequence",
+        "state",
+        "status",
+        "still",
+        "stop",
+        "strategy",
+        "structural",
+        "structure",
+        "structureconfirmed",
+        "surface",
+        "tests",
+        "transcript",
+        "transcripts",
+        "txt",
+        "type",
+        "under",
+        "unknown",
+        "via",
+        "wave",
+        "waves",
+        "word-scoped",
+        "working",
+        "workspace",
+        "write"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "line_type Migration Plan — one persisted reviewed structure for Workspace and every deliverable"
+        },
+        {
+          "level": 2,
+          "text": "Current state (grounding)"
+        },
+        {
+          "level": 2,
+          "text": "1. Canonical `line_type` representation"
+        },
+        {
+          "level": 2,
+          "text": "2. Structural proposal + confidence representation (D2)"
+        },
+        {
+          "level": 2,
+          "text": "3. Human review / confirmation state (D1)"
+        },
+        {
+          "level": 2,
+          "text": "4. Working Transcript persistence (D3)"
+        },
+        {
+          "level": 2,
+          "text": "5. Workspace read/write path (D1/D3)"
+        },
+        {
+          "level": 2,
+          "text": "6. Migration from `structureConfirmed` (D1)"
+        },
+        {
+          "level": 2,
+          "text": "7. Remove `keepRawLabels` as a normal transcript mode (D4)"
+        },
+        {
+          "level": 2,
+          "text": "8. Raw-evidence inspection surface (D5)"
+        },
+        {
+          "level": 2,
+          "text": "9. Workspace/export classifier convergence (D7 — the core defect fix)"
+        },
+        {
+          "level": 2,
+          "text": "10. TXT / package-JSON convergence (D6)"
+        },
+        {
+          "level": 2,
+          "text": "11. `qaFixer` consumer migration and retirement (§15 of Phase G)"
+        },
+        {
+          "level": 3,
+          "text": "Final behavior matrix (2026-08-10) — the retirement-blocking finding"
+        },
+        {
+          "level": 3,
+          "text": "Revised retirement sequence + gate"
+        },
+        {
+          "level": 2,
+          "text": "12. Compatibility with existing UNKNOWN transcripts (§12)"
+        },
+        {
+          "level": 2,
+          "text": "13. Schema / database changes"
+        },
+        {
+          "level": 2,
+          "text": "14. Backfill strategy"
+        },
+        {
+          "level": 2,
+          "text": "15. Rollback"
+        },
+        {
+          "level": 2,
+          "text": "16. Tests"
+        },
+        {
+          "level": 2,
+          "text": "17. Deployment sequence"
+        },
+        {
+          "level": 2,
+          "text": "Locally reversible vs. Human Gate"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        },
+        {
+          "level": 2,
+          "text": "Implementation status (freeze-limited local waves)"
+        },
+        {
+          "level": 3,
+          "text": "LOCAL integration (scoped freeze exception — production still frozen)"
+        },
+        {
+          "level": 3,
+          "text": "Decision A — derived-unit edit persistence (IMPLEMENTED — word-scoped save path)"
+        },
+        {
+          "level": 3,
+          "text": "Wave 4 — embedded objection structural apply (RESOLVED via Decision B; producer still open)"
+        },
+        {
+          "level": 4,
+          "text": "qaFixer four-part deletion gate — RESULT (behaviors ready; blocked only on activation)"
+        },
+        {
+          "level": 3,
+          "text": "Exact remaining gate (STOP here under freeze)"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0326",
+      "title": "Python transcript_formatter/ characterization — pre-retirement inventory",
+      "path": "docs/audits/TRANSCRIPT_FORMATTER_CHARACTERIZATION_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "above",
+        "additive",
+        "all",
+        "already",
+        "answered",
+        "any",
+        "architecture",
+        "assets",
+        "audits",
+        "before",
+        "behavior",
+        "but",
+        "capabilities",
+        "case-specific",
+        "certified-output",
+        "certified-pages",
+        "characterization",
+        "checklist",
+        "cloud",
+        "core",
+        "correction",
+        "correctionobject",
+        "cost",
+        "dead",
+        "delete",
+        "deletion",
+        "deterministic",
+        "docs",
+        "engine",
+        "executable",
+        "exposure",
+        "fabrication",
+        "formatter",
+        "four-part",
+        "freeze-safe",
+        "gap",
+        "gate",
+        "generic",
+        "harvest",
+        "hazards",
+        "inventory",
+        "list",
+        "live",
+        "met",
+        "morson",
+        "must",
+        "not",
+        "notes",
+        "pre-retirement",
+        "preserve",
+        "production",
+        "python",
+        "python-only",
+        "question",
+        "read-only",
+        "recommended",
+        "redundancy",
+        "relative",
+        "replicates",
+        "rule",
+        "rules",
+        "run",
+        "safe",
+        "schema-of-record",
+        "see",
+        "sequence",
+        "single-source-of-truth",
+        "spec",
+        "status",
+        "survive",
+        "tables",
+        "tests",
+        "transcript",
+        "ufm",
+        "verdict",
+        "what",
+        "yet"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Python transcript_formatter/ characterization — pre-retirement inventory"
+        },
+        {
+          "level": 2,
+          "text": "Verdict — DEAD relative to production, but NOT yet safe to delete"
+        },
+        {
+          "level": 2,
+          "text": "Live vs. Python — what the Cloud Run `formatter_core` already replicates"
+        },
+        {
+          "level": 3,
+          "text": "The certified-pages question — ANSWERED (2026-08-10): a live gap, not redundancy"
+        },
+        {
+          "level": 2,
+          "text": "Harvest checklist — preserve BEFORE any deletion"
+        },
+        {
+          "level": 3,
+          "text": "A. Deterministic rule tables (the Morson/UFM correction engine)"
+        },
+        {
+          "level": 3,
+          "text": "B. Certified-output capabilities (see Python-only list above) + UFM assets"
+        },
+        {
+          "level": 3,
+          "text": "C. The CorrectionObject schema-of-record (already the TS single-source-of-truth)"
+        },
+        {
+          "level": 3,
+          "text": "D. Executable behavior spec (tests to harvest)"
+        },
+        {
+          "level": 2,
+          "text": "Hazards — case-specific / fabrication rules that must NOT survive as generic behavior"
+        },
+        {
+          "level": 2,
+          "text": "Cost exposure"
+        },
+        {
+          "level": 2,
+          "text": "Four-part deletion gate — status: NOT MET"
+        },
+        {
+          "level": 2,
+          "text": "Recommended pre-retirement sequence (all freeze-safe, read-only or additive)"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0327",
+      "title": "CorrectionObject three-way drift audit — canonical authority + sync",
+      "path": "docs/audits/CORRECTIONOBJECT_DRIFT_AUDIT_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "activation",
+        "applied",
+        "architecture",
+        "audit",
+        "audits",
+        "authority",
+        "canonical",
+        "commit",
+        "compatibility",
+        "contract-vs-validator",
+        "correctionobject",
+        "determination",
+        "docs",
+        "done",
+        "drift",
+        "drifts",
+        "edges",
+        "field-by-field",
+        "found",
+        "freeze-safe",
+        "gates",
+        "genuine",
+        "harvest",
+        "here",
+        "laxity",
+        "matrix",
+        "not",
+        "notes",
+        "outlier",
+        "pre-fix",
+        "remaining",
+        "remediation",
+        "representations",
+        "shared",
+        "sync",
+        "their",
+        "three",
+        "three-way",
+        "ts-vs-python"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "CorrectionObject three-way drift audit — canonical authority + sync"
+        },
+        {
+          "level": 2,
+          "text": "The three representations + their edges"
+        },
+        {
+          "level": 2,
+          "text": "Field-by-field compatibility matrix (pre-fix)"
+        },
+        {
+          "level": 3,
+          "text": "Genuine drifts found (TS the outlier)"
+        },
+        {
+          "level": 3,
+          "text": "Shared laxity (contract-vs-validator, NOT a TS-vs-Python drift)"
+        },
+        {
+          "level": 2,
+          "text": "Canonical authority — determination"
+        },
+        {
+          "level": 2,
+          "text": "Remediation applied (this commit — freeze-safe, no activation)"
+        },
+        {
+          "level": 2,
+          "text": "Remaining harvest / gates (not done here)"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0328",
+      "title": "Certified-pages re-home surface — front/back matter into the live pipeline",
+      "path": "docs/audits/CERTIFIED_PAGES_REHOME_SURFACE_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "activation",
+        "additions",
+        "adr-0017",
+        "all",
+        "architectural",
+        "architecture",
+        "audits",
+        "back",
+        "behavioral",
+        "boundary",
+        "certified",
+        "certified-pages",
+        "characterization",
+        "concern",
+        "consolidated",
+        "content",
+        "correction",
+        "docs",
+        "done",
+        "enabler",
+        "enabling",
+        "first-class",
+        "freeze",
+        "freeze-safe",
+        "front",
+        "gate",
+        "gates",
+        "human",
+        "implementation",
+        "indexes",
+        "inert",
+        "intake",
+        "live",
+        "local",
+        "mapping",
+        "matter",
+        "metadata",
+        "need",
+        "not",
+        "notes",
+        "only",
+        "output",
+        "page",
+        "pages",
+        "pagination",
+        "per",
+        "pipeline",
+        "post-record",
+        "prerequisite",
+        "producer",
+        "re-home",
+        "recommended",
+        "rehome",
+        "render",
+        "render-model",
+        "required",
+        "sequence",
+        "single",
+        "status",
+        "substitution",
+        "surface",
+        "target",
+        "transcript",
+        "ufm"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Certified-pages re-home surface — mapping the ADR-0017 front/back matter into the live pipeline"
+        },
+        {
+          "level": 2,
+          "text": "The single enabling prerequisite — pagination as first-class render-model output"
+        },
+        {
+          "level": 2,
+          "text": "Re-home mapping — per required page"
+        },
+        {
+          "level": 3,
+          "text": "Front matter (from Intake/UFM metadata; no transcript content)"
+        },
+        {
+          "level": 3,
+          "text": "Back matter"
+        },
+        {
+          "level": 3,
+          "text": "Indexes (need the pagination enabler)"
+        },
+        {
+          "level": 2,
+          "text": "Architectural boundary — the post-record substitution is a correction concern, NOT a render concern"
+        },
+        {
+          "level": 2,
+          "text": "Consolidated required target additions"
+        },
+        {
+          "level": 2,
+          "text": "Recommended sequence (all behavioral → activation is a Human Gate; only characterization is freeze-safe)"
+        },
+        {
+          "level": 2,
+          "text": "Freeze / Human Gates"
+        },
+        {
+          "level": 2,
+          "text": "Implementation status — pagination producer (the enabler) — DONE (local, inert)"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0329",
+      "title": "Security review — freeze-safe pass (secret exposure, edge auth)",
+      "path": "docs/audits/SECURITY_REVIEW_2026-08-10.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-08-10",
+        "active",
+        "architecture",
+        "audits",
+        "auth",
+        "clean",
+        "covered",
+        "deeper-review",
+        "docs",
+        "edge",
+        "exposure",
+        "freeze-safe",
+        "function",
+        "future",
+        "gate",
+        "here",
+        "high-signal",
+        "hygiene",
+        "items",
+        "not",
+        "notes",
+        "pass",
+        "posture",
+        "production-readiness",
+        "result",
+        "review",
+        "rls",
+        "scope",
+        "secret",
+        "security",
+        "sound",
+        "vulnerabilities"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Security review — freeze-safe pass (secret exposure, edge auth)"
+        },
+        {
+          "level": 2,
+          "text": "Result — clean on the high-signal items"
+        },
+        {
+          "level": 2,
+          "text": "Edge Function auth / RLS posture (sound)"
+        },
+        {
+          "level": 2,
+          "text": "Notes (hygiene / deeper-review items — not active vulnerabilities)"
+        },
+        {
+          "level": 2,
+          "text": "Scope not covered here (future production-readiness security gate)"
+        },
+        {
+          "level": 2,
+          "text": "Notes"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0330",
+      "title": "Website source consolidation audit — 2026-11-04",
+      "path": "docs/audits/WEBSITE_SOURCE_CONSOLIDATION_2026-11-04.md",
+      "category": "audits",
+      "owner": "Architecture",
+      "authority": false,
+      "tier": "T5",
+      "status": "ACTIVE",
+      "keywords": [
+        "2026-11-04",
+        "ancestry",
+        "architecture",
+        "audit",
+        "audits",
+        "boundary",
+        "branch",
+        "consolidated",
+        "consolidation",
+        "depo-pro-website",
+        "frozen",
+        "hosted",
+        "integration",
+        "missing",
+        "remaining",
+        "repository",
+        "result",
+        "revision",
+        "source",
+        "still",
+        "unified",
+        "verification",
+        "web-platform",
+        "website",
+        "website-source-consolidation",
+        "work"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "Website source consolidation audit — 2026-11-04"
+        },
+        {
+          "level": 2,
+          "text": "Repository boundary"
+        },
+        {
+          "level": 2,
+          "text": "Integration ancestry"
+        },
+        {
+          "level": 2,
+          "text": "Source A: unified web-platform branch"
+        },
+        {
+          "level": 2,
+          "text": "Source B: frozen `depo-pro-website` Revision 5"
+        },
+        {
+          "level": 2,
+          "text": "Still missing from the consolidated branch"
+        },
+        {
+          "level": 2,
+          "text": "Verification boundary"
+        },
+        {
+          "level": 3,
+          "text": "Hosted CI result"
+        },
+        {
+          "level": 2,
+          "text": "Remaining work"
+        }
+      ]
+    },
+    {
+      "id": "DOC-0331",
+      "title": "CSR Format Confirmation — Cover Note",
+      "path": "outputs/CSR_FORMAT_CONFIRMATION.md",
+      "category": "reports",
+      "owner": "Rendering",
+      "authority": false,
+      "tier": "T6",
+      "status": "ACTIVE",
+      "keywords": [
+        "applies",
+        "can",
+        "colloquy",
+        "confirm",
+        "confirmation",
+        "cover",
+        "csr",
+        "csr-format-confirmation-sample",
+        "defects",
+        "disclosed",
+        "don",
+        "format",
+        "known",
+        "label",
+        "note",
+        "one",
+        "only",
+        "please",
+        "points",
+        "rendering",
+        "reports",
+        "sample",
+        "seven",
+        "sits",
+        "step",
+        "them",
+        "time",
+        "waste",
+        "what",
+        "where",
+        "you"
+      ],
+      "headings": [
+        {
+          "level": 1,
+          "text": "CSR Format Confirmation — Cover Note"
+        },
+        {
+          "level": 2,
+          "text": "What the sample applies"
+        },
+        {
+          "level": 2,
+          "text": "Where the colloquy label sits (F1)"
+        },
+        {
+          "level": 2,
+          "text": "Please confirm (seven points)"
+        },
+        {
+          "level": 2,
+          "text": "Known defects disclosed (so you don't waste time on them)"
+        },
+        {
+          "level": 2,
+          "text": "One step only you can do"
         }
       ]
     }

@@ -232,13 +232,19 @@ describe("workspaceApi real-API mutation wrappers", () => {
     expect(clientApi.resolveAISuggestion).toHaveBeenCalledWith("tr_123", "word_1", { action: "accept" });
   });
 
-  it("triggers ai review through the transcript id with force=true in real API mode", async () => {
+  it("invokes the ai-review edge function directly with the transcript id in real API mode", async () => {
     repo.getTranscriptJobByTranscriptId.mockResolvedValueOnce(buildTranscriptRow("T1"));
-    clientApi.triggerAIReview.mockResolvedValue({ status: "re-review triggered" });
+    const invokeMock = vi.fn().mockResolvedValue({ data: { completed: true, applied_count: 2 }, error: null });
+    const { getSupabaseClient } = await import("../lib/supabase");
+    (getSupabaseClient as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ functions: { invoke: invokeMock } });
 
     const { workspaceApi } = await import("./workspaceService");
-    await workspaceApi.triggerAIReview("tr_123");
+    const result = await workspaceApi.triggerAIReview("tr_123");
 
-    expect(clientApi.triggerAIReview).toHaveBeenCalledWith("tr_123", { force: true });
+    // Directly invokes the ai-review function (not the old editor-api HTTP hop).
+    expect(invokeMock).toHaveBeenCalledWith("ai-review", {
+      body: { transcript_id: "tr_123", force_rerun: true },
+    });
+    expect(result.status).toBe("completed");
   });
 });

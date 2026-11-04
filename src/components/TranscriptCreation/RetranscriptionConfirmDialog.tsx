@@ -22,10 +22,11 @@ export function RetranscriptionConfirmDialog({
         className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
       >
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Retranscribe Audio</p>
-        <h2 className="mt-2 text-xl font-semibold text-slate-900">Create a new transcript?</h2>
+        <h2 className="mt-2 text-xl font-semibold text-slate-900">Replace the current transcript?</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Retranscription will create a new transcript using the current transcription pipeline.
-          The existing transcript will remain available.
+          Retranscription runs the current transcription pipeline and <span className="font-semibold text-slate-900">replaces</span> this
+          case&rsquo;s transcript. Once the new transcript completes, the existing one is permanently
+          removed so the case keeps a single transcript. This cannot be undone.
         </p>
         {transcriptId && (
           <p

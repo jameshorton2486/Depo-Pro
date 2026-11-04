@@ -1,7 +1,7 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "depo-pro-web",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "node --max-http-header-size=131072 ./node_modules/vite/bin/vite.js",
@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "verify:edge": "node scripts/verify-edge-functions.mjs",
+    "verify:edge:update": "node scripts/verify-edge-functions.mjs --update",
     "stage:validate": "vitest run src/lib/stageS",
     "env:audit": "node scripts/audit-env.mjs",
     "docs:graph": "node scripts/generate-documentation-graph.mjs",
@@ -49,6 +51,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.26",
+    "fake-indexeddb": "^6.2.7",
     "globals": "^15.15.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.4.35",

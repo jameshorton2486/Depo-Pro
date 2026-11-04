@@ -27,6 +27,11 @@ jobs:
           node-version: 20.19.5
           cache: npm
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install dependencies
         run: npm ci
 
@@ -35,6 +40,9 @@ jobs:
 
       - name: Type-check
         run: npm run typecheck
+
+      - name: Verify Edge Functions (deno type gate)
+        run: npm run verify:edge
 
       - name: Lint
         run: npm run lint

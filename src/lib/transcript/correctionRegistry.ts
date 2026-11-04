@@ -41,11 +41,13 @@ export interface StutterRule {
 export const INTERRUPTION_DASH = " -- ";
 
 export const DETERMINISTIC_TOKEN_CORRECTIONS: DeterministicCorrection[] = [
-  {
-    match: "K.",
-    replacement: "Okay.",
-    reason: "ASR garble of 'Okay.' — standalone K. is not a legal abbreviation",
-  },
+  // NOTE: "K." -> "Okay." (a standalone spoken "'kay" misheard by Deepgram) is a
+  // CORRECTION — it replaces one word with a DIFFERENT word — not a same-lexeme
+  // rendering normalization. Per A11 (no fabrication of the spoken record) and
+  // the C1 verbatim guard it is gated out of the first render, and it is NOT
+  // kept here as a deterministic token correction either. It is reserved for the
+  // A5 correction layer (applied, recorded, visibly marked, reviewed at
+  // certification) — specified but unimplemented. See ADR-0018 (DRAFT).
   {
     match: "C572224L",
     replacement: "C-5722-24-L",

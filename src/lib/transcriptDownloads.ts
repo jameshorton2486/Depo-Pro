@@ -18,7 +18,11 @@ export function buildFormattedTranscriptText(
     return buildWorkspaceTranscriptTextClean(document, options.record);
   }
 
-  const formatted = cfe(document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  // A11 / C1b: the raw/unformatted download must be verbatim — no
+  // correction-registry word substitution.
+  const formatted = cfe(document, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
+    applyLexicalCorrections: false,
+  });
   return serializeFormattedDocumentClean(formatted);
 }
 

@@ -12,6 +12,7 @@ import { stripHonorificPrefix } from "../format/honorificHelper";
 import type { FormattedLine, FormattedWord } from "../format/types";
 import { applyParagraphDisplayImprovements } from "./paragraphDisplayImprovements";
 import { applyQaFixer } from "./qaFixer";
+import { applyReviewedStructure, PERSISTED_LINE_TYPE_ENABLED } from "./lineTypeMigration";
 
 export type WorkspaceParagraphMode = "COLLOQUY" | "Q" | "A" | "PARENTHETICAL";
 export type TranscriptParagraphKind =
@@ -589,7 +590,10 @@ function advanceRenderState(descriptor: WorkspaceParagraphDescriptor, state: Ren
 
 export function buildWorkspaceParagraphs(document: EditorDocument, record?: CaseRecord | null): Map<string, WorkspaceParagraphDescriptor> {
   const displayDocument = buildDisplayDocument(document, record);
-  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  // A11 / C1b: verbatim render — no correction-registry word substitution.
+  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
+    applyLexicalCorrections: false,
+  });
   const descriptors = new Map<string, WorkspaceParagraphDescriptor>();
   let state: RenderState = {
     inExamination: false,
@@ -648,9 +652,16 @@ export function buildTranscriptParagraphs(
   document: EditorDocument,
   record?: CaseRecord | null,
   mode: TextMode = "display",
+  // DOC-0325 shared-builder seam. Default = the shipped flag (false), so production output is
+  // byte-identical (applyReviewedStructure is a no-op). Tests/local pass true to exercise the
+  // converged path where persisted reviewed line_type becomes the structural authority.
+  persistedStructureEnabled: boolean = PERSISTED_LINE_TYPE_ENABLED,
 ): TranscriptParagraph[] {
   const displayDocument = buildDisplayDocument(document, record);
-  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry);
+  // A11 / C1b: verbatim render — no correction-registry word substitution.
+  const formatted = cfe(displayDocument, DEFAULT_GEOMETRY_PROFILE, abbreviationRegistry, {
+    applyLexicalCorrections: false,
+  });
   const paragraphs: TranscriptParagraph[] = [];
   let state: RenderState = {
     inExamination: false,
@@ -734,7 +745,11 @@ export function buildTranscriptParagraphs(
   }
 
   flushPending();
-  return applyQaFixer(paragraphs);
+  // Seam: qaFixer runs first (its current structural job), then the reviewed-structure overlay.
+  // With the flag off this overlay is a no-op → identical to today. With the flag on, persisted
+  // reviewed line_type becomes authoritative over both qaFixer and inference — the convergence
+  // that lets qaFixer eventually retire (its output is superseded where structure is reviewed).
+  return applyReviewedStructure(applyQaFixer(paragraphs), document, persistedStructureEnabled);
 }
 
 export function renderTranscriptParagraphText(
