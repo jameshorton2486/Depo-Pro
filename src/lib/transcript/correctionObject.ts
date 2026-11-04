@@ -174,7 +174,7 @@ const CHANGE_TYPES = new Set<string>([...TEXT_CHANGE_TYPES, ...STRUCTURAL_CHANGE
 // apostrophes and hyphens are preserved so "y'all" and "co-worker" stay one
 // token. Used to prove a punctuation_edit did not alter the words.
 export function wordTokens(text: string): string[] {
-  return (text.toLowerCase().match(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu) ?? []);
+  return (text.toLowerCase().match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu) ?? []);
 }
 const REASON_KINDS = new Set<string>([
   "registry_match", "phonetic_similarity", "context_pattern", "prior_correction",
