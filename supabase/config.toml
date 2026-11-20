@@ -21,3 +21,10 @@ verify_jwt = true
 verify_jwt = false
 [functions.licensing]
 verify_jwt = false
+
+[auth.email]
+otp_length = 6
+
+[auth.email.template.magic_link]
+subject = "Your Depo-Pro sign-in code"
+content_path = "./supabase/templates/magic_link.html"

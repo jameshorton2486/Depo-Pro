@@ -53,6 +53,17 @@ async function stripe(path: string, values: URLSearchParams) {
   if (!response.ok) throw new Error(body.error?.message || "Stripe rejected the test request.");
   return body;
 }
+async function stripeCustomer(user: { id: string; email?: string | null }) {
+  const { data: account } = await table("accounts").select("stripe_customer_id").eq("user_id", user.id).single();
+  if (account?.stripe_customer_id) return account.stripe_customer_id;
+  const customer = await stripe("customers", new URLSearchParams({
+    email: user.email || "",
+    "metadata[account_id]": user.id,
+  }));
+  const { error } = await table("accounts").update({ stripe_customer_id: customer.id }).eq("user_id", user.id);
+  if (error) throw error;
+  return String(customer.id);
+}
 async function verifyStripe(raw: string, header: string) {
   const pieces = Object.fromEntries(header.split(",").map(part => part.split("=", 2)));
   const timestamp = pieces.t; const signature = pieces.v1;
@@ -92,9 +103,46 @@ Deno.serve(async request => {
   if (path === "/v1/checkout-sessions" && request.method === "POST") {
     if (!STRIPE_KEY.startsWith("sk_test_")) return failure(request, "temporary_service_outage", "Stripe test mode is not configured.", 503, true);
     const body = await request.json();
-    const values = new URLSearchParams({ mode: "subscription", success_url: `${PUBLIC_APP_URL}${body.return_path}?checkout=success`, cancel_url: `${PUBLIC_APP_URL}${body.return_path}?checkout=cancelled`, "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(MONTHLY_CENTS), "line_items[0][price_data][recurring][interval]": "month", "line_items[0][price_data][product_data][name]": "Depo-Pro Reporter Monthly", "subscription_data[metadata][account_id]": user.id, "metadata[account_id]": user.id, customer_email: user.email || "" });
+    if (typeof body.return_path !== "string" || !body.return_path.startsWith("/")) return failure(request, "invalid_request", "return_path must begin with '/'.", 400);
+    const customer = await stripeCustomer(user);
+    const values = new URLSearchParams({ mode: "subscription", success_url: `${PUBLIC_APP_URL}${body.return_path}?checkout=success`, cancel_url: `${PUBLIC_APP_URL}${body.return_path}?checkout=cancelled`, "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(MONTHLY_CENTS), "line_items[0][price_data][recurring][interval]": "month", "line_items[0][price_data][product_data][name]": "Depo-Pro Reporter Monthly", "subscription_data[metadata][account_id]": user.id, "metadata[account_id]": user.id, customer });
     const session = await stripe("checkout/sessions", values);
     return json(request, { url: session.url, expires_at: iso(new Date(session.expires_at*1000)), test_mode: true }, 201);
+  }
+  if (path === "/v1/billing-portal-sessions" && request.method === "POST") {
+    if (!STRIPE_KEY.startsWith("sk_test_")) return failure(request, "temporary_service_outage", "Stripe test mode is not configured.", 503, true);
+    const body = await request.json();
+    if (typeof body.return_path !== "string" || !body.return_path.startsWith("/")) return failure(request, "invalid_request", "return_path must begin with '/'.", 400);
+    const customer = await stripeCustomer(user);
+    const session = await stripe("billing_portal/sessions", new URLSearchParams({ customer, return_url: `${PUBLIC_APP_URL}${body.return_path}` }));
+    return json(request, { url: session.url, expires_at: iso(addHours(1)), test_mode: true }, 201);
+  }
+  if (path === "/v1/devices" && request.method === "GET") {
+    const { data, error } = await table("devices").select("id,display_name,status,registered_at,last_seen_at").eq("user_id", user.id).order("registered_at", { ascending: false });
+    if (error) throw error;
+    return json(request, { devices: data || [] });
+  }
+  const deviceMatch = path.match(/^\/v1\/devices\/([0-9a-f-]+)$/);
+  if (deviceMatch && request.method === "DELETE") {
+    const { data, error } = await table("devices").update({ status: "revoked" }).eq("id", deviceMatch[1]).eq("user_id", user.id).select("id").maybeSingle();
+    if (error) throw error;
+    if (!data) return failure(request, "not_found", "Device not found.", 404);
+    await table("live_sessions").update({ state: "stale" }).eq("device_id", deviceMatch[1]).eq("state", "active");
+    return new Response(null, { status: 204, headers: cors(request) });
+  }
+  if (path === "/v1/usage/current" && request.method === "GET") return json(request, await usage(user.id));
+  if (path === "/v1/batch-authorizations" && request.method === "POST") {
+    const access = await entitlement(user.id);
+    if (!access.can_start_cloud_transcription) return failure(request, "payment_required", "An active subscription or trial is required for cloud transcription.", 402);
+    if (!DEEPGRAM_KEY) return failure(request, "temporary_service_outage", "Transcription provider is unavailable.", 503, true);
+    const body = await request.json();
+    if (body.purpose !== "speaker_accuracy") return failure(request, "invalid_request", "Unsupported batch purpose.", 400);
+    const { data: device } = await table("devices").select("id").eq("user_id", user.id).eq("fingerprint_hash", body.device_fingerprint).eq("status", "active").maybeSingle();
+    if (!device) return failure(request, "invalid_authentication", "Register this device with a live session first.", 403);
+    const response = await fetch("https://api.deepgram.com/v1/auth/grant", { method: "POST", headers: { Authorization: `Token ${DEEPGRAM_KEY}` } });
+    if (!response.ok) return failure(request, "temporary_service_outage", "Temporary transcription credential could not be issued.", 503, true);
+    const grant = await response.json();
+    return json(request, { contract_version: VERSION, access_token: grant.access_token, token_type: "bearer", expires_in_seconds: 30 });
   }
   if (path === "/v1/live-sessions" && request.method === "POST") {
     const access = await entitlement(user.id); if (!access.can_start_cloud_transcription) return failure(request, "payment_required", "An active subscription or trial is required for cloud transcription.", 402);
