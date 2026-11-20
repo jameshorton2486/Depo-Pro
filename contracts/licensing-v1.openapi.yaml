@@ -1,0 +1,344 @@
+openapi: 3.1.0
+info:
+  title: Depo-Pro Licensing API
+  version: 1.0.0-rc.1
+  description: >-
+    Canonical test-mode contract shared by Depo-Pro Live and the Depo-Pro website.
+    Currency values are integer cents, durations are integer seconds, and timestamps
+    are UTC RFC 3339. Production charges and deployment are outside this release candidate.
+servers:
+  - url: https://licensing.test.invalid
+    description: Placeholder only; no service is deployed at this address.
+security:
+  - bearerAuth: []
+paths:
+  /v1/entitlement:
+    get:
+      operationId: getEntitlement
+      responses:
+        "200":
+          description: Current server-authoritative entitlement.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Entitlement"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/checkout-sessions:
+    post:
+      operationId: createCheckoutSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [return_path]
+              properties:
+                return_path: {type: string, pattern: "^/", maxLength: 200}
+      responses:
+        "201":
+          description: Test-mode Stripe Checkout URL.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RedirectSession"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/billing-portal-sessions:
+    post:
+      operationId: createBillingPortalSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [return_path]
+              properties:
+                return_path: {type: string, pattern: "^/", maxLength: 200}
+      responses:
+        "201":
+          description: Test-mode Stripe customer portal URL.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RedirectSession"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/devices:
+    get:
+      operationId: listDevices
+      responses:
+        "200":
+          description: Devices owned by the authenticated account.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items: {$ref: "#/components/schemas/Device"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/devices/{device_id}:
+    delete:
+      operationId: revokeDevice
+      parameters:
+        - in: path
+          name: device_id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "204": {description: Device revoked; local files are untouched.}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/live-sessions:
+    post:
+      operationId: startLiveSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [device_fingerprint, device_name, idempotency_key, requested_model, channels]
+              properties:
+                device_fingerprint: {type: string, minLength: 32, maxLength: 128}
+                device_name: {type: string, minLength: 1, maxLength: 120}
+                idempotency_key: {type: string, format: uuid}
+                requested_model: {type: string, enum: [nova-3, nova-3-medical]}
+                channels: {type: integer, minimum: 1, maximum: 2}
+                overage_consent_cents: {type: integer, minimum: 0, default: 0}
+      responses:
+        "201":
+          description: Bounded server authorization for one live deposition.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/LiveSessionGrant"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/live-sessions/{session_id}/credentials:
+    post:
+      operationId: obtainReconnectCredential
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [device_fingerprint, request_id]
+              properties:
+                device_fingerprint: {type: string, minLength: 32, maxLength: 128}
+                request_id: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Short-lived provider credential. This is the only response containing it.
+          headers:
+            Cache-Control: {schema: {type: string}, description: Always `no-store`.}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProviderCredential"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/live-sessions/{session_id}/heartbeat:
+    post:
+      operationId: heartbeatLiveSession
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204": {description: Lease heartbeat accepted; grant expiry is never extended.}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/batch-authorizations:
+    post:
+      operationId: authorizeBatchProcessing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [device_fingerprint, request_id, purpose]
+              properties:
+                device_fingerprint: {type: string, minLength: 32, maxLength: 128}
+                request_id: {type: string, format: uuid}
+                purpose: {type: string, enum: [speaker_accuracy]}
+      responses:
+        "200":
+          description: Short-lived provider credential for one approved batch operation.
+          headers:
+            Cache-Control: {schema: {type: string}, description: Always `no-store`.}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProviderCredential"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/live-sessions/{session_id}/close:
+    post:
+      operationId: closeLiveSession
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [idempotency_key, client_recorded_seconds]
+              properties:
+                idempotency_key: {type: string, format: uuid}
+                client_recorded_seconds: {type: integer, minimum: 0}
+      responses:
+        "200":
+          description: Session closure and provisional usage result.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UsageSummary"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/usage/current:
+    get:
+      operationId: getCurrentUsage
+      responses:
+        "200":
+          description: Current billing-period usage; may be provisional until provider reconciliation.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UsageSummary"}
+        default: {$ref: "#/components/responses/Error"}
+  /v1/stripe/webhook:
+    post:
+      operationId: receiveStripeWebhook
+      security: []
+      description: Verifies Stripe-Signature against the unmodified raw request body.
+      responses:
+        "200": {description: Verified event stored or previously processed duplicate acknowledged.}
+        "400": {$ref: "#/components/responses/Error"}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Supabase JWT
+  parameters:
+    SessionId:
+      in: path
+      name: session_id
+      required: true
+      schema: {type: string, format: uuid}
+  responses:
+    Error:
+      description: Stable machine-readable error.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/ApiError"}
+  schemas:
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [contract_version, code, message, retryable, request_id]
+      properties:
+        contract_version: {const: "1.0"}
+        code:
+          type: string
+          enum:
+            - invalid_authentication
+            - payment_required
+            - trial_exhausted
+            - device_limit
+            - session_conflict
+            - usage_consent_required
+            - temporary_service_outage
+            - invalid_request
+            - not_found
+        message: {type: string}
+        retryable: {type: boolean}
+        retry_after_seconds: {type: integer, minimum: 1}
+        request_id: {type: string, format: uuid}
+    Entitlement:
+      type: object
+      additionalProperties: false
+      required:
+        - contract_version
+        - account_id
+        - state
+        - can_start_cloud_transcription
+        - existing_files_accessible
+        - device_limit
+        - concurrent_session_limit
+        - plan
+        - usage
+        - server_time
+      properties:
+        contract_version: {const: "1.0"}
+        account_id: {type: string, format: uuid}
+        state:
+          type: string
+          enum: [trial, active, grace, canceled_at_period_end, expired, suspended, service_unavailable]
+        can_start_cloud_transcription: {type: boolean}
+        existing_files_accessible: {const: true}
+        paid_through: {type: [string, "null"], format: date-time}
+        grace_ends_at: {type: [string, "null"], format: date-time}
+        device_limit: {type: integer, minimum: 1}
+        concurrent_session_limit: {type: integer, minimum: 1}
+        plan: {$ref: "#/components/schemas/Plan"}
+        usage: {$ref: "#/components/schemas/UsageSummary"}
+        server_time: {type: string, format: date-time}
+    Plan:
+      type: object
+      additionalProperties: false
+      required: [code, display_name, monthly_price_cents, currency, included_seconds, overage_price_cents_per_hour, overage_billing_enabled]
+      properties:
+        code: {type: string, example: reporter_monthly}
+        display_name: {type: string, example: Reporter Monthly}
+        monthly_price_cents: {type: integer, minimum: 0, example: 4900}
+        currency: {type: string, pattern: "^[a-z]{3}$", example: usd}
+        included_seconds: {type: integer, minimum: 0, example: 108000}
+        overage_price_cents_per_hour: {type: integer, minimum: 0, example: 200}
+        overage_billing_enabled: {type: boolean, example: false}
+    UsageSummary:
+      type: object
+      additionalProperties: false
+      required: [period_start, period_end, included_seconds, used_seconds, provisional_seconds, last_updated]
+      properties:
+        period_start: {type: string, format: date-time}
+        period_end: {type: string, format: date-time}
+        included_seconds: {type: integer, minimum: 0}
+        used_seconds: {type: integer, minimum: 0}
+        provisional_seconds: {type: integer, minimum: 0}
+        last_updated: {type: string, format: date-time}
+    Device:
+      type: object
+      additionalProperties: false
+      required: [id, display_name, status, registered_at, last_seen_at]
+      properties:
+        id: {type: string, format: uuid}
+        display_name: {type: string}
+        status: {type: string, enum: [active, revoked]}
+        registered_at: {type: string, format: date-time}
+        last_seen_at: {type: string, format: date-time}
+    LiveSessionGrant:
+      type: object
+      additionalProperties: false
+      required: [contract_version, session_id, grant_expires_at, reconnect_until, heartbeat_interval_seconds]
+      properties:
+        contract_version: {const: "1.0"}
+        session_id: {type: string, format: uuid}
+        grant_expires_at: {type: string, format: date-time, description: Maximum 24 hours; never extended by heartbeat.}
+        reconnect_until: {type: string, format: date-time}
+        heartbeat_interval_seconds: {type: integer, minimum: 30}
+    ProviderCredential:
+      type: object
+      additionalProperties: false
+      required: [contract_version, access_token, token_type, expires_in_seconds]
+      properties:
+        contract_version: {const: "1.0"}
+        access_token: {type: string, writeOnly: true}
+        token_type: {const: bearer}
+        expires_in_seconds: {type: integer, minimum: 1, maximum: 3600}
+    RedirectSession:
+      type: object
+      additionalProperties: false
+      required: [url, expires_at, test_mode]
+      properties:
+        url: {type: string, format: uri}
+        expires_at: {type: string, format: date-time}
+        test_mode: {const: true}

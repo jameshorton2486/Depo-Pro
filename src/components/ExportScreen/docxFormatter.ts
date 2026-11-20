@@ -160,7 +160,8 @@ export function buildExaminationParagraphSpec(text: string): TranscriptDocxParag
 function createParagraphFromSpec(spec: TranscriptDocxParagraphSpec): Paragraph {
   const children = spec.runs.map((run) => {
     if (run.kind === "tab") {
-      return new Tab();
+      // docx 9.x models a tab as a run child, not as a paragraph child.
+      return new TextRun({ children: [new Tab()] });
     }
     return new TextRun(run.text);
   });

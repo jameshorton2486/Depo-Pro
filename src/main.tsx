@@ -1,10 +1,13 @@
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
+import type { Session } from "@supabase/supabase-js";
 import "./index.css";
-import { DepoEditor } from "./components/DepoEditor";
 import { configureClient } from "./api/client";
 import type { DepoEditorConfig } from "./types";
 import { isMockMode, isRealApiMode } from "./lib/runtime/mode";
-import { initializeSupabaseSession } from "./lib/supabase";
+import { initializeSupabaseSession, supabase } from "./lib/supabase";
+import { resolveEditorApiBaseUrl } from "./lib/runtime/editorApiUrl";
+import { SiteApp } from "./site/SiteApp";
+import { resolveSiteRoute } from "./site/routes";
 
 declare global {
   interface Window {
@@ -33,31 +36,97 @@ async function startMocks() {
   }
 }
 
-export async function mountEditor(config: DepoEditorConfig) {
-  const resolvedApiBaseUrl =
-    isRealApiMode() && import.meta.env.VITE_EDITOR_API_BASE_URL
-      ? String(import.meta.env.VITE_EDITOR_API_BASE_URL)
-      : config.apiBaseUrl;
+let editorRoot: Root | null = null;
+let mountedElement: HTMLElement | null = null;
+let authStateUnsubscribe: (() => void) | null = null;
 
-  configureClient(resolvedApiBaseUrl);
-  await initializeSupabaseSession({
-    accessToken: config.supabaseAccessToken,
-    refreshToken: config.supabaseRefreshToken,
-  });
+function buildMountedConfig(config: DepoEditorConfig, session: Session | null): DepoEditorConfig {
+  if (!session) {
+    return config;
+  }
 
-  const el = document.querySelector(config.mountSelector);
+  return {
+    ...config,
+    supabaseAccessToken: session.access_token,
+    supabaseRefreshToken: session.refresh_token,
+  };
+}
+
+async function renderEditor(config: DepoEditorConfig, resolvedApiBaseUrl: string, session: Session | null) {
+  const { DepoEditor } = await import("./components/DepoEditor");
+  const mountedConfig = buildMountedConfig(config, session);
+  const el = document.querySelector(mountedConfig.mountSelector);
   if (!el) {
-    console.error(`[DEPO-PRO] Mount selector "${config.mountSelector}" not found.`);
+    console.error(`[DEPO-PRO] Mount selector "${mountedConfig.mountSelector}" not found.`);
     return;
   }
 
+  if (mountedElement !== el) {
+    editorRoot = createRoot(el as HTMLElement);
+    mountedElement = el as HTMLElement;
+  }
+
   console.info("[DEPO-PRO] Mounting editor with config:", {
-    ...config,
+    ...mountedConfig,
     apiBaseUrl: resolvedApiBaseUrl,
-    supabaseAccessToken: config.supabaseAccessToken ? "[redacted]" : undefined,
-    supabaseRefreshToken: config.supabaseRefreshToken ? "[redacted]" : undefined,
+    supabaseAccessToken: mountedConfig.supabaseAccessToken ? "[redacted]" : undefined,
+    supabaseRefreshToken: mountedConfig.supabaseRefreshToken ? "[redacted]" : undefined,
   });
-  createRoot(el as HTMLElement).render(<DepoEditor config={config} />);
+  editorRoot?.render(<DepoEditor config={mountedConfig} />);
+}
+
+function subscribeToAuthChanges() {
+  authStateUnsubscribe?.();
+  authStateUnsubscribe = null;
+
+  if (!supabase || isMockMode()) {
+    return;
+  }
+
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Root stability (DTAS): auth events must NOT rebuild the React root.
+    // Session state reaches the UI reactively via the auth store (AuthGate's
+    // useSyncExternalStore), and the API client reads a fresh token per request
+    // (getSupabaseAccessToken), so token refresh / sign-in need no re-render.
+    // The only event that requires action here is sign-out.
+    if (!session) {
+      console.warn("[DEPO-PRO] Supabase session cleared after mount; showing AuthGate.");
+    }
+  });
+
+  authStateUnsubscribe = () => {
+    data.subscription.unsubscribe();
+  };
+}
+
+export async function mountEditor(config: DepoEditorConfig) {
+  const resolvedApiBaseUrl = resolveEditorApiBaseUrl({
+    configBaseUrl: config.apiBaseUrl,
+    configuredEditorApiUrl: import.meta.env.VITE_EDITOR_API_BASE_URL,
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+    realApiMode: isRealApiMode(),
+  });
+
+  configureClient(resolvedApiBaseUrl);
+  let session: Session | null = null;
+  try {
+    session = await initializeSupabaseSession({
+      accessToken: config.supabaseAccessToken,
+      refreshToken: config.supabaseRefreshToken,
+    });
+  } catch (error) {
+    console.warn("[DEPO-PRO] Supabase session bootstrap failed before mount.", error);
+  }
+
+  if (!isMockMode() && !session) {
+    console.warn("[DEPO-PRO] No Supabase session resolved before mount; AuthGate will prompt for sign-in.");
+  }
+
+  // Always mount in real mode without a session so AuthGate can render the
+  // sign-in UI. Hard-navigating to /login?redirectTo=... loops on this SPA and
+  // eventually triggers HTTP 431 (request header fields too large).
+  await renderEditor(config, resolvedApiBaseUrl, session);
+  subscribeToAuthChanges();
 }
 
 // Public API exposed on window — host page calls this after injecting the script.
@@ -70,4 +139,18 @@ window.mountEditor = async (config: DepoEditorConfig) => {
 const cfg = window.DEPO_EDITOR_CONFIG;
 if (cfg) {
   startMocks().then(() => mountEditor(cfg));
+} else {
+  const route = resolveSiteRoute(window.location.pathname);
+  if (route === "workspace") {
+    startMocks().then(() => mountEditor({
+      apiBaseUrl: isMockMode() ? "/mock" : (import.meta.env.VITE_EDITOR_API_BASE_URL ?? ""),
+      mountSelector: "#depo-editor-root",
+      readOnly: false,
+    }));
+  } else {
+    const element = document.querySelector("#depo-editor-root");
+    if (element) {
+      createRoot(element).render(<SiteApp route={route} />);
+    }
+  }
 }
