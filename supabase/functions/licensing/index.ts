@@ -136,7 +136,7 @@ Deno.serve(async request => {
     if (!access.can_start_cloud_transcription) return failure(request, "payment_required", "An active subscription or trial is required for cloud transcription.", 402);
     if (!DEEPGRAM_KEY) return failure(request, "temporary_service_outage", "Transcription provider is unavailable.", 503, true);
     const body = await request.json();
-    if (body.purpose !== "speaker_accuracy") return failure(request, "invalid_request", "Unsupported batch purpose.", 400);
+    if (!["speaker_accuracy", "transcript_recovery"].includes(body.purpose)) return failure(request, "invalid_request", "Unsupported batch purpose.", 400);
     const { data: device } = await table("devices").select("id").eq("user_id", user.id).eq("fingerprint_hash", body.device_fingerprint).eq("status", "active").maybeSingle();
     if (!device) return failure(request, "invalid_authentication", "Register this device with a live session first.", 403);
     const response = await fetch("https://api.deepgram.com/v1/auth/grant", { method: "POST", headers: { Authorization: `Token ${DEEPGRAM_KEY}` } });
